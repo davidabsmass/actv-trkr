@@ -1,22 +1,86 @@
 
 
-## Clarification Needed
+## Answers to Your Questions
 
-I inspected newuniformdesign.com/contact and found **no active forms** on that page -- only static contact info (phone number, email link, mailing address). The site runs on:
-- **WordPress** with the **Salient theme**
-- **WPBakery Page Builder** (formerly Visual Composer)
+### What counts as a conversion?
+A **conversion** is any form submission that gets ingested into the system (via the WordPress plugin's form capture). Every form submit creates a **lead** record. The **Conversion Rate (CVR)** is calculated as:
 
-The previous plan assumed forms already exist on the site. Before building the universal form capture system, I need to know:
+**CVR = Leads / Sessions**
 
-1. **Which form plugin(s) are you using or planning to use?** The Salient theme supports its own built-in Nectar forms, plus Gravity Forms, WPForms, Contact Form 7, and others.
-2. **Are there forms on other pages** (not /contact) that I didn't check?
-3. **Are you planning to add forms to the site?** If so, which plugin will you use?
+So if you had 100 unique sessions and 3 form submissions, your CVR would be 3%. You can adjust how much each form "counts" using the **lead weight** setting on the form's Settings tab (e.g., a newsletter signup could be weighted at 0.25 while a contact form is 1.0).
 
-The universal form capture system from the previous plan will work regardless of the answer -- the JS-layer intercepts any `<form>` submit event in the DOM. But knowing the specific plugins helps me add richer server-side hooks that capture field labels, entry IDs, and other metadata the JS layer can't see.
+### What is a campaign?
+A **campaign** refers to the `utm_campaign` parameter captured from URL query strings (e.g., `?utm_campaign=spring-sale`). When someone visits your site with UTM parameters, the tracker stores them on the session. If that visitor later submits a form, the lead is attributed to that campaign. The Attribution section on the dashboard groups sessions and leads by these campaign values so you can see which marketing efforts are driving results.
 
-### What I can build right now (no matter which form plugin)
+Currently, campaign attribution data only populates when your `traffic_daily`/`kpi_daily` aggregation includes `sessions_by_campaign` and `leads_by_campaign` metrics -- the aggregate function doesn't compute these yet, which is why the Campaign tab shows empty.
 
-The **client-side universal form listener** (Layer 1 from the previous plan) works with any form on any WordPress site -- Salient built-in forms, Gravity Forms, WPForms, Contact Form 7, Avada, or plain HTML. It listens for `submit` events at the document level and captures all input fields.
+---
 
-If you confirm which form plugin(s) you want to support, I'll finalize the plan and build both layers.
+## Plan: Visitor Location Map on Dashboard
+
+### The Problem
+There is currently **no geolocation data** being captured. The `pageviews` table stores `ip_hash` but not country, city, or coordinates. We need to add geo-resolution and then display it.
+
+### Implementation
+
+#### 1. Database: Add geo columns to `pageviews` table
+Add `country_code` (text, 2-char ISO) and `country_name` (text) columns to the `pageviews` table via migration.
+
+Add a new `traffic_daily` metric type: `sessions_by_country` so the aggregation pipeline can roll up country data.
+
+#### 2. Edge Function: Resolve IP to country in `track-pageview`
+- Use the request's `CF-IPCountry` header (available automatically on Deno Deploy / Cloudflare-backed hosting) or a lightweight free geo API as fallback.
+- Store the resolved `country_code` on the pageview record.
+- This is zero-cost since `CF-IPCountry` is a standard header provided by the infrastructure.
+
+#### 3. Aggregation: Update `aggregate-daily` function
+- Add a new aggregation pass that groups pageviews by `country_code` and writes `sessions_by_country` rows into `traffic_daily`.
+
+#### 4. Dashboard Hook: Fetch country data
+- Add a query in `use-dashboard-data.ts` that pulls `traffic_daily` rows where `metric = 'sessions_by_country'` for the selected date range.
+
+#### 5. Dashboard UI: World map component
+- Create `src/components/dashboard/VisitorMapSection.tsx`.
+- Use a lightweight SVG world map approach (inline SVG with country paths) rather than adding a heavy mapping library.
+- Countries are shaded by session count using a color scale (lighter = fewer, darker = more).
+- Include a sorted table below the map listing top countries with session counts.
+- Place the component on the Dashboard between the Attribution and Content Performance sections.
+
+### Technical Details
+
+```text
+┌─────────────────────────────────────────┐
+│  track-pageview edge function           │
+│  ┌──────────────────────────────────┐   │
+│  │ Read CF-IPCountry header         │   │
+│  │ Store country_code on pageview   │   │
+│  └──────────────────────────────────┘   │
+└───────────────┬─────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────┐
+│  aggregate-daily edge function          │
+│  ┌──────────────────────────────────┐   │
+│  │ GROUP BY country_code            │   │
+│  │ → sessions_by_country metric     │   │
+│  └──────────────────────────────────┘   │
+└───────────────┬─────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────┐
+│  Dashboard                              │
+│  ┌──────────────────────────────────┐   │
+│  │ SVG world map + country table    │   │
+│  │ Color-coded by session volume    │   │
+│  └──────────────────────────────────┘   │
+└─────────────────────────────────────────┘
+```
+
+### Files to create/modify
+- **Migration**: Add `country_code` and `country_name` to `pageviews`
+- **`supabase/functions/track-pageview/index.ts`**: Read geo header, store country
+- **`supabase/functions/aggregate-daily/index.ts`**: Add `sessions_by_country` aggregation
+- **`src/components/dashboard/VisitorMapSection.tsx`**: New SVG map component
+- **`src/hooks/use-dashboard-data.ts`**: Add country data query
+- **`src/pages/Dashboard.tsx`**: Add VisitorMapSection to layout
 

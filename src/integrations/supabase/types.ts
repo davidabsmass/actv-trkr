@@ -16,171 +16,437 @@ export type Database = {
     Tables: {
       alerts: {
         Row: {
-          client_id: string
           created_at: string
           date: string
           details: Json | null
-          dismissed: boolean
           id: string
+          org_id: string
           severity: string
           title: string
         }
         Insert: {
-          client_id: string
           created_at?: string
           date: string
           details?: Json | null
-          dismissed?: boolean
           id?: string
+          org_id: string
           severity?: string
           title: string
         }
         Update: {
-          client_id?: string
           created_at?: string
           date?: string
           details?: Json | null
-          dismissed?: boolean
           id?: string
+          org_id?: string
           severity?: string
           title?: string
         }
         Relationships: [
           {
-            foreignKeyName: "alerts_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "alerts_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
       }
-      clients: {
+      api_keys: {
         Row: {
-          api_key: string
           created_at: string
           id: string
-          name: string
-          owner_id: string | null
-          slug: string
-          timezone: string
-          updated_at: string
+          key_hash: string
+          label: string
+          org_id: string
+          revoked_at: string | null
         }
         Insert: {
-          api_key?: string
           created_at?: string
           id?: string
-          name: string
-          owner_id?: string | null
-          slug: string
-          timezone?: string
-          updated_at?: string
+          key_hash: string
+          label?: string
+          org_id: string
+          revoked_at?: string | null
         }
         Update: {
-          api_key?: string
           created_at?: string
           id?: string
-          name?: string
-          owner_id?: string | null
-          slug?: string
-          timezone?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      forecasts: {
-        Row: {
-          client_id: string
-          horizon_days: number
-          id: string
-          metric: string
-          model_info: Json | null
-          points: Json
-          run_at: string
-          start_date: string
-        }
-        Insert: {
-          client_id: string
-          horizon_days?: number
-          id?: string
-          metric: string
-          model_info?: Json | null
-          points?: Json
-          run_at?: string
-          start_date: string
-        }
-        Update: {
-          client_id?: string
-          horizon_days?: number
-          id?: string
-          metric?: string
-          model_info?: Json | null
-          points?: Json
-          run_at?: string
-          start_date?: string
+          key_hash?: string
+          label?: string
+          org_id?: string
+          revoked_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "forecasts_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "api_keys_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      export_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          error: string | null
+          file_path: string | null
+          format: string
+          id: string
+          org_id: string
+          row_count: number | null
+          saved_view_id: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          error?: string | null
+          file_path?: string | null
+          format?: string
+          id?: string
+          org_id: string
+          row_count?: number | null
+          saved_view_id?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          error?: string | null
+          file_path?: string | null
+          format?: string
+          id?: string
+          org_id?: string
+          row_count?: number | null
+          saved_view_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_jobs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_jobs_saved_view_id_fkey"
+            columns: ["saved_view_id"]
+            isOneToOne: false
+            referencedRelation: "saved_views"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      field_mappings: {
+        Row: {
+          external_field_id: string
+          external_field_label: string | null
+          field_type: string | null
+          form_id: string
+          id: string
+          mapped_to: string
+          org_id: string
+          required: boolean | null
+          transform: Json | null
+        }
+        Insert: {
+          external_field_id: string
+          external_field_label?: string | null
+          field_type?: string | null
+          form_id: string
+          id?: string
+          mapped_to: string
+          org_id: string
+          required?: boolean | null
+          transform?: Json | null
+        }
+        Update: {
+          external_field_id?: string
+          external_field_label?: string | null
+          field_type?: string | null
+          form_id?: string
+          id?: string
+          mapped_to?: string
+          org_id?: string
+          required?: boolean | null
+          transform?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_mappings_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_mappings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forms: {
+        Row: {
+          created_at: string
+          external_form_id: string
+          id: string
+          name: string
+          org_id: string
+          provider: string
+          site_id: string
+        }
+        Insert: {
+          created_at?: string
+          external_form_id: string
+          id?: string
+          name?: string
+          org_id: string
+          provider?: string
+          site_id: string
+        }
+        Update: {
+          created_at?: string
+          external_form_id?: string
+          id?: string
+          name?: string
+          org_id?: string
+          provider?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forms_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forms_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          id: string
+          month: string
+          org_id: string
+          target_leads: number
+        }
+        Insert: {
+          id?: string
+          month: string
+          org_id: string
+          target_leads: number
+        }
+        Update: {
+          id?: string
+          month?: string
+          org_id?: string
+          target_leads?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
       }
       kpi_daily: {
         Row: {
-          client_id: string
           date: string
           dimension: string | null
           id: string
           metric: string
-          updated_at: string
+          org_id: string
           value: number
         }
         Insert: {
-          client_id: string
           date: string
           dimension?: string | null
           id?: string
           metric: string
-          updated_at?: string
+          org_id: string
           value?: number
         }
         Update: {
-          client_id?: string
           date?: string
           dimension?: string | null
           id?: string
           metric?: string
-          updated_at?: string
+          org_id?: string
           value?: number
         }
         Relationships: [
           {
-            foreignKeyName: "kpi_daily_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "kpi_daily_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_events_raw: {
+        Row: {
+          context: Json | null
+          external_entry_id: string
+          form_id: string
+          id: string
+          org_id: string
+          payload: Json | null
+          received_at: string
+          session_id: string | null
+          site_id: string
+          submitted_at: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          external_entry_id: string
+          form_id: string
+          id?: string
+          org_id: string
+          payload?: Json | null
+          received_at?: string
+          session_id?: string | null
+          site_id: string
+          submitted_at?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          external_entry_id?: string
+          form_id?: string
+          id?: string
+          org_id?: string
+          payload?: Json | null
+          received_at?: string
+          session_id?: string | null
+          site_id?: string
+          submitted_at?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_events_raw_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_events_raw_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_events_raw_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_fields_flat: {
+        Row: {
+          created_at: string
+          field_key: string
+          field_label: string | null
+          field_type: string | null
+          id: string
+          lead_id: string
+          org_id: string
+          value_bool: boolean | null
+          value_date: string | null
+          value_number: number | null
+          value_text: string | null
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          field_label?: string | null
+          field_type?: string | null
+          id?: string
+          lead_id: string
+          org_id: string
+          value_bool?: boolean | null
+          value_date?: string | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          field_label?: string | null
+          field_type?: string | null
+          id?: string
+          lead_id?: string
+          org_id?: string
+          value_bool?: boolean | null
+          value_date?: string | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_fields_flat_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_fields_flat_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
       }
       leads: {
         Row: {
-          client_id: string
+          campaign: string | null
           created_at: string
-          fields: Json | null
-          form_id: string | null
-          form_title: string | null
+          data: Json | null
+          form_id: string
           id: string
+          lead_score: number | null
+          lead_type: string | null
+          location: string | null
+          medium: string | null
+          org_id: string
           page_path: string | null
           page_url: string | null
-          raw_payload: Json | null
+          physician: string | null
           referrer: string | null
+          referrer_domain: string | null
+          service: string | null
           session_id: string | null
-          source_id: string | null
+          site_id: string
+          source: string | null
+          status: string
           submitted_at: string
           utm_campaign: string | null
           utm_content: string | null
@@ -190,18 +456,26 @@ export type Database = {
           visitor_id: string | null
         }
         Insert: {
-          client_id: string
+          campaign?: string | null
           created_at?: string
-          fields?: Json | null
-          form_id?: string | null
-          form_title?: string | null
+          data?: Json | null
+          form_id: string
           id?: string
+          lead_score?: number | null
+          lead_type?: string | null
+          location?: string | null
+          medium?: string | null
+          org_id: string
           page_path?: string | null
           page_url?: string | null
-          raw_payload?: Json | null
+          physician?: string | null
           referrer?: string | null
+          referrer_domain?: string | null
+          service?: string | null
           session_id?: string | null
-          source_id?: string | null
+          site_id: string
+          source?: string | null
+          status?: string
           submitted_at?: string
           utm_campaign?: string | null
           utm_content?: string | null
@@ -211,18 +485,26 @@ export type Database = {
           visitor_id?: string | null
         }
         Update: {
-          client_id?: string
+          campaign?: string | null
           created_at?: string
-          fields?: Json | null
-          form_id?: string | null
-          form_title?: string | null
+          data?: Json | null
+          form_id?: string
           id?: string
+          lead_score?: number | null
+          lead_type?: string | null
+          location?: string | null
+          medium?: string | null
+          org_id?: string
           page_path?: string | null
           page_url?: string | null
-          raw_payload?: Json | null
+          physician?: string | null
           referrer?: string | null
+          referrer_domain?: string | null
+          service?: string | null
           session_id?: string | null
-          source_id?: string | null
+          site_id?: string
+          source?: string | null
+          status?: string
           submitted_at?: string
           utm_campaign?: string | null
           utm_content?: string | null
@@ -233,37 +515,95 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "leads_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "leads_form_id_fkey"
+            columns: ["form_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "forms"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "leads_source_id_fkey"
-            columns: ["source_id"]
+            foreignKeyName: "leads_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "sources"
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
       }
+      org_users: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_users_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orgs: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          timezone: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          timezone?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          timezone?: string
+        }
+        Relationships: []
+      }
       pageviews: {
         Row: {
-          client_id: string
-          created_at: string
           device: string | null
-          event_id: string | null
+          event_id: string
           id: string
           ip_hash: string | null
           occurred_at: string
+          org_id: string
           page_path: string | null
           page_url: string | null
-          raw_payload: Json | null
           referrer: string | null
           referrer_domain: string | null
           session_id: string | null
-          source_id: string | null
+          site_id: string
           title: string | null
           user_agent_hash: string | null
           utm_campaign: string | null
@@ -274,20 +614,18 @@ export type Database = {
           visitor_id: string | null
         }
         Insert: {
-          client_id: string
-          created_at?: string
           device?: string | null
-          event_id?: string | null
+          event_id: string
           id?: string
           ip_hash?: string | null
           occurred_at: string
+          org_id: string
           page_path?: string | null
           page_url?: string | null
-          raw_payload?: Json | null
           referrer?: string | null
           referrer_domain?: string | null
           session_id?: string | null
-          source_id?: string | null
+          site_id: string
           title?: string | null
           user_agent_hash?: string | null
           utm_campaign?: string | null
@@ -298,20 +636,18 @@ export type Database = {
           visitor_id?: string | null
         }
         Update: {
-          client_id?: string
-          created_at?: string
           device?: string | null
-          event_id?: string | null
+          event_id?: string
           id?: string
           ip_hash?: string | null
           occurred_at?: string
+          org_id?: string
           page_path?: string | null
           page_url?: string | null
-          raw_payload?: Json | null
           referrer?: string | null
           referrer_domain?: string | null
           session_id?: string | null
-          source_id?: string | null
+          site_id?: string
           title?: string | null
           user_agent_hash?: string | null
           utm_campaign?: string | null
@@ -323,17 +659,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "pageviews_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "pageviews_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "pageviews_source_id_fkey"
-            columns: ["source_id"]
+            foreignKeyName: "pageviews_site_id_fkey"
+            columns: ["site_id"]
             isOneToOne: false
-            referencedRelation: "sources"
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
@@ -365,17 +701,198 @@ export type Database = {
         }
         Relationships: []
       }
+      report_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          error: string | null
+          file_path: string | null
+          id: string
+          org_id: string
+          params: Json | null
+          status: string
+          template_slug: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          error?: string | null
+          file_path?: string | null
+          id?: string
+          org_id: string
+          params?: Json | null
+          status?: string
+          template_slug: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          error?: string | null
+          file_path?: string | null
+          id?: string
+          org_id?: string
+          params?: Json | null
+          status?: string
+          template_slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_runs_template_slug_fkey"
+            columns: ["template_slug"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
+      report_schedules: {
+        Row: {
+          enabled: boolean
+          format: string
+          frequency: string
+          id: string
+          last_run_at: string | null
+          next_run_at: string | null
+          org_id: string
+          params: Json | null
+          recipients: Json | null
+          run_at_local_time: string
+          template_slug: string
+          timezone: string
+        }
+        Insert: {
+          enabled?: boolean
+          format?: string
+          frequency: string
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          org_id: string
+          params?: Json | null
+          recipients?: Json | null
+          run_at_local_time?: string
+          template_slug: string
+          timezone?: string
+        }
+        Update: {
+          enabled?: boolean
+          format?: string
+          frequency?: string
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          org_id?: string
+          params?: Json | null
+          recipients?: Json | null
+          run_at_local_time?: string
+          template_slug?: string
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_schedules_template_slug_fkey"
+            columns: ["template_slug"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          default_params: Json | null
+          name: string
+          slug: string
+        }
+        Insert: {
+          default_params?: Json | null
+          name: string
+          slug: string
+        }
+        Update: {
+          default_params?: Json | null
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      saved_views: {
+        Row: {
+          columns: Json | null
+          created_at: string
+          created_by: string
+          filters: Json | null
+          form_id: string | null
+          id: string
+          name: string
+          org_id: string
+          sort: Json | null
+        }
+        Insert: {
+          columns?: Json | null
+          created_at?: string
+          created_by: string
+          filters?: Json | null
+          form_id?: string | null
+          id?: string
+          name: string
+          org_id: string
+          sort?: Json | null
+        }
+        Update: {
+          columns?: Json | null
+          created_at?: string
+          created_by?: string
+          filters?: Json | null
+          form_id?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          sort?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_views_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_views_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
-          client_id: string
-          created_at: string
           ended_at: string
           id: string
           landing_page_path: string | null
           landing_referrer_domain: string | null
-          pageview_count: number
+          org_id: string
           session_id: string
-          source_id: string | null
+          site_id: string
           started_at: string
           utm_campaign: string | null
           utm_medium: string | null
@@ -383,15 +900,13 @@ export type Database = {
           visitor_id: string | null
         }
         Insert: {
-          client_id: string
-          created_at?: string
           ended_at: string
           id?: string
           landing_page_path?: string | null
           landing_referrer_domain?: string | null
-          pageview_count?: number
+          org_id: string
           session_id: string
-          source_id?: string | null
+          site_id: string
           started_at: string
           utm_campaign?: string | null
           utm_medium?: string | null
@@ -399,15 +914,13 @@ export type Database = {
           visitor_id?: string | null
         }
         Update: {
-          client_id?: string
-          created_at?: string
           ended_at?: string
           id?: string
           landing_page_path?: string | null
           landing_referrer_domain?: string | null
-          pageview_count?: number
+          org_id?: string
           session_id?: string
-          source_id?: string | null
+          site_id?: string
           started_at?: string
           utm_campaign?: string | null
           utm_medium?: string | null
@@ -416,93 +929,131 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "sessions_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "sessions_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sessions_source_id_fkey"
-            columns: ["source_id"]
+            foreignKeyName: "sessions_site_id_fkey"
+            columns: ["site_id"]
             isOneToOne: false
-            referencedRelation: "sources"
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
       }
-      sources: {
+      sites: {
         Row: {
-          client_id: string
           created_at: string
           domain: string
           id: string
+          org_id: string
           plugin_version: string | null
-          site_id: string | null
-          source_type: string
+          type: string
         }
         Insert: {
-          client_id: string
           created_at?: string
           domain: string
           id?: string
+          org_id: string
           plugin_version?: string | null
-          site_id?: string | null
-          source_type?: string
+          type?: string
         }
         Update: {
-          client_id?: string
           created_at?: string
           domain?: string
           id?: string
+          org_id?: string
           plugin_version?: string | null
-          site_id?: string | null
-          source_type?: string
+          type?: string
         }
         Relationships: [
           {
-            foreignKeyName: "sources_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "sites_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
       }
       traffic_daily: {
         Row: {
-          client_id: string
           date: string
           dimension: string | null
           id: string
           metric: string
-          updated_at: string
+          org_id: string
           value: number
         }
         Insert: {
-          client_id: string
           date: string
           dimension?: string | null
           id?: string
           metric: string
-          updated_at?: string
+          org_id: string
           value?: number
         }
         Update: {
-          client_id?: string
           date?: string
           dimension?: string | null
           id?: string
           metric?: string
-          updated_at?: string
+          org_id?: string
           value?: number
         }
         Relationships: [
           {
-            foreignKeyName: "traffic_daily_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "traffic_daily_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      url_rules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          maps_to: string
+          org_id: string
+          pattern: string
+          priority: number
+          rule_type: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          maps_to: string
+          org_id: string
+          pattern: string
+          priority?: number
+          rule_type: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          maps_to?: string
+          org_id?: string
+          pattern?: string
+          priority?: number
+          rule_type?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "url_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
@@ -537,14 +1088,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_org_member: { Args: { _org_id: string }; Returns: boolean }
       upsert_session: {
         Args: {
-          p_client_id: string
           p_occurred_at: string
+          p_org_id: string
           p_page_path: string
           p_referrer_domain: string
           p_session_id: string
-          p_source_id: string
+          p_site_id: string
           p_utm_campaign: string
           p_utm_medium: string
           p_utm_source: string
@@ -552,7 +1104,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      validate_api_key: { Args: { key: string }; Returns: string }
+      user_org_role: { Args: { _org_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

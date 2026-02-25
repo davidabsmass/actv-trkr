@@ -15,47 +15,59 @@ Deno.serve(async (req) => {
 
     const results: Record<string, any> = {};
 
+    // Process today AND yesterday (covers all recent data)
+    const today = new Date();
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const datesToProcess = [
+      today.toISOString().split("T")[0],
+      yesterday.toISOString().split("T")[0],
+    ];
+
     for (const org of orgs) {
       const orgId = org.id;
-      const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-      const dateStr = yesterday.toISOString().split("T")[0];
-      const dayStart = `${dateStr}T00:00:00Z`, dayEnd = `${dateStr}T23:59:59.999Z`;
+      const orgResults: Record<string, any> = {};
 
-      try {
-        // pageviews_total
-        const { count: pvCount } = await supabase.from("pageviews").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd);
-        await upsert(supabase, "traffic_daily", orgId, dateStr, "pageviews_total", null, pvCount || 0);
+      for (const dateStr of datesToProcess) {
+        const dayStart = `${dateStr}T00:00:00Z`, dayEnd = `${dateStr}T23:59:59.999Z`;
 
-        // sessions_total
-        const { count: sessCount } = await supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
-        await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_total", null, sessCount || 0);
+        try {
+          // pageviews_total
+          const { count: pvCount } = await supabase.from("pageviews").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd);
+          await upsert(supabase, "traffic_daily", orgId, dateStr, "pageviews_total", null, pvCount || 0);
 
-        // visitors_total
-        const { data: visitors } = await supabase.from("pageviews").select("visitor_id").eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd).not("visitor_id", "is", null);
-        await upsert(supabase, "traffic_daily", orgId, dateStr, "visitors_total", null, new Set(visitors?.map((v: any) => v.visitor_id)).size);
+          // sessions_total
+          const { count: sessCount } = await supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
+          await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_total", null, sessCount || 0);
 
-        // sessions_by_source
-        const { data: sbs } = await supabase.from("sessions").select("utm_source, landing_referrer_domain").eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
-        if (sbs) { const m: Record<string, number> = {}; sbs.forEach((s: any) => { const d = s.utm_source || s.landing_referrer_domain || "direct"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_source", d, v); }
+          // visitors_total
+          const { data: visitors } = await supabase.from("pageviews").select("visitor_id").eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd).not("visitor_id", "is", null);
+          await upsert(supabase, "traffic_daily", orgId, dateStr, "visitors_total", null, new Set(visitors?.map((v: any) => v.visitor_id)).size);
 
-        // sessions_by_page
-        const { data: sbp } = await supabase.from("sessions").select("landing_page_path").eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
-        if (sbp) { const m: Record<string, number> = {}; sbp.forEach((s: any) => { const d = s.landing_page_path || "(unknown)"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_page", d, v); }
+          // sessions_by_source
+          const { data: sbs } = await supabase.from("sessions").select("utm_source, landing_referrer_domain").eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
+          if (sbs) { const m: Record<string, number> = {}; sbs.forEach((s: any) => { const d = s.utm_source || s.landing_referrer_domain || "direct"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_source", d, v); }
 
-        // leads_total
-        const { count: leadsCount } = await supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
-        await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_total", null, leadsCount || 0);
+          // sessions_by_page
+          const { data: sbp } = await supabase.from("sessions").select("landing_page_path").eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
+          if (sbp) { const m: Record<string, number> = {}; sbp.forEach((s: any) => { const d = s.landing_page_path || "(unknown)"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_page", d, v); }
 
-        // leads_by_source
-        const { data: lbs } = await supabase.from("leads").select("source").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
-        if (lbs) { const m: Record<string, number> = {}; lbs.forEach((l: any) => { const d = l.source || "direct"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_source", d, v); }
+          // leads_total
+          const { count: leadsCount } = await supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
+          await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_total", null, leadsCount || 0);
 
-        // leads_by_page
-        const { data: lbp } = await supabase.from("leads").select("page_path").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
-        if (lbp) { const m: Record<string, number> = {}; lbp.forEach((l: any) => { const d = l.page_path || "(unknown)"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_page", d, v); }
+          // leads_by_source
+          const { data: lbs } = await supabase.from("leads").select("source").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
+          if (lbs) { const m: Record<string, number> = {}; lbs.forEach((l: any) => { const d = l.source || "direct"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_source", d, v); }
 
-        results[orgId] = { status: "ok", date: dateStr };
-      } catch (err) { console.error(`Agg error ${orgId}:`, err); results[orgId] = { status: "error" }; }
+          // leads_by_page
+          const { data: lbp } = await supabase.from("leads").select("page_path").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
+          if (lbp) { const m: Record<string, number> = {}; lbp.forEach((l: any) => { const d = l.page_path || "(unknown)"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_page", d, v); }
+
+          orgResults[dateStr] = { status: "ok" };
+        } catch (err) { console.error(`Agg error ${orgId} ${dateStr}:`, err); orgResults[dateStr] = { status: "error" }; }
+      }
+
+      results[orgId] = orgResults;
     }
 
     return new Response(JSON.stringify({ results }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

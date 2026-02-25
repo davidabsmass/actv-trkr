@@ -105,3 +105,28 @@ export function useSites(orgId: string | null) {
     enabled: !!orgId,
   });
 }
+
+/** Fallback: count raw pageviews + sessions when aggregated tables are empty */
+export function useRawCounts(orgId: string | null, startDate: string, endDate: string, hasAggregatedData: boolean) {
+  return useQuery({
+    queryKey: ["raw_counts", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const dayStart = `${startDate}T00:00:00Z`;
+      const dayEnd = `${endDate}T23:59:59.999Z`;
+
+      const [pvRes, sessRes, leadRes] = await Promise.all([
+        supabase.from("pageviews").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd),
+        supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd),
+        supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
+      ]);
+
+      return {
+        pageviews: pvRes.count || 0,
+        sessions: sessRes.count || 0,
+        leads: leadRes.count || 0,
+      };
+    },
+    enabled: !!orgId && !hasAggregatedData,
+  });
+}

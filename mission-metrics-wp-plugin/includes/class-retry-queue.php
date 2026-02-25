@@ -19,7 +19,6 @@ class MM_Retry_Queue {
 		$sql = "CREATE TABLE IF NOT EXISTS {$table} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			endpoint VARCHAR(500) NOT NULL,
-			api_key VARCHAR(500) NOT NULL,
 			payload LONGTEXT NOT NULL,
 			attempts TINYINT UNSIGNED DEFAULT 0,
 			last_error TEXT NULL,
@@ -33,9 +32,9 @@ class MM_Retry_Queue {
 
 	public static function enqueue( $endpoint, $api_key, $payload ) {
 		global $wpdb;
+		// No longer store the API key — retrieve from settings at retry time
 		$wpdb->insert( self::table_name(), array(
 			'endpoint' => $endpoint,
-			'api_key'  => $api_key,
 			'payload'  => wp_json_encode( $payload ),
 		) );
 	}
@@ -44,6 +43,9 @@ class MM_Retry_Queue {
 		global $wpdb;
 		$table = self::table_name();
 		$now   = current_time( 'mysql' );
+		$opts  = MM_Settings::get();
+
+		if ( empty( $opts['api_key'] ) ) return;
 
 		$rows = $wpdb->get_results( $wpdb->prepare(
 			"SELECT * FROM {$table} WHERE attempts < %d AND next_retry_at <= %s ORDER BY created_at ASC LIMIT 20",
@@ -56,7 +58,7 @@ class MM_Retry_Queue {
 				'timeout' => 15,
 				'headers' => array(
 					'Content-Type'  => 'application/json',
-					'Authorization' => 'Bearer ' . $row->api_key,
+					'Authorization' => 'Bearer ' . $opts['api_key'],
 				),
 				'body' => $row->payload,
 			) );
@@ -68,7 +70,7 @@ class MM_Retry_Queue {
 			} else {
 				$attempts = (int) $row->attempts + 1;
 				$error    = is_wp_error( $response ) ? $response->get_error_message() : 'HTTP ' . $code;
-				$delay    = min( pow( 2, $attempts ) * 60, 3600 ); // exponential backoff, max 1 hour
+				$delay    = min( pow( 2, $attempts ) * 60, 3600 );
 				$next     = gmdate( 'Y-m-d H:i:s', time() + $delay );
 
 				$wpdb->update( $table, array(

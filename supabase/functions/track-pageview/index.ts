@@ -11,14 +11,73 @@ async function hashKey(key: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// ── Input sanitization ──────────────────────────────────────────
+
+function sanitizeStr(val: unknown, maxLen: number): string | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (s.length === 0) return null;
+  return s.slice(0, maxLen);
+}
+
+function isValidUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch { return false; }
+}
+
+function isValidUuid(val: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
+
+function isValidEventId(val: string): boolean {
+  // Allow UUIDs, prefixed test IDs, and hex strings
+  return /^[a-zA-Z0-9_-]{1,128}$/.test(val);
+}
+
+// ── Simple in-memory rate limiter (per-isolate) ─────────────────
+
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+const RATE_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT = 120; // max requests per org per minute
+
+function checkRate(orgId: string): boolean {
+  const now = Date.now();
+  const bucket = rateBuckets.get(orgId);
+  if (!bucket || now > bucket.resetAt) {
+    rateBuckets.set(orgId, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  bucket.count++;
+  return bucket.count <= RATE_LIMIT;
+}
+
+// Periodically clean stale buckets (every 5 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of rateBuckets) {
+    if (now > v.resetAt) rateBuckets.delete(k);
+  }
+}, 300_000);
+
+// ── Main handler ────────────────────────────────────────────────
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
+    // Enforce max payload size (50KB)
+    const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+    if (contentLength > 51200) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Auth
     const authHeader = req.headers.get("authorization") || "";
     const apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!apiKey) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!apiKey || apiKey.length > 256) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -27,55 +86,98 @@ Deno.serve(async (req) => {
     if (!akRow) return new Response(JSON.stringify({ error: "Invalid API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const orgId = akRow.org_id;
 
-    const body = await req.json();
+    // Rate limit
+    if (!checkRate(orgId)) {
+      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
+    }
+
+    // Parse body with size guard
+    const rawBody = await req.text();
+    if (rawBody.length > 51200) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let body: any;
+    try { body = JSON.parse(rawBody); } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { source, event, attribution, visitor } = body;
-    if (!event?.page_url) return new Response(JSON.stringify({ error: "Missing event data" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Validate required fields
+    const pageUrl = sanitizeStr(event?.page_url, 2048);
+    if (!pageUrl || !isValidUrl(pageUrl)) {
+      return new Response(JSON.stringify({ error: "Missing or invalid page_url" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const eventId = sanitizeStr(event?.event_id, 128);
+    if (!eventId || !isValidEventId(eventId)) {
+      return new Response(JSON.stringify({ error: "Missing or invalid event_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Sanitize all string inputs
+    const domain = sanitizeStr(source?.domain, 253);
+    if (!domain) return new Response(JSON.stringify({ error: "Missing source domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const now = new Date();
     let occurredAt = event.occurred_at ? new Date(event.occurred_at) : now;
-    if (Math.abs(occurredAt.getTime() - now.getTime()) / 36e5 > 24) occurredAt = now;
+    if (isNaN(occurredAt.getTime()) || Math.abs(occurredAt.getTime() - now.getTime()) / 36e5 > 24) occurredAt = now;
 
     let referrerDomain: string | null = null;
-    try { referrerDomain = new URL(event.referrer).hostname; } catch {}
+    const referrer = sanitizeStr(event?.referrer, 2048);
+    if (referrer) { try { referrerDomain = new URL(referrer).hostname; } catch {} }
 
-    let pagePath = event.page_path || "";
-    try { pagePath = new URL(event.page_url).pathname; } catch {}
+    let pagePath = sanitizeStr(event?.page_path, 2048) || "";
+    try { pagePath = new URL(pageUrl).pathname; } catch {}
+
+    const sessionId = sanitizeStr(event?.session_id, 128);
+    const visitorId = sanitizeStr(visitor?.visitor_id, 128);
+    const title = sanitizeStr(event?.title, 512);
+    const device = sanitizeStr(event?.device, 32);
+    const ipHash = sanitizeStr(visitor?.ip_hash, 128);
+    const pluginVersion = sanitizeStr(source?.plugin_version, 32);
+    const siteType = sanitizeStr(source?.type, 32) || "wordpress";
+
+    // UTM params (capped at 256 chars each)
+    const utmSource = sanitizeStr(attribution?.utm_source, 256);
+    const utmMedium = sanitizeStr(attribution?.utm_medium, 256);
+    const utmCampaign = sanitizeStr(attribution?.utm_campaign, 256);
+    const utmTerm = sanitizeStr(attribution?.utm_term, 256);
+    const utmContent = sanitizeStr(attribution?.utm_content, 256);
 
     // Upsert site
     let siteId: string | null = null;
-    if (source?.domain) {
-      const { data: existing } = await supabase.from("sites").select("id").eq("org_id", orgId).eq("domain", source.domain).maybeSingle();
-      if (existing) { siteId = existing.id; }
-      else {
-        const { data: ns } = await supabase.from("sites").insert({ org_id: orgId, domain: source.domain, type: source.type || "wordpress", plugin_version: source.plugin_version }).select("id").single();
-        siteId = ns?.id || null;
-      }
+    const { data: existing } = await supabase.from("sites").select("id").eq("org_id", orgId).eq("domain", domain).maybeSingle();
+    if (existing) { siteId = existing.id; }
+    else {
+      const { data: ns } = await supabase.from("sites").insert({ org_id: orgId, domain, type: siteType, plugin_version: pluginVersion }).select("id").single();
+      siteId = ns?.id || null;
     }
 
-    if (!siteId) return new Response(JSON.stringify({ error: "Missing source domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!siteId) return new Response(JSON.stringify({ error: "Failed to resolve site" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const { error: insertError } = await supabase.from("pageviews").upsert({
       org_id: orgId, site_id: siteId, occurred_at: occurredAt.toISOString(),
-      event_id: event.event_id, visitor_id: visitor?.visitor_id, session_id: event.session_id,
-      page_url: event.page_url, page_path: pagePath, title: event.title,
-      referrer: event.referrer, referrer_domain: referrerDomain,
-      utm_source: attribution?.utm_source, utm_medium: attribution?.utm_medium,
-      utm_campaign: attribution?.utm_campaign, utm_term: attribution?.utm_term,
-      utm_content: attribution?.utm_content, device: event.device, ip_hash: visitor?.ip_hash,
+      event_id: eventId, visitor_id: visitorId, session_id: sessionId,
+      page_url: pageUrl, page_path: pagePath, title,
+      referrer, referrer_domain: referrerDomain,
+      utm_source: utmSource, utm_medium: utmMedium,
+      utm_campaign: utmCampaign, utm_term: utmTerm,
+      utm_content: utmContent, device, ip_hash: ipHash,
     }, { onConflict: "org_id,site_id,event_id", ignoreDuplicates: true });
 
     if (insertError) { console.error("Pageview insert error:", insertError); return new Response(JSON.stringify({ error: "Failed to store pageview" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 
-    if (event.session_id) {
+    if (sessionId) {
       await supabase.rpc("upsert_session", {
-        p_org_id: orgId, p_site_id: siteId, p_session_id: event.session_id,
-        p_visitor_id: visitor?.visitor_id, p_occurred_at: occurredAt.toISOString(),
-        p_page_path: pagePath, p_referrer_domain: referrerDomain,
-        p_utm_source: attribution?.utm_source, p_utm_medium: attribution?.utm_medium, p_utm_campaign: attribution?.utm_campaign,
+        p_org_id: orgId, p_site_id: siteId, p_session_id: sessionId,
+        p_visitor_id: visitorId || "", p_occurred_at: occurredAt.toISOString(),
+        p_page_path: pagePath, p_referrer_domain: referrerDomain || "",
+        p_utm_source: utmSource || "", p_utm_medium: utmMedium || "", p_utm_campaign: utmCampaign || "",
       });
     }
 
-    return new Response(JSON.stringify({ status: "ok", event_id: event.event_id }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ status: "ok", event_id: eventId }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Pageview tracking error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -1,0 +1,10 @@
+project_id = "qnnxlvoybbmmqoxuqyvf"
+
+[functions.track-pageview]
+verify_jwt = false
+
+[functions.ingest-gravity]
+verify_jwt = false
+
+[functions.aggregate-daily]
+verify_jwt = false

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Zap, Plus, Copy, Check, Download } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
 import { downloadPlugin } from "@/lib/plugin-download";
+import { toast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
   const navigate = useNavigate();

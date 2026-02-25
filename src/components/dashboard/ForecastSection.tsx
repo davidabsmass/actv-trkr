@@ -35,8 +35,8 @@ export function ForecastSection({ forecast }: ForecastProps) {
         <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-lg">
           <TrendingUp className="h-5 w-5 text-muted-foreground" />
           <div>
-            <p className="text-sm text-foreground">Forecast available in {forecast.days_until_available} more days</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-sm text-primary-foreground">Forecast available in {forecast.days_until_available} more days</p>
+            <p className="text-xs text-primary-foreground/70 mt-0.5">
               We need at least 42 days of data to generate reliable forecasts.
             </p>
           </div>

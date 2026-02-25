@@ -1,64 +1,67 @@
 
 
-# WordPress Plugin for ACTV TRKR
+# Fix Onboarding: RLS Policy Bugs
 
-The plugin hasn't been built yet. Here's the plan to create a complete, installable WordPress plugin.
+## The Problem
 
-## What gets built
-
-A folder `mission-metrics-wp-plugin/` at the project root containing a ready-to-zip WordPress plugin with these files:
-
-### File structure
-```text
-mission-metrics-wp-plugin/
-├── mission-metrics.php          ← Plugin bootstrap
-├── includes/
-│   ├── class-settings.php       ← Admin settings page (API key, endpoint URL, toggles)
-│   ├── class-tracker.php        ← Enqueues tracker.js sitewide
-│   ├── class-gravity.php        ← gform_after_submission hook
-│   └── class-retry-queue.php    ← WP-Cron retry for failed API calls
-├── assets/
-│   └── tracker.js               ← First-party pageview tracking script
-└── readme.txt                   ← Standard WP plugin readme
+You're hitting this error when creating an org:
+```
+new row violates row-level security policy for table "orgs"
 ```
 
-### tracker.js behavior
-- On every page load:
-  - Sets `mm_vid` cookie (visitor ID, 365 days)
-  - Sets/refreshes `mm_sid` cookie (session ID, 30-minute rolling window)
-  - Captures UTMs from URL into `mm_utm` cookie (30 days)
-  - Sends `POST` to the `track-pageview` backend function with the full payload (source, event, attribution, visitor)
-  - Generates a unique `event_id` per pageview for idempotency
+The root cause is that **three RLS policies are set as RESTRICTIVE instead of PERMISSIVE**. In Postgres, restrictive policies can only narrow access — they can't grant it. Without at least one permissive policy, all operations are denied by default.
 
-### Gravity Forms integration
-- Hooks into `gform_after_submission`
-- Reads `mm_vid`, `mm_sid`, `mm_utm` cookies from the PHP request
-- Sends the form entry + context (UTMs, referrer, visitor_id, session_id) to the `ingest-gravity` backend function
-- On failure, queues the payload in a custom WP table (`mm_retry_queue`) and retries via WP-Cron every 5 minutes
+Additionally, the `ou_insert` policy on `org_users` has a SQL bug where it compares a column to itself (`org_users_1.org_id = org_users_1.org_id`), which always evaluates to true and breaks the "first member" check.
 
-### Settings page
-- **API Key** field (stored encrypted in `wp_options`)
-- **Endpoint URL** (defaults to: `https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1`)
-- **Enable Tracking** toggle
-- **Enable Gravity Forms** toggle
-- **Test Connection** button that validates the API key against the backend
+## What Gets Fixed
 
-### How you'll use it
-1. Download the plugin folder as a `.zip`
-2. In WordPress: Plugins → Add New → Upload Plugin → select the zip
-3. Activate, go to Settings → Mission Metrics
-4. Paste your API key (from the ACTV TRKR onboarding screen)
-5. Enable tracking — pageviews start flowing immediately
-6. Submit a test Gravity Form — it appears in your Entries
+### 1. Database migration — fix three RLS policies
 
-## Technical details
+| Table | Policy | Issue | Fix |
+|-------|--------|-------|-----|
+| `orgs` | `org_insert` | RESTRICTIVE, should be PERMISSIVE | Drop and recreate as PERMISSIVE |
+| `org_users` | `ou_insert` | RESTRICTIVE + self-referencing bug | Drop and recreate as PERMISSIVE with correct subquery |
+| `api_keys` | `ak_insert` | RESTRICTIVE, should be PERMISSIVE | Drop and recreate as PERMISSIVE |
 
-- The endpoint base URL will be: `https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1`
-  - Pageview endpoint: `/track-pageview`
-  - Gravity endpoint: `/ingest-gravity`
-- Auth: `Authorization: Bearer <api_key>` header on every request
-- tracker.js uses `navigator.sendBeacon()` with `fetch()` fallback for reliability
-- Session logic: new session if no `mm_sid` exists OR last activity > 30 min OR UTM params changed
-- Plugin version is sent in every payload so the backend can track it
-- All API calls are non-blocking (async JS / wp_remote_post with timeout)
+The corrected `ou_insert` policy will allow insert when:
+- The user is already an admin of that org, **OR**
+- No `org_users` rows exist yet for the given `org_id` (first member bootstrap)
+
+### 2. Onboarding UI — add error feedback
+
+Currently errors are silently caught with `console.error`. The fix adds a toast notification so you can see what went wrong if something fails.
+
+## Technical Details
+
+**Migration SQL:**
+```sql
+-- Fix orgs insert policy
+DROP POLICY IF EXISTS "org_insert" ON public.orgs;
+CREATE POLICY "org_insert" ON public.orgs
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Fix org_users insert policy (fix self-join bug)
+DROP POLICY IF EXISTS "ou_insert" ON public.org_users;
+CREATE POLICY "ou_insert" ON public.org_users
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    auth.uid() = user_id
+    AND (
+      user_org_role(org_id) = 'admin'
+      OR NOT EXISTS (
+        SELECT 1 FROM public.org_users ou2
+        WHERE ou2.org_id = org_users.org_id
+      )
+    )
+  );
+
+-- Fix api_keys insert policy
+DROP POLICY IF EXISTS "ak_insert" ON public.api_keys;
+CREATE POLICY "ak_insert" ON public.api_keys
+  FOR INSERT TO authenticated
+  WITH CHECK (user_org_role(org_id) = 'admin');
+```
+
+**Onboarding.tsx change:** Add `toast` import and show error message on failure instead of silent `console.error`.
 

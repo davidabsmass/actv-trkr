@@ -450,9 +450,12 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
 /* ─── Analytics Tab ─── */
 function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string }) {
-  const days = 30;
-  const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
-  const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(() => subDays(new Date(), 30));
+  const [dateTo, setDateTo] = useState<Date | undefined>(() => new Date());
+
+  const startDate = dateFrom ? format(startOfDay(dateFrom), "yyyy-MM-dd") : format(subDays(startOfDay(new Date()), 30), "yyyy-MM-dd");
+  const endDate = dateTo ? format(startOfDay(dateTo), "yyyy-MM-dd") : format(startOfDay(new Date()), "yyyy-MM-dd");
+  const days = Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1);
 
   const { data: leads } = useQuery({
     queryKey: ["leads_analytics", orgId, formId, startDate, endDate],
@@ -492,9 +495,43 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
 
   return (
     <div className="space-y-5">
+      {/* Date range picker */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("w-[150px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+              {dateFrom ? format(dateFrom, "MMM d, yyyy") : "Start date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+        <span className="text-xs text-muted-foreground">to</span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("w-[150px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+              {dateTo ? format(dateTo, "MMM d, yyyy") : "End date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+          </PopoverContent>
+        </Popover>
+        <div className="flex gap-1.5">
+          {[7, 30, 90].map((d) => (
+            <Button key={d} variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => { setDateFrom(subDays(new Date(), d)); setDateTo(new Date()); }}>
+              {d}d
+            </Button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: `Last ${days} Days`, value: totalLeads, sub: "leads" },
+          { label: `${days} Day${days !== 1 ? "s" : ""}`, value: totalLeads, sub: "leads" },
           { label: "Daily Avg", value: days > 0 ? (totalLeads / days).toFixed(1) : "0", sub: "leads/day" },
           { label: "Top Source", value: sourceData[0]?.source || "—", sub: `${sourceData[0]?.count ?? 0} leads`, small: true },
           { label: "Sources", value: sourceData.length, sub: "unique" },

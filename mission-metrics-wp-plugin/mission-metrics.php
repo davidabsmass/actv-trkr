@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Mission Metrics — ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
- * Description: First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
- * Version:     1.0.0
+ * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
+ * Version:     1.1.0
  * Author:      ACTV TRKR
  * License:     GPL-2.0-or-later
  * Text Domain: mission-metrics
@@ -13,13 +13,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.0.0' );
+define( 'MM_PLUGIN_VERSION', '1.1.0' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once MM_PLUGIN_DIR . 'includes/class-settings.php';
 require_once MM_PLUGIN_DIR . 'includes/class-tracker.php';
-require_once MM_PLUGIN_DIR . 'includes/class-gravity.php';
+require_once MM_PLUGIN_DIR . 'includes/class-forms.php';
 require_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';
 
 /**
@@ -55,7 +55,7 @@ add_filter( 'cron_schedules', function ( $schedules ) {
 // Boot components.
 MM_Settings::init();
 MM_Tracker::init();
-MM_Gravity::init();
+MM_Forms::init();
 
 // Cron hook.
 add_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );

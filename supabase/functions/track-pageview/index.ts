@@ -156,6 +156,9 @@ Deno.serve(async (req) => {
 
     if (!siteId) return new Response(JSON.stringify({ error: "Failed to resolve site" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    // Resolve country from CF-IPCountry header (provided by infrastructure)
+    const countryCode = sanitizeStr(req.headers.get("cf-ipcountry") || req.headers.get("x-country-code"), 2)?.toUpperCase() || null;
+
     const { error: insertError } = await supabase.from("pageviews").upsert({
       org_id: orgId, site_id: siteId, occurred_at: occurredAt.toISOString(),
       event_id: eventId, visitor_id: visitorId, session_id: sessionId,
@@ -164,6 +167,7 @@ Deno.serve(async (req) => {
       utm_source: utmSource, utm_medium: utmMedium,
       utm_campaign: utmCampaign, utm_term: utmTerm,
       utm_content: utmContent, device, ip_hash: ipHash,
+      country_code: countryCode,
     }, { onConflict: "org_id,site_id,event_id", ignoreDuplicates: true });
 
     if (insertError) { console.error("Pageview insert error:", insertError); return new Response(JSON.stringify({ error: "Failed to store pageview" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }

@@ -5,11 +5,12 @@ import { KPIRow } from "@/components/dashboard/KPIRow";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { AttributionSection } from "@/components/dashboard/AttributionSection";
 import { ContentPerformance } from "@/components/dashboard/ContentPerformance";
+import { VisitorMapSection } from "@/components/dashboard/VisitorMapSection";
 import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { useOrg } from "@/hooks/use-org";
-import { useTrafficDaily, useKpiDaily, useAlerts, useSites, useRawCounts, useForms } from "@/hooks/use-dashboard-data";
+import { useTrafficDaily, useKpiDaily, useAlerts, useSites, useRawCounts, useForms, useCountryData } from "@/hooks/use-dashboard-data";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
@@ -30,6 +31,7 @@ const Dashboard = () => {
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
   const { data: formsData } = useForms(orgId);
+  const { data: countryData } = useCountryData(orgId, startDate, endDate);
 
   const hasAggregatedData = (trafficData && trafficData.length > 0) || (kpiData && kpiData.length > 0);
   const { data: rawCounts } = useRawCounts(orgId, startDate, endDate, hasAggregatedData);
@@ -203,6 +205,7 @@ const Dashboard = () => {
           <KPIRow kpis={processedData.kpis} />
           <TrendsChart data={processedData.dailyData} />
           <AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} />
+          <VisitorMapSection data={countryData || []} />
           <ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} />
           <ForecastSection forecast={processedData.forecast} />
         </div>

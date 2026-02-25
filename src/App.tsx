@@ -4,7 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import AppLayout from "@/components/AppLayout";
 import Dashboard from "./pages/Dashboard";
+import Entries from "./pages/Entries";
+import Reports from "./pages/Reports";
+import Exports from "./pages/Exports";
+import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -54,7 +59,23 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          {/* App shell with sidebar */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="entries" element={<Entries />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="exports" element={<Exports />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+
+          {/* Standalone pages */}
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="*" element={<NotFound />} />

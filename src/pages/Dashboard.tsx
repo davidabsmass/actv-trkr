@@ -8,31 +8,26 @@ import { ContentPerformance } from "@/components/dashboard/ContentPerformance";
 import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
-import { useAuth } from "@/hooks/use-auth";
-import { useOrgs, useTrafficDaily, useKpiDaily, useAlerts } from "@/hooks/use-dashboard-data";
+import { useOrg } from "@/hooks/use-org";
+import { useTrafficDaily, useKpiDaily, useAlerts } from "@/hooks/use-dashboard-data";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
   getMockAlerts, getMockForecast,
 } from "@/lib/mock-data";
-import { BarChart3, Zap, LogOut } from "lucide-react";
+import { BarChart3, Zap } from "lucide-react";
 
 const Dashboard = () => {
   const [days, setDays] = useState(30);
-  const { signOut } = useAuth();
   const navigate = useNavigate();
-  const { data: orgs } = useOrgs();
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-
-  const activeOrgId = selectedOrgId || orgs?.[0]?.id || null;
-  const activeOrg = orgs?.find((o) => o.id === activeOrgId);
+  const { orgId, orgName, orgs } = useOrg();
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
 
-  const { data: trafficData } = useTrafficDaily(activeOrgId, startDate, endDate);
-  const { data: kpiData } = useKpiDaily(activeOrgId, startDate, endDate);
-  const { data: alertsData } = useAlerts(activeOrgId);
+  const { data: trafficData } = useTrafficDaily(orgId, startDate, endDate);
+  const { data: kpiData } = useKpiDaily(orgId, startDate, endDate);
+  const { data: alertsData } = useAlerts(orgId);
 
   const hasRealData = (trafficData && trafficData.length > 0) || (kpiData && kpiData.length > 0);
 
@@ -129,70 +124,49 @@ const Dashboard = () => {
   }, [hasRealData, trafficData, kpiData, alertsData, days]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 glow-primary">
-              <Zap className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-foreground tracking-tight">ACTV TRKR</h1>
-              {activeOrg && <p className="text-[11px] text-muted-foreground">{activeOrg.name}</p>}
-            </div>
-            {orgs && orgs.length > 1 && (
-              <select
-                value={activeOrgId || ""}
-                onChange={(e) => setSelectedOrgId(e.target.value)}
-                className="ml-2 text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground"
-              >
-                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {processedData.isMock && (
-              <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-1 rounded-md">Demo Data</span>
-            )}
-            <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
-            {!processedData.isMock && (
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-                <span className="text-[11px] font-medium text-success">Tracking Active</span>
-              </div>
-            )}
-            <button onClick={signOut} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground" title="Sign out">
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">{orgName}</p>
         </div>
-      </header>
+        <div className="flex items-center gap-3">
+          {processedData.isMock && (
+            <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-1 rounded-md">Demo Data</span>
+          )}
+          <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+          {!processedData.isMock && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
+              <span className="text-[11px] font-medium text-success">Tracking Active</span>
+            </div>
+          )}
+        </div>
+      </div>
 
-      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 space-y-4">
-        {!orgs || orgs.length === 0 ? (
-          <div className="glass-card p-8 text-center animate-slide-up">
-            <Zap className="h-8 w-8 text-primary mx-auto mb-3" />
-            <h2 className="text-lg font-semibold text-foreground mb-2">No organization yet</h2>
-            <p className="text-sm text-muted-foreground mb-4">Create your first org to start tracking.</p>
-            <button onClick={() => navigate("/onboarding")} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-              Set up an organization
-            </button>
-          </div>
-        ) : (
-          <>
-            <AlertsSection alerts={processedData.alerts} />
-            <KPIRow kpis={processedData.kpis} />
-            <TrendsChart data={processedData.dailyData} />
-            <AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} />
-            <ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} />
-            <ForecastSection forecast={processedData.forecast} />
-          </>
-        )}
-        <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
-          <BarChart3 className="h-3.5 w-3.5" />
-          <span>{processedData.isMock ? "Showing demo data • Connect your site to see real analytics" : "Data refreshed from cached daily metrics"}</span>
+      {!orgs || orgs.length === 0 ? (
+        <div className="glass-card p-8 text-center animate-slide-up">
+          <Zap className="h-8 w-8 text-primary mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-foreground mb-2">No organization yet</h2>
+          <p className="text-sm text-muted-foreground mb-4">Create your first org to start tracking.</p>
+          <button onClick={() => navigate("/onboarding")} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+            Set up an organization
+          </button>
         </div>
-      </main>
+      ) : (
+        <div className="space-y-4">
+          <AlertsSection alerts={processedData.alerts} />
+          <KPIRow kpis={processedData.kpis} />
+          <TrendsChart data={processedData.dailyData} />
+          <AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} />
+          <ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} />
+          <ForecastSection forecast={processedData.forecast} />
+        </div>
+      )}
+      <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+        <BarChart3 className="h-3.5 w-3.5" />
+        <span>{processedData.isMock ? "Showing demo data • Connect your site to see real analytics" : "Data refreshed from cached daily metrics"}</span>
+      </div>
     </div>
   );
 };

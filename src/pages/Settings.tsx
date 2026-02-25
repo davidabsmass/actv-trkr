@@ -1,5 +1,6 @@
 import { useOrg } from "@/hooks/use-org";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
+import SitesSection from "@/components/settings/SitesSection";
 
 export default function SettingsPage() {
   const { orgName } = useOrg();
@@ -13,9 +14,9 @@ export default function SettingsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ApiKeysSection />
+        <SitesSection />
 
         {[
-          { title: "Sites", desc: "Connected WordPress sites" },
           { title: "Forms & Mapping", desc: "Configure field mappings for lead forms" },
           { title: "URL Rules", desc: "Infer service/location from page paths" },
           { title: "Goals", desc: "Set monthly lead targets" },

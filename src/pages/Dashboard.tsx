@@ -9,13 +9,13 @@ import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { useOrg } from "@/hooks/use-org";
-import { useTrafficDaily, useKpiDaily, useAlerts } from "@/hooks/use-dashboard-data";
+import { useTrafficDaily, useKpiDaily, useAlerts, useSites } from "@/hooks/use-dashboard-data";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
   getMockAlerts, getMockForecast,
 } from "@/lib/mock-data";
-import { BarChart3, Zap } from "lucide-react";
+import { BarChart3, Zap, AlertTriangle } from "lucide-react";
 
 const Dashboard = () => {
   const [days, setDays] = useState(30);
@@ -28,6 +28,7 @@ const Dashboard = () => {
   const { data: trafficData } = useTrafficDaily(orgId, startDate, endDate);
   const { data: kpiData } = useKpiDaily(orgId, startDate, endDate);
   const { data: alertsData } = useAlerts(orgId);
+  const { data: sitesData } = useSites(orgId);
 
   const hasRealData = (trafficData && trafficData.length > 0) || (kpiData && kpiData.length > 0);
 
@@ -155,6 +156,20 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="space-y-4">
+          {sitesData && sitesData.length === 0 && (
+            <div className="flex items-start gap-3 p-4 rounded-lg border border-warning/30 bg-warning/5 animate-slide-up">
+              <AlertTriangle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">No site connected yet</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Make sure the plugin is activated on your WordPress site. Once the first pageview is received, your site will appear here.
+                </p>
+                <button onClick={() => navigate("/settings")} className="text-xs font-medium text-primary hover:underline mt-1.5">
+                  Go to Settings →
+                </button>
+              </div>
+            </div>
+          )}
           <AlertsSection alerts={processedData.alerts} />
           <KPIRow kpis={processedData.kpis} />
           <TrendsChart data={processedData.dailyData} />

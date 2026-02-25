@@ -114,9 +114,6 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
-  html {
-    @apply dark;
-  }
 }
 
 @layer utilities {

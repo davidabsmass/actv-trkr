@@ -10,7 +10,8 @@ import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { useOrg } from "@/hooks/use-org";
-import { useTrafficDaily, useKpiDaily, useAlerts, useSites, useRawCounts, useForms, useCountryData } from "@/hooks/use-dashboard-data";
+import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
+import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
@@ -26,21 +27,15 @@ const Dashboard = () => {
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
 
-  const { data: trafficData } = useTrafficDaily(orgId, startDate, endDate);
-  const { data: kpiData } = useKpiDaily(orgId, startDate, endDate);
+  const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
   const { data: formsData } = useForms(orgId);
-  const { data: countryData } = useCountryData(orgId, startDate, endDate);
 
-  const hasAggregatedData = (trafficData && trafficData.length > 0) || (kpiData && kpiData.length > 0);
-  const { data: rawCounts } = useRawCounts(orgId, startDate, endDate, hasAggregatedData);
-
-  // We have real data if either aggregated tables or raw tables have data
-  const hasRealData = hasAggregatedData || (rawCounts && (rawCounts.pageviews > 0 || rawCounts.sessions > 0));
+  const hasRealData = realtimeData && (realtimeData.totalPageviews > 0 || realtimeData.totalSessions > 0);
 
   const processedData = useMemo(() => {
-    if (!hasRealData) {
+    if (!hasRealData || !realtimeData) {
       return {
         kpis: getMockKPIs(),
         dailyData: getMockDailyData(days),
@@ -54,78 +49,19 @@ const Dashboard = () => {
       };
     }
 
-    // If we have aggregated data, use it; otherwise use raw counts
-    if (!hasAggregatedData && rawCounts) {
-      const cvr = rawCounts.sessions > 0 ? rawCounts.leads / rawCounts.sessions : 0;
-      const todayStr = format(new Date(), "MMM d");
-      return {
-        kpis: {
-          sessions: { value: rawCounts.sessions, delta: 0, label: "Sessions" },
-          leads: { value: rawCounts.leads, delta: 0, label: "Leads" },
-          pageviews: { value: rawCounts.pageviews, delta: 0, label: "Pageviews" },
-          cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
-        },
-        dailyData: [{ date: format(new Date(), "yyyy-MM-dd"), dateLabel: todayStr, sessions: rawCounts.sessions, leads: rawCounts.leads, pageviews: rawCounts.pageviews, cvr }],
-        sources: [], campaigns: [], pages: [], opportunities: [],
-        alerts: (alertsData || []).map((a) => ({
-          id: a.id, severity: a.severity as "warning" | "info" | "error",
-          title: a.title,
-          detail: typeof a.details === "object" && a.details !== null ? (a.details as any).detail || "" : "",
-          date: format(new Date(a.date), "MMM d"),
-        })),
-        forecast: { metric: "leads", horizon: 30, projected_total: 0, sufficient_data: false, days_until_available: 30, points: [] },
-        isMock: false,
-      };
-    }
+    const { totalPageviews, totalSessions, totalLeads, dailyMap, sources, campaigns, pages } = realtimeData;
+    const cvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
 
-    const dateMap: Record<string, { sessions: number; leads: number; pageviews: number }> = {};
-    trafficData?.forEach((row) => {
-      if (!dateMap[row.date]) dateMap[row.date] = { sessions: 0, leads: 0, pageviews: 0 };
-      if (row.metric === "sessions_total" && !row.dimension) dateMap[row.date].sessions += Number(row.value);
-      if (row.metric === "pageviews_total" && !row.dimension) dateMap[row.date].pageviews += Number(row.value);
-    });
-    kpiData?.forEach((row) => {
-      if (!dateMap[row.date]) dateMap[row.date] = { sessions: 0, leads: 0, pageviews: 0 };
-      if (row.metric === "leads_total" && !row.dimension) dateMap[row.date].leads += Number(row.value);
-    });
-
-    const dailyData = Object.entries(dateMap)
+    const dailyData = Object.entries(dailyMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, vals]) => ({
-        date, dateLabel: format(new Date(date), "MMM d"),
-        sessions: vals.sessions, leads: vals.leads, pageviews: vals.pageviews,
+        date,
+        dateLabel: format(new Date(date), "MMM d"),
+        sessions: vals.sessions,
+        leads: vals.leads,
+        pageviews: vals.pageviews,
         cvr: vals.sessions > 0 ? vals.leads / vals.sessions : 0,
       }));
-
-    const totalSessions = dailyData.reduce((s, d) => s + d.sessions, 0);
-    const totalLeads = dailyData.reduce((s, d) => s + d.leads, 0);
-    const totalPageviews = dailyData.reduce((s, d) => s + d.pageviews, 0);
-
-    const sourceMap: Record<string, { sessions: number; leads: number }> = {};
-    trafficData?.filter((r) => r.metric === "sessions_by_source" && r.dimension).forEach((r) => {
-      if (!sourceMap[r.dimension!]) sourceMap[r.dimension!] = { sessions: 0, leads: 0 };
-      sourceMap[r.dimension!].sessions += Number(r.value);
-    });
-    kpiData?.filter((r) => r.metric === "leads_by_source" && r.dimension).forEach((r) => {
-      if (!sourceMap[r.dimension!]) sourceMap[r.dimension!] = { sessions: 0, leads: 0 };
-      sourceMap[r.dimension!].leads += Number(r.value);
-    });
-    const sources = Object.entries(sourceMap)
-      .map(([source, v]) => ({ source, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
-      .sort((a, b) => b.sessions - a.sessions);
-
-    const pageMap: Record<string, { sessions: number; leads: number }> = {};
-    trafficData?.filter((r) => r.metric === "sessions_by_page" && r.dimension).forEach((r) => {
-      if (!pageMap[r.dimension!]) pageMap[r.dimension!] = { sessions: 0, leads: 0 };
-      pageMap[r.dimension!].sessions += Number(r.value);
-    });
-    kpiData?.filter((r) => r.metric === "leads_by_page" && r.dimension).forEach((r) => {
-      if (!pageMap[r.dimension!]) pageMap[r.dimension!] = { sessions: 0, leads: 0 };
-      pageMap[r.dimension!].leads += Number(r.value);
-    });
-    const pages = Object.entries(pageMap)
-      .map(([path, v]) => ({ path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
-      .sort((a, b) => b.sessions - a.sessions);
 
     const sitewideCvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
     const opportunities = pages
@@ -149,11 +85,18 @@ const Dashboard = () => {
         sessions: { value: totalSessions, delta: 0, label: "Sessions" },
         leads: { value: totalLeads, delta: 0, label: "Leads" },
         pageviews: { value: totalPageviews, delta: 0, label: "Pageviews" },
-        cvr: { value: sitewideCvr, delta: 0, label: "Conversion Rate" },
+        cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
-      dailyData, sources, campaigns: [] as any[], pages, opportunities, alerts, forecast, isMock: false,
+      dailyData,
+      sources,
+      campaigns,
+      pages,
+      opportunities,
+      alerts,
+      forecast,
+      isMock: false,
     };
-  }, [hasRealData, hasAggregatedData, rawCounts, trafficData, kpiData, alertsData, formsData, days]);
+  }, [hasRealData, realtimeData, alertsData, formsData, days]);
 
   return (
     <div>
@@ -170,7 +113,7 @@ const Dashboard = () => {
           {!processedData.isMock && (
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-              <span className="text-[11px] font-medium text-success">Tracking Active</span>
+              <span className="text-[11px] font-medium text-success">Live</span>
             </div>
           )}
         </div>
@@ -205,14 +148,14 @@ const Dashboard = () => {
           <KPIRow kpis={processedData.kpis} />
           <TrendsChart data={processedData.dailyData} />
           <AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} />
-          <VisitorMapSection data={countryData || []} />
+          <VisitorMapSection data={realtimeData?.countries || []} />
           <ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} />
           <ForecastSection forecast={processedData.forecast} />
         </div>
       )}
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
         <BarChart3 className="h-3.5 w-3.5" />
-        <span>{processedData.isMock ? "Showing demo data • Connect your site to see real analytics" : "Data refreshed from cached daily metrics"}</span>
+        <span>{processedData.isMock ? "Showing demo data • Connect your site to see real analytics" : "Live data • Auto-refreshes every 60s"}</span>
       </div>
     </div>
   );

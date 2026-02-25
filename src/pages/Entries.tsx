@@ -320,17 +320,25 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const createExport = useMutation({
     mutationFn: async () => {
       if (!orgId || !session?.user.id) throw new Error("Not authenticated");
-      const { error } = await supabase.from("export_jobs").insert({
+      const { data: inserted, error } = await supabase.from("export_jobs").insert({
         org_id: orgId,
         created_by: session.user.id,
         format: exportFormat,
         status: "queued",
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      // Trigger the processor
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      fetch(`https://${projectId}.supabase.co/functions/v1/process-export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+        body: JSON.stringify({ job_id: inserted.id }),
+      }).catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
-      toast.success(`${exportFormat.toUpperCase()} export queued`);
+      toast.success(`${exportFormat.toUpperCase()} export queued — processing now`);
       setShowExport(false);
     },
     onError: (err: any) => toast.error(err.message || "Failed to create export"),

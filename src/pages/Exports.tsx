@@ -74,18 +74,25 @@ export default function Exports() {
   const createExport = useMutation({
     mutationFn: async ({ formId, from, to }: { formId?: string; from?: Date; to?: Date }) => {
       if (!orgId || !session?.user.id) throw new Error("Not authenticated");
-      // Store filter params in saved_view or directly. For now we use a simple approach.
-      const { error } = await supabase.from("export_jobs").insert({
+      const { data: inserted, error } = await supabase.from("export_jobs").insert({
         org_id: orgId,
         created_by: session.user.id,
         format: exportFormat,
         status: "queued",
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      // Trigger the processor
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      fetch(`https://${projectId}.supabase.co/functions/v1/process-export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+        body: JSON.stringify({ job_id: inserted.id }),
+      }).catch(() => { /* fire and forget — job is queued regardless */ });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
-      toast.success(`${exportFormat.toUpperCase()} export queued`);
+      toast.success(`${exportFormat.toUpperCase()} export queued — processing now`);
     },
     onError: (err: any) => toast.error(err.message || "Failed to create export"),
   });

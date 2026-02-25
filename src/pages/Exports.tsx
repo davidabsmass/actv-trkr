@@ -1,19 +1,24 @@
 import { useState } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
+import { useForms } from "@/hooks/use-dashboard-data";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { Download, FileSpreadsheet, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Download, FileSpreadsheet, Clock, CheckCircle, AlertCircle,
+  ChevronRight, ArrowLeft, CalendarIcon, FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type ExportFormat = "csv" | "xlsx";
@@ -22,9 +27,16 @@ export default function Exports() {
   const { orgId, orgName } = useOrg();
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const { data: forms, isLoading: formsLoading } = useForms(orgId);
 
-  const { data: jobs, isLoading } = useQuery({
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+
+  const selectedForm = forms?.find((f) => f.id === selectedFormId);
+
+  const { data: jobs, isLoading: jobsLoading } = useQuery({
     queryKey: ["export_jobs", orgId],
     queryFn: async () => {
       if (!orgId) return [];
@@ -33,16 +45,36 @@ export default function Exports() {
         .select("*")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(30);
       if (error) throw error;
       return data;
     },
     enabled: !!orgId,
   });
 
+  // Count leads per form
+  const { data: leadCounts } = useQuery({
+    queryKey: ["lead_counts_by_form", orgId],
+    queryFn: async () => {
+      if (!orgId || !forms) return {};
+      const counts: Record<string, number> = {};
+      for (const form of forms) {
+        const { count, error } = await supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .eq("form_id", form.id);
+        if (!error) counts[form.id] = count || 0;
+      }
+      return counts;
+    },
+    enabled: !!orgId && !!forms && forms.length > 0,
+  });
+
   const createExport = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ formId, from, to }: { formId?: string; from?: Date; to?: Date }) => {
       if (!orgId || !session?.user.id) throw new Error("Not authenticated");
+      // Store filter params in saved_view or directly. For now we use a simple approach.
       const { error } = await supabase.from("export_jobs").insert({
         org_id: orgId,
         created_by: session.user.id,
@@ -55,10 +87,14 @@ export default function Exports() {
       queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
       toast.success(`${exportFormat.toUpperCase()} export queued`);
     },
-    onError: (err: any) => {
-      toast.error(err.message || "Failed to create export");
-    },
+    onError: (err: any) => toast.error(err.message || "Failed to create export"),
   });
+
+  const handleDownload = async (filePath: string) => {
+    const { data, error } = await supabase.storage.from("exports").createSignedUrl(filePath, 60);
+    if (error) { toast.error("Failed to generate download link"); return; }
+    window.open(data.signedUrl, "_blank");
+  };
 
   const statusIcon = (status: string) => {
     switch (status) {
@@ -69,109 +105,224 @@ export default function Exports() {
     }
   };
 
-  const handleDownload = async (filePath: string) => {
-    const { data, error } = await supabase.storage
-      .from("exports")
-      .createSignedUrl(filePath, 60);
-    if (error) {
-      toast.error("Failed to generate download link");
-      return;
-    }
-    window.open(data.signedUrl, "_blank");
-  };
+  // ── Form detail view ──
+  if (selectedForm) {
+    const dateLabel = dateFrom && dateTo
+      ? `${format(dateFrom, "MMM d, yyyy")} – ${format(dateTo, "MMM d, yyyy")}`
+      : dateFrom
+        ? `From ${format(dateFrom, "MMM d, yyyy")}`
+        : dateTo
+          ? `Until ${format(dateTo, "MMM d, yyyy")}`
+          : "All time";
 
+    return (
+      <div>
+        <button
+          onClick={() => { setSelectedFormId(null); setDateFrom(undefined); setDateTo(undefined); }}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Forms
+        </button>
+
+        <h1 className="text-2xl font-bold text-foreground mb-1">{selectedForm.name}</h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          {selectedForm.provider} · {leadCounts?.[selectedForm.id] ?? "—"} total leads
+        </p>
+
+        <div className="rounded-lg border border-border bg-card p-5 mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4 text-primary" />
+            Export Leads
+          </h3>
+
+          {/* Date range pickers */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[180px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateFrom ? format(dateFrom, "MMM d, yyyy") : "Start date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[180px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateTo ? format(dateTo, "MMM d, yyyy") : "End date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
+                Clear dates
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as ExportFormat)}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="xlsx">XLSX</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={() => createExport.mutate({ formId: selectedForm.id, from: dateFrom, to: dateTo })}
+              disabled={createExport.isPending}
+            >
+              {createExport.isPending ? "Queuing…" : `Export ${dateLabel}`}
+            </Button>
+          </div>
+        </div>
+
+        {/* Export history for this form */}
+        <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+      </div>
+    );
+  }
+
+  // ── Form list view ──
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-1">Exports</h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        Export data for {orgName}
-      </p>
+      <p className="text-sm text-muted-foreground mb-6">Export data for {orgName}</p>
 
-      {/* Create Export */}
+      {/* Export All */}
       <div className="rounded-lg border border-border bg-card p-5 mb-6">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-primary" />
-          Export Leads Data
+          Quick Export — All Forms
         </h3>
         <p className="text-xs text-muted-foreground mb-3">
-          Export all leads and their field data as a downloadable file.
+          Export all leads across every form as a single file.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as ExportFormat)}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="csv">CSV</SelectItem>
               <SelectItem value="xlsx">XLSX</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            onClick={() => createExport.mutate()}
-            disabled={createExport.isPending}
-          >
-            {createExport.isPending ? "Queuing…" : "Export Now"}
+          <Button onClick={() => createExport.mutate({})} disabled={createExport.isPending}>
+            {createExport.isPending ? "Queuing…" : "Export All"}
           </Button>
         </div>
       </div>
 
-      {/* Export History */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      {/* Forms List */}
+      <div className="rounded-lg border border-border bg-card overflow-hidden mb-6">
         <div className="px-5 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Export History</h3>
+          <h3 className="text-sm font-semibold text-foreground">Export by Form</h3>
         </div>
-        {isLoading ? (
-          <div className="p-12 text-center text-muted-foreground text-sm">Loading exports…</div>
-        ) : !jobs || jobs.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground text-sm">
-            No exports yet. Use the form above to create your first export.
+        {formsLoading ? (
+          <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
+        ) : !forms || forms.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground text-sm">
+            No forms connected yet. Forms will appear here once leads start coming in.
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {jobs.map((job) => (
-              <div key={job.id} className="flex items-center justify-between px-5 py-3">
+            {forms.map((form) => (
+              <button
+                key={form.id}
+                onClick={() => setSelectedFormId(form.id)}
+                className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors text-left"
+              >
                 <div className="flex items-center gap-3">
-                  {statusIcon(job.status)}
+                  <FileText className="h-4 w-4 text-primary flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {job.format.toUpperCase()} Export
-                      {job.row_count != null && <span className="text-muted-foreground font-normal"> · {job.row_count} rows</span>}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{form.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(job.created_at), "MMM d, yyyy 'at' HH:mm")}
+                      {form.provider} · {leadCounts?.[form.id] ?? "—"} leads
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] uppercase ${
-                      job.status === "completed" ? "text-success border-success/20" :
-                      job.status === "error" ? "text-destructive border-destructive/20" :
-                      "text-muted-foreground"
-                    }`}
-                  >
-                    {job.status}
-                  </Badge>
-                  {job.status === "completed" && job.file_path && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleDownload(job.file_path!)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {job.status === "error" && job.error && (
-                    <span className="text-xs text-destructive max-w-[200px] truncate">{job.error}</span>
-                  )}
-                </div>
-              </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {/* Export History */}
+      <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+    </div>
+  );
+}
+
+function ExportHistory({
+  jobs,
+  jobsLoading,
+  statusIcon,
+  handleDownload,
+}: {
+  jobs: any[] | undefined;
+  jobsLoading: boolean;
+  statusIcon: (s: string) => React.ReactNode;
+  handleDownload: (path: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">Export History</h3>
+      </div>
+      {jobsLoading ? (
+        <div className="p-12 text-center text-muted-foreground text-sm">Loading exports…</div>
+      ) : !jobs || jobs.length === 0 ? (
+        <div className="p-12 text-center text-muted-foreground text-sm">
+          No exports yet.
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {jobs.map((job) => (
+            <div key={job.id} className="flex items-center justify-between px-5 py-3">
+              <div className="flex items-center gap-3">
+                {statusIcon(job.status)}
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {job.format.toUpperCase()} Export
+                    {job.row_count != null && <span className="text-muted-foreground font-normal"> · {job.row_count} rows</span>}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(job.created_at), "MMM d, yyyy 'at' HH:mm")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] uppercase ${
+                    job.status === "completed" ? "text-success border-success/20" :
+                    job.status === "error" ? "text-destructive border-destructive/20" :
+                    "text-muted-foreground"
+                  }`}
+                >
+                  {job.status}
+                </Badge>
+                {job.status === "completed" && job.file_path && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(job.file_path!)}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                )}
+                {job.status === "error" && job.error && (
+                  <span className="text-xs text-destructive max-w-[200px] truncate">{job.error}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

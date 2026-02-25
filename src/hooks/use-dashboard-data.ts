@@ -106,6 +106,23 @@ export function useSites(orgId: string | null) {
   });
 }
 
+export function useForms(orgId: string | null) {
+  return useQuery({
+    queryKey: ["forms", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("forms")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+}
+
 /** Fallback: count raw pageviews + sessions when aggregated tables are empty */
 export function useRawCounts(orgId: string | null, startDate: string, endDate: string, hasAggregatedData: boolean) {
   return useQuery({

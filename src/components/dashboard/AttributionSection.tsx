@@ -24,7 +24,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-foreground">Attribution</h3>
-        <div className="flex gap-1 bg-secondary rounded-md p-0.5">
+        <div className="flex gap-1 bg-muted rounded-md p-0.5">
           <button
             onClick={() => setTab("source")}
             className={`px-3 py-1 text-xs font-medium rounded transition-colors ${

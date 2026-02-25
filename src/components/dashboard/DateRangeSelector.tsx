@@ -21,7 +21,7 @@ export function DateRangeSelector({ selectedDays, onDaysChange }: DateRangeSelec
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-secondary text-foreground rounded-md border border-border hover:bg-accent transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-muted text-foreground rounded-md border border-border hover:bg-muted/80 transition-colors"
       >
         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
         {current.label}

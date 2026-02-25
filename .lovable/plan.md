@@ -1,67 +1,58 @@
 
 
-# Fix Onboarding: RLS Policy Bugs
+# Add Site Connection Status & Manual Site Setup
 
 ## The Problem
 
-You're hitting this error when creating an org:
-```
-new row violates row-level security policy for table "orgs"
-```
+You installed the plugin on WordPress, but there's no way to know if it's actually connected. The system auto-creates a site record when the first pageview arrives, but:
 
-The root cause is that **three RLS policies are set as RESTRICTIVE instead of PERMISSIVE**. In Postgres, restrictive policies can only narrow access — they can't grant it. Without at least one permissive policy, all operations are denied by default.
+1. There's no UI showing connected sites or connection status
+2. If the plugin hasn't sent data yet (or the API key/endpoint isn't configured correctly), you're left guessing
+3. The database currently has **zero sites and zero pageviews**, meaning the plugin either hasn't fired yet or isn't configured correctly on the WordPress side
 
-Additionally, the `ou_insert` policy on `org_users` has a SQL bug where it compares a column to itself (`org_users_1.org_id = org_users_1.org_id`), which always evaluates to true and breaks the "first member" check.
+## What Gets Built
 
-## What Gets Fixed
+### 1. Sites section in Settings — show connected sites
 
-### 1. Database migration — fix three RLS policies
+A new "Connected Sites" card on the Settings page that:
+- Lists all sites registered to your org (domain, type, plugin version, first seen date)
+- Shows an empty state with setup instructions if no sites exist yet
+- Includes a "Test Connection" button that hits the `track-pageview` endpoint with a test event from the browser to verify the API key works
 
-| Table | Policy | Issue | Fix |
-|-------|--------|-------|-----|
-| `orgs` | `org_insert` | RESTRICTIVE, should be PERMISSIVE | Drop and recreate as PERMISSIVE |
-| `org_users` | `ou_insert` | RESTRICTIVE + self-referencing bug | Drop and recreate as PERMISSIVE with correct subquery |
-| `api_keys` | `ak_insert` | RESTRICTIVE, should be PERMISSIVE | Drop and recreate as PERMISSIVE |
+### 2. Onboarding — add website URL step
 
-The corrected `ou_insert` policy will allow insert when:
-- The user is already an admin of that org, **OR**
-- No `org_users` rows exist yet for the given `org_id` (first member bootstrap)
+After creating the org and getting the API key, add a field to enter the website domain. This pre-registers the site in the `sites` table so:
+- The dashboard knows what to expect
+- You can verify connection before leaving onboarding
 
-### 2. Onboarding UI — add error feedback
+### 3. Dashboard — connection status banner
 
-Currently errors are silently caught with `console.error`. The fix adds a toast notification so you can see what went wrong if something fails.
+When the org has no sites (or no pageviews in the last 24h), show a banner at the top of the dashboard:
+- "No data received yet — make sure the plugin is activated on your WordPress site"
+- Link to Settings for troubleshooting
 
 ## Technical Details
 
-**Migration SQL:**
-```sql
--- Fix orgs insert policy
-DROP POLICY IF EXISTS "org_insert" ON public.orgs;
-CREATE POLICY "org_insert" ON public.orgs
-  FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() IS NOT NULL);
+### Settings: New `SitesSection` component
+- Query `sites` table filtered by `orgId`
+- Display domain, type, plugin_version, created_at
+- Empty state with plugin setup checklist
 
--- Fix org_users insert policy (fix self-join bug)
-DROP POLICY IF EXISTS "ou_insert" ON public.org_users;
-CREATE POLICY "ou_insert" ON public.org_users
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    auth.uid() = user_id
-    AND (
-      user_org_role(org_id) = 'admin'
-      OR NOT EXISTS (
-        SELECT 1 FROM public.org_users ou2
-        WHERE ou2.org_id = org_users.org_id
-      )
-    )
-  );
+### Onboarding: Add domain input
+- Add optional "Website URL" field after org creation success screen
+- On submit, insert into `sites` table via the existing `sites_write` RLS policy (allows admin/member insert)
+- Extract domain from URL using `new URL(input).hostname`
 
--- Fix api_keys insert policy
-DROP POLICY IF EXISTS "ak_insert" ON public.api_keys;
-CREATE POLICY "ak_insert" ON public.api_keys
-  FOR INSERT TO authenticated
-  WITH CHECK (user_org_role(org_id) = 'admin');
-```
+### Dashboard: Connection banner
+- Check if `sites` query returns empty array
+- Render a dismissible info banner with setup guidance
 
-**Onboarding.tsx change:** Add `toast` import and show error message on failure instead of silent `console.error`.
+### Files to create/modify
+- **Create**: `src/components/settings/SitesSection.tsx`
+- **Modify**: `src/pages/Settings.tsx` — add SitesSection
+- **Modify**: `src/pages/Onboarding.tsx` — add website URL input on success screen
+- **Modify**: `src/pages/Dashboard.tsx` — add connection status banner
+- **Add hook**: `useSites(orgId)` in `use-dashboard-data.ts`
+
+No database changes needed — the `sites` table and its `sites_write` INSERT policy already exist.
 

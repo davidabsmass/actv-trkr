@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Zap, Plus, Copy, Check, Download } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
 import { downloadPlugin } from "@/lib/plugin-download";
+import { toast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -50,8 +51,9 @@ const Onboarding = () => {
       setCreatedOrg(org);
       setApiKey(rawKey);
       refetch();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast({ variant: "destructive", title: "Error creating organization", description: err?.message || "Something went wrong" });
     } finally {
       setLoading(false);
     }

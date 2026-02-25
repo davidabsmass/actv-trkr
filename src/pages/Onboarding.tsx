@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Plus, Copy, Check } from "lucide-react";
+import { Zap, Plus, Copy, Check, Download } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
+import { downloadPlugin } from "@/lib/plugin-download";
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -82,6 +83,19 @@ const Onboarding = () => {
               <code className="text-xs font-mono text-foreground flex-1 break-all">{apiKey}</code>
               <button onClick={copyApiKey} className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors">
                 {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+              </button>
+            </div>
+            <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+              <h3 className="text-sm font-medium text-foreground mb-1">WordPress Plugin</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Download the plugin, upload it to WordPress, then paste the API key above in Settings → Mission Metrics.
+              </p>
+              <button
+                onClick={downloadPlugin}
+                className="w-full py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download Plugin (.zip)
               </button>
             </div>
             <button onClick={() => navigate("/")} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">

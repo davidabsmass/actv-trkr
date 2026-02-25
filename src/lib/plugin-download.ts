@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 
-const PLUGIN_VERSION = "1.0.0";
+const PLUGIN_VERSION = "1.1.0";
 const ENDPOINT_BASE = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1`;
 
 function buildFiles(apiKey: string): Record<string, string> {
@@ -9,7 +9,7 @@ function buildFiles(apiKey: string): Record<string, string> {
 /**
  * Plugin Name: Mission Metrics — ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
- * Description: First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
+ * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
  * Version:     ${PLUGIN_VERSION}
  * Author:      ACTV TRKR
  * License:     GPL-2.0-or-later
@@ -21,10 +21,9 @@ define('MM_PLUGIN_DIR',plugin_dir_path(__FILE__));
 define('MM_PLUGIN_URL',plugin_dir_url(__FILE__));
 require_once MM_PLUGIN_DIR.'includes/class-settings.php';
 require_once MM_PLUGIN_DIR.'includes/class-tracker.php';
-require_once MM_PLUGIN_DIR.'includes/class-gravity.php';
+require_once MM_PLUGIN_DIR.'includes/class-forms.php';
 require_once MM_PLUGIN_DIR.'includes/class-retry-queue.php';
 function mm_activate(){MM_Retry_Queue::create_table();if(!wp_next_scheduled('mm_retry_cron')){wp_schedule_event(time(),'mm_every_5_min','mm_retry_cron');}
-// Auto-configure with baked-in key on first activation
 \$opts=get_option('mm_options',array());
 if(empty(\$opts['api_key'])){
 \$opts['api_key']=MM_BAKED_API_KEY;
@@ -39,7 +38,7 @@ register_deactivation_hook(__FILE__,'mm_deactivate');
 add_filter('cron_schedules',function(\$s){\$s['mm_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return \$s;});
 define('MM_BAKED_API_KEY','${apiKey}');
 define('MM_BAKED_ENDPOINT','${ENDPOINT_BASE}');
-MM_Settings::init();MM_Tracker::init();MM_Gravity::init();
+MM_Settings::init();MM_Tracker::init();MM_Forms::init();
 add_action('mm_retry_cron',array('MM_Retry_Queue','process'));
 `,
 
@@ -61,10 +60,21 @@ public static function render_page(){\$opts=self::get();\$is_preconfigured=defin
 <tr><th scope="row"><label for="mm_api_key">API Key</label></th><td><input type="password" id="mm_api_key" name="<?php echo self::OPTION_NAME;?>[api_key]" value="<?php echo esc_attr(\$opts['api_key']);?>" class="regular-text" autocomplete="off"/><p class="description">Pre-filled from your ACTV TRKR download. Change only if rotating keys.</p></td></tr>
 <tr><th scope="row"><label for="mm_endpoint">Endpoint URL</label></th><td><input type="url" id="mm_endpoint" name="<?php echo self::OPTION_NAME;?>[endpoint_url]" value="<?php echo esc_attr(\$opts['endpoint_url']);?>" class="regular-text"/></td></tr>
 <tr><th scope="row">Enable Tracking</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_tracking]" value="1" <?php checked(\$opts['enable_tracking'],'1');?>/> Inject tracker.js on all front-end pages</label></td></tr>
-<tr><th scope="row">Enable Gravity Forms</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_gravity]" value="1" <?php checked(\$opts['enable_gravity'],'1');?>/> Send Gravity Forms submissions to ACTV TRKR</label></td></tr>
+<tr><th scope="row">Enable Form Capture</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_gravity]" value="1" <?php checked(\$opts['enable_gravity'],'1');?>/> Capture form submissions (all form plugins)</label></td></tr>
 </table><?php submit_button();?></form>
 <hr/><h2>Test Connection</h2><p><button type="button" id="mm-test-btn" class="button button-secondary">Test Connection</button></p><div id="mm-test-result"></div>
 <script>document.getElementById('mm-test-btn').addEventListener('click',function(){var b=this;b.disabled=true;document.getElementById('mm-test-result').textContent='Testing…';fetch(ajaxurl+'?action=mm_test_connection&_wpnonce=<?php echo wp_create_nonce("mm_test");?>').then(r=>r.json()).then(d=>{document.getElementById('mm-test-result').textContent=d.success?'✅ Connected!':'❌ '+(d.data||'Failed');b.disabled=false;}).catch(()=>{document.getElementById('mm-test-result').textContent='❌ Request failed';b.disabled=false;});});</script>
+<hr/><h2>Supported Form Plugins</h2>
+<p>Form capture works automatically with:</p>
+<ul style="list-style:disc;padding-left:20px;">
+<li><strong>Any HTML form</strong> — captured via JavaScript (universal)</li>
+<li><strong>Gravity Forms</strong> — server-side hook for rich metadata</li>
+<li><strong>Contact Form 7</strong> — server-side hook</li>
+<li><strong>WPForms</strong> — server-side hook</li>
+<li><strong>Avada / Fusion Forms</strong> — server-side hook</li>
+<li><strong>Ninja Forms</strong> — server-side hook</li>
+<li><strong>Fluent Forms</strong> — server-side hook</li>
+</ul>
 </div><?php }
 public static function ajax_test_connection(){check_ajax_referer('mm_test','_wpnonce');if(!current_user_can('manage_options')){wp_send_json_error('Unauthorized');}\$opts=self::get();\$endpoint=rtrim(\$opts['endpoint_url'],'/').'/track-pageview';\$response=wp_remote_post(\$endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.\$opts['api_key']),'body'=>wp_json_encode(array('source'=>array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'type'=>'wordpress','plugin_version'=>MM_PLUGIN_VERSION),'event'=>array('page_url'=>home_url(),'event_id'=>'test_'.wp_generate_uuid4(),'session_id'=>'test','title'=>'Connection Test'),'attribution'=>new \\stdClass(),'visitor'=>array('visitor_id'=>'test')))));if(is_wp_error(\$response)){wp_send_json_error(\$response->get_error_message());}\$code=wp_remote_retrieve_response_code(\$response);if(\$code>=200&&\$code<300){wp_send_json_success();}else{wp_send_json_error('HTTP '.\$code.': '.wp_remote_retrieve_body(\$response));}}
 }`,
@@ -76,22 +86,33 @@ public static function init(){add_action('wp_enqueue_scripts',array(__CLASS__,'e
 public static function enqueue(){if(is_admin())return;\$opts=MM_Settings::get();if(\$opts['enable_tracking']!=='1'||empty(\$opts['api_key']))return;wp_enqueue_script('mm-tracker',MM_PLUGIN_URL.'assets/tracker.js',array(),MM_PLUGIN_VERSION,true);wp_localize_script('mm-tracker','mmConfig',array('endpoint'=>rtrim(\$opts['endpoint_url'],'/').'/track-pageview','apiKey'=>\$opts['api_key'],'domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'pluginVersion'=>MM_PLUGIN_VERSION));}
 }`,
 
+    "mission-metrics/includes/class-forms.php": `<?php
+if(!defined('ABSPATH'))exit;
+class MM_Forms{
+public static function init(){\$opts=MM_Settings::get();if(\$opts['enable_gravity']!=='1'||empty(\$opts['api_key']))return;
+add_action('gform_after_submission',array(__CLASS__,'handle_gravity'),10,2);
+add_action('wpcf7_mail_sent',array(__CLASS__,'handle_cf7'));
+add_action('wpforms_process_complete',array(__CLASS__,'handle_wpforms'),10,4);
+add_action('fusion_form_submission_data',array(__CLASS__,'handle_avada'),10,3);
+add_action('ninja_forms_after_submission',array(__CLASS__,'handle_ninja'));
+add_action('fluentform/submission_inserted',array(__CLASS__,'handle_fluent'),10,3);
+}
+private static function get_tracking_context(){\$vid=isset(\$_COOKIE['mm_vid'])?sanitize_text_field(\$_COOKIE['mm_vid']):null;\$sid=isset(\$_COOKIE['mm_sid'])?sanitize_text_field(\$_COOKIE['mm_sid']):null;\$utm=isset(\$_COOKIE['mm_utm'])?json_decode(stripslashes(\$_COOKIE['mm_utm']),true):array();if(!is_array(\$utm))\$utm=array();return array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'referrer'=>wp_get_referer()?:null,'visitor_id'=>\$vid,'session_id'=>\$sid,'utm'=>\$utm,'plugin_version'=>MM_PLUGIN_VERSION);}
+private static function send(\$payload){\$opts=MM_Settings::get();\$endpoint=rtrim(\$opts['endpoint_url'],'/').'/ingest-form';\$response=wp_remote_post(\$endpoint,array('timeout'=>5,'blocking'=>false,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.\$opts['api_key']),'body'=>wp_json_encode(\$payload)));if(is_wp_error(\$response)){MM_Retry_Queue::enqueue(\$endpoint,\$opts['api_key'],\$payload);}}
+public static function handle_gravity(\$entry,\$form){\$fields=array();if(!empty(\$form['fields'])){foreach(\$form['fields'] as \$field){\$fid=\$field->id;\$value=rgar(\$entry,(string)\$fid);\$fields[]=array('id'=>\$fid,'name'=>\$field->label,'label'=>\$field->label,'type'=>\$field->type,'value'=>\$value);}}self::send(array('provider'=>'gravity_forms','entry'=>array('form_id'=>rgar(\$entry,'form_id'),'form_title'=>\$form['title']??'','entry_id'=>rgar(\$entry,'id'),'source_url'=>rgar(\$entry,'source_url'),'submitted_at'=>rgar(\$entry,'date_created')),'context'=>self::get_tracking_context(),'fields'=>\$fields));}
+public static function handle_cf7(\$cf){\$sub=WPCF7_Submission::get_instance();if(!\$sub)return;\$posted=\$sub->get_posted_data();\$fields=array();foreach(\$posted as \$k=>\$v){if(strpos(\$k,'_wpcf7')===0)continue;\$fields[]=array('name'=>\$k,'label'=>\$k,'type'=>'text','value'=>is_array(\$v)?implode(', ',\$v):\$v);}self::send(array('provider'=>'cf7','entry'=>array('form_id'=>\$cf->id(),'form_title'=>\$cf->title(),'entry_id'=>'cf7_'.time().'_'.wp_rand(),'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>\$fields));}
+public static function handle_wpforms(\$fields_raw,\$entry,\$form_data,\$entry_id){\$fields=array();foreach(\$fields_raw as \$f){\$fields[]=array('id'=>\$f['id']??'','name'=>\$f['name']??'','label'=>\$f['name']??'','type'=>\$f['type']??'text','value'=>\$f['value']??'');}self::send(array('provider'=>'wpforms','entry'=>array('form_id'=>\$form_data['id']??'','form_title'=>\$form_data['settings']['form_title']??'','entry_id'=>\$entry_id,'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>\$fields));}
+public static function handle_avada(\$data,\$form_id,\$form_info){\$fields=array();if(is_array(\$data)){foreach(\$data as \$k=>\$v){\$fields[]=array('name'=>\$k,'label'=>\$k,'type'=>'text','value'=>is_array(\$v)?implode(', ',\$v):\$v);}}self::send(array('provider'=>'avada','entry'=>array('form_id'=>\$form_id,'form_title'=>\$form_info['form_meta']['form_name']??'Avada Form','entry_id'=>'avada_'.time().'_'.wp_rand(),'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>\$fields));}
+public static function handle_ninja(\$form_data){\$fields=array();if(!empty(\$form_data['fields'])){foreach(\$form_data['fields'] as \$f){\$fields[]=array('id'=>\$f['id']??'','name'=>\$f['key']??\$f['label']??'','label'=>\$f['label']??'','type'=>\$f['type']??'text','value'=>\$f['value']??'');}}self::send(array('provider'=>'ninja_forms','entry'=>array('form_id'=>\$form_data['form_id']??'','form_title'=>\$form_data['settings']['title']??'Ninja Form','entry_id'=>'ninja_'.time().'_'.wp_rand(),'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>\$fields));}
+public static function handle_fluent(\$entry_id,\$form_data,\$form){\$fields=array();if(is_array(\$form_data)){foreach(\$form_data as \$k=>\$v){if(strpos(\$k,'_fluentform_')===0||\$k==='__fluent_form_embded_post_id')continue;\$fields[]=array('name'=>\$k,'label'=>\$k,'type'=>'text','value'=>is_array(\$v)?implode(', ',\$v):\$v);}}self::send(array('provider'=>'fluent_forms','entry'=>array('form_id'=>\$form->id??'','form_title'=>\$form->title??'Fluent Form','entry_id'=>\$entry_id,'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>\$fields));}
+}`,
+
     "mission-metrics/includes/class-gravity.php": `<?php
 if(!defined('ABSPATH'))exit;
-class MM_Gravity{
-public static function init(){add_action('gform_after_submission',array(__CLASS__,'handle_submission'),10,2);}
-public static function handle_submission(\$entry,\$form){\$opts=MM_Settings::get();if(\$opts['enable_gravity']!=='1'||empty(\$opts['api_key']))return;
-\$visitor_id=isset(\$_COOKIE['mm_vid'])?sanitize_text_field(\$_COOKIE['mm_vid']):null;
-\$session_id=isset(\$_COOKIE['mm_sid'])?sanitize_text_field(\$_COOKIE['mm_sid']):null;
-\$utm_raw=isset(\$_COOKIE['mm_utm'])?json_decode(stripslashes(\$_COOKIE['mm_utm']),true):array();
-if(!is_array(\$utm_raw))\$utm_raw=array();
-\$fields=array();if(!empty(\$form['fields'])){foreach(\$form['fields'] as \$field){\$fid=\$field->id;\$value=rgar(\$entry,(string)\$fid);\$fields[]=array('id'=>\$fid,'label'=>\$field->label,'type'=>\$field->type,'value'=>\$value);}}
-\$domain=wp_parse_url(home_url(),PHP_URL_HOST);
-\$payload=array('entry'=>array('form_id'=>rgar(\$entry,'form_id'),'form_title'=>\$form['title']??'','entry_id'=>rgar(\$entry,'id'),'source_url'=>rgar(\$entry,'source_url'),'submitted_at'=>rgar(\$entry,'date_created')),'context'=>array('domain'=>\$domain,'referrer'=>wp_get_referer()?:null,'visitor_id'=>\$visitor_id,'session_id'=>\$session_id,'utm'=>\$utm_raw,'plugin_version'=>MM_PLUGIN_VERSION),'fields'=>\$fields);
-\$endpoint=rtrim(\$opts['endpoint_url'],'/').'/ingest-gravity';
-\$response=wp_remote_post(\$endpoint,array('timeout'=>5,'blocking'=>false,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.\$opts['api_key']),'body'=>wp_json_encode(\$payload)));
-if(is_wp_error(\$response)){MM_Retry_Queue::enqueue(\$endpoint,\$opts['api_key'],\$payload);}}
-}`,
+// DEPRECATED: This file is kept for backward compatibility.
+// Form capture is now handled by class-forms.php which supports all form plugins.
+// This file does nothing — MM_Forms handles the gform_after_submission hook.
+`,
 
     "mission-metrics/includes/class-retry-queue.php": `<?php
 if(!defined('ABSPATH'))exit;
@@ -112,24 +133,33 @@ function storedUtms(){var r=getCookie(COOKIE_UTM);if(!r)return{};try{return JSON
 function utmsChanged(nu){if(!nu)return false;var old=storedUtms();return['utm_source','utm_medium','utm_campaign'].some(function(k){return(nu[k]||'')!==(old[k]||'');});}
 function resolveSession(urlUtms){var sid=getCookie(COOKIE_SID);var lastTs=parseInt(getCookie(COOKIE_TS)||'0',10);var now=Date.now();var expired=!sid||!lastTs||(now-lastTs>SESSION_TIMEOUT);var utmSwitch=urlUtms&&utmsChanged(urlUtms);if(expired||utmSwitch){sid=uuid();}setCookie(COOKIE_SID,sid,1);setCookie(COOKIE_TS,String(now),1);return sid;}
 function deviceType(){var w=window.innerWidth;if(w<768)return'mobile';if(w<1024)return'tablet';return'desktop';}
-function send(payload){var body=JSON.stringify(payload);fetch(CFG.endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(CFG.endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}
-function track(){var vid=getCookie(COOKIE_VID);if(!vid){vid=uuid();setCookie(COOKIE_VID,vid,365);}var urlUtms=getUtms();if(urlUtms){setCookie(COOKIE_UTM,JSON.stringify(urlUtms),30);}var sid=resolveSession(urlUtms);var attribution=Object.assign({},storedUtms(),urlUtms||{});var eventId=uuid();send({source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:eventId,session_id:sid,page_url:window.location.href,page_path:window.location.pathname,title:document.title,referrer:document.referrer||null,device:deviceType(),occurred_at:new Date().toISOString()},attribution:attribution,visitor:{visitor_id:vid}});}
+function send(endpoint,payload){var body=JSON.stringify(payload);fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}
+function track(){var vid=getCookie(COOKIE_VID);if(!vid){vid=uuid();setCookie(COOKIE_VID,vid,365);}var urlUtms=getUtms();if(urlUtms){setCookie(COOKIE_UTM,JSON.stringify(urlUtms),30);}var sid=resolveSession(urlUtms);var attribution=Object.assign({},storedUtms(),urlUtms||{});var eventId=uuid();send(CFG.endpoint,{source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:eventId,session_id:sid,page_url:window.location.href,page_path:window.location.pathname,title:document.title,referrer:document.referrer||null,device:deviceType(),occurred_at:new Date().toISOString()},attribution:attribution,visitor:{visitor_id:vid}});}
+var SKIP_NAMES=['_wpnonce','_wp_http_referer','_wpcf7','_wpcf7_version','_wpcf7_locale','_wpcf7_unit_tag','_wpcf7_container_post','action','gform_ajax','gform_field_values','is_submit','gform_submit','gform_unique_id','gform_target_page_number','gform_source_page_number'];
+var SKIP_PAT=[/^_/,/nonce/i,/token/i,/csrf/i,/captcha/i,/^g-recaptcha/,/^h-captcha/,/^cf-turnstile/];
+var SENS_PAT=[/password/i,/passwd/i,/cc[-_]?num/i,/card[-_]?number/i,/cvv/i,/cvc/i,/ssn/i,/social[-_]?security/i,/credit[-_]?card/i];
+function skipField(n,t){if(!n)return true;if(t==='password'||t==='hidden')return true;if(SKIP_NAMES.indexOf(n)!==-1)return true;for(var i=0;i<SKIP_PAT.length;i++){if(SKIP_PAT[i].test(n))return true;}return false;}
+function isSens(n){for(var i=0;i<SENS_PAT.length;i++){if(SENS_PAT[i].test(n))return true;}return false;}
+function captureForm(form){var fields=[];var els=form.elements;var seen={};for(var i=0;i<els.length;i++){var el=els[i];var name=el.name||el.id||'';var type=(el.type||'text').toLowerCase();if(skipField(name,type))continue;if(seen[name])continue;var value='';if(type==='checkbox'){var chk=form.querySelectorAll('input[name="'+name+'"]:checked');var vals=[];for(var j=0;j<chk.length;j++)vals.push(chk[j].value);value=vals.join(', ');}else if(type==='radio'){var sel=form.querySelector('input[name="'+name+'"]:checked');value=sel?sel.value:'';}else if(el.tagName==='SELECT'){var opts=el.selectedOptions||[];var sv=[];for(var k=0;k<opts.length;k++)sv.push(opts[k].value);value=sv.join(', ');}else{value=el.value||'';}seen[name]=true;if(isSens(name)){value='[REDACTED]';}if(value===''&&type!=='checkbox')continue;fields.push({name:name,label:el.getAttribute('aria-label')||el.getAttribute('placeholder')||name,type:type,value:value});}return fields;}
+document.addEventListener('submit',function(e){var form=e.target;if(!form||form.tagName!=='FORM')return;if(form.getAttribute('data-mm-ignore')==='true')return;var role=form.getAttribute('role');if(role==='search')return;var action=(form.getAttribute('action')||'').toLowerCase();if(action.indexOf('wp-login')!==-1||action.indexOf('wp-admin')!==-1)return;var fields=captureForm(form);if(fields.length===0)return;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);var formEndpoint=CFG.endpoint.replace(/\\/track-pageview$/,'/ingest-form');send(formEndpoint,{provider:'js_capture',entry:{form_id:form.getAttribute('id')||form.getAttribute('data-form-id')||'dom_form',form_title:form.getAttribute('data-form-title')||form.getAttribute('aria-label')||document.title,entry_id:'js_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),source_url:window.location.href,page_url:window.location.href,submitted_at:new Date().toISOString()},context:{domain:CFG.domain,referrer:document.referrer||null,visitor_id:vid,session_id:sid,utm:storedUtms(),plugin_version:CFG.pluginVersion},fields:fields});},true);
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',track);}else{track();}})();`,
 
     "mission-metrics/readme.txt": `=== Mission Metrics — ACTV TRKR ===
 Contributors: actvtrkr
-Tags: analytics, tracking, gravity forms, leads, pageviews
+Tags: analytics, tracking, forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
 Stable tag: ${PLUGIN_VERSION}
 License: GPL-2.0-or-later
 
-First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
+First-party pageview tracking and universal form capture for ACTV TRKR.
 
 == Description ==
 Mission Metrics connects your WordPress site to your ACTV TRKR dashboard.
 This plugin was pre-configured with your API key — just install, activate, and tracking starts automatically.
+
+Supports all form plugins: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion Forms, Ninja Forms, Fluent Forms, and any standard HTML form.
 
 == Installation ==
 1. Upload the plugin zip to WordPress (Plugins → Add New → Upload Plugin)
@@ -138,6 +168,11 @@ This plugin was pre-configured with your API key — just install, activate, and
 
 == Changelog ==
 = ${PLUGIN_VERSION} =
+* Universal form capture: supports any HTML form plus dedicated hooks for Gravity Forms, CF7, WPForms, Avada, Ninja Forms, Fluent Forms
+* Deduplication between JS and server-side captures
+* Security: auto-redact sensitive fields (passwords, credit cards, SSNs)
+
+= 1.0.0 =
 * Initial release`,
   };
 }

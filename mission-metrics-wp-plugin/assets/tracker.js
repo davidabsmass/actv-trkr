@@ -8,8 +8,8 @@
   var COOKIE_VID = 'mm_vid';
   var COOKIE_SID = 'mm_sid';
   var COOKIE_UTM = 'mm_utm';
-  var COOKIE_TS  = 'mm_ts'; // last-activity timestamp for session timeout
-  var SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+  var COOKIE_TS  = 'mm_ts';
+  var SESSION_TIMEOUT = 30 * 60 * 1000;
 
   // ── Cookie helpers ──────────────────────────────────────────────
 
@@ -77,7 +77,7 @@
       sid = uuid();
     }
 
-    setCookie(COOKIE_SID, sid, 1); // session cookie refreshed to 1 day (timeout enforced via mm_ts)
+    setCookie(COOKIE_SID, sid, 1);
     setCookie(COOKIE_TS, String(now), 1);
     return sid;
   }
@@ -93,19 +93,9 @@
 
   // ── Send ────────────────────────────────────────────────────────
 
-  function send(payload) {
+  function send(endpoint, payload) {
     var body = JSON.stringify(payload);
-    var headers = {
-      type: 'application/json',
-    };
-    var blob = new Blob([body], headers);
-
-    // Prefer sendBeacon for reliability on page unload.
-    if (navigator.sendBeacon) {
-      // sendBeacon doesn't support custom headers, so we use fetch as primary
-    }
-
-    fetch(CFG.endpoint, {
+    fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -114,36 +104,31 @@
       body: body,
       keepalive: true,
     }).catch(function () {
-      // Fallback to sendBeacon (no auth header, but at least data arrives).
-      try { navigator.sendBeacon(CFG.endpoint, blob); } catch (e) { /* silent */ }
+      try {
+        navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
+      } catch (e) { /* silent */ }
     });
   }
 
-  // ── Main ────────────────────────────────────────────────────────
+  // ── Pageview tracking ──────────────────────────────────────────
 
   function track() {
-    // Visitor ID (persistent).
     var vid = getCookie(COOKIE_VID);
     if (!vid) {
       vid = uuid();
       setCookie(COOKIE_VID, vid, 365);
     }
 
-    // UTMs from URL.
     var urlUtms = getUtms();
     if (urlUtms) {
       setCookie(COOKIE_UTM, JSON.stringify(urlUtms), 30);
     }
 
-    // Session.
     var sid = resolveSession(urlUtms);
-
-    // Merge attribution (URL UTMs take precedence, then stored).
     var attribution = Object.assign({}, storedUtms(), urlUtms || {});
-
     var eventId = uuid();
 
-    send({
+    send(CFG.endpoint, {
       source: {
         domain: CFG.domain,
         type: 'wordpress',
@@ -166,7 +151,153 @@
     });
   }
 
-  // Fire on DOMContentLoaded (or immediately if already loaded).
+  // ── Universal Form Capture (Layer 1) ───────────────────────────
+
+  // Fields to skip (security/privacy + WordPress internals)
+  var SKIP_NAMES = [
+    '_wpnonce', '_wp_http_referer', '_wpcf7', '_wpcf7_version',
+    '_wpcf7_locale', '_wpcf7_unit_tag', '_wpcf7_container_post',
+    'action', 'gform_ajax', 'gform_field_values',
+    'is_submit', 'gform_submit', 'gform_unique_id',
+    'gform_target_page_number', 'gform_source_page_number',
+  ];
+
+  var SKIP_PATTERNS = [
+    /^_/, /nonce/i, /token/i, /csrf/i, /captcha/i,
+    /^g-recaptcha/, /^h-captcha/, /^cf-turnstile/,
+  ];
+
+  var SENSITIVE_PATTERNS = [
+    /password/i, /passwd/i, /cc[-_]?num/i, /card[-_]?number/i,
+    /cvv/i, /cvc/i, /ssn/i, /social[-_]?security/i,
+    /credit[-_]?card/i,
+  ];
+
+  function shouldSkipField(name, type) {
+    if (!name) return true;
+    if (type === 'password' || type === 'hidden') return true;
+    if (SKIP_NAMES.indexOf(name) !== -1) return true;
+    for (var i = 0; i < SKIP_PATTERNS.length; i++) {
+      if (SKIP_PATTERNS[i].test(name)) return true;
+    }
+    return false;
+  }
+
+  function isSensitive(name) {
+    for (var i = 0; i < SENSITIVE_PATTERNS.length; i++) {
+      if (SENSITIVE_PATTERNS[i].test(name)) return true;
+    }
+    return false;
+  }
+
+  function captureFormFields(formEl) {
+    var fields = [];
+    var elements = formEl.elements;
+    var seen = {};
+
+    for (var i = 0; i < elements.length; i++) {
+      var el = elements[i];
+      var name = el.name || el.id || '';
+      var type = (el.type || 'text').toLowerCase();
+
+      if (shouldSkipField(name, type)) continue;
+      if (seen[name]) continue;
+
+      var value = '';
+
+      if (type === 'checkbox') {
+        // Collect all checked values for this name
+        var checked = formEl.querySelectorAll('input[name="' + name + '"]:checked');
+        var vals = [];
+        for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
+        value = vals.join(', ');
+      } else if (type === 'radio') {
+        var selected = formEl.querySelector('input[name="' + name + '"]:checked');
+        value = selected ? selected.value : '';
+      } else if (el.tagName === 'SELECT') {
+        var opts = el.selectedOptions || [];
+        var selVals = [];
+        for (var k = 0; k < opts.length; k++) selVals.push(opts[k].value);
+        value = selVals.join(', ');
+      } else {
+        value = el.value || '';
+      }
+
+      seen[name] = true;
+
+      if (isSensitive(name)) {
+        value = '[REDACTED]';
+      }
+
+      if (value === '' && type !== 'checkbox') continue;
+
+      fields.push({
+        name: name,
+        label: el.getAttribute('aria-label') || el.getAttribute('placeholder') || name,
+        type: type,
+        value: value,
+      });
+    }
+
+    return fields;
+  }
+
+  function handleFormSubmit(e) {
+    var form = e.target;
+    if (!form || form.tagName !== 'FORM') return;
+
+    // Allow opt-out
+    if (form.getAttribute('data-mm-ignore') === 'true') return;
+
+    // Skip search forms and login forms
+    var role = form.getAttribute('role');
+    if (role === 'search') return;
+    var action = (form.getAttribute('action') || '').toLowerCase();
+    if (action.indexOf('wp-login') !== -1 || action.indexOf('wp-admin') !== -1) return;
+
+    var fields = captureFormFields(form);
+    if (fields.length === 0) return;
+
+    var vid = getCookie(COOKIE_VID);
+    var sid = getCookie(COOKIE_SID);
+
+    // Build the form endpoint
+    var formEndpoint = CFG.endpoint.replace(/\/track-pageview$/, '/ingest-form');
+
+    send(formEndpoint, {
+      provider: 'js_capture',
+      entry: {
+        form_id: form.getAttribute('id') || form.getAttribute('data-form-id') || 'dom_form',
+        form_title: form.getAttribute('data-form-title') || form.getAttribute('aria-label') || document.title,
+        entry_id: 'js_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        source_url: window.location.href,
+        page_url: window.location.href,
+        submitted_at: new Date().toISOString(),
+      },
+      context: {
+        domain: CFG.domain,
+        referrer: document.referrer || null,
+        visitor_id: vid,
+        session_id: sid,
+        utm: storedUtms(),
+        plugin_version: CFG.pluginVersion,
+      },
+      fields: fields,
+    });
+  }
+
+  // Attach universal form listener via event delegation
+  document.addEventListener('submit', handleFormSubmit, true);
+
+  // Also intercept fetch/XHR based form submissions (AJAX forms)
+  // Listen for custom events that popular plugins fire
+  document.addEventListener('wpcf7mailsent', function (e) {
+    // CF7 fires this on success — the PHP hook handles it,
+    // but if PHP hook fails, JS already captured via submit event
+  });
+
+  // ── Boot ───────────────────────────────────────────────────────
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', track);
   } else {

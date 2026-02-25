@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
-import { Search, ChevronRight, ArrowLeft, FileText, BarChart3 } from "lucide-react";
+import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -11,12 +11,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from "@tanstack/react-query";
+import { Slider } from "@/components/ui/slider";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  BarChart, Bar,
 } from "recharts";
 
 const statusColors: Record<string, string> = {
@@ -25,6 +27,21 @@ const statusColors: Record<string, string> = {
   qualified: "bg-success/10 text-success border-success/20",
   converted: "bg-success/10 text-success border-success/20",
   lost: "bg-destructive/10 text-destructive border-destructive/20",
+};
+
+const categoryColors: Record<string, string> = {
+  lead: "text-primary border-primary/20",
+  newsletter: "text-info border-info/20",
+  survey: "text-warning border-warning/20",
+  other: "text-muted-foreground border-border",
+};
+
+const weightLabels: Record<string, string> = {
+  "0": "Excluded (0×)",
+  "0.25": "Low (0.25×)",
+  "0.5": "Half (0.5×)",
+  "0.75": "Medium (0.75×)",
+  "1": "Full (1×)",
 };
 
 export default function Entries() {
@@ -59,7 +76,15 @@ export default function Entries() {
         >
           <ArrowLeft className="h-4 w-4" /> Back to Forms
         </button>
-        <h1 className="text-2xl font-bold text-foreground mb-1">{selectedForm.name}</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-2xl font-bold text-foreground">{selectedForm.name}</h1>
+          <Badge variant="outline" className={`text-[10px] uppercase ${categoryColors[selectedForm.form_category] || categoryColors.other}`}>
+            {selectedForm.form_category}
+          </Badge>
+          {selectedForm.lead_weight < 1 && (
+            <span className="text-xs text-muted-foreground font-mono-data">{selectedForm.lead_weight}× weight</span>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground mb-6">
           {selectedForm.provider} · {leadCounts?.[selectedForm.id] ?? "—"} total leads
         </p>
@@ -72,12 +97,18 @@ export default function Entries() {
             <TabsTrigger value="analytics" className="gap-1.5">
               <BarChart3 className="h-3.5 w-3.5" /> Analytics
             </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-1.5">
+              <Settings2 className="h-3.5 w-3.5" /> Settings
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="entries">
             <FormEntries orgId={orgId} formId={selectedForm.id} />
           </TabsContent>
           <TabsContent value="analytics">
             <FormAnalytics orgId={orgId} formId={selectedForm.id} />
+          </TabsContent>
+          <TabsContent value="settings">
+            <FormSettings form={selectedForm} />
           </TabsContent>
         </Tabs>
       </div>
@@ -110,7 +141,15 @@ export default function Entries() {
                 <div className="flex items-center gap-3">
                   <FileText className="h-4 w-4 text-primary flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-foreground">{form.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{form.name}</p>
+                      <Badge variant="outline" className={`text-[9px] uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
+                        {form.form_category}
+                      </Badge>
+                      {form.lead_weight < 1 && (
+                        <span className="text-[10px] text-muted-foreground font-mono-data">{form.lead_weight}×</span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {form.provider} · {leadCounts?.[form.id] ?? "—"} leads
                     </p>
@@ -126,12 +165,86 @@ export default function Entries() {
   );
 }
 
+/* ─── Settings Tab ─── */
+function FormSettings({ form }: { form: any }) {
+  const queryClient = useQueryClient();
+  const [category, setCategory] = useState(form.form_category || "lead");
+  const [weight, setWeight] = useState([form.lead_weight ?? 1]);
+
+  const updateForm = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("forms")
+        .update({ form_category: category, lead_weight: weight[0] })
+        .eq("id", form.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forms"] });
+      toast.success("Form settings saved");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to save"),
+  });
+
+  const closestLabel = () => {
+    const w = weight[0];
+    const closest = Object.keys(weightLabels)
+      .map(Number)
+      .reduce((prev, curr) => Math.abs(curr - w) < Math.abs(prev - w) ? curr : prev);
+    return weightLabels[String(closest)] || `${w}×`;
+  };
+
+  return (
+    <div className="max-w-lg space-y-6">
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h4 className="text-sm font-semibold text-foreground mb-4">Form Category</h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          Categorize this form so you can differentiate lead types in your dashboard.
+        </p>
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="lead">Lead (Contact, Quote, etc.)</SelectItem>
+            <SelectItem value="newsletter">Newsletter Signup</SelectItem>
+            <SelectItem value="survey">Survey / Feedback</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h4 className="text-sm font-semibold text-foreground mb-4">Lead Weight</h4>
+        <p className="text-xs text-muted-foreground mb-4">
+          Control how much this form contributes to your overall lead count and conversion rate.
+          A weight of 1× means full contribution. Set to 0× to exclude entirely.
+        </p>
+        <div className="space-y-3">
+          <Slider
+            value={weight}
+            onValueChange={setWeight}
+            min={0} max={1} step={0.25}
+            className="w-full"
+          />
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Excluded</span>
+            <span className="font-medium text-foreground">{closestLabel()}</span>
+            <span>Full lead</span>
+          </div>
+        </div>
+      </div>
+
+      <Button onClick={() => updateForm.mutate()} disabled={updateForm.isPending}>
+        {updateForm.isPending ? "Saving…" : "Save Settings"}
+      </Button>
+    </div>
+  );
+}
+
 /* ─── Entries Tab ─── */
 function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Fetch leads for this form
   const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads_by_form", orgId, formId],
     queryFn: async () => {
@@ -146,13 +259,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!orgId,
   });
 
-  // Fetch field data for those leads
   const leadIds = (leads || []).map((l) => l.id);
   const { data: fieldsRaw } = useQuery({
     queryKey: ["lead_fields_flat", orgId, formId, leadIds.length],
     queryFn: async () => {
       if (!orgId || leadIds.length === 0) return [];
-      // Fetch in batches of 50 to avoid URI length limits
       const results: any[] = [];
       for (let i = 0; i < leadIds.length; i += 50) {
         const batch = leadIds.slice(i, i + 50);
@@ -167,29 +278,19 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!orgId && leadIds.length > 0,
   });
 
-  // Derive dynamic columns from field data
   const { fieldColumns, leadFieldMap } = useMemo(() => {
     if (!fieldsRaw || fieldsRaw.length === 0) return { fieldColumns: [], leadFieldMap: new Map() };
-
-    // Build map: leadId -> { fieldKey: value }
     const map = new Map<string, Record<string, string>>();
     const columnOrder = new Map<string, { key: string; label: string; count: number }>();
-
     for (const f of fieldsRaw) {
       if (!map.has(f.lead_id)) map.set(f.lead_id, {});
       map.get(f.lead_id)![f.field_key] = f.value_text || "";
-
       if (!columnOrder.has(f.field_key)) {
         columnOrder.set(f.field_key, { key: f.field_key, label: f.field_label || f.field_key, count: 0 });
       }
       columnOrder.get(f.field_key)!.count++;
     }
-
-    // Sort columns by frequency (most common first), take top 6
-    const cols = [...columnOrder.values()]
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-
+    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count).slice(0, 6);
     return { fieldColumns: cols, leadFieldMap: map };
   }, [fieldsRaw]);
 
@@ -198,10 +299,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     if (search) {
       const q = search.toLowerCase();
       const fields = leadFieldMap.get(lead.id);
-      const searchable = [
-        lead.source, lead.status,
-        ...(fields ? Object.values(fields) : []),
-      ].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, lead.status, ...(fields ? Object.values(fields) : [])].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
     return true;
@@ -226,11 +324,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           </SelectContent>
         </Select>
       </div>
-
       <div className="text-xs text-muted-foreground mb-3">
         {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{statusFilter !== "all" || search ? " (filtered)" : ""}
       </div>
-
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         {leadsLoading ? (
           <div className="p-12 text-center text-muted-foreground text-sm">Loading entries…</div>
@@ -293,8 +389,7 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
-        .from("leads")
-        .select("submitted_at, status, source")
+        .from("leads").select("submitted_at, status, source")
         .eq("org_id", orgId).eq("form_id", formId)
         .gte("submitted_at", `${startDate}T00:00:00Z`)
         .lte("submitted_at", `${endDate}T23:59:59.999Z`)
@@ -307,67 +402,41 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
 
   const { dailyData, sourceData, statusData, totalLeads } = useMemo(() => {
     if (!leads || leads.length === 0) return { dailyData: [], sourceData: [], statusData: [], totalLeads: 0 };
-
     const byDay: Record<string, number> = {};
     const bySource: Record<string, number> = {};
     const byStatus: Record<string, number> = {};
-
     for (const l of leads) {
       const day = format(new Date(l.submitted_at), "yyyy-MM-dd");
       byDay[day] = (byDay[day] || 0) + 1;
-
       const src = l.source || "direct";
       bySource[src] = (bySource[src] || 0) + 1;
-
       byStatus[l.status] = (byStatus[l.status] || 0) + 1;
     }
-
-    const dailyData = Object.entries(byDay)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, count]) => ({ date, dateLabel: format(new Date(date), "MMM d"), leads: count }));
-
-    const sourceData = Object.entries(bySource)
-      .sort((a, b) => b[1] - a[1])
-      .map(([source, count]) => ({ source, count }));
-
-    const statusData = Object.entries(byStatus)
-      .sort((a, b) => b[1] - a[1])
-      .map(([status, count]) => ({ status, count }));
-
-    return { dailyData, sourceData, statusData, totalLeads: leads.length };
+    return {
+      dailyData: Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, dateLabel: format(new Date(date), "MMM d"), leads: count })),
+      sourceData: Object.entries(bySource).sort((a, b) => b[1] - a[1]).map(([source, count]) => ({ source, count })),
+      statusData: Object.entries(byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => ({ status, count })),
+      totalLeads: leads.length,
+    };
   }, [leads]);
 
   return (
     <div className="space-y-5">
-      {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground mb-1">Last {days} Days</p>
-          <p className="text-2xl font-bold font-mono-data text-foreground">{totalLeads}</p>
-          <p className="text-xs text-muted-foreground">leads</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground mb-1">Daily Avg</p>
-          <p className="text-2xl font-bold font-mono-data text-foreground">
-            {days > 0 ? (totalLeads / days).toFixed(1) : "0"}
-          </p>
-          <p className="text-xs text-muted-foreground">leads/day</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground mb-1">Top Source</p>
-          <p className="text-lg font-semibold text-foreground truncate">
-            {sourceData[0]?.source || "—"}
-          </p>
-          <p className="text-xs text-muted-foreground">{sourceData[0]?.count ?? 0} leads</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground mb-1">Sources</p>
-          <p className="text-2xl font-bold font-mono-data text-foreground">{sourceData.length}</p>
-          <p className="text-xs text-muted-foreground">unique</p>
-        </div>
+        {[
+          { label: `Last ${days} Days`, value: totalLeads, sub: "leads" },
+          { label: "Daily Avg", value: days > 0 ? (totalLeads / days).toFixed(1) : "0", sub: "leads/day" },
+          { label: "Top Source", value: sourceData[0]?.source || "—", sub: `${sourceData[0]?.count ?? 0} leads`, small: true },
+          { label: "Sources", value: sourceData.length, sub: "unique" },
+        ].map((kpi, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
+            <p className={`font-bold font-mono-data text-foreground ${kpi.small ? "text-lg truncate" : "text-2xl"}`}>{kpi.value}</p>
+            <p className="text-xs text-muted-foreground">{kpi.sub}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Leads over time */}
       <div className="rounded-lg border border-border bg-card p-5">
         <h4 className="text-sm font-semibold text-foreground mb-4">Leads Over Time</h4>
         {dailyData.length === 0 ? (
@@ -385,12 +454,7 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                 <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px", fontSize: "12px",
-                  }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
                 <Area type="monotone" dataKey="leads" stroke="hsl(var(--chart-1))" strokeWidth={2} fill="url(#leadsGrad)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -398,7 +462,6 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
         )}
       </div>
 
-      {/* Source + Status breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-lg border border-border bg-card p-5">
           <h4 className="text-sm font-semibold text-foreground mb-3">By Source</h4>
@@ -411,10 +474,7 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
                   <span className="text-sm text-foreground truncate max-w-[60%]">{s.source}</span>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${totalLeads > 0 ? (s.count / totalLeads) * 100 : 0}%` }}
-                      />
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${totalLeads > 0 ? (s.count / totalLeads) * 100 : 0}%` }} />
                     </div>
                     <span className="text-xs font-mono-data text-muted-foreground w-8 text-right">{s.count}</span>
                   </div>
@@ -423,7 +483,6 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
             </div>
           )}
         </div>
-
         <div className="rounded-lg border border-border bg-card p-5">
           <h4 className="text-sm font-semibold text-foreground mb-3">By Status</h4>
           {statusData.length === 0 ? (
@@ -432,15 +491,10 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
             <div className="space-y-2">
               {statusData.map((s) => (
                 <div key={s.status} className="flex items-center justify-between">
-                  <Badge variant="outline" className={`text-[10px] uppercase ${statusColors[s.status] || ""}`}>
-                    {s.status}
-                  </Badge>
+                  <Badge variant="outline" className={`text-[10px] uppercase ${statusColors[s.status] || ""}`}>{s.status}</Badge>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-chart-2"
-                        style={{ width: `${totalLeads > 0 ? (s.count / totalLeads) * 100 : 0}%` }}
-                      />
+                      <div className="h-full rounded-full bg-chart-2" style={{ width: `${totalLeads > 0 ? (s.count / totalLeads) * 100 : 0}%` }} />
                     </div>
                     <span className="text-xs font-mono-data text-muted-foreground w-8 text-right">{s.count}</span>
                   </div>

@@ -9,7 +9,7 @@ import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { useOrg } from "@/hooks/use-org";
-import { useTrafficDaily, useKpiDaily, useAlerts, useSites, useRawCounts } from "@/hooks/use-dashboard-data";
+import { useTrafficDaily, useKpiDaily, useAlerts, useSites, useRawCounts, useForms } from "@/hooks/use-dashboard-data";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
@@ -29,6 +29,7 @@ const Dashboard = () => {
   const { data: kpiData } = useKpiDaily(orgId, startDate, endDate);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
+  const { data: formsData } = useForms(orgId);
 
   const hasAggregatedData = (trafficData && trafficData.length > 0) || (kpiData && kpiData.length > 0);
   const { data: rawCounts } = useRawCounts(orgId, startDate, endDate, hasAggregatedData);
@@ -150,7 +151,7 @@ const Dashboard = () => {
       },
       dailyData, sources, campaigns: [] as any[], pages, opportunities, alerts, forecast, isMock: false,
     };
-  }, [hasRealData, hasAggregatedData, rawCounts, trafficData, kpiData, alertsData, days]);
+  }, [hasRealData, hasAggregatedData, rawCounts, trafficData, kpiData, alertsData, formsData, days]);
 
   return (
     <div>

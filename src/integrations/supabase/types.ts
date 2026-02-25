@@ -199,7 +199,9 @@ export type Database = {
         Row: {
           created_at: string
           external_form_id: string
+          form_category: string
           id: string
+          lead_weight: number
           name: string
           org_id: string
           provider: string
@@ -208,7 +210,9 @@ export type Database = {
         Insert: {
           created_at?: string
           external_form_id: string
+          form_category?: string
           id?: string
+          lead_weight?: number
           name?: string
           org_id: string
           provider?: string
@@ -217,7 +221,9 @@ export type Database = {
         Update: {
           created_at?: string
           external_form_id?: string
+          form_category?: string
           id?: string
+          lead_weight?: number
           name?: string
           org_id?: string
           provider?: string

@@ -9,7 +9,7 @@ import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { useOrg } from "@/hooks/use-org";
-import { useTrafficDaily, useKpiDaily, useAlerts, useSites } from "@/hooks/use-dashboard-data";
+import { useTrafficDaily, useKpiDaily, useAlerts, useSites, useRawCounts } from "@/hooks/use-dashboard-data";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
@@ -30,7 +30,11 @@ const Dashboard = () => {
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 
-  const hasRealData = (trafficData && trafficData.length > 0) || (kpiData && kpiData.length > 0);
+  const hasAggregatedData = (trafficData && trafficData.length > 0) || (kpiData && kpiData.length > 0);
+  const { data: rawCounts } = useRawCounts(orgId, startDate, endDate, hasAggregatedData);
+
+  // We have real data if either aggregated tables or raw tables have data
+  const hasRealData = hasAggregatedData || (rawCounts && (rawCounts.pageviews > 0 || rawCounts.sessions > 0));
 
   const processedData = useMemo(() => {
     if (!hasRealData) {
@@ -44,6 +48,30 @@ const Dashboard = () => {
         alerts: getMockAlerts(),
         forecast: getMockForecast(30),
         isMock: true,
+      };
+    }
+
+    // If we have aggregated data, use it; otherwise use raw counts
+    if (!hasAggregatedData && rawCounts) {
+      const cvr = rawCounts.sessions > 0 ? rawCounts.leads / rawCounts.sessions : 0;
+      const todayStr = format(new Date(), "MMM d");
+      return {
+        kpis: {
+          sessions: { value: rawCounts.sessions, delta: 0, label: "Sessions" },
+          leads: { value: rawCounts.leads, delta: 0, label: "Leads" },
+          pageviews: { value: rawCounts.pageviews, delta: 0, label: "Pageviews" },
+          cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
+        },
+        dailyData: [{ date: format(new Date(), "yyyy-MM-dd"), dateLabel: todayStr, sessions: rawCounts.sessions, leads: rawCounts.leads, pageviews: rawCounts.pageviews, cvr }],
+        sources: [], campaigns: [], pages: [], opportunities: [],
+        alerts: (alertsData || []).map((a) => ({
+          id: a.id, severity: a.severity as "warning" | "info" | "error",
+          title: a.title,
+          detail: typeof a.details === "object" && a.details !== null ? (a.details as any).detail || "" : "",
+          date: format(new Date(a.date), "MMM d"),
+        })),
+        forecast: { metric: "leads", horizon: 30, projected_total: 0, sufficient_data: false, days_until_available: 30, points: [] },
+        isMock: false,
       };
     }
 
@@ -122,7 +150,7 @@ const Dashboard = () => {
       },
       dailyData, sources, campaigns: [] as any[], pages, opportunities, alerts, forecast, isMock: false,
     };
-  }, [hasRealData, trafficData, kpiData, alertsData, days]);
+  }, [hasRealData, hasAggregatedData, rawCounts, trafficData, kpiData, alertsData, days]);
 
   return (
     <div>

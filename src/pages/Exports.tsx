@@ -50,6 +50,10 @@ export default function Exports() {
       return data;
     },
     enabled: !!orgId,
+    refetchInterval: (query) => {
+      const data = query.state.data as any[] | undefined;
+      return data?.some((j) => j.status === "queued" || j.status === "processing") ? 3000 : false;
+    },
   });
 
   // Count leads per form
@@ -83,11 +87,8 @@ export default function Exports() {
       if (error) throw error;
 
       // Trigger the processor
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      fetch(`https://${projectId}.supabase.co/functions/v1/process-export`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
-        body: JSON.stringify({ job_id: inserted.id }),
+      supabase.functions.invoke("process-export", {
+        body: { job_id: inserted.id },
       }).catch(() => { /* fire and forget — job is queued regardless */ });
     },
     onSuccess: () => {

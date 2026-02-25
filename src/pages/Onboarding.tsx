@@ -22,18 +22,18 @@ const Onboarding = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Create org
-      const { data: org, error: orgErr } = await supabase
+      const orgId = crypto.randomUUID();
+
+      // Create org (no immediate SELECT; org membership doesn't exist yet)
+      const { error: orgErr } = await supabase
         .from("orgs")
-        .insert({ name })
-        .select()
-        .single();
+        .insert({ id: orgId, name });
       if (orgErr) throw orgErr;
 
       // Add user as admin
       const { error: ouErr } = await supabase
         .from("org_users")
-        .insert({ org_id: org.id, user_id: user.id, role: "admin" });
+        .insert({ org_id: orgId, user_id: user.id, role: "admin" });
       if (ouErr) throw ouErr;
 
       // Generate API key and store hash
@@ -45,10 +45,10 @@ const Onboarding = () => {
 
       const { error: akErr } = await supabase
         .from("api_keys")
-        .insert({ org_id: org.id, key_hash: keyHash, label: "Default" });
+        .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
       if (akErr) throw akErr;
 
-      setCreatedOrg(org);
+      setCreatedOrg({ id: orgId, name });
       setApiKey(rawKey);
       refetch();
     } catch (err: any) {

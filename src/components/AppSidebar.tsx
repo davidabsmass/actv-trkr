@@ -4,13 +4,13 @@ import {
   FileText,
   Download,
   Settings,
-  Zap,
   LogOut,
   ChevronDown,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
+import logoSvg from "@/assets/logo-mshn-ctrl.svg";
 import {
   Sidebar,
   SidebarContent,
@@ -46,23 +46,18 @@ export function AppSidebar() {
   const { signOut } = useAuth();
 
   return (
-    <Sidebar className="border-r border-border">
+    <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-            <Zap className="h-4 w-4 text-primary" />
-          </div>
-          <span className="text-sm font-bold text-foreground tracking-tight">
-            ACTV TRKR
-          </span>
+          <img src={logoSvg} alt="MSHN CTRL" className="h-7 w-auto" />
         </div>
 
         {orgs.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-muted rounded-md text-foreground hover:bg-muted/80 transition-colors">
+              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors">
                 <span className="truncate">{orgName ?? "Select org"}</span>
-                <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 text-muted-foreground" />
+                <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 text-sidebar-foreground/60" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
@@ -78,7 +73,7 @@ export function AppSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div className="px-3 py-2 text-xs font-medium bg-muted rounded-md text-foreground truncate">
+          <div className="px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-sidebar-foreground truncate">
             {orgName ?? "—"}
           </div>
         )}
@@ -86,7 +81,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-4">
             Telemetry
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -96,8 +91,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground rounded-md hover:bg-muted/50 transition-colors"
-                      activeClassName="bg-muted text-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -110,7 +105,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground px-4">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-4">
             Configuration
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -120,8 +115,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground rounded-md hover:bg-muted/50 transition-colors"
-                      activeClassName="bg-muted text-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -137,7 +132,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-4">
         <button
           onClick={signOut}
-          className="flex items-center gap-3 px-4 py-2 text-sm text-muted-foreground rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors w-full"
+          className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/60 rounded-md hover:bg-destructive/20 hover:text-destructive transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />
           <span>Sign Out</span>

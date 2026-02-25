@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useOrg } from "@/hooks/use-org";
+import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
-import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2 } from "lucide-react";
+import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -14,9 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
@@ -242,8 +246,14 @@ function FormSettings({ form }: { form: any }) {
 
 /* ─── Entries Tab ─── */
 function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [showExport, setShowExport] = useState(false);
 
   const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads_by_form", orgId, formId],
@@ -307,6 +317,29 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
   const statuses = [...new Set((leads || []).map((l) => l.status))].sort();
 
+  const createExport = useMutation({
+    mutationFn: async () => {
+      if (!orgId || !session?.user.id) throw new Error("Not authenticated");
+      const { error } = await supabase.from("export_jobs").insert({
+        org_id: orgId,
+        created_by: session.user.id,
+        format: exportFormat,
+        status: "queued",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
+      toast.success(`${exportFormat.toUpperCase()} export queued`);
+      setShowExport(false);
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to create export"),
+  });
+
+  const dateLabel = dateFrom && dateTo
+    ? `${format(dateFrom, "MMM d")} – ${format(dateTo, "MMM d")}`
+    : dateFrom ? `From ${format(dateFrom, "MMM d")}` : dateTo ? `Until ${format(dateTo, "MMM d")}` : "All time";
+
   return (
     <>
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -323,7 +356,53 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowExport(!showExport)}>
+          <Download className="h-3.5 w-3.5" /> Export
+        </Button>
       </div>
+
+      {showExport && (
+        <div className="rounded-lg border border-border bg-card p-4 mb-4 space-y-3">
+          <h4 className="text-sm font-semibold text-foreground">Export Entries</h4>
+          <div className="flex flex-wrap gap-3 items-center">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("w-[150px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {dateFrom ? format(dateFrom, "MMM d, yyyy") : "Start date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("w-[150px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {dateTo ? format(dateTo, "MMM d, yyyy") : "End date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>Clear</Button>
+            )}
+            <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "csv" | "xlsx")}>
+              <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="xlsx">XLSX</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={() => createExport.mutate()} disabled={createExport.isPending}>
+              {createExport.isPending ? "Queuing…" : `Export ${dateLabel}`}
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="text-xs text-muted-foreground mb-3">
         {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{statusFilter !== "all" || search ? " (filtered)" : ""}
       </div>

@@ -1,106 +1,177 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* BR Omega Font Family */
+@font-face {
+  font-family: 'BR Omega';
+  src: url('/fonts/BROmega-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BR Omega';
+  src: url('/fonts/BROmega-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BR Omega';
+  src: url('/fonts/BROmega-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BR Omega';
+  src: url('/fonts/BROmega-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BR Omega';
+  src: url('/fonts/BROmega-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
+    /* MSHN CTRL Design System - Stripe Inspired */
+    
+    /* Base Colors */
+    --navy: 210 100% 15%;
+    --navy-light: 210 80% 25%;
+    --indigo: 248 90% 66%;
+    --purple: 250 95% 70%;
+    
+    /* Surface Colors */
     --background: 220 20% 97%;
-    --foreground: 220 20% 10%;
+    --foreground: 210 100% 15%;
+    --surface: 0 0% 100%;
+
+    /* Component Mappings */
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 210 100% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
-    --primary: 210 100% 56%;
+    --popover-foreground: 210 100% 15%;
+    --primary: 248 90% 66%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 92%;
-    --secondary-foreground: 220 20% 10%;
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 10% 46%;
-    --accent: 210 100% 56%;
+    --secondary: 210 100% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 250 95% 70%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 210 100% 56%;
-    --radius: 0.5rem;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 248 90% 66%;
+    --radius: 0.75rem;
 
     /* Analytics tokens */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --info: 210 100% 56%;
+    --info: 248 90% 66%;
     --info-foreground: 0 0% 100%;
+    --error: 0 84% 60%;
 
     --kpi-up: 142 71% 45%;
-    --kpi-down: 0 72% 51%;
-    --kpi-neutral: 220 10% 46%;
+    --kpi-down: 0 84% 60%;
+    --kpi-neutral: 220 9% 46%;
 
-    --chart-1: 210 100% 56%;
+    --chart-1: 248 90% 66%;
     --chart-2: 142 71% 45%;
-    --chart-3: 280 67% 56%;
+    --chart-3: 250 95% 70%;
     --chart-4: 38 92% 50%;
     --chart-5: 340 75% 55%;
-    --chart-6: 180 62% 45%;
+    --chart-6: 199 89% 48%;
 
-    --sidebar-background: 220 20% 97%;
-    --sidebar-foreground: 220 20% 10%;
-    --sidebar-primary: 210 100% 56%;
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(248 90% 66%), hsl(250 95% 70%));
+    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(160 84% 39%));
+    --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%), hsl(25 95% 53%));
+    --gradient-info: linear-gradient(135deg, hsl(199 89% 48%), hsl(217 91% 60%));
+    --gradient-card-hover: linear-gradient(135deg, hsl(248 90% 66% / 0.05), hsl(250 95% 70% / 0.05));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+
+    /* Typography */
+    --font-sans: 'BR Omega', system-ui, -apple-system, sans-serif;
+
+    /* Sidebar */
+    --sidebar-background: 210 100% 15%;
+    --sidebar-foreground: 220 20% 97%;
+    --sidebar-primary: 248 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 92%;
-    --sidebar-accent-foreground: 220 20% 10%;
-    --sidebar-border: 220 13% 90%;
-    --sidebar-ring: 210 100% 56%;
+    --sidebar-accent: 210 80% 25%;
+    --sidebar-accent-foreground: 220 20% 97%;
+    --sidebar-border: 210 60% 25%;
+    --sidebar-ring: 248 90% 66%;
   }
 
   .dark {
-    --background: 222 28% 6%;
-    --foreground: 210 20% 95%;
-    --card: 222 24% 9%;
-    --card-foreground: 210 20% 95%;
-    --popover: 222 24% 9%;
-    --popover-foreground: 210 20% 95%;
-    --primary: 210 100% 56%;
+    --background: 210 100% 15%;
+    --foreground: 220 20% 97%;
+    --surface: 210 80% 20%;
+
+    --card: 210 80% 20%;
+    --card-foreground: 220 20% 97%;
+    --popover: 210 80% 20%;
+    --popover-foreground: 220 20% 97%;
+    --primary: 248 90% 66%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 222 20% 14%;
-    --secondary-foreground: 210 20% 95%;
-    --muted: 222 20% 14%;
-    --muted-foreground: 220 10% 54%;
-    --accent: 222 20% 14%;
-    --accent-foreground: 210 20% 95%;
-    --destructive: 0 62% 45%;
+    --secondary: 210 60% 30%;
+    --secondary-foreground: 220 20% 97%;
+    --muted: 210 60% 25%;
+    --muted-foreground: 220 14% 70%;
+    --accent: 250 95% 70%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 222 18% 14%;
-    --input: 222 18% 14%;
-    --ring: 210 100% 56%;
+    --border: 210 60% 25%;
+    --input: 210 60% 25%;
+    --ring: 248 90% 66%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --kpi-up: 142 71% 45%;
-    --kpi-down: 0 72% 51%;
-    --kpi-neutral: 220 10% 54%;
+    --kpi-up: 142 71% 50%;
+    --kpi-down: 0 84% 60%;
+    --kpi-neutral: 220 14% 70%;
 
-    --chart-1: 210 100% 60%;
+    --chart-1: 248 90% 70%;
     --chart-2: 142 71% 50%;
-    --chart-3: 280 67% 60%;
+    --chart-3: 250 95% 75%;
     --chart-4: 38 92% 55%;
     --chart-5: 340 75% 60%;
-    --chart-6: 180 62% 50%;
+    --chart-6: 199 89% 55%;
 
-    --sidebar-background: 222 28% 6%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 210 100% 56%;
+    --sidebar-background: 210 100% 12%;
+    --sidebar-foreground: 220 20% 97%;
+    --sidebar-primary: 248 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 20% 14%;
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 222 18% 14%;
-    --sidebar-ring: 210 100% 56%;
+    --sidebar-accent: 210 80% 20%;
+    --sidebar-accent-foreground: 220 20% 97%;
+    --sidebar-border: 210 60% 20%;
+    --sidebar-ring: 248 90% 66%;
   }
 }
 
@@ -110,10 +181,13 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
   }
 
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
 }
 
 @layer utilities {

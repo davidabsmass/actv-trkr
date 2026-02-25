@@ -14,7 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["'BR Omega'", "system-ui", "-apple-system", "sans-serif"],
+        display: ["'BR Omega'", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
@@ -23,6 +24,11 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        surface: "hsl(var(--surface))",
+        navy: "hsl(var(--navy))",
+        "navy-light": "hsl(var(--navy-light))",
+        indigo: "hsl(var(--indigo))",
+        purple: "hsl(var(--purple))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -63,6 +69,7 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        error: "hsl(var(--error))",
         kpi: {
           up: "hsl(var(--kpi-up))",
           down: "hsl(var(--kpi-down))",
@@ -86,6 +93,19 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      boxShadow: {
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        xl: "var(--shadow-xl)",
+      },
+      backgroundImage: {
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-success": "var(--gradient-success)",
+        "gradient-warning": "var(--gradient-warning)",
+        "gradient-info": "var(--gradient-info)",
+        "gradient-card-hover": "var(--gradient-card-hover)",
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -51,8 +51,9 @@ const Onboarding = () => {
       setCreatedOrg(org);
       setApiKey(rawKey);
       refetch();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast({ variant: "destructive", title: "Error creating organization", description: err?.message || "Something went wrong" });
     } finally {
       setLoading(false);
     }

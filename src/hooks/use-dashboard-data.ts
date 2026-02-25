@@ -88,3 +88,20 @@ export function useLeads(orgId: string | null, limit = 50) {
     enabled: !!orgId,
   });
 }
+
+export function useSites(orgId: string | null) {
+  return useQuery({
+    queryKey: ["sites", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("sites")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
+}

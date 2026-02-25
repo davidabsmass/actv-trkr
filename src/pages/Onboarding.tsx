@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Plus, Copy, Check, Download } from "lucide-react";
+import { Zap, Plus, Copy, Check, Download, Globe } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
 import { downloadPlugin } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
@@ -14,6 +14,32 @@ const Onboarding = () => {
   const [createdOrg, setCreatedOrg] = useState<any>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [siteUrl, setSiteUrl] = useState("");
+  const [savingSite, setSavingSite] = useState(false);
+  const [siteSaved, setSiteSaved] = useState(false);
+
+  const handleAddSite = async () => {
+    if (!siteUrl || !createdOrg) return;
+    setSavingSite(true);
+    try {
+      let domain: string;
+      try {
+        domain = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`).hostname;
+      } catch {
+        domain = siteUrl.replace(/^https?:\/\//, "").split("/")[0];
+      }
+      const { error } = await supabase
+        .from("sites")
+        .insert({ org_id: createdOrg.id, domain });
+      if (error) throw error;
+      setSiteSaved(true);
+      toast({ title: "Site registered", description: `${domain} has been added.` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error adding site", description: err?.message || "Something went wrong" });
+    } finally {
+      setSavingSite(false);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +125,32 @@ const Onboarding = () => {
                 <Download className="h-4 w-4" />
                 Download Plugin (.zip)
               </button>
+            </div>
+            <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+              <div className="flex items-center gap-2 mb-1">
+                <Globe className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-medium text-foreground">Add Your Website</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Enter your website URL to pre-register it. This helps verify the connection.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. www.example.com"
+                  value={siteUrl}
+                  onChange={(e) => setSiteUrl(e.target.value)}
+                  disabled={siteSaved}
+                  className="flex-1 px-3 py-2 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                />
+                <button
+                  onClick={handleAddSite}
+                  disabled={!siteUrl || savingSite || siteSaved}
+                  className="px-3 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {siteSaved ? <><Check className="h-3.5 w-3.5" /> Added</> : savingSite ? "Saving…" : "Add"}
+                </button>
+              </div>
             </div>
             <button onClick={() => navigate("/")} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
               Go to Dashboard

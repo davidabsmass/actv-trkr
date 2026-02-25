@@ -33,16 +33,23 @@ Deno.serve(async (req) => {
 
     const run = runs[0];
     const orgId = run.org_id;
-    const periodDays = run.params?.period_days || 30;
+    const params = run.params || {};
+    const periodDays = params.period_days || 30;
 
     await supabase.from("report_runs").update({ status: "running" }).eq("id", run.id);
 
     try {
       const now = new Date();
-      const periodEnd = now.toISOString();
-      const periodStart = new Date(now.getTime() - periodDays * 86400000).toISOString();
+      // Use explicit start/end dates if provided, otherwise fall back to period_days
+      const periodEnd = params.end_date
+        ? new Date(params.end_date + "T23:59:59Z").toISOString()
+        : now.toISOString();
+      const periodStart = params.start_date
+        ? new Date(params.start_date + "T00:00:00Z").toISOString()
+        : new Date(now.getTime() - periodDays * 86400000).toISOString();
+      const actualDays = Math.round((new Date(periodEnd).getTime() - new Date(periodStart).getTime()) / 86400000) || periodDays;
       const prevEnd = periodStart;
-      const prevStart = new Date(now.getTime() - periodDays * 2 * 86400000).toISOString();
+      const prevStart = new Date(new Date(periodStart).getTime() - actualDays * 86400000).toISOString();
 
       // ── Parallel data fetches ──
       const [
@@ -245,7 +252,7 @@ Deno.serve(async (req) => {
         generatedAt: now.toISOString(),
         periodStart,
         periodEnd,
-        periodDays,
+        periodDays: actualDays,
         templateSlug: run.template_slug,
         orgId,
         executiveSummary,

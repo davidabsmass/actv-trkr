@@ -3,12 +3,12 @@ import { useOrg } from "@/hooks/use-org";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { format } from "date-fns";
+import { format, subDays, differenceInDays } from "date-fns";
 import {
   FileText, Play, Clock, CheckCircle, AlertCircle, Download,
   CalendarClock, Plus, Trash2, ToggleLeft, ToggleRight,
   ArrowLeft, TrendingUp, TrendingDown, Minus, Eye,
-  Target, BarChart3, Users, Lightbulb, Globe,
+  Target, BarChart3, Users, Lightbulb, Globe, CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,11 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // ── Report Viewer Component ──
@@ -224,6 +229,8 @@ export default function Reports() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [newSchedule, setNewSchedule] = useState({ template: "", frequency: "weekly" });
   const [viewingReport, setViewingReport] = useState<any>(null);
+  const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [dateTo, setDateTo] = useState<Date>(new Date());
 
   const { data: templates } = useQuery({
     queryKey: ["report_templates"],
@@ -267,10 +274,15 @@ export default function Reports() {
   const generateReport = useMutation({
     mutationFn: async (templateSlug: string) => {
       if (!orgId || !session?.user.id) throw new Error("Not authenticated");
-      const template = templates?.find((t) => t.slug === templateSlug);
+      const periodDays = differenceInDays(dateTo, dateFrom) || 30;
+      const params = {
+        period_days: periodDays,
+        start_date: format(dateFrom, "yyyy-MM-dd"),
+        end_date: format(dateTo, "yyyy-MM-dd"),
+      };
       const { data: inserted, error } = await supabase.from("report_runs").insert({
         org_id: orgId, template_slug: templateSlug, created_by: session.user.id,
-        params: template?.default_params || {}, status: "queued",
+        params, status: "queued",
       }).select("id").single();
       if (error) throw error;
 
@@ -296,6 +308,25 @@ export default function Reports() {
       setViewingReport(report);
     } catch {
       toast.error("Failed to load report");
+    }
+  };
+
+  const downloadReport = async (run: any) => {
+    if (!run.file_path) return;
+    try {
+      const { data, error } = await supabase.storage.from("reports").createSignedUrl(run.file_path, 60);
+      if (error) throw error;
+      const resp = await fetch(data.signedUrl);
+      const report = await resp.json();
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report-${format(new Date(run.created_at), "yyyy-MM-dd")}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Failed to download report");
     }
   };
 
@@ -365,23 +396,63 @@ export default function Reports() {
           <FileText className="h-4 w-4 text-primary" />
           Generate a Report
         </h3>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Select a report template" />
-            </SelectTrigger>
-            <SelectContent>
-              {(templates || []).map((t) => (
-                <SelectItem key={t.slug} value={t.slug}>{t.name}</SelectItem>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select a report template" />
+              </SelectTrigger>
+              <SelectContent>
+                {(templates || []).map((t) => (
+                  <SelectItem key={t.slug} value={t.slug}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, "MMM d, yyyy") : "Start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={(d) => d && setDateFrom(d)} disabled={(d) => d > dateTo || d > new Date()} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">to</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, "MMM d, yyyy") : "End date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateTo} onSelect={(d) => d && setDateTo(d)} disabled={(d) => d < dateFrom || d > new Date()} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex items-center gap-2">
+              {[7, 14, 30, 60, 90].map((days) => (
+                <Button key={days} variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => { setDateFrom(subDays(new Date(), days)); setDateTo(new Date()); }}>
+                  {days}d
+                </Button>
               ))}
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={() => selectedTemplate && generateReport.mutate(selectedTemplate)}
-            disabled={!selectedTemplate || generateReport.isPending}
-          >
-            {generateReport.isPending ? "Generating…" : "Generate"}
-          </Button>
+            </div>
+            <Button
+              className="sm:ml-auto"
+              onClick={() => selectedTemplate && generateReport.mutate(selectedTemplate)}
+              disabled={!selectedTemplate || generateReport.isPending}
+            >
+              {generateReport.isPending ? "Generating…" : "Generate Report"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Analyzing {differenceInDays(dateTo, dateFrom)} days: {format(dateFrom, "MMM d")} – {format(dateTo, "MMM d, yyyy")}
+          </p>
         </div>
       </div>
 
@@ -504,9 +575,14 @@ export default function Reports() {
                     {run.status}
                   </Badge>
                   {run.status === "completed" && run.file_path && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)} title="View Report">
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)} title="View Report">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)} title="Download Report">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   {run.status === "error" && run.error && (
                     <span className="text-xs text-destructive max-w-[200px] truncate" title={run.error}>{run.error}</span>

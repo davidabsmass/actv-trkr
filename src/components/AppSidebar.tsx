@@ -10,7 +10,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
-import logoSvg from "@/assets/logo-mshn-ctrl.svg";
+
 import {
   Sidebar,
   SidebarContent,
@@ -49,7 +49,9 @@ export function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2 mb-3">
-          <img src={logoSvg} alt="MSHN CTRL" className="h-7 w-auto" />
+          <span className="text-sm font-bold text-sidebar-foreground tracking-tight">
+            ACTV TRKR
+          </span>
         </div>
 
         {orgs.length > 1 ? (

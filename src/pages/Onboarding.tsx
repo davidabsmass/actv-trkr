@@ -88,10 +88,10 @@ const Onboarding = () => {
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <h3 className="text-sm font-medium text-foreground mb-1">WordPress Plugin</h3>
               <p className="text-xs text-muted-foreground mb-3">
-                Download the plugin, upload it to WordPress, then paste the API key above in Settings → Mission Metrics.
+                Download the plugin and upload it to WordPress — your API key is baked in. Just activate and tracking starts automatically.
               </p>
               <button
-                onClick={downloadPlugin}
+                onClick={() => downloadPlugin(apiKey!)}
                 className="w-full py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" />

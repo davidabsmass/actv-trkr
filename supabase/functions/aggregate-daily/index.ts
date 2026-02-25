@@ -63,6 +63,29 @@ Deno.serve(async (req) => {
           const { data: lbp } = await supabase.from("leads").select("page_path").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
           if (lbp) { const m: Record<string, number> = {}; lbp.forEach((l: any) => { const d = l.page_path || "(unknown)"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_page", d, v); }
 
+          // sessions_by_country
+          const { data: sbc } = await supabase.from("pageviews").select("country_code, session_id").eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd).not("country_code", "is", null);
+          if (sbc) {
+            const countrySessionMap: Record<string, Set<string>> = {};
+            sbc.forEach((pv: any) => {
+              const cc = pv.country_code || "XX";
+              const sid = pv.session_id || pv.country_code;
+              if (!countrySessionMap[cc]) countrySessionMap[cc] = new Set();
+              countrySessionMap[cc].add(sid);
+            });
+            for (const [cc, sessions] of Object.entries(countrySessionMap)) {
+              await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_country", cc, sessions.size);
+            }
+          }
+
+          // sessions_by_campaign
+          const { data: sbcmp } = await supabase.from("sessions").select("utm_campaign").eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd).not("utm_campaign", "is", null);
+          if (sbcmp) { const m: Record<string, number> = {}; sbcmp.forEach((s: any) => { const d = s.utm_campaign; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_campaign", d, v); }
+
+          // leads_by_campaign
+          const { data: lbcmp } = await supabase.from("leads").select("utm_campaign").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd).not("utm_campaign", "is", null);
+          if (lbcmp) { const m: Record<string, number> = {}; lbcmp.forEach((l: any) => { const d = l.utm_campaign; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_campaign", d, v); }
+
           orgResults[dateStr] = { status: "ok" };
         } catch (err) { console.error(`Agg error ${orgId} ${dateStr}:`, err); orgResults[dateStr] = { status: "error" }; }
       }

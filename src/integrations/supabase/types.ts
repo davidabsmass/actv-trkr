@@ -598,6 +598,8 @@ export type Database = {
       }
       pageviews: {
         Row: {
+          country_code: string | null
+          country_name: string | null
           device: string | null
           event_id: string
           id: string
@@ -620,6 +622,8 @@ export type Database = {
           visitor_id: string | null
         }
         Insert: {
+          country_code?: string | null
+          country_name?: string | null
           device?: string | null
           event_id: string
           id?: string
@@ -642,6 +646,8 @@ export type Database = {
           visitor_id?: string | null
         }
         Update: {
+          country_code?: string | null
+          country_name?: string | null
           device?: string | null
           event_id?: string
           id?: string

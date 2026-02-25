@@ -123,6 +123,34 @@ export function useForms(orgId: string | null) {
   });
 }
 
+export function useCountryData(orgId: string | null, startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ["country_data", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("traffic_daily")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("metric", "sessions_by_country")
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .order("value", { ascending: false });
+      if (error) throw error;
+      // Aggregate across dates
+      const map: Record<string, number> = {};
+      data?.forEach((row) => {
+        const cc = row.dimension || "XX";
+        map[cc] = (map[cc] || 0) + Number(row.value);
+      });
+      return Object.entries(map)
+        .map(([countryCode, sessions]) => ({ countryCode, sessions }))
+        .sort((a, b) => b.sessions - a.sessions);
+    },
+    enabled: !!orgId,
+  });
+}
+
 /** Fallback: count raw pageviews + sessions when aggregated tables are empty */
 export function useRawCounts(orgId: string | null, startDate: string, endDate: string, hasAggregatedData: boolean) {
   return useQuery({

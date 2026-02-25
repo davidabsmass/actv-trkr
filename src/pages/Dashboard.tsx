@@ -181,7 +181,7 @@ const Dashboard = () => {
               <Zap className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-foreground tracking-tight">Mission Control</h1>
+              <h1 className="text-sm font-bold text-foreground tracking-tight">ACTV TRKR</h1>
               {activeClient && (
                 <p className="text-[11px] text-muted-foreground">{activeClient.name}</p>
               )}

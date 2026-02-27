@@ -827,6 +827,7 @@ export type Database = {
           params: Json | null
           recipients: Json | null
           run_at_local_time: string
+          run_day_of_month: number
           template_slug: string
           timezone: string
         }
@@ -841,6 +842,7 @@ export type Database = {
           params?: Json | null
           recipients?: Json | null
           run_at_local_time?: string
+          run_day_of_month?: number
           template_slug: string
           timezone?: string
         }
@@ -855,6 +857,7 @@ export type Database = {
           params?: Json | null
           recipients?: Json | null
           run_at_local_time?: string
+          run_day_of_month?: number
           template_slug?: string
           timezone?: string
         }

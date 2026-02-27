@@ -89,10 +89,10 @@ export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryPro
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
+        <button onClick={() => document.getElementById("section-pages")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <ExternalLink className="h-3 w-3" /> View Pages
         </button>
-        <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
+        <button onClick={() => document.getElementById("section-sources")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <ExternalLink className="h-3 w-3" /> View Sources
         </button>
         <button onClick={() => navigate("/exports")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">

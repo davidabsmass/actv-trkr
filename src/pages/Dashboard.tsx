@@ -165,24 +165,24 @@ const Dashboard = () => {
   const renderFocusSections = () => {
     const sections = {
       attribution: hasFeature("attribution") && (
-        <TrafficSourceROI key="roi" sources={processedData.sources} />
+        <div id="section-sources" key="roi"><TrafficSourceROI sources={processedData.sources} /></div>
       ),
       attributionDetail: (
-        <AttributionSection key="attr" sources={processedData.sources} campaigns={processedData.campaigns} />
+        <div id="section-attribution" key="attr"><AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} /></div>
       ),
       funnel: hasFeature("funnel_view") && (
-        <FunnelView key="funnel" totalPageviews={realtimeData?.totalPageviews || 0} formPageViews={0} totalLeads={realtimeData?.totalLeads || 0} />
+        <div id="section-funnel" key="funnel"><FunnelView totalPageviews={realtimeData?.totalPageviews || 0} formPageViews={0} totalLeads={realtimeData?.totalLeads || 0} /></div>
       ),
       formLeaderboard: formsData && formsData.length > 0 && (
-        <FormLeaderboard key="forms" forms={formsData} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} />
+        <div id="section-forms" key="forms"><FormLeaderboard forms={formsData} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} /></div>
       ),
       map: hasFeature("multi_location_map") && (
-        <VisitorMapSection key="map" data={realtimeData?.countries || []} />
+        <div id="section-map" key="map"><VisitorMapSection data={realtimeData?.countries || []} /></div>
       ),
       content: (
-        <ContentPerformance key="content" pages={processedData.pages} opportunities={processedData.opportunities} />
+        <div id="section-pages" key="content"><ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} /></div>
       ),
-      forecast: <ForecastSection key="forecast" forecast={processedData.forecast} />,
+      forecast: <div id="section-forecast" key="forecast"><ForecastSection forecast={processedData.forecast} /></div>,
     };
 
     const focusOrder: Record<PrimaryFocus, (keyof typeof sections)[]> = {
@@ -280,7 +280,13 @@ const Dashboard = () => {
           <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
           <TrendsChart data={processedData.dailyData} />
           {smartInsights.length > 0 && (
-            <SmartUpdates insights={smartInsights} onAction={(path) => navigate(path)} />
+            <SmartUpdates insights={smartInsights} onAction={(path) => {
+              if (path.startsWith("#")) {
+                document.getElementById(path.slice(1))?.scrollIntoView({ behavior: "smooth" });
+              } else {
+                navigate(path);
+              }
+            }} />
           )}
           {renderFocusSections()}
         </div>

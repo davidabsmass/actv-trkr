@@ -391,13 +391,27 @@ export default function Reports() {
     switch (status) {
       case "queued": return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
       case "running": return <Play className="h-3.5 w-3.5 text-primary animate-pulse" />;
+      case "succeeded":
       case "completed": return <CheckCircle className="h-3.5 w-3.5 text-success" />;
+      case "failed":
       case "error": return <AlertCircle className="h-3.5 w-3.5 text-destructive" />;
       default: return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
 
   const templateName = (slug: string) => templates?.find((t) => t.slug === slug)?.name || slug;
+
+  const dayLabel = (d: number) => {
+    if (d === 0) return "First day of month";
+    if (d === -1) return "Last day of month";
+    return d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : d === 21 ? "21st" : d === 22 ? "22nd" : d === 23 ? "23rd" : `${d}th`;
+  };
+
+  const dayOptions = [
+    { value: "0", label: "First day of month" },
+    { value: "-1", label: "Last day of month" },
+    ...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: dayLabel(i + 1) })),
+  ];
 
   // ── Report Viewer ──
   if (viewingReport) {
@@ -529,8 +543,8 @@ export default function Reports() {
                     <Select value={String(newSchedule.runDayOfMonth)} onValueChange={(v) => setNewSchedule((s) => ({ ...s, runDayOfMonth: parseInt(v) }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                          <SelectItem key={d} value={String(d)}>{d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`}</SelectItem>
+                        {dayOptions.map((d) => (
+                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -560,7 +574,7 @@ export default function Reports() {
                   <div>
                     <p className="text-sm font-medium text-foreground">{templateName(s.template_slug)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.frequency === "weekly" ? "Every week" : `Every month on the ${s.run_day_of_month === 1 ? "1st" : s.run_day_of_month === 2 ? "2nd" : s.run_day_of_month === 3 ? "3rd" : `${s.run_day_of_month}th`}`} at {s.run_at_local_time} ({s.timezone})
+                      {s.frequency === "weekly" ? "Every week" : `Every month · ${dayLabel(s.run_day_of_month)}`} at {s.run_at_local_time} ({s.timezone})
                       {s.last_run_at && ` · Last run ${format(new Date(s.last_run_at), "MMM d")}`}
                     </p>
                   </div>
@@ -569,12 +583,12 @@ export default function Reports() {
                   {s.frequency === "monthly" && editingScheduleId === s.id ? (
                     <div className="flex items-center gap-2">
                       <Select value={String(editRunDay)} onValueChange={(v) => setEditRunDay(parseInt(v))}>
-                        <SelectTrigger className="w-[80px] h-8 text-xs">
+                        <SelectTrigger className="w-[180px] h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                            <SelectItem key={d} value={String(d)}>{d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`}</SelectItem>
+                          {dayOptions.map((d) => (
+                            <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -638,15 +652,15 @@ export default function Reports() {
                   <Badge
                     variant="outline"
                     className={`text-[10px] uppercase ${
-                      run.status === "completed" ? "text-success border-success/20" :
+                      run.status === "succeeded" || run.status === "completed" ? "text-success border-success/20" :
                       run.status === "running" ? "text-primary border-primary/20" :
-                      run.status === "error" ? "text-destructive border-destructive/20" :
+                      run.status === "failed" || run.status === "error" ? "text-destructive border-destructive/20" :
                       "text-muted-foreground"
                     }`}
                   >
-                    {run.status}
+                    {run.status === "succeeded" ? "completed" : run.status}
                   </Badge>
-                  {run.status === "completed" && run.file_path && (
+                  {(run.status === "succeeded" || run.status === "completed") && run.file_path && (
                     <>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)} title="View Report">
                         <Eye className="h-4 w-4" />
@@ -656,7 +670,7 @@ export default function Reports() {
                       </Button>
                     </>
                   )}
-                  {run.status === "error" && run.error && (
+                  {(run.status === "failed" || run.status === "error") && run.error && (
                     <span className="text-xs text-destructive max-w-[200px] truncate" title={run.error}>{run.error}</span>
                   )}
                 </div>

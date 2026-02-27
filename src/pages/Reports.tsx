@@ -227,7 +227,7 @@ export default function Reports() {
   const queryClient = useQueryClient();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [newSchedule, setNewSchedule] = useState({ template: "", frequency: "weekly" });
+  const [newSchedule, setNewSchedule] = useState({ template: "", frequency: "weekly", runDayOfMonth: 1 });
   const [viewingReport, setViewingReport] = useState<any>(null);
   const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date>(new Date());
@@ -335,6 +335,7 @@ export default function Reports() {
       if (!orgId) throw new Error("No org");
       const { error } = await supabase.from("report_schedules").insert({
         org_id: orgId, template_slug: newSchedule.template, frequency: newSchedule.frequency,
+        run_day_of_month: newSchedule.frequency === "monthly" ? newSchedule.runDayOfMonth : 1,
       });
       if (error) throw error;
     },
@@ -342,7 +343,7 @@ export default function Reports() {
       queryClient.invalidateQueries({ queryKey: ["report_schedules"] });
       toast.success("Schedule created");
       setScheduleOpen(false);
-      setNewSchedule({ template: "", frequency: "weekly" });
+      setNewSchedule({ template: "", frequency: "weekly", runDayOfMonth: 1 });
     },
     onError: (err: any) => toast.error(err.message || "Failed to create schedule"),
   });
@@ -473,6 +474,21 @@ export default function Reports() {
               <DialogHeader><DialogTitle>New Report Schedule</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
                 <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Frequency</label>
+                  <Select value={newSchedule.frequency} onValueChange={(v) => {
+                    const autoTemplate = v === "monthly"
+                      ? (templates || []).find((t) => t.slug.includes("monthly") || t.name.toLowerCase().includes("monthly"))?.slug || newSchedule.template
+                      : (templates || []).find((t) => t.slug.includes("weekly") || t.name.toLowerCase().includes("weekly"))?.slug || newSchedule.template;
+                    setNewSchedule((s) => ({ ...s, frequency: v, template: autoTemplate }));
+                  }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Template</label>
                   <Select value={newSchedule.template} onValueChange={(v) => setNewSchedule((s) => ({ ...s, template: v }))}>
                     <SelectTrigger><SelectValue placeholder="Select template" /></SelectTrigger>
@@ -483,16 +499,20 @@ export default function Reports() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Frequency</label>
-                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {newSchedule.frequency === "monthly" && (
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1.5 block">Day of Month</label>
+                    <Select value={String(newSchedule.runDayOfMonth)} onValueChange={(v) => setNewSchedule((s) => ({ ...s, runDayOfMonth: parseInt(v) }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                          <SelectItem key={d} value={String(d)}>{d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Report will run on this day each month</p>
+                  </div>
+                )}
                 <Button className="w-full" disabled={!newSchedule.template || createSchedule.isPending} onClick={() => createSchedule.mutate()}>
                   {createSchedule.isPending ? "Creating…" : "Create Schedule"}
                 </Button>
@@ -516,7 +536,7 @@ export default function Reports() {
                   <div>
                     <p className="text-sm font-medium text-foreground">{templateName(s.template_slug)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.frequency === "weekly" ? "Every week" : "Every month"} at {s.run_at_local_time} ({s.timezone})
+                      {s.frequency === "weekly" ? "Every week" : `Every month on the ${s.run_day_of_month === 1 ? "1st" : s.run_day_of_month === 2 ? "2nd" : s.run_day_of_month === 3 ? "3rd" : `${s.run_day_of_month}th`}`} at {s.run_at_local_time} ({s.timezone})
                       {s.last_run_at && ` · Last run ${format(new Date(s.last_run_at), "MMM d")}`}
                     </p>
                   </div>

@@ -264,20 +264,28 @@ Deno.serve(async (req) => {
 
       // Store in bucket
       const fileName = `report_${run.id}.json`;
+      const reportJson = JSON.stringify(report, null, 2);
       const { error: uploadErr } = await supabase.storage
         .from("reports")
-        .upload(fileName, new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }), {
+        .upload(fileName, reportJson, {
           contentType: "application/json",
           upsert: true,
         });
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) {
+        console.error("Upload error:", uploadErr);
+        throw uploadErr;
+      }
 
-      await supabase.from("report_runs").update({
-        status: "completed",
+      const { error: updateErr } = await supabase.from("report_runs").update({
+        status: "succeeded",
         completed_at: new Date().toISOString(),
         file_path: fileName,
         error: null,
       }).eq("id", run.id);
+      if (updateErr) {
+        console.error("Update error:", updateErr);
+        throw updateErr;
+      }
 
       return json({ message: "Report generated", run_id: run.id });
     } catch (processErr) {

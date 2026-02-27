@@ -6,12 +6,22 @@ interface KPICardProps {
   delta: number;
   prefix?: string;
   suffix?: string;
+  subtext?: string;
 }
 
-export function KPICard({ label, value, delta, suffix }: KPICardProps) {
+function humanizeDelta(delta: number): { text: string; className: string } {
+  const pct = Math.abs(delta * 100);
+  if (pct < 1) return { text: "No change", className: "kpi-neutral" };
+  if (delta > 0.15) return { text: "Strong growth", className: "kpi-up" };
+  if (delta > 0) return { text: `+${(delta * 100).toFixed(1)}%`, className: "kpi-up" };
+  if (delta < -0.15) return { text: "Attention needed", className: "kpi-down" };
+  return { text: `${(delta * 100).toFixed(1)}%`, className: "kpi-down" };
+}
+
+export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) {
   const isUp = delta > 0;
   const isDown = delta < 0;
-  const deltaStr = `${isUp ? "+" : ""}${(delta * 100).toFixed(1)}%`;
+  const { text: deltaText, className: deltaClass } = humanizeDelta(delta);
 
   return (
     <div className="glass-card p-5 flex flex-col gap-1 animate-slide-up">
@@ -25,14 +35,16 @@ export function KPICard({ label, value, delta, suffix }: KPICardProps) {
         </span>
       </div>
       <div className="flex items-center gap-1 mt-1">
-        {isUp && <ArrowUpRight className="h-3.5 w-3.5 text-kpi-up" />}
-        {isDown && <ArrowDownRight className="h-3.5 w-3.5 text-kpi-down" />}
-        {!isUp && !isDown && <Minus className="h-3.5 w-3.5 text-kpi-neutral" />}
-        <span className={`text-xs font-mono-data font-medium ${isUp ? "text-kpi-up" : isDown ? "text-kpi-down" : "text-kpi-neutral"}`}>
-          {deltaStr}
+        {isUp && <ArrowUpRight className="h-3.5 w-3.5 kpi-up" />}
+        {isDown && <ArrowDownRight className="h-3.5 w-3.5 kpi-down" />}
+        {!isUp && !isDown && <Minus className="h-3.5 w-3.5 kpi-neutral" />}
+        <span className={`text-xs font-medium ${deltaClass}`}>
+          {deltaText}
         </span>
-        <span className="text-xs text-muted-foreground">vs prior period</span>
       </div>
+      {subtext && (
+        <p className="text-[11px] text-muted-foreground mt-0.5">{subtext}</p>
+      )}
     </div>
   );
 }
@@ -44,9 +56,15 @@ interface KPIRowProps {
     pageviews: { value: number; delta: number; label: string };
     cvr: { value: number; delta: number; label: string };
   };
+  totalSessions?: number;
+  totalLeads?: number;
 }
 
-export function KPIRow({ kpis }: KPIRowProps) {
+export function KPIRow({ kpis, totalSessions, totalLeads }: KPIRowProps) {
+  const cvrSubtext = totalSessions && totalLeads !== undefined
+    ? `${totalLeads} of ${totalSessions} sessions converted`
+    : undefined;
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <KPICard
@@ -66,9 +84,10 @@ export function KPIRow({ kpis }: KPIRowProps) {
       />
       <KPICard
         label={kpis.cvr.label}
-        value={`${(kpis.cvr.value * 100).toFixed(2)}`}
+        value={`${(kpis.cvr.value * 100).toFixed(1)}`}
         delta={kpis.cvr.delta}
         suffix="%"
+        subtext={cvrSubtext}
       />
     </div>
   );

@@ -132,6 +132,47 @@ export type Database = {
           },
         ]
       }
+      dashboard_snapshots: {
+        Row: {
+          created_at: string
+          created_by: string
+          date_range_end: string
+          date_range_start: string
+          expires_at: string
+          id: string
+          org_id: string
+          snapshot_data: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date_range_end: string
+          date_range_start: string
+          expires_at: string
+          id?: string
+          org_id: string
+          snapshot_data?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date_range_end?: string
+          date_range_start?: string
+          expires_at?: string
+          id?: string
+          org_id?: string
+          snapshot_data?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_snapshots_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_jobs: {
         Row: {
           completed_at: string | null
@@ -247,6 +288,7 @@ export type Database = {
           external_form_id: string
           form_category: string
           id: string
+          is_primary_lead: boolean
           lead_weight: number
           name: string
           org_id: string
@@ -259,6 +301,7 @@ export type Database = {
           external_form_id: string
           form_category?: string
           id?: string
+          is_primary_lead?: boolean
           lead_weight?: number
           name?: string
           org_id: string
@@ -271,6 +314,7 @@ export type Database = {
           external_form_id?: string
           form_category?: string
           id?: string
+          is_primary_lead?: boolean
           lead_weight?: number
           name?: string
           org_id?: string
@@ -1003,6 +1047,44 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_settings: {
+        Row: {
+          created_at: string
+          id: string
+          notification_preferences: Json
+          onboarding_completed: boolean
+          org_id: string
+          primary_goal: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notification_preferences?: Json
+          onboarding_completed?: boolean
+          org_id: string
+          primary_goal?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notification_preferences?: Json
+          onboarding_completed?: boolean
+          org_id?: string
+          primary_goal?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]

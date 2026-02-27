@@ -100,7 +100,7 @@ export function generateInsights(
       id: "leads_drop", type: "alert",
       headline: `Leads dropped ${Math.abs(leadsChange).toFixed(0)}% week-over-week`,
       impact: `From ${data.leads.previous} to ${data.leads.current} leads`,
-      confidence: "High", actionLabel: "View Sources", actionPath: "/dashboard",
+      confidence: "High", actionLabel: "View Sources", actionPath: "#section-sources",
       _weight: weights.leads_drop || 5,
     });
   }
@@ -110,7 +110,7 @@ export function generateInsights(
       id: "cvr_drop", type: "warning",
       headline: `Conversion rate dropped ${Math.abs(cvrChange).toFixed(0)}%`,
       impact: `Now at ${(data.cvr.current * 100).toFixed(1)}%`,
-      confidence: "High", actionLabel: "View Pages", actionPath: "/dashboard",
+      confidence: "High", actionLabel: "View Pages", actionPath: "#section-pages",
       _weight: weights.cvr_drop || 5,
     });
   }
@@ -120,7 +120,7 @@ export function generateInsights(
       id: "traffic_spike", type: "success",
       headline: `Traffic surged ${sessionsChange.toFixed(0)}% this week`,
       impact: `${data.sessions.current.toLocaleString()} sessions`,
-      confidence: "High", actionLabel: "View Sources", actionPath: "/dashboard",
+      confidence: "High", actionLabel: "View Sources", actionPath: "#section-sources",
       _weight: weights.traffic_spike || 5,
     });
   }
@@ -152,7 +152,7 @@ export function generateInsights(
         id: "top_page", type: "idea",
         headline: `${topPage.page_path} is your top converting page`,
         impact: `${topPage.leads} leads from ${topPage.sessions} sessions`,
-        confidence: "Medium", actionLabel: "View Pages", actionPath: "/dashboard",
+        confidence: "Medium", actionLabel: "View Pages", actionPath: "#section-pages",
         _weight: weights.top_page || 5,
       });
     }

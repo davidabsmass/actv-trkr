@@ -350,12 +350,28 @@ export default function Reports() {
     onError: (err: any) => toast.error(err.message || "Failed to create schedule"),
   });
 
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [editRunDay, setEditRunDay] = useState<number>(1);
+
   const toggleSchedule = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
       const { error } = await supabase.from("report_schedules").update({ enabled }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["report_schedules"] }),
+    onError: (err: any) => toast.error(err.message || "Failed to update schedule"),
+  });
+
+  const updateScheduleDay = useMutation({
+    mutationFn: async ({ id, day }: { id: string; day: number }) => {
+      const { error } = await supabase.from("report_schedules").update({ run_day_of_month: day }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report_schedules"] });
+      setEditingScheduleId(null);
+      toast.success("Schedule updated");
+    },
     onError: (err: any) => toast.error(err.message || "Failed to update schedule"),
   });
 
@@ -550,9 +566,37 @@ export default function Reports() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={`text-[10px] uppercase ${s.frequency === "weekly" ? "text-info border-info/20" : "text-primary border-primary/20"}`}>
-                    {s.frequency}
-                  </Badge>
+                  {s.frequency === "monthly" && editingScheduleId === s.id ? (
+                    <div className="flex items-center gap-2">
+                      <Select value={String(editRunDay)} onValueChange={(v) => setEditRunDay(parseInt(v))}>
+                        <SelectTrigger className="w-[80px] h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                            <SelectItem key={d} value={String(d)}>{d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" className="h-8 text-xs" disabled={updateScheduleDay.isPending} onClick={() => updateScheduleDay.mutate({ id: s.id, day: editRunDay })}>
+                        Save
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditingScheduleId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Badge variant="outline" className={`text-[10px] uppercase ${s.frequency === "weekly" ? "text-info border-info/20" : "text-primary border-primary/20"}`}>
+                        {s.frequency}
+                      </Badge>
+                      {s.frequency === "monthly" && (
+                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => { setEditingScheduleId(s.id); setEditRunDay(s.run_day_of_month); }}>
+                          <CalendarIcon className="h-3 w-3" /> Edit Day
+                        </Button>
+                      )}
+                    </>
+                  )}
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleSchedule.mutate({ id: s.id, enabled: !s.enabled })} title={s.enabled ? "Disable" : "Enable"}>
                     {s.enabled ? <ToggleRight className="h-4 w-4 text-success" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
                   </Button>

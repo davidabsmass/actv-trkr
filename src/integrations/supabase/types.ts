@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_spend: {
+        Row: {
+          created_at: string
+          id: string
+          month: string
+          org_id: string
+          site_id: string
+          source: string
+          spend: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: string
+          org_id: string
+          site_id: string
+          source: string
+          spend?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: string
+          org_id?: string
+          site_id?: string
+          source?: string
+          spend?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_spend_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_spend_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alerts: {
         Row: {
           created_at: string
@@ -198,6 +243,7 @@ export type Database = {
       forms: {
         Row: {
           created_at: string
+          estimated_value: number | null
           external_form_id: string
           form_category: string
           id: string
@@ -209,6 +255,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          estimated_value?: number | null
           external_form_id: string
           form_category?: string
           id?: string
@@ -220,6 +267,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          estimated_value?: number | null
           external_form_id?: string
           form_category?: string
           id?: string
@@ -962,6 +1010,7 @@ export type Database = {
           domain: string
           id: string
           org_id: string
+          plan_tier: string
           plugin_version: string | null
           type: string
         }
@@ -970,6 +1019,7 @@ export type Database = {
           domain: string
           id?: string
           org_id: string
+          plan_tier?: string
           plugin_version?: string | null
           type?: string
         }
@@ -978,6 +1028,7 @@ export type Database = {
           domain?: string
           id?: string
           org_id?: string
+          plan_tier?: string
           plugin_version?: string | null
           type?: string
         }
@@ -1087,6 +1138,63 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      weekly_summaries: {
+        Row: {
+          conversion_anomalies: Json | null
+          created_at: string
+          id: string
+          leads_change: number | null
+          org_id: string
+          risk_alert: string | null
+          sessions_change: number | null
+          site_id: string
+          summary_text: string
+          top_opportunity: string | null
+          week_start: string
+        }
+        Insert: {
+          conversion_anomalies?: Json | null
+          created_at?: string
+          id?: string
+          leads_change?: number | null
+          org_id: string
+          risk_alert?: string | null
+          sessions_change?: number | null
+          site_id: string
+          summary_text: string
+          top_opportunity?: string | null
+          week_start: string
+        }
+        Update: {
+          conversion_anomalies?: Json | null
+          created_at?: string
+          id?: string
+          leads_change?: number | null
+          org_id?: string
+          risk_alert?: string | null
+          sessions_change?: number | null
+          site_id?: string
+          summary_text?: string
+          top_opportunity?: string | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_summaries_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_summaries_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

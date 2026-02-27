@@ -9,20 +9,28 @@ import { VisitorMapSection } from "@/components/dashboard/VisitorMapSection";
 import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
+import { FunnelView } from "@/components/dashboard/FunnelView";
+import { FormLeaderboard } from "@/components/dashboard/FormLeaderboard";
+import { TrafficSourceROI } from "@/components/dashboard/TrafficSourceROI";
+import { WeeklySummary } from "@/components/dashboard/WeeklySummary";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
+import { usePlanTier } from "@/hooks/use-plan-tier";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
   getMockAlerts, getMockForecast,
 } from "@/lib/mock-data";
 import { BarChart3, Zap, AlertTriangle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const [days, setDays] = useState(30);
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
+  const { hasFeature } = usePlanTier();
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
@@ -31,6 +39,23 @@ const Dashboard = () => {
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
   const { data: formsData } = useForms(orgId);
+
+  // Get leads for form leaderboard
+  const { data: leadsData } = useQuery({
+    queryKey: ["leads_for_forms", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("leads")
+        .select("form_id, submitted_at, source")
+        .eq("org_id", orgId)
+        .gte("submitted_at", `${startDate}T00:00:00Z`)
+        .lte("submitted_at", `${endDate}T23:59:59.999Z`);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId,
+  });
 
   const hasRealData = realtimeData && (realtimeData.totalPageviews > 0 || realtimeData.totalSessions > 0);
 
@@ -102,7 +127,7 @@ const Dashboard = () => {
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">Revenue Command Center</h1>
           <p className="text-sm text-muted-foreground">{orgName}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -136,7 +161,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium text-foreground">No site connected yet</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Make sure the plugin is activated on your WordPress site. Once the first pageview is received, your site will appear here.
+                  Make sure the plugin is activated on your WordPress site.
                 </p>
                 <button onClick={() => navigate("/settings")} className="text-xs font-medium text-primary hover:underline mt-1.5">
                   Go to Settings →
@@ -144,11 +169,43 @@ const Dashboard = () => {
               </div>
             </div>
           )}
+
+          {/* AI Weekly Summary */}
+          {hasFeature("ai_insights") && <WeeklySummary />}
+
           <AlertsSection alerts={processedData.alerts} />
           <KPIRow kpis={processedData.kpis} />
           <TrendsChart data={processedData.dailyData} />
+
+          {/* Traffic Source ROI */}
+          {hasFeature("attribution") && (
+            <TrafficSourceROI sources={processedData.sources} />
+          )}
+
           <AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} />
-          <VisitorMapSection data={realtimeData?.countries || []} />
+
+          {/* Funnel View - Growth only */}
+          <FunnelView
+            totalPageviews={realtimeData?.totalPageviews || 0}
+            formPageViews={0}
+            totalLeads={realtimeData?.totalLeads || 0}
+            locked={!hasFeature("funnel_view")}
+          />
+
+          {/* Form Performance Leaderboard */}
+          {formsData && formsData.length > 0 && (
+            <FormLeaderboard
+              forms={formsData}
+              leads={leadsData || []}
+              sessions={realtimeData?.totalSessions || 0}
+            />
+          )}
+
+          {/* Multi-Location Map - Growth only */}
+          {hasFeature("multi_location_map") && (
+            <VisitorMapSection data={realtimeData?.countries || []} />
+          )}
+
           <ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} />
           <ForecastSection forecast={processedData.forecast} />
         </div>

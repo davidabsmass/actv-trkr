@@ -57,9 +57,24 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
+  const isLoading = !realtimeData;
   const hasRealData = realtimeData && (realtimeData.totalPageviews > 0 || realtimeData.totalSessions > 0);
 
   const processedData = useMemo(() => {
+    if (isLoading) {
+      return {
+        kpis: getMockKPIs(),
+        dailyData: [],
+        sources: [],
+        campaigns: [],
+        pages: [],
+        opportunities: [],
+        alerts: [],
+        forecast: getMockForecast(days),
+        isMock: true,
+        isLoading: true,
+      };
+    }
     if (!hasRealData || !realtimeData) {
       return {
         kpis: getMockKPIs(),
@@ -69,7 +84,7 @@ const Dashboard = () => {
         pages: getMockTopPages(),
         opportunities: getMockOpportunities(),
         alerts: getMockAlerts(),
-        forecast: getMockForecast(30),
+        forecast: getMockForecast(days),
         isMock: true,
       };
     }
@@ -101,7 +116,7 @@ const Dashboard = () => {
       date: format(new Date(a.date), "MMM d"),
     }));
 
-    const forecast = getMockForecast(30);
+    const forecast = getMockForecast(days);
     forecast.sufficient_data = false;
     forecast.days_until_available = 42;
 
@@ -121,7 +136,7 @@ const Dashboard = () => {
       forecast,
       isMock: false,
     };
-  }, [hasRealData, realtimeData, alertsData, formsData, days]);
+  }, [isLoading, hasRealData, realtimeData, alertsData, formsData, days]);
 
   return (
     <div>
@@ -131,7 +146,7 @@ const Dashboard = () => {
           <p className="text-sm text-muted-foreground">{orgName}</p>
         </div>
         <div className="flex items-center gap-3">
-          {processedData.isMock && (
+          {processedData.isMock && !isLoading && (
             <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-1 rounded-md">Demo Data</span>
           )}
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
@@ -144,7 +159,16 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {!orgs || orgs.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="glass-card p-6 animate-pulse">
+              <div className="h-4 bg-muted rounded w-1/4 mb-4" />
+              <div className="h-20 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      ) : !orgs || orgs.length === 0 ? (
         <div className="glass-card p-8 text-center animate-slide-up">
           <Zap className="h-8 w-8 text-primary mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-foreground mb-2">No organization yet</h2>

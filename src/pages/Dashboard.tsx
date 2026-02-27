@@ -185,12 +185,13 @@ const Dashboard = () => {
           <AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} />
 
           {/* Funnel View - Growth only */}
-          <FunnelView
-            totalPageviews={realtimeData?.totalPageviews || 0}
-            formPageViews={0}
-            totalLeads={realtimeData?.totalLeads || 0}
-            locked={!hasFeature("funnel_view")}
-          />
+          {hasFeature("funnel_view") && (
+            <FunnelView
+              totalPageviews={realtimeData?.totalPageviews || 0}
+              formPageViews={0}
+              totalLeads={realtimeData?.totalLeads || 0}
+            />
+          )}
 
           {/* Form Performance Leaderboard */}
           {formsData && formsData.length > 0 && (

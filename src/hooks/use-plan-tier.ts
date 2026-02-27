@@ -13,7 +13,7 @@ const FEATURES: Record<string, PlanTier[]> = {
   revenue_estimation: ["performance", "growth"],
   ai_insights: ["performance", "growth"],
   funnel_view: ["growth"],
-  multi_location_map: ["growth"],
+  multi_location_map: ["core", "performance", "growth"],
   white_label_exports: ["growth"],
   agency_benchmark: ["growth"],
 };

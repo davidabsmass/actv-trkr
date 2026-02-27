@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
@@ -25,6 +26,7 @@ type ExportFormat = "csv" | "xlsx";
 
 export default function Exports() {
   const { orgId, orgName } = useOrg();
+  const navigate = useNavigate();
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
@@ -202,6 +204,12 @@ export default function Exports() {
   // ── Form list view ──
   return (
     <div>
+      <button
+        onClick={() => navigate("/dashboard")}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </button>
       <h1 className="text-2xl font-bold text-foreground mb-1">Exports</h1>
       <p className="text-sm text-muted-foreground mb-6">Export data for {orgName}</p>
 

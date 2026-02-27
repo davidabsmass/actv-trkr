@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
@@ -50,6 +51,7 @@ const weightLabels: Record<string, string> = {
 
 export default function Entries() {
   const { orgId, orgName } = useOrg();
+  const navigate = useNavigate();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
@@ -121,6 +123,12 @@ export default function Entries() {
 
   return (
     <div>
+      <button
+        onClick={() => navigate("/dashboard")}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </button>
       <h1 className="text-2xl font-bold text-foreground mb-1">Entries</h1>
       <p className="text-sm text-muted-foreground mb-6">Lead submissions for {orgName}</p>
 

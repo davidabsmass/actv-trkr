@@ -10,7 +10,8 @@ import {
   Legend,
   Area,
 } from "recharts";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
 
 interface TrendsChartProps {
   data: Array<{
@@ -23,15 +24,81 @@ interface TrendsChartProps {
 }
 
 type MetricView = "leads_sessions" | "cvr";
+type Granularity = "day" | "week" | "month" | "year" | "all";
+
+const granularityOptions: { label: string; value: Granularity }[] = [
+  { label: "Day", value: "day" },
+  { label: "Week", value: "week" },
+  { label: "Month", value: "month" },
+  { label: "Year", value: "year" },
+  { label: "All", value: "all" },
+];
+
+function bucketKey(dateStr: string, granularity: Granularity): string {
+  const d = parseISO(dateStr);
+  switch (granularity) {
+    case "week": return format(startOfWeek(d, { weekStartsOn: 1 }), "yyyy-MM-dd");
+    case "month": return format(startOfMonth(d), "yyyy-MM");
+    case "year": return format(startOfYear(d), "yyyy");
+    case "all": return "all";
+    default: return dateStr;
+  }
+}
+
+function bucketLabel(key: string, granularity: Granularity): string {
+  switch (granularity) {
+    case "week": return `Wk ${format(parseISO(key), "MMM d")}`;
+    case "month": return format(parseISO(key + "-01"), "MMM yyyy");
+    case "year": return key;
+    case "all": return "All Time";
+    default: return format(parseISO(key), "MMM d");
+  }
+}
 
 export function TrendsChart({ data }: TrendsChartProps) {
   const [view, setView] = useState<MetricView>("leads_sessions");
+  const [granularity, setGranularity] = useState<Granularity>("day");
+
+  const aggregatedData = useMemo(() => {
+    if (granularity === "day") return data;
+    const buckets: Record<string, { sessions: number; leads: number }> = {};
+    const order: string[] = [];
+    for (const d of data) {
+      const key = bucketKey(d.date, granularity);
+      if (!buckets[key]) { buckets[key] = { sessions: 0, leads: 0 }; order.push(key); }
+      buckets[key].sessions += d.sessions;
+      buckets[key].leads += d.leads;
+    }
+    return order.map((key) => ({
+      date: key,
+      dateLabel: bucketLabel(key, granularity),
+      sessions: buckets[key].sessions,
+      leads: buckets[key].leads,
+      cvr: buckets[key].sessions > 0 ? buckets[key].leads / buckets[key].sessions : 0,
+    }));
+  }, [data, granularity]);
 
   return (
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-foreground">Trends</h3>
-        <div className="flex gap-1 bg-muted rounded-md p-0.5">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 bg-muted rounded-md p-0.5">
+            {granularityOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setGranularity(opt.value)}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  granularity === opt.value
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1 bg-muted rounded-md p-0.5">
           <button
             onClick={() => setView("leads_sessions")}
             className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
@@ -52,12 +119,13 @@ export function TrendsChart({ data }: TrendsChartProps) {
           >
             Conversion Rate
           </button>
+          </div>
         </div>
       </div>
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           {view === "leads_sessions" ? (
-            <ComposedChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <ComposedChart data={aggregatedData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey="dateLabel"
@@ -115,7 +183,7 @@ export function TrendsChart({ data }: TrendsChartProps) {
               />
             </ComposedChart>
           ) : (
-            <ComposedChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <ComposedChart data={aggregatedData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 dataKey="dateLabel"

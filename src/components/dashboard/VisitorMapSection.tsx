@@ -1,8 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Globe } from "lucide-react";
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
+import { useMemo } from "react";
 
-// ISO 3166-1 alpha-2 → country name mapping (top ~50 countries)
+const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+// ISO 3166-1 alpha-2 → ISO 3166-1 numeric mapping for TopoJSON join
+const ALPHA2_TO_NUMERIC: Record<string, string> = {
+  US: "840", GB: "826", CA: "124", AU: "036", DE: "276", FR: "250", IN: "356",
+  BR: "076", JP: "392", MX: "484", IT: "380", ES: "724", NL: "528", KR: "410",
+  SE: "752", NO: "578", DK: "208", FI: "246", PL: "616", AT: "040", CH: "756",
+  BE: "056", PT: "620", IE: "372", NZ: "554", SG: "702", HK: "344", TW: "158",
+  PH: "608", TH: "764", ID: "360", MY: "458", VN: "704", ZA: "710", NG: "566",
+  EG: "818", KE: "404", AR: "032", CL: "152", CO: "170", PE: "604", RU: "643",
+  UA: "804", TR: "792", SA: "682", AE: "784", IL: "376", CZ: "203", RO: "642",
+  HU: "348", GR: "300", CN: "156",
+};
+
+// ISO 3166-1 alpha-2 → country name mapping
 const COUNTRY_NAMES: Record<string, string> = {
   US: "United States", GB: "United Kingdom", CA: "Canada", AU: "Australia", DE: "Germany",
   FR: "France", IN: "India", BR: "Brazil", JP: "Japan", MX: "Mexico", IT: "Italy",
@@ -37,10 +53,29 @@ function getFlagEmoji(code: string): string {
 }
 
 export function VisitorMapSection({ data }: VisitorMapSectionProps) {
+  const maxSessions = data?.[0]?.sessions || 1;
+  const totalSessions = data?.reduce((s, d) => s + d.sessions, 0) || 0;
+
+  // Build a numeric-id → session count lookup for the map
+  const numericMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    data.forEach((row) => {
+      const numId = ALPHA2_TO_NUMERIC[row.countryCode];
+      if (numId) m[numId] = row.sessions;
+    });
+    return m;
+  }, [data]);
+
   if (!data || data.length === 0) return null;
 
-  const maxSessions = data[0]?.sessions || 1;
-  const totalSessions = data.reduce((s, d) => s + d.sessions, 0);
+  const getColor = (numericId: string) => {
+    const count = numericMap[numericId];
+    if (!count) return "hsl(var(--muted) / 0.3)";
+    const intensity = Math.min(count / maxSessions, 1);
+    // Scale opacity from 0.2 to 1 based on session intensity
+    const opacity = 0.2 + intensity * 0.8;
+    return `hsl(var(--primary) / ${opacity.toFixed(2)})`;
+  };
 
   return (
     <Card className="glass-card animate-slide-up">
@@ -51,7 +86,41 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Country bars visualization */}
+        {/* World Map */}
+        <div className="rounded-lg overflow-hidden bg-muted/20 mb-4 border border-border/50">
+          <ComposableMap
+            projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}
+            height={320}
+            style={{ width: "100%", height: "auto" }}
+          >
+            <ZoomableGroup>
+              <Geographies geography={GEO_URL}>
+                {({ geographies }) =>
+                  geographies.map((geo) => {
+                    const numId = geo.id;
+                    const fillColor = getColor(numId);
+                    return (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill={fillColor}
+                        stroke="hsl(var(--border))"
+                        strokeWidth={0.4}
+                        style={{
+                          default: { outline: "none" },
+                          hover: { outline: "none", fill: "hsl(var(--primary))", cursor: "pointer" },
+                          pressed: { outline: "none" },
+                        }}
+                      />
+                    );
+                  })
+                }
+              </Geographies>
+            </ZoomableGroup>
+          </ComposableMap>
+        </div>
+
+        {/* Country bars */}
         <div className="space-y-2 mb-4">
           {data.slice(0, 10).map((row) => {
             const pct = (row.sessions / maxSessions) * 100;

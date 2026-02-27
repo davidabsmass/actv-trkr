@@ -24,20 +24,7 @@ export function FunnelView({ totalPageviews, formPageViews, totalLeads, locked }
   );
 
   if (locked) {
-    return (
-      <div className="glass-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-foreground">Conversion Funnel</h3>
-          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
-            <Lock className="h-3 w-3" /> Growth Plan
-          </span>
-        </div>
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Lock className="h-8 w-8 text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">Upgrade to Growth to access the conversion funnel view.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const maxVal = steps[0]?.value || 1;

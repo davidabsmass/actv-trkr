@@ -132,6 +132,56 @@ export type Database = {
           },
         ]
       }
+      archive_manifest: {
+        Row: {
+          archived_at: string
+          checksum: string | null
+          end_date: string
+          file_format: string
+          id: string
+          object_path: string
+          org_id: string
+          row_count: number
+          size_bytes: number
+          start_date: string
+          table_name: string
+        }
+        Insert: {
+          archived_at?: string
+          checksum?: string | null
+          end_date: string
+          file_format?: string
+          id?: string
+          object_path: string
+          org_id: string
+          row_count?: number
+          size_bytes?: number
+          start_date: string
+          table_name: string
+        }
+        Update: {
+          archived_at?: string
+          checksum?: string | null
+          end_date?: string
+          file_format?: string
+          id?: string
+          object_path?: string
+          org_id?: string
+          row_count?: number
+          size_bytes?: number
+          start_date?: string
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_manifest_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_snapshots: {
         Row: {
           created_at: string
@@ -173,45 +223,87 @@ export type Database = {
           },
         ]
       }
+      deletion_audit: {
+        Row: {
+          action: string
+          details: Json | null
+          executed_at: string
+          id: string
+          org_id: string
+        }
+        Insert: {
+          action: string
+          details?: Json | null
+          executed_at?: string
+          id?: string
+          org_id: string
+        }
+        Update: {
+          action?: string
+          details?: Json | null
+          executed_at?: string
+          id?: string
+          org_id?: string
+        }
+        Relationships: []
+      }
       export_jobs: {
         Row: {
           completed_at: string | null
           created_at: string
           created_by: string
+          end_date: string | null
           error: string | null
           file_path: string | null
+          filters_json: Json | null
           format: string
           id: string
           org_id: string
+          output_size_bytes: number | null
+          request_type: string
           row_count: number | null
           saved_view_id: string | null
+          start_date: string | null
           status: string
+          table_name: string | null
         }
         Insert: {
           completed_at?: string | null
           created_at?: string
           created_by: string
+          end_date?: string | null
           error?: string | null
           file_path?: string | null
+          filters_json?: Json | null
           format?: string
           id?: string
           org_id: string
+          output_size_bytes?: number | null
+          request_type?: string
           row_count?: number | null
           saved_view_id?: string | null
+          start_date?: string | null
           status?: string
+          table_name?: string | null
         }
         Update: {
           completed_at?: string | null
           created_at?: string
           created_by?: string
+          end_date?: string | null
           error?: string | null
           file_path?: string | null
+          filters_json?: Json | null
           format?: string
           id?: string
           org_id?: string
+          output_size_bytes?: number | null
+          request_type?: string
           row_count?: number | null
           saved_view_id?: string | null
+          start_date?: string | null
           status?: string
+          table_name?: string | null
         }
         Relationships: [
           {
@@ -631,6 +723,41 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monthly_aggregates: {
+        Row: {
+          dimension: string | null
+          id: string
+          metric: string
+          month: string
+          org_id: string
+          value: number
+        }
+        Insert: {
+          dimension?: string | null
+          id?: string
+          metric: string
+          month: string
+          org_id: string
+          value?: number
+        }
+        Update: {
+          dimension?: string | null
+          id?: string
+          metric?: string
+          month?: string
+          org_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_aggregates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
@@ -1094,6 +1221,8 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          archive_enabled: boolean
+          archive_format: string
           created_at: string
           id: string
           notification_preferences: Json
@@ -1101,9 +1230,12 @@ export type Database = {
           org_id: string
           primary_focus: string
           primary_goal: string
+          raw_retention_days: number
           updated_at: string
         }
         Insert: {
+          archive_enabled?: boolean
+          archive_format?: string
           created_at?: string
           id?: string
           notification_preferences?: Json
@@ -1111,9 +1243,12 @@ export type Database = {
           org_id: string
           primary_focus?: string
           primary_goal?: string
+          raw_retention_days?: number
           updated_at?: string
         }
         Update: {
+          archive_enabled?: boolean
+          archive_format?: string
           created_at?: string
           id?: string
           notification_preferences?: Json
@@ -1121,6 +1256,7 @@ export type Database = {
           org_id?: string
           primary_focus?: string
           primary_goal?: string
+          raw_retention_days?: number
           updated_at?: string
         }
         Relationships: [
@@ -1166,6 +1302,44 @@ export type Database = {
             foreignKeyName: "sites_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_status: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          grace_end_at: string | null
+          id: string
+          org_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          grace_end_at?: string | null
+          id?: string
+          org_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          grace_end_at?: string | null
+          id?: string
+          org_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_status_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
             referencedRelation: "orgs"
             referencedColumns: ["id"]
           },

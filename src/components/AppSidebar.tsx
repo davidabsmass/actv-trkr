@@ -1,6 +1,6 @@
 import {
   BarChart3, TableProperties, FileText, Download, Settings, LogOut,
-  ChevronDown, Building2, Shield, LayoutDashboard,
+  ChevronDown, Building2, Shield, LayoutDashboard, ClipboardList,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
@@ -125,6 +125,18 @@ export function AppSidebar() {
                     >
                       <LayoutDashboard className="h-4 w-4" />
                       <span>Agency Overview</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin-setup"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      <span>Setup & Inputs</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

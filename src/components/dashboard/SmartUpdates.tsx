@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import { TrendingDown, TrendingUp, AlertTriangle, Lightbulb, ShieldAlert, Sparkles } from "lucide-react";
+import { PrimaryFocus } from "@/hooks/use-site-settings";
 
 export interface SmartInsight {
   id: string;
@@ -9,6 +9,8 @@ export interface SmartInsight {
   confidence: "High" | "Medium" | "Low";
   actionLabel?: string;
   actionPath?: string;
+  /** Internal weight for focus-aware sorting */
+  _weight?: number;
 }
 
 const typeConfig = {
@@ -31,7 +33,6 @@ interface SmartUpdatesProps {
 
 export function SmartUpdates({ insights, onAction }: SmartUpdatesProps) {
   const visible = insights.slice(0, 5);
-
   if (visible.length === 0) return null;
 
   return (
@@ -45,10 +46,7 @@ export function SmartUpdates({ insights, onAction }: SmartUpdatesProps) {
           const config = typeConfig[insight.type];
           const Icon = config.icon;
           return (
-            <div
-              key={insight.id}
-              className={`flex items-start gap-3 p-3 rounded-lg border ${config.bg} ${config.border}`}
-            >
+            <div key={insight.id} className={`flex items-start gap-3 p-3 rounded-lg border ${config.bg} ${config.border}`}>
               <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${config.iconColor}`} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -57,15 +55,10 @@ export function SmartUpdates({ insights, onAction }: SmartUpdatesProps) {
                     {insight.confidence}
                   </span>
                 </div>
-                {insight.impact && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{insight.impact}</p>
-                )}
+                {insight.impact && <p className="text-xs text-muted-foreground mt-0.5">{insight.impact}</p>}
               </div>
               {insight.actionLabel && insight.actionPath && onAction && (
-                <button
-                  onClick={() => onAction(insight.actionPath!)}
-                  className="text-[11px] font-medium text-primary hover:underline whitespace-nowrap flex-shrink-0"
-                >
+                <button onClick={() => onAction(insight.actionPath!)} className="text-[11px] font-medium text-primary hover:underline whitespace-nowrap flex-shrink-0">
                   {insight.actionLabel} →
                 </button>
               )}
@@ -77,106 +70,94 @@ export function SmartUpdates({ insights, onAction }: SmartUpdatesProps) {
   );
 }
 
-// Generate insights from dashboard data
-export function generateInsights(data: {
-  sessions: { current: number; previous: number };
-  leads: { current: number; previous: number };
-  cvr: { current: number; previous: number };
-  pages?: Array<{ page_path: string; sessions: number; leads: number; cvr: number }>;
-  sources?: Array<{ source: string; sessions: number; leads: number }>;
-}): SmartInsight[] {
+// Focus-aware weight boosts per insight category
+const focusWeights: Record<PrimaryFocus, Record<string, number>> = {
+  lead_volume: { leads_drop: 10, leads_growth: 8, top_page: 6, traffic_spike: 5, cvr_drop: 3, sessions_drop: 3 },
+  marketing_impact: { leads_drop: 5, leads_growth: 5, top_page: 3, traffic_spike: 6, cvr_drop: 4, sessions_drop: 8 },
+  conversion_performance: { cvr_drop: 10, top_page: 8, leads_drop: 5, leads_growth: 4, traffic_spike: 3, sessions_drop: 3 },
+  paid_optimization: { sessions_drop: 8, cvr_drop: 7, leads_drop: 6, traffic_spike: 5, top_page: 3, leads_growth: 3 },
+};
+
+export function generateInsights(
+  data: {
+    sessions: { current: number; previous: number };
+    leads: { current: number; previous: number };
+    cvr: { current: number; previous: number };
+    pages?: Array<{ page_path: string; sessions: number; leads: number; cvr: number }>;
+    sources?: Array<{ source: string; sessions: number; leads: number }>;
+  },
+  focus: PrimaryFocus = "lead_volume"
+): SmartInsight[] {
   const insights: SmartInsight[] = [];
+  const weights = focusWeights[focus] || focusWeights.lead_volume;
 
-  const leadsChange = data.leads.previous > 0
-    ? ((data.leads.current - data.leads.previous) / data.leads.previous) * 100
-    : 0;
-  const sessionsChange = data.sessions.previous > 0
-    ? ((data.sessions.current - data.sessions.previous) / data.sessions.previous) * 100
-    : 0;
-  const cvrChange = data.cvr.previous > 0
-    ? ((data.cvr.current - data.cvr.previous) / data.cvr.previous) * 100
-    : 0;
+  const leadsChange = data.leads.previous > 0 ? ((data.leads.current - data.leads.previous) / data.leads.previous) * 100 : 0;
+  const sessionsChange = data.sessions.previous > 0 ? ((data.sessions.current - data.sessions.previous) / data.sessions.previous) * 100 : 0;
+  const cvrChange = data.cvr.previous > 0 ? ((data.cvr.current - data.cvr.previous) / data.cvr.previous) * 100 : 0;
 
-  // Lead drop
   if (leadsChange <= -25) {
     insights.push({
-      id: "leads_drop",
-      type: "alert",
+      id: "leads_drop", type: "alert",
       headline: `Leads dropped ${Math.abs(leadsChange).toFixed(0)}% week-over-week`,
       impact: `From ${data.leads.previous} to ${data.leads.current} leads`,
-      confidence: "High",
-      actionLabel: "View Sources",
-      actionPath: "/dashboard",
+      confidence: "High", actionLabel: "View Sources", actionPath: "/dashboard",
+      _weight: weights.leads_drop || 5,
     });
   }
 
-  // CVR drop
   if (cvrChange <= -20) {
     insights.push({
-      id: "cvr_drop",
-      type: "warning",
+      id: "cvr_drop", type: "warning",
       headline: `Conversion rate dropped ${Math.abs(cvrChange).toFixed(0)}%`,
       impact: `Now at ${(data.cvr.current * 100).toFixed(1)}%`,
-      confidence: "High",
-      actionLabel: "View Pages",
-      actionPath: "/dashboard",
+      confidence: "High", actionLabel: "View Pages", actionPath: "/dashboard",
+      _weight: weights.cvr_drop || 5,
     });
   }
 
-  // Traffic spike
   if (sessionsChange >= 30) {
     insights.push({
-      id: "traffic_spike",
-      type: "success",
+      id: "traffic_spike", type: "success",
       headline: `Traffic surged ${sessionsChange.toFixed(0)}% this week`,
       impact: `${data.sessions.current.toLocaleString()} sessions`,
-      confidence: "High",
-      actionLabel: "View Sources",
-      actionPath: "/dashboard",
+      confidence: "High", actionLabel: "View Sources", actionPath: "/dashboard",
+      _weight: weights.traffic_spike || 5,
     });
   }
 
-  // Sessions drop
   if (sessionsChange <= -30) {
     insights.push({
-      id: "sessions_drop",
-      type: "alert",
+      id: "sessions_drop", type: "alert",
       headline: `Traffic dropped ${Math.abs(sessionsChange).toFixed(0)}% WoW`,
       impact: "Check for tracking issues or campaign changes",
-      confidence: "Medium",
-      actionLabel: "Check Settings",
-      actionPath: "/settings",
+      confidence: "Medium", actionLabel: "Check Settings", actionPath: "/settings",
+      _weight: weights.sessions_drop || 5,
     });
   }
 
-  // Lead growth
   if (leadsChange >= 20 && data.leads.current >= 3) {
     insights.push({
-      id: "leads_growth",
-      type: "success",
+      id: "leads_growth", type: "success",
       headline: `Leads up ${leadsChange.toFixed(0)}% — nice momentum`,
       impact: `${data.leads.current} leads this week`,
       confidence: "High",
+      _weight: weights.leads_growth || 5,
     });
   }
 
-  // Top performing page idea
   if (data.pages && data.pages.length > 0) {
     const topPage = data.pages.sort((a, b) => b.leads - a.leads)[0];
     if (topPage && topPage.leads >= 2) {
       insights.push({
-        id: "top_page",
-        type: "idea",
+        id: "top_page", type: "idea",
         headline: `${topPage.page_path} is your top converting page`,
         impact: `${topPage.leads} leads from ${topPage.sessions} sessions`,
-        confidence: "Medium",
-        actionLabel: "View Pages",
-        actionPath: "/dashboard",
+        confidence: "Medium", actionLabel: "View Pages", actionPath: "/dashboard",
+        _weight: weights.top_page || 5,
       });
     }
   }
 
-  // Sort by severity
-  const severityOrder = { alert: 0, warning: 1, idea: 2, success: 3 };
-  return insights.sort((a, b) => severityOrder[a.type] - severityOrder[b.type]);
+  // Sort by focus-aware weight (descending), then by severity
+  return insights.sort((a, b) => (b._weight || 0) - (a._weight || 0));
 }

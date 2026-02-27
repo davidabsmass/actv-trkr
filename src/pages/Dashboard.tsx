@@ -21,7 +21,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { usePlanTier } from "@/hooks/use-plan-tier";
-import { useSiteSettings } from "@/hooks/use-site-settings";
+import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
@@ -87,40 +87,38 @@ const Dashboard = () => {
     };
   }, [thisWeekData, lastWeekData]);
 
-  // Smart insights
+  // Primary focus (new) with fallback to old goal
+  const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
+
+  // Smart insights with focus-aware weighting
   const smartInsights = useMemo(() => {
     if (!thisWeekData || !lastWeekData) return [];
     const twCvr = thisWeekData.totalSessions > 0 ? thisWeekData.totalLeads / thisWeekData.totalSessions : 0;
     const lwCvr = lastWeekData.totalSessions > 0 ? lastWeekData.totalLeads / lastWeekData.totalSessions : 0;
-    return generateInsights({
-      sessions: { current: thisWeekData.totalSessions, previous: lastWeekData.totalSessions },
-      leads: { current: thisWeekData.totalLeads, previous: lastWeekData.totalLeads },
-      cvr: { current: twCvr, previous: lwCvr },
-      pages: thisWeekData.pages?.map((p: any) => ({ ...p, page_path: p.path })),
-    });
-  }, [thisWeekData, lastWeekData]);
+    return generateInsights(
+      {
+        sessions: { current: thisWeekData.totalSessions, previous: lastWeekData.totalSessions },
+        leads: { current: thisWeekData.totalLeads, previous: lastWeekData.totalLeads },
+        cvr: { current: twCvr, previous: lwCvr },
+        pages: thisWeekData.pages?.map((p: any) => ({ ...p, page_path: p.path })),
+      },
+      primaryFocus
+    );
+  }, [thisWeekData, lastWeekData, primaryFocus]);
 
   const processedData = useMemo(() => {
     if (isLoading) {
       return {
-        kpis: getMockKPIs(),
-        dailyData: [],
-        sources: [], campaigns: [], pages: [], opportunities: [],
-        alerts: [], forecast: getMockForecast(days),
-        isMock: true, isLoading: true,
+        kpis: getMockKPIs(), dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
+        alerts: [], forecast: getMockForecast(days), isMock: true, isLoading: true,
       };
     }
     if (!hasRealData || !realtimeData) {
       return {
-        kpis: getMockKPIs(),
-        dailyData: getMockDailyData(days),
-        sources: getMockSourceAttribution(),
-        campaigns: getMockCampaignAttribution(),
-        pages: getMockTopPages(),
-        opportunities: getMockOpportunities(),
-        alerts: getMockAlerts(),
-        forecast: getMockForecast(days),
-        isMock: true,
+        kpis: getMockKPIs(), dailyData: getMockDailyData(days),
+        sources: getMockSourceAttribution(), campaigns: getMockCampaignAttribution(),
+        pages: getMockTopPages(), opportunities: getMockOpportunities(),
+        alerts: getMockAlerts(), forecast: getMockForecast(days), isMock: true,
       };
     }
 
@@ -130,8 +128,7 @@ const Dashboard = () => {
     const dailyData = Object.entries(dailyMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, vals]) => ({
-        date,
-        dateLabel: format(new Date(date), "MMM d"),
+        date, dateLabel: format(new Date(date), "MMM d"),
         sessions: vals.sessions, leads: vals.leads, pageviews: vals.pageviews,
         cvr: vals.sessions > 0 ? vals.leads / vals.sessions : 0,
       }));
@@ -160,15 +157,12 @@ const Dashboard = () => {
         pageviews: { value: totalPageviews, delta: 0, label: "Pageviews" },
         cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
-      dailyData, sources, campaigns, pages, opportunities, alerts, forecast,
-      isMock: false,
+      dailyData, sources, campaigns, pages, opportunities, alerts, forecast, isMock: false,
     };
   }, [isLoading, hasRealData, realtimeData, alertsData, formsData, days]);
 
-  // Goal-aware section ordering
-  const goal = settings?.primary_goal || "get_more_leads";
-
-  const renderGoalSections = () => {
+  // Focus-aware section ordering
+  const renderFocusSections = () => {
     const sections = {
       attribution: hasFeature("attribution") && (
         <TrafficSourceROI key="roi" sources={processedData.sources} />
@@ -191,29 +185,25 @@ const Dashboard = () => {
       forecast: <ForecastSection key="forecast" forecast={processedData.forecast} />,
     };
 
-    const goalOrder: Record<string, (keyof typeof sections)[]> = {
-      get_more_leads: ["content", "formLeaderboard", "attribution", "attributionDetail", "funnel", "map", "forecast"],
-      prove_roi: ["attribution", "attributionDetail", "formLeaderboard", "content", "funnel", "map", "forecast"],
-      improve_conversion: ["funnel", "content", "formLeaderboard", "attribution", "attributionDetail", "map", "forecast"],
-      reduce_ad_waste: ["attribution", "attributionDetail", "funnel", "formLeaderboard", "content", "map", "forecast"],
+    const focusOrder: Record<PrimaryFocus, (keyof typeof sections)[]> = {
+      lead_volume: ["content", "formLeaderboard", "attributionDetail", "attribution", "funnel", "map", "forecast"],
+      marketing_impact: ["attribution", "attributionDetail", "formLeaderboard", "content", "funnel", "map", "forecast"],
+      conversion_performance: ["funnel", "content", "formLeaderboard", "attribution", "attributionDetail", "map", "forecast"],
+      paid_optimization: ["attribution", "attributionDetail", "funnel", "formLeaderboard", "content", "map", "forecast"],
     };
 
-    const order = goalOrder[goal] || goalOrder.get_more_leads;
+    const order = focusOrder[primaryFocus] || focusOrder.lead_volume;
     return order.map((key) => sections[key]).filter(Boolean);
   };
 
   // Snapshot data for sharing
   const snapshotData = useMemo(() => ({
-    kpis: processedData.kpis,
-    wowData,
-    orgName,
-    goal,
-    generatedAt: new Date().toISOString(),
-  }), [processedData.kpis, wowData, orgName, goal]);
+    kpis: processedData.kpis, wowData, orgName,
+    focus: primaryFocus, generatedAt: new Date().toISOString(),
+  }), [processedData.kpis, wowData, orgName, primaryFocus]);
 
   return (
     <div>
-      {/* Onboarding Modal */}
       {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
 
       <div className="flex items-center justify-between mb-5">
@@ -257,7 +247,6 @@ const Dashboard = () => {
           </button>
         </div>
       ) : !hasRealData && !processedData.isMock ? (
-        /* Empty state — insufficient data */
         <div className="glass-card p-8 text-center animate-slide-up">
           <FileSearch className="h-8 w-8 text-primary mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-foreground mb-2">Collecting performance data</h2>
@@ -285,29 +274,15 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Week-over-Week Intelligence Strip */}
           {hasRealData && <WeekOverWeekStrip data={wowData} />}
-
-          {/* AI Weekly Summary */}
-          {hasFeature("ai_insights") && <WeeklySummary />}
-
+          {hasFeature("ai_insights") && <WeeklySummary primaryFocus={primaryFocus} />}
           <AlertsSection alerts={processedData.alerts} />
-
-          <KPIRow
-            kpis={processedData.kpis}
-            totalSessions={realtimeData?.totalSessions}
-            totalLeads={realtimeData?.totalLeads}
-          />
-
+          <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
           <TrendsChart data={processedData.dailyData} />
-
-          {/* Smart Updates */}
           {smartInsights.length > 0 && (
             <SmartUpdates insights={smartInsights} onAction={(path) => navigate(path)} />
           )}
-
-          {/* Goal-aware sections */}
-          {renderGoalSections()}
+          {renderFocusSections()}
         </div>
       )}
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { format, subDays, startOfDay } from "date-fns";
+import { format, subDays, startOfDay, startOfWeek, subWeeks } from "date-fns";
 import { KPIRow } from "@/components/dashboard/KPIRow";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { AttributionSection } from "@/components/dashboard/AttributionSection";
@@ -13,16 +13,21 @@ import { FunnelView } from "@/components/dashboard/FunnelView";
 import { FormLeaderboard } from "@/components/dashboard/FormLeaderboard";
 import { TrafficSourceROI } from "@/components/dashboard/TrafficSourceROI";
 import { WeeklySummary } from "@/components/dashboard/WeeklySummary";
+import { WeekOverWeekStrip } from "@/components/dashboard/WeekOverWeekStrip";
+import { SmartUpdates, generateInsights } from "@/components/dashboard/SmartUpdates";
+import { ShareableSnapshot } from "@/components/dashboard/ShareableSnapshot";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { usePlanTier } from "@/hooks/use-plan-tier";
+import { useSiteSettings } from "@/hooks/use-site-settings";
 import {
   getMockKPIs, getMockDailyData, getMockSourceAttribution,
   getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
   getMockAlerts, getMockForecast,
 } from "@/lib/mock-data";
-import { BarChart3, Zap, AlertTriangle } from "lucide-react";
+import { BarChart3, Zap, AlertTriangle, FileSearch } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,16 +36,23 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
   const { hasFeature } = usePlanTier();
+  const { settings, needsOnboarding } = useSiteSettings();
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
 
+  // WoW date ranges
+  const thisWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const lastWeekStart = format(subWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "yyyy-MM-dd");
+  const lastWeekEnd = format(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "yyyy-MM-dd");
+
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
+  const { data: thisWeekData } = useRealtimeDashboard(orgId, thisWeekStart, endDate);
+  const { data: lastWeekData } = useRealtimeDashboard(orgId, lastWeekStart, lastWeekEnd);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
   const { data: formsData } = useForms(orgId);
 
-  // Get leads for form leaderboard
   const { data: leadsData } = useQuery({
     queryKey: ["leads_for_forms", orgId, startDate, endDate],
     queryFn: async () => {
@@ -60,19 +72,42 @@ const Dashboard = () => {
   const isLoading = !realtimeData;
   const hasRealData = realtimeData && (realtimeData.totalPageviews > 0 || realtimeData.totalSessions > 0);
 
+  // WoW comparison data
+  const wowData = useMemo(() => {
+    const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
+    const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
+    const twCvr = tw.totalSessions > 0 ? tw.totalLeads / tw.totalSessions : 0;
+    const lwCvr = lw.totalSessions > 0 ? lw.totalLeads / lw.totalSessions : 0;
+    const bestPage = thisWeekData?.pages?.sort((a: any, b: any) => b.leads - a.leads)?.[0]?.path;
+    return {
+      sessions: { current: tw.totalSessions, previous: lw.totalSessions },
+      leads: { current: tw.totalLeads, previous: lw.totalLeads },
+      cvr: { current: twCvr, previous: lwCvr },
+      bestPage,
+    };
+  }, [thisWeekData, lastWeekData]);
+
+  // Smart insights
+  const smartInsights = useMemo(() => {
+    if (!thisWeekData || !lastWeekData) return [];
+    const twCvr = thisWeekData.totalSessions > 0 ? thisWeekData.totalLeads / thisWeekData.totalSessions : 0;
+    const lwCvr = lastWeekData.totalSessions > 0 ? lastWeekData.totalLeads / lastWeekData.totalSessions : 0;
+    return generateInsights({
+      sessions: { current: thisWeekData.totalSessions, previous: lastWeekData.totalSessions },
+      leads: { current: thisWeekData.totalLeads, previous: lastWeekData.totalLeads },
+      cvr: { current: twCvr, previous: lwCvr },
+      pages: thisWeekData.pages?.map((p: any) => ({ ...p, page_path: p.path })),
+    });
+  }, [thisWeekData, lastWeekData]);
+
   const processedData = useMemo(() => {
     if (isLoading) {
       return {
         kpis: getMockKPIs(),
         dailyData: [],
-        sources: [],
-        campaigns: [],
-        pages: [],
-        opportunities: [],
-        alerts: [],
-        forecast: getMockForecast(days),
-        isMock: true,
-        isLoading: true,
+        sources: [], campaigns: [], pages: [], opportunities: [],
+        alerts: [], forecast: getMockForecast(days),
+        isMock: true, isLoading: true,
       };
     }
     if (!hasRealData || !realtimeData) {
@@ -97,9 +132,7 @@ const Dashboard = () => {
       .map(([date, vals]) => ({
         date,
         dateLabel: format(new Date(date), "MMM d"),
-        sessions: vals.sessions,
-        leads: vals.leads,
-        pageviews: vals.pageviews,
+        sessions: vals.sessions, leads: vals.leads, pageviews: vals.pageviews,
         cvr: vals.sessions > 0 ? vals.leads / vals.sessions : 0,
       }));
 
@@ -127,34 +160,80 @@ const Dashboard = () => {
         pageviews: { value: totalPageviews, delta: 0, label: "Pageviews" },
         cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
-      dailyData,
-      sources,
-      campaigns,
-      pages,
-      opportunities,
-      alerts,
-      forecast,
+      dailyData, sources, campaigns, pages, opportunities, alerts, forecast,
       isMock: false,
     };
   }, [isLoading, hasRealData, realtimeData, alertsData, formsData, days]);
 
+  // Goal-aware section ordering
+  const goal = settings?.primary_goal || "get_more_leads";
+
+  const renderGoalSections = () => {
+    const sections = {
+      attribution: hasFeature("attribution") && (
+        <TrafficSourceROI key="roi" sources={processedData.sources} />
+      ),
+      attributionDetail: (
+        <AttributionSection key="attr" sources={processedData.sources} campaigns={processedData.campaigns} />
+      ),
+      funnel: hasFeature("funnel_view") && (
+        <FunnelView key="funnel" totalPageviews={realtimeData?.totalPageviews || 0} formPageViews={0} totalLeads={realtimeData?.totalLeads || 0} />
+      ),
+      formLeaderboard: formsData && formsData.length > 0 && (
+        <FormLeaderboard key="forms" forms={formsData} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} />
+      ),
+      map: hasFeature("multi_location_map") && (
+        <VisitorMapSection key="map" data={realtimeData?.countries || []} />
+      ),
+      content: (
+        <ContentPerformance key="content" pages={processedData.pages} opportunities={processedData.opportunities} />
+      ),
+      forecast: <ForecastSection key="forecast" forecast={processedData.forecast} />,
+    };
+
+    const goalOrder: Record<string, (keyof typeof sections)[]> = {
+      get_more_leads: ["content", "formLeaderboard", "attribution", "attributionDetail", "funnel", "map", "forecast"],
+      prove_roi: ["attribution", "attributionDetail", "formLeaderboard", "content", "funnel", "map", "forecast"],
+      improve_conversion: ["funnel", "content", "formLeaderboard", "attribution", "attributionDetail", "map", "forecast"],
+      reduce_ad_waste: ["attribution", "attributionDetail", "funnel", "formLeaderboard", "content", "map", "forecast"],
+    };
+
+    const order = goalOrder[goal] || goalOrder.get_more_leads;
+    return order.map((key) => sections[key]).filter(Boolean);
+  };
+
+  // Snapshot data for sharing
+  const snapshotData = useMemo(() => ({
+    kpis: processedData.kpis,
+    wowData,
+    orgName,
+    goal,
+    generatedAt: new Date().toISOString(),
+  }), [processedData.kpis, wowData, orgName, goal]);
+
   return (
     <div>
+      {/* Onboarding Modal */}
+      {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
+
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Revenue Command Center</h1>
           <p className="text-sm text-muted-foreground">{orgName}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {processedData.isMock && !isLoading && (
             <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-1 rounded-md">Demo Data</span>
           )}
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
           {!processedData.isMock && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-              <span className="text-[11px] font-medium text-success">Live</span>
-            </div>
+            <>
+              <ShareableSnapshot snapshotData={snapshotData} startDate={startDate} endDate={endDate} />
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
+                <span className="text-[11px] font-medium text-success">Live</span>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -177,6 +256,20 @@ const Dashboard = () => {
             Set up an organization
           </button>
         </div>
+      ) : !hasRealData && !processedData.isMock ? (
+        /* Empty state — insufficient data */
+        <div className="glass-card p-8 text-center animate-slide-up">
+          <FileSearch className="h-8 w-8 text-primary mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-foreground mb-2">Collecting performance data</h2>
+          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+            Once traffic and leads are detected, insights will appear here. Make sure your tracking plugin is active.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={() => navigate("/settings")} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+              Setup Checklist
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-4">
           {sitesData && sitesData.length === 0 && (
@@ -184,9 +277,7 @@ const Dashboard = () => {
               <AlertTriangle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">No site connected yet</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Make sure the plugin is activated on your WordPress site.
-                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Make sure the plugin is activated on your WordPress site.</p>
                 <button onClick={() => navigate("/settings")} className="text-xs font-medium text-primary hover:underline mt-1.5">
                   Go to Settings →
                 </button>
@@ -194,45 +285,29 @@ const Dashboard = () => {
             </div>
           )}
 
+          {/* Week-over-Week Intelligence Strip */}
+          {hasRealData && <WeekOverWeekStrip data={wowData} />}
+
           {/* AI Weekly Summary */}
           {hasFeature("ai_insights") && <WeeklySummary />}
 
           <AlertsSection alerts={processedData.alerts} />
-          <KPIRow kpis={processedData.kpis} />
+
+          <KPIRow
+            kpis={processedData.kpis}
+            totalSessions={realtimeData?.totalSessions}
+            totalLeads={realtimeData?.totalLeads}
+          />
+
           <TrendsChart data={processedData.dailyData} />
 
-          {/* Traffic Source ROI */}
-          {hasFeature("attribution") && (
-            <TrafficSourceROI sources={processedData.sources} />
+          {/* Smart Updates */}
+          {smartInsights.length > 0 && (
+            <SmartUpdates insights={smartInsights} onAction={(path) => navigate(path)} />
           )}
 
-          <AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} />
-
-          {/* Funnel View - Growth only */}
-          {hasFeature("funnel_view") && (
-            <FunnelView
-              totalPageviews={realtimeData?.totalPageviews || 0}
-              formPageViews={0}
-              totalLeads={realtimeData?.totalLeads || 0}
-            />
-          )}
-
-          {/* Form Performance Leaderboard */}
-          {formsData && formsData.length > 0 && (
-            <FormLeaderboard
-              forms={formsData}
-              leads={leadsData || []}
-              sessions={realtimeData?.totalSessions || 0}
-            />
-          )}
-
-          {/* Multi-Location Map - Growth only */}
-          {hasFeature("multi_location_map") && (
-            <VisitorMapSection data={realtimeData?.countries || []} />
-          )}
-
-          <ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} />
-          <ForecastSection forecast={processedData.forecast} />
+          {/* Goal-aware sections */}
+          {renderGoalSections()}
         </div>
       )}
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">

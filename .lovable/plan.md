@@ -1,18 +1,45 @@
 
 
-## Problem
-The dashboard is showing a locked "Conversion Funnel" section with a "Growth Plan" badge because your sites have `plan_tier = 'core'`. This feature gating was built for future SaaS customers — not for you as the product owner.
+## Current State
 
-## Plan
+The Reports page currently offers:
+- **3 report templates**: Monthly Performance Report, Campaign Report, Weekly Brief
+- **Date range selection** with calendar pickers and quick presets (7d, 14d, 30d, 60d, 90d)
+- **Scheduled reports** (weekly/monthly with day-of-month selection)
+- **Report history** with view/download
 
-### 1. Update your sites to "growth" tier
-Run a database migration to set both of your sites' `plan_tier` to `'growth'` so all dashboard sections are fully unlocked (Funnel View, Multi-Location Map, AI Insights, Attribution, etc.).
+However, all three templates use the **same edge function** (`process-report`) which generates an identical "Monthly Performance Report" structure regardless of template. The Campaign Report and Weekly Brief produce the same output.
 
-### 2. Remove the locked/paywall UI from the Funnel View
-Instead of showing a lock icon and "Upgrade to Growth" message, the Funnel View component should simply not render when the feature isn't available — no upsell messaging. The locked state with the padlock icon feels like an ad in your own product.
+## Proposed Enhancements
 
-### Technical Details
-- **Database**: `UPDATE sites SET plan_tier = 'growth' WHERE org_id = '8e02f31e-32a8-4843-8595-f2cc7cc216c6'`
-- **`src/components/dashboard/FunnelView.tsx`**: Remove the `locked` prop UI block that shows the lock icon and upgrade message. If `locked`, simply return `null`.
-- **`src/pages/Dashboard.tsx`**: Simplify the FunnelView rendering — if the feature isn't available, don't render the component at all (already partially done with `locked` prop, just clean it up).
+### 1. Template-aware report generation
+Update `process-report` edge function to produce different report structures based on `template_slug`:
+
+- **Monthly Performance** (existing): Full 5-section report (Executive Summary, Growth Engine, Conversion Intelligence, UX Signals, Action Plan)
+- **Weekly Brief**: Condensed summary — just KPI snapshot, top 3 changes vs prior week, and 1-2 action items. Shorter, faster to scan.
+- **Campaign Report**: UTM/campaign-focused — group all metrics by `utm_campaign`, show per-campaign leads, sessions, CVR, and cost-per-lead (if `ad_spend` data exists). Skip device/geo sections.
+
+### 2. Add report options beyond date
+Add optional parameters users can configure before generating:
+
+- **Compare to** dropdown: "Previous period" (default), "Same period last year", "None"
+- **Focus filter**: Optional UTM source or campaign filter to scope the report to a specific channel
+- These get stored in `report_runs.params` and used by the edge function
+
+### 3. Update ReportViewer to handle different template shapes
+The viewer currently hardcodes the 5-section layout. Add conditional rendering based on `report.templateSlug`.
+
+## Implementation Steps
+
+1. **Add UI controls** in Reports.tsx generate section: comparison mode select + optional campaign/source filter input
+2. **Update `process-report` edge function** to branch logic by `template_slug`, producing tailored JSON for each template type
+3. **Update `ReportViewer`** to conditionally render sections based on template type (weekly brief = compact card, campaign = campaign-grouped table)
+4. **Deploy** updated edge function
+
+## Technical Details
+
+- `report_runs.params` already supports arbitrary JSON — no schema changes needed
+- New params: `{ compare_mode: "previous" | "yoy" | "none", filter_source?: string, filter_campaign?: string }`
+- Weekly Brief: skip Growth Engine and UX Signals sections, keep Executive Summary + top 3 recommendations
+- Campaign Report: add `campaignBreakdown` array with per-campaign metrics, include `ad_spend` join for CPL calculation
 

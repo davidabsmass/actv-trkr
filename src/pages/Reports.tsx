@@ -10,6 +10,7 @@ import {
   CalendarClock, Plus, Trash2, ToggleLeft, ToggleRight,
   ArrowLeft, TrendingUp, TrendingDown, Minus, Eye,
   Target, BarChart3, Users, Lightbulb, Globe, CalendarIcon,
+  Filter, Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,65 +24,222 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-// ── Report Viewer Component ──
-function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
-  const { executiveSummary: es, growthEngine: ge, conversionIntelligence: ci, userExperience: ux, actionPlan: ap } = report;
-
-  const TrendBadge = ({ change }: { change: number }) => (
+// ── Shared sub-components ──
+const TrendBadge = ({ change }: { change: number | null }) => {
+  if (change === null || change === undefined) return null;
+  return (
     <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${change > 0 ? "text-success" : change < 0 ? "text-destructive" : "text-muted-foreground"}`}>
       {change > 0 ? <TrendingUp className="h-3 w-3" /> : change < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
       {change > 0 ? "+" : ""}{change}%
     </span>
   );
+};
 
-  const Section = ({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) => (
-    <div className="rounded-lg border border-border bg-card p-5 mb-4">
-      <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-primary" />
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
+const Section = ({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) => (
+  <div className="rounded-lg border border-border bg-card p-5 mb-4">
+    <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+      <Icon className="h-4 w-4 text-primary" />
+      {title}
+    </h3>
+    {children}
+  </div>
+);
 
-  const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count: number }>; maxItems?: number }) => {
-    const top = (items || []).slice(0, maxItems);
-    const maxCount = top[0]?.count || 1;
-    return (
-      <div className="space-y-2">
-        {top.map((item, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-xs font-medium text-foreground truncate">{item.label}</span>
-                <span className="text-xs text-muted-foreground ml-2">{item.count}</span>
-              </div>
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary/60 rounded-full" style={{ width: `${(item.count / maxCount) * 100}%` }} />
-              </div>
+const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count: number }>; maxItems?: number }) => {
+  const top = (items || []).slice(0, maxItems);
+  const maxCount = top[0]?.count || 1;
+  return (
+    <div className="space-y-2">
+      {top.map((item, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-xs font-medium text-foreground truncate">{item.label}</span>
+              <span className="text-xs text-muted-foreground ml-2">{item.count}</span>
+            </div>
+            <div className="h-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary/60 rounded-full" style={{ width: `${(item.count / maxCount) * 100}%` }} />
             </div>
           </div>
-        ))}
-      </div>
-    );
-  };
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── Weekly Brief Viewer ──
+function WeeklyBriefViewer({ report, onBack }: { report: any; onBack: () => void }) {
+  const { kpiSnapshot: kpi, topChanges, topSources, actions } = report;
+  return (
+    <div>
+      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Reports
+      </button>
+      <h1 className="text-2xl font-bold text-foreground mb-1">Weekly Brief</h1>
+      <p className="text-xs text-muted-foreground mb-6">
+        {format(new Date(report.periodStart), "MMM d")} – {format(new Date(report.periodEnd), "MMM d, yyyy")} · {report.periodDays}-day period
+      </p>
+
+      <Section icon={Target} title="KPI Snapshot">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Leads", value: kpi.leads.current, change: kpi.leads.change },
+            { label: "Sessions", value: kpi.sessions.current, change: kpi.sessions.change },
+            { label: "CVR", value: `${kpi.cvr.current}%`, change: kpi.cvr.change },
+            { label: "Weighted Leads", value: kpi.weightedLeads, change: null },
+          ].map((k) => (
+            <div key={k.label} className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{k.label}</p>
+              <p className="text-lg font-bold text-foreground">{k.value}</p>
+              <TrendBadge change={k.change} />
+            </div>
+          ))}
+        </div>
+        {kpi.goalTarget && (
+          <p className="text-xs text-muted-foreground mt-3">🎯 Goal: {kpi.goalTarget} leads · {Math.round((kpi.leads.current / kpi.goalTarget) * 100)}% achieved</p>
+        )}
+      </Section>
+
+      {topChanges?.length > 0 && (
+        <Section icon={TrendingUp} title="Biggest Changes">
+          <div className="space-y-3">
+            {topChanges.map((c: any, i: number) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <span className="text-sm font-medium text-foreground">{c.metric}</span>
+                <div className="text-right">
+                  <span className="text-sm text-foreground">{c.current}</span>
+                  <span className="text-xs text-muted-foreground ml-1">from {c.previous}</span>
+                  <span className="ml-2"><TrendBadge change={c.change} /></span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {topSources?.length > 0 && (
+        <Section icon={Globe} title="Top Sources">
+          <RankList items={topSources} maxItems={5} />
+        </Section>
+      )}
+
+      <Section icon={Lightbulb} title="Quick Actions">
+        <div className="space-y-2">
+          {(actions || []).map((a: string, i: number) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-xs font-bold text-primary mt-0.5">{i + 1}.</span>
+              <p className="text-sm text-foreground">{a}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+// ── Campaign Report Viewer ──
+function CampaignReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
+  const { summary, campaignBreakdown, actions } = report;
+  return (
+    <div>
+      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Reports
+      </button>
+      <h1 className="text-2xl font-bold text-foreground mb-1">Campaign Report</h1>
+      <p className="text-xs text-muted-foreground mb-6">
+        {format(new Date(report.periodStart), "MMM d")} – {format(new Date(report.periodEnd), "MMM d, yyyy")} · {report.periodDays}-day period
+        {report.filterSource && <span className="ml-2">· Source: {report.filterSource}</span>}
+        {report.filterCampaign && <span className="ml-2">· Campaign: {report.filterCampaign}</span>}
+      </p>
+
+      <Section icon={Target} title="Overview">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { label: "Total Leads", value: summary.totalLeads, change: summary.leadsChange },
+            { label: "Sessions", value: summary.totalSessions, change: null },
+            { label: "CVR", value: `${summary.cvr}%`, change: null },
+            { label: "Total Spend", value: summary.totalSpend ? `$${summary.totalSpend.toLocaleString()}` : "—", change: null },
+            { label: "Overall CPL", value: summary.overallCpl ? `$${summary.overallCpl}` : "—", change: null },
+          ].map((k) => (
+            <div key={k.label} className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{k.label}</p>
+              <p className="text-lg font-bold text-foreground">{k.value}</p>
+              <TrendBadge change={k.change} />
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section icon={Megaphone} title="Campaign Breakdown">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="py-2 pr-4 text-xs font-medium text-muted-foreground">Campaign</th>
+                <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Leads</th>
+                {summary.previousTotalLeads !== null && <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Δ</th>}
+                <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Sessions</th>
+                <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">CVR</th>
+                <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Spend</th>
+                <th className="py-2 pl-3 text-xs font-medium text-muted-foreground text-right">CPL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(campaignBreakdown || []).map((c: any, i: number) => (
+                <tr key={i} className="border-b border-border/50 last:border-0">
+                  <td className="py-2 pr-4 font-medium text-foreground truncate max-w-[200px]">{c.campaign}</td>
+                  <td className="py-2 px-3 text-right text-foreground">{c.leads}</td>
+                  {summary.previousTotalLeads !== null && (
+                    <td className="py-2 px-3 text-right"><TrendBadge change={c.leadsChange} /></td>
+                  )}
+                  <td className="py-2 px-3 text-right text-muted-foreground">{c.sessions}</td>
+                  <td className="py-2 px-3 text-right text-muted-foreground">{c.cvr}%</td>
+                  <td className="py-2 px-3 text-right text-muted-foreground">{c.spend ? `$${c.spend.toLocaleString()}` : "—"}</td>
+                  <td className="py-2 pl-3 text-right text-muted-foreground">{c.cpl ? `$${c.cpl}` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section icon={Lightbulb} title="Recommendations">
+        <div className="space-y-2">
+          {(actions || []).map((a: string, i: number) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-xs font-bold text-primary mt-0.5">{i + 1}.</span>
+              <p className="text-sm text-foreground">{a}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+// ── Monthly Performance Viewer ──
+function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () => void }) {
+  const { executiveSummary: es, growthEngine: ge, conversionIntelligence: ci, userExperience: ux, actionPlan: ap } = report;
 
   return (
     <div>
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Reports
       </button>
-
       <h1 className="text-2xl font-bold text-foreground mb-1">Monthly Performance Report</h1>
       <p className="text-xs text-muted-foreground mb-6">
         {format(new Date(report.periodStart), "MMM d")} – {format(new Date(report.periodEnd), "MMM d, yyyy")} · {report.periodDays}-day period
+        {report.compareMode && report.compareMode !== "none" && (
+          <span className="ml-2">· vs {report.compareMode === "yoy" ? "same period last year" : "previous period"}</span>
+        )}
       </p>
 
-      {/* 1) Executive Summary */}
+      {/* Executive Summary */}
       <Section icon={Target} title="Executive Summary">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {[
@@ -118,7 +276,7 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
         </div>
       </Section>
 
-      {/* 2) Growth Engine */}
+      {/* Growth Engine */}
       <Section icon={BarChart3} title="Growth Engine">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -132,7 +290,7 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
         </div>
       </Section>
 
-      {/* 3) Conversion Intelligence */}
+      {/* Conversion Intelligence */}
       <Section icon={TrendingUp} title="Conversion Intelligence">
         <div className="mb-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Leads by Form</p>
@@ -163,7 +321,7 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
         </div>
       </Section>
 
-      {/* 4) User Experience Signals */}
+      {/* User Experience */}
       <Section icon={Users} title="User Experience Signals">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -185,7 +343,7 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
         </div>
       </Section>
 
-      {/* 5) Action Plan */}
+      {/* Action Plan */}
       <Section icon={Lightbulb} title="Action Plan & Forecast">
         {ap.forecast?.projectedNextMonth > 0 && (
           <div className="p-3 rounded-md bg-primary/10 border border-primary/20 mb-4">
@@ -221,6 +379,14 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
   );
 }
 
+// ── Report Viewer Router ──
+function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
+  const slug = report.templateSlug || "monthly-performance";
+  if (slug === "weekly-brief") return <WeeklyBriefViewer report={report} onBack={onBack} />;
+  if (slug === "campaign-report") return <CampaignReportViewer report={report} onBack={onBack} />;
+  return <MonthlyPerformanceViewer report={report} onBack={onBack} />;
+}
+
 // ── Main Reports Page ──
 export default function Reports() {
   const { orgId, orgName } = useOrg();
@@ -233,6 +399,9 @@ export default function Reports() {
   const [viewingReport, setViewingReport] = useState<any>(null);
   const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date>(new Date());
+  const [compareMode, setCompareMode] = useState<string>("previous");
+  const [filterSource, setFilterSource] = useState<string>("");
+  const [filterCampaign, setFilterCampaign] = useState<string>("");
 
   const { data: templates } = useQuery({
     queryKey: ["report_templates"],
@@ -277,18 +446,21 @@ export default function Reports() {
     mutationFn: async (templateSlug: string) => {
       if (!orgId || !session?.user.id) throw new Error("Not authenticated");
       const periodDays = differenceInDays(dateTo, dateFrom) || 30;
-      const params = {
+      const params: Record<string, any> = {
         period_days: periodDays,
         start_date: format(dateFrom, "yyyy-MM-dd"),
         end_date: format(dateTo, "yyyy-MM-dd"),
+        compare_mode: compareMode,
       };
+      if (filterSource.trim()) params.filter_source = filterSource.trim();
+      if (filterCampaign.trim()) params.filter_campaign = filterCampaign.trim();
+
       const { data: inserted, error } = await supabase.from("report_runs").insert({
         org_id: orgId, template_slug: templateSlug, created_by: session.user.id,
         params, status: "queued",
       }).select("id").single();
       if (error) throw error;
 
-      // Trigger the processor
       supabase.functions.invoke("process-report", {
         body: { run_id: inserted.id },
       }).catch(() => {});
@@ -413,7 +585,8 @@ export default function Reports() {
     ...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: dayLabel(i + 1) })),
   ];
 
-  // ── Report Viewer ──
+  const showCampaignFilters = selectedTemplate === "campaign-report";
+
   if (viewingReport) {
     return <ReportViewer report={viewingReport} onBack={() => setViewingReport(null)} />;
   }
@@ -447,7 +620,40 @@ export default function Reports() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={compareMode} onValueChange={setCompareMode}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="previous">vs Previous Period</SelectItem>
+                <SelectItem value="yoy">vs Same Period Last Year</SelectItem>
+                <SelectItem value="none">No Comparison</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Campaign/Source filters — shown for all templates but especially useful for campaign */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Input
+                placeholder="Filter by UTM source (optional)"
+                value={filterSource}
+                onChange={(e) => setFilterSource(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-1">
+              <Megaphone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Input
+                placeholder="Filter by campaign (optional)"
+                value={filterCampaign}
+                onChange={(e) => setFilterCampaign(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex items-center gap-2">
               <Popover>
@@ -491,6 +697,7 @@ export default function Reports() {
           </div>
           <p className="text-xs text-muted-foreground">
             Analyzing {differenceInDays(dateTo, dateFrom)} days: {format(dateFrom, "MMM d")} – {format(dateTo, "MMM d, yyyy")}
+            {compareMode !== "none" && <span> · Comparing {compareMode === "yoy" ? "year-over-year" : "to previous period"}</span>}
           </p>
         </div>
       </div>

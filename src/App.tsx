@@ -12,6 +12,7 @@ import Exports from "./pages/Exports";
 import Clients from "./pages/Clients";
 import AgencyDashboard from "./pages/AgencyDashboard";
 import SettingsPage from "./pages/Settings";
+import AdminSetup from "./pages/AdminSetup";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="exports" element={<Exports />} />
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="admin-setup" element={<AdminSetup />} />
             <Route path="agency" element={<AgencyDashboard />} />
           </Route>
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />

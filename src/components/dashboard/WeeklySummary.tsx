@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { Sparkles, ExternalLink, Download, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { PrimaryFocus } from "@/hooks/use-site-settings";
 
 type PerformanceStatus = "strong" | "watch" | "risk";
 
@@ -18,7 +19,18 @@ const statusConfig: Record<PerformanceStatus, { label: string; emoji: string; bg
   risk: { label: "Risk", emoji: "🔴", bg: "bg-destructive/10", text: "text-destructive" },
 };
 
-export function WeeklySummary() {
+const focusLever: Record<PrimaryFocus, string> = {
+  lead_volume: "Primary lever: increase qualified traffic to scale lead volume.",
+  marketing_impact: "Primary lever: concentrate spend/effort on top-performing sources.",
+  conversion_performance: "Primary lever: improve page and form conversion efficiency.",
+  paid_optimization: "Primary lever: reduce waste by fixing underperforming paid traffic.",
+};
+
+interface WeeklySummaryProps {
+  primaryFocus?: PrimaryFocus;
+}
+
+export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryProps) {
   const { orgId } = useOrg();
   const navigate = useNavigate();
 
@@ -56,13 +68,12 @@ export function WeeklySummary() {
         </span>
       </div>
 
-      {/* What Changed */}
       <div className="mb-4">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">What Changed</p>
         <p className="text-sm text-foreground/80 leading-relaxed">{summary.summary_text}</p>
+        <p className="text-xs text-muted-foreground mt-2 italic">{focusLever[primaryFocus]}</p>
       </div>
 
-      {/* Risk Alert */}
       {summary.risk_alert && (
         <div className="flex items-start gap-2 p-3 bg-destructive/5 border border-destructive/20 rounded-lg mb-4">
           <span className="text-sm">⚠️</span>
@@ -70,7 +81,6 @@ export function WeeklySummary() {
         </div>
       )}
 
-      {/* Next Action */}
       {summary.top_opportunity && (
         <div className="p-3 bg-success/5 border border-success/20 rounded-lg mb-4">
           <p className="text-[10px] uppercase tracking-wider text-success font-medium mb-1">Top Opportunity</p>
@@ -78,30 +88,17 @@ export function WeeklySummary() {
         </div>
       )}
 
-      {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
-        >
+        <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <ExternalLink className="h-3 w-3" /> View Pages
         </button>
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
-        >
+        <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <ExternalLink className="h-3 w-3" /> View Sources
         </button>
-        <button
-          onClick={() => navigate("/exports")}
-          className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
-        >
+        <button onClick={() => navigate("/exports")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <Download className="h-3 w-3" /> Download Leads
         </button>
-        <button
-          onClick={() => navigate("/reports")}
-          className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
-        >
+        <button onClick={() => navigate("/reports")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <FileText className="h-3 w-3" /> Create Report
         </button>
       </div>

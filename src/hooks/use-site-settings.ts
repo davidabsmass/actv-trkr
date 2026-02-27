@@ -2,12 +2,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 
+export type PrimaryFocus = "lead_volume" | "marketing_impact" | "conversion_performance" | "paid_optimization";
+
+// Keep old type for backward compat
 export type PrimaryGoal = "get_more_leads" | "prove_roi" | "improve_conversion" | "reduce_ad_waste";
 
 export interface SiteSettings {
   id: string;
   org_id: string;
   primary_goal: PrimaryGoal;
+  primary_focus: PrimaryFocus;
   notification_preferences: {
     weekly_summary: boolean;
     break_alerts: boolean;
@@ -45,7 +49,6 @@ export function useUpdateSiteSettings() {
     mutationFn: async (updates: Partial<Omit<SiteSettings, "id" | "org_id">>) => {
       if (!orgId) throw new Error("No org");
       
-      // Upsert
       const { data, error } = await supabase
         .from("site_settings")
         .upsert({ org_id: orgId, ...updates }, { onConflict: "org_id" })
@@ -57,5 +60,20 @@ export function useUpdateSiteSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site_settings", orgId] });
     },
+  });
+}
+
+/** Log a user input event for audit trail */
+export async function logUserInputEvent(
+  orgId: string,
+  eventType: string,
+  eventPayload: Record<string, any>
+) {
+  const { data: { user } } = await supabase.auth.getUser();
+  await supabase.from("user_input_events").insert({
+    org_id: orgId,
+    user_id: user?.id || null,
+    event_type: eventType,
+    event_payload: eventPayload,
   });
 }

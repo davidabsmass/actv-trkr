@@ -635,6 +635,47 @@ export type Database = {
           },
         ]
       }
+      onboarding_responses: {
+        Row: {
+          completed_at: string
+          id: string
+          notification_prefs_json: Json
+          org_id: string
+          primary_focus: string
+          raw_answers_json: Json
+          selected_forms_json: Json
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          notification_prefs_json?: Json
+          org_id: string
+          primary_focus: string
+          raw_answers_json?: Json
+          selected_forms_json?: Json
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          notification_prefs_json?: Json
+          org_id?: string
+          primary_focus?: string
+          raw_answers_json?: Json
+          selected_forms_json?: Json
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_responses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_users: {
         Row: {
           created_at: string
@@ -1058,6 +1099,7 @@ export type Database = {
           notification_preferences: Json
           onboarding_completed: boolean
           org_id: string
+          primary_focus: string
           primary_goal: string
           updated_at: string
         }
@@ -1067,6 +1109,7 @@ export type Database = {
           notification_preferences?: Json
           onboarding_completed?: boolean
           org_id: string
+          primary_focus?: string
           primary_goal?: string
           updated_at?: string
         }
@@ -1076,6 +1119,7 @@ export type Database = {
           notification_preferences?: Json
           onboarding_completed?: boolean
           org_id?: string
+          primary_focus?: string
           primary_goal?: string
           updated_at?: string
         }
@@ -1199,6 +1243,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "url_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_input_events: {
+        Row: {
+          created_at: string
+          event_payload: Json
+          event_type: string
+          id: string
+          org_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_payload?: Json
+          event_type: string
+          id?: string
+          org_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_payload?: Json
+          event_type?: string
+          id?: string
+          org_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_input_events_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"

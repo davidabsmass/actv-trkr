@@ -1,21 +1,29 @@
 import { useState } from "react";
 import { Target, FileCheck, Bell, Check, ChevronRight, Zap } from "lucide-react";
-import { useUpdateSiteSettings, PrimaryGoal } from "@/hooks/use-site-settings";
+import { useUpdateSiteSettings, PrimaryFocus, logUserInputEvent } from "@/hooks/use-site-settings";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { useOrg } from "@/hooks/use-org";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-const GOALS: { value: PrimaryGoal; label: string; description: string; icon: string }[] = [
-  { value: "get_more_leads", label: "Get More Leads", description: "Focus on lead volume and top-performing pages", icon: "📈" },
-  { value: "prove_roi", label: "Prove Marketing ROI", description: "Track cost per lead and revenue impact by source", icon: "💰" },
-  { value: "improve_conversion", label: "Improve Conversion Rate", description: "Optimize funnels and page-level conversion", icon: "🎯" },
-  { value: "reduce_ad_waste", label: "Reduce Wasted Ad Spend", description: "Identify underperforming paid campaigns", icon: "✂️" },
+const FOCUS_OPTIONS: { value: PrimaryFocus; label: string; description: string; icon: string }[] = [
+  { value: "lead_volume", label: "Grow Lead Volume", description: "See where leads are coming from and how to get more.", icon: "📈" },
+  { value: "marketing_impact", label: "Understand Marketing Impact", description: "See which traffic sources are driving real results.", icon: "💰" },
+  { value: "conversion_performance", label: "Improve Conversion Performance", description: "Identify pages and forms that can convert better.", icon: "🎯" },
+  { value: "paid_optimization", label: "Optimize Paid Traffic", description: "Spot underperforming paid traffic and improve efficiency.", icon: "✂️" },
 ];
+
+// Map focus to legacy goal for backward compat
+const focusToGoal: Record<PrimaryFocus, string> = {
+  lead_volume: "get_more_leads",
+  marketing_impact: "prove_roi",
+  conversion_performance: "improve_conversion",
+  paid_optimization: "reduce_ad_waste",
+};
 
 export function OnboardingModal() {
   const [step, setStep] = useState(0);
-  const [goal, setGoal] = useState<PrimaryGoal>("get_more_leads");
+  const [focus, setFocus] = useState<PrimaryFocus>("lead_volume");
   const [notifications, setNotifications] = useState({
     weekly_summary: true,
     break_alerts: true,
@@ -32,6 +40,8 @@ export function OnboardingModal() {
   const handleComplete = async () => {
     setSaving(true);
     try {
+      const selectedForms: any[] = [];
+
       // Update form settings
       if (forms) {
         for (const form of forms) {
@@ -41,15 +51,38 @@ export function OnboardingModal() {
             .from("forms")
             .update({ is_primary_lead: isPrimary, estimated_value: estValue || 0 })
             .eq("id", form.id);
+          selectedForms.push({ form_id: form.id, counts_as_lead: isPrimary, estimated_value: estValue || 0 });
         }
       }
 
       // Save settings + mark onboarding complete
       await updateSettings.mutateAsync({
-        primary_goal: goal,
+        primary_goal: focusToGoal[focus] as any,
+        primary_focus: focus,
         notification_preferences: notifications,
         onboarding_completed: true,
       });
+
+      // Write onboarding_responses row
+      if (orgId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from("onboarding_responses").insert({
+          org_id: orgId,
+          user_id: user?.id || null,
+          primary_focus: focus,
+          selected_forms_json: selectedForms,
+          notification_prefs_json: notifications,
+          raw_answers_json: { focus, formToggles, formValues, notifications },
+        });
+
+        // Log individual events
+        await logUserInputEvent(orgId, "onboarding_completed", { primary_focus: focus });
+        await logUserInputEvent(orgId, "focus_changed", { new_value: focus, source: "onboarding" });
+        if (selectedForms.length > 0) {
+          await logUserInputEvent(orgId, "lead_forms_configured", { forms: selectedForms, source: "onboarding" });
+        }
+        await logUserInputEvent(orgId, "notification_pref_changed", { new_value: notifications, source: "onboarding" });
+      }
 
       toast({ title: "Setup complete!", description: "Your dashboard is now personalized." });
     } catch (err: any) {
@@ -72,22 +105,22 @@ export function OnboardingModal() {
         <div className="glass-card p-8">
           {step === 0 && (
             <>
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Target className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">What's your primary goal?</h2>
-                  <p className="text-sm text-muted-foreground">This personalizes your dashboard experience.</p>
+                  <h2 className="text-lg font-semibold text-foreground">What do you want to focus on?</h2>
+                  <p className="text-sm text-muted-foreground">This simply adjusts how your dashboard is prioritized. You can change it anytime.</p>
                 </div>
               </div>
-              <div className="space-y-3">
-                {GOALS.map((g) => (
+              <div className="space-y-3 mt-5">
+                {FOCUS_OPTIONS.map((g) => (
                   <button
                     key={g.value}
-                    onClick={() => setGoal(g.value)}
+                    onClick={() => setFocus(g.value)}
                     className={`w-full text-left p-4 rounded-lg border transition-all ${
-                      goal === g.value
+                      focus === g.value
                         ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                         : "border-border hover:border-primary/30 hover:bg-muted/50"
                     }`}
@@ -98,11 +131,14 @@ export function OnboardingModal() {
                         <p className="text-sm font-medium text-foreground">{g.label}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{g.description}</p>
                       </div>
-                      {goal === g.value && <Check className="h-4 w-4 text-primary" />}
+                      {focus === g.value && <Check className="h-4 w-4 text-primary" />}
                     </div>
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground mt-4 text-center">
+                No integrations required. This only changes how insights are prioritized.
+              </p>
             </>
           )}
 
@@ -140,7 +176,7 @@ export function OnboardingModal() {
                             placeholder="0"
                             value={formValues[form.id] ?? (form.estimated_value || "")}
                             onChange={(e) => setFormValues((p) => ({ ...p, [form.id]: e.target.value }))}
-                            className="w-20 px-2 py-1 text-xs bg-secondary border border-border rounded text-foreground"
+                            className="w-20 px-2 py-1 text-xs bg-white border border-border rounded text-foreground"
                           />
                         </div>
                       </div>

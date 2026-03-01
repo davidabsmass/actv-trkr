@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       if (filterCampaign) report.filterCampaign = filterCampaign;
 
       // Store in bucket
-      const fileName = `report_${run.id}.json`;
+      const fileName = `${orgId}/report_${run.id}.json`;
       const { error: uploadErr } = await supabase.storage
         .from("reports")
         .upload(fileName, JSON.stringify(report, null, 2), {

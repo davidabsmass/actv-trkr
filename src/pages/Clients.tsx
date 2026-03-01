@@ -160,7 +160,7 @@ function ClientApiKeys({ orgId }: { orgId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("api_keys")
-        .select("id, label, created_at, revoked_at, key_plain")
+        .select("id, label, created_at, revoked_at")
         .eq("org_id", orgId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -184,7 +184,7 @@ function ClientApiKeys({ orgId }: { orgId: string }) {
 
       const { error } = await supabase
         .from("api_keys")
-        .insert({ org_id: orgId, key_hash: keyHash, key_plain: rawKey, label: "Default" });
+        .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
       if (error) throw error;
 
       setNewKey(rawKey);
@@ -306,9 +306,9 @@ function ClientApiKeys({ orgId }: { orgId: string }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  {!k.revoked_at && k.key_plain && (
+                  {!k.revoked_at && newKey && (
                     <button
-                      onClick={() => handleDownload(k.key_plain!)}
+                      onClick={() => handleDownload(newKey)}
                       disabled={downloading}
                       className="flex items-center gap-1 px-2 py-1 text-xs text-foreground hover:bg-accent rounded transition-colors"
                       title="Download plugin with this key"

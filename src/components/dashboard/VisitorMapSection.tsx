@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Globe } from "lucide-react";
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps";
 import { useMemo, useState } from "react";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -86,6 +86,19 @@ function interpolateHex(c1: string, c2: string, t: number): string {
   const b = Math.round(b1 + (b2 - b1) * t);
   return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
 }
+
+// Micro-states that are too small to see as polygons — show as circle markers
+const MICRO_STATES: Record<string, [number, number]> = {
+  SG: [103.8198, 1.3521],   // Singapore
+  HK: [114.1694, 22.3193],  // Hong Kong
+  AE: [54.3773, 24.4539],   // UAE
+  IL: [34.8516, 31.0461],   // Israel
+  LU: [6.1296, 49.8153],    // Luxembourg
+  MT: [14.3754, 35.9375],   // Malta
+  BH: [50.5577, 26.0667],   // Bahrain
+  QA: [51.1839, 25.3548],   // Qatar
+  KW: [47.4818, 29.3117],   // Kuwait
+};
 
 interface TooltipInfo {
   name: string;
@@ -187,6 +200,32 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
                   })
                 }
               </Geographies>
+              {/* Dot markers for micro-states */}
+              {data.map((row) => {
+                const coords = MICRO_STATES[row.countryCode];
+                if (!coords) return null;
+                const intensity = Math.min(row.sessions / maxSessions, 1);
+                const fillColor = getHeatColor(intensity);
+                const name = getCountryName(row.countryCode);
+                return (
+                  <Marker key={`marker-${row.countryCode}`} coordinates={coords}>
+                    <circle
+                      r={5}
+                      fill={fillColor}
+                      stroke="#D1D5DB"
+                      strokeWidth={0.5}
+                      style={{ cursor: "pointer" }}
+                      onMouseEnter={(e) => {
+                        const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect();
+                        if (rect) {
+                          setTooltip({ name, sessions: row.sessions, x: e.clientX - rect.left, y: e.clientY - rect.top });
+                        }
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
+                    />
+                  </Marker>
+                );
+              })}
             </ZoomableGroup>
           </ComposableMap>
 

@@ -10,7 +10,7 @@ interface FormStat {
 }
 
 interface FormLeaderboardProps {
-  forms: Array<{ id: string; name: string; estimated_value?: number }>;
+  forms: Array<{ id: string; name: string; estimated_value?: number; archived?: boolean }>;
   leads: Array<{ form_id: string; submitted_at: string; source?: string | null }>;
   sessions: number;
 }
@@ -18,8 +18,8 @@ interface FormLeaderboardProps {
 export function FormLeaderboard({ forms, leads, sessions }: FormLeaderboardProps) {
   const stats = useMemo(() => {
     const formMap: Record<string, FormStat> = {};
-
-    forms.forEach((f) => {
+    const activeForms = forms.filter((f) => !f.archived);
+    activeForms.forEach((f) => {
       formMap[f.id] = {
         name: f.name,
         submissions: 0,

@@ -378,6 +378,7 @@ export type Database = {
       }
       forms: {
         Row: {
+          archived: boolean
           created_at: string
           estimated_value: number | null
           external_form_id: string
@@ -391,6 +392,7 @@ export type Database = {
           site_id: string
         }
         Insert: {
+          archived?: boolean
           created_at?: string
           estimated_value?: number | null
           external_form_id: string
@@ -404,6 +406,7 @@ export type Database = {
           site_id: string
         }
         Update: {
+          archived?: boolean
           created_at?: string
           estimated_value?: number | null
           external_form_id?: string

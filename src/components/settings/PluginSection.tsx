@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plug, Copy, Check, ExternalLink } from "lucide-react";
+import { Plug, Copy, Check, ExternalLink, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function PluginSection() {
   const { orgId } = useOrg();
   const [copiedField, setCopiedField] = useState<string | null>(null);
-
+  const [downloading, setDownloading] = useState(false);
   const { data: activeKey } = useQuery({
     queryKey: ["active_api_key", orgId],
     queryFn: async () => {
@@ -33,14 +34,47 @@ export default function PluginSection() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip`;
+      const response = await fetch(zipUrl);
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "actv-trkr.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Plugin downloaded! Upload via WordPress → Plugins → Add New → Upload.");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to download plugin");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
-      <div className="flex items-center gap-2 mb-1">
-        <Plug className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">WordPress Plugin</h3>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Plug className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">WordPress Plugin</h3>
+        </div>
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          {downloading ? "Downloading…" : "Download Plugin"}
+        </button>
       </div>
       <p className="text-xs text-muted-foreground mb-5">
-        Install the ACTV TRKR plugin from your WordPress admin, then use these settings to connect.
+        Download the plugin, upload it to WordPress, then paste these connection settings.
       </p>
 
       <div className="rounded-lg border border-border p-4 space-y-3">

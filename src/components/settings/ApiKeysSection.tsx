@@ -137,7 +137,7 @@ export default function ApiKeysSection() {
       ) : !keys?.length ? (
         <p className="text-xs text-muted-foreground">No API keys yet. Generate one to get started.</p>
       ) : (
-        <ScrollArea className="max-h-[220px]">
+        <ScrollArea className="h-[220px]">
           <div className="space-y-2 pr-2">
             {keys.map((k) => (
               <div

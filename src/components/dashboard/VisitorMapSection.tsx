@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Globe } from "lucide-react";
+import { Globe, Plus, Minus } from "lucide-react";
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -110,6 +111,17 @@ interface TooltipInfo {
 export function VisitorMapSection({ data }: VisitorMapSectionProps) {
   const maxSessions = data?.[0]?.sessions || 1;
   const totalSessions = data?.reduce((s, d) => s + d.sessions, 0) || 0;
+  const [zoom, setZoom] = useState(1);
+  const [center, setCenter] = useState<[number, number]>([10, 0]);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(z * 1.5, 8));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => Math.max(z / 1.5, 1));
+  }, []);
+
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
 
   // Build numeric-id → session count lookup
@@ -145,13 +157,32 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
           className="rounded-lg overflow-hidden bg-white mb-4 border border-border/50 relative"
           onMouseLeave={() => setTooltip(null)}
         >
+          {/* Zoom controls */}
+          <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+            <Button variant="outline" size="icon" className="h-7 w-7 bg-white/90 backdrop-blur-sm" onClick={handleZoomIn}>
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7 bg-white/90 backdrop-blur-sm" onClick={handleZoomOut}>
+              <Minus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
           <ComposableMap
             projection="geoEquirectangular"
             projectionConfig={{ rotate: [-10, 0, 0], scale: 180 }}
             height={400}
             style={{ width: "100%", height: "auto" }}
           >
-            <ZoomableGroup>
+            <ZoomableGroup
+              zoom={zoom}
+              center={center}
+              onMoveEnd={({ coordinates, zoom: z }) => { setCenter(coordinates as [number, number]); setZoom(z); }}
+              filterZoomEvent={(evt) => {
+                // Block scroll/wheel zoom events, allow only drag
+                if (evt instanceof WheelEvent) return false;
+                return true;
+              }}
+            >
               <Geographies geography={GEO_URL}>
                 {({ geographies }) =>
                   geographies.map((geo) => {

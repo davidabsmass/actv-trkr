@@ -1,21 +1,16 @@
 
 
-## Add Site from Settings
+## Rebrand: Replace all "Revenue Command Center" with "ACTV TRKR"
 
-Right now, new websites can only be registered during initial onboarding. You need an "Add Site" button in the Settings page so you can register additional websites at any time.
+Only one file still contains "Revenue Command Center" — the `index.html` meta tags.
 
-### What will be built
+| File | Line(s) | Change |
+|------|---------|--------|
+| `index.html` | 8 | `<meta name="description" content="Revenue Command Center">` → `"ACTV TRKR Dashboard"` |
+| `index.html` | 22 | `<meta property="og:description" content="Revenue Command Center">` → `"ACTV TRKR Dashboard"` |
+| `index.html` | 23 | `<meta name="twitter:description" content="Revenue Command Center">` → `"ACTV TRKR Dashboard"` |
 
-**SitesSection component** (`src/components/settings/SitesSection.tsx`):
-- Add an "Add Site" button that opens a small inline form (URL input + Add button)
-- When submitted, it extracts the hostname from the URL and inserts a row into the `sites` table (same logic as onboarding)
-- After success, the sites list refreshes to show the newly added site
-- Includes a delete/remove option per site for cleanup
+Additionally, on the **Clients** page the card heading says "Client Dashboard URL" — I can update that to **"ACTV TRKR Dashboard URL"** if that's what you'd like as well.
 
-### Technical details
-
-- The `sites` table already has an RLS INSERT policy (`sites_write`) allowing org admins and members to insert
-- Reuse the URL-to-hostname extraction logic from `Onboarding.tsx`
-- Invalidate the `["sites", orgId]` React Query cache on success
-- No database changes needed — existing schema and policies support this
+Three meta-tag edits, one optional label change. Quick fix.
 

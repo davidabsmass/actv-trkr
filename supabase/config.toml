@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.process-archive-export]
 verify_jwt = false
+
+[functions.plugin-update-check]
+verify_jwt = false

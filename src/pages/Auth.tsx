@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Zap, Mail, Lock, User, Eye, EyeOff, Ticket } from "lucide-react";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const initialCode = searchParams.get("invite") || "";
+  const [isLogin, setIsLogin] = useState(!initialCode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [inviteCode, setInviteCode] = useState(initialCode);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,15 +35,51 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // Check for pending invite code from a previous signup
+        const pendingCode = localStorage.getItem("pending_invite_code");
+        if (pendingCode) {
+          localStorage.removeItem("pending_invite_code");
+          try {
+            await supabase.functions.invoke("redeem-invite", {
+              body: { code: pendingCode },
+            });
+          } catch (e) {
+            console.error("Pending invite redeem failed:", e);
+          }
+        }
         navigate("/");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: fullName } },
         });
         if (error) throw error;
-        setMessage("Check your email to confirm your account.");
+
+        // If invite code provided and user was auto-confirmed, redeem it now
+        if (inviteCode && signUpData.session) {
+          try {
+            const { data: redeemData, error: redeemErr } = await supabase.functions.invoke("redeem-invite", {
+              body: { code: inviteCode },
+            });
+            if (redeemErr) console.error("Invite redeem error:", redeemErr);
+            if (redeemData?.error) console.error("Invite redeem error:", redeemData.error);
+          } catch (e) {
+            console.error("Invite redeem failed:", e);
+          }
+          navigate("/");
+          return;
+        }
+
+        setMessage(
+          inviteCode
+            ? "Check your email to confirm your account. Once confirmed, sign in and your invite code will be applied."
+            : "Check your email to confirm your account."
+        );
+        // Store invite code in localStorage so it can be redeemed after email confirmation
+        if (inviteCode) {
+          localStorage.setItem("pending_invite_code", inviteCode.trim().toUpperCase());
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -117,6 +156,18 @@ const Auth = () => {
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
+              </div>
+            )}
+            {!isLogin && !forgotMode && (
+              <div className="relative">
+                <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Invite code (optional)"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  className={inputClass}
+                />
               </div>
             )}
 

@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     const orgId = run.org_id;
     const params = run.params || {};
     const periodDays = params.period_days || 30;
-    const templateSlug = run.template_slug || "monthly-performance";
+    const templateSlug = run.template_slug || "monthly_performance";
     const compareMode = params.compare_mode || "previous";
     const filterSource = params.filter_source || null;
     const filterCampaign = params.filter_campaign || null;
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       ];
 
       // Only fetch pageviews for monthly performance (not needed for campaign/weekly brief as much)
-      if (templateSlug !== "campaign-report") {
+      if (templateSlug !== "campaign_report") {
         fetchPromises.push(
           supabase.from("pageviews").select("*").eq("org_id", orgId).gte("occurred_at", periodStart).lte("occurred_at", periodEnd).limit(5000),
           prevStart ? supabase.from("pageviews").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", prevStart).lte("occurred_at", prevEnd!) : Promise.resolve({ data: null, count: 0 }),
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
       }
 
       // Fetch ad_spend for campaign reports
-      if (templateSlug === "campaign-report") {
+      if (templateSlug === "campaign_report") {
         fetchPromises.push(
           supabase.from("ad_spend").select("*").eq("org_id", orgId),
         );
@@ -108,11 +108,11 @@ Deno.serve(async (req) => {
       let prevPageviewCount = 0;
       let adSpendData: any[] = [];
 
-      if (templateSlug !== "campaign-report") {
+      if (templateSlug !== "campaign_report") {
         currentPageviews = results[6]?.data || [];
         prevPageviewCount = results[7]?.count ?? 0;
       }
-      if (templateSlug === "campaign-report" && results.length > 6) {
+      if (templateSlug === "campaign_report" && results.length > 6) {
         adSpendData = results[6]?.data || [];
       }
 
@@ -123,9 +123,9 @@ Deno.serve(async (req) => {
 
       let report: any;
 
-      if (templateSlug === "weekly-brief") {
+      if (templateSlug === "weekly_brief") {
         report = buildWeeklyBrief({ currentLeads, previousLeads, currentSessions, prevSessionCount, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode });
-      } else if (templateSlug === "campaign-report") {
+      } else if (templateSlug === "campaign_report") {
         report = buildCampaignReport({ currentLeads, previousLeads, currentSessions, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode });
       } else {
         report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, prevSessionCount, currentPageviews, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode });

@@ -32,15 +32,14 @@ function isValidUuid(val: string): boolean {
 }
 
 function isValidEventId(val: string): boolean {
-  // Allow UUIDs, prefixed test IDs, and hex strings
   return /^[a-zA-Z0-9_-]{1,128}$/.test(val);
 }
 
 // ── Simple in-memory rate limiter (per-isolate) ─────────────────
 
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
-const RATE_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT = 120; // max requests per org per minute
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT = 120;
 
 function checkRate(orgId: string): boolean {
   const now = Date.now();
@@ -53,13 +52,81 @@ function checkRate(orgId: string): boolean {
   return bucket.count <= RATE_LIMIT;
 }
 
-// Periodically clean stale buckets (every 5 min)
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of rateBuckets) {
     if (now > v.resetAt) rateBuckets.delete(k);
   }
 }, 300_000);
+
+// ── IP Geolocation cache (per-isolate) ──────────────────────────
+
+const geoCache = new Map<string, { country: string | null; expiresAt: number }>();
+const GEO_CACHE_TTL_MS = 3600_000; // 1 hour
+
+// Rate limiter for ip-api.com (max 40 req/min to stay under 45 limit)
+let geoApiCallCount = 0;
+let geoApiWindowReset = Date.now() + 60_000;
+const GEO_API_LIMIT = 40;
+
+function canCallGeoApi(): boolean {
+  const now = Date.now();
+  if (now > geoApiWindowReset) {
+    geoApiCallCount = 0;
+    geoApiWindowReset = now + 60_000;
+  }
+  return geoApiCallCount < GEO_API_LIMIT;
+}
+
+async function lookupCountryByIp(ip: string): Promise<string | null> {
+  if (!ip || ip === "127.0.0.1" || ip === "::1") return null;
+
+  // Check cache first (keyed by raw IP, not hash — stays in-memory only)
+  const cached = geoCache.get(ip);
+  if (cached && Date.now() < cached.expiresAt) return cached.country;
+
+  if (!canCallGeoApi()) return null;
+
+  try {
+    geoApiCallCount++;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000); // 2s timeout
+    const resp = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const country = data.status === "success" && data.countryCode ? data.countryCode : null;
+    geoCache.set(ip, { country, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
+
+    return country;
+  } catch {
+    // Network error or timeout — don't block the pageview
+    return null;
+  }
+}
+
+// Clean stale geo cache entries every 10 min
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of geoCache) {
+    if (now > v.expiresAt) geoCache.delete(k);
+  }
+}, 600_000);
+
+function extractClientIp(req: Request): string | null {
+  // Try standard proxy headers
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const first = xff.split(",")[0].trim();
+    if (first) return first;
+  }
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  return null;
+}
 
 // ── Main handler ────────────────────────────────────────────────
 
@@ -68,13 +135,11 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    // Enforce max payload size (50KB)
     const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
     if (contentLength > 51200) {
       return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Auth
     const authHeader = req.headers.get("authorization") || "";
     const apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
     if (!apiKey || apiKey.length > 256) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -86,12 +151,10 @@ Deno.serve(async (req) => {
     if (!akRow) return new Response(JSON.stringify({ error: "Invalid API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const orgId = akRow.org_id;
 
-    // Rate limit
     if (!checkRate(orgId)) {
       return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
     }
 
-    // Parse body with size guard
     const rawBody = await req.text();
     if (rawBody.length > 51200) {
       return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -104,7 +167,6 @@ Deno.serve(async (req) => {
 
     const { source, event, attribution, visitor } = body;
 
-    // Validate required fields
     const pageUrl = sanitizeStr(event?.page_url, 2048);
     if (!pageUrl || !isValidUrl(pageUrl)) {
       return new Response(JSON.stringify({ error: "Missing or invalid page_url" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -115,7 +177,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing or invalid event_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Sanitize all string inputs
     const domain = sanitizeStr(source?.domain, 253);
     if (!domain) return new Response(JSON.stringify({ error: "Missing source domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -138,7 +199,6 @@ Deno.serve(async (req) => {
     const pluginVersion = sanitizeStr(source?.plugin_version, 32);
     const siteType = sanitizeStr(source?.type, 32) || "wordpress";
 
-    // UTM params (capped at 256 chars each)
     const utmSource = sanitizeStr(attribution?.utm_source, 256);
     const utmMedium = sanitizeStr(attribution?.utm_medium, 256);
     const utmCampaign = sanitizeStr(attribution?.utm_campaign, 256);
@@ -156,8 +216,18 @@ Deno.serve(async (req) => {
 
     if (!siteId) return new Response(JSON.stringify({ error: "Failed to resolve site" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // Resolve country from CF-IPCountry header (provided by infrastructure)
-    const countryCode = sanitizeStr(req.headers.get("cf-ipcountry") || req.headers.get("x-country-code"), 2)?.toUpperCase() || null;
+    // ── Resolve country code ──────────────────────────────────────
+    // 1. Try infrastructure headers (Cloudflare, etc.)
+    let countryCode = sanitizeStr(req.headers.get("cf-ipcountry") || req.headers.get("x-country-code"), 2)?.toUpperCase() || null;
+
+    // 2. Fallback: IP-based geolocation lookup
+    if (!countryCode) {
+      const clientIp = extractClientIp(req);
+      if (clientIp) {
+        const geoCountry = await lookupCountryByIp(clientIp);
+        if (geoCountry) countryCode = geoCountry.toUpperCase();
+      }
+    }
 
     const { error: insertError } = await supabase.from("pageviews").upsert({
       org_id: orgId, site_id: siteId, occurred_at: occurredAt.toISOString(),

@@ -21,8 +21,8 @@ class MM_Forms {
 		// WPForms
 		add_action( 'wpforms_process_complete', array( __CLASS__, 'handle_wpforms' ), 10, 4 );
 
-		// Avada / Fusion Forms
-		add_action( 'fusion_form_submission_data', array( __CLASS__, 'handle_avada' ), 10, 3 );
+		// Avada / Fusion Forms (2 args: $form_data, $form_post_id)
+		add_action( 'fusion_form_submission_data', array( __CLASS__, 'handle_avada' ), 10, 2 );
 
 		// Ninja Forms
 		add_action( 'ninja_forms_after_submission', array( __CLASS__, 'handle_ninja' ) );
@@ -54,8 +54,8 @@ class MM_Forms {
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
 
 		$response = wp_remote_post( $endpoint, array(
-			'timeout'  => 5,
-			'blocking' => false,
+			'timeout'  => 10,
+			'blocking' => true,
 			'headers'  => array(
 				'Content-Type'  => 'application/json',
 				'Authorization' => 'Bearer ' . $opts['api_key'],
@@ -64,7 +64,13 @@ class MM_Forms {
 		) );
 
 		if ( is_wp_error( $response ) ) {
+			error_log( '[MissionMetrics] Form send error: ' . $response->get_error_message() );
 			MM_Retry_Queue::enqueue( $endpoint, $opts['api_key'], $payload );
+		} else {
+			$code = wp_remote_retrieve_response_code( $response );
+			if ( $code >= 400 ) {
+				error_log( '[MissionMetrics] Form send HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
+			}
 		}
 	}
 
@@ -162,7 +168,7 @@ class MM_Forms {
 
 	// ── Avada / Fusion Forms ────────────────────────────────────────
 
-	public static function handle_avada( $data, $form_id, $form_info ) {
+	public static function handle_avada( $data, $form_post_id ) {
 		$fields = array();
 		if ( is_array( $data ) ) {
 			foreach ( $data as $key => $value ) {
@@ -175,11 +181,17 @@ class MM_Forms {
 			}
 		}
 
+		$form_title = 'Avada Form';
+		$form_post  = get_post( $form_post_id );
+		if ( $form_post ) {
+			$form_title = $form_post->post_title ?: $form_title;
+		}
+
 		self::send( array(
 			'provider' => 'avada',
 			'entry'    => array(
-				'form_id'      => $form_id,
-				'form_title'   => $form_info['form_meta']['form_name'] ?? 'Avada Form',
+				'form_id'      => $form_post_id,
+				'form_title'   => $form_title,
 				'entry_id'     => 'avada_' . time() . '_' . wp_rand(),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),

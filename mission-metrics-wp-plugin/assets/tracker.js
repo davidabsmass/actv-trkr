@@ -289,12 +289,42 @@
   // Attach universal form listener via event delegation
   document.addEventListener('submit', handleFormSubmit, true);
 
-  // Also intercept fetch/XHR based form submissions (AJAX forms)
-  // Listen for custom events that popular plugins fire
+  // Also intercept AJAX-based form submissions for popular plugins
+
+  // CF7 fires this on success
   document.addEventListener('wpcf7mailsent', function (e) {
-    // CF7 fires this on success — the PHP hook handles it,
-    // but if PHP hook fails, JS already captured via submit event
+    // PHP hook handles it; JS submit event is the fallback
   });
+
+  // Avada / Fusion Forms — they submit via AJAX, no native submit event fires
+  document.addEventListener('fusion-form-submit-success', function (e) {
+    try {
+      var formEl = e.target && e.target.closest ? e.target.closest('form') : null;
+      if (!formEl) {
+        var wrapper = document.querySelector('.fusion-form-submit-success, .fusion-form-form');
+        if (wrapper) formEl = wrapper.querySelector('form') || wrapper.closest('form');
+      }
+      if (formEl) handleFormSubmit({ target: formEl });
+    } catch (err) { /* silent */ }
+  });
+
+  // Hook into jQuery ajaxComplete for Avada forms (they use jQuery AJAX)
+  if (window.jQuery) {
+    window.jQuery(document).on('ajaxComplete', function (event, xhr, settings) {
+      if (!settings || !settings.url) return;
+      if (settings.url.indexOf('fusion_form') === -1 && settings.url.indexOf('avada') === -1) return;
+      try {
+        var forms = document.querySelectorAll('.fusion-form form, form.fusion-form-form');
+        for (var i = 0; i < forms.length; i++) {
+          var fields = captureFormFields(forms[i]);
+          if (fields.length > 0) {
+            handleFormSubmit({ target: forms[i] });
+            break;
+          }
+        }
+      } catch (err) { /* silent */ }
+    });
+  }
 
   // ── Boot ───────────────────────────────────────────────────────
 

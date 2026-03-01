@@ -1,33 +1,21 @@
 
 
-## Client Dashboard URL
+## Add Site from Settings
 
-Since clients just need to log in and see their dashboard, the infrastructure already exists. Here is what needs to happen:
+Right now, new websites can only be registered during initial onboarding. You need an "Add Site" button in the Settings page so you can register additional websites at any time.
 
-### Current State
-- The app already has a login page at `/auth` and a protected `/dashboard` that shows data scoped to the user's organization via RLS.
-- When you create a client account (via the Signup flow or the Clients page), they get credentials and an org. Logging in automatically shows their org's data.
+### What will be built
 
-### What's Missing
-The app is not yet published to a live URL. Once published, the login URL **is** the client URL.
+**SitesSection component** (`src/components/settings/SitesSection.tsx`):
+- Add an "Add Site" button that opens a small inline form (URL input + Add button)
+- When submitted, it extracts the hostname from the URL and inserts a row into the `sites` table (same logic as onboarding)
+- After success, the sites list refreshes to show the newly added site
+- Includes a delete/remove option per site for cleanup
 
-### Plan
+### Technical details
 
-1. **Publish the app** so it has a live URL (e.g., `your-app.lovable.app`). Optionally connect a custom domain (e.g., `app.yourbrand.com`).
-
-2. **Auto-send credentials**: Update the signup/account-creation flow to display or email the client their login URL + credentials after account creation. Right now the Signup page shows an API key but doesn't surface the dashboard login link.
-
-3. **Minor code change**: On the Signup "complete" step and on the Clients page (when inviting a user), show the published URL so admins can copy and share it with clients. This is a small UI addition — displaying a copyable link like `https://your-domain.com/auth`.
-
-### Implementation Details
-
-- Add a constant or env variable for the published app URL (can use `window.location.origin` at runtime).
-- On the Signup "complete" step, add a "Your Dashboard" link section showing the login URL.
-- On the Clients page, after inviting a user, show a copyable link to share with the client.
-- Optionally, connect a custom domain via **Project Settings → Domains** so clients see a branded URL.
-
-### Steps
-1. Publish the app (click Publish in the editor)
-2. Optionally connect a custom domain
-3. Add copyable dashboard URL to the signup completion and client invite flows
+- The `sites` table already has an RLS INSERT policy (`sites_write`) allowing org admins and members to insert
+- Reuse the URL-to-hostname extraction logic from `Onboarding.tsx`
+- Invalidate the `["sites", orgId]` React Query cache on success
+- No database changes needed — existing schema and policies support this
 

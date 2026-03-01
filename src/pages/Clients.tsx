@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Building2, UserPlus, Users, Mail, Trash2, Copy, Check, Link, KeyRound,
+  Building2, UserPlus, Users, Mail, Trash2, Copy, Check, Link, KeyRound, Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,12 +145,14 @@ function CreateOrgForm({
 
 function OrgDetail({ org }: { org: any }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newFullName, setNewFullName] = useState("");
   const [newRole, setNewRole] = useState("member");
   const [urlCopied, setUrlCopied] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const dashboardUrl = `${window.location.origin}/auth`;
 
@@ -159,6 +161,66 @@ function OrgDetail({ org }: { org: any }) {
     setUrlCopied(true);
     toast.success("Dashboard URL copied!");
     setTimeout(() => setUrlCopied(false), 2000);
+  };
+
+  // Invite codes
+  const { data: inviteCodes, isLoading: inviteLoading } = useQuery({
+    queryKey: ["invite_codes", org.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invite_codes")
+        .select("*")
+        .eq("org_id", org.id)
+        .eq("active", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const generateInvite = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Not authenticated");
+      const code = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+        .map((b) => b.toString(36).toUpperCase().padStart(2, "0"))
+        .join("")
+        .slice(0, 8);
+      const { error } = await supabase
+        .from("invite_codes")
+        .insert({ org_id: org.id, code, created_by: user.id });
+      if (error) throw error;
+      return code;
+    },
+    onSuccess: (code) => {
+      queryClient.invalidateQueries({ queryKey: ["invite_codes", org.id] });
+      const inviteUrl = `${window.location.origin}/auth?invite=${code}`;
+      navigator.clipboard.writeText(inviteUrl);
+      toast.success("Invite link copied to clipboard!");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to generate invite"),
+  });
+
+  const deactivateInvite = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("invite_codes")
+        .update({ active: false })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invite_codes", org.id] });
+      toast.success("Invite code deactivated");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to deactivate"),
+  });
+
+  const copyInviteLink = (code: string) => {
+    const url = `${window.location.origin}/auth?invite=${code}`;
+    navigator.clipboard.writeText(url);
+    setInviteCopied(true);
+    toast.success("Invite link copied!");
+    setTimeout(() => setInviteCopied(false), 2000);
   };
 
   const { data: members, isLoading } = useQuery({
@@ -264,6 +326,57 @@ function OrgDetail({ org }: { org: any }) {
             {urlCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4 text-secondary-foreground/60" />}
           </button>
         </div>
+      </div>
+
+      {/* Invite Codes */}
+      <div className="rounded-lg border border-border bg-card p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Ticket className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Invite Link</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={generateInvite.isPending}
+            onClick={() => generateInvite.mutate()}
+          >
+            <Ticket className="h-3.5 w-3.5" />
+            {generateInvite.isPending ? "Generating…" : "Generate Invite"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Generate an invite link to send to clients. They'll sign up and automatically join this organization.
+        </p>
+        {inviteCodes && inviteCodes.length > 0 && (
+          <div className="space-y-2">
+            {inviteCodes.map((ic: any) => (
+              <div key={ic.id} className="bg-secondary rounded-lg p-3 flex items-center gap-2">
+                <code className="text-xs font-mono text-secondary-foreground flex-1">
+                  {window.location.origin}/auth?invite={ic.code}
+                </code>
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {ic.use_count} used
+                </span>
+                <button
+                  onClick={() => copyInviteLink(ic.code)}
+                  className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
+                  title="Copy invite link"
+                >
+                  <Copy className="h-3.5 w-3.5 text-secondary-foreground/60" />
+                </button>
+                <button
+                  onClick={() => deactivateInvite.mutate(ic.id)}
+                  className="flex-shrink-0 p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                  title="Deactivate"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Members */}

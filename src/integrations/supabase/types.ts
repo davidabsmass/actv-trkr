@@ -462,6 +462,50 @@ export type Database = {
           },
         ]
       }
+      invite_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          org_id: string
+          use_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          org_id: string
+          use_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          org_id?: string
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_codes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_daily: {
         Row: {
           date: string

@@ -10,7 +10,6 @@ import Entries from "./pages/Entries";
 import Reports from "./pages/Reports";
 import Exports from "./pages/Exports";
 import Clients from "./pages/Clients";
-import AgencyDashboard from "./pages/AgencyDashboard";
 import SettingsPage from "./pages/Settings";
 import AdminSetup from "./pages/AdminSetup";
 import Auth from "./pages/Auth";
@@ -70,7 +69,6 @@ const App = () => (
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="admin-setup" element={<AdminSetup />} />
-            <Route path="agency" element={<AgencyDashboard />} />
           </Route>
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/snapshot/:id" element={<SnapshotView />} />

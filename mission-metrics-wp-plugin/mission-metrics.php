@@ -21,6 +21,7 @@ require_once MM_PLUGIN_DIR . 'includes/class-settings.php';
 require_once MM_PLUGIN_DIR . 'includes/class-tracker.php';
 require_once MM_PLUGIN_DIR . 'includes/class-forms.php';
 require_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';
+require_once MM_PLUGIN_DIR . 'includes/class-updater.php';
 
 /**
  * Activation: create retry-queue table and schedule cron.
@@ -56,6 +57,7 @@ add_filter( 'cron_schedules', function ( $schedules ) {
 MM_Settings::init();
 MM_Tracker::init();
 MM_Forms::init();
+MM_Updater::init();
 
 // Cron hook.
 add_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );

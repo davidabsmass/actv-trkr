@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 
-const PLUGIN_VERSION = "1.1.0";
+const PLUGIN_VERSION = "1.2.0";
 const ENDPOINT_BASE = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1`;
 
 function buildFiles(apiKey: string): Record<string, string> {
@@ -23,6 +23,7 @@ require_once MM_PLUGIN_DIR.'includes/class-settings.php';
 require_once MM_PLUGIN_DIR.'includes/class-tracker.php';
 require_once MM_PLUGIN_DIR.'includes/class-forms.php';
 require_once MM_PLUGIN_DIR.'includes/class-retry-queue.php';
+require_once MM_PLUGIN_DIR.'includes/class-updater.php';
 function mm_activate(){MM_Retry_Queue::create_table();if(!wp_next_scheduled('mm_retry_cron')){wp_schedule_event(time(),'mm_every_5_min','mm_retry_cron');}
 \$opts=get_option('mm_options',array());
 if(empty(\$opts['api_key'])){
@@ -38,7 +39,7 @@ register_deactivation_hook(__FILE__,'mm_deactivate');
 add_filter('cron_schedules',function(\$s){\$s['mm_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return \$s;});
 define('MM_BAKED_API_KEY','${apiKey}');
 define('MM_BAKED_ENDPOINT','${ENDPOINT_BASE}');
-MM_Settings::init();MM_Tracker::init();MM_Forms::init();
+MM_Settings::init();MM_Tracker::init();MM_Forms::init();MM_Updater::init();
 add_action('mm_retry_cron',array('MM_Retry_Queue','process'));
 `,
 
@@ -122,6 +123,19 @@ public static function table_name(){global \$wpdb;return \$wpdb->prefix.self::TA
 public static function create_table(){global \$wpdb;\$table=self::table_name();\$charset=\$wpdb->get_charset_collate();\$sql="CREATE TABLE IF NOT EXISTS {\$table}(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,endpoint VARCHAR(500) NOT NULL,api_key VARCHAR(500) NOT NULL,payload LONGTEXT NOT NULL,attempts TINYINT UNSIGNED DEFAULT 0,last_error TEXT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,next_retry_at DATETIME DEFAULT CURRENT_TIMESTAMP) {\$charset};";require_once ABSPATH.'wp-admin/includes/upgrade.php';dbDelta(\$sql);}
 public static function enqueue(\$endpoint,\$api_key,\$payload){global \$wpdb;\$wpdb->insert(self::table_name(),array('endpoint'=>\$endpoint,'api_key'=>\$api_key,'payload'=>wp_json_encode(\$payload)));}
 public static function process(){global \$wpdb;\$table=self::table_name();\$now=current_time('mysql');\$rows=\$wpdb->get_results(\$wpdb->prepare("SELECT * FROM {\$table} WHERE attempts < %d AND next_retry_at <= %s ORDER BY created_at ASC LIMIT 20",self::MAX_ATTEMPTS,\$now));foreach(\$rows as \$row){\$response=wp_remote_post(\$row->endpoint,array('timeout'=>15,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.\$row->api_key),'body'=>\$row->payload));\$code=is_wp_error(\$response)?0:wp_remote_retrieve_response_code(\$response);if(\$code>=200&&\$code<300){\$wpdb->delete(\$table,array('id'=>\$row->id));}else{\$attempts=(int)\$row->attempts+1;\$error=is_wp_error(\$response)?\$response->get_error_message():'HTTP '.\$code;\$delay=min(pow(2,\$attempts)*60,3600);\$next=gmdate('Y-m-d H:i:s',time()+\$delay);\$wpdb->update(\$table,array('attempts'=>\$attempts,'last_error'=>\$error,'next_retry_at'=>\$next),array('id'=>\$row->id));}}\$wpdb->query(\$wpdb->prepare("DELETE FROM {\$table} WHERE attempts >= %d",self::MAX_ATTEMPTS));}
+}`,
+
+    "mission-metrics/includes/class-updater.php": `<?php
+if(!defined('ABSPATH'))exit;
+class MM_Updater{
+const SLUG='mission-metrics/mission-metrics.php';const TRANSIENT='mm_update_data';const CHECK_HOURS=12;
+public static function init(){add_filter('pre_set_site_transient_update_plugins',array(__CLASS__,'check_update'));add_filter('plugins_api',array(__CLASS__,'plugin_info'),20,3);add_filter('plugin_row_meta',array(__CLASS__,'row_meta'),10,2);}
+private static function endpoint(){\$opts=MM_Settings::get();return rtrim(\$opts['endpoint_url'],'/').'/plugin-update-check';}
+public static function check_update(\$transient){if(empty(\$transient->checked))return \$transient;\$remote=self::get_remote_data();if(!\$remote||empty(\$remote['has_update']))return \$transient;\$transient->response[self::SLUG]=(object)array('slug'=>'mission-metrics','plugin'=>self::SLUG,'new_version'=>\$remote['version'],'url'=>'https://actvtrkr.com','package'=>'','icons'=>array(),'banners'=>array(),'tested'=>\$remote['tested_wp']??'6.7','requires'=>\$remote['requires_wp']??'5.8');return \$transient;}
+public static function plugin_info(\$result,\$action,\$args){if(\$action!=='plugin_information')return \$result;if(!isset(\$args->slug)||\$args->slug!=='mission-metrics')return \$result;\$remote=self::get_remote_info();if(!\$remote)return \$result;\$info=new stdClass();\$info->name=\$remote['name']??'Mission Metrics';\$info->slug='mission-metrics';\$info->version=\$remote['version']??MM_PLUGIN_VERSION;\$info->author=\$remote['author']??'ACTV TRKR';\$info->homepage=\$remote['homepage']??'https://actvtrkr.com';\$info->requires=\$remote['requires']??'5.8';\$info->tested=\$remote['tested']??'6.7';\$info->requires_php=\$remote['requires_php']??'7.4';\$info->download_link='';\$info->sections=array('description'=>\$remote['sections']['description']??'','changelog'=>nl2br(esc_html(\$remote['sections']['changelog']??'')));return \$info;}
+public static function row_meta(\$links,\$file){if(\$file!==self::SLUG)return \$links;\$links[]='<a href="'.esc_url(admin_url('options-general.php?page=mission-metrics')).'">Settings</a>';return \$links;}
+private static function get_remote_data(){\$cached=get_transient(self::TRANSIENT);if(\$cached!==false)return \$cached;\$domain=wp_parse_url(home_url(),PHP_URL_HOST);\$url=self::endpoint().'?'.http_build_query(array('action'=>'check','version'=>MM_PLUGIN_VERSION,'domain'=>\$domain));\$response=wp_remote_get(\$url,array('timeout'=>10));if(is_wp_error(\$response))return null;\$body=json_decode(wp_remote_retrieve_body(\$response),true);if(!is_array(\$body))return null;set_transient(self::TRANSIENT,\$body,self::CHECK_HOURS*HOUR_IN_SECONDS);return \$body;}
+private static function get_remote_info(){\$url=self::endpoint().'?action=info';\$response=wp_remote_get(\$url,array('timeout'=>10));if(is_wp_error(\$response))return null;return json_decode(wp_remote_retrieve_body(\$response),true);}
 }`,
 
     "mission-metrics/assets/tracker.js": `(function(){'use strict';if(typeof window==='undefined'||typeof document==='undefined')return;if(!window.mmConfig)return;var CFG=window.mmConfig;var COOKIE_VID='mm_vid';var COOKIE_SID='mm_sid';var COOKIE_UTM='mm_utm';var COOKIE_TS='mm_ts';var SESSION_TIMEOUT=30*60*1000;

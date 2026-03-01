@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Key, Plus, Copy, Check, Ban, Download } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { downloadPlugin } from "@/lib/plugin-download";
 
@@ -136,36 +137,38 @@ export default function ApiKeysSection() {
       ) : !keys?.length ? (
         <p className="text-xs text-muted-foreground">No API keys yet. Generate one to get started.</p>
       ) : (
-        <div className="space-y-2">
-          {keys.map((k) => (
-            <div
-              key={k.id}
-              className="flex items-center justify-between rounded-lg border border-border p-3"
-            >
-              <div>
-                <p className="text-sm font-medium text-foreground">{k.label}</p>
-                <p className="text-xs text-muted-foreground">
-                  Created {new Date(k.created_at).toLocaleDateString()}
-                  {k.revoked_at && (
-                    <span className="ml-2 text-destructive">
-                      · Revoked {new Date(k.revoked_at).toLocaleDateString()}
-                    </span>
-                  )}
-                </p>
+        <ScrollArea className="max-h-[220px]">
+          <div className="space-y-2 pr-2">
+            {keys.map((k) => (
+              <div
+                key={k.id}
+                className="flex items-center justify-between rounded-lg border border-border p-3"
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">{k.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Created {new Date(k.created_at).toLocaleDateString()}
+                    {k.revoked_at && (
+                      <span className="ml-2 text-destructive">
+                        · Revoked {new Date(k.revoked_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                {!k.revoked_at && (
+                  <button
+                    onClick={() => revokeKey(k.id)}
+                    disabled={revokingId === k.id}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded transition-colors disabled:opacity-50"
+                  >
+                    <Ban className="h-3 w-3" />
+                    {revokingId === k.id ? "Revoking…" : "Revoke"}
+                  </button>
+                )}
               </div>
-              {!k.revoked_at && (
-                <button
-                  onClick={() => revokeKey(k.id)}
-                  disabled={revokingId === k.id}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded transition-colors disabled:opacity-50"
-                >
-                  <Ban className="h-3 w-3" />
-                  {revokingId === k.id ? "Revoking…" : "Revoke"}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </ScrollArea>
       )}
     </div>
   );

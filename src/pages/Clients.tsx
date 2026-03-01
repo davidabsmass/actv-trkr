@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Building2, UserPlus, Users, Mail, Trash2, ChevronRight, ArrowLeft, Copy, Check, Link, KeyRound,
+  Building2, UserPlus, Users, Mail, Trash2, Copy, Check, Link, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,6 @@ export default function Clients() {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { orgs } = useOrg();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [newOrgName, setNewOrgName] = useState("");
@@ -34,27 +33,71 @@ export default function Clients() {
 
   const selectedOrg = orgs.find((o) => o.id === selectedOrgId);
 
-  return selectedOrg ? (
-    <OrgDetail org={selectedOrg} onBack={() => setSelectedOrgId(null)} />
-  ) : (
-    <OrgList
-      orgs={orgs}
-      onSelect={setSelectedOrgId}
-      createOrgOpen={createOrgOpen}
-      setCreateOrgOpen={setCreateOrgOpen}
-      newOrgName={newOrgName}
-      setNewOrgName={setNewOrgName}
-      newOrgTimezone={newOrgTimezone}
-      setNewOrgTimezone={setNewOrgTimezone}
-      userId={user?.id}
-    />
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-foreground mb-1">Clients</h1>
+      <p className="text-sm text-muted-foreground mb-6">Manage client organizations and users</p>
+
+      {/* Client selector + Add */}
+      <div className="flex items-center gap-3 mb-6">
+        <Select value={selectedOrgId ?? ""} onValueChange={(v) => setSelectedOrgId(v)}>
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue placeholder="Select a client…" />
+          </SelectTrigger>
+          <SelectContent>
+            {orgs.map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Dialog open={createOrgOpen} onOpenChange={setCreateOrgOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0">
+              <Building2 className="h-3.5 w-3.5" /> Add Client
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>New Client Organization</DialogTitle></DialogHeader>
+            <CreateOrgForm
+              newOrgName={newOrgName}
+              setNewOrgName={setNewOrgName}
+              newOrgTimezone={newOrgTimezone}
+              setNewOrgTimezone={setNewOrgTimezone}
+              userId={user?.id}
+              onCreated={(orgId: string) => {
+                setCreateOrgOpen(false);
+                setNewOrgName("");
+                setSelectedOrgId(orgId);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {selectedOrg ? (
+        <OrgDetail org={selectedOrg} />
+      ) : (
+        <div className="rounded-lg border border-border bg-card p-12 text-center">
+          <Building2 className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {orgs.length === 0 ? "No organizations yet. Add a client to get started." : "Select a client from the dropdown above."}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
-function OrgList({
-  orgs, onSelect, createOrgOpen, setCreateOrgOpen,
-  newOrgName, setNewOrgName, newOrgTimezone, setNewOrgTimezone, userId,
-}: any) {
+function CreateOrgForm({
+  newOrgName, setNewOrgName, newOrgTimezone, setNewOrgTimezone, userId, onCreated,
+}: {
+  newOrgName: string; setNewOrgName: (v: string) => void;
+  newOrgTimezone: string; setNewOrgTimezone: (v: string) => void;
+  userId?: string; onCreated: (orgId: string) => void;
+}) {
   const queryClient = useQueryClient();
 
   const createOrg = useMutation({
@@ -68,85 +111,39 @@ function OrgList({
       if (ouErr) throw ouErr;
       return org;
     },
-    onSuccess: () => {
+    onSuccess: (org) => {
       queryClient.invalidateQueries({ queryKey: ["orgs"] });
       toast.success("Client organization created");
-      setCreateOrgOpen(false);
-      setNewOrgName("");
+      onCreated(org.id);
     },
     onError: (err: any) => toast.error(err.message || "Failed to create org"),
   });
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Clients</h1>
-      <p className="text-sm text-muted-foreground mb-6">Manage client organizations and users</p>
-
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-primary" /> Organizations
-          </h3>
-          <Dialog open={createOrgOpen} onOpenChange={setCreateOrgOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Building2 className="h-3.5 w-3.5" /> Add Client
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>New Client Organization</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-2">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Organization Name</label>
-                  <Input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder="Client name" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Timezone</label>
-                  <Select value={newOrgTimezone} onValueChange={setNewOrgTimezone}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Phoenix", "UTC"].map((tz) => (
-                        <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button className="w-full" disabled={!newOrgName.trim() || createOrg.isPending} onClick={() => createOrg.mutate()}>
-                  {createOrg.isPending ? "Creating…" : "Create Organization"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {orgs.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No organizations yet.</div>
-        ) : (
-          <div className="divide-y divide-border">
-            {orgs.map((org: any) => (
-              <button
-                key={org.id}
-                onClick={() => onSelect(org.id)}
-                className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Building2 className="h-4 w-4 text-primary flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{org.name}</p>
-                    <p className="text-xs text-muted-foreground">{org.timezone}</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="space-y-4 pt-2">
+      <div>
+        <label className="text-sm font-medium text-foreground mb-1.5 block">Organization Name</label>
+        <Input value={newOrgName} onChange={(e) => setNewOrgName(e.target.value)} placeholder="Client name" />
       </div>
+      <div>
+        <label className="text-sm font-medium text-foreground mb-1.5 block">Timezone</label>
+        <Select value={newOrgTimezone} onValueChange={setNewOrgTimezone}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Phoenix", "UTC"].map((tz) => (
+              <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button className="w-full" disabled={!newOrgName.trim() || createOrg.isPending} onClick={() => createOrg.mutate()}>
+        {createOrg.isPending ? "Creating…" : "Create Organization"}
+      </Button>
     </div>
   );
 }
 
-function OrgDetail({ org, onBack }: { org: any; onBack: () => void }) {
+function OrgDetail({ org }: { org: any }) {
   const queryClient = useQueryClient();
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -249,11 +246,7 @@ function OrgDetail({ org, onBack }: { org: any; onBack: () => void }) {
 
   return (
     <div>
-      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Clients
-      </button>
-
-      <h1 className="text-2xl font-bold text-foreground mb-1">{org.name}</h1>
+      <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
       <p className="text-sm text-muted-foreground mb-6">{org.timezone}</p>
 
       {/* Dashboard URL card */}
@@ -266,9 +259,9 @@ function OrgDetail({ org, onBack }: { org: any; onBack: () => void }) {
           Share this link with client users so they can log in and view their dashboard.
         </p>
         <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">
-          <code className="text-xs font-mono text-foreground flex-1 break-all">{dashboardUrl}</code>
+          <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">{dashboardUrl}</code>
           <button onClick={copyDashboardUrl} className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors">
-            {urlCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+            {urlCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4 text-secondary-foreground/60" />}
           </button>
         </div>
       </div>

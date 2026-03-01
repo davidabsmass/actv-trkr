@@ -4,7 +4,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
-import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon } from "lucide-react";
+import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -54,8 +54,12 @@ export default function Entries() {
   const navigate = useNavigate();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   const selectedForm = forms?.find((f) => f.id === selectedFormId);
+  const activeForms = forms?.filter((f) => !f.archived) || [];
+  const archivedForms = forms?.filter((f) => f.archived) || [];
+  const displayedForms = showArchived ? archivedForms : activeForms;
 
   const { data: leadCounts } = useQuery({
     queryKey: ["lead_counts_by_form_entries", orgId],
@@ -133,31 +137,44 @@ export default function Entries() {
       <p className="text-sm text-muted-foreground mb-6">Lead submissions for {orgName}</p>
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Forms</h3>
+          {archivedForms.length > 0 && (
+            <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setShowArchived(!showArchived)}>
+              <Archive className="h-3.5 w-3.5" />
+              {showArchived ? "Show Active" : `Archived (${archivedForms.length})`}
+            </Button>
+          )}
         </div>
         {formsLoading ? (
           <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
-        ) : !forms || forms.length === 0 ? (
+        ) : displayedForms.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground text-sm">
-            No forms connected yet. Forms will appear here once leads start coming in.
+            {showArchived
+              ? "No archived forms."
+              : !forms || forms.length === 0
+                ? "No forms connected yet. Forms will appear here once leads start coming in."
+                : "All forms are archived. Click \"Archived\" above to view them."}
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {forms.map((form) => (
+            {displayedForms.map((form) => (
               <button
                 key={form.id}
                 onClick={() => setSelectedFormId(form.id)}
                 className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                  <FileText className={`h-4 w-4 flex-shrink-0 ${form.archived ? "text-muted-foreground" : "text-primary"}`} />
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-foreground">{form.name}</p>
+                      <p className={`text-sm font-medium ${form.archived ? "text-muted-foreground" : "text-foreground"}`}>{form.name}</p>
                       <Badge variant="outline" className={`text-[9px] uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
                         {form.form_category}
                       </Badge>
+                      {form.archived && (
+                        <Badge variant="outline" className="text-[9px] uppercase text-muted-foreground border-border">Archived</Badge>
+                      )}
                       {form.lead_weight < 1 && (
                         <span className="text-[10px] text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}
@@ -245,9 +262,35 @@ function FormSettings({ form }: { form: any }) {
         </div>
       </div>
 
-      <Button onClick={() => updateForm.mutate()} disabled={updateForm.isPending}>
-        {updateForm.isPending ? "Saving…" : "Save Settings"}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button onClick={() => updateForm.mutate()} disabled={updateForm.isPending}>
+          {updateForm.isPending ? "Saving…" : "Save Settings"}
+        </Button>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h4 className="text-sm font-semibold text-foreground mb-2">Archive Form</h4>
+        <p className="text-xs text-muted-foreground mb-4">
+          {form.archived
+            ? "This form is archived. It won't appear in dashboards or leaderboards. Unarchive it to restore."
+            : "Archiving hides this form from your dashboard and leaderboards. Existing data is preserved."}
+        </p>
+        <Button
+          variant={form.archived ? "outline" : "destructive"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => {
+            const newVal = !form.archived;
+            supabase.from("forms").update({ archived: newVal }).eq("id", form.id).then(({ error }) => {
+              if (error) { toast.error(error.message); return; }
+              queryClient.invalidateQueries({ queryKey: ["forms"] });
+              toast.success(newVal ? "Form archived" : "Form restored");
+            });
+          }}
+        >
+          {form.archived ? <><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive Form</> : <><Archive className="h-3.5 w-3.5" /> Archive Form</>}
+        </Button>
+      </div>
     </div>
   );
 }

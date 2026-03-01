@@ -1,6 +1,23 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Strip emoji and non-Latin1 characters that jsPDF's default fonts can't render
+function safe(s: any): string {
+  return String(s ?? "")
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
+    .replace(/[\u{2600}-\u{27BF}]/gu, "")
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, "")
+    .replace(/[\u200D\u200B\u200C\u200E\u200F]/g, "")
+    .replace(/\u2013/g, "-")
+    .replace(/\u2014/g, "--")
+    .replace(/\u2019/g, "'")
+    .replace(/\u201C/g, '"')
+    .replace(/\u201D/g, '"')
+    .replace(/\u2026/g, "...")
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, "")
+    .trim();
+}
+
 const COLORS = {
   primary: [99, 102, 241] as [number, number, number],
   text: [26, 26, 46] as [number, number, number],
@@ -23,7 +40,11 @@ function changeColor(change: number | null): [number, number, number] {
 }
 
 function fmtDate(d: string): string {
-  try { return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return d; }
+  try {
+    return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return d;
+  }
 }
 
 export function buildReportPdf(report: any, run: any): jsPDF {
@@ -35,7 +56,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
 
   const slug = report.templateSlug || "monthly_performance";
   const title = slug === "weekly_brief" ? "Weekly Brief" : slug === "campaign_report" ? "Campaign Report" : "Monthly Performance Report";
-  const period = `${fmtDate(report.periodStart)} – ${fmtDate(report.periodEnd)} · ${report.periodDays}-day period`;
+  const period = safe(`${fmtDate(report.periodStart)} - ${fmtDate(report.periodEnd)} | ${report.periodDays}-day period`);
 
   const checkPage = (needed: number) => {
     if (y + needed > doc.internal.pageSize.getHeight() - 15) {
@@ -48,15 +69,17 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   doc.setFontSize(22);
   doc.setTextColor(...COLORS.text);
   doc.setFont("helvetica", "bold");
-  doc.text(title, margin, y);
+  doc.text(safe(title), margin, y);
   y += 8;
 
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.muted);
   doc.setFont("helvetica", "normal");
   let sub = period;
-  if (report.compareMode && report.compareMode !== "none") sub += ` · vs ${report.compareMode === "yoy" ? "same period last year" : "previous period"}`;
-  doc.text(sub, margin, y);
+  if (report.compareMode && report.compareMode !== "none") {
+    sub += ` | vs ${report.compareMode === "yoy" ? "same period last year" : "previous period"}`;
+  }
+  doc.text(safe(sub), margin, y);
   y += 10;
 
   // Section header
@@ -69,7 +92,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     doc.setFontSize(11);
     doc.setTextColor(...COLORS.text);
     doc.setFont("helvetica", "bold");
-    doc.text(label.toUpperCase(), margin, y);
+    doc.text(safe(label).toUpperCase(), margin, y);
     y += 7;
   };
 
@@ -84,32 +107,38 @@ export function buildReportPdf(report: any, run: any): jsPDF {
       doc.setFontSize(7);
       doc.setTextColor(...COLORS.muted);
       doc.setFont("helvetica", "normal");
-      doc.text(k.label.toUpperCase(), x + 3, y + 5);
+      doc.text(safe(k.label).toUpperCase(), x + 3, y + 5);
       doc.setFontSize(14);
       doc.setTextColor(...COLORS.text);
       doc.setFont("helvetica", "bold");
-      doc.text(String(k.value), x + 3, y + 12);
+      doc.text(safe(String(k.value)), x + 3, y + 12);
       if (k.change !== null && k.change !== undefined) {
         doc.setFontSize(8);
         doc.setTextColor(...changeColor(k.change));
         doc.setFont("helvetica", "bold");
-        doc.text(changeText(k.change), x + 3, y + 16);
+        doc.text(safe(changeText(k.change)), x + 3, y + 16);
       }
     });
     y += 22;
   };
 
-  // Insight box
-  const insightBox = (emoji: string, label: string, text: string, isWin: boolean) => {
+  // Insight box - no emoji, use [+] / [!] markers
+  const insightBox = (marker: string, label: string, text: string, isWin: boolean) => {
     checkPage(14);
-    doc.setFillColor(...(isWin ? [236, 253, 245] as [number, number, number] : [254, 242, 242] as [number, number, number]));
+    const bgColor: [number, number, number] = isWin ? [236, 253, 245] : [254, 242, 242];
+    doc.setFillColor(...bgColor);
     doc.roundedRect(margin, y, contentW, 10, 2, 2, "F");
     doc.setFontSize(8);
     doc.setTextColor(...COLORS.text);
     doc.setFont("helvetica", "bold");
-    doc.text(`${emoji} ${label}:`, margin + 3, y + 5);
+    const prefix = safe(`${marker} ${label}:`);
+    doc.text(prefix, margin + 3, y + 5);
+    const prefixW = doc.getTextWidth(prefix + " ");
     doc.setFont("helvetica", "normal");
-    doc.text(text, margin + 3 + doc.getTextWidth(`${emoji} ${label}: `), y + 5);
+    const safeText = safe(text);
+    const available = contentW - 6 - prefixW;
+    const lines = doc.splitTextToSize(safeText, available);
+    doc.text(lines[0] || "", margin + 3 + prefixW, y + 5);
     y += 13;
   };
 
@@ -121,9 +150,9 @@ export function buildReportPdf(report: any, run: any): jsPDF {
       doc.setFontSize(8);
       doc.setTextColor(...COLORS.text);
       doc.setFont("helvetica", "normal");
-      doc.text(item.label, margin + 2, y);
+      doc.text(safe(item.label), margin + 2, y);
       doc.setTextColor(...COLORS.muted);
-      doc.text(item.count.toLocaleString(), margin + contentW - 2, y, { align: "right" });
+      doc.text(safe(item.count.toLocaleString()), margin + contentW - 2, y, { align: "right" });
       y += 5;
     });
     y += 2;
@@ -139,7 +168,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
       doc.text(`${i + 1}.`, margin + 2, y);
       doc.setTextColor(...COLORS.text);
       doc.setFont("helvetica", "normal");
-      const lines = doc.splitTextToSize(a, contentW - 12);
+      const lines = doc.splitTextToSize(safe(a), contentW - 12);
       doc.text(lines, margin + 8, y);
       y += lines.length * 4 + 2;
     });
@@ -151,7 +180,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     doc.setFontSize(8);
     doc.setTextColor(...COLORS.muted);
     doc.setFont("helvetica", "bold");
-    doc.text(label.toUpperCase(), margin, y);
+    doc.text(safe(label).toUpperCase(), margin, y);
     y += 5;
   };
 
@@ -173,11 +202,12 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     if (es.goalTarget) {
       doc.setFontSize(8);
       doc.setTextColor(...COLORS.muted);
-      doc.text(`🎯 Monthly goal: ${es.goalTarget} leads · ${Math.round((es.leads.current / es.goalTarget) * 100)}% achieved`, margin, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(safe(`Goal: ${es.goalTarget} leads | ${Math.round((es.leads.current / es.goalTarget) * 100)}% achieved`), margin, y);
       y += 6;
     }
-    insightBox("✅", "Key Win", es.keyWin, true);
-    insightBox("⚠️", "Key Risk", es.keyRisk, false);
+    insightBox("[+]", "Key Win", es.keyWin, true);
+    insightBox("[!]", "Key Risk", es.keyRisk, false);
 
     sectionHeader("Growth Engine");
     colTitle("Traffic by Source");
@@ -191,8 +221,10 @@ export function buildReportPdf(report: any, run: any): jsPDF {
         startY: y,
         margin: { left: margin, right: margin },
         head: [["Form", "Category", "Weight", "Leads", "Change"]],
-        body: (ci.leadsByForm || []).map((f: any) => [f.formName, f.formCategory, `${f.weight}×`, f.leads, changeText(f.change)]),
-        styles: { fontSize: 8, cellPadding: 2 },
+        body: (ci.leadsByForm || []).map((f: any) => [
+          safe(f.formName), safe(f.formCategory), `${f.weight}x`, f.leads, changeText(f.change),
+        ]),
+        styles: { fontSize: 8, cellPadding: 2, font: "helvetica" },
         headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: "bold" },
         alternateRowStyles: { fillColor: COLORS.bg },
         theme: "grid",
@@ -216,7 +248,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
 
     sectionHeader("Action Plan & Forecast");
     if (ap.forecast?.projectedNextMonth > 0) {
-      insightBox("📈", "Lead Forecast", `Avg. ${ap.forecast.avgDailyLeads} leads/day → Projected next month: ${Math.round(ap.forecast.projectedNextMonth * 0.9)}–${Math.round(ap.forecast.projectedNextMonth * 1.1)}`, true);
+      insightBox("[>]", "Lead Forecast", `Avg. ${ap.forecast.avgDailyLeads} leads/day - Projected next month: ${Math.round(ap.forecast.projectedNextMonth * 0.9)}-${Math.round(ap.forecast.projectedNextMonth * 1.1)}`, true);
     }
     recommendations(ap.recommendations);
 
@@ -227,9 +259,10 @@ export function buildReportPdf(report: any, run: any): jsPDF {
         checkPage(6);
         doc.setFontSize(8);
         doc.setTextColor(...COLORS.text);
-        doc.text(o.page, margin + 2, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(safe(o.page), margin + 2, y);
         doc.setTextColor(...COLORS.muted);
-        doc.text(`${o.views} views`, margin + contentW - 2, y, { align: "right" });
+        doc.text(safe(`${o.views} views`), margin + contentW - 2, y, { align: "right" });
         y += 5;
       });
     }
@@ -245,7 +278,8 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     if (kpi.goalTarget) {
       doc.setFontSize(8);
       doc.setTextColor(...COLORS.muted);
-      doc.text(`🎯 Goal: ${kpi.goalTarget} leads · ${Math.round((kpi.leads.current / kpi.goalTarget) * 100)}% achieved`, margin, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(safe(`Goal: ${kpi.goalTarget} leads | ${Math.round((kpi.leads.current / kpi.goalTarget) * 100)}% achieved`), margin, y);
       y += 6;
     }
 
@@ -255,8 +289,10 @@ export function buildReportPdf(report: any, run: any): jsPDF {
         startY: y,
         margin: { left: margin, right: margin },
         head: [["Metric", "Current", "Previous", "Change"]],
-        body: (report.topChanges || []).map((c: any) => [c.metric, c.current, c.previous, changeText(c.change)]),
-        styles: { fontSize: 8, cellPadding: 2 },
+        body: (report.topChanges || []).map((c: any) => [
+          safe(c.metric), c.current, c.previous, changeText(c.change),
+        ]),
+        styles: { fontSize: 8, cellPadding: 2, font: "helvetica" },
         headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: "bold" },
         theme: "grid",
       });
@@ -277,7 +313,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
       { label: "Total Leads", value: s.totalLeads, change: s.leadsChange },
       { label: "Sessions", value: s.totalSessions, change: null },
       { label: "CVR", value: `${s.cvr}%`, change: null },
-      { label: "Spend", value: s.totalSpend ? `$${s.totalSpend.toLocaleString()}` : "—", change: null },
+      { label: "Spend", value: s.totalSpend ? `$${s.totalSpend.toLocaleString()}` : "-", change: null },
     ]);
 
     sectionHeader("Campaign Breakdown");
@@ -286,11 +322,11 @@ export function buildReportPdf(report: any, run: any): jsPDF {
       margin: { left: margin, right: margin },
       head: [["Campaign", "Leads", "Sessions", "CVR", "Spend", "CPL"]],
       body: (report.campaignBreakdown || []).map((c: any) => [
-        c.campaign, c.leads, c.sessions, `${c.cvr}%`,
-        c.spend ? `$${c.spend.toLocaleString()}` : "—",
-        c.cpl ? `$${c.cpl}` : "—",
+        safe(c.campaign), c.leads, c.sessions, `${c.cvr}%`,
+        c.spend ? `$${c.spend.toLocaleString()}` : "-",
+        c.cpl ? `$${c.cpl}` : "-",
       ]),
-      styles: { fontSize: 8, cellPadding: 2 },
+      styles: { fontSize: 8, cellPadding: 2, font: "helvetica" },
       headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: "bold" },
       alternateRowStyles: { fillColor: COLORS.bg },
       theme: "grid",
@@ -301,13 +337,14 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     recommendations(report.actions);
   }
 
-  // Footer
+  // Footer on every page
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.muted);
-    doc.text(`Generated ${fmtDate(report.generatedAt)}`, margin, doc.internal.pageSize.getHeight() - 8);
+    doc.setFont("helvetica", "normal");
+    doc.text(safe(`Generated ${fmtDate(report.generatedAt)}`), margin, doc.internal.pageSize.getHeight() - 8);
     doc.text(`Page ${i} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 8, { align: "right" });
   }
 

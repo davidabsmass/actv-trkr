@@ -1,44 +1,40 @@
 
 
-## Problem
+## Plan: Enable In-Place Plugin Updates (No Re-Download)
 
-1. **No country data exists** in the `pageviews` table — every `country_code` is NULL. The tracking edge function reads `cf-ipcountry` or `x-country-code` headers, but these infrastructure headers are not being provided in Lovable Cloud's environment, so no geo data is ever stored.
+### The Insight
+WordPress stores plugin settings (`mm_options`) in the database, which **survives plugin file updates**. The baked-in API key only seeds the settings on first activation. So we can serve a generic (key-free) ZIP for updates and the existing saved credentials persist.
 
-2. **The map shows but is empty** — after the previous fix it renders the world map with an empty-state message, but there's no actual location data to display.
+### What Changes
 
-3. **User wants heat map visualization** — the current map uses flat opacity fills. A proper heat map with color gradients would be more visually impactful.
+**1. New backend function: `serve-plugin-zip`**
+A new backend function that dynamically generates the latest plugin ZIP on-the-fly (without any baked-in API key). This serves as the `package` URL that WordPress downloads during auto-update.
+- Builds the same ZIP structure as `plugin-download.ts` but with empty `MM_BAKED_API_KEY` / `MM_BAKED_ENDPOINT` constants
+- The settings class already falls back to saved `wp_options` when baked values are empty, so everything keeps working
 
-## Plan
+**2. Update `plugin-update-check` endpoint**
+- Set `download_url` to point to the new `serve-plugin-zip` function instead of `null`
+- Remove `requires_redownload: true`
+- Set `package` in the update response so WordPress can auto-download
 
-### 1. Populate country data via IP geolocation in the edge function
-Since `cf-ipcountry` headers aren't available, add a free IP geolocation lookup in `track-pageview/index.ts` as a fallback. Use the request's IP address with a free geo API (ip-api.com, no key needed, 45 req/min) when no header is present.
+**3. Update `class-updater.php` in the download template**
+- Set `'package'` to the `download_url` from the backend response (instead of empty string)
+- WordPress will then show the standard "Update Now" button that works automatically
 
-- Extract client IP from `x-forwarded-for` or connection info
-- If no `cf-ipcountry`/`x-country-code` header, call `http://ip-api.com/json/{ip}?fields=countryCode` 
-- Cache results in a simple in-memory Map (IP-hash → country) to avoid redundant lookups
-- Store the resolved `country_code` on the pageview record
+**4. Update `plugin-download.ts`**
+- Include the updated `class-updater.php` template in future downloads
+- Adjust the activation logic: only seed settings from baked values if no settings exist yet (already does this with the `empty($opts['api_key'])` check)
 
-### 2. Enhance the map to a proper heat map
-Update `VisitorMapSection.tsx`:
-- Replace the linear opacity scale with a multi-stop color gradient (light yellow → orange → deep red) for a true heat map look
-- Add a color legend bar below the map showing the gradient scale
-- Add tooltip on hover showing country name and session count
-- Keep the existing country bars below the map
+### Technical Detail
 
-### 3. Backfill existing pageviews with country data
-Create a one-time database function or edge function to backfill `country_code` for existing pageviews using IP hashes. Since IPs aren't stored (only hashes), we can't retroactively look them up — but going forward all new pageviews will have country data. Add a note in the empty state that data will appear as new traffic arrives.
+```text
+Current flow:
+  WP checks for update → backend says "new version, re-download from dashboard" → manual
 
-## Implementation Steps
+New flow:
+  WP checks for update → backend says "new version, here's the ZIP URL" → one-click update
+  ZIP has no API key → WP replaces files → saved wp_options still has the key → works
+```
 
-1. **Update `track-pageview` edge function** — add IP-based geo fallback with in-memory cache
-2. **Update `VisitorMapSection`** — heat map color gradient, legend bar, hover tooltips
-3. **Deploy** the updated edge function
-
-## Technical Details
-
-- IP geolocation: `ip-api.com` free tier (45 req/min, no key). Cache by IP hash to stay under limit.
-- Heat map colors: Use a 5-stop gradient from `#FEF3C7` (light) → `#F59E0B` (amber) → `#DC2626` (red) for intensity
-- Legend: horizontal gradient bar with "Low" / "High" labels
-- Tooltip: use a simple CSS tooltip on Geography hover showing country + count (no extra library needed)
-- In-memory geo cache uses same SHA-256 IP hash already computed, TTL of 1 hour
+The `serve-plugin-zip` function will require the site's domain as a query parameter for logging, but no authentication since WordPress's updater makes unauthenticated requests.
 

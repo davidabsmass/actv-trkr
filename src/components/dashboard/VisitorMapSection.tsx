@@ -55,13 +55,13 @@ function getFlagEmoji(code: string): string {
   return String.fromCodePoint(...codePoints);
 }
 
-// Heat map color stops: light yellow → amber → orange → red-orange → deep red
+// Heat map color stops: white → light grey → medium grey → dark grey → near black
 const HEAT_COLORS = [
-  { stop: 0,    color: "#FEF3C7" }, // amber-100
-  { stop: 0.25, color: "#FCD34D" }, // amber-300
-  { stop: 0.5,  color: "#F59E0B" }, // amber-500
-  { stop: 0.75, color: "#EA580C" }, // orange-600
-  { stop: 1,    color: "#DC2626" }, // red-600
+  { stop: 0,    color: "#E5E7EB" }, // gray-200
+  { stop: 0.25, color: "#9CA3AF" }, // gray-400
+  { stop: 0.5,  color: "#6B7280" }, // gray-500
+  { stop: 0.75, color: "#4B5563" }, // gray-600
+  { stop: 1,    color: "#1F2937" }, // gray-800
 ];
 
 function getHeatColor(intensity: number): string {
@@ -113,7 +113,7 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
 
   const getColor = (numericId: string) => {
     const count = numericMap[numericId];
-    if (!count) return "#1a1a2e"; // dark muted for no-data countries
+    if (!count) return "#F3F4F6"; // gray-100 for no-data countries
     const intensity = Math.min(count / maxSessions, 1);
     return getHeatColor(intensity);
   };
@@ -129,12 +129,12 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
       <CardContent>
         {/* World Map */}
         <div
-          className="rounded-lg overflow-hidden bg-[#0f0f23] mb-4 border border-border/50 relative"
+          className="rounded-lg overflow-hidden bg-white mb-4 border border-border/50 relative"
           onMouseLeave={() => setTooltip(null)}
         >
           <ComposableMap
-            projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}
-            height={320}
+            projectionConfig={{ rotate: [-10, 0, 0], scale: 220 }}
+            height={500}
             style={{ width: "100%", height: "auto" }}
           >
             <ZoomableGroup>
@@ -152,7 +152,7 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
                         key={geo.rsmKey}
                         geography={geo}
                         fill={fillColor}
-                        stroke="#2a2a4a"
+                        stroke="#D1D5DB"
                         strokeWidth={0.4}
                         onMouseEnter={(e) => {
                           const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect();
@@ -179,7 +179,7 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
                         onMouseLeave={() => setTooltip(null)}
                         style={{
                           default: { outline: "none" },
-                          hover: { outline: "none", fill: count > 0 ? getHeatColor(1) : "#2a2a4a", cursor: "pointer" },
+                          hover: { outline: "none", fill: count > 0 ? getHeatColor(1) : "#E5E7EB", cursor: "pointer" },
                           pressed: { outline: "none" },
                         }}
                       />

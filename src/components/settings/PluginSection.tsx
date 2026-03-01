@@ -102,7 +102,7 @@ export default function PluginSection() {
             ) : (
               <>
                 <Download className="h-3 w-3" />
-                Download mission-metrics.zip
+                Download actv-trkr.zip
               </>
             )}
           </button>
@@ -118,7 +118,7 @@ export default function PluginSection() {
             <span className="text-sm font-medium text-foreground">Connection Settings</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Use these values if you need to manually configure the plugin in WordPress → Settings → Mission Metrics.
+            Use these values if you need to manually configure the plugin in WordPress → Settings → ACTV TRKR.
           </p>
 
           <div className="space-y-2">

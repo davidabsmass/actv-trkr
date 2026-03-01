@@ -15,15 +15,17 @@ export default function PluginSection() {
     queryKey: ["active_api_key", orgId],
     queryFn: async () => {
       if (!orgId) return null;
+      // Prefer keys that have key_plain available (for plugin download)
       const { data, error } = await supabase
         .from("api_keys")
         .select("id, label, created_at, key_hash, key_plain")
         .eq("org_id", orgId)
         .is("revoked_at", null)
-        .order("created_at", { ascending: true })
-        .limit(1);
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return data?.[0] || null;
+      if (!data?.length) return null;
+      // Prefer a key with key_plain, fall back to any active key
+      return data.find((k) => k.key_plain) || data[0];
     },
     enabled: !!orgId,
   });

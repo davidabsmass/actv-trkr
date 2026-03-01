@@ -42,12 +42,14 @@ class MM_Updater {
 			return $transient;
 		}
 
+		$package     = ! empty( $remote['download_url'] ) ? $remote['download_url'] : '';
+
 		$plugin_data = (object) array(
 			'slug'        => 'mission-metrics',
 			'plugin'      => self::SLUG,
 			'new_version' => $remote['version'],
 			'url'         => 'https://actvtrkr.com',
-			'package'     => '', // No auto-download — requires re-download from dashboard
+			'package'     => $package,
 			'icons'       => array(),
 			'banners'     => array(),
 			'tested'      => $remote['tested_wp'] ?? '6.7',
@@ -84,7 +86,7 @@ class MM_Updater {
 		$info->requires      = $remote['requires'] ?? '5.8';
 		$info->tested        = $remote['tested'] ?? '6.7';
 		$info->requires_php  = $remote['requires_php'] ?? '7.4';
-		$info->download_link = ''; // Must re-download from dashboard
+		$info->download_link = $remote['download_url'] ?? '';
 		$info->sections      = array(
 			'description' => $remote['sections']['description'] ?? '',
 			'changelog'   => nl2br( esc_html( $remote['sections']['changelog'] ?? '' ) ),

@@ -511,7 +511,7 @@ function OrgDetail({ org }: { org: any }) {
       <div className="rounded-lg border border-border bg-card p-4 mb-4">
         <div className="flex items-center gap-2 mb-2">
           <Link className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Client Dashboard URL</h3>
+          <h3 className="text-sm font-semibold text-foreground">ACTV TRKR Dashboard URL</h3>
         </div>
         <p className="text-xs text-muted-foreground mb-3">
           Share this link with client users so they can log in and view their dashboard.

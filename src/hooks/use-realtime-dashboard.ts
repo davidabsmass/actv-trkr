@@ -139,6 +139,6 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       };
     },
     enabled: !!orgId,
-    refetchInterval: 60_000, // auto-refresh every 60 seconds
+    refetchInterval: 15_000, // auto-refresh every 15 seconds
   });
 }

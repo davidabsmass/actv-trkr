@@ -16,6 +16,7 @@ import { WeeklySummary } from "@/components/dashboard/WeeklySummary";
 import { WeekOverWeekStrip } from "@/components/dashboard/WeekOverWeekStrip";
 import { SmartUpdates, generateInsights } from "@/components/dashboard/SmartUpdates";
 import { ShareableSnapshot } from "@/components/dashboard/ShareableSnapshot";
+import { AiInsights } from "@/components/dashboard/AiInsights";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
@@ -247,6 +248,18 @@ const Dashboard = () => {
 
           <WeekOverWeekStrip data={wowData} />
           <WeeklySummary primaryFocus={primaryFocus} />
+          <AiInsights metrics={{
+            sessionsThisWeek: wowData.sessions.current,
+            sessionsLastWeek: wowData.sessions.previous,
+            leadsThisWeek: wowData.leads.current,
+            leadsLastWeek: wowData.leads.previous,
+            cvrThisWeek: wowData.cvr.current,
+            cvrLastWeek: wowData.cvr.previous,
+            topPage: wowData.bestPage || "",
+            topSource: processedData.sources?.[0]?.source || "",
+            totalForms: formsData?.length || 0,
+            primaryFocus,
+          }} />
           <AlertsSection alerts={processedData.alerts} />
           <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
           <TrendsChart data={processedData.dailyData} />

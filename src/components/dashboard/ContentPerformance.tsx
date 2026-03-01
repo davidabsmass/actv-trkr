@@ -68,14 +68,14 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
                   <ArrowUpRight className="h-3.5 w-3.5 text-warning" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate" title={opp.path}>
+                  <p className="text-xs font-medium text-secondary-foreground truncate" title={opp.path}>
                     {opp.path}
                   </p>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-secondary-foreground/70">
                       <span className="font-mono-data">{opp.sessions.toLocaleString()}</span> sessions
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-secondary-foreground/70">
                       <span className="font-mono-data">{(opp.cvr * 100).toFixed(2)}%</span> CVR
                     </span>
                     <span className="text-[11px] text-warning font-medium">

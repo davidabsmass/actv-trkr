@@ -1,40 +1,33 @@
 
 
-## Plan: Enable In-Place Plugin Updates (No Re-Download)
+## Client Dashboard URL
 
-### The Insight
-WordPress stores plugin settings (`mm_options`) in the database, which **survives plugin file updates**. The baked-in API key only seeds the settings on first activation. So we can serve a generic (key-free) ZIP for updates and the existing saved credentials persist.
+Since clients just need to log in and see their dashboard, the infrastructure already exists. Here is what needs to happen:
 
-### What Changes
+### Current State
+- The app already has a login page at `/auth` and a protected `/dashboard` that shows data scoped to the user's organization via RLS.
+- When you create a client account (via the Signup flow or the Clients page), they get credentials and an org. Logging in automatically shows their org's data.
 
-**1. New backend function: `serve-plugin-zip`**
-A new backend function that dynamically generates the latest plugin ZIP on-the-fly (without any baked-in API key). This serves as the `package` URL that WordPress downloads during auto-update.
-- Builds the same ZIP structure as `plugin-download.ts` but with empty `MM_BAKED_API_KEY` / `MM_BAKED_ENDPOINT` constants
-- The settings class already falls back to saved `wp_options` when baked values are empty, so everything keeps working
+### What's Missing
+The app is not yet published to a live URL. Once published, the login URL **is** the client URL.
 
-**2. Update `plugin-update-check` endpoint**
-- Set `download_url` to point to the new `serve-plugin-zip` function instead of `null`
-- Remove `requires_redownload: true`
-- Set `package` in the update response so WordPress can auto-download
+### Plan
 
-**3. Update `class-updater.php` in the download template**
-- Set `'package'` to the `download_url` from the backend response (instead of empty string)
-- WordPress will then show the standard "Update Now" button that works automatically
+1. **Publish the app** so it has a live URL (e.g., `your-app.lovable.app`). Optionally connect a custom domain (e.g., `app.yourbrand.com`).
 
-**4. Update `plugin-download.ts`**
-- Include the updated `class-updater.php` template in future downloads
-- Adjust the activation logic: only seed settings from baked values if no settings exist yet (already does this with the `empty($opts['api_key'])` check)
+2. **Auto-send credentials**: Update the signup/account-creation flow to display or email the client their login URL + credentials after account creation. Right now the Signup page shows an API key but doesn't surface the dashboard login link.
 
-### Technical Detail
+3. **Minor code change**: On the Signup "complete" step and on the Clients page (when inviting a user), show the published URL so admins can copy and share it with clients. This is a small UI addition — displaying a copyable link like `https://your-domain.com/auth`.
 
-```text
-Current flow:
-  WP checks for update → backend says "new version, re-download from dashboard" → manual
+### Implementation Details
 
-New flow:
-  WP checks for update → backend says "new version, here's the ZIP URL" → one-click update
-  ZIP has no API key → WP replaces files → saved wp_options still has the key → works
-```
+- Add a constant or env variable for the published app URL (can use `window.location.origin` at runtime).
+- On the Signup "complete" step, add a "Your Dashboard" link section showing the login URL.
+- On the Clients page, after inviting a user, show a copyable link to share with the client.
+- Optionally, connect a custom domain via **Project Settings → Domains** so clients see a branded URL.
 
-The `serve-plugin-zip` function will require the site's domain as a query parameter for logging, but no authentication since WordPress's updater makes unauthenticated requests.
+### Steps
+1. Publish the app (click Publish in the editor)
+2. Optionally connect a custom domain
+3. Add copyable dashboard URL to the signup completion and client invite flows
 

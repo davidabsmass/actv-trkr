@@ -177,7 +177,7 @@ const Onboarding = () => {
             <input
               type="text" placeholder="Organization name (e.g., Example Ortho)" value={name}
               onChange={(e) => setName(e.target.value)} required
-              className="w-full px-3 py-2.5 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full px-3 py-2.5 text-sm bg-secondary border border-border rounded-lg text-secondary-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             <button type="submit" disabled={loading || !name}
               className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">

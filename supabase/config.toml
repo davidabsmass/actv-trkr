@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.serve-plugin-zip]
 verify_jwt = false
+
+[functions.sync-forms]
+verify_jwt = false

@@ -153,7 +153,7 @@ export default function Entries() {
             {showArchived
               ? "No archived forms."
               : !forms || forms.length === 0
-                ? "No forms connected yet. Forms will appear here once leads start coming in."
+                ? "No forms synced yet. Forms are discovered automatically from your WordPress plugin, or you can trigger a manual sync from the ACTV TRKR settings page in WordPress."
                 : "All forms are archived. Click \"Archived\" above to view them."}
           </div>
         ) : (

@@ -15,6 +15,7 @@ import SettingsPage from "./pages/Settings";
 import AdminSetup from "./pages/AdminSetup";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
+import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import SnapshotView from "./pages/SnapshotView";
 
@@ -72,6 +73,7 @@ const App = () => (
           </Route>
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/snapshot/:id" element={<SnapshotView />} />
+          <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
           <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>

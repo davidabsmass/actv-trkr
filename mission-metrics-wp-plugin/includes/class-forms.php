@@ -10,6 +10,12 @@ class MM_Forms {
 
 	public static function init() {
 		$opts = MM_Settings::get();
+
+		// Auto-sync forms on admin pages (once per 6 hours)
+		if ( is_admin() && ! empty( $opts['api_key'] ) ) {
+			add_action( 'admin_init', array( __CLASS__, 'maybe_auto_sync' ) );
+		}
+
 		if ( $opts['enable_gravity'] !== '1' || empty( $opts['api_key'] ) ) return;
 
 		// Gravity Forms
@@ -29,6 +35,134 @@ class MM_Forms {
 
 		// Fluent Forms
 		add_action( 'fluentform/submission_inserted', array( __CLASS__, 'handle_fluent' ), 10, 3 );
+	}
+
+	// ── Form Discovery / Sync ───────────────────────────────────────
+
+	/**
+	 * Auto-sync forms if the cooldown has expired (every 6 hours).
+	 */
+	public static function maybe_auto_sync() {
+		if ( get_transient( 'actv_trkr_last_form_sync' ) ) return;
+		self::scan_all_forms();
+		set_transient( 'actv_trkr_last_form_sync', time(), 6 * HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Scan all supported form plugins and return discovered forms.
+	 */
+	public static function scan_all_forms() {
+		$discovered = array();
+
+		// Gravity Forms
+		if ( class_exists( 'GFAPI' ) ) {
+			$gf_forms = \GFAPI::get_forms();
+			if ( is_array( $gf_forms ) ) {
+				foreach ( $gf_forms as $form ) {
+					$discovered[] = array(
+						'form_id'    => (string) ( $form['id'] ?? '' ),
+						'form_title' => $form['title'] ?? 'Gravity Form',
+						'provider'   => 'gravity_forms',
+					);
+				}
+			}
+		}
+
+		// Contact Form 7
+		if ( class_exists( 'WPCF7_ContactForm' ) ) {
+			$cf7_forms = \WPCF7_ContactForm::find();
+			if ( is_array( $cf7_forms ) ) {
+				foreach ( $cf7_forms as $form ) {
+					$discovered[] = array(
+						'form_id'    => (string) $form->id(),
+						'form_title' => $form->title(),
+						'provider'   => 'cf7',
+					);
+				}
+			}
+		}
+
+		// WPForms
+		if ( function_exists( 'wpforms' ) && isset( wpforms()->form ) ) {
+			$wp_forms = wpforms()->form->get( '', array( 'posts_per_page' => -1 ) );
+			if ( is_array( $wp_forms ) ) {
+				foreach ( $wp_forms as $form ) {
+					$discovered[] = array(
+						'form_id'    => (string) $form->ID,
+						'form_title' => $form->post_title ?: 'WPForm',
+						'provider'   => 'wpforms',
+					);
+				}
+			}
+		}
+
+		// Ninja Forms
+		if ( function_exists( 'Ninja_Forms' ) ) {
+			try {
+				$nf_forms = Ninja_Forms()->form()->get_forms();
+				if ( is_array( $nf_forms ) ) {
+					foreach ( $nf_forms as $form ) {
+						$discovered[] = array(
+							'form_id'    => (string) $form->get_id(),
+							'form_title' => $form->get_setting( 'title' ) ?: 'Ninja Form',
+							'provider'   => 'ninja_forms',
+						);
+					}
+				}
+			} catch ( \Exception $e ) {
+				error_log( '[MissionMetrics] Ninja Forms scan error: ' . $e->getMessage() );
+			}
+		}
+
+		// Fluent Forms
+		if ( function_exists( 'wpFluent' ) ) {
+			try {
+				$ff_forms = wpFluent()->table( 'fluentform_forms' )->get();
+				if ( is_array( $ff_forms ) || $ff_forms instanceof \Traversable ) {
+					foreach ( $ff_forms as $form ) {
+						$discovered[] = array(
+							'form_id'    => (string) ( $form->id ?? '' ),
+							'form_title' => $form->title ?? 'Fluent Form',
+							'provider'   => 'fluent_forms',
+						);
+					}
+				}
+			} catch ( \Exception $e ) {
+				error_log( '[MissionMetrics] Fluent Forms scan error: ' . $e->getMessage() );
+			}
+		}
+
+		if ( empty( $discovered ) ) {
+			return array( 'synced' => 0, 'discovered' => 0 );
+		}
+
+		// Send to sync-forms endpoint
+		$opts     = MM_Settings::get();
+		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-forms';
+		$domain   = wp_parse_url( home_url(), PHP_URL_HOST );
+
+		$response = wp_remote_post( $endpoint, array(
+			'timeout'  => 15,
+			'headers'  => array(
+				'Content-Type'  => 'application/json',
+				'Authorization' => 'Bearer ' . $opts['api_key'],
+			),
+			'body' => wp_json_encode( array(
+				'forms'  => $discovered,
+				'domain' => $domain,
+			) ),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			error_log( '[MissionMetrics] Form sync error: ' . $response->get_error_message() );
+			return array( 'synced' => 0, 'discovered' => count( $discovered ), 'error' => $response->get_error_message() );
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		return array(
+			'synced'     => $body['synced'] ?? 0,
+			'discovered' => count( $discovered ),
+		);
 	}
 
 	// ── Shared helpers ──────────────────────────────────────────────

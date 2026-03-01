@@ -10,6 +10,7 @@ class MM_Settings {
 		add_action( 'admin_menu', array( __CLASS__, 'add_menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'wp_ajax_mm_test_connection', array( __CLASS__, 'ajax_test_connection' ) );
+		add_action( 'wp_ajax_mm_sync_forms', array( __CLASS__, 'ajax_sync_forms' ) );
 	}
 
 	public static function defaults() {
@@ -98,10 +99,16 @@ class MM_Settings {
 				<?php submit_button(); ?>
 			</form>
 
-			<hr />
+		<hr />
 			<h2>Test Connection</h2>
 			<p><button type="button" id="mm-test-btn" class="button button-secondary">Test Connection</button></p>
 			<div id="mm-test-result"></div>
+
+			<hr />
+			<h2>Sync Forms</h2>
+			<p class="description">Scan your site for all installed form plugins and register them with ACTV TRKR — even before any submissions.</p>
+			<p><button type="button" id="mm-sync-btn" class="button button-secondary">Sync Forms Now</button></p>
+			<div id="mm-sync-result"></div>
 
 			<script>
 			document.getElementById('mm-test-btn').addEventListener('click', function(){
@@ -116,6 +123,25 @@ class MM_Settings {
 					})
 					.catch(() => {
 						document.getElementById('mm-test-result').textContent = '❌ Request failed';
+						btn.disabled = false;
+					});
+			});
+			document.getElementById('mm-sync-btn').addEventListener('click', function(){
+				var btn = this;
+				btn.disabled = true;
+				document.getElementById('mm-sync-result').textContent = 'Scanning…';
+				fetch(ajaxurl + '?action=mm_sync_forms&_wpnonce=<?php echo wp_create_nonce('mm_sync_forms'); ?>')
+					.then(r => r.json())
+					.then(d => {
+						if (d.success) {
+							document.getElementById('mm-sync-result').textContent = '✅ Discovered ' + d.data.discovered + ' form(s), synced ' + d.data.synced + '.';
+						} else {
+							document.getElementById('mm-sync-result').textContent = '❌ ' + (d.data || 'Failed');
+						}
+						btn.disabled = false;
+					})
+					.catch(() => {
+						document.getElementById('mm-sync-result').textContent = '❌ Request failed';
 						btn.disabled = false;
 					});
 			});
@@ -157,4 +183,16 @@ class MM_Settings {
 			wp_send_json_error( 'HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
 		}
 	}
-}
+
+	public static function ajax_sync_forms() {
+		check_ajax_referer( 'mm_sync_forms', '_wpnonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+
+		$result = MM_Forms::scan_all_forms();
+		if ( ! empty( $result['error'] ) ) {
+			wp_send_json_error( $result['error'] );
+		}
+		wp_send_json_success( $result );
+	}

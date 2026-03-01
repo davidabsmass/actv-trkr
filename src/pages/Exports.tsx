@@ -245,7 +245,7 @@ export default function Exports() {
           <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
         ) : !forms || forms.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground text-sm">
-            No forms connected yet. Forms will appear here once leads start coming in.
+            No forms synced yet. Forms are discovered automatically from your WordPress plugin, or you can trigger a manual sync from the ACTV TRKR settings page in WordPress.
           </div>
         ) : (
           <div className="divide-y divide-border">

@@ -103,11 +103,11 @@ export default function ApiKeysSection() {
 
       {newKey && (
         <div className="mb-4 rounded-lg bg-secondary p-3 space-y-2">
-          <p className="text-xs text-muted-foreground font-medium">
+          <p className="text-xs text-secondary-foreground/70 font-medium">
             New API key — copy it now, it won't be shown again:
           </p>
           <div className="flex items-center gap-2">
-            <code className="text-xs font-mono text-foreground flex-1 break-all">
+            <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">
               {newKey}
             </code>
             <button

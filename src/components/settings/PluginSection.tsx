@@ -10,8 +10,9 @@ export default function PluginSection() {
   const { orgId } = useOrg();
   const [downloading, setDownloading] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showKeyPrompt, setShowKeyPrompt] = useState(false);
 
-  // Get the first active (non-revoked) API key for plugin download
   const { data: activeKey } = useQuery({
     queryKey: ["active_api_key", orgId],
     queryFn: async () => {
@@ -31,25 +32,36 @@ export default function PluginSection() {
 
   const endpointUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1`;
 
-  const handleDownload = async () => {
+  const handleDownloadClick = () => {
     if (!activeKey) {
       toast({
         variant: "destructive",
         title: "No active API key",
-        description: "Generate an API key first in the section above.",
+        description: "Generate an API key first in the API Keys section.",
+      });
+      return;
+    }
+    setShowKeyPrompt(true);
+  };
+
+  const handleDownloadWithKey = async () => {
+    if (!apiKeyInput.trim()) {
+      toast({
+        variant: "destructive",
+        title: "API key required",
+        description: "Paste your API key to bake it into the plugin.",
       });
       return;
     }
     setDownloading(true);
     try {
-      // We can't retrieve the raw key from the hash, so we prompt
-      // the user to use the key shown at generation time.
-      // For re-download, we generate with empty key and the saved settings persist.
-      await downloadPlugin("");
+      await downloadPlugin(apiKeyInput.trim());
       toast({
         title: "Plugin downloaded",
-        description: "Your existing WordPress settings (API key) will be preserved when you update.",
+        description: "Your API key and endpoint are pre-configured in the plugin.",
       });
+      setShowKeyPrompt(false);
+      setApiKeyInput("");
     } catch (err: any) {
       toast({ variant: "destructive", title: "Download failed", description: err?.message });
     } finally {
@@ -81,25 +93,59 @@ export default function PluginSection() {
             <span className="text-sm font-medium text-foreground">Download Plugin</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Download a fresh copy of the plugin. If updating an existing install, your saved API key and settings will be preserved automatically.
+            Download the plugin with your API key pre-configured. You'll need to paste your API key below.
           </p>
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 w-full justify-center"
-          >
-            {downloading ? (
-              <>
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                Preparing…
-              </>
-            ) : (
-              <>
-                <Download className="h-3 w-3" />
-                Download mission-metrics.zip
-              </>
-            )}
-          </button>
+
+          {showKeyPrompt ? (
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Paste your API key
+              </label>
+              <input
+                type="text"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="Your API key from when it was generated"
+                className="w-full text-xs font-mono rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Find this in the API Keys section. If you've lost it, generate a new one.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDownloadWithKey}
+                  disabled={downloading}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex-1 justify-center"
+                >
+                  {downloading ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Preparing…
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-3 w-3" />
+                      Download
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setShowKeyPrompt(false); setApiKeyInput(""); }}
+                  className="px-3 py-2 text-xs text-muted-foreground hover:text-foreground rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleDownloadClick}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 w-full justify-center"
+            >
+              <Download className="h-3 w-3" />
+              Download mission-metrics.zip
+            </button>
+          )}
           <p className="text-[11px] text-muted-foreground">
             Current version: <span className="font-mono text-foreground">1.2.0</span>
           </p>

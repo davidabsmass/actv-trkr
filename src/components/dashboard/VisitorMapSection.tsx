@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Globe } from "lucide-react";
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -18,7 +18,10 @@ const ALPHA2_TO_NUMERIC: Record<string, string> = {
   HU: "348", GR: "300", CN: "156",
 };
 
-// ISO 3166-1 alpha-2 → country name mapping
+// Reverse: numeric → alpha-2 for tooltip lookups
+const NUMERIC_TO_ALPHA2: Record<string, string> = {};
+Object.entries(ALPHA2_TO_NUMERIC).forEach(([a2, num]) => { NUMERIC_TO_ALPHA2[num] = a2; });
+
 const COUNTRY_NAMES: Record<string, string> = {
   US: "United States", GB: "United Kingdom", CA: "Canada", AU: "Australia", DE: "Germany",
   FR: "France", IN: "India", BR: "Brazil", JP: "Japan", MX: "Mexico", IT: "Italy",
@@ -30,7 +33,7 @@ const COUNTRY_NAMES: Record<string, string> = {
   KE: "Kenya", AR: "Argentina", CL: "Chile", CO: "Colombia", PE: "Peru",
   RU: "Russia", UA: "Ukraine", TR: "Turkey", SA: "Saudi Arabia", AE: "UAE",
   IL: "Israel", CZ: "Czech Republic", RO: "Romania", HU: "Hungary", GR: "Greece",
-  XX: "Unknown",
+  CN: "China", XX: "Unknown",
 };
 
 interface CountryRow {
@@ -52,11 +55,51 @@ function getFlagEmoji(code: string): string {
   return String.fromCodePoint(...codePoints);
 }
 
+// Heat map color stops: light yellow → amber → orange → red-orange → deep red
+const HEAT_COLORS = [
+  { stop: 0,    color: "#FEF3C7" }, // amber-100
+  { stop: 0.25, color: "#FCD34D" }, // amber-300
+  { stop: 0.5,  color: "#F59E0B" }, // amber-500
+  { stop: 0.75, color: "#EA580C" }, // orange-600
+  { stop: 1,    color: "#DC2626" }, // red-600
+];
+
+function getHeatColor(intensity: number): string {
+  const t = Math.max(0, Math.min(1, intensity));
+  // Find the two stops we're between
+  for (let i = 0; i < HEAT_COLORS.length - 1; i++) {
+    const lo = HEAT_COLORS[i];
+    const hi = HEAT_COLORS[i + 1];
+    if (t >= lo.stop && t <= hi.stop) {
+      const localT = (t - lo.stop) / (hi.stop - lo.stop);
+      return interpolateHex(lo.color, hi.color, localT);
+    }
+  }
+  return HEAT_COLORS[HEAT_COLORS.length - 1].color;
+}
+
+function interpolateHex(c1: string, c2: string, t: number): string {
+  const r1 = parseInt(c1.slice(1, 3), 16), g1 = parseInt(c1.slice(3, 5), 16), b1 = parseInt(c1.slice(5, 7), 16);
+  const r2 = parseInt(c2.slice(1, 3), 16), g2 = parseInt(c2.slice(3, 5), 16), b2 = parseInt(c2.slice(5, 7), 16);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
+}
+
+interface TooltipInfo {
+  name: string;
+  sessions: number;
+  x: number;
+  y: number;
+}
+
 export function VisitorMapSection({ data }: VisitorMapSectionProps) {
   const maxSessions = data?.[0]?.sessions || 1;
   const totalSessions = data?.reduce((s, d) => s + d.sessions, 0) || 0;
+  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
 
-  // Build a numeric-id → session count lookup for the map
+  // Build numeric-id → session count lookup
   const numericMap = useMemo(() => {
     const m: Record<string, number> = {};
     data.forEach((row) => {
@@ -70,11 +113,9 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
 
   const getColor = (numericId: string) => {
     const count = numericMap[numericId];
-    if (!count) return "hsl(var(--muted) / 0.3)";
+    if (!count) return "#1a1a2e"; // dark muted for no-data countries
     const intensity = Math.min(count / maxSessions, 1);
-    // Scale opacity from 0.2 to 1 based on session intensity
-    const opacity = 0.2 + intensity * 0.8;
-    return `hsl(var(--primary) / ${opacity.toFixed(2)})`;
+    return getHeatColor(intensity);
   };
 
   return (
@@ -87,7 +128,10 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
       </CardHeader>
       <CardContent>
         {/* World Map */}
-        <div className="rounded-lg overflow-hidden bg-muted/20 mb-4 border border-border/50">
+        <div
+          className="rounded-lg overflow-hidden bg-[#0f0f23] mb-4 border border-border/50 relative"
+          onMouseLeave={() => setTooltip(null)}
+        >
           <ComposableMap
             projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}
             height={320}
@@ -99,16 +143,43 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
                   geographies.map((geo) => {
                     const numId = geo.id;
                     const fillColor = getColor(numId);
+                    const count = numericMap[numId] || 0;
+                    const alpha2 = NUMERIC_TO_ALPHA2[numId];
+                    const name = alpha2 ? getCountryName(alpha2) : geo.properties?.name || "Unknown";
+
                     return (
                       <Geography
                         key={geo.rsmKey}
                         geography={geo}
                         fill={fillColor}
-                        stroke="hsl(var(--border))"
+                        stroke="#2a2a4a"
                         strokeWidth={0.4}
+                        onMouseEnter={(e) => {
+                          const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect();
+                          if (rect) {
+                            setTooltip({
+                              name,
+                              sessions: count,
+                              x: e.clientX - rect.left,
+                              y: e.clientY - rect.top,
+                            });
+                          }
+                        }}
+                        onMouseMove={(e) => {
+                          const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect();
+                          if (rect) {
+                            setTooltip({
+                              name,
+                              sessions: count,
+                              x: e.clientX - rect.left,
+                              y: e.clientY - rect.top,
+                            });
+                          }
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
                         style={{
                           default: { outline: "none" },
-                          hover: { outline: "none", fill: "hsl(var(--primary))", cursor: "pointer" },
+                          hover: { outline: "none", fill: count > 0 ? getHeatColor(1) : "#2a2a4a", cursor: "pointer" },
                           pressed: { outline: "none" },
                         }}
                       />
@@ -118,6 +189,37 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
               </Geographies>
             </ZoomableGroup>
           </ComposableMap>
+
+          {/* Tooltip */}
+          {tooltip && (
+            <div
+              className="absolute pointer-events-none z-50 px-3 py-1.5 rounded-md bg-popover border border-border shadow-lg text-sm text-popover-foreground"
+              style={{
+                left: tooltip.x + 12,
+                top: tooltip.y - 10,
+                transform: "translateY(-100%)",
+              }}
+            >
+              <span className="font-semibold">{tooltip.name}</span>
+              {tooltip.sessions > 0 && (
+                <span className="ml-2 text-muted-foreground">
+                  {tooltip.sessions.toLocaleString()} session{tooltip.sessions !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Heat map legend */}
+        <div className="flex items-center gap-2 mb-4 px-1">
+          <span className="text-xs text-muted-foreground">Low</span>
+          <div
+            className="flex-1 h-2 rounded-full"
+            style={{
+              background: `linear-gradient(to right, ${HEAT_COLORS.map(c => c.color).join(", ")})`,
+            }}
+          />
+          <span className="text-xs text-muted-foreground">High</span>
         </div>
 
         {/* Country bars */}
@@ -126,6 +228,8 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
             {data.slice(0, 10).map((row) => {
               const pct = (row.sessions / maxSessions) * 100;
               const sharePct = totalSessions > 0 ? ((row.sessions / totalSessions) * 100).toFixed(1) : "0";
+              const intensity = Math.min(row.sessions / maxSessions, 1);
+              const barColor = getHeatColor(intensity);
               return (
                 <div key={row.countryCode} className="flex items-center gap-3">
                   <span className="text-base w-7 text-center flex-shrink-0">{getFlagEmoji(row.countryCode)}</span>
@@ -134,8 +238,8 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
                   </span>
                   <div className="flex-1 h-5 bg-muted/50 rounded-sm overflow-hidden">
                     <div
-                      className="h-full bg-primary/70 rounded-sm transition-all duration-500"
-                      style={{ width: `${pct}%` }}
+                      className="h-full rounded-sm transition-all duration-500"
+                      style={{ width: `${pct}%`, backgroundColor: barColor }}
                     />
                   </div>
                   <span className="text-xs text-muted-foreground w-16 text-right flex-shrink-0">
@@ -147,7 +251,7 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center py-4">
-            No geographic data yet. Country data will appear once pageviews include location info.
+            No geographic data yet. Country data will appear automatically as new pageviews arrive with location info.
           </p>
         )}
 

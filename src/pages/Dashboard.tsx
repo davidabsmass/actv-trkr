@@ -199,7 +199,7 @@ const Dashboard = () => {
 
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Revenue Command Center</h1>
+          <h1 className="text-2xl font-bold text-foreground">ACTV TRKR</h1>
           <p className="text-sm text-muted-foreground">{orgName}</p>
         </div>
         <div className="flex items-center gap-2">

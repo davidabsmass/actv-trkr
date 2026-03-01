@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class MM_Updater {
 
-	const SLUG        = 'mission-metrics/mission-metrics.php';
+	const SLUG        = 'actv-trkr/actv-trkr.php';
 	const TRANSIENT   = 'mm_update_data';
 	const CHECK_HOURS = 12;
 
@@ -45,7 +45,7 @@ class MM_Updater {
 		$package     = ! empty( $remote['download_url'] ) ? $remote['download_url'] : '';
 
 		$plugin_data = (object) array(
-			'slug'        => 'mission-metrics',
+			'slug'        => 'actv-trkr',
 			'plugin'      => self::SLUG,
 			'new_version' => $remote['version'],
 			'url'         => 'https://actvtrkr.com',
@@ -68,7 +68,7 @@ class MM_Updater {
 		if ( $action !== 'plugin_information' ) {
 			return $result;
 		}
-		if ( ! isset( $args->slug ) || $args->slug !== 'mission-metrics' ) {
+		if ( ! isset( $args->slug ) || $args->slug !== 'actv-trkr' ) {
 			return $result;
 		}
 
@@ -78,8 +78,8 @@ class MM_Updater {
 		}
 
 		$info = new stdClass();
-		$info->name          = $remote['name'] ?? 'Mission Metrics — ACTV TRKR';
-		$info->slug          = 'mission-metrics';
+		$info->name          = $remote['name'] ?? 'ACTV TRKR';
+		$info->slug          = 'actv-trkr';
 		$info->version       = $remote['version'] ?? MM_PLUGIN_VERSION;
 		$info->author        = $remote['author'] ?? 'ACTV TRKR';
 		$info->homepage      = $remote['homepage'] ?? 'https://actvtrkr.com';
@@ -102,7 +102,7 @@ class MM_Updater {
 		if ( $file !== self::SLUG ) {
 			return $links;
 		}
-		$links[] = '<a href="' . esc_url( admin_url( 'options-general.php?page=mission-metrics' ) ) . '">Settings</a>';
+		$links[] = '<a href="' . esc_url( admin_url( 'options-general.php?page=actv-trkr' ) ) . '">Settings</a>';
 		return $links;
 	}
 

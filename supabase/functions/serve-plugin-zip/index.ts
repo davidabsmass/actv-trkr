@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="mission-metrics-${PLUGIN_VERSION}.zip"`,
+        "Content-Disposition": `attachment; filename="actv-trkr-${PLUGIN_VERSION}.zip"`,
       },
     });
   } catch (err) {
@@ -56,15 +56,15 @@ Deno.serve(async (req) => {
 
 function buildFiles(endpointBase: string): Record<string, string> {
   return {
-    "mission-metrics/mission-metrics.php": `<?php
+    "actv-trkr/actv-trkr.php": `<?php
 /**
- * Plugin Name: Mission Metrics — ACTV TRKR
+ * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
  * Version:     ${PLUGIN_VERSION}
  * Author:      ACTV TRKR
  * License:     GPL-2.0-or-later
- * Text Domain: mission-metrics
+ * Text Domain: actv-trkr
  */
 if(!defined('ABSPATH'))exit;
 define('MM_PLUGIN_VERSION','${PLUGIN_VERSION}');
@@ -94,18 +94,18 @@ MM_Settings::init();MM_Tracker::init();MM_Forms::init();MM_Updater::init();
 add_action('mm_retry_cron',array('MM_Retry_Queue','process'));
 `,
 
-    "mission-metrics/includes/class-settings.php": `<?php
+    "actv-trkr/includes/class-settings.php": `<?php
 if(!defined('ABSPATH'))exit;
 class MM_Settings{
 const OPTION_GROUP='mm_settings';const OPTION_NAME='mm_options';
 public static function init(){add_action('admin_menu',array(__CLASS__,'add_menu'));add_action('admin_init',array(__CLASS__,'register_settings'));add_action('wp_ajax_mm_test_connection',array(__CLASS__,'ajax_test_connection'));}
 public static function defaults(){return array('api_key'=>defined('MM_BAKED_API_KEY')?MM_BAKED_API_KEY:'','endpoint_url'=>defined('MM_BAKED_ENDPOINT')?MM_BAKED_ENDPOINT:'${endpointBase}','enable_tracking'=>'1','enable_gravity'=>'1');}
 public static function get($key=null){$opts=wp_parse_args(get_option(self::OPTION_NAME,array()),self::defaults());return $key?($opts[$key]??null):$opts;}
-public static function add_menu(){add_options_page('Mission Metrics','Mission Metrics','manage_options','mission-metrics',array(__CLASS__,'render_page'));}
+public static function add_menu(){add_options_page('ACTV TRKR','ACTV TRKR','manage_options','actv-trkr',array(__CLASS__,'render_page'));}
 public static function register_settings(){register_setting(self::OPTION_GROUP,self::OPTION_NAME,array('sanitize_callback'=>array(__CLASS__,'sanitize')));}
 public static function sanitize($input){$c=array();$c['api_key']=sanitize_text_field($input['api_key']??'');$c['endpoint_url']=esc_url_raw($input['endpoint_url']??'');$c['enable_tracking']=!empty($input['enable_tracking'])?'1':'0';$c['enable_gravity']=!empty($input['enable_gravity'])?'1':'0';return $c;}
 public static function render_page(){$opts=self::get();$is_preconfigured=defined('MM_BAKED_API_KEY')&&!empty(MM_BAKED_API_KEY);?>
-<div class="wrap"><h1>Mission Metrics — ACTV TRKR</h1>
+<div class="wrap"><h1>ACTV TRKR</h1>
 <?php if($is_preconfigured):?><div class="notice notice-success"><p><strong>✅ Pre-configured!</strong> This plugin was downloaded with your API key already set. Tracking is active.</p></div><?php endif;?>
 <form method="post" action="options.php"><?php settings_fields(self::OPTION_GROUP);?>
 <table class="form-table">
@@ -131,14 +131,14 @@ public static function render_page(){$opts=self::get();$is_preconfigured=defined
 public static function ajax_test_connection(){check_ajax_referer('mm_test','_wpnonce');if(!current_user_can('manage_options')){wp_send_json_error('Unauthorized');}$opts=self::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/track-pageview';$response=wp_remote_post($endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode(array('source'=>array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'type'=>'wordpress','plugin_version'=>MM_PLUGIN_VERSION),'event'=>array('page_url'=>home_url(),'event_id'=>'test_'.wp_generate_uuid4(),'session_id'=>'test','title'=>'Connection Test'),'attribution'=>new \\stdClass(),'visitor'=>array('visitor_id'=>'test')))));if(is_wp_error($response)){wp_send_json_error($response->get_error_message());}$code=wp_remote_retrieve_response_code($response);if($code>=200&&$code<300){wp_send_json_success();}else{wp_send_json_error('HTTP '.$code.': '.wp_remote_retrieve_body($response));}}
 }`,
 
-    "mission-metrics/includes/class-tracker.php": `<?php
+    "actv-trkr/includes/class-tracker.php": `<?php
 if(!defined('ABSPATH'))exit;
 class MM_Tracker{
 public static function init(){add_action('wp_enqueue_scripts',array(__CLASS__,'enqueue'));}
 public static function enqueue(){if(is_admin())return;$opts=MM_Settings::get();if($opts['enable_tracking']!=='1'||empty($opts['api_key']))return;wp_enqueue_script('mm-tracker',MM_PLUGIN_URL.'assets/tracker.js',array(),MM_PLUGIN_VERSION,true);wp_localize_script('mm-tracker','mmConfig',array('endpoint'=>rtrim($opts['endpoint_url'],'/').'/track-pageview','apiKey'=>$opts['api_key'],'domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'pluginVersion'=>MM_PLUGIN_VERSION));}
 }`,
 
-    "mission-metrics/includes/class-forms.php": `<?php
+    "actv-trkr/includes/class-forms.php": `<?php
 if(!defined('ABSPATH'))exit;
 class MM_Forms{
 public static function init(){$opts=MM_Settings::get();if($opts['enable_gravity']!=='1'||empty($opts['api_key']))return;
@@ -159,14 +159,14 @@ public static function handle_ninja($form_data){$fields=array();if(!empty($form_
 public static function handle_fluent($entry_id,$form_data,$form){$fields=array();if(is_array($form_data)){foreach($form_data as $k=>$v){if(strpos($k,'_fluentform_')===0||$k==='__fluent_form_embded_post_id')continue;$fields[]=array('name'=>$k,'label'=>$k,'type'=>'text','value'=>is_array($v)?implode(', ',$v):$v);}}self::send(array('provider'=>'fluent_forms','entry'=>array('form_id'=>$form->id??'','form_title'=>$form->title??'Fluent Form','entry_id'=>$entry_id,'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
 }`,
 
-    "mission-metrics/includes/class-gravity.php": `<?php
+    "actv-trkr/includes/class-gravity.php": `<?php
 if(!defined('ABSPATH'))exit;
 // DEPRECATED: This file is kept for backward compatibility.
 // Form capture is now handled by class-forms.php which supports all form plugins.
 // This file does nothing — MM_Forms handles the gform_after_submission hook.
 `,
 
-    "mission-metrics/includes/class-retry-queue.php": `<?php
+    "actv-trkr/includes/class-retry-queue.php": `<?php
 if(!defined('ABSPATH'))exit;
 class MM_Retry_Queue{
 const TABLE='mm_retry_queue';const MAX_ATTEMPTS=5;
@@ -176,20 +176,20 @@ public static function enqueue($endpoint,$api_key,$payload){global $wpdb;$wpdb->
 public static function process(){global $wpdb;$table=self::table_name();$now=current_time('mysql');$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE attempts < %d AND next_retry_at <= %s ORDER BY created_at ASC LIMIT 20",self::MAX_ATTEMPTS,$now));foreach($rows as $row){$response=wp_remote_post($row->endpoint,array('timeout'=>15,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$row->api_key),'body'=>$row->payload));$code=is_wp_error($response)?0:wp_remote_retrieve_response_code($response);if($code>=200&&$code<300){$wpdb->delete($table,array('id'=>$row->id));}else{$attempts=(int)$row->attempts+1;$error=is_wp_error($response)?$response->get_error_message():'HTTP '.$code;$delay=min(pow(2,$attempts)*60,3600);$next=gmdate('Y-m-d H:i:s',time()+$delay);$wpdb->update($table,array('attempts'=>$attempts,'last_error'=>$error,'next_retry_at'=>$next),array('id'=>$row->id));}}$wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE attempts >= %d",self::MAX_ATTEMPTS));}
 }`,
 
-    "mission-metrics/includes/class-updater.php": `<?php
+    "actv-trkr/includes/class-updater.php": `<?php
 if(!defined('ABSPATH'))exit;
 class MM_Updater{
-const SLUG='mission-metrics/mission-metrics.php';const TRANSIENT='mm_update_data';const CHECK_HOURS=12;
+const SLUG='actv-trkr/actv-trkr.php';const TRANSIENT='mm_update_data';const CHECK_HOURS=12;
 public static function init(){add_filter('pre_set_site_transient_update_plugins',array(__CLASS__,'check_update'));add_filter('plugins_api',array(__CLASS__,'plugin_info'),20,3);add_filter('plugin_row_meta',array(__CLASS__,'row_meta'),10,2);}
 private static function endpoint(){$opts=MM_Settings::get();return rtrim($opts['endpoint_url'],'/').'/plugin-update-check';}
-public static function check_update($transient){if(empty($transient->checked))return $transient;$remote=self::get_remote_data();if(!$remote||empty($remote['has_update']))return $transient;$package=!empty($remote['download_url'])?$remote['download_url']:'';$transient->response[self::SLUG]=(object)array('slug'=>'mission-metrics','plugin'=>self::SLUG,'new_version'=>$remote['version'],'url'=>'https://actvtrkr.com','package'=>$package,'icons'=>array(),'banners'=>array(),'tested'=>$remote['tested_wp']??'6.7','requires'=>$remote['requires_wp']??'5.8');return $transient;}
-public static function plugin_info($result,$action,$args){if($action!=='plugin_information')return $result;if(!isset($args->slug)||$args->slug!=='mission-metrics')return $result;$remote=self::get_remote_info();if(!$remote)return $result;$info=new stdClass();$info->name=$remote['name']??'Mission Metrics';$info->slug='mission-metrics';$info->version=$remote['version']??MM_PLUGIN_VERSION;$info->author=$remote['author']??'ACTV TRKR';$info->homepage=$remote['homepage']??'https://actvtrkr.com';$info->requires=$remote['requires']??'5.8';$info->tested=$remote['tested']??'6.7';$info->requires_php=$remote['requires_php']??'7.4';$info->download_link=$remote['download_url']??'';$info->sections=array('description'=>$remote['sections']['description']??'','changelog'=>nl2br(esc_html($remote['sections']['changelog']??'')));return $info;}
-public static function row_meta($links,$file){if($file!==self::SLUG)return $links;$links[]='<a href="'.esc_url(admin_url('options-general.php?page=mission-metrics')).'">Settings</a>';return $links;}
+public static function check_update($transient){if(empty($transient->checked))return $transient;$remote=self::get_remote_data();if(!$remote||empty($remote['has_update']))return $transient;$package=!empty($remote['download_url'])?$remote['download_url']:'';$transient->response[self::SLUG]=(object)array('slug'=>'actv-trkr','plugin'=>self::SLUG,'new_version'=>$remote['version'],'url'=>'https://actvtrkr.com','package'=>$package,'icons'=>array(),'banners'=>array(),'tested'=>$remote['tested_wp']??'6.7','requires'=>$remote['requires_wp']??'5.8');return $transient;}
+public static function plugin_info($result,$action,$args){if($action!=='plugin_information')return $result;if(!isset($args->slug)||$args->slug!=='actv-trkr')return $result;$remote=self::get_remote_info();if(!$remote)return $result;$info=new stdClass();$info->name=$remote['name']??'ACTV TRKR';$info->slug='actv-trkr';$info->version=$remote['version']??MM_PLUGIN_VERSION;$info->author=$remote['author']??'ACTV TRKR';$info->homepage=$remote['homepage']??'https://actvtrkr.com';$info->requires=$remote['requires']??'5.8';$info->tested=$remote['tested']??'6.7';$info->requires_php=$remote['requires_php']??'7.4';$info->download_link=$remote['download_url']??'';$info->sections=array('description'=>$remote['sections']['description']??'','changelog'=>nl2br(esc_html($remote['sections']['changelog']??'')));return $info;}
+public static function row_meta($links,$file){if($file!==self::SLUG)return $links;$links[]='<a href="'.esc_url(admin_url('options-general.php?page=actv-trkr')).'">Settings</a>';return $links;}
 private static function get_remote_data(){$cached=get_transient(self::TRANSIENT);if($cached!==false)return $cached;$domain=wp_parse_url(home_url(),PHP_URL_HOST);$url=self::endpoint().'?'.http_build_query(array('action'=>'check','version'=>MM_PLUGIN_VERSION,'domain'=>$domain));$response=wp_remote_get($url,array('timeout'=>10));if(is_wp_error($response))return null;$body=json_decode(wp_remote_retrieve_body($response),true);if(!is_array($body))return null;set_transient(self::TRANSIENT,$body,self::CHECK_HOURS*HOUR_IN_SECONDS);return $body;}
 private static function get_remote_info(){$url=self::endpoint().'?action=info';$response=wp_remote_get($url,array('timeout'=>10));if(is_wp_error($response))return null;return json_decode(wp_remote_retrieve_body($response),true);}
 }`,
 
-    "mission-metrics/assets/tracker.js": `(function(){'use strict';if(typeof window==='undefined'||typeof document==='undefined')return;if(!window.mmConfig)return;var CFG=window.mmConfig;var COOKIE_VID='mm_vid';var COOKIE_SID='mm_sid';var COOKIE_UTM='mm_utm';var COOKIE_TS='mm_ts';var SESSION_TIMEOUT=30*60*1000;
+    "actv-trkr/assets/tracker.js": `(function(){'use strict';if(typeof window==='undefined'||typeof document==='undefined')return;if(!window.mmConfig)return;var CFG=window.mmConfig;var COOKIE_VID='mm_vid';var COOKIE_SID='mm_sid';var COOKIE_UTM='mm_utm';var COOKIE_TS='mm_ts';var SESSION_TIMEOUT=30*60*1000;
 function setCookie(n,v,d){var e=new Date();e.setTime(e.getTime()+d*864e5);document.cookie=n+'='+encodeURIComponent(v)+';expires='+e.toUTCString()+';path=/;SameSite=Lax';}
 function getCookie(n){var v=document.cookie.match('(^|;)\\\\s*'+n+'=([^;]*)');return v?decodeURIComponent(v[2]):null;}
 function uuid(){if(crypto&&crypto.randomUUID)return crypto.randomUUID();return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=(Math.random()*16)|0;return(c==='x'?r:(r&0x3)|0x8).toString(16);});}
@@ -209,7 +209,7 @@ function captureForm(form){var fields=[];var els=form.elements;var seen={};for(v
 document.addEventListener('submit',function(e){var form=e.target;if(!form||form.tagName!=='FORM')return;if(form.getAttribute('data-mm-ignore')==='true')return;var role=form.getAttribute('role');if(role==='search')return;var action=(form.getAttribute('action')||'').toLowerCase();if(action.indexOf('wp-login')!==-1||action.indexOf('wp-admin')!==-1)return;var fields=captureForm(form);if(fields.length===0)return;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);var formEndpoint=CFG.endpoint.replace(/\\/track-pageview$/,'/ingest-form');send(formEndpoint,{provider:'js_capture',entry:{form_id:form.getAttribute('id')||form.getAttribute('data-form-id')||'dom_form',form_title:form.getAttribute('data-form-title')||form.getAttribute('aria-label')||document.title,entry_id:'js_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),source_url:window.location.href,page_url:window.location.href,submitted_at:new Date().toISOString()},context:{domain:CFG.domain,referrer:document.referrer||null,visitor_id:vid,session_id:sid,utm:storedUtms(),plugin_version:CFG.pluginVersion},fields:fields});},true);
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',track);}else{track();}})();`,
 
-    "mission-metrics/readme.txt": `=== Mission Metrics — ACTV TRKR ===
+    "actv-trkr/readme.txt": `=== ACTV TRKR ===
 Contributors: actvtrkr
 Tags: analytics, tracking, forms, leads, pageviews
 Requires at least: 5.8
@@ -221,7 +221,7 @@ License: GPL-2.0-or-later
 First-party pageview tracking and universal form capture for ACTV TRKR.
 
 == Description ==
-Mission Metrics connects your WordPress site to your ACTV TRKR dashboard.
+ACTV TRKR connects your WordPress site to your ACTV TRKR dashboard.
 This plugin was pre-configured with your API key — just install, activate, and tracking starts automatically.
 
 Supports all form plugins: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion Forms, Ninja Forms, Fluent Forms, and any standard HTML form.
@@ -229,7 +229,7 @@ Supports all form plugins: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion 
 == Installation ==
 1. Upload the plugin zip to WordPress (Plugins → Add New → Upload Plugin)
 2. Activate the plugin
-3. That's it! Tracking starts automatically. Visit Settings → Mission Metrics to verify.
+3. That's it! Tracking starts automatically. Visit Settings → ACTV TRKR to verify.
 
 == Changelog ==
 = ${PLUGIN_VERSION} =

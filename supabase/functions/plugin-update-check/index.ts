@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     if (action === "check") {
       const currentVersion = url.searchParams.get("version") || "0.0.0";
       const domain = url.searchParams.get("domain") || "";
-      const slug = "mission-metrics";
+      const slug = "actv-trkr";
 
       const hasUpdate = compareVersions(LATEST_VERSION, currentVersion) > 0;
 
@@ -81,8 +81,8 @@ Deno.serve(async (req) => {
     if (action === "info") {
       return new Response(
         JSON.stringify({
-          name: "Mission Metrics — ACTV TRKR",
-          slug: "mission-metrics",
+          name: "ACTV TRKR",
+          slug: "actv-trkr",
           version: LATEST_VERSION,
           author: "ACTV TRKR",
           homepage: "https://actvtrkr.com",

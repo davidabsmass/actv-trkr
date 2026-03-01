@@ -1,4 +1,4 @@
-=== Mission Metrics — ACTV TRKR ===
+=== ACTV TRKR ===
 Contributors: actvtrkr
 Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
@@ -11,7 +11,7 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 
 == Description ==
 
-Mission Metrics connects your WordPress site to your ACTV TRKR dashboard.
+ACTV TRKR connects your WordPress site to your ACTV TRKR dashboard.
 
 **Features:**
 
@@ -24,9 +24,9 @@ Mission Metrics connects your WordPress site to your ACTV TRKR dashboard.
 
 == Installation ==
 
-1. Upload the `mission-metrics-wp-plugin` folder to `/wp-content/plugins/`
+1. Upload the `actv-trkr` folder to `/wp-content/plugins/`
 2. Activate the plugin through the Plugins menu
-3. Go to **Settings → Mission Metrics**
+3. Go to **Settings → ACTV TRKR**
 4. Paste your API key from the ACTV TRKR onboarding screen
 5. Enable tracking — pageviews start flowing immediately
 6. If you use Gravity Forms, enable the Gravity Forms toggle

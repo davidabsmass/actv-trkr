@@ -1,19 +1,19 @@
 <?php
 /**
- * Plugin Name: Mission Metrics — ACTV TRKR
+ * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      ACTV TRKR
  * License:     GPL-2.0-or-later
- * Text Domain: mission-metrics
+ * Text Domain: actv-trkr
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.1.0' );
+define( 'MM_PLUGIN_VERSION', '1.2.0' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -48,7 +48,7 @@ register_deactivation_hook( __FILE__, 'mm_deactivate' );
 add_filter( 'cron_schedules', function ( $schedules ) {
 	$schedules['mm_every_5_min'] = array(
 		'interval' => 300,
-		'display'  => __( 'Every 5 Minutes', 'mission-metrics' ),
+		'display'  => __( 'Every 5 Minutes', 'actv-trkr' ),
 	);
 	return $schedules;
 } );

@@ -28,10 +28,10 @@ class MM_Settings {
 
 	public static function add_menu() {
 		add_options_page(
-			'Mission Metrics',
-			'Mission Metrics',
+			'ACTV TRKR',
+			'ACTV TRKR',
 			'manage_options',
-			'mission-metrics',
+			'actv-trkr',
 			array( __CLASS__, 'render_page' )
 		);
 	}
@@ -55,7 +55,7 @@ class MM_Settings {
 		$opts = self::get();
 		?>
 		<div class="wrap">
-			<h1>Mission Metrics — ACTV TRKR</h1>
+			<h1>ACTV TRKR</h1>
 			<form method="post" action="options.php">
 				<?php settings_fields( self::OPTION_GROUP ); ?>
 				<table class="form-table">

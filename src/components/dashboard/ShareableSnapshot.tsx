@@ -86,9 +86,9 @@ export function ShareableSnapshot({ snapshotData, startDate, endDate }: Snapshot
                   Read-only link • {startDate} → {endDate} • Expires in 7 days
                 </p>
                 <div className="flex items-center gap-2 bg-secondary rounded-lg p-2.5">
-                  <code className="text-[11px] font-mono text-foreground flex-1 truncate">{link}</code>
-                  <button onClick={copyLink} className="p-1.5 rounded hover:bg-accent/10 transition-colors flex-shrink-0">
-                    {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                  <code className="text-[11px] font-mono text-secondary-foreground flex-1 truncate">{link}</code>
+                  <button onClick={copyLink} className="p-1.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
+                    {copied ? <Check className="h-3.5 w-3.5 text-secondary-foreground" /> : <Copy className="h-3.5 w-3.5 text-secondary-foreground/70" />}
                   </button>
                 </div>
               </>

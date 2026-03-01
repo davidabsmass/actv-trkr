@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
  * and their org-level role for the active org.
  */
 export function useUserRole() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const { data: appRoles, isLoading: appLoading } = useQuery({
     queryKey: ["user_roles", user?.id],
@@ -25,13 +25,13 @@ export function useUserRole() {
 
   const isAdmin = appRoles?.includes("admin") ?? false;
 
-  // Treat as loading until roles have actually resolved
-  const stillLoading = appLoading || (!!user?.id && appRoles === undefined);
+  // Still loading if auth hasn't resolved OR query is in flight OR query hasn't run yet
+  const loading = authLoading || appLoading || (!authLoading && !!user?.id && appRoles === undefined);
 
   return {
     appRoles: appRoles ?? [],
     isAdmin,
-    loading: stillLoading,
+    loading,
   };
 }
 

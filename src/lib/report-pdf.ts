@@ -18,15 +18,18 @@ function safe(s: any): string {
     .trim();
 }
 
+// App design system colors (Indigo/Navy palette from index.css)
 const COLORS = {
-  primary: [99, 102, 241] as [number, number, number],
-  text: [26, 26, 46] as [number, number, number],
-  muted: [107, 114, 128] as [number, number, number],
-  success: [5, 150, 105] as [number, number, number],
-  danger: [220, 38, 38] as [number, number, number],
-  bg: [249, 250, 251] as [number, number, number],
+  primary: [99, 91, 255] as [number, number, number],     // --indigo 248 90% 66%
+  text: [0, 38, 77] as [number, number, number],           // --navy 210 100% 15%
+  muted: [107, 111, 128] as [number, number, number],      // --muted-foreground 220 9% 46%
+  success: [33, 196, 93] as [number, number, number],      // --success 142 71% 45%
+  danger: [236, 54, 54] as [number, number, number],       // --destructive 0 84% 60%
+  bg: [245, 246, 250] as [number, number, number],         // --background 220 20% 97%
   white: [255, 255, 255] as [number, number, number],
-  border: [229, 231, 235] as [number, number, number],
+  border: [228, 230, 237] as [number, number, number],     // --border 220 13% 91%
+  navyLight: [20, 64, 128] as [number, number, number],    // --navy-light 210 80% 25%
+  accent: [112, 88, 255] as [number, number, number],      // --purple 250 95% 70%
 };
 
 function changeText(change: number | null): string {
@@ -52,7 +55,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 15;
   const contentW = pageW - margin * 2;
-  let y = 20;
+  let y = 12;
 
   const slug = report.templateSlug || "monthly_performance";
   const title = slug === "weekly_brief" ? "Weekly Brief" : slug === "campaign_report" ? "Campaign Report" : "Monthly Performance Report";
@@ -65,13 +68,28 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     }
   };
 
-  // Title
-  doc.setFontSize(22);
-  doc.setTextColor(...COLORS.text);
-  doc.setFont("helvetica", "bold");
-  doc.text(safe(title), margin, y);
-  y += 8;
+  // Branded header bar
+  doc.setFillColor(...COLORS.text);
+  doc.rect(0, 0, pageW, 28, "F");
+  // Accent gradient strip
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 28, pageW, 1.5, "F");
 
+  // Brand name
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.white);
+  doc.setFont("helvetica", "bold");
+  doc.text("ACTV TRKR", margin, 11);
+
+  // Title on header
+  doc.setFontSize(18);
+  doc.setTextColor(...COLORS.white);
+  doc.setFont("helvetica", "bold");
+  doc.text(safe(title), margin, 21);
+
+  y = 36;
+
+  // Period subtitle
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.muted);
   doc.setFont("helvetica", "normal");
@@ -80,46 +98,51 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     sub += ` | vs ${report.compareMode === "yoy" ? "same period last year" : "previous period"}`;
   }
   doc.text(safe(sub), margin, y);
-  y += 10;
+  y += 8;
 
-  // Section header
+  // Section header - navy accent bar
   const sectionHeader = (label: string) => {
     checkPage(20);
-    doc.setDrawColor(...COLORS.primary);
-    doc.setLineWidth(0.6);
-    doc.line(margin, y, margin + contentW, y);
-    y += 5;
+    doc.setFillColor(...COLORS.text);
+    doc.rect(margin, y, 3, 6, "F");
+    doc.setFillColor(...COLORS.primary);
+    doc.rect(margin + 3, y, 1, 6, "F");
+    y += 1;
     doc.setFontSize(11);
     doc.setTextColor(...COLORS.text);
     doc.setFont("helvetica", "bold");
-    doc.text(safe(label).toUpperCase(), margin, y);
-    y += 7;
+    doc.text(safe(label).toUpperCase(), margin + 7, y + 4);
+    y += 10;
   };
 
-  // KPI cards
+  // KPI cards - navy-topped cards
   const kpiRow = (kpis: Array<{ label: string; value: any; change: number | null }>) => {
-    checkPage(22);
+    checkPage(24);
     const cardW = contentW / kpis.length - 2;
     kpis.forEach((k, i) => {
       const x = margin + i * (cardW + 2);
+      // Card background
       doc.setFillColor(...COLORS.bg);
-      doc.roundedRect(x, y, cardW, 18, 2, 2, "F");
+      doc.roundedRect(x, y, cardW, 20, 2, 2, "F");
+      // Top accent bar
+      doc.setFillColor(...COLORS.primary);
+      doc.rect(x, y, cardW, 2, "F");
       doc.setFontSize(7);
       doc.setTextColor(...COLORS.muted);
       doc.setFont("helvetica", "normal");
-      doc.text(safe(k.label).toUpperCase(), x + 3, y + 5);
+      doc.text(safe(k.label).toUpperCase(), x + 3, y + 7);
       doc.setFontSize(14);
       doc.setTextColor(...COLORS.text);
       doc.setFont("helvetica", "bold");
-      doc.text(safe(String(k.value)), x + 3, y + 12);
+      doc.text(safe(String(k.value)), x + 3, y + 14);
       if (k.change !== null && k.change !== undefined) {
         doc.setFontSize(8);
         doc.setTextColor(...changeColor(k.change));
         doc.setFont("helvetica", "bold");
-        doc.text(safe(changeText(k.change)), x + 3, y + 16);
+        doc.text(safe(changeText(k.change)), x + 3, y + 18);
       }
     });
-    y += 22;
+    y += 24;
   };
 
   // Insight box - no emoji, use [+] / [!] markers
@@ -337,15 +360,20 @@ export function buildReportPdf(report: any, run: any): jsPDF {
     recommendations(report.actions);
   }
 
-  // Footer on every page
+  // Footer on every page - branded
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    const pageH = doc.internal.pageSize.getHeight();
+    // Footer accent line
+    doc.setDrawColor(...COLORS.primary);
+    doc.setLineWidth(0.4);
+    doc.line(margin, pageH - 12, pageW - margin, pageH - 12);
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.muted);
     doc.setFont("helvetica", "normal");
-    doc.text(safe(`Generated ${fmtDate(report.generatedAt)}`), margin, doc.internal.pageSize.getHeight() - 8);
-    doc.text(`Page ${i} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 8, { align: "right" });
+    doc.text(safe(`ACTV TRKR | Generated ${fmtDate(report.generatedAt)}`), margin, pageH - 8);
+    doc.text(`Page ${i} of ${pageCount}`, pageW - margin, pageH - 8, { align: "right" });
   }
 
   return doc;

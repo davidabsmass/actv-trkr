@@ -103,13 +103,14 @@ function CreateOrgForm({
   const createOrg = useMutation({
     mutationFn: async () => {
       if (!userId) throw new Error("Not authenticated");
-      const { data: org, error: orgErr } = await supabase
-        .from("orgs").insert({ name: newOrgName, timezone: newOrgTimezone }).select().single();
+      const orgId = crypto.randomUUID();
+      const { error: orgErr } = await supabase
+        .from("orgs").insert({ id: orgId, name: newOrgName, timezone: newOrgTimezone });
       if (orgErr) throw orgErr;
       const { error: ouErr } = await supabase
-        .from("org_users").insert({ org_id: org.id, user_id: userId, role: "admin" });
+        .from("org_users").insert({ org_id: orgId, user_id: userId, role: "admin" });
       if (ouErr) throw ouErr;
-      return org;
+      return { id: orgId, name: newOrgName };
     },
     onSuccess: (org) => {
       queryClient.invalidateQueries({ queryKey: ["orgs"] });

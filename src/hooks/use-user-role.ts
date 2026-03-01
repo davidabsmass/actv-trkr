@@ -13,12 +13,10 @@ export function useUserRole() {
     queryKey: ["user_roles", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      console.log("[useUserRole] Fetching roles for user:", user.id);
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id);
-      console.log("[useUserRole] Result:", { data, error });
       if (error) throw error;
       return data.map((r) => r.role);
     },
@@ -26,12 +24,14 @@ export function useUserRole() {
   });
 
   const isAdmin = appRoles?.includes("admin") ?? false;
-  console.log("[useUserRole] appRoles:", appRoles, "isAdmin:", isAdmin, "loading:", appLoading);
+
+  // Treat as loading until roles have actually resolved
+  const stillLoading = appLoading || (!!user?.id && appRoles === undefined);
 
   return {
     appRoles: appRoles ?? [],
     isAdmin,
-    loading: appLoading,
+    loading: stillLoading,
   };
 }
 

@@ -1,0 +1,1 @@
+CREATE POLICY "sites_delete" ON public.sites FOR DELETE USING (user_org_role(org_id) = ANY (ARRAY['admin'::text, 'member'::text]));

@@ -18,6 +18,7 @@ import Onboarding from "./pages/Onboarding";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import SnapshotView from "./pages/SnapshotView";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
           <Route path="/snapshot/:id" element={<SnapshotView />} />
           <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
           <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

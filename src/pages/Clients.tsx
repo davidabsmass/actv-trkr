@@ -4,13 +4,11 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
 import {
-  Building2, UserPlus, Users, Mail, Trash2, Shield, ChevronRight, ArrowLeft, Copy, Check, Link,
+  Building2, UserPlus, Users, Mail, Trash2, ChevronRight, ArrowLeft, Copy, Check, Link, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -30,24 +28,14 @@ export default function Clients() {
   const [newOrgName, setNewOrgName] = useState("");
   const [newOrgTimezone, setNewOrgTimezone] = useState("America/New_York");
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
 
-  // Admin guard
   if (roleLoading) return <div className="p-12 text-center text-muted-foreground text-sm">Loading…</div>;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const selectedOrg = orgs.find((o) => o.id === selectedOrgId);
 
   return selectedOrg ? (
-    <OrgDetail
-      org={selectedOrg}
-      onBack={() => setSelectedOrgId(null)}
-      inviteOpen={inviteOpen}
-      setInviteOpen={setInviteOpen}
-      inviteEmail={inviteEmail}
-      setInviteEmail={setInviteEmail}
-    />
+    <OrgDetail org={selectedOrg} onBack={() => setSelectedOrgId(null)} />
   ) : (
     <OrgList
       orgs={orgs}
@@ -72,11 +60,9 @@ function OrgList({
   const createOrg = useMutation({
     mutationFn: async () => {
       if (!userId) throw new Error("Not authenticated");
-      // Create org
       const { data: org, error: orgErr } = await supabase
         .from("orgs").insert({ name: newOrgName, timezone: newOrgTimezone }).select().single();
       if (orgErr) throw orgErr;
-      // Add self as admin
       const { error: ouErr } = await supabase
         .from("org_users").insert({ org_id: org.id, user_id: userId, role: "admin" });
       if (ouErr) throw ouErr;
@@ -160,8 +146,23 @@ function OrgList({
   );
 }
 
-function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInviteEmail }: any) {
+function OrgDetail({ org, onBack }: { org: any; onBack: () => void }) {
   const queryClient = useQueryClient();
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newRole, setNewRole] = useState("member");
+  const [urlCopied, setUrlCopied] = useState(false);
+
+  const dashboardUrl = `${window.location.origin}/auth`;
+
+  const copyDashboardUrl = () => {
+    navigator.clipboard.writeText(dashboardUrl);
+    setUrlCopied(true);
+    toast.success("Dashboard URL copied!");
+    setTimeout(() => setUrlCopied(false), 2000);
+  };
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["org_users", org.id],
@@ -171,7 +172,6 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
         .eq("org_id", org.id).order("created_at");
       if (error) throw error;
 
-      // Fetch profile info for each member
       const userIds = data.map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles").select("user_id, email, full_name")
@@ -182,33 +182,45 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
     },
   });
 
-  const inviteUser = useMutation({
+  const createUser = useMutation({
     mutationFn: async () => {
-      // For now, we create the user via edge function or just show instructions
-      // In V1 we'll create the org_users entry — the user must already have an account
-      // Search for user by email in profiles
-      const { data: profile, error } = await supabase
-        .from("profiles").select("user_id").eq("email", inviteEmail).maybeSingle();
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: {
+          action: "create_user",
+          email: newEmail,
+          password: newPassword,
+          full_name: newFullName,
+          org_id: org.id,
+          role: newRole,
+        },
+      });
       if (error) throw error;
-      if (!profile) throw new Error("No user found with that email. They need to sign up first.");
-
-      // Check if already a member
-      const { data: existing } = await supabase
-        .from("org_users").select("id")
-        .eq("org_id", org.id).eq("user_id", profile.user_id).maybeSingle();
-      if (existing) throw new Error("User is already a member of this org.");
-
-      const { error: insertErr } = await supabase
-        .from("org_users").insert({ org_id: org.id, user_id: profile.user_id, role: "member" });
-      if (insertErr) throw insertErr;
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
-      toast.success("Client user added! Share the dashboard URL below so they can log in.");
-      setInviteOpen(false);
-      setInviteEmail("");
+      toast.success("User created and added to organization!");
+      setCreateUserOpen(false);
+      setNewEmail("");
+      setNewPassword("");
+      setNewFullName("");
+      setNewRole("member");
     },
-    onError: (err: any) => toast.error(err.message || "Failed to add user"),
+    onError: (err: any) => toast.error(err.message || "Failed to create user"),
+  });
+
+  const sendPasswordReset = useMutation({
+    mutationFn: async (email: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "reset_password", email },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => toast.success("Password reset email sent!"),
+    onError: (err: any) => toast.error(err.message || "Failed to send reset email"),
   });
 
   const removeMember = useMutation({
@@ -234,16 +246,6 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
     },
     onError: (err: any) => toast.error(err.message || "Failed to update role"),
   });
-
-  const [urlCopied, setUrlCopied] = useState(false);
-  const dashboardUrl = `${window.location.origin}/auth`;
-
-  const copyDashboardUrl = () => {
-    navigator.clipboard.writeText(dashboardUrl);
-    setUrlCopied(true);
-    toast.success("Dashboard URL copied!");
-    setTimeout(() => setUrlCopied(false), 2000);
-  };
 
   return (
     <div>
@@ -271,30 +273,53 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
         </div>
       </div>
 
+      {/* Members */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" /> Members
           </h3>
-          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+          <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5">
-                <UserPlus className="h-3.5 w-3.5" /> Add User
+                <UserPlus className="h-3.5 w-3.5" /> Create User
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Add User to {org.name}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Create User for {org.name}</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
-                <p className="text-xs text-muted-foreground">
-                  Enter the email of a user who has already signed up. They'll be added as a member of this organization.
-                </p>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Full Name</label>
+                  <Input value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="Jane Smith" />
+                </div>
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
-                  <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="client@example.com" />
+                  <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="client@example.com" />
                 </div>
-                <Button className="w-full" disabled={!inviteEmail.trim() || inviteUser.isPending} onClick={() => inviteUser.mutate()}>
-                  {inviteUser.isPending ? "Adding…" : "Add User"}
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Temporary Password</label>
+                  <Input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
+                  <Select value={newRole} onValueChange={setNewRole}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="member">Member</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={!newEmail.trim() || !newPassword.trim() || newPassword.length < 6 || createUser.isPending}
+                  onClick={() => createUser.mutate()}
+                >
+                  {createUser.isPending ? "Creating…" : "Create User"}
                 </Button>
+                <p className="text-xs text-muted-foreground">
+                  The user will be created with a confirmed email. Share the dashboard URL and temporary password, then send a password reset.
+                </p>
               </div>
             </DialogContent>
           </Dialog>
@@ -320,6 +345,19 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    disabled={sendPasswordReset.isPending}
+                    onClick={() => {
+                      const email = m.profile?.email;
+                      if (email) sendPasswordReset.mutate(email);
+                      else toast.error("No email found for this user");
+                    }}
+                  >
+                    <KeyRound className="h-3.5 w-3.5" /> Reset Password
+                  </Button>
                   <Select value={m.role} onValueChange={(role) => updateRole.mutate({ id: m.id, role })}>
                     <SelectTrigger className="w-[110px] h-8 text-xs">
                       <SelectValue />

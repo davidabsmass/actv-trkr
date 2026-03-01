@@ -121,7 +121,7 @@ export default function PluginSection() {
                 Endpoint URL
               </label>
               <div className="flex items-center gap-1.5 mt-1">
-                <code className="text-xs font-mono text-foreground bg-secondary rounded px-2 py-1.5 flex-1 truncate">
+                <code className="text-xs font-mono text-secondary-foreground bg-secondary rounded px-2 py-1.5 flex-1 truncate">
                   {endpointUrl}
                 </code>
                 <button

@@ -44,8 +44,8 @@ export default function SitesSection() {
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-3.5 w-3.5 text-success flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">{site.domain}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-sm font-medium text-secondary-foreground">{site.domain}</p>
+                  <p className="text-[11px] text-secondary-foreground/70">
                     {site.type} · {site.plugin_version ? `v${site.plugin_version}` : "version unknown"} · connected {format(new Date(site.created_at), "MMM d, yyyy")}
                   </p>
                 </div>

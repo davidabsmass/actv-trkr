@@ -33,7 +33,7 @@ function mm_activate(){MM_Retry_Queue::create_table();if(!wp_next_scheduled('mm_
 if(!isset(\$opts['enable_tracking']))\$opts['enable_tracking']='1';
 if(!isset(\$opts['enable_gravity']))\$opts['enable_gravity']='1';
 update_option('mm_options',\$opts);
-}}
+}
 register_activation_hook(__FILE__,'mm_activate');
 function mm_deactivate(){wp_clear_scheduled_hook('mm_retry_cron');}
 register_deactivation_hook(__FILE__,'mm_deactivate');

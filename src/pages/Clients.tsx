@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, UserPlus, Users, Mail, Trash2, Copy, Check, Link, KeyRound, Ticket,
+  Key, Plus, Ban, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { downloadPlugin } from "@/lib/plugin-download";
 
 export default function Clients() {
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -140,6 +143,195 @@ function CreateOrgForm({
       <Button className="w-full" disabled={!newOrgName.trim() || createOrg.isPending} onClick={() => createOrg.mutate()}>
         {createOrg.isPending ? "Creating…" : "Create Organization"}
       </Button>
+    </div>
+  );
+}
+
+function ClientApiKeys({ orgId }: { orgId: string }) {
+  const queryClient = useQueryClient();
+  const [newKey, setNewKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const { data: keys, isLoading } = useQuery({
+    queryKey: ["api_keys", orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("api_keys")
+        .select("id, label, created_at, revoked_at, key_plain")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const generateKey = async () => {
+    setGenerating(true);
+    try {
+      const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      const hashBuffer = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(rawKey)
+      );
+      const keyHash = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+      const { error } = await supabase
+        .from("api_keys")
+        .insert({ org_id: orgId, key_hash: keyHash, key_plain: rawKey, label: "Default" });
+      if (error) throw error;
+
+      setNewKey(rawKey);
+      queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });
+      toast.success("API key generated — copy it now.");
+    } catch (err: any) {
+      toast.error(err?.message || "Error generating key");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const revokeKey = async (id: string) => {
+    setRevokingId(id);
+    try {
+      const { error } = await supabase
+        .from("api_keys")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });
+      toast.success("Key revoked");
+    } catch (err: any) {
+      toast.error(err?.message || "Error revoking key");
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const copyKey = (key: string) => {
+    navigator.clipboard.writeText(key);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = async (key: string) => {
+    setDownloading(true);
+    try {
+      await downloadPlugin(key);
+      toast.success("Plugin downloaded with this client's API key.");
+    } catch (err: any) {
+      toast.error(err?.message || "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Key className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">API Keys & Plugin</h3>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          disabled={generating}
+          onClick={generateKey}
+        >
+          <Plus className="h-3 w-3" />
+          {generating ? "Generating…" : "New Key"}
+        </Button>
+      </div>
+
+      {newKey && (
+        <div className="mb-3 rounded-lg bg-secondary p-3 space-y-2">
+          <p className="text-xs text-secondary-foreground/70 font-medium">
+            New API key — copy it now, it won't be shown again:
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">
+              {newKey}
+            </code>
+            <button
+              onClick={() => copyKey(newKey)}
+              className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-primary" />
+              ) : (
+                <Copy className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+          </div>
+          <button
+            onClick={() => handleDownload(newKey)}
+            disabled={downloading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            <Download className="h-3 w-3" />
+            {downloading ? "Downloading…" : "Download Plugin with this key"}
+          </button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Loading keys…</p>
+      ) : !keys?.length ? (
+        <p className="text-xs text-muted-foreground">No API keys yet. Generate one to get started.</p>
+      ) : (
+        <ScrollArea className="max-h-[180px]">
+          <div className="space-y-2 pr-2">
+            {keys.map((k) => (
+              <div
+                key={k.id}
+                className="flex items-center justify-between rounded-lg border border-border p-3"
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">{k.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Created {new Date(k.created_at).toLocaleDateString()}
+                    {k.revoked_at && (
+                      <span className="ml-2 text-destructive">
+                        · Revoked {new Date(k.revoked_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {!k.revoked_at && k.key_plain && (
+                    <button
+                      onClick={() => handleDownload(k.key_plain!)}
+                      disabled={downloading}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-foreground hover:bg-accent rounded transition-colors"
+                      title="Download plugin with this key"
+                    >
+                      <Download className="h-3 w-3" />
+                    </button>
+                  )}
+                  {!k.revoked_at && (
+                    <button
+                      onClick={() => revokeKey(k.id)}
+                      disabled={revokingId === k.id}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded transition-colors disabled:opacity-50"
+                    >
+                      <Ban className="h-3 w-3" />
+                      {revokingId === k.id ? "…" : "Revoke"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 }
@@ -311,6 +503,9 @@ function OrgDetail({ org }: { org: any }) {
     <div>
       <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
       <p className="text-sm text-muted-foreground mb-6">{org.timezone}</p>
+
+      {/* API Keys & Plugin - scoped to THIS client org */}
+      <ClientApiKeys orgId={org.id} />
 
       {/* Dashboard URL card */}
       <div className="rounded-lg border border-border bg-card p-4 mb-4">

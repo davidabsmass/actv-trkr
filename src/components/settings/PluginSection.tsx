@@ -31,19 +31,33 @@ export default function PluginSection() {
   const endpointUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1`;
 
   const handleDownload = async () => {
-    if (!activeKey) {
+    setDownloading(true);
+    try {
+      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip`;
+      const response = await fetch(zipUrl);
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "actv-trkr.zip";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Download complete",
+        description: "After installing, go to WordPress → Settings → ACTV TRKR and paste your API key.",
+      });
+    } catch (err) {
       toast({
         variant: "destructive",
-        title: "No active API key",
-        description: "Generate an API key first in the API Keys section.",
+        title: "Download failed",
+        description: "Could not download the plugin. Please try again.",
       });
-      return;
+    } finally {
+      setDownloading(false);
     }
-    // Plugin download without baked key — user must configure manually
-    toast({
-      title: "Plugin download",
-      description: "For security, API keys are no longer baked into downloads. Copy your key from the API Keys section and paste it in the WordPress plugin settings.",
-    });
   };
 
   const copyToClipboard = (value: string, field: string) => {

@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import {
-  Building2, UserPlus, Users, Mail, Trash2, Shield, ChevronRight, ArrowLeft,
+  Building2, UserPlus, Users, Mail, Trash2, Shield, ChevronRight, ArrowLeft, Copy, Check, Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,7 +204,7 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
-      toast.success("Client user added");
+      toast.success("Client user added! Share the dashboard URL below so they can log in.");
       setInviteOpen(false);
       setInviteEmail("");
     },
@@ -235,6 +235,16 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
     onError: (err: any) => toast.error(err.message || "Failed to update role"),
   });
 
+  const [urlCopied, setUrlCopied] = useState(false);
+  const dashboardUrl = `${window.location.origin}/auth`;
+
+  const copyDashboardUrl = () => {
+    navigator.clipboard.writeText(dashboardUrl);
+    setUrlCopied(true);
+    toast.success("Dashboard URL copied!");
+    setTimeout(() => setUrlCopied(false), 2000);
+  };
+
   return (
     <div>
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
@@ -243,6 +253,23 @@ function OrgDetail({ org, onBack, inviteOpen, setInviteOpen, inviteEmail, setInv
 
       <h1 className="text-2xl font-bold text-foreground mb-1">{org.name}</h1>
       <p className="text-sm text-muted-foreground mb-6">{org.timezone}</p>
+
+      {/* Dashboard URL card */}
+      <div className="rounded-lg border border-border bg-card p-4 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Link className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Client Dashboard URL</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Share this link with client users so they can log in and view their dashboard.
+        </p>
+        <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">
+          <code className="text-xs font-mono text-foreground flex-1 break-all">{dashboardUrl}</code>
+          <button onClick={copyDashboardUrl} className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors">
+            {urlCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+          </button>
+        </div>
+      </div>
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">

@@ -300,6 +300,27 @@ const Signup = () => {
               </button>
             </div>
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+              <h3 className="text-sm font-medium text-foreground mb-1">Client Dashboard URL</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Share this link with your client so they can log in and view their results.
+              </p>
+              <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <code className="text-xs font-mono text-foreground flex-1 break-all">
+                  {window.location.origin}/auth
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/auth`);
+                    toast({ title: "Copied!", description: "Dashboard URL copied to clipboard." });
+                  }}
+                  className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
+                >
+                  <Copy className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+            <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <h3 className="text-sm font-medium text-foreground mb-1">WordPress Plugin</h3>
               <p className="text-xs text-muted-foreground mb-3">
                 Download the plugin with your API key baked in. Just upload to WordPress and activate.

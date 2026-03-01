@@ -558,7 +558,7 @@ export default function Reports() {
   const [viewingReport, setViewingReport] = useState<any>(null);
   const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date>(new Date());
-  const [compareMode, setCompareMode] = useState<string>("previous");
+  const [compareMode, setCompareMode] = useState<string>("none");
   const [filterSource, setFilterSource] = useState<string>("");
   const [filterCampaign, setFilterCampaign] = useState<string>("");
 

@@ -22,12 +22,7 @@ import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { usePlanTier } from "@/hooks/use-plan-tier";
 import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
-import {
-  getMockKPIs, getMockDailyData, getMockSourceAttribution,
-  getMockCampaignAttribution, getMockTopPages, getMockOpportunities,
-  getMockAlerts, getMockForecast,
-} from "@/lib/mock-data";
-import { BarChart3, Zap, AlertTriangle, FileSearch } from "lucide-react";
+import { BarChart3, Zap, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -70,31 +65,21 @@ const Dashboard = () => {
   });
 
   const isLoading = !realtimeData;
-  const hasRealData = realtimeData && (realtimeData.totalPageviews > 0 || realtimeData.totalSessions > 0);
 
-  // WoW comparison data – provide mock fallbacks so the strip always renders
+  // WoW comparison data – always use real data (zeros if no data yet)
   const wowData = useMemo(() => {
-    if (hasRealData) {
-      const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
-      const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
-      const twCvr = tw.totalSessions > 0 ? tw.totalLeads / tw.totalSessions : 0;
-      const lwCvr = lw.totalSessions > 0 ? lw.totalLeads / lw.totalSessions : 0;
-      const bestPage = thisWeekData?.pages?.sort((a: any, b: any) => b.leads - a.leads)?.[0]?.path;
-      return {
-        sessions: { current: tw.totalSessions, previous: lw.totalSessions },
-        leads: { current: tw.totalLeads, previous: lw.totalLeads },
-        cvr: { current: twCvr, previous: lwCvr },
-        bestPage,
-      };
-    }
-    // Mock WoW data for demo mode
+    const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
+    const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
+    const twCvr = tw.totalSessions > 0 ? tw.totalLeads / tw.totalSessions : 0;
+    const lwCvr = lw.totalSessions > 0 ? lw.totalLeads / lw.totalSessions : 0;
+    const bestPage = thisWeekData?.pages?.sort((a: any, b: any) => b.leads - a.leads)?.[0]?.path;
     return {
-      sessions: { current: 2461, previous: 2197 },
-      leads: { current: 97, previous: 90 },
-      cvr: { current: 0.039, previous: 0.041 },
-      bestPage: "/contact",
+      sessions: { current: tw.totalSessions, previous: lw.totalSessions },
+      leads: { current: tw.totalLeads, previous: lw.totalLeads },
+      cvr: { current: twCvr, previous: lwCvr },
+      bestPage,
     };
-  }, [thisWeekData, lastWeekData, hasRealData]);
+  }, [thisWeekData, lastWeekData]);
 
   // Primary focus (new) with fallback to old goal
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
@@ -115,19 +100,20 @@ const Dashboard = () => {
     );
   }, [thisWeekData, lastWeekData, primaryFocus]);
 
+  const emptyKpis = {
+    sessions: { value: 0, delta: 0, label: "Sessions" },
+    leads: { value: 0, delta: 0, label: "Leads" },
+    pageviews: { value: 0, delta: 0, label: "Pageviews" },
+    cvr: { value: 0, delta: 0, label: "Conversion Rate" },
+  };
+
+  const emptyForecast = { sufficient_data: false, days_until_available: 42, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as { date: string; dateLabel: string; yhat: number; yhat_low: number; yhat_high: number }[] };
+
   const processedData = useMemo(() => {
-    if (isLoading) {
+    if (isLoading || !realtimeData) {
       return {
-        kpis: getMockKPIs(), dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
-        alerts: [], forecast: getMockForecast(days), isMock: true, isLoading: true,
-      };
-    }
-    if (!hasRealData || !realtimeData) {
-      return {
-        kpis: getMockKPIs(), dailyData: getMockDailyData(days),
-        sources: getMockSourceAttribution(), campaigns: getMockCampaignAttribution(),
-        pages: getMockTopPages(), opportunities: getMockOpportunities(),
-        alerts: getMockAlerts(), forecast: getMockForecast(days), isMock: true,
+        kpis: emptyKpis, dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
+        alerts: [], forecast: emptyForecast, isMock: false, isLoading: true,
       };
     }
 
@@ -155,10 +141,6 @@ const Dashboard = () => {
       date: format(new Date(a.date), "MMM d"),
     }));
 
-    const forecast = getMockForecast(days);
-    forecast.sufficient_data = false;
-    forecast.days_until_available = 42;
-
     return {
       kpis: {
         sessions: { value: totalSessions, delta: 0, label: "Sessions" },
@@ -166,9 +148,9 @@ const Dashboard = () => {
         pageviews: { value: totalPageviews, delta: 0, label: "Pageviews" },
         cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
-      dailyData, sources, campaigns, pages, opportunities, alerts, forecast, isMock: false,
+      dailyData, sources, campaigns, pages, opportunities, alerts, forecast: emptyForecast, isMock: false,
     };
-  }, [isLoading, hasRealData, realtimeData, alertsData, formsData, days]);
+  }, [isLoading, realtimeData, alertsData, days]);
 
   // Focus-aware section ordering
   const renderFocusSections = () => {
@@ -221,9 +203,6 @@ const Dashboard = () => {
           <p className="text-sm text-muted-foreground">{orgName}</p>
         </div>
         <div className="flex items-center gap-2">
-          {processedData.isMock && !isLoading && (
-            <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-1 rounded-md">Demo Data</span>
-          )}
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
           <ShareableSnapshot snapshotData={snapshotData} startDate={startDate} endDate={endDate} />
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
@@ -250,19 +229,6 @@ const Dashboard = () => {
           <button onClick={() => navigate("/onboarding")} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
             Set up an organization
           </button>
-        </div>
-      ) : !hasRealData && !processedData.isMock ? (
-        <div className="glass-card p-8 text-center animate-slide-up">
-          <FileSearch className="h-8 w-8 text-primary mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-foreground mb-2">Collecting performance data</h2>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Once traffic and leads are detected, insights will appear here. Make sure your tracking plugin is active.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <button onClick={() => navigate("/settings")} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-              Setup Checklist
-            </button>
-          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -298,7 +264,7 @@ const Dashboard = () => {
       )}
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
         <BarChart3 className="h-3.5 w-3.5" />
-        <span>{processedData.isMock ? "Showing demo data • Connect your site to see real analytics" : "Live data • Auto-refreshes every 60s"}</span>
+        <span>Live data • Auto-refreshes every 60s</span>
       </div>
     </div>
   );

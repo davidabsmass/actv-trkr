@@ -15,17 +15,15 @@ export default function PluginSection() {
     queryKey: ["active_api_key", orgId],
     queryFn: async () => {
       if (!orgId) return null;
-      // Prefer keys that have key_plain available (for plugin download)
       const { data, error } = await supabase
         .from("api_keys")
-        .select("id, label, created_at, key_hash, key_plain")
+        .select("id, label, created_at, key_hash")
         .eq("org_id", orgId)
         .is("revoked_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       if (!data?.length) return null;
-      // Prefer a key with key_plain, fall back to any active key
-      return data.find((k) => k.key_plain) || data[0];
+      return data[0];
     },
     enabled: !!orgId,
   });
@@ -41,26 +39,11 @@ export default function PluginSection() {
       });
       return;
     }
-    if (!activeKey.key_plain) {
-      toast({
-        variant: "destructive",
-        title: "Key not available for download",
-        description: "This key was created before auto-bake was enabled. Generate a new key to get a downloadable plugin.",
-      });
-      return;
-    }
-    setDownloading(true);
-    try {
-      await downloadPlugin(activeKey.key_plain);
-      toast({
-        title: "Plugin downloaded",
-        description: "Your API key and endpoint are pre-configured. Just upload to WordPress and activate.",
-      });
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Download failed", description: err?.message });
-    } finally {
-      setDownloading(false);
-    }
+    // Plugin download without baked key — user must configure manually
+    toast({
+      title: "Plugin download",
+      description: "For security, API keys are no longer baked into downloads. Copy your key from the API Keys section and paste it in the WordPress plugin settings.",
+    });
   };
 
   const copyToClipboard = (value: string, field: string) => {
@@ -87,7 +70,7 @@ export default function PluginSection() {
             <span className="text-sm font-medium text-foreground">Download Plugin</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Download the plugin with your API key and endpoint pre-configured. Just upload to WordPress and activate — no manual setup needed.
+            Download the plugin, then configure your API key and endpoint in WordPress → Settings → ACTV TRKR.
           </p>
           <button
             onClick={handleDownload}

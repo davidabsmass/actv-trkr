@@ -9,8 +9,32 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // ── Auth check ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(
+      authHeader.replace("Bearer ", "")
+    );
+    if (claimsErr || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = claimsData.claims.sub;
+
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
@@ -35,6 +59,19 @@ Deno.serve(async (req) => {
 
     const job = jobs[0];
     const orgId = job.org_id;
+
+    // ── Verify caller is a member of the job's org ──
+    const { data: membership } = await supabase
+      .from("org_users")
+      .select("role")
+      .eq("org_id", orgId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!membership || !["admin", "member"].includes(membership.role)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Mark as processing
     await supabase.from("export_jobs").update({ status: "processing" }).eq("id", job.id);
@@ -118,7 +155,7 @@ Deno.serve(async (req) => {
       }
 
       const csvContent = csvRows.join("\n");
-      const fileName = `export_${job.id}.csv`;
+      const fileName = `${orgId}/export_${job.id}.csv`;
 
       // Upload to storage
       const { error: uploadErr } = await supabase.storage

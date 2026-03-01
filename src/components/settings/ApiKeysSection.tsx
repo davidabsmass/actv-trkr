@@ -47,7 +47,7 @@ export default function ApiKeysSection() {
 
       const { error } = await supabase
         .from("api_keys")
-        .insert({ org_id: orgId, key_hash: keyHash, key_plain: rawKey, label: "Default" });
+        .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
       if (error) throw error;
 
       setNewKey(rawKey);

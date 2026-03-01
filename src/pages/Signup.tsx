@@ -73,7 +73,7 @@ const Signup = () => {
 
       await supabase
         .from("api_keys")
-        .insert({ org_id: orgId, key_hash: keyHash, key_plain: rawKey, label: "Default" });
+        .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
 
       setApiKey(rawKey);
       setDone(true);

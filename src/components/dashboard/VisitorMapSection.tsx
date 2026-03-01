@@ -146,8 +146,9 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
           onMouseLeave={() => setTooltip(null)}
         >
           <ComposableMap
-            projectionConfig={{ rotate: [-10, 0, 0], scale: 220 }}
-            height={500}
+            projection="geoEquirectangular"
+            projectionConfig={{ rotate: [-10, 0, 0], scale: 180 }}
+            height={400}
             style={{ width: "100%", height: "auto" }}
           >
             <ZoomableGroup>

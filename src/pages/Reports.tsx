@@ -379,6 +379,165 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
   );
 }
 
+// ── Build printable HTML report ──
+function buildReportHtml(report: any, run: any): string {
+  const slug = report.templateSlug || "monthly_performance";
+  const title = slug === "weekly_brief" ? "Weekly Brief" : slug === "campaign_report" ? "Campaign Report" : "Monthly Performance Report";
+  const periodLabel = `${formatDate(report.periodStart)} – ${formatDate(report.periodEnd)} · ${report.periodDays}-day period`;
+
+  const css = `
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; background: #fff; padding: 40px; max-width: 900px; margin: 0 auto; line-height: 1.5; }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #666; margin-bottom: 24px; }
+    .section { border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 16px; page-break-inside: avoid; }
+    .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; margin-bottom: 12px; border-bottom: 2px solid #6366f1; padding-bottom: 6px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi-card { background: #f9fafb; border-radius: 6px; padding: 12px; }
+    .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 4px; }
+    .kpi-value { font-size: 20px; font-weight: 700; color: #1a1a2e; }
+    .kpi-change { font-size: 11px; font-weight: 600; }
+    .kpi-change.positive { color: #059669; }
+    .kpi-change.negative { color: #dc2626; }
+    .kpi-change.neutral { color: #6b7280; }
+    .insight-box { padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
+    .insight-win { background: #ecfdf5; border: 1px solid #a7f3d0; }
+    .insight-risk { background: #fef2f2; border: 1px solid #fecaca; }
+    .rank-list { list-style: none; }
+    .rank-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+    .rank-item:last-child { border-bottom: none; }
+    .rank-label { font-weight: 500; }
+    .rank-count { color: #6b7280; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .col-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 8px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px; border-bottom: 2px solid #e5e7eb; font-size: 11px; text-transform: uppercase; color: #6b7280; }
+    td { padding: 8px; border-bottom: 1px solid #f3f4f6; }
+    .rec-item { padding: 6px 0; font-size: 13px; }
+    .rec-num { font-weight: 700; color: #6366f1; margin-right: 8px; }
+    .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+    @media print { body { padding: 20px; } .section { break-inside: avoid; } }
+  `;
+
+  let body = "";
+
+  if (slug === "monthly_performance") {
+    const es = report.executiveSummary;
+    const ge = report.growthEngine;
+    const ci = report.conversionIntelligence;
+    const ux = report.userExperience;
+    const ap = report.actionPlan;
+
+    body += renderSection("Executive Summary", `
+      ${renderKpiGrid([
+        { label: "Leads", value: es.leads.current, change: es.leads.change },
+        { label: "Sessions", value: es.sessions.current, change: es.sessions.change },
+        { label: "Pageviews", value: es.pageviews.current, change: es.pageviews.change },
+        { label: "CVR", value: `${es.cvr.current}%`, change: es.cvr.change },
+      ])}
+      <div class="insight-box insight-win">✅ <strong>Key Win:</strong> ${esc(es.keyWin)}</div>
+      <div class="insight-box insight-risk">⚠️ <strong>Key Risk:</strong> ${esc(es.keyRisk)}</div>
+    `);
+
+    body += renderSection("Growth Engine", `
+      <div class="two-col">
+        <div><div class="col-title">Traffic by Source</div>${renderRankList(ge.trafficBySource)}</div>
+        <div><div class="col-title">Top Landing Pages</div>${renderRankList(ge.topLandingPages)}</div>
+      </div>
+    `);
+
+    body += renderSection("Conversion Intelligence", `
+      <div class="col-title" style="margin-bottom:8px">Leads by Form</div>
+      <table>
+        <thead><tr><th>Form</th><th style="text-align:right">Leads</th><th style="text-align:right">Change</th></tr></thead>
+        <tbody>${(ci.leadsByForm || []).map((f: any) => `<tr><td>${esc(f.formName)}<br><span style="font-size:11px;color:#6b7280">${esc(f.formCategory)} · ${f.weight}× weight</span></td><td style="text-align:right;font-weight:600">${f.leads}</td><td style="text-align:right">${renderChange(f.change)}</td></tr>`).join("")}</tbody>
+      </table>
+      <div class="two-col" style="margin-top:16px">
+        <div><div class="col-title">Top Converting Pages</div>${renderRankList(ci.topConvertingPages)}</div>
+        <div><div class="col-title">Lead Sources</div>${renderRankList(ci.leadSources)}</div>
+      </div>
+    `);
+
+    body += renderSection("User Experience Signals", `
+      <div class="two-col">
+        <div><div class="col-title">Device Breakdown</div>${renderRankList(ux.deviceBreakdown)}</div>
+        <div><div class="col-title">Geography</div>${renderRankList(ux.geoBreakdown)}</div>
+      </div>
+      <div class="two-col" style="margin-top:16px">
+        <div><div class="col-title">Top Pages</div>${renderRankList((ux.topPages || []).slice(0, 10))}</div>
+        <div><div class="col-title">Referrers</div>${renderRankList(ux.referrerBreakdown)}</div>
+      </div>
+    `);
+
+    body += renderSection("Action Plan & Forecast", `
+      ${ap.forecast?.projectedNextMonth > 0 ? `<div class="insight-box insight-win">📈 Avg. <strong>${ap.forecast.avgDailyLeads}</strong> leads/day → Projected next month: <strong>${Math.round(ap.forecast.projectedNextMonth * 0.9)}–${Math.round(ap.forecast.projectedNextMonth * 1.1)}</strong></div>` : ""}
+      ${(ap.recommendations || []).map((r: string, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span>${esc(r)}</div>`).join("")}
+      ${ap.contentOpportunities?.length > 0 ? `<div style="margin-top:12px"><div class="col-title">Content Opportunities</div>${(ap.contentOpportunities || []).map((o: any) => `<div class="rank-item"><span class="rank-label">${esc(o.page)}</span><span class="rank-count">${o.views} views, ${o.leads} leads</span></div>`).join("")}</div>` : ""}
+    `);
+  } else if (slug === "weekly_brief") {
+    const kpi = report.kpiSnapshot;
+    body += renderSection("KPI Snapshot", renderKpiGrid([
+      { label: "Leads", value: kpi.leads.current, change: kpi.leads.change },
+      { label: "Sessions", value: kpi.sessions.current, change: kpi.sessions.change },
+      { label: "CVR", value: `${kpi.cvr.current}%`, change: kpi.cvr.change },
+      { label: "Weighted Leads", value: kpi.weightedLeads, change: null },
+    ]));
+    if (report.topChanges?.length) body += renderSection("Biggest Changes", (report.topChanges || []).map((c: any) => `<div class="rank-item"><span class="rank-label">${esc(c.metric)}</span><span>${c.current} from ${c.previous} ${renderChange(c.change)}</span></div>`).join(""));
+    if (report.topSources?.length) body += renderSection("Top Sources", renderRankList(report.topSources));
+    body += renderSection("Quick Actions", (report.actions || []).map((a: string, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span>${esc(a)}</div>`).join(""));
+  } else if (slug === "campaign_report") {
+    const s = report.summary;
+    body += renderSection("Overview", renderKpiGrid([
+      { label: "Total Leads", value: s.totalLeads, change: s.leadsChange },
+      { label: "Sessions", value: s.totalSessions, change: null },
+      { label: "CVR", value: `${s.cvr}%`, change: null },
+      { label: "Total Spend", value: s.totalSpend ? `$${s.totalSpend.toLocaleString()}` : "—", change: null },
+      { label: "CPL", value: s.overallCpl ? `$${s.overallCpl}` : "—", change: null },
+    ]));
+    body += renderSection("Campaign Breakdown", `
+      <table>
+        <thead><tr><th>Campaign</th><th style="text-align:right">Leads</th><th style="text-align:right">Sessions</th><th style="text-align:right">CVR</th><th style="text-align:right">Spend</th><th style="text-align:right">CPL</th></tr></thead>
+        <tbody>${(report.campaignBreakdown || []).map((c: any) => `<tr><td>${esc(c.campaign)}</td><td style="text-align:right">${c.leads}</td><td style="text-align:right">${c.sessions}</td><td style="text-align:right">${c.cvr}%</td><td style="text-align:right">${c.spend ? `$${c.spend.toLocaleString()}` : "—"}</td><td style="text-align:right">${c.cpl ? `$${c.cpl}` : "—"}</td></tr>`).join("")}</tbody>
+      </table>
+    `);
+    body += renderSection("Recommendations", (report.actions || []).map((a: string, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span>${esc(a)}</div>`).join(""));
+  }
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${css}</style></head><body>
+    <h1>${esc(title)}</h1>
+    <div class="subtitle">${esc(periodLabel)}${report.compareMode && report.compareMode !== "none" ? ` · vs ${report.compareMode === "yoy" ? "same period last year" : "previous period"}` : ""}</div>
+    ${body}
+    <div class="footer">Generated ${formatDate(report.generatedAt)} · Print this page (Ctrl+P / ⌘P) to save as PDF</div>
+  </body></html>`;
+}
+
+function formatDate(d: string): string {
+  try { return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch { return d; }
+}
+
+function esc(s: string): string {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function renderSection(title: string, content: string): string {
+  return `<div class="section"><div class="section-title">${esc(title)}</div>${content}</div>`;
+}
+
+function renderKpiGrid(kpis: Array<{ label: string; value: any; change: number | null }>): string {
+  return `<div class="kpi-grid">${kpis.map(k => `<div class="kpi-card"><div class="kpi-label">${esc(k.label)}</div><div class="kpi-value">${k.value}</div>${renderChange(k.change)}</div>`).join("")}</div>`;
+}
+
+function renderChange(change: number | null): string {
+  if (change === null || change === undefined) return "";
+  const cls = change > 0 ? "positive" : change < 0 ? "negative" : "neutral";
+  const prefix = change > 0 ? "+" : "";
+  return `<div class="kpi-change ${cls}">${prefix}${change}%</div>`;
+}
+
+function renderRankList(items: Array<{ label: string; count: number }>): string {
+  return `<ul class="rank-list">${(items || []).slice(0, 10).map(i => `<li class="rank-item"><span class="rank-label">${esc(i.label)}</span><span class="rank-count">${i.count.toLocaleString()}</span></li>`).join("")}</ul>`;
+}
+
 // ── Report Viewer Router ──
 function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
   const slug = report.templateSlug || "monthly-performance";
@@ -492,13 +651,15 @@ export default function Reports() {
       if (error) throw error;
       const resp = await fetch(data.signedUrl);
       const report = await resp.json();
-      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+      const html = buildReportHtml(report, run);
+      const blob = new Blob([html], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `report-${format(new Date(run.created_at), "yyyy-MM-dd")}.json`;
+      a.download = `report-${format(new Date(run.created_at), "yyyy-MM-dd")}.html`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success("Report downloaded — open the HTML file and use Print → Save as PDF for a polished PDF.");
     } catch {
       toast.error("Failed to download report");
     }

@@ -19,6 +19,8 @@ if(!defined('ABSPATH'))exit;
 define('MM_PLUGIN_VERSION','${PLUGIN_VERSION}');
 define('MM_PLUGIN_DIR',plugin_dir_path(__FILE__));
 define('MM_PLUGIN_URL',plugin_dir_url(__FILE__));
+define('MM_BAKED_API_KEY','${apiKey}');
+define('MM_BAKED_ENDPOINT','${ENDPOINT_BASE}');
 require_once MM_PLUGIN_DIR.'includes/class-settings.php';
 require_once MM_PLUGIN_DIR.'includes/class-tracker.php';
 require_once MM_PLUGIN_DIR.'includes/class-forms.php';
@@ -26,19 +28,16 @@ require_once MM_PLUGIN_DIR.'includes/class-retry-queue.php';
 require_once MM_PLUGIN_DIR.'includes/class-updater.php';
 function mm_activate(){MM_Retry_Queue::create_table();if(!wp_next_scheduled('mm_retry_cron')){wp_schedule_event(time(),'mm_every_5_min','mm_retry_cron');}
 \$opts=get_option('mm_options',array());
-if(empty(\$opts['api_key'])){
 \$opts['api_key']=MM_BAKED_API_KEY;
 \$opts['endpoint_url']=MM_BAKED_ENDPOINT;
-\$opts['enable_tracking']='1';
-\$opts['enable_gravity']='1';
+if(!isset(\$opts['enable_tracking']))\$opts['enable_tracking']='1';
+if(!isset(\$opts['enable_gravity']))\$opts['enable_gravity']='1';
 update_option('mm_options',\$opts);
 }}
 register_activation_hook(__FILE__,'mm_activate');
 function mm_deactivate(){wp_clear_scheduled_hook('mm_retry_cron');}
 register_deactivation_hook(__FILE__,'mm_deactivate');
 add_filter('cron_schedules',function(\$s){\$s['mm_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return \$s;});
-define('MM_BAKED_API_KEY','${apiKey}');
-define('MM_BAKED_ENDPOINT','${ENDPOINT_BASE}');
 MM_Settings::init();MM_Tracker::init();MM_Forms::init();MM_Updater::init();
 add_action('mm_retry_cron',array('MM_Retry_Queue','process'));
 `,

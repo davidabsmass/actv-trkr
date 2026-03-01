@@ -183,6 +183,16 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
+    font-size: 1rem;
+  }
+
+  /* Bump body copy and buttons up one size */
+  p, span, a, li, td, th, label, code, pre, blockquote {
+    font-size: calc(1em + 1px);
+  }
+
+  button, [role="button"], input[type="submit"], input[type="button"] {
+    font-size: calc(1em + 1px);
   }
 
   h1, h2, h3, h4, h5, h6 {

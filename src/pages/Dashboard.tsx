@@ -72,20 +72,29 @@ const Dashboard = () => {
   const isLoading = !realtimeData;
   const hasRealData = realtimeData && (realtimeData.totalPageviews > 0 || realtimeData.totalSessions > 0);
 
-  // WoW comparison data
+  // WoW comparison data – provide mock fallbacks so the strip always renders
   const wowData = useMemo(() => {
-    const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
-    const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
-    const twCvr = tw.totalSessions > 0 ? tw.totalLeads / tw.totalSessions : 0;
-    const lwCvr = lw.totalSessions > 0 ? lw.totalLeads / lw.totalSessions : 0;
-    const bestPage = thisWeekData?.pages?.sort((a: any, b: any) => b.leads - a.leads)?.[0]?.path;
+    if (hasRealData) {
+      const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
+      const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
+      const twCvr = tw.totalSessions > 0 ? tw.totalLeads / tw.totalSessions : 0;
+      const lwCvr = lw.totalSessions > 0 ? lw.totalLeads / lw.totalSessions : 0;
+      const bestPage = thisWeekData?.pages?.sort((a: any, b: any) => b.leads - a.leads)?.[0]?.path;
+      return {
+        sessions: { current: tw.totalSessions, previous: lw.totalSessions },
+        leads: { current: tw.totalLeads, previous: lw.totalLeads },
+        cvr: { current: twCvr, previous: lwCvr },
+        bestPage,
+      };
+    }
+    // Mock WoW data for demo mode
     return {
-      sessions: { current: tw.totalSessions, previous: lw.totalSessions },
-      leads: { current: tw.totalLeads, previous: lw.totalLeads },
-      cvr: { current: twCvr, previous: lwCvr },
-      bestPage,
+      sessions: { current: 2461, previous: 2197 },
+      leads: { current: 97, previous: 90 },
+      cvr: { current: 0.039, previous: 0.041 },
+      bestPage: "/contact",
     };
-  }, [thisWeekData, lastWeekData]);
+  }, [thisWeekData, lastWeekData, hasRealData]);
 
   // Primary focus (new) with fallback to old goal
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
@@ -216,15 +225,11 @@ const Dashboard = () => {
             <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-1 rounded-md">Demo Data</span>
           )}
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
-          {!processedData.isMock && (
-            <>
-              <ShareableSnapshot snapshotData={snapshotData} startDate={startDate} endDate={endDate} />
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-                <span className="text-[11px] font-medium text-success">Live</span>
-              </div>
-            </>
-          )}
+          <ShareableSnapshot snapshotData={snapshotData} startDate={startDate} endDate={endDate} />
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
+            <span className="text-[11px] font-medium text-success">Live</span>
+          </div>
         </div>
       </div>
 
@@ -274,8 +279,8 @@ const Dashboard = () => {
             </div>
           )}
 
-          {hasRealData && <WeekOverWeekStrip data={wowData} />}
-          {hasFeature("ai_insights") && <WeeklySummary primaryFocus={primaryFocus} />}
+          <WeekOverWeekStrip data={wowData} />
+          <WeeklySummary primaryFocus={primaryFocus} />
           <AlertsSection alerts={processedData.alerts} />
           <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
           <TrendsChart data={processedData.dailyData} />

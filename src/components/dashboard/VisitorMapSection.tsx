@@ -66,7 +66,7 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
     return m;
   }, [data]);
 
-  if (!data || data.length === 0) return null;
+  const hasData = data && data.length > 0;
 
   const getColor = (numericId: string) => {
     const count = numericMap[numericId];
@@ -121,32 +121,38 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
         </div>
 
         {/* Country bars */}
-        <div className="space-y-2 mb-4">
-          {data.slice(0, 10).map((row) => {
-            const pct = (row.sessions / maxSessions) * 100;
-            const sharePct = totalSessions > 0 ? ((row.sessions / totalSessions) * 100).toFixed(1) : "0";
-            return (
-              <div key={row.countryCode} className="flex items-center gap-3">
-                <span className="text-base w-7 text-center flex-shrink-0">{getFlagEmoji(row.countryCode)}</span>
-                <span className="text-sm font-medium text-foreground w-28 truncate flex-shrink-0">
-                  {getCountryName(row.countryCode)}
-                </span>
-                <div className="flex-1 h-5 bg-muted/50 rounded-sm overflow-hidden">
-                  <div
-                    className="h-full bg-primary/70 rounded-sm transition-all duration-500"
-                    style={{ width: `${pct}%` }}
-                  />
+        {hasData ? (
+          <div className="space-y-2 mb-4">
+            {data.slice(0, 10).map((row) => {
+              const pct = (row.sessions / maxSessions) * 100;
+              const sharePct = totalSessions > 0 ? ((row.sessions / totalSessions) * 100).toFixed(1) : "0";
+              return (
+                <div key={row.countryCode} className="flex items-center gap-3">
+                  <span className="text-base w-7 text-center flex-shrink-0">{getFlagEmoji(row.countryCode)}</span>
+                  <span className="text-sm font-medium text-foreground w-28 truncate flex-shrink-0">
+                    {getCountryName(row.countryCode)}
+                  </span>
+                  <div className="flex-1 h-5 bg-muted/50 rounded-sm overflow-hidden">
+                    <div
+                      className="h-full bg-primary/70 rounded-sm transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-16 text-right flex-shrink-0">
+                    {row.sessions.toLocaleString()} ({sharePct}%)
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground w-16 text-right flex-shrink-0">
-                  {row.sessions.toLocaleString()} ({sharePct}%)
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No geographic data yet. Country data will appear once pageviews include location info.
+          </p>
+        )}
 
         {/* Full table for all countries */}
-        {data.length > 10 && (
+        {hasData && data.length > 10 && (
           <details className="mt-3">
             <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
               Show all {data.length} countries

@@ -3,6 +3,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useSiteSettings, useUpdateSiteSettings, PrimaryFocus, logUserInputEvent } from "@/hooks/use-site-settings";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
+import PluginSection from "@/components/settings/PluginSection";
 import { toast } from "@/hooks/use-toast";
 import { Check } from "lucide-react";
 
@@ -69,6 +70,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <PluginSection />
         <ApiKeysSection />
         <SitesSection />
 

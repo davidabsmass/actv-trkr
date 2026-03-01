@@ -651,15 +651,10 @@ export default function Reports() {
       if (error) throw error;
       const resp = await fetch(data.signedUrl);
       const report = await resp.json();
-      const html = buildReportHtml(report, run);
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `report-${format(new Date(run.created_at), "yyyy-MM-dd")}.html`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Report downloaded — open the HTML file and use Print → Save as PDF for a polished PDF.");
+      const { buildReportPdf } = await import("@/lib/report-pdf");
+      const doc = buildReportPdf(report, run);
+      doc.save(`report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`);
+      toast.success("PDF report downloaded");
     } catch {
       toast.error("Failed to download report");
     }

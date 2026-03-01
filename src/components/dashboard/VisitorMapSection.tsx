@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Globe } from "lucide-react";
-import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup, createCoordinates } from "@vnedyalk0v/react19-simple-maps";
 import { useMemo, useState } from "react";
 
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -147,7 +147,7 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
         >
           <ComposableMap
             projection="geoEquirectangular"
-            projectionConfig={{ rotate: [-10, 0, 0], scale: 180 }}
+            projectionConfig={{ rotate: [-10, 0, 0] as unknown as any, scale: 180 }}
             height={400}
             style={{ width: "100%", height: "auto" }}
           >
@@ -209,7 +209,7 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
                 const fillColor = getHeatColor(intensity);
                 const name = getCountryName(row.countryCode);
                 return (
-                  <Marker key={`marker-${row.countryCode}`} coordinates={coords}>
+                  <Marker key={`marker-${row.countryCode}`} coordinates={createCoordinates(coords[0], coords[1])}>
                     <circle
                       r={5}
                       fill={fillColor}

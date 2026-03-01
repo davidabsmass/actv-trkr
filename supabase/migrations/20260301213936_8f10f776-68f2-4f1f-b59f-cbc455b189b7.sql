@@ -1,0 +1,1 @@
+ALTER TABLE public.forms DROP CONSTRAINT forms_provider_check;

@@ -9,6 +9,11 @@ const corsHeaders = {
 // Current latest plugin version — bump this when releasing updates
 const LATEST_VERSION = "1.2.0";
 
+function getZipUrl(req: Request): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
+}
+
 const CHANGELOG = `
 ## 1.2.0
 - Added self-hosted auto-update support
@@ -50,19 +55,20 @@ Deno.serve(async (req) => {
           .eq("domain", domain);
       }
 
+      const zipUrl = getZipUrl(req) + (domain ? `?domain=${encodeURIComponent(domain)}` : "");
+
       return new Response(
         JSON.stringify({
           slug,
           version: LATEST_VERSION,
           has_update: hasUpdate,
-          download_url: null, // Plugin is downloaded from the app with baked-in keys
-          requires_redownload: true,
+          download_url: hasUpdate ? zipUrl : null,
           changelog: CHANGELOG.trim(),
           tested_wp: "6.7",
           requires_wp: "5.8",
           requires_php: "7.4",
           message: hasUpdate
-            ? `Version ${LATEST_VERSION} is available. Download the latest plugin from your ACTV TRKR dashboard.`
+            ? `Version ${LATEST_VERSION} is available. Click "Update Now" in your WordPress admin.`
             : "You are running the latest version.",
         }),
         {

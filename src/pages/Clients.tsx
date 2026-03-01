@@ -287,7 +287,7 @@ function ClientApiKeys({ orgId }: { orgId: string }) {
       ) : !keys?.length ? (
         <p className="text-xs text-muted-foreground">No API keys yet. Generate one to get started.</p>
       ) : (
-        <ScrollArea className="max-h-[180px]">
+        <ScrollArea className="max-h-[240px]">
           <div className="space-y-2 pr-2">
             {keys.map((k) => (
               <div

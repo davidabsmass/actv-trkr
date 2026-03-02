@@ -135,10 +135,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to store lead" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Populate lead_fields_flat
+    // Populate lead_fields_flat — skip metadata keys and non-data field types
+    const SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
+    const SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+
     if (fields && Array.isArray(fields)) {
       const flatRows = fields
-        .filter((f: any) => f.value !== undefined && f.value !== null && f.value !== "")
+        .filter((f: any) => {
+          if (f.value === undefined || f.value === null || f.value === "") return false;
+          const key = f.name || f.id?.toString() || f.label || "unknown";
+          if (SKIP_KEYS.has(key)) return false;
+          if (SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
+          return true;
+        })
         .map((f: any) => ({
           org_id: orgId, lead_id: lead.id,
           field_key: f.name || f.id?.toString() || f.label || "unknown",

@@ -467,8 +467,9 @@ function OrgDetail({ org }: { org: any }) {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: { action: "reset_password", email },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Edge function returns errors in data body on 4xx
+      const errMsg = data?.error || (error as any)?.message;
+      if (errMsg) throw new Error(errMsg);
       return data;
     },
     onSuccess: () => toast.success("Password reset email sent!"),

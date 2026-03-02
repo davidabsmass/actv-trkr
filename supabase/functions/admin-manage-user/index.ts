@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "reset_password") {
-      const { email } = body;
+      const { email, new_password } = body;
 
       if (!email) {
         return new Response(JSON.stringify({ error: "email is required" }), {
@@ -107,23 +107,55 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Use generateLink which triggers the recovery email via admin API
-      const { error: resetError } = await adminClient.auth.admin.generateLink({
+      // Look up user by email
+      const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
+      if (listError) {
+        return new Response(JSON.stringify({ error: listError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const targetUser = users.find((u: any) => u.email === email);
+      if (!targetUser) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (new_password) {
+        // Directly set password via admin API (no email needed)
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(targetUser.id, {
+          password: new_password,
+        });
+        if (updateError) {
+          return new Response(JSON.stringify({ error: updateError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify({ success: true, method: "password_set" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fallback: generate recovery link (admin can share it manually)
+      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email,
-        options: {
-          redirectTo: `${req.headers.get("origin") || supabaseUrl}/reset-password`,
-        },
       });
-
-      if (resetError) {
-        return new Response(JSON.stringify({ error: resetError.message }), {
+      if (linkError) {
+        return new Response(JSON.stringify({ error: linkError.message }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({
+        success: true,
+        method: "recovery_link",
+        link: linkData?.properties?.action_link || null,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

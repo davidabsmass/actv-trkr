@@ -9,7 +9,7 @@ const FEATURES: Record<string, PlanTier[]> = {
   entries: ["core", "performance", "growth"],
   reports: ["core", "performance", "growth"],
   exports: ["core", "performance", "growth"],
-  attribution: ["performance", "growth"],
+  attribution: ["core", "performance", "growth"],
   revenue_estimation: ["performance", "growth"],
   ai_insights: ["performance", "growth"],
   funnel_view: ["growth"],

@@ -463,17 +463,16 @@ function OrgDetail({ org }: { org: any }) {
   });
 
   const sendPasswordReset = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async ({ email, new_password }: { email: string; new_password: string }) => {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
-        body: { action: "reset_password", email },
+        body: { action: "reset_password", email, new_password },
       });
-      // Edge function returns errors in data body on 4xx
       const errMsg = data?.error || (error as any)?.message;
       if (errMsg) throw new Error(errMsg);
       return data;
     },
-    onSuccess: () => toast.success("Password reset email sent!"),
-    onError: (err: any) => toast.error(err.message || "Failed to send reset email"),
+    onSuccess: () => toast.success("Password updated successfully!"),
+    onError: (err: any) => toast.error(err.message || "Failed to update password"),
   });
 
   const removeMember = useMutation({
@@ -655,8 +654,13 @@ function OrgDetail({ org }: { org: any }) {
                     disabled={sendPasswordReset.isPending}
                     onClick={() => {
                       const email = m.profile?.email;
-                      if (email) sendPasswordReset.mutate(email);
-                      else toast.error("No email found for this user");
+                      if (!email) { toast.error("No email found for this user"); return; }
+                      const newPw = window.prompt(`Set new password for ${email} (min 6 chars):`);
+                      if (!newPw || newPw.length < 6) {
+                        if (newPw !== null) toast.error("Password must be at least 6 characters");
+                        return;
+                      }
+                      sendPasswordReset.mutate({ email, new_password: newPw });
                     }}
                   >
                     <KeyRound className="h-3.5 w-3.5" /> Reset Password

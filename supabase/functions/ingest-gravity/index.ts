@@ -86,15 +86,26 @@ Deno.serve(async (req) => {
 
     if (leadErr) { console.error("Lead insert error:", leadErr); return new Response(JSON.stringify({ error: "Failed to store lead" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 
-    // Populate lead_fields_flat
+    // Populate lead_fields_flat — skip metadata keys and non-data field types
+    const SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
+    const SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+
     if (fields && Array.isArray(fields)) {
-      const flatRows = fields.map((f: any) => ({
-        org_id: orgId, lead_id: lead.id,
-        field_key: f.id?.toString() || f.label || "unknown",
-        field_label: f.label || f.id?.toString(),
-        field_type: f.type || "text",
-        value_text: f.value?.toString() || null,
-      }));
+      const flatRows = fields
+        .filter((f: any) => {
+          if (!f.value && f.value !== 0) return false;
+          const key = f.id?.toString() || f.label || "unknown";
+          if (SKIP_KEYS.has(key)) return false;
+          if (SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
+          return true;
+        })
+        .map((f: any) => ({
+          org_id: orgId, lead_id: lead.id,
+          field_key: f.id?.toString() || f.label || "unknown",
+          field_label: f.label || f.id?.toString(),
+          field_type: f.type || "text",
+          value_text: f.value?.toString() || null,
+        }));
       if (flatRows.length > 0) await supabase.from("lead_fields_flat").insert(flatRows);
     }
 

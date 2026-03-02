@@ -304,8 +304,72 @@ class MM_Forms {
 
 	public static function handle_avada( $data, $form_post_id ) {
 		$fields = array();
-		if ( is_array( $data ) ) {
+
+		// Avada Fusion Forms sends a structured array with:
+		//   'data'         => "value1, value2, ..."
+		//   'field_labels' => "label1, label2, ..."
+		//   'field_types'  => "type1, type2, ..."
+		//   'submission'   => metadata string
+		// We need to parse these into individual field records.
+		$skip_keys = array( 'submission', 'hidden_field_names', 'fields_holding_privacy_data' );
+
+		if ( is_array( $data ) && isset( $data['data'] ) && isset( $data['field_types'] ) ) {
+			// Structured Avada format — split into individual fields
+			$values = array_map( 'trim', explode( ', ', $data['data'] ) );
+			$types  = array_map( 'trim', explode( ', ', $data['field_types'] ) );
+			$labels = isset( $data['field_labels'] )
+				? array_map( 'trim', explode( ', ', $data['field_labels'] ) )
+				: array();
+
+			// Filter out non-data types
+			$skip_types = array( 'submit', 'notice', 'html', 'hidden', 'captcha', 'honeypot', 'section', 'page' );
+
+			$field_index = 0;
+			for ( $i = 0; $i < count( $types ); $i++ ) {
+				$type = strtolower( $types[ $i ] );
+				if ( in_array( $type, $skip_types, true ) ) {
+					continue;
+				}
+
+				$value = isset( $values[ $field_index ] ) ? $values[ $field_index ] : '';
+				$label = isset( $labels[ $field_index ] ) ? $labels[ $field_index ] : '';
+				$field_index++;
+
+				if ( '' === $value ) {
+					continue;
+				}
+
+				// Use label as name if available, otherwise generate a field name
+				$name = $label ?: 'field_' . ( $i + 1 );
+
+				$fields[] = array(
+					'name'  => $name,
+					'label' => $label ?: $name,
+					'type'  => $types[ $i ],
+					'value' => $value,
+				);
+			}
+
+			// If parsing produced no fields, fall back to raw approach
+			if ( empty( $fields ) ) {
+				foreach ( $data as $key => $value ) {
+					if ( in_array( $key, $skip_keys, true ) || 'field_labels' === $key || 'field_types' === $key || 'data' === $key ) {
+						continue;
+					}
+					$fields[] = array(
+						'name'  => $key,
+						'label' => $key,
+						'type'  => 'text',
+						'value' => is_array( $value ) ? implode( ', ', $value ) : $value,
+					);
+				}
+			}
+		} elseif ( is_array( $data ) ) {
+			// Simple key-value format (non-structured Avada or older versions)
 			foreach ( $data as $key => $value ) {
+				if ( in_array( $key, $skip_keys, true ) || 'field_labels' === $key || 'field_types' === $key ) {
+					continue;
+				}
 				$fields[] = array(
 					'name'  => $key,
 					'label' => $key,

@@ -343,7 +343,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
   const leadIds = (leads || []).map((l) => l.id);
   const SKIP_FIELD_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
-  const SKIP_FIELD_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys"]);
+  const SKIP_FIELD_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
 
   const { data: fieldsRaw } = useQuery({
     queryKey: ["lead_fields_flat", orgId, formId, leadIds.length],

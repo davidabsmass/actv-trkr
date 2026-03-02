@@ -2,9 +2,51 @@ import { useState } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Archive, ArchiveRestore, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
+function useFormFields(orgId: string | null) {
+  return useQuery({
+    queryKey: ["form_fields_summary", orgId],
+    queryFn: async () => {
+      if (!orgId) return {};
+      // Get distinct field labels per form, excluding internal/meta fields
+      const { data, error } = await supabase
+        .from("lead_fields_flat")
+        .select("field_key, field_label, lead_id")
+        .eq("org_id", orgId);
+      if (error) throw error;
+
+      // Get lead -> form_id mapping
+      const leadIds = [...new Set(data?.map((d) => d.lead_id) ?? [])];
+      if (leadIds.length === 0) return {};
+
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("id, form_id")
+        .in("id", leadIds.slice(0, 500));
+
+      const leadFormMap: Record<string, string> = {};
+      leads?.forEach((l) => { leadFormMap[l.id] = l.form_id; });
+
+      const skipKeys = new Set(["data", "submission", "field_labels", "field_types"]);
+      const formFields: Record<string, string[]> = {};
+      data?.forEach((row) => {
+        if (skipKeys.has(row.field_key)) return;
+        const formId = leadFormMap[row.lead_id];
+        if (!formId) return;
+        if (!formFields[formId]) formFields[formId] = [];
+        const label = row.field_label || row.field_key;
+        if (!formFields[formId].includes(label)) {
+          formFields[formId].push(label);
+        }
+      });
+      return formFields;
+    },
+    enabled: !!orgId,
+  });
+}
 
 export default function FormsSection() {
   const { orgId } = useOrg();
@@ -12,6 +54,8 @@ export default function FormsSection() {
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+
+  const { data: formFields } = useFormFields(orgId);
 
   const activeForms = forms?.filter((f) => !f.archived) ?? [];
   const archivedForms = forms?.filter((f) => f.archived) ?? [];
@@ -90,13 +134,17 @@ export default function FormsSection() {
               key={form.id}
               className="flex items-center justify-between p-3 rounded-md bg-secondary/50"
             >
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-secondary-foreground">
                   {form.name}
                 </p>
-                <p className="text-[11px] text-secondary-foreground/70">
-                  {form.provider} · {form.form_category}
-                  {form.external_form_id ? ` · #${form.external_form_id}` : ""}
+                <p className="text-[11px] text-secondary-foreground/70 truncate">
+                  {formFields?.[form.id]?.length
+                    ? formFields[form.id].slice(0, 5).join(" · ") +
+                      (formFields[form.id].length > 5
+                        ? ` +${formFields[form.id].length - 5} more`
+                        : "")
+                    : "No entries yet"}
                 </p>
               </div>
               <button

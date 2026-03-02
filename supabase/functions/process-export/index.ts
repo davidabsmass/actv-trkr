@@ -96,17 +96,24 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Fetch lead fields
+      // Fetch lead fields — exclude non-data field types
+      const skipFieldTypes = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
       const leadIds = leads.map((l: any) => l.id);
       const allFields: any[] = [];
       for (let i = 0; i < leadIds.length; i += 100) {
         const batch = leadIds.slice(i, i + 100);
         const { data: fields } = await supabase
           .from("lead_fields_flat")
-          .select("lead_id, field_key, field_label, value_text")
+          .select("lead_id, field_key, field_label, field_type, value_text")
           .eq("org_id", orgId)
           .in("lead_id", batch);
-        if (fields) allFields.push(...fields);
+        if (fields) {
+          for (const f of fields) {
+            if (!skipFieldTypes.has((f.field_type || "").toLowerCase())) {
+              allFields.push(f);
+            }
+          }
+        }
       }
 
       // Build field map
@@ -126,29 +133,18 @@ Deno.serve(async (req) => {
       const formNameMap: Record<string, string> = {};
       (forms || []).forEach((f: any) => { formNameMap[f.id] = f.name; });
 
-      // Build CSV
-      const baseCols = ["submitted_at", "status", "form", "source", "utm_source", "utm_medium", "utm_campaign", "page_path", "referrer_domain", "service", "location", "lead_type", "lead_score"];
+      // Build CSV — date, form, status, then form field values only
       const fieldCols = [...allFieldKeys.entries()];
-      const headerRow = [...baseCols, ...fieldCols.map(([, label]) => label)];
+      const headerRow = ["Date", "Form", "Status", ...fieldCols.map(([, label]) => label)];
 
       const csvRows: string[] = [headerRow.map(escCsv).join(",")];
 
       for (const lead of leads) {
         const fields = leadFieldMap.get(lead.id) || {};
         const row = [
-          lead.submitted_at || "",
+          lead.submitted_at ? new Date(lead.submitted_at).toLocaleDateString("en-US") : "",
+          formNameMap[lead.form_id] || "",
           lead.status || "",
-          formNameMap[lead.form_id] || lead.form_id || "",
-          lead.source || "",
-          lead.utm_source || "",
-          lead.utm_medium || "",
-          lead.utm_campaign || "",
-          lead.page_path || "",
-          lead.referrer_domain || "",
-          lead.service || "",
-          lead.location || "",
-          lead.lead_type || "",
-          lead.lead_score != null ? String(lead.lead_score) : "",
           ...fieldCols.map(([key]) => fields[key] || ""),
         ];
         csvRows.push(row.map(escCsv).join(","));

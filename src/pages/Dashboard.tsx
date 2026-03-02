@@ -257,7 +257,7 @@ const Dashboard = () => {
             cvrLastWeek: wowData.cvr.previous,
             topPage: wowData.bestPage || "",
             topSource: processedData.sources?.[0]?.source || "",
-            totalForms: formsData?.length || 0,
+            totalForms: formsData?.filter((f) => !f.archived).length || 0,
             primaryFocus,
           }} />
           <AlertsSection alerts={processedData.alerts} />

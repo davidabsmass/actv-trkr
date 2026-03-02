@@ -342,6 +342,8 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   });
 
   const leadIds = (leads || []).map((l) => l.id);
+  const SKIP_FIELD_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+
   const { data: fieldsRaw } = useQuery({
     queryKey: ["lead_fields_flat", orgId, formId, leadIds.length],
     queryFn: async () => {
@@ -350,7 +352,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       for (let i = 0; i < leadIds.length; i += 50) {
         const batch = leadIds.slice(i, i + 50);
         const { data, error } = await supabase
-          .from("lead_fields_flat").select("lead_id, field_key, field_label, value_text")
+          .from("lead_fields_flat").select("lead_id, field_key, field_label, field_type, value_text")
           .eq("org_id", orgId).in("lead_id", batch);
         if (error) throw error;
         if (data) results.push(...data);
@@ -365,8 +367,13 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     const map = new Map<string, Record<string, string>>();
     const columnOrder = new Map<string, { key: string; label: string; count: number }>();
     for (const f of fieldsRaw) {
+      // Skip non-data field types
+      if (SKIP_FIELD_TYPES.has((f.field_type || "").toLowerCase())) continue;
+      // Skip fields with no actual value
+      if (!f.value_text || f.value_text.trim() === "") continue;
+
       if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-      map.get(f.lead_id)![f.field_key] = f.value_text || "";
+      map.get(f.lead_id)![f.field_key] = f.value_text;
       if (!columnOrder.has(f.field_key)) {
         columnOrder.set(f.field_key, { key: f.field_key, label: f.field_label || f.field_key, count: 0 });
       }

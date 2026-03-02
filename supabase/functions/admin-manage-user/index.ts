@@ -107,27 +107,17 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Generate password reset link
-      const { data, error: resetError } = await adminClient.auth.admin.generateLink({
+      // Use generateLink which triggers the recovery email via admin API
+      const { error: resetError } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email,
+        options: {
+          redirectTo: `${req.headers.get("origin") || supabaseUrl}/reset-password`,
+        },
       });
 
       if (resetError) {
         return new Response(JSON.stringify({ error: resetError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // We use the built-in Supabase email which is triggered by resetPasswordForEmail
-      // But since we want admin-triggered, we use the admin API
-      const { error: sendError } = await adminClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${req.headers.get("origin") || supabaseUrl}/reset-password`,
-      });
-
-      if (sendError) {
-        return new Response(JSON.stringify({ error: sendError.message }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

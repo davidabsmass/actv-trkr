@@ -343,6 +343,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
   const leadIds = (leads || []).map((l) => l.id);
   const SKIP_FIELD_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+  const SKIP_FIELD_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys"]);
 
   const { data: fieldsRaw } = useQuery({
     queryKey: ["lead_fields_flat", orgId, formId, leadIds.length],
@@ -367,7 +368,8 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     const map = new Map<string, Record<string, string>>();
     const columnOrder = new Map<string, { key: string; label: string; count: number }>();
     for (const f of fieldsRaw) {
-      // Skip non-data field types
+      // Skip metadata keys and non-data field types
+      if (SKIP_FIELD_KEYS.has(f.field_key)) continue;
       if (SKIP_FIELD_TYPES.has((f.field_type || "").toLowerCase())) continue;
       // Skip fields with no actual value
       if (!f.value_text || f.value_text.trim() === "") continue;

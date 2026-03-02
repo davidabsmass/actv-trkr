@@ -249,7 +249,7 @@ export default function Exports() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {forms.map((form) => (
+            {forms.filter((f) => !f.archived).map((form) => (
               <button
                 key={form.id}
                 onClick={() => setSelectedFormId(form.id)}

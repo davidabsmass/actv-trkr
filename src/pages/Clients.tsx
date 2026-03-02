@@ -430,7 +430,10 @@ function OrgDetail({ org }: { org: any }) {
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
-      return data.map((m) => ({ ...m, profile: profileMap.get(m.user_id) || null }));
+      // Filter out org_users whose auth account no longer exists (no profile)
+      return data
+        .map((m) => ({ ...m, profile: profileMap.get(m.user_id) || null }))
+        .filter((m) => m.profile !== null);
     },
   });
 

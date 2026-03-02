@@ -171,8 +171,8 @@ const Onboarding = () => {
           <span className="text-xl font-bold text-foreground tracking-tight">ACTV TRKR</span>
         </div>
         <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Set up your organization</h2>
-          <p className="text-sm text-muted-foreground mb-5">Create an org to start tracking analytics.</p>
+          <h2 className="text-lg font-semibold text-white mb-1">Set up your organization</h2>
+          <p className="text-sm text-white/70 mb-5">Create an org to start tracking analytics.</p>
           <form onSubmit={handleCreate} className="space-y-3">
             <input
               type="text" placeholder="Organization name (e.g., Example Ortho)" value={name}

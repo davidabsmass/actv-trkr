@@ -199,12 +199,14 @@ function FormSettings({ form }: { form: any }) {
   const queryClient = useQueryClient();
   const [category, setCategory] = useState(form.form_category || "lead");
   const [weight, setWeight] = useState([form.lead_weight ?? 1]);
+  const [estimatedValue, setEstimatedValue] = useState<string>(String(form.estimated_value ?? 0));
 
   const updateForm = useMutation({
     mutationFn: async () => {
+      const parsedValue = parseFloat(estimatedValue) || 0;
       const { error } = await supabase
         .from("forms")
-        .update({ form_category: category, lead_weight: weight[0] })
+        .update({ form_category: category, lead_weight: weight[0], estimated_value: parsedValue })
         .eq("id", form.id);
       if (error) throw error;
     },
@@ -239,6 +241,25 @@ function FormSettings({ form }: { form: any }) {
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h4 className="text-sm font-semibold text-foreground mb-4">Estimated Lead Value</h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          Set the estimated dollar value of each lead from this form. This is used to calculate ROI and revenue impact across your dashboard.
+        </p>
+        <div className="relative w-[200px]">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={estimatedValue}
+            onChange={(e) => setEstimatedValue(e.target.value)}
+            className="pl-7"
+            placeholder="0"
+          />
+        </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5">

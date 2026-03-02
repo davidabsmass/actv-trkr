@@ -3,6 +3,7 @@ import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
 import FormsSection from "@/components/settings/FormsSection";
+import NotificationsSection from "@/components/settings/NotificationsSection";
 
 export default function SettingsPage() {
   const { orgName } = useOrg();
@@ -19,6 +20,7 @@ export default function SettingsPage() {
         <ApiKeysSection />
         <SitesSection />
         <FormsSection />
+        <NotificationsSection />
       </div>
     </div>
   );

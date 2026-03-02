@@ -332,7 +332,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
-        .from("leads").select("id, submitted_at, status, source")
+        .from("leads").select("id, submitted_at, status, source, data")
         .eq("org_id", orgId).eq("form_id", formId)
         .order("submitted_at", { ascending: false }).limit(200);
       if (error) throw error;
@@ -364,26 +364,91 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   });
 
   const { fieldColumns, leadFieldMap } = useMemo(() => {
-    if (!fieldsRaw || fieldsRaw.length === 0) return { fieldColumns: [], leadFieldMap: new Map() };
     const map = new Map<string, Record<string, string>>();
     const columnOrder = new Map<string, { key: string; label: string; count: number }>();
-    for (const f of fieldsRaw) {
-      // Skip metadata keys and non-data field types
-      if (SKIP_FIELD_KEYS.has(f.field_key)) continue;
-      if (SKIP_FIELD_TYPES.has((f.field_type || "").toLowerCase())) continue;
-      // Skip fields with no actual value
-      if (!f.value_text || f.value_text.trim() === "") continue;
 
-      if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-      map.get(f.lead_id)![f.field_key] = f.value_text;
-      if (!columnOrder.has(f.field_key)) {
-        columnOrder.set(f.field_key, { key: f.field_key, label: f.field_label || f.field_key, count: 0 });
+    const SKIP_TYPES_SET = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+    const SKIP_KEYS_SET = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
+
+    // Track which lead IDs have flat field data
+    const leadsWithFlatFields = new Set<string>();
+
+    if (fieldsRaw && fieldsRaw.length > 0) {
+      for (const f of fieldsRaw) {
+        if (SKIP_KEYS_SET.has(f.field_key)) continue;
+        if (SKIP_TYPES_SET.has((f.field_type || "").toLowerCase())) continue;
+        if (!f.value_text || f.value_text.trim() === "") continue;
+
+        leadsWithFlatFields.add(f.lead_id);
+        if (!map.has(f.lead_id)) map.set(f.lead_id, {});
+        map.get(f.lead_id)![f.field_key] = f.value_text;
+        if (!columnOrder.has(f.field_key)) {
+          columnOrder.set(f.field_key, { key: f.field_key, label: f.field_label || f.field_key, count: 0 });
+        }
+        columnOrder.get(f.field_key)!.count++;
       }
-      columnOrder.get(f.field_key)!.count++;
     }
+
+    // Fallback: parse leads.data JSONB for leads without flat field records
+    if (leads) {
+      for (const lead of leads) {
+        if (leadsWithFlatFields.has(lead.id)) continue;
+        if (!lead.data || !Array.isArray(lead.data)) continue;
+
+        // Avada format: look for "data" and "field_types" entries
+        const dataEntry = (lead.data as any[]).find((d: any) => d.name === "data" || d.label === "data");
+        const typesEntry = (lead.data as any[]).find((d: any) => d.name === "field_types" || d.label === "field_types");
+        const labelsEntry = (lead.data as any[]).find((d: any) => d.name === "field_labels" || d.label === "field_labels");
+
+        if (dataEntry?.value && typesEntry?.value) {
+          // Parse comma-separated Avada format
+          const values = dataEntry.value.split(", ").map((v: string) => v.trim());
+          const types = typesEntry.value.split(", ").map((t: string) => t.trim());
+          const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+
+          const fields: Record<string, string> = {};
+          let valueIdx = 0;
+          for (let i = 0; i < types.length; i++) {
+            const type = types[i]?.toLowerCase();
+            if (SKIP_TYPES_SET.has(type)) continue;
+            const val = values[valueIdx] || "";
+            valueIdx++;
+            if (!val) continue;
+
+            const label = labels[valueIdx - 1] || `Field ${i + 1}`;
+            const key = `avada_${i}`;
+            fields[key] = val;
+            if (!columnOrder.has(key)) {
+              columnOrder.set(key, { key, label: label || `Field ${i + 1}`, count: 0 });
+            }
+            columnOrder.get(key)!.count++;
+          }
+          if (Object.keys(fields).length > 0) map.set(lead.id, fields);
+        } else {
+          // Standard format: each entry is a field with name/label/value
+          const fields: Record<string, string> = {};
+          for (const d of lead.data as any[]) {
+            if (!d.value || (typeof d.value === "string" && d.value.trim() === "")) continue;
+            const name = d.name || d.label || "unknown";
+            if (SKIP_KEYS_SET.has(name)) continue;
+            if (SKIP_TYPES_SET.has((d.type || "").toLowerCase())) continue;
+
+            const key = name;
+            fields[key] = String(d.value);
+            if (!columnOrder.has(key)) {
+              columnOrder.set(key, { key, label: d.label || name, count: 0 });
+            }
+            columnOrder.get(key)!.count++;
+          }
+          if (Object.keys(fields).length > 0) map.set(lead.id, fields);
+        }
+      }
+    }
+
+    if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
     const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count).slice(0, 6);
     return { fieldColumns: cols, leadFieldMap: map };
-  }, [fieldsRaw]);
+  }, [fieldsRaw, leads]);
 
   const filtered = (leads || []).filter((lead) => {
     if (statusFilter !== "all" && lead.status !== statusFilter) return false;

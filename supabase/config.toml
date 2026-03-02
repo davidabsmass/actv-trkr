@@ -29,3 +29,18 @@ verify_jwt = false
 
 [functions.sync-forms]
 verify_jwt = false
+
+[functions.process-export]
+verify_jwt = false
+
+[functions.process-report]
+verify_jwt = false
+
+[functions.dashboard-ai-insights]
+verify_jwt = false
+
+[functions.redeem-invite]
+verify_jwt = false
+
+[functions.admin-manage-user]
+verify_jwt = false

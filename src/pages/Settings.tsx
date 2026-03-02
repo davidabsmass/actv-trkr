@@ -2,6 +2,7 @@ import { useOrg } from "@/hooks/use-org";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
+import FormsSection from "@/components/settings/FormsSection";
 
 export default function SettingsPage() {
   const { orgName } = useOrg();
@@ -17,6 +18,7 @@ export default function SettingsPage() {
         <PluginSection />
         <ApiKeysSection />
         <SitesSection />
+        <FormsSection />
       </div>
     </div>
   );

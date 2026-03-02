@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     }
 
     // Mark as processing
-    await supabase.from("export_jobs").update({ status: "processing" }).eq("id", job.id);
+    await supabase.from("export_jobs").update({ status: "running" }).eq("id", job.id);
 
     try {
       // Fetch leads
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       if (leadsErr) throw leadsErr;
       if (!leads || leads.length === 0) {
         await supabase.from("export_jobs").update({
-          status: "completed", completed_at: new Date().toISOString(), row_count: 0,
+          status: "succeeded", completed_at: new Date().toISOString(), row_count: 0,
           file_path: null, error: null,
         }).eq("id", job.id);
         return new Response(JSON.stringify({ message: "No leads to export", job_id: job.id }), {
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
 
       // Update job as completed
       await supabase.from("export_jobs").update({
-        status: "completed",
+        status: "succeeded",
         completed_at: new Date().toISOString(),
         row_count: leads.length,
         file_path: fileName,
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
     } catch (processErr) {
       console.error("Export processing error:", processErr);
       await supabase.from("export_jobs").update({
-        status: "error",
+        status: "failed",
         error: processErr instanceof Error ? processErr.message : "Unknown error",
       }).eq("id", job.id);
       throw processErr;

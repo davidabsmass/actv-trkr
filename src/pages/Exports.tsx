@@ -54,7 +54,7 @@ export default function Exports() {
     enabled: !!orgId,
     refetchInterval: (query) => {
       const data = query.state.data as any[] | undefined;
-      return data?.some((j) => j.status === "queued" || j.status === "processing") ? 3000 : false;
+      return data?.some((j) => j.status === "queued" || j.status === "running") ? 3000 : false;
     },
   });
 
@@ -108,9 +108,9 @@ export default function Exports() {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "queued": return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
-      case "completed": return <CheckCircle className="h-3.5 w-3.5 text-success" />;
-      case "error": return <AlertCircle className="h-3.5 w-3.5 text-destructive" />;
+      case "queued": case "running": return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+      case "succeeded": return <CheckCircle className="h-3.5 w-3.5 text-success" />;
+      case "failed": return <AlertCircle className="h-3.5 w-3.5 text-destructive" />;
       default: return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
@@ -319,19 +319,19 @@ function ExportHistory({
                 <Badge
                   variant="outline"
                   className={`text-[10px] uppercase ${
-                    job.status === "completed" ? "text-success border-success/20" :
-                    job.status === "error" ? "text-destructive border-destructive/20" :
+                    job.status === "succeeded" ? "text-success border-success/20" :
+                    job.status === "failed" ? "text-destructive border-destructive/20" :
                     "text-muted-foreground"
                   }`}
                 >
                   {job.status}
                 </Badge>
-                {job.status === "completed" && job.file_path && (
+                {job.status === "succeeded" && job.file_path && (
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(job.file_path!)}>
                     <Download className="h-4 w-4" />
                   </Button>
                 )}
-                {job.status === "error" && job.error && (
+                {job.status === "failed" && job.error && (
                   <span className="text-xs text-destructive max-w-[200px] truncate">{job.error}</span>
                 )}
               </div>

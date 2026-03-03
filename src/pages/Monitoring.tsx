@@ -149,7 +149,7 @@ export default function MonitoringPage() {
 
               <div className="space-y-2 text-xs text-muted-foreground">
                 <div className="flex justify-between">
-                  <span>Last heartbeat</span>
+                  <span>Last confirmation</span>
                   <span className="text-foreground">
                     {site.last_heartbeat_at ? format(new Date(site.last_heartbeat_at), "MMM d, HH:mm") : "Never"}
                   </span>
@@ -320,7 +320,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           <div className="grid gap-4 md:grid-cols-3">
             <div className="glass-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <Activity className="h-4 w-4" /> Last Heartbeat
+                <Activity className="h-4 w-4" /> Last Confirmation
               </div>
               <p className="text-lg font-semibold text-foreground">
                 {site.last_heartbeat_at ? format(new Date(site.last_heartbeat_at), "MMM d, HH:mm:ss") : "Never"}

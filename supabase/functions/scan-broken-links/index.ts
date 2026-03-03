@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const MAX_PAGES = 20;
-const MAX_LINKS_PER_PAGE = 20;
+const MAX_LINKS_PER_PAGE = 50;
 const CONCURRENCY = 10;
 
 async function fetchPage(url: string): Promise<string | null> {
@@ -25,19 +25,50 @@ async function fetchPage(url: string): Promise<string | null> {
   }
 }
 
-function extractLinks(html: string, baseHost: string): string[] {
+function resolveUrl(href: string, pageUrl: string): string | null {
+  try {
+    // Use the page URL as base to correctly resolve relative URLs
+    const resolved = new URL(href, pageUrl);
+    return resolved.href;
+  } catch {
+    return null;
+  }
+}
+
+function extractLinks(html: string, baseHost: string, pageUrl: string): string[] {
   const links: string[] = [];
-  const regex = /href=["']([^"'#]+)["']/gi;
+  // Match href in <a>, <link>, and src in <img>, <script>
+  const regex = /(?:href|src)=["']([^"'#\s]+)["']/gi;
   let match;
+  const normalizedBase = baseHost.replace(/^www\./, "");
+
   while ((match = regex.exec(html)) !== null) {
     let href = match[1].trim();
-    if (href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) continue;
-    if (href.startsWith("/")) href = `https://${baseHost}${href}`;
+
+    // Skip non-HTTP protocols
+    if (href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:") || href.startsWith("data:")) continue;
+
+    // Skip XML stylesheet processing instructions and non-link refs
+    if (href.endsWith(".xsl")) continue;
+
+    // Skip font files and other non-navigable resources
+    const lowerHref = href.toLowerCase();
+    if (lowerHref.endsWith(".woff") || lowerHref.endsWith(".woff2") || lowerHref.endsWith(".ttf") || 
+        lowerHref.endsWith(".eot") || lowerHref.endsWith(".svg") && lowerHref.includes("font")) continue;
+
+    // Resolve the URL properly using the page URL as base
+    const resolved = resolveUrl(href, pageUrl);
+    if (!resolved) continue;
+
     try {
-      const u = new URL(href);
+      const u = new URL(resolved);
+      // Only check internal links
       const h = u.hostname.replace(/^www\./, "");
-      const b = baseHost.replace(/^www\./, "");
-      if (h !== b) continue;
+      if (h !== normalizedBase) continue;
+
+      // Skip anchors-only, skip common non-page resources
+      if (u.pathname === "" || u.pathname === "/") continue;
+
       links.push(u.href);
     } catch { continue; }
   }
@@ -48,7 +79,7 @@ function extractSitemapUrls(xml: string): string[] {
   const urls: string[] = [];
   const regex = /<loc>(.*?)<\/loc>/gi;
   let match;
-  while ((match = regex.exec(xml)) !== null) urls.push(match[1]);
+  while ((match = regex.exec(xml)) !== null) urls.push(match[1].trim());
   return urls;
 }
 
@@ -60,6 +91,16 @@ async function checkLink(url: string): Promise<number> {
       redirect: "follow",
       headers: { "User-Agent": "ACTVTRKR-LinkChecker/1.0" },
     });
+    // Some servers don't support HEAD, fall back to GET for 405
+    if (resp.status === 405) {
+      const getResp = await fetch(url, {
+        method: "GET",
+        signal: AbortSignal.timeout(5000),
+        redirect: "follow",
+        headers: { "User-Agent": "ACTVTRKR-LinkChecker/1.0" },
+      });
+      return getResp.status;
+    }
     return resp.status;
   } catch {
     return 0;
@@ -99,6 +140,9 @@ Deno.serve(async (req) => {
       const domain = site.domain;
       const baseUrl = `https://${domain}`;
 
+      // Clear previous broken links for this site before re-scanning
+      await supabase.from("broken_links").delete().eq("site_id", site.id);
+
       // Get page URLs from sitemap
       let pageUrls: string[] = [];
       const sitemapXml = await fetchPage(`${baseUrl}/sitemap.xml`);
@@ -121,7 +165,7 @@ Deno.serve(async (req) => {
       for (const pageUrl of pageUrls) {
         const html = await fetchPage(pageUrl);
         if (!html) continue;
-        const links = extractLinks(html, domain);
+        const links = extractLinks(html, domain, pageUrl);
         for (const link of links) {
           if (!linkToSource.has(link)) linkToSource.set(link, pageUrl);
         }
@@ -133,36 +177,22 @@ Deno.serve(async (req) => {
       const allLinks = [...linkToSource.keys()];
       const statuses = await batchCheck(allLinks);
 
-      // Filter broken
+      // Filter broken (only 4xx and 5xx, not connection failures which may be transient)
       const broken: { source_page: string; broken_url: string; status_code: number }[] = [];
       for (const [url, status] of statuses) {
-        if (status >= 400 || status === 0) {
+        if (status >= 400 && status < 600) {
           broken.push({ source_page: linkToSource.get(url)!, broken_url: url, status_code: status });
         }
       }
 
-      // Upsert
+      // Insert broken links
       const now = new Date().toISOString();
       for (const bl of broken) {
-        const { data: existing } = await supabase
-          .from("broken_links")
-          .select("id, occurrences")
-          .eq("site_id", site.id)
-          .eq("broken_url", bl.broken_url)
-          .eq("source_page", bl.source_page)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase.from("broken_links").update({
-            last_seen_at: now, occurrences: (existing.occurrences || 1) + 1, status_code: bl.status_code || null,
-          }).eq("id", existing.id);
-        } else {
-          await supabase.from("broken_links").insert({
-            site_id: site.id, org_id: site.org_id, source_page: bl.source_page,
-            broken_url: bl.broken_url, status_code: bl.status_code || null,
-            first_seen_at: now, last_seen_at: now,
-          });
-        }
+        await supabase.from("broken_links").insert({
+          site_id: site.id, org_id: site.org_id, source_page: bl.source_page,
+          broken_url: bl.broken_url, status_code: bl.status_code,
+          first_seen_at: now, last_seen_at: now,
+        });
       }
 
       totalBroken += broken.length;

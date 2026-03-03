@@ -348,7 +348,7 @@ const Dashboard = () => {
 
   // Status cards – focus-aware ordering
   const siteUp = sitesData && sitesData.length > 0
-    ? sitesData.every((s) => s.status === "active" || s.status === "ok")
+    ? sitesData.every((s) => s.status === "active" || s.status === "ok" || s.status === "UP")
     : null;
   const lastHeartbeat = sitesData?.[0]?.last_heartbeat_at;
 

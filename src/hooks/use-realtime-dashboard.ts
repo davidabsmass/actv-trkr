@@ -35,7 +35,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
 
         // Lead details for source/campaign breakdowns
         supabase.from("leads")
-          .select("submitted_at, source, utm_campaign, page_path")
+          .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
           .eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
 
         // Pageview country data
@@ -77,7 +77,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         sourceMap[src].sessions++;
       });
       leads.forEach((l: any) => {
-        const src = l.source || "direct";
+        const src = l.source || l.utm_source || l.referrer_domain || "direct";
         if (!sourceMap[src]) sourceMap[src] = { sessions: 0, leads: 0 };
         sourceMap[src].leads++;
       });

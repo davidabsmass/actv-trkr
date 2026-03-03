@@ -127,7 +127,7 @@ export default function Forms() {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("leads")
-        .select("form_id, submitted_at, source")
+        .select("form_id, submitted_at, source, session_id")
         .eq("org_id", orgId)
         .gte("submitted_at", `${startDate}T00:00:00Z`)
         .lte("submitted_at", `${endDate}T23:59:59.999Z`);
@@ -135,6 +135,56 @@ export default function Forms() {
       return data;
     },
     enabled: !!orgId,
+  });
+
+  // Query device data from pageviews joined via session_id from leads
+  const { data: deviceData } = useQuery({
+    queryKey: ["form_device_splits", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId || !leadsData || leadsData.length === 0) return {};
+      // Get unique session_ids from leads, grouped by form_id
+      const formSessions: Record<string, Set<string>> = {};
+      leadsData.forEach((l) => {
+        if (l.session_id) {
+          if (!formSessions[l.form_id]) formSessions[l.form_id] = new Set();
+          formSessions[l.form_id].add(l.session_id);
+        }
+      });
+
+      const allSessionIds = [...new Set(leadsData.map((l) => l.session_id).filter(Boolean))] as string[];
+      if (allSessionIds.length === 0) return {};
+
+      // Query pageviews for these sessions to get device info
+      const { data: pvData, error } = await supabase
+        .from("pageviews")
+        .select("session_id, device")
+        .eq("org_id", orgId)
+        .in("session_id", allSessionIds.slice(0, 500));
+      if (error) throw error;
+
+      // Build session -> device map (use first pageview's device per session)
+      const sessionDevice: Record<string, string> = {};
+      (pvData || []).forEach((pv) => {
+        if (pv.session_id && pv.device && !sessionDevice[pv.session_id]) {
+          sessionDevice[pv.session_id] = pv.device;
+        }
+      });
+
+      // Aggregate per form
+      const result: Record<string, { desktop: number; mobile: number; tablet: number }> = {};
+      Object.entries(formSessions).forEach(([formId, sessions]) => {
+        const counts = { desktop: 0, mobile: 0, tablet: 0 };
+        sessions.forEach((sid) => {
+          const d = sessionDevice[sid] || "desktop";
+          if (d === "mobile") counts.mobile++;
+          else if (d === "tablet") counts.tablet++;
+          else counts.desktop++;
+        });
+        result[formId] = counts;
+      });
+      return result;
+    },
+    enabled: !!orgId && !!leadsData && leadsData.length > 0,
   });
 
   const selectedForm = forms?.find((f) => f.id === selectedFormId);
@@ -222,7 +272,7 @@ export default function Forms() {
       {/* Form Leaderboard */}
       {forms && forms.length > 0 && (
         <div className="mb-4">
-          <FormLeaderboard forms={forms} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} />
+          <FormLeaderboard forms={forms} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} deviceData={deviceData} />
         </div>
       )}
 

@@ -1,38 +1,35 @@
 
 
-## Two Fixes: Real Device Split + Branded Client URL
+## Allow Clients to Add Websites
 
-### 1. Real Device Split in Form Leaderboard
+### Current State
+- The **Settings** page is hidden from users with `member` org role — only `admin` (org-level or global) sees it in the sidebar.
+- The **SitesSection** component on Settings allows adding/removing sites.
+- There is no standalone "Add Site" flow accessible to regular members.
 
-**Problem**: The desktop/mobile columns show hardcoded 65/35% for every form. The `pageviews` table already captures a `device` column (`desktop`, `mobile`, `tablet`) per event.
+### Options
 
-**Approach**: In `FormLeaderboard`, query the `leads` table joined with pageview device data to compute real per-form device splits.
+**Option A: Give members access to Settings**
+- Change the sidebar gate from `isAdmin || orgRole === "admin"` to `isAdmin || orgRole === "admin" || orgRole === "member"` (i.e., all org members).
+- This exposes all settings (API keys, plugin, forms, notifications) to members, which may not be desirable.
 
-Since leads don't have a `device` column directly, but they do have `session_id`, and `pageviews` has both `session_id` and `device`, we can:
-- Query `pageviews` for the org within the date range, grouped by device
-- Cross-reference with leads via `session_id` to get per-form device splits
-- If no device data exists yet, show "—" instead of fake percentages
+**Option B: Add a dedicated "Sites" section visible to all users**
+- Extract the SitesSection into its own route or embed it on the Dashboard/Monitoring page.
+- Keep sensitive settings (API keys, plugin downloads) restricted to admins.
+- Add a simple "Add Site" button somewhere members can reach — e.g., the empty-state banner on the Dashboard or a new sidebar link.
 
-**Files changed**:
-- **`src/components/dashboard/FormLeaderboard.tsx`** — accept an optional `deviceData` prop (map of form_id → {desktop, mobile, tablet counts}), or compute it internally by querying `pageviews` joined through `leads.session_id`. Remove the hardcoded `{ desktop: 65, mobile: 35 }`.
-- **`src/pages/Forms.tsx`** — pass device data down if the leaderboard is used there too.
+**Option C: Keep it admin-only (current behavior)**
+- Clients request site additions through their admin or through you.
+- No code changes needed.
 
-### 2. Branded Client URL (`actvtrkr.com`)
+### Recommendation: Option B (lightweight version)
 
-**Problem**: Dashboard URLs shown to clients use `window.location.origin` which resolves to `mshnctrl.lovable.app`. Since the app is already deployed at `actvtrkr.com`, the URLs should use that domain instead.
+1. **`src/components/AppSidebar.tsx`** — Show Settings to all authenticated org members (not just admins), but...
+2. **`src/pages/Settings.tsx`** — Conditionally render sections: show SitesSection and NotificationsSection to all members; hide ApiKeysSection and PluginSection for non-admins.
+3. No database changes needed — the `sites` table INSERT policy already allows `admin` and `member` roles.
 
-**Approach**: Replace `window.location.origin` with a constant `https://actvtrkr.com` for all client-facing URLs:
-
-**Files changed**:
-- **`src/pages/Clients.tsx`** — Change `dashboardUrl`, invite link URLs, and inline references from `window.location.origin` to `https://actvtrkr.com`
-- **`src/pages/Signup.tsx`** — Change the "Your Dashboard" URL from `window.location.origin/auth` to `https://actvtrkr.com/auth`
-
-We'll define a single constant (e.g. `const APP_DOMAIN = "https://actvtrkr.com"`) in a shared location like `src/lib/utils.ts` so it's easy to update later.
-
-### Summary
-
-| Change | Files |
-|--------|-------|
-| Real device split from pageviews data | `FormLeaderboard.tsx`, `Forms.tsx` |
-| Branded `actvtrkr.com` URLs for clients | `Clients.tsx`, `Signup.tsx`, `src/lib/utils.ts` |
+| File | Change |
+|------|--------|
+| `AppSidebar.tsx` | Show Settings link to all org members |
+| `Settings.tsx` | Gate ApiKeysSection and PluginSection behind admin check; show SitesSection and FormsSection to all |
 

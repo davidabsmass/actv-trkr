@@ -1,0 +1,1 @@
+INSERT INTO report_templates (slug, name, default_params) VALUES ('weekly_brief', 'Weekly Brief', '{"period_days": 7}'::jsonb) ON CONFLICT (slug) DO NOTHING;

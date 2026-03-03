@@ -73,7 +73,86 @@ const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count
   );
 };
 
-// Weekly Brief removed — only Monthly Performance and Campaign Report remain
+// ── Weekly Brief Viewer ──
+function WeeklyBriefViewer({ report, onBack }: { report: any; onBack: () => void }) {
+  const kpi = report.kpiSnapshot;
+  return (
+    <div>
+      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Reports
+      </button>
+      <h1 className="text-2xl font-bold text-foreground mb-1">Weekly Brief</h1>
+      <p className="text-xs text-muted-foreground mb-6">
+        {format(new Date(report.periodStart), "MMM d")} – {format(new Date(report.periodEnd), "MMM d, yyyy")} · {report.periodDays}-day period
+      </p>
+
+      <Section icon={Target} title="KPI Snapshot">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {[
+            { label: "Leads", value: kpi.leads.current, change: kpi.leads.change },
+            { label: "Sessions", value: kpi.sessions.current, change: kpi.sessions.change },
+            { label: "CVR", value: `${kpi.cvr.current}%`, change: kpi.cvr.change },
+            { label: "Weighted Leads", value: kpi.weightedLeads, change: null },
+          ].map((k) => (
+            <div key={k.label} className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{k.label}</p>
+              <p className="text-lg font-bold text-foreground">{k.value}</p>
+              <TrendBadge change={k.change} />
+            </div>
+          ))}
+        </div>
+        {kpi.goalTarget && (
+          <p className="text-xs text-muted-foreground">🎯 Goal: {kpi.goalTarget} leads · {Math.round((kpi.leads.current / kpi.goalTarget) * 100)}% achieved</p>
+        )}
+      </Section>
+
+      {report.topChanges?.length > 0 && (
+        <Section icon={BarChart3} title="Biggest Changes">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="py-2 pr-4 text-xs font-medium text-muted-foreground">Metric</th>
+                  <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Current</th>
+                  <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Previous</th>
+                  <th className="py-2 pl-3 text-xs font-medium text-muted-foreground text-right">Change</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.topChanges.map((c: any, i: number) => (
+                  <tr key={i} className="border-b border-border/50 last:border-0">
+                    <td className="py-2 pr-4 font-medium text-foreground">{c.metric}</td>
+                    <td className="py-2 px-3 text-right text-foreground">{c.current}</td>
+                    <td className="py-2 px-3 text-right text-muted-foreground">{c.previous}</td>
+                    <td className="py-2 pl-3 text-right"><TrendBadge change={c.change} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+
+      {report.topSources?.length > 0 && (
+        <Section icon={Globe} title="Top Sources">
+          <RankList items={report.topSources} maxItems={5} />
+        </Section>
+      )}
+
+      <Section icon={Lightbulb} title="Quick Actions">
+        <div className="space-y-2">
+          {(report.actions || []).map((a: string, i: number) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-xs font-bold text-primary mt-0.5">{i + 1}.</span>
+              <p className="text-sm text-foreground">{a}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+    </div>
+  );
+}
+
 // ── Campaign Report Viewer ──
 function CampaignReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
   const { summary, campaignBreakdown, actions } = report;
@@ -589,6 +668,29 @@ function buildReportHtml(report: any, run: any): string {
       </table>
     `);
     body += renderSection("Recommendations", (report.actions || []).map((a: string, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span>${esc(a)}</div>`).join(""));
+  } else if (slug === "weekly_brief") {
+    const kpi = report.kpiSnapshot;
+    body += renderSection("KPI Snapshot", `
+      ${renderKpiGrid([
+        { label: "Leads", value: kpi.leads.current, change: kpi.leads.change },
+        { label: "Sessions", value: kpi.sessions.current, change: kpi.sessions.change },
+        { label: "CVR", value: `${kpi.cvr.current}%`, change: kpi.cvr.change },
+        { label: "Weighted Leads", value: kpi.weightedLeads, change: null },
+      ])}
+      ${kpi.goalTarget ? `<div class="insight-box insight-win">🎯 Goal: ${kpi.goalTarget} leads · ${Math.round((kpi.leads.current / kpi.goalTarget) * 100)}% achieved</div>` : ""}
+    `);
+    if (report.topChanges?.length) {
+      body += renderSection("Biggest Changes", `
+        <table>
+          <thead><tr><th>Metric</th><th style="text-align:right">Current</th><th style="text-align:right">Previous</th><th style="text-align:right">Change</th></tr></thead>
+          <tbody>${(report.topChanges || []).map((c: any) => `<tr><td>${esc(c.metric)}</td><td style="text-align:right">${c.current}</td><td style="text-align:right">${c.previous}</td><td style="text-align:right">${renderChange(c.change)}</td></tr>`).join("")}</tbody>
+        </table>
+      `);
+    }
+    if (report.topSources?.length) {
+      body += renderSection("Top Sources", renderRankList(report.topSources));
+    }
+    body += renderSection("Quick Actions", (report.actions || []).map((a: string, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span>${esc(a)}</div>`).join(""));
   }
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${css}</style></head><body>
@@ -628,9 +730,9 @@ function renderRankList(items: Array<{ label: string; count: number }>): string 
 
 // ── Report Viewer Router ──
 function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
-  const slug = report.templateSlug || "monthly-performance";
-  if (slug === "campaign-report") return <CampaignReportViewer report={report} onBack={onBack} />;
-  if (slug === "campaign-report") return <CampaignReportViewer report={report} onBack={onBack} />;
+  const slug = report.templateSlug || "monthly_performance";
+  if (slug === "campaign_report") return <CampaignReportViewer report={report} onBack={onBack} />;
+  if (slug === "weekly_brief") return <WeeklyBriefViewer report={report} onBack={onBack} />;
   return <MonthlyPerformanceViewer report={report} onBack={onBack} />;
 }
 
@@ -644,6 +746,7 @@ export default function Reports({ embedded }: { embedded?: boolean }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [newSchedule, setNewSchedule] = useState({ template: "", frequency: "weekly", runDayOfMonth: 1 });
   const [viewingReport, setViewingReport] = useState<any>(null);
+  const [dateRangeMode, setDateRangeMode] = useState<"weekly" | "monthly" | "custom">("monthly");
   const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date>(new Date());
   const [compareMode, setCompareMode] = useState<string>("none");
@@ -902,39 +1005,65 @@ export default function Reports({ embedded }: { embedded?: boolean }) {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, "MMM d, yyyy") : "Start date"}
+              <label className="text-xs font-medium text-muted-foreground">Date Range:</label>
+              <div className="flex items-center gap-1">
+                {(["weekly", "monthly", "custom"] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    variant={dateRangeMode === mode ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs h-7 px-3 capitalize"
+                    onClick={() => {
+                      setDateRangeMode(mode);
+                      if (mode === "weekly") {
+                        setDateFrom(subDays(new Date(), 7));
+                        setDateTo(new Date());
+                      } else if (mode === "monthly") {
+                        setDateFrom(subDays(new Date(), 30));
+                        setDateTo(new Date());
+                      }
+                    }}
+                  >
+                    {mode}
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateFrom} onSelect={(d) => d && setDateFrom(d)} disabled={(d) => d > dateTo || d > new Date()} initialFocus className={cn("p-3 pointer-events-auto")} />
-                </PopoverContent>
-              </Popover>
-              <span className="text-xs text-muted-foreground">to</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, "MMM d, yyyy") : "End date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateTo} onSelect={(d) => d && setDateTo(d)} disabled={(d) => d < dateFrom || d > new Date()} initialFocus className={cn("p-3 pointer-events-auto")} />
-                </PopoverContent>
-              </Popover>
+                ))}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {[7, 14, 30, 60, 90].map((days) => (
-                <Button key={days} variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => { setDateFrom(subDays(new Date(), days)); setDateTo(new Date()); }}>
-                  {days}d
-                </Button>
-              ))}
-            </div>
+            {dateRangeMode === "custom" ? (
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFrom ? format(dateFrom, "MMM d, yyyy") : "Start date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateFrom} onSelect={(d) => d && setDateFrom(d)} disabled={(d) => d > dateTo || d > new Date()} initialFocus className={cn("p-3 pointer-events-auto")} />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-xs text-muted-foreground">to</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateTo ? format(dateTo, "MMM d, yyyy") : "End date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateTo} onSelect={(d) => d && setDateTo(d)} disabled={(d) => d < dateFrom || d > new Date()} initialFocus className={cn("p-3 pointer-events-auto")} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {dateRangeMode === "weekly" ? "Last 7 days" : "Last 30 days"}: {format(dateFrom, "MMM d")} – {format(dateTo, "MMM d, yyyy")}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
             <Button
               className="sm:ml-auto"
               onClick={() => selectedTemplate && generateReport.mutate(selectedTemplate)}

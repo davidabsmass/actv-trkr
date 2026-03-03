@@ -347,7 +347,7 @@ function OrgDetail({ org }: { org: any }) {
   const [urlCopied, setUrlCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
 
-  const dashboardUrl = `${window.location.origin}/auth`;
+  const dashboardUrl = `https://actvtrkr.com/auth`;
 
   const copyDashboardUrl = () => {
     navigator.clipboard.writeText(dashboardUrl);
@@ -386,7 +386,7 @@ function OrgDetail({ org }: { org: any }) {
     },
     onSuccess: (code) => {
       queryClient.invalidateQueries({ queryKey: ["invite_codes", org.id] });
-      const inviteUrl = `${window.location.origin}/auth?invite=${code}`;
+      const inviteUrl = `https://actvtrkr.com/auth?invite=${code}`;
       navigator.clipboard.writeText(inviteUrl);
       toast.success("Invite link copied to clipboard!");
     },
@@ -409,7 +409,7 @@ function OrgDetail({ org }: { org: any }) {
   });
 
   const copyInviteLink = (code: string) => {
-    const url = `${window.location.origin}/auth?invite=${code}`;
+    const url = `https://actvtrkr.com/auth?invite=${code}`;
     navigator.clipboard.writeText(url);
     setInviteCopied(true);
     toast.success("Invite link copied!");

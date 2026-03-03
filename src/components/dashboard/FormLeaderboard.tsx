@@ -1,31 +1,47 @@
 import { useMemo } from "react";
 import { FileText } from "lucide-react";
 
+interface DeviceData {
+  [formId: string]: { desktop: number; mobile: number; tablet: number };
+}
+
 interface FormStat {
   name: string;
   submissions: number;
   sessions: number;
-  avgCompletionSec?: number;
-  deviceSplit?: { desktop: number; mobile: number };
+  deviceSplit?: { desktop: number; mobile: number } | null;
 }
 
 interface FormLeaderboardProps {
   forms: Array<{ id: string; name: string; estimated_value?: number; archived?: boolean }>;
-  leads: Array<{ form_id: string; submitted_at: string; source?: string | null }>;
+  leads: Array<{ form_id: string; submitted_at: string; source?: string | null; session_id?: string | null }>;
   sessions: number;
+  deviceData?: DeviceData;
 }
 
-export function FormLeaderboard({ forms, leads, sessions }: FormLeaderboardProps) {
+export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLeaderboardProps) {
   const stats = useMemo(() => {
     const formMap: Record<string, FormStat> = {};
     const activeForms = forms.filter((f) => !f.archived);
     activeForms.forEach((f) => {
+      // Compute device split from real data if available
+      let deviceSplit: { desktop: number; mobile: number } | null = null;
+      if (deviceData && deviceData[f.id]) {
+        const d = deviceData[f.id];
+        const total = d.desktop + d.mobile + d.tablet;
+        if (total > 0) {
+          deviceSplit = {
+            desktop: Math.round(((d.desktop + d.tablet) / total) * 100),
+            mobile: Math.round((d.mobile / total) * 100),
+          };
+        }
+      }
+
       formMap[f.id] = {
         name: f.name,
         submissions: 0,
         sessions,
-        avgCompletionSec: undefined,
-        deviceSplit: { desktop: 65, mobile: 35 },
+        deviceSplit,
       };
     });
 
@@ -37,7 +53,7 @@ export function FormLeaderboard({ forms, leads, sessions }: FormLeaderboardProps
 
     return Object.values(formMap)
       .sort((a, b) => b.submissions - a.submissions);
-  }, [forms, leads, sessions]);
+  }, [forms, leads, sessions, deviceData]);
 
   if (stats.length === 0) {
     return null;
@@ -69,10 +85,10 @@ export function FormLeaderboard({ forms, leads, sessions }: FormLeaderboardProps
                   <td className="py-2.5 text-right font-mono-data">{s.submissions}</td>
                   <td className="py-2.5 text-right font-mono-data">{cvr.toFixed(1)}%</td>
                   <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
-                    {s.deviceSplit?.desktop}%
+                    {s.deviceSplit ? `${s.deviceSplit.desktop}%` : "—"}
                   </td>
                   <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
-                    {s.deviceSplit?.mobile}%
+                    {s.deviceSplit ? `${s.deviceSplit.mobile}%` : "—"}
                   </td>
                 </tr>
               );

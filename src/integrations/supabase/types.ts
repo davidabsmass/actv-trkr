@@ -185,6 +185,115 @@ export type Database = {
           },
         ]
       }
+      broken_links: {
+        Row: {
+          broken_url: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          occurrences: number
+          org_id: string
+          site_id: string
+          source_page: string
+          status_code: number | null
+        }
+        Insert: {
+          broken_url: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          org_id: string
+          site_id: string
+          source_page: string
+          status_code?: number | null
+        }
+        Update: {
+          broken_url?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          org_id?: string
+          site_id?: string
+          source_page?: string
+          status_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broken_links_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broken_links_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversions_daily: {
+        Row: {
+          conversion_rate: number
+          day: string
+          form_id: string | null
+          id: string
+          org_id: string
+          page_url: string | null
+          pageviews: number
+          site_id: string
+          submissions: number
+        }
+        Insert: {
+          conversion_rate?: number
+          day: string
+          form_id?: string | null
+          id?: string
+          org_id: string
+          page_url?: string | null
+          pageviews?: number
+          site_id: string
+          submissions?: number
+        }
+        Update: {
+          conversion_rate?: number
+          day?: string
+          form_id?: string | null
+          id?: string
+          org_id?: string
+          page_url?: string | null
+          pageviews?: number
+          site_id?: string
+          submissions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversions_daily_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversions_daily_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversions_daily_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_snapshots: {
         Row: {
           created_at: string
@@ -249,6 +358,54 @@ export type Database = {
           org_id?: string
         }
         Relationships: []
+      }
+      domain_health: {
+        Row: {
+          days_to_domain_expiry: number | null
+          domain: string
+          domain_expiry_date: string | null
+          id: string
+          last_checked_at: string
+          org_id: string
+          site_id: string
+          source: string
+        }
+        Insert: {
+          days_to_domain_expiry?: number | null
+          domain: string
+          domain_expiry_date?: string | null
+          id?: string
+          last_checked_at?: string
+          org_id: string
+          site_id: string
+          source?: string
+        }
+        Update: {
+          days_to_domain_expiry?: number | null
+          domain?: string
+          domain_expiry_date?: string | null
+          id?: string
+          last_checked_at?: string
+          org_id?: string
+          site_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domain_health_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domain_health_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: true
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       export_jobs: {
         Row: {
@@ -376,6 +533,64 @@ export type Database = {
           },
         ]
       }
+      form_submission_logs: {
+        Row: {
+          error_message: string | null
+          form_id: string | null
+          id: string
+          meta: Json | null
+          occurred_at: string
+          org_id: string
+          page_url: string | null
+          site_id: string
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          form_id?: string | null
+          id?: string
+          meta?: Json | null
+          occurred_at?: string
+          org_id: string
+          page_url?: string | null
+          site_id: string
+          status?: string
+        }
+        Update: {
+          error_message?: string | null
+          form_id?: string | null
+          id?: string
+          meta?: Json | null
+          occurred_at?: string
+          org_id?: string
+          page_url?: string | null
+          site_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submission_logs_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submission_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submission_logs_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forms: {
         Row: {
           archived: boolean
@@ -461,6 +676,57 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incidents: {
+        Row: {
+          details: Json | null
+          id: string
+          last_seen_at: string
+          org_id: string
+          resolved_at: string | null
+          severity: string
+          site_id: string
+          started_at: string
+          type: string
+        }
+        Insert: {
+          details?: Json | null
+          id?: string
+          last_seen_at?: string
+          org_id: string
+          resolved_at?: string | null
+          severity?: string
+          site_id: string
+          started_at?: string
+          type: string
+        }
+        Update: {
+          details?: Json | null
+          id?: string
+          last_seen_at?: string
+          org_id?: string
+          resolved_at?: string | null
+          severity?: string
+          site_id?: string
+          started_at?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
@@ -777,6 +1043,73 @@ export type Database = {
           },
         ]
       }
+      monitoring_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          error: string | null
+          id: string
+          incident_id: string | null
+          message: string
+          org_id: string
+          sent_at: string | null
+          severity: string
+          site_id: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          incident_id?: string | null
+          message?: string
+          org_id: string
+          sent_at?: string | null
+          severity?: string
+          site_id: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          incident_id?: string | null
+          message?: string
+          org_id?: string
+          sent_at?: string | null
+          severity?: string
+          site_id?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monitoring_alerts_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monitoring_alerts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monitoring_alerts_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monthly_aggregates: {
         Row: {
           dimension: string | null
@@ -808,6 +1141,54 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_inbox: {
+        Row: {
+          alert_id: string | null
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          site_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          alert_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          site_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          alert_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          site_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_inbox_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "monitoring_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_inbox_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
@@ -1022,6 +1403,63 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      renewals: {
+        Row: {
+          auto_renew: boolean
+          created_at: string
+          id: string
+          is_enabled: boolean
+          notes: string | null
+          notify_emails: Json | null
+          org_id: string
+          provider_name: string | null
+          renewal_date: string | null
+          site_id: string
+          type: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          notify_emails?: Json | null
+          org_id: string
+          provider_name?: string | null
+          renewal_date?: string | null
+          site_id: string
+          type?: string
+        }
+        Update: {
+          auto_renew?: boolean
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          notify_emails?: Json | null
+          org_id?: string
+          provider_name?: string | null
+          renewal_date?: string | null
+          site_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renewals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "renewals_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_runs: {
         Row: {
@@ -1269,6 +1707,83 @@ export type Database = {
           },
         ]
       }
+      site_heartbeats: {
+        Row: {
+          id: string
+          meta: Json | null
+          received_at: string
+          site_id: string
+          source: string
+        }
+        Insert: {
+          id?: string
+          meta?: Json | null
+          received_at?: string
+          site_id: string
+          source?: string
+        }
+        Update: {
+          id?: string
+          meta?: Json | null
+          received_at?: string
+          site_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_heartbeats_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_notification_rules: {
+        Row: {
+          alert_type: string
+          channel: string
+          id: string
+          is_enabled: boolean
+          org_id: string
+          site_id: string
+          threshold_json: Json | null
+        }
+        Insert: {
+          alert_type: string
+          channel?: string
+          id?: string
+          is_enabled?: boolean
+          org_id: string
+          site_id: string
+          threshold_json?: Json | null
+        }
+        Update: {
+          alert_type?: string
+          channel?: string
+          id?: string
+          is_enabled?: boolean
+          org_id?: string
+          site_id?: string
+          threshold_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_notification_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_notification_rules_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           archive_enabled: boolean
@@ -1323,29 +1838,47 @@ export type Database = {
         Row: {
           created_at: string
           domain: string
+          down_after_minutes: number
+          heartbeat_interval_minutes: number
           id: string
+          last_heartbeat_at: string | null
+          name: string | null
           org_id: string
           plan_tier: string
           plugin_version: string | null
+          status: string
           type: string
+          url: string | null
         }
         Insert: {
           created_at?: string
           domain: string
+          down_after_minutes?: number
+          heartbeat_interval_minutes?: number
           id?: string
+          last_heartbeat_at?: string | null
+          name?: string | null
           org_id: string
           plan_tier?: string
           plugin_version?: string | null
+          status?: string
           type?: string
+          url?: string | null
         }
         Update: {
           created_at?: string
           domain?: string
+          down_after_minutes?: number
+          heartbeat_interval_minutes?: number
           id?: string
+          last_heartbeat_at?: string | null
+          name?: string | null
           org_id?: string
           plan_tier?: string
           plugin_version?: string | null
+          status?: string
           type?: string
+          url?: string | null
         }
         Relationships: [
           {
@@ -1353,6 +1886,51 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ssl_health: {
+        Row: {
+          days_to_ssl_expiry: number | null
+          id: string
+          issuer: string | null
+          last_checked_at: string
+          org_id: string
+          site_id: string
+          ssl_expiry_date: string | null
+        }
+        Insert: {
+          days_to_ssl_expiry?: number | null
+          id?: string
+          issuer?: string | null
+          last_checked_at?: string
+          org_id: string
+          site_id: string
+          ssl_expiry_date?: string | null
+        }
+        Update: {
+          days_to_ssl_expiry?: number | null
+          id?: string
+          issuer?: string | null
+          last_checked_at?: string
+          org_id?: string
+          site_id?: string
+          ssl_expiry_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ssl_health_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ssl_health_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: true
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
@@ -1509,6 +2087,30 @@ export type Database = {
           },
         ]
       }
+      user_notification_preferences: {
+        Row: {
+          channel: string
+          id: string
+          is_enabled: boolean
+          phone: string | null
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          id?: string
+          is_enabled?: boolean
+          phone?: string | null
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          id?: string
+          is_enabled?: boolean
+          phone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1526,6 +2128,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_site_subscriptions: {
+        Row: {
+          alert_type: string
+          channel: string
+          id: string
+          is_enabled: boolean
+          site_id: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          channel?: string
+          id?: string
+          is_enabled?: boolean
+          site_id: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          channel?: string
+          id?: string
+          is_enabled?: boolean
+          site_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_site_subscriptions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_summaries: {
         Row: {

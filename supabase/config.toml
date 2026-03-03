@@ -44,3 +44,24 @@ verify_jwt = false
 
 [functions.admin-manage-user]
 verify_jwt = false
+
+[functions.ingest-heartbeat]
+verify_jwt = false
+
+[functions.ingest-broken-links]
+verify_jwt = false
+
+[functions.check-uptime]
+verify_jwt = false
+
+[functions.check-domain-ssl]
+verify_jwt = false
+
+[functions.check-renewals]
+verify_jwt = false
+
+[functions.process-monitoring-alerts]
+verify_jwt = false
+
+[functions.retention-cleanup]
+verify_jwt = false

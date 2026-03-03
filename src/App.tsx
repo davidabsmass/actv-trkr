@@ -18,6 +18,8 @@ import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import SnapshotView from "./pages/SnapshotView";
 import ResetPassword from "./pages/ResetPassword";
+import Monitoring from "./pages/Monitoring";
+import Notifications from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +70,8 @@ const App = () => (
             <Route path="exports" element={<Exports />} />
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="monitoring" element={<Monitoring />} />
+            <Route path="notifications" element={<Notifications />} />
             <Route path="admin-setup" element={<AdminSetup />} />
           </Route>
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />

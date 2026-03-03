@@ -1,11 +1,12 @@
 import {
   BarChart3, TableProperties, FileText, Download, Settings, LogOut,
-  ChevronDown, Building2, Shield, ClipboardList,
+  ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
+import { NotificationBell } from "@/components/NotificationBell";
 
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -20,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 const telemetryItems = [
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
   { title: "Entries", url: "/entries", icon: TableProperties },
+  { title: "Monitoring", url: "/monitoring", icon: Activity },
   { title: "Reports", url: "/reports", icon: FileText },
   { title: "Exports", url: "/exports", icon: Download },
 ];
@@ -37,11 +39,14 @@ export function AppSidebar() {
           <span className="text-sm font-bold text-sidebar-foreground tracking-tight">
             ACTV TRKR
           </span>
-          {isAdmin && (
-            <Badge variant="outline" className="text-[9px] uppercase text-primary border-primary/20">
-              Admin
-            </Badge>
-          )}
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            {isAdmin && (
+              <Badge variant="outline" className="text-[9px] uppercase text-primary border-primary/20">
+                Admin
+              </Badge>
+            )}
+          </div>
         </div>
 
         {orgs.length > 1 ? (

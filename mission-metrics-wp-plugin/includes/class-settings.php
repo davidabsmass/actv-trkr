@@ -15,10 +15,11 @@ class MM_Settings {
 
 	public static function defaults() {
 		return array(
-			'api_key'        => '',
-			'endpoint_url'   => 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1',
-			'enable_tracking' => '1',
-			'enable_gravity'  => '1',
+			'api_key'          => '',
+			'endpoint_url'     => 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1',
+			'enable_tracking'  => '1',
+			'enable_gravity'   => '1',
+			'enable_heartbeat' => '1',
 		);
 	}
 
@@ -45,10 +46,11 @@ class MM_Settings {
 
 	public static function sanitize( $input ) {
 		$clean = array();
-		$clean['api_key']         = sanitize_text_field( $input['api_key'] ?? '' );
-		$clean['endpoint_url']    = esc_url_raw( $input['endpoint_url'] ?? '' );
-		$clean['enable_tracking'] = ! empty( $input['enable_tracking'] ) ? '1' : '0';
-		$clean['enable_gravity']  = ! empty( $input['enable_gravity'] ) ? '1' : '0';
+		$clean['api_key']          = sanitize_text_field( $input['api_key'] ?? '' );
+		$clean['endpoint_url']     = esc_url_raw( $input['endpoint_url'] ?? '' );
+		$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
+		$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
+		$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';
 		return $clean;
 	}
 
@@ -95,6 +97,16 @@ class MM_Settings {
 							</label>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row">Enable Heartbeat</th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo self::OPTION_NAME; ?>[enable_heartbeat]" value="1"
+									<?php checked( $opts['enable_heartbeat'], '1' ); ?> />
+								Send uptime heartbeat (JS beacon + WP-Cron fallback)
+							</label>
+						</td>
+					</tr>
 				</table>
 				<?php submit_button(); ?>
 			</form>
@@ -109,6 +121,12 @@ class MM_Settings {
 			<p class="description">Scan your site for all installed form plugins and register them with ACTV TRKR — even before any submissions.</p>
 			<p><button type="button" id="mm-sync-btn" class="button button-secondary">Sync Forms Now</button></p>
 			<div id="mm-sync-result"></div>
+
+			<hr />
+			<h2>Broken Link Scan</h2>
+			<p class="description">Crawl your sitemap and check for broken internal links (404/5xx).</p>
+			<p><button type="button" id="mm-links-btn" class="button button-secondary">Scan Broken Links</button></p>
+			<div id="mm-links-result"></div>
 
 			<script>
 			document.getElementById('mm-test-btn').addEventListener('click', function(){
@@ -142,6 +160,25 @@ class MM_Settings {
 					})
 					.catch(() => {
 						document.getElementById('mm-sync-result').textContent = '❌ Request failed';
+						btn.disabled = false;
+					});
+			});
+			document.getElementById('mm-links-btn').addEventListener('click', function(){
+				var btn = this;
+				btn.disabled = true;
+				document.getElementById('mm-links-result').textContent = 'Scanning… This may take a minute.';
+				fetch(ajaxurl + '?action=mm_scan_broken_links&_wpnonce=<?php echo wp_create_nonce('mm_scan_links'); ?>')
+					.then(r => r.json())
+					.then(d => {
+						if (d.success) {
+							document.getElementById('mm-links-result').textContent = '✅ Checked ' + d.data.pages_checked + ' page(s), found ' + d.data.broken_found + ' broken link(s).';
+						} else {
+							document.getElementById('mm-links-result').textContent = '❌ ' + (d.data || 'Failed');
+						}
+						btn.disabled = false;
+					})
+					.catch(() => {
+						document.getElementById('mm-links-result').textContent = '❌ Request failed';
 						btn.disabled = false;
 					});
 			});

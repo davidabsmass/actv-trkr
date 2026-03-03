@@ -1,0 +1,138 @@
+import { useState, useMemo } from "react";
+import { format, subDays, startOfDay } from "date-fns";
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { TrendsChart } from "@/components/dashboard/TrendsChart";
+import { AttributionSection } from "@/components/dashboard/AttributionSection";
+import { TrafficSourceROI } from "@/components/dashboard/TrafficSourceROI";
+import { ContentPerformance } from "@/components/dashboard/ContentPerformance";
+import { VisitorMapSection } from "@/components/dashboard/VisitorMapSection";
+import { FunnelView } from "@/components/dashboard/FunnelView";
+import { ForecastSection } from "@/components/dashboard/ForecastSection";
+import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
+import { KPIRow } from "@/components/dashboard/KPIRow";
+import { useOrg } from "@/hooks/use-org";
+import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
+import { usePlanTier } from "@/hooks/use-plan-tier";
+import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
+
+const Performance = () => {
+  const [days, setDays] = useState(30);
+  const { orgId, orgName } = useOrg();
+  const { hasFeature } = usePlanTier();
+  const { settings } = useSiteSettings();
+  const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
+
+  const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
+  const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
+
+  const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
+
+  const isLoading = !realtimeData;
+
+  const processedData = useMemo(() => {
+    if (isLoading || !realtimeData) {
+      return {
+        kpis: {
+          sessions: { value: 0, delta: 0, label: "Sessions" },
+          leads: { value: 0, delta: 0, label: "Leads" },
+          pageviews: { value: 0, delta: 0, label: "Pageviews" },
+          cvr: { value: 0, delta: 0, label: "Conversion Rate" },
+        },
+        dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
+        forecast: { sufficient_data: false, days_until_available: 42, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
+      };
+    }
+
+    const { totalPageviews, totalSessions, totalLeads, dailyMap, sources, campaigns, pages } = realtimeData;
+    const cvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
+
+    const dailyData = Object.entries(dailyMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({
+        date, dateLabel: format(new Date(date), "MMM d"),
+        sessions: vals.sessions, leads: vals.leads, pageviews: vals.pageviews,
+        cvr: vals.sessions > 0 ? vals.leads / vals.sessions : 0,
+      }));
+
+    const sitewideCvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
+    const opportunities = pages
+      .filter((p) => p.sessions >= 100)
+      .map((p) => ({ ...p, expectedLeads: Math.round(p.sessions * sitewideCvr), gap: Math.round(p.sessions * sitewideCvr) - p.leads }))
+      .filter((p) => p.gap > 0).sort((a, b) => b.gap - a.gap);
+
+    return {
+      kpis: {
+        sessions: { value: totalSessions, delta: 0, label: "Sessions" },
+        leads: { value: totalLeads, delta: 0, label: "Leads" },
+        pageviews: { value: totalPageviews, delta: 0, label: "Pageviews" },
+        cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
+      },
+      dailyData, sources, campaigns, pages, opportunities,
+      forecast: { sufficient_data: false, days_until_available: 42, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
+    };
+  }, [isLoading, realtimeData]);
+
+  // Focus-aware section ordering
+  const renderSections = () => {
+    const sections = {
+      attribution: hasFeature("attribution") && (
+        <div id="section-sources" key="roi"><TrafficSourceROI sources={processedData.sources} /></div>
+      ),
+      attributionDetail: (
+        <div id="section-attribution" key="attr"><AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} /></div>
+      ),
+      funnel: hasFeature("funnel_view") && (
+        <div id="section-funnel" key="funnel"><FunnelView totalPageviews={realtimeData?.totalPageviews || 0} formPageViews={0} totalLeads={realtimeData?.totalLeads || 0} /></div>
+      ),
+      map: hasFeature("multi_location_map") && (
+        <div id="section-map" key="map"><VisitorMapSection data={realtimeData?.countries || []} /></div>
+      ),
+      content: (
+        <div id="section-pages" key="content"><ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} /></div>
+      ),
+      forecast: <div id="section-forecast" key="forecast"><ForecastSection forecast={processedData.forecast} /></div>,
+    };
+
+    const focusOrder: Record<PrimaryFocus, (keyof typeof sections)[]> = {
+      lead_volume: ["content", "attributionDetail", "attribution", "funnel", "map", "forecast"],
+      marketing_impact: ["attribution", "attributionDetail", "content", "funnel", "map", "forecast"],
+      conversion_performance: ["funnel", "content", "attribution", "attributionDetail", "map", "forecast"],
+      paid_optimization: ["attribution", "attributionDetail", "funnel", "content", "map", "forecast"],
+    };
+
+    const order = focusOrder[primaryFocus] || focusOrder.lead_volume;
+    return order.map((key) => sections[key]).filter(Boolean);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Performance</h1>
+          <p className="text-sm text-muted-foreground">{orgName} · Deeper analytics</p>
+        </div>
+        <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="glass-card p-6 animate-pulse">
+              <div className="h-4 bg-muted rounded w-1/4 mb-4" />
+              <div className="h-20 bg-muted rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
+          <TrendsChart data={processedData.dailyData} />
+          {renderSections()}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Performance;

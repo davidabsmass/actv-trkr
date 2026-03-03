@@ -69,7 +69,7 @@ const App = () => (
             <Route path="performance" element={<Performance />} />
             <Route path="forms" element={<Forms />} />
             <Route path="entries" element={<Navigate to="/forms" replace />} />
-            <Route path="reports" element={<Reports />} />
+            <Route path="reports" element={<Navigate to="/performance?tab=reports" replace />} />
             <Route path="exports" element={<Exports />} />
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />

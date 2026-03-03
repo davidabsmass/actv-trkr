@@ -305,7 +305,7 @@ const Dashboard = () => {
         severity: "warning",
         label: `${brokenLinksCount} broken link${brokenLinksCount > 1 ? "s" : ""} detected`,
         detail: "May affect user experience and SEO",
-        link: "/monitoring",
+        link: "/monitoring?tab=broken-links",
         linkLabel: "View links",
       });
     }

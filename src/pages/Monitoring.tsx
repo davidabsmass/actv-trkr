@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
@@ -19,7 +20,10 @@ import { toast } from "@/hooks/use-toast";
 export default function MonitoringPage() {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [autoSelected, setAutoSelected] = useState(false);
 
   // Fetch sites with monitoring data
   const { data: sites, isLoading } = useQuery({
@@ -83,6 +87,14 @@ export default function MonitoringPage() {
 
   const selectedSite = sites?.find(s => s.id === selectedSiteId) || null;
 
+  // Auto-select first site when tab param is present
+  useEffect(() => {
+    if (tabParam && !autoSelected && sites && sites.length > 0 && !selectedSiteId) {
+      setSelectedSiteId(sites[0].id);
+      setAutoSelected(true);
+    }
+  }, [tabParam, sites, autoSelected, selectedSiteId]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -104,6 +116,7 @@ export default function MonitoringPage() {
         domainHealth={domainHealth?.find(d => d.site_id === selectedSite.id)}
         sslHealth={sslHealth?.find(s => s.site_id === selectedSite.id)}
         onBack={() => setSelectedSiteId(null)}
+        initialTab={tabParam || undefined}
       />
     );
   }
@@ -189,9 +202,10 @@ interface SiteDetailProps {
   domainHealth: any;
   sslHealth: any;
   onBack: () => void;
+  initialTab?: string;
 }
 
-function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack }: SiteDetailProps) {
+function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialTab }: SiteDetailProps) {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
 
@@ -292,7 +306,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack }: SiteDe
         </Badge>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue={initialTab || "overview"} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="broken-links">Broken Links</TabsTrigger>

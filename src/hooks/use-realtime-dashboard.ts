@@ -30,7 +30,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
 
         // Session details for source/campaign/page breakdowns
         supabase.from("sessions")
-          .select("started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain")
+          .select("session_id, started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain")
           .eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd),
 
         // Lead details for source/campaign breakdowns
@@ -69,6 +69,14 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         dailyMap[d].leads++;
       });
 
+      // Build session_id → source lookup for lead attribution
+      const sessionSourceLookup: Record<string, string> = {};
+      sessions.forEach((s: any) => {
+        if (s.session_id) {
+          sessionSourceLookup[s.session_id] = s.utm_source || s.landing_referrer_domain || "direct";
+        }
+      });
+
       // Source breakdown
       const sourceMap: Record<string, { sessions: number; leads: number }> = {};
       sessions.forEach((s: any) => {
@@ -77,7 +85,10 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         sourceMap[src].sessions++;
       });
       leads.forEach((l: any) => {
-        const src = l.source || l.utm_source || l.referrer_domain || "direct";
+        // Use the session's source when available, otherwise fall back to lead's own fields
+        const src = (l.session_id && sessionSourceLookup[l.session_id])
+          ? sessionSourceLookup[l.session_id]
+          : (l.source || l.utm_source || l.referrer_domain || "direct");
         if (!sourceMap[src]) sourceMap[src] = { sessions: 0, leads: 0 };
         sourceMap[src].leads++;
       });

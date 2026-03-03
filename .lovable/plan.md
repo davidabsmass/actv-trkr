@@ -1,42 +1,81 @@
 
 
-## Plan: Auto-Discover Forms Before First Submission
+## Dashboard Restructuring Plan
 
-### Problem
-Forms only appear in the Entries area after their first lead submission arrives. You want to see all forms from your WordPress site immediately, even with zero submissions.
+### Current State
+The dashboard is a single monolithic page (`Dashboard.tsx`) containing KPIs, trends, attribution, content performance, funnel, form leaderboard, map, forecasts, AI insights, and alerts -- all in one scroll. Separate pages exist for Entries (form drill-down), Monitoring, Notifications, and Settings.
 
-### Solution
-Add a form sync mechanism: the WordPress plugin scans all installed form plugins (Gravity Forms, CF7, WPForms, etc.) and registers them with your backend automatically — no submission required.
+### Target Structure
 
-### Changes
+```text
+Sidebar
+───────────────────
+Overview        ← new (the "money page")
+Performance     ← new (deeper analytics)
+Forms           ← renamed from Entries
+Monitoring      ← existing (no changes)
+───────────────────
+Notifications   ← existing (no changes)
+Settings        ← existing (no changes)
+```
 
-**1. New edge function: `sync-forms`**
-- Accepts an array of `{ form_id, form_title, provider }` from the plugin
-- Authenticates via API key (same as other ingest endpoints)
-- Upserts each form into the `forms` table (creates if missing, updates name if changed)
-- Returns count of synced forms
+### Changes Required
 
-**2. WordPress plugin: add form discovery in `class-forms.php`**
-- New static method `scan_all_forms()` that queries each supported plugin's API:
-  - Gravity Forms: `GFAPI::get_forms()`
-  - CF7: `WPCF7_ContactForm::find()`
-  - WPForms: `wpforms()->form->get()`
-  - Ninja Forms: `Ninja_Forms()->form()->get_forms()`
-  - Fluent Forms: `wpFluent()->table('fluentform_forms')->get()`
-- Sends discovered forms to the `sync-forms` edge function
-- Triggered automatically on WP admin page load (once per 6 hours, tracked via a transient)
+**1. Create `src/pages/Overview.tsx` (new file)**
+The default landing page. Three rows:
+- **Row 1 -- "Is Everything OK?" cards**: Site Status (UP/DOWN, last heartbeat, active incidents), Leads 7d (total + WoW %), Conversion Rate (overall + trend), Revenue Impact (estimated value + trend). Four cards in a grid, pulling from `useRealtimeDashboard` + `incidents` + `forms` (estimated_value).
+- **Row 2 -- Trends**: Reuse existing `TrendsChart` with the traffic+leads dual-axis chart and 7d/30d/90d toggle. Include `WeekOverWeekStrip`.
+- **Row 3 -- "Attention Required" panel**: Aggregate active incidents, conversion drops (from alerts), broken links count, domain/SSL expiring, renewals due. Each item with severity color and "View details" link routing to Monitoring or relevant section. Pulls from `incidents`, `broken_links`, `domain_health`, `ssl_health`, `renewals` tables.
+- Keep: `AiInsights`, `WeeklySummary`, `ShareableSnapshot`, `OnboardingModal`, `DateRangeSelector`.
+- Remove from this page: attribution, content performance, funnel, form leaderboard, map, forecast (moved to Performance).
 
-**3. WordPress plugin: add "Scan Now" button in settings page**
-- Add a manual "Sync Forms" button in `class-settings.php` that calls `scan_all_forms()` via AJAX
-- Shows result count to the user
+**2. Create `src/pages/Performance.tsx` (new file)**
+Deeper analytics page with sections:
+- **Traffic**: Sessions, Pageviews, Sources breakdown, Visitor map.
+- **Content Performance**: Top pages, opportunity highlights (high traffic / low conversion).
+- **Funnel View**: Pageviews -> Form views -> Leads.
+- Reuse existing components: `AttributionSection`, `TrafficSourceROI`, `ContentPerformance`, `VisitorMapSection`, `FunnelView`, `TrendsChart`.
+- Respect `primaryFocus` ordering for section priority.
 
-**4. Update Entries UI empty state**
-- Change the "No forms connected yet" message to mention that forms sync automatically from the plugin, or can be triggered manually from WordPress settings
+**3. Rename Entries -> Forms (`src/pages/Forms.tsx`)**
+- Rename the file and update imports.
+- Add a top summary row: Total submissions (with time range filter) and Failures count (from `form_submission_logs` where status='fail').
+- Keep existing form leaderboard + drill-down (entries, analytics, settings tabs).
+- Move `FormLeaderboard` component into this page as the default view above the form list.
 
-### Technical Details
+**4. Update Sidebar (`src/components/AppSidebar.tsx`)**
+- Replace current nav items with: Overview (`/dashboard`), Performance (`/performance`), Forms (`/forms`), Monitoring (`/monitoring`).
+- Group label: "Dashboard" -> keep as-is or remove.
+- Notifications and Settings remain in their own groups below.
+- Remove: Reports, Exports from main nav (keep accessible via admin or move to Settings).
+- Keep admin section (Clients, Setup & Inputs) unchanged.
 
-- The `sync-forms` edge function uses the same API key auth pattern as `ingest-form` and `ingest-gravity`
-- Form upsert uses the composite key `(org_id, site_id, external_form_id)` to avoid duplicates
-- The WP transient `actv_trkr_last_form_sync` prevents excessive scanning (6-hour cooldown)
-- No database schema changes needed — the existing `forms` table already supports this
+**5. Update Routes (`src/App.tsx`)**
+- Add `/performance` route -> `Performance`.
+- Change `/entries` to `/forms` -> `Forms` (renamed).
+- Keep `/dashboard` -> `Overview`.
+- Keep `/monitoring`, `/notifications`, `/settings` unchanged.
+- Keep `/reports` and `/exports` routes but remove from sidebar (accessible via direct URL or admin).
+
+**6. Update `Dashboard.tsx`**
+- This file becomes `Overview.tsx` (or we keep the filename and gut it). Simplest: keep as `Dashboard.tsx` but strip out the performance/attribution sections, leaving only the Overview content.
+
+**7. Focus-aware reordering**
+- Overview: Reorder the four status cards based on `primaryFocus` (lead_volume shows Leads first, marketing_impact shows Sessions first).
+- Performance: Keep existing `focusOrder` logic for section ordering.
+
+### Files Affected
+| File | Action |
+|---|---|
+| `src/pages/Dashboard.tsx` | Gut to Overview-only content |
+| `src/pages/Performance.tsx` | New -- deeper analytics |
+| `src/pages/Entries.tsx` | Rename to Forms, add summary row + leaderboard |
+| `src/components/AppSidebar.tsx` | Update nav items |
+| `src/App.tsx` | Update routes |
+
+### What Stays Untouched
+- All edge functions, WP plugin, database tables, hooks
+- Monitoring page, Notifications page, Settings page
+- All existing dashboard components (reused, just relocated between Overview and Performance)
+- Form tracking pipeline
 

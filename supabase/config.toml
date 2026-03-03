@@ -1,67 +1,49 @@
 project_id = "qnnxlvoybbmmqoxuqyvf"
 
-[functions.track-pageview]
-verify_jwt = false
-
-[functions.ingest-gravity]
-verify_jwt = false
-
-[functions.aggregate-daily]
-verify_jwt = false
-
-[functions.ingest-form]
-verify_jwt = false
-
-[functions.weekly-summary]
-verify_jwt = false
-
-[functions.archive-nightly]
-verify_jwt = false
-
-[functions.process-archive-export]
-verify_jwt = false
-
-[functions.plugin-update-check]
-verify_jwt = false
-
-[functions.serve-plugin-zip]
-verify_jwt = false
-
-[functions.sync-forms]
-verify_jwt = false
-
-[functions.process-export]
-verify_jwt = false
-
-[functions.process-report]
-verify_jwt = false
-
-[functions.dashboard-ai-insights]
-verify_jwt = false
-
-[functions.redeem-invite]
-verify_jwt = false
-
-[functions.admin-manage-user]
-verify_jwt = false
-
-[functions.ingest-heartbeat]
-verify_jwt = false
-
-[functions.ingest-broken-links]
-verify_jwt = false
-
-[functions.check-uptime]
-verify_jwt = false
-
-[functions.check-domain-ssl]
-verify_jwt = false
-
-[functions.check-renewals]
-verify_jwt = false
-
-[functions.process-monitoring-alerts]
-verify_jwt = false
-
-[functions.retention-cleanup]
-verify_jwt = false
+[functions]
+  [functions.admin-manage-user]
+    verify_jwt = false
+  [functions.aggregate-daily]
+    verify_jwt = false
+  [functions.archive-nightly]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.check-domain-ssl]
+    verify_jwt = false
+  [functions.check-renewals]
+    verify_jwt = false
+  [functions.check-uptime]
+    verify_jwt = false
+  [functions.dashboard-ai-insights]
+    verify_jwt = false
+  [functions.ingest-broken-links]
+    verify_jwt = false
+  [functions.ingest-form]
+    verify_jwt = false
+  [functions.ingest-gravity]
+    verify_jwt = false
+  [functions.ingest-heartbeat]
+    verify_jwt = false
+  [functions.plugin-update-check]
+    verify_jwt = false
+  [functions.process-archive-export]
+    verify_jwt = false
+  [functions.process-export]
+    verify_jwt = false
+  [functions.process-monitoring-alerts]
+    verify_jwt = false
+  [functions.process-report]
+    verify_jwt = false
+  [functions.redeem-invite]
+    verify_jwt = false
+  [functions.retention-cleanup]
+    verify_jwt = false
+  [functions.serve-plugin-zip]
+    verify_jwt = false
+  [functions.sync-forms]
+    verify_jwt = false
+  [functions.track-pageview]
+    verify_jwt = false
+  [functions.weekly-summary]
+    verify_jwt = false

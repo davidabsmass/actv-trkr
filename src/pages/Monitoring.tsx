@@ -362,11 +362,14 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack }: SiteDe
         {/* Broken Links */}
         <TabsContent value="broken-links" className="space-y-4">
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Link2 className="h-4 w-4" /> Broken Links ({brokenLinks?.length || 0})
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Link2 className="h-4 w-4" /> Broken Links ({brokenLinks?.length || 0})
+              </h3>
+              <ScanBrokenLinksButton siteId={site.id} />
+            </div>
             {(!brokenLinks || brokenLinks.length === 0) ? (
-              <p className="text-xs text-muted-foreground">No broken links detected.</p>
+              <p className="text-xs text-muted-foreground">No broken links detected. Run a scan to check.</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {brokenLinks.map(bl => (
@@ -509,6 +512,36 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack }: SiteDe
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// ─── Scan Broken Links Button ───────────────────────────────────
+
+function ScanBrokenLinksButton({ siteId }: { siteId: string }) {
+  const queryClient = useQueryClient();
+  const [scanning, setScanning] = useState(false);
+
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scan-broken-links", {
+        body: { site_id: siteId },
+      });
+      if (error) throw error;
+      toast({ title: "Scan complete", description: `Found ${data?.broken_found || 0} broken links.` });
+      queryClient.invalidateQueries({ queryKey: ["broken_links", siteId] });
+    } catch (err: any) {
+      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleScan} disabled={scanning} className="gap-1">
+      <RefreshCw className={`h-3.5 w-3.5 ${scanning ? "animate-spin" : ""}`} />
+      {scanning ? "Scanning…" : "Scan Now"}
+    </Button>
   );
 }
 

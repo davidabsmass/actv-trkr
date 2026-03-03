@@ -10,6 +10,12 @@ class MM_Broken_Links {
 
 	public static function init() {
 		add_action( 'wp_ajax_mm_scan_broken_links', array( __CLASS__, 'ajax_scan' ) );
+
+		// Schedule weekly automated scan.
+		add_action( 'mm_broken_links_cron', array( __CLASS__, 'scan_and_report' ) );
+		if ( ! wp_next_scheduled( 'mm_broken_links_cron' ) ) {
+			wp_schedule_event( time(), 'weekly', 'mm_broken_links_cron' );
+		}
 	}
 
 	public static function ajax_scan() {

@@ -47,3 +47,5 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.weekly-summary]
     verify_jwt = false
+  [functions.scan-broken-links]
+    verify_jwt = false

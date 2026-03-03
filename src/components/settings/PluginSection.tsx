@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plug, Copy, Check, ExternalLink, Download, Loader2 } from "lucide-react";
+import { Plug, Check, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function PluginSection() {
   const { orgId } = useOrg();
-  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const { data: activeKey } = useQuery({
     queryKey: ["active_api_key", orgId],
@@ -25,14 +24,6 @@ export default function PluginSection() {
     },
     enabled: !!orgId,
   });
-
-  const endpointUrl = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1`;
-
-  const copyToClipboard = (value: string, field: string) => {
-    navigator.clipboard.writeText(value);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -74,63 +65,29 @@ export default function PluginSection() {
         </button>
       </div>
       <p className="text-xs text-muted-foreground mb-5">
-        Download the plugin, upload it to WordPress, then paste these connection settings.
+        Download the plugin, upload it to WordPress, then paste your API key in Settings → ACTV TRKR.
       </p>
 
-      <div className="rounded-lg border border-border p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <ExternalLink className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Connection Settings</span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Paste these values into WordPress → Settings → ACTV TRKR.
-        </p>
-
-        <div className="space-y-2">
-          <div>
-            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Endpoint URL
-            </label>
-            <div className="flex items-center gap-1.5 mt-1">
-              <code className="text-xs font-mono text-secondary-foreground bg-secondary rounded px-2 py-1.5 flex-1 truncate">
-                {endpointUrl}
-              </code>
-              <button
-                onClick={() => copyToClipboard(endpointUrl, "endpoint")}
-                className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
-                title="Copy endpoint"
-              >
-                {copiedField === "endpoint" ? (
-                  <Check className="h-3.5 w-3.5 text-primary" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-              </button>
+      <div>
+        <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          API Key Status
+        </label>
+        <div className="mt-1">
+          {activeKey ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
+                <Check className="h-3 w-3" />
+                Active
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {activeKey.label} · created {new Date(activeKey.created_at).toLocaleDateString()}
+              </span>
             </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              API Key Status
-            </label>
-            <div className="mt-1">
-              {activeKey ? (
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
-                    <Check className="h-3 w-3" />
-                    Active
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {activeKey.label} · created {new Date(activeKey.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-destructive/10 text-destructive border border-destructive/20">
-                  No active key
-                </span>
-              )}
-            </div>
-          </div>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+              No active key
+            </span>
+          )}
         </div>
       </div>
     </div>

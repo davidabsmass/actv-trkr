@@ -1,39 +1,38 @@
 
 
-## Add Heartbeat to the Downloaded Plugin
+## Two Fixes: Real Device Split + Branded Client URL
 
-### Problem
-The `serve-plugin-zip` edge function builds the plugin zip that users download, but it does not include:
-1. `includes/class-heartbeat.php` — the PHP class that enqueues the JS beacon and runs a WP-Cron fallback
-2. `assets/heartbeat.js` — the JS beacon script
-3. The main plugin file doesn't `require_once` or `init()` the heartbeat class
-4. The settings class doesn't include `enable_heartbeat` in its defaults or render a checkbox for it
+### 1. Real Device Split in Form Leaderboard
 
-Without these, the plugin never sends heartbeats and the site always shows as DOWN.
+**Problem**: The desktop/mobile columns show hardcoded 65/35% for every form. The `pageviews` table already captures a `device` column (`desktop`, `mobile`, `tablet`) per event.
 
-### Changes
+**Approach**: In `FormLeaderboard`, query the `leads` table joined with pageview device data to compute real per-form device splits.
 
-**`supabase/functions/serve-plugin-zip/index.ts`**
+Since leads don't have a `device` column directly, but they do have `session_id`, and `pageviews` has both `session_id` and `device`, we can:
+- Query `pageviews` for the org within the date range, grouped by device
+- Cross-reference with leads via `session_id` to get per-form device splits
+- If no device data exists yet, show "—" instead of fake percentages
 
-1. **Add `class-heartbeat.php`** to the `buildFiles()` output — a PHP class that:
-   - Checks `enable_heartbeat` setting is enabled (default: on)
-   - Enqueues `heartbeat.js` on the front-end with the correct endpoint (`/ingest-heartbeat`)
-   - Schedules a WP-Cron fallback every 5 minutes that POSTs to the same endpoint
+**Files changed**:
+- **`src/components/dashboard/FormLeaderboard.tsx`** — accept an optional `deviceData` prop (map of form_id → {desktop, mobile, tablet counts}), or compute it internally by querying `pageviews` joined through `leads.session_id`. Remove the hardcoded `{ desktop: 65, mobile: 35 }`.
+- **`src/pages/Forms.tsx`** — pass device data down if the leaderboard is used there too.
 
-2. **Add `heartbeat.js`** to the `buildFiles()` output — a small JS beacon that fires once per page load after a 2-second debounce
+### 2. Branded Client URL (`actvtrkr.com`)
 
-3. **Update the main plugin PHP** (`actv-trkr.php` string) to:
-   - `require_once` the heartbeat class
-   - Call `AT_Heartbeat::init()` during boot
-   - Schedule the heartbeat cron on activation
+**Problem**: Dashboard URLs shown to clients use `window.location.origin` which resolves to `mshnctrl.lovable.app`. Since the app is already deployed at `actvtrkr.com`, the URLs should use that domain instead.
 
-4. **Update `class-settings.php`** string to:
-   - Add `enable_heartbeat => '1'` to defaults
-   - Add a checkbox row for "Enable Heartbeat" in the settings form
-   - Include `enable_heartbeat` in the sanitize function
+**Approach**: Replace `window.location.origin` with a constant `https://actvtrkr.com` for all client-facing URLs:
 
-### No other changes needed
-- The `ingest-heartbeat` edge function already exists and works (confirmed via curl — it correctly validates API keys)
-- The `check-uptime` function already monitors heartbeats and marks sites DOWN
-- The `site_heartbeats` table and `sites.last_heartbeat_at` column already exist
+**Files changed**:
+- **`src/pages/Clients.tsx`** — Change `dashboardUrl`, invite link URLs, and inline references from `window.location.origin` to `https://actvtrkr.com`
+- **`src/pages/Signup.tsx`** — Change the "Your Dashboard" URL from `window.location.origin/auth` to `https://actvtrkr.com/auth`
+
+We'll define a single constant (e.g. `const APP_DOMAIN = "https://actvtrkr.com"`) in a shared location like `src/lib/utils.ts` so it's easy to update later.
+
+### Summary
+
+| Change | Files |
+|--------|-------|
+| Real device split from pageviews data | `FormLeaderboard.tsx`, `Forms.tsx` |
+| Branded `actvtrkr.com` URLs for clients | `Clients.tsx`, `Signup.tsx`, `src/lib/utils.ts` |
 

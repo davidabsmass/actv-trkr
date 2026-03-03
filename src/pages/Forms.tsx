@@ -607,20 +607,35 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         created_by: session.user.id,
         format: exportFormat,
         status: "queued",
+        start_date: dateFrom ? format(dateFrom, "yyyy-MM-dd") : null,
+        end_date: dateTo ? format(dateTo, "yyyy-MM-dd") : null,
+        filters_json: { form_id: formId },
       }).select("id").single();
       if (error) throw error;
 
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      fetch(`https://${projectId}.supabase.co/functions/v1/process-export`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
-        body: JSON.stringify({ job_id: inserted.id }),
-      }).catch(() => {});
+      const { error: fnError } = await supabase.functions.invoke("process-export", {
+        body: { job_id: inserted.id },
+      });
+      if (fnError) throw new Error("Export processing failed");
+
+      const { data: completedJob } = await supabase
+        .from("export_jobs")
+        .select("file_path, status, row_count")
+        .eq("id", inserted.id)
+        .single();
+
+      return completedJob;
     },
-    onSuccess: () => {
+    onSuccess: async (job) => {
       queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
-      toast.success(`${exportFormat.toUpperCase()} export queued — processing now`);
       setShowExport(false);
+      if (job?.file_path) {
+        toast.success(`Export ready — ${job.row_count ?? 0} rows. Downloading…`);
+        const { data, error } = await supabase.storage.from("exports").createSignedUrl(job.file_path, 60);
+        if (!error && data?.signedUrl) window.open(data.signedUrl, "_blank");
+      } else if (job?.status === "succeeded") {
+        toast.info("No leads found for the selected filters.");
+      }
     },
     onError: (err: any) => toast.error(err.message || "Failed to create export"),
   });

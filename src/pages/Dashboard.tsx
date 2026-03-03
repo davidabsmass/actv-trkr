@@ -1,43 +1,127 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { format, subDays, startOfDay, startOfWeek, subWeeks } from "date-fns";
-import { KPIRow } from "@/components/dashboard/KPIRow";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
-import { AttributionSection } from "@/components/dashboard/AttributionSection";
-import { ContentPerformance } from "@/components/dashboard/ContentPerformance";
-import { VisitorMapSection } from "@/components/dashboard/VisitorMapSection";
-import { ForecastSection } from "@/components/dashboard/ForecastSection";
+import { WeekOverWeekStrip } from "@/components/dashboard/WeekOverWeekStrip";
+import { WeeklySummary } from "@/components/dashboard/WeeklySummary";
+import { AiInsights } from "@/components/dashboard/AiInsights";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
-import { FunnelView } from "@/components/dashboard/FunnelView";
-import { FormLeaderboard } from "@/components/dashboard/FormLeaderboard";
-import { TrafficSourceROI } from "@/components/dashboard/TrafficSourceROI";
-import { WeeklySummary } from "@/components/dashboard/WeeklySummary";
-import { WeekOverWeekStrip } from "@/components/dashboard/WeekOverWeekStrip";
-import { SmartUpdates, generateInsights } from "@/components/dashboard/SmartUpdates";
 import { ShareableSnapshot } from "@/components/dashboard/ShareableSnapshot";
-import { AiInsights } from "@/components/dashboard/AiInsights";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
+import { KPIRow } from "@/components/dashboard/KPIRow";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
-import { usePlanTier } from "@/hooks/use-plan-tier";
 import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
-import { BarChart3, Zap, AlertTriangle } from "lucide-react";
+import {
+  BarChart3, Zap, AlertTriangle, Shield, Link2, Globe, CalendarClock,
+  ArrowUpRight, ArrowDownRight, Minus, CheckCircle2, XCircle, TrendingUp,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
+/* ─── Attention Required Panel ─── */
+interface AttentionItem {
+  severity: "critical" | "warning" | "info";
+  label: string;
+  detail: string;
+  link: string;
+  linkLabel: string;
+}
+
+function AttentionPanel({ items }: { items: AttentionItem[] }) {
+  if (items.length === 0) return null;
+  const severityStyles = {
+    critical: "border-destructive/30 bg-destructive/5",
+    warning: "border-warning/30 bg-warning/5",
+    info: "border-primary/20 bg-primary/5",
+  };
+  const dotStyles = {
+    critical: "bg-destructive",
+    warning: "bg-warning",
+    info: "bg-primary",
+  };
+
+  return (
+    <div className="glass-card p-5 animate-slide-up">
+      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-warning" />
+        Attention Required
+      </h3>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${severityStyles[item.severity]}`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotStyles[item.severity]}`} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">{item.label}</p>
+                <p className="text-xs text-muted-foreground truncate">{item.detail}</p>
+              </div>
+            </div>
+            <Link
+              to={item.link}
+              className="text-xs font-medium text-primary hover:underline whitespace-nowrap ml-3"
+            >
+              {item.linkLabel} →
+            </Link>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Status Cards ─── */
+interface StatusCardProps {
+  label: string;
+  value: string | number;
+  sub?: string;
+  trend?: number;
+  icon: React.ReactNode;
+  accent?: string;
+}
+
+function StatusCard({ label, value, sub, trend, icon, accent }: StatusCardProps) {
+  return (
+    <div className="glass-card p-5 animate-slide-up">
+      <div className="flex items-start justify-between mb-3">
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
+        <span className={accent || "text-primary"}>{icon}</span>
+      </div>
+      <p className="text-2xl font-bold font-mono-data text-foreground">{value}</p>
+      <div className="flex items-center gap-1.5 mt-1">
+        {trend !== undefined && trend !== 0 && (
+          <>
+            {trend > 0 ? <ArrowUpRight className="h-3 w-3 kpi-up" /> : <ArrowDownRight className="h-3 w-3 kpi-down" />}
+            <span className={`text-xs font-mono-data font-medium ${trend > 0 ? "kpi-up" : "kpi-down"}`}>
+              {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
+            </span>
+          </>
+        )}
+        {trend === 0 && <Minus className="h-3 w-3 kpi-neutral" />}
+        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+function pctChange(curr: number, prev: number): number {
+  if (prev === 0) return curr > 0 ? 100 : 0;
+  return ((curr - prev) / prev) * 100;
+}
+
+/* ─── Overview Page ─── */
 const Dashboard = () => {
   const [days, setDays] = useState(30);
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
-  const { hasFeature } = usePlanTier();
   const { settings, needsOnboarding } = useSiteSettings();
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
 
-  // WoW date ranges
   const thisWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
   const lastWeekStart = format(subWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "yyyy-MM-dd");
   const lastWeekEnd = format(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "yyyy-MM-dd");
@@ -49,25 +133,78 @@ const Dashboard = () => {
   const { data: sitesData } = useSites(orgId);
   const { data: formsData } = useForms(orgId);
 
-  const { data: leadsData } = useQuery({
-    queryKey: ["leads_for_forms", orgId, startDate, endDate],
+  // Attention Required data
+  const { data: activeIncidents } = useQuery({
+    queryKey: ["active_incidents", orgId],
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
-        .from("leads")
-        .select("form_id, submitted_at, source")
-        .eq("org_id", orgId)
-        .gte("submitted_at", `${startDate}T00:00:00Z`)
-        .lte("submitted_at", `${endDate}T23:59:59.999Z`);
+        .from("incidents").select("id, type, severity, started_at, site_id")
+        .eq("org_id", orgId).is("resolved_at", null).limit(10);
       if (error) throw error;
       return data;
     },
     enabled: !!orgId,
   });
 
-  const isLoading = !realtimeData;
+  const { data: brokenLinksCount } = useQuery({
+    queryKey: ["broken_links_count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("broken_links").select("*", { count: "exact", head: true })
+        .eq("org_id", orgId);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!orgId,
+  });
 
-  // WoW comparison data – always use real data (zeros if no data yet)
+  const { data: expiringDomains } = useQuery({
+    queryKey: ["expiring_domains", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("domain_health").select("domain, days_to_domain_expiry")
+        .eq("org_id", orgId).lt("days_to_domain_expiry", 30).gt("days_to_domain_expiry", 0);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: expiringSSL } = useQuery({
+    queryKey: ["expiring_ssl", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("ssl_health").select("site_id, days_to_ssl_expiry")
+        .eq("org_id", orgId).lt("days_to_ssl_expiry", 14).gt("days_to_ssl_expiry", 0);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: renewalsDue } = useQuery({
+    queryKey: ["renewals_due", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const cutoff = format(subDays(new Date(), -30), "yyyy-MM-dd");
+      const { data, error } = await supabase
+        .from("renewals").select("type, renewal_date, provider_name")
+        .eq("org_id", orgId).eq("is_enabled", true)
+        .lte("renewal_date", cutoff).gte("renewal_date", format(new Date(), "yyyy-MM-dd"));
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const isLoading = !realtimeData;
+  const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
+
+  // WoW comparison
   const wowData = useMemo(() => {
     const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
     const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
@@ -82,61 +219,39 @@ const Dashboard = () => {
     };
   }, [thisWeekData, lastWeekData]);
 
-  // Primary focus (new) with fallback to old goal
-  const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
-
-  // Smart insights with focus-aware weighting
-  const smartInsights = useMemo(() => {
-    if (!thisWeekData || !lastWeekData) return [];
-    const twCvr = thisWeekData.totalSessions > 0 ? thisWeekData.totalLeads / thisWeekData.totalSessions : 0;
-    const lwCvr = lastWeekData.totalSessions > 0 ? lastWeekData.totalLeads / lastWeekData.totalSessions : 0;
-    return generateInsights(
-      {
-        sessions: { current: thisWeekData.totalSessions, previous: lastWeekData.totalSessions },
-        leads: { current: thisWeekData.totalLeads, previous: lastWeekData.totalLeads },
-        cvr: { current: twCvr, previous: lwCvr },
-        pages: thisWeekData.pages?.map((p: any) => ({ ...p, page_path: p.path })),
-      },
-      primaryFocus
-    );
-  }, [thisWeekData, lastWeekData, primaryFocus]);
-
-  const emptyKpis = {
-    sessions: { value: 0, delta: 0, label: "Sessions" },
-    leads: { value: 0, delta: 0, label: "Leads" },
-    pageviews: { value: 0, delta: 0, label: "Pageviews" },
-    cvr: { value: 0, delta: 0, label: "Conversion Rate" },
-  };
-
-  const emptyForecast = { sufficient_data: false, days_until_available: 42, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as { date: string; dateLabel: string; yhat: number; yhat_low: number; yhat_high: number }[] };
-
+  // Processed data for charts
   const processedData = useMemo(() => {
     if (isLoading || !realtimeData) {
       return {
-        kpis: emptyKpis, dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
-        alerts: [], forecast: emptyForecast, isMock: false, isLoading: true,
+        kpis: {
+          sessions: { value: 0, delta: 0, label: "Sessions" },
+          leads: { value: 0, delta: 0, label: "Leads" },
+          pageviews: { value: 0, delta: 0, label: "Pageviews" },
+          cvr: { value: 0, delta: 0, label: "Conversion Rate" },
+        },
+        dailyData: [],
+        sources: [],
+        alerts: [],
       };
     }
 
-    const { totalPageviews, totalSessions, totalLeads, dailyMap, sources, campaigns, pages } = realtimeData;
+    const { totalPageviews, totalSessions, totalLeads, dailyMap } = realtimeData;
     const cvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
 
     const dailyData = Object.entries(dailyMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, vals]) => ({
-        date, dateLabel: format(new Date(date), "MMM d"),
-        sessions: vals.sessions, leads: vals.leads, pageviews: vals.pageviews,
+        date,
+        dateLabel: format(new Date(date), "MMM d"),
+        sessions: vals.sessions,
+        leads: vals.leads,
+        pageviews: vals.pageviews,
         cvr: vals.sessions > 0 ? vals.leads / vals.sessions : 0,
       }));
 
-    const sitewideCvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
-    const opportunities = pages
-      .filter((p) => p.sessions >= 100)
-      .map((p) => ({ ...p, expectedLeads: Math.round(p.sessions * sitewideCvr), gap: Math.round(p.sessions * sitewideCvr) - p.leads }))
-      .filter((p) => p.gap > 0).sort((a, b) => b.gap - a.gap);
-
     const alerts = (alertsData || []).map((a) => ({
-      id: a.id, severity: a.severity as "warning" | "info" | "error",
+      id: a.id,
+      severity: a.severity as "warning" | "info" | "error",
       title: a.title,
       detail: typeof a.details === "object" && a.details !== null ? (a.details as any).detail || "" : "",
       date: format(new Date(a.date), "MMM d"),
@@ -149,50 +264,167 @@ const Dashboard = () => {
         pageviews: { value: totalPageviews, delta: 0, label: "Pageviews" },
         cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
-      dailyData, sources, campaigns, pages, opportunities, alerts, forecast: emptyForecast, isMock: false,
+      dailyData,
+      sources: realtimeData.sources,
+      alerts,
     };
-  }, [isLoading, realtimeData, alertsData, days]);
+  }, [isLoading, realtimeData, alertsData]);
 
-  // Focus-aware section ordering
-  const renderFocusSections = () => {
-    const sections = {
-      attribution: hasFeature("attribution") && (
-        <div id="section-sources" key="roi"><TrafficSourceROI sources={processedData.sources} /></div>
-      ),
-      attributionDetail: (
-        <div id="section-attribution" key="attr"><AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} /></div>
-      ),
-      funnel: hasFeature("funnel_view") && (
-        <div id="section-funnel" key="funnel"><FunnelView totalPageviews={realtimeData?.totalPageviews || 0} formPageViews={0} totalLeads={realtimeData?.totalLeads || 0} /></div>
-      ),
-      formLeaderboard: formsData && formsData.length > 0 && (
-        <div id="section-forms" key="forms"><FormLeaderboard forms={formsData} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} /></div>
-      ),
-      map: hasFeature("multi_location_map") && (
-        <div id="section-map" key="map"><VisitorMapSection data={realtimeData?.countries || []} /></div>
-      ),
-      content: (
-        <div id="section-pages" key="content"><ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} /></div>
-      ),
-      forecast: <div id="section-forecast" key="forecast"><ForecastSection forecast={processedData.forecast} /></div>,
-    };
+  // Attention Required items
+  const attentionItems = useMemo<AttentionItem[]>(() => {
+    const items: AttentionItem[] = [];
 
-    const focusOrder: Record<PrimaryFocus, (keyof typeof sections)[]> = {
-      lead_volume: ["content", "formLeaderboard", "attributionDetail", "attribution", "funnel", "map", "forecast"],
-      marketing_impact: ["attribution", "attributionDetail", "formLeaderboard", "content", "funnel", "map", "forecast"],
-      conversion_performance: ["funnel", "content", "formLeaderboard", "attribution", "attributionDetail", "map", "forecast"],
-      paid_optimization: ["attribution", "attributionDetail", "funnel", "formLeaderboard", "content", "map", "forecast"],
-    };
+    // Active incidents
+    if (activeIncidents && activeIncidents.length > 0) {
+      items.push({
+        severity: "critical",
+        label: `${activeIncidents.length} active incident${activeIncidents.length > 1 ? "s" : ""}`,
+        detail: activeIncidents.map((i) => i.type).join(", "),
+        link: "/monitoring",
+        linkLabel: "View details",
+      });
+    }
 
-    const order = focusOrder[primaryFocus] || focusOrder.lead_volume;
-    return order.map((key) => sections[key]).filter(Boolean);
-  };
+    // Conversion drops from alerts
+    const convDrops = (alertsData || []).filter(
+      (a) => a.severity === "warning" && a.title?.toLowerCase().includes("conversion")
+    );
+    if (convDrops.length > 0) {
+      items.push({
+        severity: "warning",
+        label: "Conversion rate dropped",
+        detail: convDrops[0].title,
+        link: "/performance",
+        linkLabel: "Investigate",
+      });
+    }
 
-  // Snapshot data for sharing
+    // Broken links
+    if (brokenLinksCount && brokenLinksCount > 0) {
+      items.push({
+        severity: "warning",
+        label: `${brokenLinksCount} broken link${brokenLinksCount > 1 ? "s" : ""} detected`,
+        detail: "May affect user experience and SEO",
+        link: "/monitoring",
+        linkLabel: "View links",
+      });
+    }
+
+    // Domain expiring
+    if (expiringDomains && expiringDomains.length > 0) {
+      items.push({
+        severity: "warning",
+        label: `Domain expiring soon`,
+        detail: expiringDomains.map((d) => `${d.domain} (${d.days_to_domain_expiry}d)`).join(", "),
+        link: "/monitoring",
+        linkLabel: "View details",
+      });
+    }
+
+    // SSL expiring
+    if (expiringSSL && expiringSSL.length > 0) {
+      items.push({
+        severity: "warning",
+        label: `SSL certificate expiring`,
+        detail: `${expiringSSL.length} certificate${expiringSSL.length > 1 ? "s" : ""} expiring within 14 days`,
+        link: "/monitoring",
+        linkLabel: "View details",
+      });
+    }
+
+    // Renewals due
+    if (renewalsDue && renewalsDue.length > 0) {
+      items.push({
+        severity: "info",
+        label: `${renewalsDue.length} renewal${renewalsDue.length > 1 ? "s" : ""} due soon`,
+        detail: renewalsDue.map((r) => `${r.type}${r.provider_name ? ` (${r.provider_name})` : ""}`).join(", "),
+        link: "/monitoring",
+        linkLabel: "View renewals",
+      });
+    }
+
+    return items;
+  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, renewalsDue]);
+
+  // Status cards – focus-aware ordering
+  const siteUp = sitesData && sitesData.length > 0
+    ? sitesData.every((s) => s.status === "active" || s.status === "ok")
+    : null;
+  const lastHeartbeat = sitesData?.[0]?.last_heartbeat_at;
+
+  const revenueImpact = useMemo(() => {
+    if (!formsData || !thisWeekData) return null;
+    const totalValue = formsData.reduce((sum, f) => {
+      if (f.archived || !f.estimated_value) return sum;
+      return sum + (f.estimated_value * (wowData.leads.current || 0));
+    }, 0);
+    if (totalValue === 0) return null;
+    return totalValue;
+  }, [formsData, thisWeekData, wowData]);
+
   const snapshotData = useMemo(() => ({
     kpis: processedData.kpis, wowData, orgName,
     focus: primaryFocus, generatedAt: new Date().toISOString(),
   }), [processedData.kpis, wowData, orgName, primaryFocus]);
+
+  // Build status cards based on primaryFocus
+  const statusCards = useMemo(() => {
+    const siteCard = (
+      <StatusCard
+        key="status"
+        label="Site Status"
+        value={siteUp === null ? "—" : siteUp ? "UP" : "DOWN"}
+        sub={lastHeartbeat ? `Last heartbeat ${format(new Date(lastHeartbeat), "MMM d HH:mm")}` : "No heartbeat yet"}
+        icon={siteUp ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+        accent={siteUp === null ? "text-muted-foreground" : siteUp ? "text-success" : "text-destructive"}
+      />
+    );
+    const leadsCard = (
+      <StatusCard
+        key="leads"
+        label="Leads (7d)"
+        value={wowData.leads.current}
+        trend={pctChange(wowData.leads.current, wowData.leads.previous)}
+        icon={<TrendingUp className="h-5 w-5" />}
+      />
+    );
+    const cvrCard = (
+      <StatusCard
+        key="cvr"
+        label="Conversion Rate"
+        value={`${(wowData.cvr.current * 100).toFixed(1)}%`}
+        trend={pctChange(wowData.cvr.current, wowData.cvr.previous)}
+        icon={<BarChart3 className="h-5 w-5" />}
+      />
+    );
+    const revenueCard = revenueImpact !== null ? (
+      <StatusCard
+        key="revenue"
+        label="Revenue Impact"
+        value={`$${revenueImpact.toLocaleString()}`}
+        trend={pctChange(wowData.leads.current, wowData.leads.previous)}
+        sub="estimated"
+        icon={<Zap className="h-5 w-5" />}
+      />
+    ) : (
+      <StatusCard
+        key="sessions"
+        label="Sessions (7d)"
+        value={wowData.sessions.current}
+        trend={pctChange(wowData.sessions.current, wowData.sessions.previous)}
+        icon={<Globe className="h-5 w-5" />}
+      />
+    );
+
+    const focusOrder: Record<PrimaryFocus, React.ReactNode[]> = {
+      lead_volume: [leadsCard, cvrCard, siteCard, revenueCard],
+      marketing_impact: [revenueCard, siteCard, leadsCard, cvrCard],
+      conversion_performance: [cvrCard, leadsCard, siteCard, revenueCard],
+      paid_optimization: [revenueCard, cvrCard, leadsCard, siteCard],
+    };
+
+    return focusOrder[primaryFocus] || focusOrder.lead_volume;
+  }, [siteUp, lastHeartbeat, wowData, revenueImpact, primaryFocus]);
 
   return (
     <div>
@@ -200,7 +432,7 @@ const Dashboard = () => {
 
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">ACTV TRKR</h1>
+          <h1 className="text-2xl font-bold text-foreground">Overview</h1>
           <p className="text-sm text-muted-foreground">{orgName}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -246,7 +478,19 @@ const Dashboard = () => {
             </div>
           )}
 
+          {/* Row 1 – Status Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {statusCards}
+          </div>
+
+          {/* Row 2 – Trends */}
           <WeekOverWeekStrip data={wowData} />
+          <TrendsChart data={processedData.dailyData} />
+
+          {/* Row 3 – Attention Required */}
+          <AttentionPanel items={attentionItems} />
+
+          {/* Supporting sections */}
           <WeeklySummary primaryFocus={primaryFocus} />
           <AiInsights metrics={{
             sessionsThisWeek: wowData.sessions.current,
@@ -261,18 +505,6 @@ const Dashboard = () => {
             primaryFocus,
           }} />
           <AlertsSection alerts={processedData.alerts} />
-          <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
-          <TrendsChart data={processedData.dailyData} />
-          {smartInsights.length > 0 && (
-            <SmartUpdates insights={smartInsights} onAction={(path) => {
-              if (path.startsWith("#")) {
-                document.getElementById(path.slice(1))?.scrollIntoView({ behavior: "smooth" });
-              } else {
-                navigate(path);
-              }
-            }} />
-          )}
-          {renderFocusSections()}
         </div>
       )}
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">

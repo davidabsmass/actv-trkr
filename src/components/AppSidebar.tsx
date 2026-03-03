@@ -1,6 +1,7 @@
 import {
   BarChart3, TableProperties, FileText, Download, Settings, LogOut,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
+  LayoutDashboard, TrendingUp,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
@@ -19,11 +20,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const telemetryItems = [
-  { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
-  { title: "Entries", url: "/entries", icon: TableProperties },
+  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Performance", url: "/performance", icon: TrendingUp },
+  { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
-  { title: "Reports", url: "/reports", icon: FileText },
-  { title: "Exports", url: "/exports", icon: Download },
 ];
 
 export function AppSidebar() {

@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "./pages/Dashboard";
-import Entries from "./pages/Entries";
+import Performance from "./pages/Performance";
+import Forms from "./pages/Forms";
 import Reports from "./pages/Reports";
 import Exports from "./pages/Exports";
 import Clients from "./pages/Clients";
@@ -65,7 +66,9 @@ const App = () => (
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="entries" element={<Entries />} />
+            <Route path="performance" element={<Performance />} />
+            <Route path="forms" element={<Forms />} />
+            <Route path="entries" element={<Navigate to="/forms" replace />} />
             <Route path="reports" element={<Reports />} />
             <Route path="exports" element={<Exports />} />
             <Route path="clients" element={<Clients />} />

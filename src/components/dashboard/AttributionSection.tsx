@@ -52,10 +52,14 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        {/* Chart */}
-        <div className="h-[250px]">
+        {/* Chart — top 10 only */}
+        {(() => {
+          const chartData = data.slice(0, 10);
+          const chartHeight = Math.max(200, chartData.length * 28);
+          return (
+        <div style={{ height: chartHeight }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 5, left: 0, bottom: 0 }}>
+            <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 5, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} horizontal={false} />
               <XAxis
                 type="number"
@@ -85,6 +89,8 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+          );
+        })()}
 
         {/* Table */}
         <ScrollArea className={hasMore && !showAll ? "h-[420px]" : ""}>

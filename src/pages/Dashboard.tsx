@@ -374,7 +374,7 @@ const Dashboard = () => {
         key="status"
         label="Site Status"
         value={siteUp === null ? "—" : siteUp ? "UP" : "DOWN"}
-        sub={lastHeartbeat ? `Last heartbeat ${format(new Date(lastHeartbeat), "MMM d HH:mm")}` : "No heartbeat yet"}
+        sub={lastHeartbeat ? `Last confirmation ${format(new Date(lastHeartbeat), "MMM d HH:mm")}` : "No confirmation yet"}
         icon={siteUp ? <CheckCircle2 className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
         accent={siteUp === null ? "text-muted-foreground" : siteUp ? "text-success" : "text-destructive"}
       />

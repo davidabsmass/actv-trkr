@@ -99,7 +99,21 @@ Deno.serve(async (req) => {
         );
       }
 
-      const results = await Promise.all(fetchPromises);
+      // Additional data for monthly performance: incidents, form submission logs, broken links
+      const extraPromises: Promise<any>[] = [];
+      if (templateSlug === "monthly_performance") {
+        extraPromises.push(
+          supabase.from("incidents").select("*").eq("org_id", orgId).gte("started_at", periodStart).lte("started_at", periodEnd).order("started_at", { ascending: false }).limit(50),
+          supabase.from("form_submission_logs").select("*").eq("org_id", orgId).gte("occurred_at", periodStart).lte("occurred_at", periodEnd).limit(1000),
+          supabase.from("broken_links").select("*").eq("org_id", orgId).order("last_seen_at", { ascending: false }).limit(50),
+          supabase.from("sites").select("id, domain, status, last_heartbeat_at").eq("org_id", orgId),
+        );
+      }
+
+      const [results, extraResults] = await Promise.all([
+        Promise.all(fetchPromises),
+        Promise.all(extraPromises),
+      ]);
 
       const currentLeads = results[0].data || [];
       const previousLeads = results[1].data || [];
@@ -107,7 +121,6 @@ Deno.serve(async (req) => {
       const prevSessionCount = results[3].count ?? (results[3].data?.length || 0);
       const formList = results[4].data || [];
       const goals = results[5].data || [];
-      // Exact current session count from head query (avoids 1000-row cap)
       const currentSessionCount = results[6].count ?? currentSessions.length;
 
       let currentPageviews: any[] = [];
@@ -124,6 +137,18 @@ Deno.serve(async (req) => {
         adSpendData = results[7]?.data || [];
       }
 
+      // Extra data for monthly performance
+      let incidents: any[] = [];
+      let formSubmissionLogs: any[] = [];
+      let brokenLinks: any[] = [];
+      let sitesData: any[] = [];
+      if (templateSlug === "monthly_performance" && extraResults.length >= 4) {
+        incidents = extraResults[0]?.data || [];
+        formSubmissionLogs = extraResults[1]?.data || [];
+        brokenLinks = extraResults[2]?.data || [];
+        sitesData = extraResults[3]?.data || [];
+      }
+
       const formMap: Record<string, any> = {};
       formList.forEach((f: any) => { formMap[f.id] = f; });
 
@@ -136,7 +161,7 @@ Deno.serve(async (req) => {
       } else if (templateSlug === "campaign_report") {
         report = buildCampaignReport({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode });
       } else {
-        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode });
+        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData });
       }
 
       report.generatedAt = now.toISOString();
@@ -148,6 +173,54 @@ Deno.serve(async (req) => {
       report.compareMode = compareMode;
       if (filterSource) report.filterSource = filterSource;
       if (filterCampaign) report.filterCampaign = filterCampaign;
+
+      // ── AI Insights (monthly only) ──
+      if (templateSlug === "monthly_performance") {
+        try {
+          const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+          if (LOVABLE_API_KEY) {
+            const aiPrompt = `You are a digital marketing analyst. Analyze this monthly performance data and provide 3-5 concise, actionable insights. Focus on what's working, what needs attention, and specific recommendations. Be direct and data-driven.
+
+Data summary:
+- Period: ${actualDays} days
+- Leads: ${report.executiveSummary.leads.current}${report.executiveSummary.leads.change !== null ? ` (${report.executiveSummary.leads.change > 0 ? '+' : ''}${report.executiveSummary.leads.change}% vs previous)` : ''}
+- Sessions: ${report.executiveSummary.sessions.current}${report.executiveSummary.sessions.change !== null ? ` (${report.executiveSummary.sessions.change > 0 ? '+' : ''}${report.executiveSummary.sessions.change}%)` : ''}
+- Pageviews: ${report.executiveSummary.pageviews.current}${report.executiveSummary.pageviews.change !== null ? ` (${report.executiveSummary.pageviews.change > 0 ? '+' : ''}${report.executiveSummary.pageviews.change}%)` : ''}
+- CVR: ${report.executiveSummary.cvr.current}%
+- Weighted Leads: ${report.executiveSummary.weightedLeads}
+- Top sources: ${(report.growthEngine.trafficBySource || []).slice(0, 5).map((s: any) => `${s.label} (${s.count})`).join(', ')}
+- Top forms: ${(report.conversionIntelligence.leadsByForm || []).slice(0, 5).map((f: any) => `${f.formName}: ${f.leads} leads, ${f.cvr}% CVR, ${f.failures} failures`).join('; ')}
+- Uptime: ${report.siteHealth?.uptimePercent ?? 100}%, downtime incidents: ${report.siteHealth?.downtimeIncidents?.length ?? 0}
+- Broken links: ${report.siteHealth?.brokenLinksCount ?? 0}
+- Form failure rate: ${report.formHealth?.overallFailureRate ?? 0}%
+- Estimated pipeline value: $${report.formHealth?.totalEstimatedValue ?? 0}
+
+Return a JSON array of objects with "title" (short headline) and "body" (1-2 sentence explanation). No markdown, just valid JSON array.`;
+
+            const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: "google/gemini-3-flash-preview",
+                messages: [{ role: "user", content: aiPrompt }],
+              }),
+            });
+
+            if (aiResp.ok) {
+              const aiData = await aiResp.json();
+              const raw = aiData.choices?.[0]?.message?.content || "";
+              // Extract JSON from response (may have markdown wrapping)
+              const jsonMatch = raw.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                report.aiInsights = JSON.parse(jsonMatch[0]);
+              }
+            }
+          }
+        } catch (aiErr) {
+          console.error("AI insights error (non-fatal):", aiErr);
+          // AI insights are optional — don't fail the report
+        }
+      }
 
       // Store in bucket
       const fileName = `${orgId}/report_${run.id}.json`;
@@ -186,7 +259,7 @@ Deno.serve(async (req) => {
 });
 
 // ── MONTHLY PERFORMANCE (full 5-section report) ──
-function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
+function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData }: any) {
   const totalLeads = currentLeads.length;
   const prevTotalLeads = previousLeads.length;
   const totalSessions = currentSessionCount;
@@ -225,10 +298,33 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
     topLandingPages: countBy(currentSessions, (s: any) => s.landing_page_path || "/").slice(0, 10),
   };
 
+  // ── Form Performance (enhanced) ──
   const leadsByForm = formList.map((f: any) => {
     const fl = currentLeads.filter((l: any) => l.form_id === f.id);
     const pfl = previousLeads.filter((l: any) => l.form_id === f.id);
-    return { formName: f.name, formCategory: f.form_category, leads: fl.length, previousLeads: noComparison ? null : pfl.length, change: noComparison ? null : pctChange(fl.length, pfl.length), weight: f.lead_weight };
+    const logs = (formSubmissionLogs || []).filter((log: any) => log.form_id === f.id);
+    const successLogs = logs.filter((l: any) => l.status === "success");
+    const failedLogs = logs.filter((l: any) => l.status !== "success");
+    // CVR per form: leads from this form / sessions on pages where this form exists
+    const formPages = new Set(fl.map((l: any) => l.page_path || l.page_url || ""));
+    const formPageSessions = currentSessions.filter((s: any) => formPages.has(s.landing_page_path || "")).length;
+    const formCvr = formPageSessions > 0 ? Math.round((fl.length / formPageSessions) * 10000) / 100 : 0;
+
+    return {
+      formName: f.name,
+      formCategory: f.form_category,
+      leads: fl.length,
+      previousLeads: noComparison ? null : pfl.length,
+      change: noComparison ? null : pctChange(fl.length, pfl.length),
+      weight: f.lead_weight,
+      estimatedValue: f.estimated_value || 0,
+      totalValue: fl.length * (f.estimated_value || 0),
+      submissions: successLogs.length,
+      failures: failedLogs.length,
+      failureRate: logs.length > 0 ? Math.round((failedLogs.length / logs.length) * 10000) / 100 : 0,
+      cvr: formCvr,
+      isPrimaryLead: f.is_primary_lead,
+    };
   }).sort((a: any, b: any) => b.leads - a.leads);
 
   const conversionIntelligence = {
@@ -244,6 +340,58 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
     referrerBreakdown: countBy(currentPageviews, (pv: any) => pv.referrer_domain || "direct").slice(0, 10),
   };
 
+  // ── Site Health & Downtime ──
+  const downtimeIncidents = (incidents || []).filter((i: any) => i.type === "DOWNTIME");
+  const otherIncidents = (incidents || []).filter((i: any) => i.type !== "DOWNTIME");
+  const totalDowntimeMinutes = downtimeIncidents.reduce((sum: number, inc: any) => {
+    const start = new Date(inc.started_at).getTime();
+    const end = inc.resolved_at ? new Date(inc.resolved_at).getTime() : Date.now();
+    return sum + (end - start) / 60000;
+  }, 0);
+  const uptimePercent = actualDays > 0 ? Math.max(0, Math.round((1 - totalDowntimeMinutes / (actualDays * 1440)) * 10000) / 100) : 100;
+
+  const siteHealth = {
+    uptimePercent,
+    totalDowntimeMinutes: Math.round(totalDowntimeMinutes),
+    downtimeIncidents: downtimeIncidents.slice(0, 10).map((i: any) => ({
+      domain: i.details?.domain || "unknown",
+      startedAt: i.started_at,
+      resolvedAt: i.resolved_at,
+      durationMinutes: Math.round(((i.resolved_at ? new Date(i.resolved_at).getTime() : Date.now()) - new Date(i.started_at).getTime()) / 60000),
+      severity: i.severity,
+    })),
+    otherIncidents: otherIncidents.slice(0, 5).map((i: any) => ({
+      type: i.type,
+      severity: i.severity,
+      startedAt: i.started_at,
+      resolvedAt: i.resolved_at,
+    })),
+    brokenLinksCount: (brokenLinks || []).length,
+    topBrokenLinks: (brokenLinks || []).slice(0, 5).map((bl: any) => ({
+      url: bl.broken_url,
+      sourcePage: bl.source_page,
+      statusCode: bl.status_code,
+      occurrences: bl.occurrences,
+    })),
+    sites: (sitesData || []).map((s: any) => ({
+      domain: s.domain,
+      status: s.status,
+      lastHeartbeat: s.last_heartbeat_at,
+    })),
+  };
+
+  // ── Form submission health ──
+  const totalSubmissions = (formSubmissionLogs || []).length;
+  const totalFailures = (formSubmissionLogs || []).filter((l: any) => l.status !== "success").length;
+  const overallFailureRate = totalSubmissions > 0 ? Math.round((totalFailures / totalSubmissions) * 10000) / 100 : 0;
+
+  const formHealth = {
+    totalSubmissions,
+    totalFailures,
+    overallFailureRate,
+    totalEstimatedValue: leadsByForm.reduce((s: number, f: any) => s + (f.totalValue || 0), 0),
+  };
+
   // Action plan
   const actions: string[] = [];
   const pageLeadMap = new Map<string, number>();
@@ -257,6 +405,9 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
   if (opportunities.length > 0) actions.push(`Add CTAs to high-traffic pages: ${opportunities.slice(0, 3).map(o => o.page).join(", ")}`);
   if (!noComparison && pctChange(totalLeads, prevTotalLeads) < 0) actions.push("Investigate declining lead volume.");
   if (cvr < 2) actions.push("CVR below 2% — test form placement and social proof.");
+  if (downtimeIncidents.length > 0) actions.push(`${downtimeIncidents.length} downtime incident(s) this period — review server/hosting stability.`);
+  if (overallFailureRate > 5) actions.push(`Form failure rate at ${overallFailureRate}% — investigate integration issues.`);
+  if ((brokenLinks || []).length > 0) actions.push(`${brokenLinks.length} broken link(s) detected — fix to improve SEO and user experience.`);
 
   const dailyLeads = new Map<string, number>();
   currentLeads.forEach((l: any) => { const day = l.submitted_at?.slice(0, 10) || ""; dailyLeads.set(day, (dailyLeads.get(day) || 0) + 1); });
@@ -267,11 +418,10 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
   if (actions.length === 0) actions.push("Continue current strategy — performance is stable.");
 
   return {
-    executiveSummary, growthEngine, conversionIntelligence, userExperience,
+    executiveSummary, growthEngine, conversionIntelligence, userExperience, siteHealth, formHealth,
     actionPlan: { recommendations: actions, contentOpportunities: opportunities.slice(0, 5), forecast: { avgDailyLeads: Math.round(avgDaily * 10) / 10, projectedNextMonth } },
   };
 }
-
 // ── WEEKLY BRIEF (condensed KPI snapshot) ──
 function buildWeeklyBrief({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
   const totalLeads = currentLeads.length;

@@ -10,7 +10,8 @@ import {
   CalendarClock, Plus, Trash2, ToggleLeft, ToggleRight,
   ArrowLeft, TrendingUp, TrendingDown, Minus, Eye,
   Target, BarChart3, Users, Lightbulb, Globe, CalendarIcon,
-  Filter, Megaphone,
+  Filter, Megaphone, Activity, Shield, Link2, AlertTriangle,
+  Sparkles, DollarSign, FormInput,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -155,7 +156,7 @@ function CampaignReportViewer({ report, onBack }: { report: any; onBack: () => v
 
 // ── Monthly Performance Viewer ──
 function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () => void }) {
-  const { executiveSummary: es, growthEngine: ge, conversionIntelligence: ci, userExperience: ux, actionPlan: ap } = report;
+  const { executiveSummary: es, growthEngine: ge, conversionIntelligence: ci, userExperience: ux, actionPlan: ap, siteHealth: sh, formHealth: fh, aiInsights } = report;
 
   return (
     <div>
@@ -170,14 +171,32 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         )}
       </p>
 
+      {/* AI Insights */}
+      {aiInsights && aiInsights.length > 0 && (
+        <Section icon={Sparkles} title="AI Insights">
+          <div className="space-y-3">
+            {aiInsights.map((insight: any, i: number) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-md bg-primary/5 border border-primary/10">
+                <span className="text-xs font-bold text-primary mt-0.5 flex-shrink-0">{i + 1}.</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{insight.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{insight.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {/* Executive Summary */}
       <Section icon={Target} title="Executive Summary">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           {[
             { label: "Leads", value: es.leads.current, change: es.leads.change },
             { label: "Sessions", value: es.sessions.current, change: es.sessions.change },
             { label: "Pageviews", value: es.pageviews.current, change: es.pageviews.change },
             { label: "CVR", value: `${es.cvr.current}%`, change: es.cvr.change },
+            { label: "Weighted Leads", value: es.weightedLeads, change: null },
           ].map((kpi) => (
             <div key={kpi.label} className="p-3 rounded-md bg-muted/50">
               <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{kpi.label}</p>
@@ -207,6 +226,141 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         </div>
       </Section>
 
+      {/* Site Health & Uptime */}
+      {sh && (
+        <Section icon={Activity} title="Site Health & Uptime">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Uptime</p>
+              <p className={`text-lg font-bold ${sh.uptimePercent >= 99.5 ? "text-success" : sh.uptimePercent >= 95 ? "text-warning" : "text-destructive"}`}>
+                {sh.uptimePercent}%
+              </p>
+            </div>
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Downtime</p>
+              <p className="text-lg font-bold text-foreground">{sh.totalDowntimeMinutes}m</p>
+            </div>
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Incidents</p>
+              <p className="text-lg font-bold text-foreground">{sh.downtimeIncidents?.length || 0}</p>
+            </div>
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Broken Links</p>
+              <p className="text-lg font-bold text-foreground">{sh.brokenLinksCount || 0}</p>
+            </div>
+          </div>
+
+          {/* Site statuses */}
+          {sh.sites?.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Current Status</p>
+              <div className="flex flex-wrap gap-2">
+                {sh.sites.map((s: any, i: number) => (
+                  <span key={i} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${s.status === "UP" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${s.status === "UP" ? "bg-success" : "bg-destructive"}`} />
+                    {s.domain}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Downtime incidents */}
+          {sh.downtimeIncidents?.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Downtime Incidents</p>
+              <div className="space-y-2">
+                {sh.downtimeIncidents.map((inc: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                      <span className="text-sm text-foreground">{inc.domain}</span>
+                      <Badge variant="outline" className="text-[10px]">{inc.durationMinutes}m</Badge>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(inc.startedAt), "MMM d, HH:mm")}
+                      {inc.resolvedAt && ` → ${format(new Date(inc.resolvedAt), "HH:mm")}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Broken links */}
+          {sh.topBrokenLinks?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Top Broken Links</p>
+              <div className="space-y-1">
+                {sh.topBrokenLinks.map((bl: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-0">
+                    <span className="text-foreground truncate flex-1 mr-2">{bl.url}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge variant="outline">{bl.statusCode || "?"}</Badge>
+                      <span className="text-muted-foreground">×{bl.occurrences}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* Form Performance */}
+      <Section icon={FormInput} title="Form Performance">
+        {fh && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Submissions</p>
+              <p className="text-lg font-bold text-foreground">{fh.totalSubmissions}</p>
+            </div>
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Failures</p>
+              <p className={`text-lg font-bold ${fh.totalFailures > 0 ? "text-destructive" : "text-foreground"}`}>{fh.totalFailures}</p>
+            </div>
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Failure Rate</p>
+              <p className={`text-lg font-bold ${fh.overallFailureRate > 5 ? "text-destructive" : "text-foreground"}`}>{fh.overallFailureRate}%</p>
+            </div>
+            <div className="p-3 rounded-md bg-muted/50">
+              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Est. Pipeline</p>
+              <p className="text-lg font-bold text-foreground">${(fh.totalEstimatedValue || 0).toLocaleString()}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="py-2 pr-4 text-xs font-medium text-muted-foreground">Form</th>
+                <th className="py-2 px-2 text-xs font-medium text-muted-foreground text-right">Leads</th>
+                <th className="py-2 px-2 text-xs font-medium text-muted-foreground text-right">Δ</th>
+                <th className="py-2 px-2 text-xs font-medium text-muted-foreground text-right">CVR</th>
+                <th className="py-2 px-2 text-xs font-medium text-muted-foreground text-right">Failures</th>
+                <th className="py-2 px-2 text-xs font-medium text-muted-foreground text-right">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(ci.leadsByForm || []).map((f: any, i: number) => (
+                <tr key={i} className="border-b border-border/50 last:border-0">
+                  <td className="py-2 pr-4">
+                    <p className="text-sm font-medium text-foreground">{f.formName}</p>
+                    <p className="text-[10px] text-muted-foreground">{f.formCategory} · {f.weight}× weight{f.isPrimaryLead ? " · Primary" : ""}</p>
+                  </td>
+                  <td className="py-2 px-2 text-right font-bold text-foreground">{f.leads}</td>
+                  <td className="py-2 px-2 text-right"><TrendBadge change={f.change} /></td>
+                  <td className="py-2 px-2 text-right text-muted-foreground">{f.cvr}%</td>
+                  <td className={`py-2 px-2 text-right ${f.failures > 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}>{f.failures}</td>
+                  <td className="py-2 px-2 text-right text-muted-foreground">{f.totalValue > 0 ? `$${f.totalValue.toLocaleString()}` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
       {/* Growth Engine */}
       <Section icon={BarChart3} title="Growth Engine">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -223,23 +377,6 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
 
       {/* Conversion Intelligence */}
       <Section icon={TrendingUp} title="Conversion Intelligence">
-        <div className="mb-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Leads by Form</p>
-          <div className="space-y-2">
-            {(ci.leadsByForm || []).map((f: any, i: number) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{f.formName}</p>
-                  <p className="text-xs text-muted-foreground">{f.formCategory} · {f.weight}× weight</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-foreground">{f.leads}</p>
-                  <TrendBadge change={f.change} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Top Converting Pages</p>
@@ -309,7 +446,6 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
     </div>
   );
 }
-
 // ── Build printable HTML report ──
 function buildReportHtml(report: any, run: any): string {
   const slug = report.templateSlug || "monthly_performance";
@@ -358,6 +494,13 @@ function buildReportHtml(report: any, run: any): string {
     const ci = report.conversionIntelligence;
     const ux = report.userExperience;
     const ap = report.actionPlan;
+    const sh = report.siteHealth;
+    const fh = report.formHealth;
+
+    // AI Insights
+    if (report.aiInsights?.length) {
+      body += renderSection("AI Insights", report.aiInsights.map((ins: any, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span><strong>${esc(ins.title)}</strong><br><span style="color:#6b7280">${esc(ins.body)}</span></div>`).join(""));
+    }
 
     body += renderSection("Executive Summary", `
       ${renderKpiGrid([
@@ -365,10 +508,40 @@ function buildReportHtml(report: any, run: any): string {
         { label: "Sessions", value: es.sessions.current, change: es.sessions.change },
         { label: "Pageviews", value: es.pageviews.current, change: es.pageviews.change },
         { label: "CVR", value: `${es.cvr.current}%`, change: es.cvr.change },
+        { label: "Weighted Leads", value: es.weightedLeads, change: null },
       ])}
       <div class="insight-box insight-win">✅ <strong>Key Win:</strong> ${esc(es.keyWin)}</div>
       <div class="insight-box insight-risk">⚠️ <strong>Key Risk:</strong> ${esc(es.keyRisk)}</div>
     `);
+
+    // Site Health
+    if (sh) {
+      body += renderSection("Site Health & Uptime", `
+        ${renderKpiGrid([
+          { label: "Uptime", value: `${sh.uptimePercent}%`, change: null },
+          { label: "Downtime", value: `${sh.totalDowntimeMinutes}m`, change: null },
+          { label: "Incidents", value: sh.downtimeIncidents?.length || 0, change: null },
+          { label: "Broken Links", value: sh.brokenLinksCount || 0, change: null },
+        ])}
+        ${sh.downtimeIncidents?.length ? `<div class="col-title">Downtime Incidents</div>${sh.downtimeIncidents.map((inc: any) => `<div class="rank-item"><span class="rank-label">⚠️ ${esc(inc.domain)} (${inc.durationMinutes}m)</span><span class="rank-count">${formatDate(inc.startedAt)}</span></div>`).join("")}` : ""}
+      `);
+    }
+
+    // Form Performance
+    if (fh) {
+      body += renderSection("Form Performance", `
+        ${renderKpiGrid([
+          { label: "Submissions", value: fh.totalSubmissions, change: null },
+          { label: "Failures", value: fh.totalFailures, change: null },
+          { label: "Failure Rate", value: `${fh.overallFailureRate}%`, change: null },
+          { label: "Est. Pipeline", value: `$${(fh.totalEstimatedValue || 0).toLocaleString()}`, change: null },
+        ])}
+        <table>
+          <thead><tr><th>Form</th><th style="text-align:right">Leads</th><th style="text-align:right">Δ</th><th style="text-align:right">CVR</th><th style="text-align:right">Failures</th><th style="text-align:right">Value</th></tr></thead>
+          <tbody>${(ci.leadsByForm || []).map((f: any) => `<tr><td>${esc(f.formName)}<br><span style="font-size:11px;color:#6b7280">${esc(f.formCategory)} · ${f.weight}× weight</span></td><td style="text-align:right;font-weight:600">${f.leads}</td><td style="text-align:right">${renderChange(f.change)}</td><td style="text-align:right">${f.cvr}%</td><td style="text-align:right;${f.failures > 0 ? 'color:#dc2626' : ''}">${f.failures}</td><td style="text-align:right">${f.totalValue > 0 ? `$${f.totalValue.toLocaleString()}` : '—'}</td></tr>`).join("")}</tbody>
+        </table>
+      `);
+    }
 
     body += renderSection("Growth Engine", `
       <div class="two-col">
@@ -378,12 +551,7 @@ function buildReportHtml(report: any, run: any): string {
     `);
 
     body += renderSection("Conversion Intelligence", `
-      <div class="col-title" style="margin-bottom:8px">Leads by Form</div>
-      <table>
-        <thead><tr><th>Form</th><th style="text-align:right">Leads</th><th style="text-align:right">Change</th></tr></thead>
-        <tbody>${(ci.leadsByForm || []).map((f: any) => `<tr><td>${esc(f.formName)}<br><span style="font-size:11px;color:#6b7280">${esc(f.formCategory)} · ${f.weight}× weight</span></td><td style="text-align:right;font-weight:600">${f.leads}</td><td style="text-align:right">${renderChange(f.change)}</td></tr>`).join("")}</tbody>
-      </table>
-      <div class="two-col" style="margin-top:16px">
+      <div class="two-col">
         <div><div class="col-title">Top Converting Pages</div>${renderRankList(ci.topConvertingPages)}</div>
         <div><div class="col-title">Lead Sources</div>${renderRankList(ci.leadSources)}</div>
       </div>

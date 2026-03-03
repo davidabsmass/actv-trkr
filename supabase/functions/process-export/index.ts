@@ -9,7 +9,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // ── Auth check ──
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -23,29 +22,22 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(
-      authHeader.replace("Bearer ", "")
-    );
-    if (claimsErr || !claimsData?.claims) {
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claimsData.claims.sub;
+    const userId = userData.user.id;
 
-    const supabase = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Accept optional job_id from the request body
     let jobId: string | null = null;
     try {
       const body = await req.json();
       jobId = body.job_id || null;
     } catch { /* no body is fine */ }
 
-    // Find queued job(s)
     let query = supabase.from("export_jobs").select("*").eq("status", "queued").order("created_at").limit(1);
     if (jobId) query = supabase.from("export_jobs").select("*").eq("id", jobId).limit(1);
 
@@ -60,13 +52,10 @@ Deno.serve(async (req) => {
     const job = jobs[0];
     const orgId = job.org_id;
 
-    // ── Verify caller is a member of the job's org ──
+    // Verify caller is a member of the job's org
     const { data: membership } = await supabase
-      .from("org_users")
-      .select("role")
-      .eq("org_id", orgId)
-      .eq("user_id", userId)
-      .maybeSingle();
+      .from("org_users").select("role")
+      .eq("org_id", orgId).eq("user_id", userId).maybeSingle();
     if (!membership || !["admin", "member"].includes(membership.role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -77,15 +66,29 @@ Deno.serve(async (req) => {
     await supabase.from("export_jobs").update({ status: "running" }).eq("id", job.id);
 
     try {
-      // Fetch leads
-      const { data: leads, error: leadsErr } = await supabase
+      // Build leads query with optional filters
+      let leadsQuery = supabase
         .from("leads")
         .select("id, submitted_at, status, source, utm_source, utm_medium, utm_campaign, page_url, page_path, referrer_domain, form_id, service, location, physician, lead_type, lead_score")
         .eq("org_id", orgId)
         .order("submitted_at", { ascending: false })
         .limit(5000);
 
+      // Apply filters from the job record
+      const filters = job.filters_json as Record<string, any> | null;
+      if (filters?.form_id) {
+        leadsQuery = leadsQuery.eq("form_id", filters.form_id);
+      }
+      if (job.start_date) {
+        leadsQuery = leadsQuery.gte("submitted_at", `${job.start_date}T00:00:00Z`);
+      }
+      if (job.end_date) {
+        leadsQuery = leadsQuery.lte("submitted_at", `${job.end_date}T23:59:59.999Z`);
+      }
+
+      const { data: leads, error: leadsErr } = await leadsQuery;
       if (leadsErr) throw leadsErr;
+
       if (!leads || leads.length === 0) {
         await supabase.from("export_jobs").update({
           status: "succeeded", completed_at: new Date().toISOString(), row_count: 0,
@@ -96,7 +99,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Fetch lead fields — exclude non-data field types
+      // Fetch lead fields
       const skipFieldTypes = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
       const leadIds = leads.map((l: any) => l.id);
       const allFields: any[] = [];
@@ -118,7 +121,7 @@ Deno.serve(async (req) => {
 
       // Build field map
       const leadFieldMap = new Map<string, Record<string, string>>();
-      const allFieldKeys = new Map<string, string>(); // key -> label
+      const allFieldKeys = new Map<string, string>();
       for (const f of allFields) {
         if (!leadFieldMap.has(f.lead_id)) leadFieldMap.set(f.lead_id, {});
         leadFieldMap.get(f.lead_id)![f.field_key] = f.value_text || "";
@@ -133,10 +136,9 @@ Deno.serve(async (req) => {
       const formNameMap: Record<string, string> = {};
       (forms || []).forEach((f: any) => { formNameMap[f.id] = f.name; });
 
-      // Build CSV — date, form, status, then form field values only
+      // Build CSV
       const fieldCols = [...allFieldKeys.entries()];
       const headerRow = ["Date", "Form", "Status", ...fieldCols.map(([, label]) => label)];
-
       const csvRows: string[] = [headerRow.map(escCsv).join(",")];
 
       for (const lead of leads) {
@@ -153,17 +155,14 @@ Deno.serve(async (req) => {
       const csvContent = csvRows.join("\n");
       const fileName = `${orgId}/export_${job.id}.csv`;
 
-      // Upload to storage
       const { error: uploadErr } = await supabase.storage
         .from("exports")
         .upload(fileName, new Blob([csvContent], { type: "text/csv" }), {
           contentType: "text/csv",
           upsert: true,
         });
-
       if (uploadErr) throw uploadErr;
 
-      // Update job as completed
       await supabase.from("export_jobs").update({
         status: "succeeded",
         completed_at: new Date().toISOString(),

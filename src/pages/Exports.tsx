@@ -85,17 +85,23 @@ export default function Exports() {
         created_by: session.user.id,
         format: exportFormat,
         status: "queued",
+        start_date: from ? format(from, "yyyy-MM-dd") : null,
+        end_date: to ? format(to, "yyyy-MM-dd") : null,
+        filters_json: formId ? { form_id: formId } : {},
       }).select("id").single();
       if (error) throw error;
 
-      // Trigger the processor
-      supabase.functions.invoke("process-export", {
+      // Trigger the processor and await result
+      const { error: fnError } = await supabase.functions.invoke("process-export", {
         body: { job_id: inserted.id },
-      }).catch(() => { /* fire and forget — job is queued regardless */ });
+      });
+      if (fnError) {
+        console.error("Export function error:", fnError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
-      toast.success(`${exportFormat.toUpperCase()} export queued — processing now`);
+      toast.success(`${exportFormat.toUpperCase()} export processing`);
     },
     onError: (err: any) => toast.error(err.message || "Failed to create export"),
   });

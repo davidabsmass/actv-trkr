@@ -139,7 +139,7 @@ export function AppSidebar() {
         )}
 
         {/* Settings — visible to org admins and global admins */}
-        {(isAdmin || orgRole === "admin") && (
+        {(isAdmin || !!orgRole) && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>

@@ -72,76 +72,7 @@ const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count
   );
 };
 
-// ── Weekly Brief Viewer ──
-function WeeklyBriefViewer({ report, onBack }: { report: any; onBack: () => void }) {
-  const { kpiSnapshot: kpi, topChanges, topSources, actions } = report;
-  return (
-    <div>
-      <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Reports
-      </button>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Weekly Brief</h1>
-      <p className="text-xs text-muted-foreground mb-6">
-        {format(new Date(report.periodStart), "MMM d")} – {format(new Date(report.periodEnd), "MMM d, yyyy")} · {report.periodDays}-day period
-      </p>
-
-      <Section icon={Target} title="KPI Snapshot">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Leads", value: kpi.leads.current, change: kpi.leads.change },
-            { label: "Sessions", value: kpi.sessions.current, change: kpi.sessions.change },
-            { label: "CVR", value: `${kpi.cvr.current}%`, change: kpi.cvr.change },
-            { label: "Weighted Leads", value: kpi.weightedLeads, change: null },
-          ].map((k) => (
-            <div key={k.label} className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{k.label}</p>
-              <p className="text-lg font-bold text-foreground">{k.value}</p>
-              <TrendBadge change={k.change} />
-            </div>
-          ))}
-        </div>
-        {kpi.goalTarget && (
-          <p className="text-xs text-muted-foreground mt-3">🎯 Goal: {kpi.goalTarget} leads · {Math.round((kpi.leads.current / kpi.goalTarget) * 100)}% achieved</p>
-        )}
-      </Section>
-
-      {topChanges?.length > 0 && (
-        <Section icon={TrendingUp} title="Biggest Changes">
-          <div className="space-y-3">
-            {topChanges.map((c: any, i: number) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                <span className="text-sm font-medium text-foreground">{c.metric}</span>
-                <div className="text-right">
-                  <span className="text-sm text-foreground">{c.current}</span>
-                  <span className="text-xs text-muted-foreground ml-1">from {c.previous}</span>
-                  <span className="ml-2"><TrendBadge change={c.change} /></span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {topSources?.length > 0 && (
-        <Section icon={Globe} title="Top Sources">
-          <RankList items={topSources} maxItems={5} />
-        </Section>
-      )}
-
-      <Section icon={Lightbulb} title="Quick Actions">
-        <div className="space-y-2">
-          {(actions || []).map((a: string, i: number) => (
-            <div key={i} className="flex items-start gap-2">
-              <span className="text-xs font-bold text-primary mt-0.5">{i + 1}.</span>
-              <p className="text-sm text-foreground">{a}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-    </div>
-  );
-}
-
+// Weekly Brief removed — only Monthly Performance and Campaign Report remain
 // ── Campaign Report Viewer ──
 function CampaignReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
   const { summary, campaignBreakdown, actions } = report;
@@ -474,17 +405,6 @@ function buildReportHtml(report: any, run: any): string {
       ${(ap.recommendations || []).map((r: string, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span>${esc(r)}</div>`).join("")}
       ${ap.contentOpportunities?.length > 0 ? `<div style="margin-top:12px"><div class="col-title">Content Opportunities</div>${(ap.contentOpportunities || []).map((o: any) => `<div class="rank-item"><span class="rank-label">${esc(o.page)}</span><span class="rank-count">${o.views} views, ${o.leads} leads</span></div>`).join("")}</div>` : ""}
     `);
-  } else if (slug === "weekly_brief") {
-    const kpi = report.kpiSnapshot;
-    body += renderSection("KPI Snapshot", renderKpiGrid([
-      { label: "Leads", value: kpi.leads.current, change: kpi.leads.change },
-      { label: "Sessions", value: kpi.sessions.current, change: kpi.sessions.change },
-      { label: "CVR", value: `${kpi.cvr.current}%`, change: kpi.cvr.change },
-      { label: "Weighted Leads", value: kpi.weightedLeads, change: null },
-    ]));
-    if (report.topChanges?.length) body += renderSection("Biggest Changes", (report.topChanges || []).map((c: any) => `<div class="rank-item"><span class="rank-label">${esc(c.metric)}</span><span>${c.current} from ${c.previous} ${renderChange(c.change)}</span></div>`).join(""));
-    if (report.topSources?.length) body += renderSection("Top Sources", renderRankList(report.topSources));
-    body += renderSection("Quick Actions", (report.actions || []).map((a: string, i: number) => `<div class="rec-item"><span class="rec-num">${i + 1}.</span>${esc(a)}</div>`).join(""));
   } else if (slug === "campaign_report") {
     const s = report.summary;
     body += renderSection("Overview", renderKpiGrid([
@@ -541,7 +461,7 @@ function renderRankList(items: Array<{ label: string; count: number }>): string 
 // ── Report Viewer Router ──
 function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
   const slug = report.templateSlug || "monthly-performance";
-  if (slug === "weekly-brief") return <WeeklyBriefViewer report={report} onBack={onBack} />;
+  if (slug === "campaign-report") return <CampaignReportViewer report={report} onBack={onBack} />;
   if (slug === "campaign-report") return <CampaignReportViewer report={report} onBack={onBack} />;
   return <MonthlyPerformanceViewer report={report} onBack={onBack} />;
 }

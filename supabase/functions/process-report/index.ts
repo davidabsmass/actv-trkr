@@ -78,6 +78,8 @@ Deno.serve(async (req) => {
         prevStart ? applyFilters(supabase.from("sessions").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", prevStart).lte("started_at", prevEnd!), "utm_source", "utm_campaign") : Promise.resolve({ data: null, count: 0 }),
         supabase.from("forms").select("*").eq("org_id", orgId),
         supabase.from("goals").select("*").eq("org_id", orgId).gte("month", periodStart.slice(0, 10)).limit(1),
+        // Exact session count (not limited by row fetch cap)
+        applyFilters(supabase.from("sessions").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", periodStart).lte("started_at", periodEnd), "utm_source", "utm_campaign"),
       ];
 
       // Only fetch pageviews for monthly performance (not needed for campaign/weekly brief as much)
@@ -85,6 +87,8 @@ Deno.serve(async (req) => {
         fetchPromises.push(
           supabase.from("pageviews").select("*").eq("org_id", orgId).gte("occurred_at", periodStart).lte("occurred_at", periodEnd).limit(5000),
           prevStart ? supabase.from("pageviews").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", prevStart).lte("occurred_at", prevEnd!) : Promise.resolve({ data: null, count: 0 }),
+          // Exact current pageview count
+          supabase.from("pageviews").select("id", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", periodStart).lte("occurred_at", periodEnd),
         );
       }
 
@@ -103,17 +107,21 @@ Deno.serve(async (req) => {
       const prevSessionCount = results[3].count ?? (results[3].data?.length || 0);
       const formList = results[4].data || [];
       const goals = results[5].data || [];
+      // Exact current session count from head query (avoids 1000-row cap)
+      const currentSessionCount = results[6].count ?? currentSessions.length;
 
       let currentPageviews: any[] = [];
       let prevPageviewCount = 0;
+      let currentPageviewCount = 0;
       let adSpendData: any[] = [];
 
       if (templateSlug !== "campaign_report") {
-        currentPageviews = results[6]?.data || [];
-        prevPageviewCount = results[7]?.count ?? 0;
+        currentPageviews = results[7]?.data || [];
+        prevPageviewCount = results[8]?.count ?? 0;
+        currentPageviewCount = results[9]?.count ?? currentPageviews.length;
       }
-      if (templateSlug === "campaign_report" && results.length > 6) {
-        adSpendData = results[6]?.data || [];
+      if (templateSlug === "campaign_report" && results.length > 7) {
+        adSpendData = results[7]?.data || [];
       }
 
       const formMap: Record<string, any> = {};
@@ -124,11 +132,11 @@ Deno.serve(async (req) => {
       let report: any;
 
       if (templateSlug === "weekly_brief") {
-        report = buildWeeklyBrief({ currentLeads, previousLeads, currentSessions, prevSessionCount, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode });
+        report = buildWeeklyBrief({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode });
       } else if (templateSlug === "campaign_report") {
-        report = buildCampaignReport({ currentLeads, previousLeads, currentSessions, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode });
+        report = buildCampaignReport({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode });
       } else {
-        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, prevSessionCount, currentPageviews, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode });
+        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode });
       }
 
       report.generatedAt = now.toISOString();
@@ -178,12 +186,12 @@ Deno.serve(async (req) => {
 });
 
 // ── MONTHLY PERFORMANCE (full 5-section report) ──
-function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, prevSessionCount, currentPageviews, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
+function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
   const totalLeads = currentLeads.length;
   const prevTotalLeads = previousLeads.length;
-  const totalSessions = currentSessions.length;
+  const totalSessions = currentSessionCount;
   const prevTotalSessions = prevSessionCount;
-  const totalPageviews = currentPageviews.length;
+  const totalPageviews = currentPageviewCount;
   const prevTotalPageviews = prevPageviewCount;
   const cvr = totalSessions > 0 ? (totalLeads / totalSessions) * 100 : 0;
   const prevCvr = prevTotalSessions > 0 ? (prevTotalLeads / prevTotalSessions) * 100 : 0;
@@ -265,10 +273,10 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
 }
 
 // ── WEEKLY BRIEF (condensed KPI snapshot) ──
-function buildWeeklyBrief({ currentLeads, previousLeads, currentSessions, prevSessionCount, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
+function buildWeeklyBrief({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
   const totalLeads = currentLeads.length;
   const prevTotalLeads = previousLeads.length;
-  const totalSessions = currentSessions.length;
+  const totalSessions = currentSessionCount;
   const prevTotalSessions = prevSessionCount;
   const cvr = totalSessions > 0 ? (totalLeads / totalSessions) * 100 : 0;
   const prevCvr = prevTotalSessions > 0 ? (prevTotalLeads / prevTotalSessions) * 100 : 0;
@@ -311,7 +319,7 @@ function buildWeeklyBrief({ currentLeads, previousLeads, currentSessions, prevSe
 }
 
 // ── CAMPAIGN REPORT (UTM-grouped) ──
-function buildCampaignReport({ currentLeads, previousLeads, currentSessions, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
+function buildCampaignReport({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode }: any) {
   const noComparison = compareMode === "none";
 
   // Group by utm_campaign
@@ -365,7 +373,7 @@ function buildCampaignReport({ currentLeads, previousLeads, currentSessions, pre
   // Totals
   const totalLeads = currentLeads.length;
   const prevTotalLeads = previousLeads.length;
-  const totalSessions = currentSessions.length;
+  const totalSessions = currentSessionCount;
   const cvr = totalSessions > 0 ? Math.round((totalLeads / totalSessions) * 10000) / 100 : 0;
   const totalSpend = adSpendData.reduce((s: number, a: any) => s + (a.spend || 0), 0);
   const overallCpl = totalSpend > 0 && totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : null;

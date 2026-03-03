@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { format, subDays, startOfDay } from "date-fns";
-import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { AttributionSection } from "@/components/dashboard/AttributionSection";
 import { TrafficSourceROI } from "@/components/dashboard/TrafficSourceROI";
@@ -11,12 +10,16 @@ import { FunnelView } from "@/components/dashboard/FunnelView";
 import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { KPIRow } from "@/components/dashboard/KPIRow";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrg } from "@/hooks/use-org";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { usePlanTier } from "@/hooks/use-plan-tier";
 import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
+import Reports from "./Reports";
 
 const Performance = () => {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "analytics";
   const [days, setDays] = useState(30);
   const { orgId, orgName } = useOrg();
   const { hasFeature } = usePlanTier();
@@ -115,22 +118,35 @@ const Performance = () => {
         <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="glass-card p-6 animate-pulse">
-              <div className="h-4 bg-muted rounded w-1/4 mb-4" />
-              <div className="h-20 bg-muted rounded" />
+      <Tabs defaultValue={initialTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analytics">
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="glass-card p-6 animate-pulse">
+                  <div className="h-4 bg-muted rounded w-1/4 mb-4" />
+                  <div className="h-20 bg-muted rounded" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
-          <TrendsChart data={processedData.dailyData} />
-          {renderSections()}
-        </div>
-      )}
+          ) : (
+            <div className="space-y-4">
+              <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
+              <TrendsChart data={processedData.dailyData} />
+              {renderSections()}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <Reports embedded />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

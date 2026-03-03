@@ -635,7 +635,7 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
 }
 
 // ── Main Reports Page ──
-export default function Reports() {
+export default function Reports({ embedded }: { embedded?: boolean }) {
   const { orgId, orgName } = useOrg();
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -837,14 +837,18 @@ export default function Reports() {
 
   return (
     <div>
-      <button
-        onClick={() => navigate("/dashboard")}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-      </button>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Reports</h1>
-      <p className="text-sm text-muted-foreground mb-6">Generate reports for {orgName}</p>
+      {!embedded && (
+        <>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </button>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Reports</h1>
+          <p className="text-sm text-muted-foreground mb-6">Generate reports for {orgName}</p>
+        </>
+      )}
 
       {/* Generate Report */}
       <div className="rounded-lg border border-border bg-card p-5 mb-6">

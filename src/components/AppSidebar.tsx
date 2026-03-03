@@ -22,7 +22,6 @@ import { Badge } from "@/components/ui/badge";
 const telemetryItems = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Performance", url: "/performance", icon: TrendingUp },
-  { title: "Reports", url: "/reports", icon: FileText },
   { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
 ];

@@ -9,16 +9,23 @@ import {
   Legend,
 } from "recharts";
 import { useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
 interface AttributionProps {
   sources: Array<{ source: string; sessions: number; leads: number; cvr: number }>;
   campaigns: Array<{ campaign: string; sessions: number; leads: number; cvr: number }>;
 }
 
+const INITIAL_ROWS = 20;
+
 export function AttributionSection({ sources, campaigns }: AttributionProps) {
   const [tab, setTab] = useState<"source" | "campaign">("source");
+  const [showAll, setShowAll] = useState(false);
   const data = tab === "source" ? sources : campaigns;
   const labelKey = tab === "source" ? "source" : "campaign";
+  const visibleData = showAll ? data : data.slice(0, INITIAL_ROWS);
+  const hasMore = data.length > INITIAL_ROWS;
 
   return (
     <div className="glass-card p-5 animate-slide-up">
@@ -80,20 +87,20 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
         </div>
 
         {/* Table */}
-        <div className="overflow-auto">
+        <ScrollArea className={hasMore && !showAll ? "h-[420px]" : ""}>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">
                   {tab === "source" ? "Source" : "Campaign"}
                 </th>
-                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Sessions</th>
-                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Leads</th>
-                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">CVR</th>
+                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">Sessions</th>
+                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">Leads</th>
+                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">CVR</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((row, i) => (
+              {visibleData.map((row, i) => (
                 <tr key={i} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
                   <td className="py-2 px-2 font-medium text-foreground">
                     {tab === "source" ? (row as any).source : (row as any).campaign}
@@ -111,7 +118,14 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollArea>
+        {hasMore && (
+          <div className="mt-2 text-center">
+            <Button variant="ghost" size="sm" onClick={() => setShowAll(!showAll)}>
+              {showAll ? "Show less" : `See all ${data.length} rows`}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

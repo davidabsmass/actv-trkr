@@ -63,7 +63,7 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
         ) : (
           <div className="space-y-3">
             {opportunities.map((opp, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
+              <div key={i} className="flex items-start gap-3 p-3 bg-secondary rounded-lg">
                 <div className="flex-shrink-0 w-6 h-6 rounded-full bg-warning/10 flex items-center justify-center">
                   <ArrowUpRight className="h-3.5 w-3.5 text-warning" />
                 </div>

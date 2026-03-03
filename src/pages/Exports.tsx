@@ -97,11 +97,28 @@ export default function Exports() {
       });
       if (fnError) {
         console.error("Export function error:", fnError);
+        throw new Error("Export processing failed");
       }
+
+      // Fetch the completed job to get file_path
+      const { data: completedJob } = await supabase
+        .from("export_jobs")
+        .select("file_path, status, row_count")
+        .eq("id", inserted.id)
+        .single();
+
+      return completedJob;
     },
-    onSuccess: () => {
+    onSuccess: (job) => {
       queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
-      toast.success(`${exportFormat.toUpperCase()} export processing`);
+      if (job?.file_path) {
+        toast.success(`Export ready — ${job.row_count ?? 0} rows. Downloading now…`);
+        handleDownload(job.file_path);
+      } else if (job?.status === "succeeded" && !job?.file_path) {
+        toast.info("No leads found for the selected filters.");
+      } else {
+        toast.success("Export completed");
+      }
     },
     onError: (err: any) => toast.error(err.message || "Failed to create export"),
   });

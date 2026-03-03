@@ -75,16 +75,19 @@ require_once AT_PLUGIN_DIR.'includes/class-tracker.php';
 require_once AT_PLUGIN_DIR.'includes/class-forms.php';
 require_once AT_PLUGIN_DIR.'includes/class-retry-queue.php';
 require_once AT_PLUGIN_DIR.'includes/class-updater.php';
+require_once AT_PLUGIN_DIR.'includes/class-heartbeat.php';
 function at_activate(){
   AT_Retry_Queue::create_table();
   if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
+  if(!wp_next_scheduled('at_heartbeat_cron')){wp_schedule_event(time(),'at_every_5_min','at_heartbeat_cron');}
 }
 register_activation_hook(__FILE__,'at_activate');
-function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');}
+function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');}
 register_deactivation_hook(__FILE__,'at_deactivate');
 add_filter('cron_schedules',function($s){$s['at_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return $s;});
-AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();
+AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();
 add_action('at_retry_cron',array('AT_Retry_Queue','process'));
+add_action('at_heartbeat_cron',array('AT_Heartbeat','send_cron_heartbeat'));
 `,
 
     "actv-trkr/includes/class-settings.php": `<?php
@@ -92,11 +95,11 @@ if(!defined('ABSPATH'))exit;
 class AT_Settings{
 const OPTION_GROUP='at_settings';const OPTION_NAME='at_options';
 public static function init(){add_action('admin_menu',array(__CLASS__,'add_menu'));add_action('admin_init',array(__CLASS__,'register_settings'));add_action('wp_ajax_at_test_connection',array(__CLASS__,'ajax_test_connection'));add_action('wp_ajax_at_sync_forms',array(__CLASS__,'ajax_sync_forms'));}
-public static function defaults(){return array('api_key'=>'','endpoint_url'=>defined('AT_DEFAULT_ENDPOINT')?AT_DEFAULT_ENDPOINT:'${endpointBase}','enable_tracking'=>'1','enable_forms'=>'1');}
+public static function defaults(){return array('api_key'=>'','endpoint_url'=>defined('AT_DEFAULT_ENDPOINT')?AT_DEFAULT_ENDPOINT:'${endpointBase}','enable_tracking'=>'1','enable_forms'=>'1','enable_heartbeat'=>'1');}
 public static function get($key=null){$opts=wp_parse_args(get_option(self::OPTION_NAME,array()),self::defaults());return $key?($opts[$key]??null):$opts;}
 public static function add_menu(){add_options_page('ACTV TRKR','ACTV TRKR','manage_options','actv-trkr',array(__CLASS__,'render_page'));}
 public static function register_settings(){register_setting(self::OPTION_GROUP,self::OPTION_NAME,array('sanitize_callback'=>array(__CLASS__,'sanitize')));}
-public static function sanitize($input){$c=array();$c['api_key']=sanitize_text_field($input['api_key']??'');$c['endpoint_url']=esc_url_raw($input['endpoint_url']??'');$c['enable_tracking']=!empty($input['enable_tracking'])?'1':'0';$c['enable_forms']=!empty($input['enable_forms'])?'1':'0';return $c;}
+public static function sanitize($input){$c=array();$c['api_key']=sanitize_text_field($input['api_key']??'');$c['endpoint_url']=esc_url_raw($input['endpoint_url']??'');$c['enable_tracking']=!empty($input['enable_tracking'])?'1':'0';$c['enable_forms']=!empty($input['enable_forms'])?'1':'0';$c['enable_heartbeat']=!empty($input['enable_heartbeat'])?'1':'0';return $c;}
 public static function render_page(){$opts=self::get();?>
 <div class="wrap"><h1>ACTV TRKR</h1>
 <form method="post" action="options.php"><?php settings_fields(self::OPTION_GROUP);?>
@@ -105,6 +108,7 @@ public static function render_page(){$opts=self::get();?>
 <tr><th scope="row"><label for="at_endpoint">Endpoint URL</label></th><td><input type="url" id="at_endpoint" name="<?php echo self::OPTION_NAME;?>[endpoint_url]" value="<?php echo esc_attr($opts['endpoint_url']);?>" class="regular-text"/></td></tr>
 <tr><th scope="row">Enable Tracking</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_tracking]" value="1" <?php checked($opts['enable_tracking'],'1');?>/> Inject tracker.js on all front-end pages</label></td></tr>
 <tr><th scope="row">Enable Form Capture</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_forms]" value="1" <?php checked($opts['enable_forms'],'1');?>/> Capture form submissions (all form plugins)</label></td></tr>
+<tr><th scope="row">Enable Heartbeat</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_heartbeat]" value="1" <?php checked($opts['enable_heartbeat'],'1');?>/> Send uptime heartbeat (JS beacon + WP-Cron fallback)</label></td></tr>
 </table><?php submit_button();?></form>
 <hr/><h2>Test Connection</h2><p><button type="button" id="at-test-btn" class="button button-secondary">Test Connection</button></p><div id="at-test-result"></div>
 <hr/><h2>Sync Forms</h2>
@@ -219,6 +223,16 @@ function isSens(n){for(var i=0;i<SENS_PAT.length;i++){if(SENS_PAT[i].test(n))ret
 function captureForm(form){var fields=[];var els=form.elements;var seen={};for(var i=0;i<els.length;i++){var el=els[i];var name=el.name||el.id||'';var type=(el.type||'text').toLowerCase();if(skipField(name,type))continue;if(seen[name])continue;var value='';if(type==='checkbox'){var chk=form.querySelectorAll('input[name="'+name+'"]:checked');var vals=[];for(var j=0;j<chk.length;j++)vals.push(chk[j].value);value=vals.join(', ');}else if(type==='radio'){var sel=form.querySelector('input[name="'+name+'"]:checked');value=sel?sel.value:'';}else if(el.tagName==='SELECT'){var opts=el.selectedOptions||[];var sv=[];for(var k=0;k<opts.length;k++)sv.push(opts[k].value);value=sv.join(', ');}else{value=el.value||'';}seen[name]=true;if(isSens(name)){value='[REDACTED]';}if(value===''&&type!=='checkbox')continue;fields.push({name:name,label:el.getAttribute('aria-label')||el.getAttribute('placeholder')||name,type:type,value:value});}return fields;}
 document.addEventListener('submit',function(e){var form=e.target;if(!form||form.tagName!=='FORM')return;if(form.getAttribute('data-at-ignore')==='true')return;var role=form.getAttribute('role');if(role==='search')return;var action=(form.getAttribute('action')||'').toLowerCase();if(action.indexOf('wp-login')!==-1||action.indexOf('wp-admin')!==-1)return;var fields=captureForm(form);if(fields.length===0)return;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);var formEndpoint=CFG.endpoint.replace(/\\/track-pageview$/,'/ingest-form');send(formEndpoint,{provider:'js_capture',entry:{form_id:form.getAttribute('id')||form.getAttribute('data-form-id')||'dom_form',form_title:form.getAttribute('data-form-title')||form.getAttribute('aria-label')||document.title,entry_id:'js_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),source_url:window.location.href,page_url:window.location.href,submitted_at:new Date().toISOString()},context:{domain:CFG.domain,referrer:document.referrer||null,visitor_id:vid,session_id:sid,utm:storedUtms(),plugin_version:CFG.pluginVersion},fields:fields});},true);
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',track);}else{track();}})();`,
+
+    "actv-trkr/includes/class-heartbeat.php": `<?php
+if(!defined('ABSPATH'))exit;
+class AT_Heartbeat{
+public static function init(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;if(empty($opts['enable_heartbeat'])||$opts['enable_heartbeat']!=='1')return;add_action('wp_enqueue_scripts',array(__CLASS__,'enqueue_beacon'));}
+public static function enqueue_beacon(){if(is_admin())return;$opts=AT_Settings::get();wp_enqueue_script('at-heartbeat',AT_PLUGIN_URL.'assets/heartbeat.js',array(),AT_PLUGIN_VERSION,true);wp_localize_script('at-heartbeat','atHeartbeat',array('endpoint'=>rtrim($opts['endpoint_url'],'/').'/ingest-heartbeat','apiKey'=>$opts['api_key'],'domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'interval'=>60000));}
+public static function send_cron_heartbeat(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;if(empty($opts['enable_heartbeat'])||$opts['enable_heartbeat']!=='1')return;$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-heartbeat';$domain=wp_parse_url(home_url(),PHP_URL_HOST);wp_remote_post($endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','x-actvtrkr-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain,'source'=>'cron','meta'=>array('php_version'=>PHP_VERSION,'wp_version'=>get_bloginfo('version'))))));}
+}`,
+
+    "actv-trkr/assets/heartbeat.js": `(function(){'use strict';if(typeof window==='undefined'||!window.atHeartbeat)return;var CFG=window.atHeartbeat;var sent=false;function sendHeartbeat(){if(sent)return;sent=true;var body=JSON.stringify({domain:CFG.domain,source:'js',meta:{user_agent:navigator.userAgent}});fetch(CFG.endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-actvtrkr-key':CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(CFG.endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}setTimeout(sendHeartbeat,2000);})();`,
 
     "actv-trkr/readme.txt": `=== ACTV TRKR ===
 Contributors: actvtrkr

@@ -1,4 +1,5 @@
 import { useOrg } from "@/hooks/use-org";
+import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
@@ -6,7 +7,10 @@ import FormsSection from "@/components/settings/FormsSection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 
 export default function SettingsPage() {
-  const { orgName } = useOrg();
+  const { orgName, orgId } = useOrg();
+  const { isAdmin } = useUserRole();
+  const { isOrgAdmin } = useOrgRole(orgId);
+  const showAdminSections = isAdmin || isOrgAdmin;
 
   return (
     <div>
@@ -16,8 +20,8 @@ export default function SettingsPage() {
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <PluginSection />
-        <ApiKeysSection />
+        {showAdminSections && <PluginSection />}
+        {showAdminSections && <ApiKeysSection />}
         <SitesSection />
         <FormsSection />
         <NotificationsSection />

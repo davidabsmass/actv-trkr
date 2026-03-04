@@ -211,49 +211,12 @@ export default function Forms() {
 
   if (selectedForm) {
     return (
-      <div>
-        <button
-          onClick={() => setSelectedFormId(null)}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Forms
-        </button>
-        <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-2xl font-bold text-foreground">{selectedForm.name}</h1>
-          <Badge variant="outline" className={`text-[10px] uppercase ${categoryColors[selectedForm.form_category] || categoryColors.other}`}>
-            {selectedForm.form_category}
-          </Badge>
-          {selectedForm.lead_weight < 1 && (
-            <span className="text-xs text-muted-foreground font-mono-data">{selectedForm.lead_weight}× weight</span>
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground mb-6">
-          {selectedForm.provider} · {leadCounts?.[selectedForm.id] ?? "—"} total leads
-        </p>
-
-        <Tabs defaultValue="entries" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="entries" className="gap-1.5">
-              <FileText className="h-3.5 w-3.5" /> Entries
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="gap-1.5">
-              <BarChart3 className="h-3.5 w-3.5" /> Analytics
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-1.5">
-              <Settings2 className="h-3.5 w-3.5" /> Settings
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="entries">
-            <FormEntries orgId={orgId} formId={selectedForm.id} />
-          </TabsContent>
-          <TabsContent value="analytics">
-            <FormAnalytics orgId={orgId} formId={selectedForm.id} />
-          </TabsContent>
-          <TabsContent value="settings">
-            <FormSettings form={selectedForm} />
-          </TabsContent>
-        </Tabs>
-      </div>
+      <FormDetail
+        form={selectedForm}
+        orgId={orgId}
+        leadCount={leadCounts?.[selectedForm.id] ?? 0}
+        onBack={() => setSelectedFormId(null)}
+      />
     );
   }
 

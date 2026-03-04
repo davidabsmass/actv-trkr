@@ -1,8 +1,11 @@
+import { useState, useEffect } from "react";
 import { Outlet, Navigate, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { OrgProvider, useOrg } from "@/hooks/use-org";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
 
@@ -10,8 +13,30 @@ function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [redeemingInvite, setRedeemingInvite] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    if (loading || orgs.length > 0) return;
+
+    const pendingCode = localStorage.getItem("pending_invite_code");
+    if (!pendingCode) return;
+
+    setRedeemingInvite(true);
+    localStorage.removeItem("pending_invite_code");
+
+    supabase.functions
+      .invoke("redeem-invite", { body: { code: pendingCode } })
+      .then(({ data, error }) => {
+        if (!error && data && !data.error) {
+          queryClient.invalidateQueries({ queryKey: ["orgs"] });
+        }
+      })
+      .catch((e) => console.error("Pending invite redeem failed:", e))
+      .finally(() => setRedeemingInvite(false));
+  }, [loading, orgs.length, queryClient]);
+
+  if (loading || redeemingInvite) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />

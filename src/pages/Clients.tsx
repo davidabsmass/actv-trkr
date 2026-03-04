@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { APP_DOMAIN } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
@@ -553,7 +554,7 @@ function OrgDetail({ org }: { org: any }) {
             {inviteCodes.map((ic: any) => (
               <div key={ic.id} className="bg-secondary rounded-lg p-3 flex items-center gap-2">
                 <code className="text-xs font-mono text-secondary-foreground flex-1">
-                  {window.location.origin}/auth?invite={ic.code}
+                  {APP_DOMAIN}/auth?invite={ic.code}
                 </code>
                 <span className="text-[10px] text-muted-foreground tabular-nums">
                   {ic.use_count} used

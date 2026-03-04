@@ -1,35 +1,34 @@
 
 
-## Allow Clients to Add Websites
+## Problem
 
-### Current State
-- The **Settings** page is hidden from users with `member` org role — only `admin` (org-level or global) sees it in the sidebar.
-- The **SitesSection** component on Settings allows adding/removing sites.
-- There is no standalone "Add Site" flow accessible to regular members.
+When an invited user clicks the invite link (`/auth?invite=CODE`), signs up, and then confirms their email, they end up on the **onboarding page** instead of the dashboard. Here's why:
 
-### Options
+1. User visits `/auth?invite=CODE` and signs up
+2. Invite code is saved to `localStorage` as `pending_invite_code`
+3. User confirms email via the link in their inbox
+4. Email confirmation auto-logs them in — the browser navigates back to the app
+5. `AuthRoute` on `/auth` sees an active session and redirects to `/`
+6. **The pending invite code is never redeemed** because that only happens inside the login form submit handler
+7. `AppLayout` checks orgs → user has none → redirects to `/onboarding`
 
-**Option A: Give members access to Settings**
-- Change the sidebar gate from `isAdmin || orgRole === "admin"` to `isAdmin || orgRole === "admin" || orgRole === "member"` (i.e., all org members).
-- This exposes all settings (API keys, plugin, forms, notifications) to members, which may not be desirable.
+## Fix
 
-**Option B: Add a dedicated "Sites" section visible to all users**
-- Extract the SitesSection into its own route or embed it on the Dashboard/Monitoring page.
-- Keep sensitive settings (API keys, plugin downloads) restricted to admins.
-- Add a simple "Add Site" button somewhere members can reach — e.g., the empty-state banner on the Dashboard or a new sidebar link.
+Add invite code redemption logic to **`AppLayout.tsx`** (or a new wrapper) so that when an authenticated user with no orgs loads the app, the system checks `localStorage` for a `pending_invite_code` and redeems it before deciding to redirect to onboarding.
 
-**Option C: Keep it admin-only (current behavior)**
-- Clients request site additions through their admin or through you.
-- No code changes needed.
+### Changes
 
-### Recommendation: Option B (lightweight version)
+**1. `src/components/AppLayout.tsx`** — Add pending invite redemption
 
-1. **`src/components/AppSidebar.tsx`** — Show Settings to all authenticated org members (not just admins), but...
-2. **`src/pages/Settings.tsx`** — Conditionally render sections: show SitesSection and NotificationsSection to all members; hide ApiKeysSection and PluginSection for non-admins.
-3. No database changes needed — the `sites` table INSERT policy already allows `admin` and `member` roles.
+Before the `if (!orgs.length)` check, add an effect that:
+- Checks `localStorage` for `pending_invite_code`
+- If found, calls the `redeem-invite` edge function
+- On success, refetches the orgs list (which will now include the invited org)
+- Only falls through to onboarding redirect if there's no pending code or redemption fails
 
-| File | Change |
-|------|--------|
-| `AppSidebar.tsx` | Show Settings link to all org members |
-| `Settings.tsx` | Gate ApiKeysSection and PluginSection behind admin check; show SitesSection and FormsSection to all |
+This ensures the invite code is redeemed regardless of how the user's session was established (form login, email confirmation redirect, or token refresh).
+
+**2. `src/pages/Auth.tsx`** — Keep existing logic as fallback
+
+The existing `pending_invite_code` check in the login handler stays as a secondary path for users who manually sign in after confirming their email.
 

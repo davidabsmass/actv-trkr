@@ -299,6 +299,84 @@ export default function Forms() {
   );
 }
 
+/* ─── Form Detail (with Sync button) ─── */
+function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: string | null; leadCount: number; onBack: () => void }) {
+  const queryClient = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (!orgId || !form.site_id) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
+        body: { site_id: form.site_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Sync complete — ${data?.wp_result?.result?.synced ?? 0} form(s) synced`);
+      queryClient.invalidateQueries({ queryKey: ["leads_by_form"] });
+      queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["forms"] });
+    } catch (err: any) {
+      toast.error(err.message || "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div>
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" /> Back to Forms
+      </button>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground">{form.name}</h1>
+          <Badge variant="outline" className={`text-[10px] uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
+            {form.form_category}
+          </Badge>
+          {form.lead_weight < 1 && (
+            <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}× weight</span>
+          )}
+        </div>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSync} disabled={syncing}>
+          <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "Syncing…" : "Sync Entries"}
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground mb-6">
+        {form.provider} · {leadCount ?? "—"} total leads
+      </p>
+
+      <Tabs defaultValue="entries" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="entries" className="gap-1.5">
+            <FileText className="h-3.5 w-3.5" /> Entries
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" /> Analytics
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="gap-1.5">
+            <Settings2 className="h-3.5 w-3.5" /> Settings
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="entries">
+          <FormEntries orgId={orgId} formId={form.id} />
+        </TabsContent>
+        <TabsContent value="analytics">
+          <FormAnalytics orgId={orgId} formId={form.id} />
+        </TabsContent>
+        <TabsContent value="settings">
+          <FormSettings form={form} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
 /* ─── Settings Tab ─── */
 function FormSettings({ form }: { form: any }) {
   const queryClient = useQueryClient();

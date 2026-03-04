@@ -49,3 +49,7 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.scan-broken-links]
     verify_jwt = false
+  [functions.sync-entries]
+    verify_jwt = false
+  [functions.trigger-site-sync]
+    verify_jwt = false

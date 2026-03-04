@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Zap, Plus, Copy, Check, Download, Globe } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { refetch } = useOrgs();
+  const { data: orgs, isLoading, refetch } = useOrgs();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [createdOrg, setCreatedOrg] = useState<any>(null);
@@ -92,6 +92,11 @@ const Onboarding = () => {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // If user already has orgs (and isn't mid-creation), redirect to dashboard
+  if (!isLoading && orgs && orgs.length > 0 && !createdOrg) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   if (createdOrg && apiKey) {
     return (

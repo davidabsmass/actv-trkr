@@ -159,10 +159,83 @@ class MM_Forms {
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		// Sync entry IDs to detect deletions
+		self::sync_entry_ids( $discovered, $domain, $opts );
+
 		return array(
 			'synced'     => $body['synced'] ?? 0,
 			'discovered' => count( $discovered ),
 		);
+	}
+
+	/**
+	 * For each discovered form, gather active entry IDs and send them
+	 * to the sync-entries endpoint so deleted entries get trashed.
+	 */
+	private static function sync_entry_ids( $discovered, $domain, $opts ) {
+		$forms_with_entries = array();
+
+		foreach ( $discovered as $form_info ) {
+			$provider = $form_info['provider'] ?? '';
+			$form_id  = $form_info['form_id'] ?? '';
+			if ( ! $form_id ) continue;
+
+			$entry_ids = self::get_active_entry_ids( $provider, $form_id );
+			if ( $entry_ids === null ) continue; // provider doesn't support entry listing
+
+			$forms_with_entries[] = array(
+				'form_id'   => $form_id,
+				'provider'  => $provider,
+				'entry_ids' => $entry_ids,
+			);
+		}
+
+		if ( empty( $forms_with_entries ) ) return;
+
+		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-entries';
+
+		$response = wp_remote_post( $endpoint, array(
+			'timeout'  => 30,
+			'headers'  => array(
+				'Content-Type'  => 'application/json',
+				'Authorization' => 'Bearer ' . $opts['api_key'],
+			),
+			'body' => wp_json_encode( array(
+				'domain' => $domain,
+				'forms'  => $forms_with_entries,
+			) ),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			error_log( '[MissionMetrics] Entry sync error: ' . $response->get_error_message() );
+		}
+	}
+
+	/**
+	 * Get active (non-trashed) entry IDs for a given form provider + form ID.
+	 * Returns null if the provider doesn't support entry listing.
+	 */
+	private static function get_active_entry_ids( $provider, $form_id ) {
+		switch ( $provider ) {
+			case 'gravity_forms':
+				if ( ! class_exists( 'GFAPI' ) ) return null;
+				$search = array( 'status' => 'active' );
+				$entries = \GFAPI::get_entries( $form_id, $search, null, array( 'offset' => 0, 'page_size' => 5000 ) );
+				if ( ! is_array( $entries ) ) return array();
+				return array_map( function( $e ) { return (string) $e['id']; }, $entries );
+
+			case 'wpforms':
+				if ( ! function_exists( 'wpforms' ) || ! isset( wpforms()->entry ) ) return null;
+				$entries = wpforms()->entry->get_entries( array( 'form_id' => $form_id ) );
+				if ( ! is_array( $entries ) ) return array();
+				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
+
+			default:
+				// CF7, Ninja Forms, Fluent Forms, Avada — these don't reliably store entries
+				// or use generated IDs (timestamps), so we can't reconcile them.
+				return null;
+		}
 	}
 
 	// ── Shared helpers ──────────────────────────────────────────────

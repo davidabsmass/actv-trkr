@@ -64,6 +64,7 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
       const { count, error } = await supabase
         .from("leads").select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
+        .neq("status", "trashed")
         .gte("submitted_at", `${startDate}T00:00:00Z`)
         .lte("submitted_at", `${endDate}T23:59:59.999Z`);
       if (error) throw error;
@@ -200,7 +201,7 @@ export default function Forms() {
       for (const form of forms) {
         const { count, error } = await supabase
           .from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId).eq("form_id", form.id);
+          .eq("org_id", orgId).eq("form_id", form.id).neq("status", "trashed");
         if (!error) counts[form.id] = count || 0;
       }
       return counts;
@@ -474,7 +475,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("leads").select("id, submitted_at, status, source, data")
-        .eq("org_id", orgId).eq("form_id", formId)
+        .eq("org_id", orgId).eq("form_id", formId).neq("status", "trashed")
         .order("submitted_at", { ascending: false }).limit(200);
       if (error) throw error;
       return data;
@@ -767,7 +768,7 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("leads").select("submitted_at, status, source")
-        .eq("org_id", orgId).eq("form_id", formId)
+        .eq("org_id", orgId).eq("form_id", formId).neq("status", "trashed")
         .gte("submitted_at", `${startDate}T00:00:00Z`)
         .lte("submitted_at", `${endDate}T23:59:59.999Z`)
         .order("submitted_at");

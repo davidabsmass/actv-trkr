@@ -26,7 +26,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
 
         // Lead count
         supabase.from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
+          .eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
 
         // Session details for source/campaign/page breakdowns
         supabase.from("sessions")

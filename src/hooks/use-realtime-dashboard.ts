@@ -143,8 +143,8 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         pages: Object.entries(pageMap)
           .map(([path, v]) => ({ path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
           .sort((a, b) => b.sessions - a.sessions),
-        countries: Object.entries(countrySessionMap)
-          .map(([countryCode, s]) => ({ countryCode, sessions: s.size }))
+        countries: Object.entries(countryTotals)
+          .map(([countryCode, sessions]) => ({ countryCode, sessions }))
           .sort((a, b) => b.sessions - a.sessions),
       };
     },

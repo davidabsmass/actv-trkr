@@ -21,11 +21,8 @@ const INITIAL_ROWS = 15;
 
 export function AttributionSection({ sources, campaigns }: AttributionProps) {
   const [tab, setTab] = useState<"source" | "campaign">("source");
-  const [showAll, setShowAll] = useState(false);
   const data = tab === "source" ? sources : campaigns;
   const labelKey = tab === "source" ? "source" : "campaign";
-  const visibleData = data;
-  const hasMore = data.length > INITIAL_ROWS;
 
   return (
     <div className="glass-card p-5 animate-slide-up">
@@ -125,13 +122,6 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
             </tbody>
           </table>
         </ScrollArea>
-        {hasMore && (
-          <div className="mt-2 text-center">
-            <Button variant="ghost" size="sm" onClick={() => setShowAll(!showAll)}>
-              {showAll ? "Show less" : `See all ${data.length} rows`}
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

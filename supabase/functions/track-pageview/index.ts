@@ -118,9 +118,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Support API key from Authorization header OR request body (sendBeacon can't set headers)
     const authHeader = req.headers.get("authorization") || "";
-    const apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!apiKey || apiKey.length > 256) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    let apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 

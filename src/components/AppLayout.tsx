@@ -57,7 +57,7 @@ function LayoutInner() {
           <header className="h-12 flex items-center justify-between border-b border-border px-4 shrink-0">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
-              <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-[26px] w-auto" />
+              <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-[34px] w-auto" />
             </div>
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => navigate("/admin-setup")} className="gap-1.5">

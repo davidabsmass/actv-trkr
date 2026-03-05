@@ -38,11 +38,12 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
           .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
           .eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
 
-        // Pageview country data
-        supabase.from("pageviews")
-          .select("country_code, session_id")
-          .eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd)
-          .not("country_code", "is", null),
+        // Country data from pre-aggregated table
+        supabase.from("traffic_daily")
+          .select("dimension, value")
+          .eq("org_id", orgId).eq("metric", "sessions_by_country")
+          .gte("date", startDate).lte("date", endDate)
+          .not("dimension", "is", null),
       ]);
 
       const totalPageviews = pvRes.count || 0;
@@ -50,7 +51,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       const totalLeads = leadRes.count || 0;
       const sessions = sessDetail.data || [];
       const leads = leadDetail.data || [];
-      const pvCountryData = pvCountry.data || [];
+      const countryAggData = pvCountry.data || [];
 
       // Daily breakdown
       const dailyMap: Record<string, { sessions: number; leads: number; pageviews: number }> = {};
@@ -121,13 +122,11 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         pageMap[p].leads++;
       });
 
-      // Country breakdown
-      const countrySessionMap: Record<string, Set<string>> = {};
-      pvCountryData.forEach((pv: any) => {
-        const cc = pv.country_code || "XX";
-        const sid = pv.session_id || cc;
-        if (!countrySessionMap[cc]) countrySessionMap[cc] = new Set();
-        countrySessionMap[cc].add(sid);
+      // Country breakdown from aggregated data
+      const countryTotals: Record<string, number> = {};
+      countryAggData.forEach((row: any) => {
+        const cc = row.dimension || "XX";
+        countryTotals[cc] = (countryTotals[cc] || 0) + Number(row.value || 0);
       });
 
       return {
@@ -144,8 +143,8 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         pages: Object.entries(pageMap)
           .map(([path, v]) => ({ path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
           .sort((a, b) => b.sessions - a.sessions),
-        countries: Object.entries(countrySessionMap)
-          .map(([countryCode, s]) => ({ countryCode, sessions: s.size }))
+        countries: Object.entries(countryTotals)
+          .map(([countryCode, sessions]) => ({ countryCode, sessions }))
           .sort((a, b) => b.sessions - a.sessions),
       };
     },

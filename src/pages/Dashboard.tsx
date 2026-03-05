@@ -6,6 +6,7 @@ import { WeekOverWeekStrip } from "@/components/dashboard/WeekOverWeekStrip";
 import { WeeklySummary } from "@/components/dashboard/WeeklySummary";
 import { AiInsights } from "@/components/dashboard/AiInsights";
 import { AlertsSection } from "@/components/dashboard/AlertsSection";
+import { FormHealthPanel } from "@/components/dashboard/FormHealthPanel";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { ShareableSnapshot } from "@/components/dashboard/ShareableSnapshot";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";

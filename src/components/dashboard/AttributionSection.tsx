@@ -90,7 +90,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
         })()}
 
         {/* Table */}
-        <ScrollArea className={hasMore ? "h-[420px]" : ""}>
+        <ScrollArea className={data.length > 15 ? "h-[420px]" : ""}>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -103,7 +103,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
               </tr>
             </thead>
             <tbody>
-              {visibleData.map((row, i) => (
+              {data.map((row, i) => (
                 <tr key={i} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
                   <td className="py-2 px-2 font-medium text-foreground">
                     {tab === "source" ? (row as any).source : (row as any).campaign}

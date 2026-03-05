@@ -17,15 +17,12 @@ interface AttributionProps {
   campaigns: Array<{ campaign: string; sessions: number; leads: number; cvr: number }>;
 }
 
-const INITIAL_ROWS = 20;
+const INITIAL_ROWS = 15;
 
 export function AttributionSection({ sources, campaigns }: AttributionProps) {
   const [tab, setTab] = useState<"source" | "campaign">("source");
-  const [showAll, setShowAll] = useState(false);
   const data = tab === "source" ? sources : campaigns;
   const labelKey = tab === "source" ? "source" : "campaign";
-  const visibleData = showAll ? data : data.slice(0, INITIAL_ROWS);
-  const hasMore = data.length > INITIAL_ROWS;
 
   return (
     <div className="glass-card p-5 animate-slide-up">
@@ -93,7 +90,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
         })()}
 
         {/* Table */}
-        <ScrollArea className={hasMore && !showAll ? "h-[420px]" : ""}>
+        <ScrollArea className={data.length > 15 ? "h-[420px]" : ""}>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
@@ -106,7 +103,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
               </tr>
             </thead>
             <tbody>
-              {visibleData.map((row, i) => (
+              {data.map((row, i) => (
                 <tr key={i} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
                   <td className="py-2 px-2 font-medium text-foreground">
                     {tab === "source" ? (row as any).source : (row as any).campaign}
@@ -125,13 +122,6 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
             </tbody>
           </table>
         </ScrollArea>
-        {hasMore && (
-          <div className="mt-2 text-center">
-            <Button variant="ghost" size="sm" onClick={() => setShowAll(!showAll)}>
-              {showAll ? "Show less" : `See all ${data.length} rows`}
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

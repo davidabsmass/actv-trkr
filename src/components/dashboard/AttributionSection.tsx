@@ -17,14 +17,14 @@ interface AttributionProps {
   campaigns: Array<{ campaign: string; sessions: number; leads: number; cvr: number }>;
 }
 
-const INITIAL_ROWS = 20;
+const INITIAL_ROWS = 15;
 
 export function AttributionSection({ sources, campaigns }: AttributionProps) {
   const [tab, setTab] = useState<"source" | "campaign">("source");
   const [showAll, setShowAll] = useState(false);
   const data = tab === "source" ? sources : campaigns;
   const labelKey = tab === "source" ? "source" : "campaign";
-  const visibleData = showAll ? data : data.slice(0, INITIAL_ROWS);
+  const visibleData = data;
   const hasMore = data.length > INITIAL_ROWS;
 
   return (
@@ -93,7 +93,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
         })()}
 
         {/* Table */}
-        <ScrollArea className={hasMore && !showAll ? "h-[420px]" : ""}>
+        <ScrollArea className={hasMore ? "h-[420px]" : ""}>
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">

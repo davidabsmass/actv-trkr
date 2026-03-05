@@ -51,7 +51,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       const totalLeads = leadRes.count || 0;
       const sessions = sessDetail.data || [];
       const leads = leadDetail.data || [];
-      const pvCountryData = pvCountry.data || [];
+      const countryAggData = pvCountry.data || [];
 
       // Daily breakdown
       const dailyMap: Record<string, { sessions: number; leads: number; pageviews: number }> = {};

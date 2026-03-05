@@ -32,6 +32,7 @@ const telemetryItems: NavItem[] = [
   {
     title: "Performance", url: "/performance", icon: TrendingUp,
     children: [
+      { title: "Analytics", url: "/performance?tab=analytics", icon: BarChart3 },
       { title: "Reports", url: "/performance?tab=reports", icon: FileText },
     ],
   },

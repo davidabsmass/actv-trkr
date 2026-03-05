@@ -407,6 +407,63 @@ export type Database = {
           },
         ]
       }
+      events: {
+        Row: {
+          event_type: string
+          id: string
+          meta: Json | null
+          occurred_at: string
+          org_id: string
+          page_path: string | null
+          page_url: string | null
+          session_id: string | null
+          site_id: string
+          target_text: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          meta?: Json | null
+          occurred_at?: string
+          org_id: string
+          page_path?: string | null
+          page_url?: string | null
+          session_id?: string | null
+          site_id: string
+          target_text?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          meta?: Json | null
+          occurred_at?: string
+          org_id?: string
+          page_path?: string | null
+          page_url?: string | null
+          session_id?: string | null
+          site_id?: string
+          target_text?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_jobs: {
         Row: {
           completed_at: string | null
@@ -936,6 +993,7 @@ export type Database = {
           campaign: string | null
           created_at: string
           data: Json | null
+          engagement_score: number | null
           form_id: string
           id: string
           lead_score: number | null
@@ -965,6 +1023,7 @@ export type Database = {
           campaign?: string | null
           created_at?: string
           data?: Json | null
+          engagement_score?: number | null
           form_id: string
           id?: string
           lead_score?: number | null
@@ -994,6 +1053,7 @@ export type Database = {
           campaign?: string | null
           created_at?: string
           data?: Json | null
+          engagement_score?: number | null
           form_id?: string
           id?: string
           lead_score?: number | null
@@ -1289,6 +1349,7 @@ export type Database = {
       }
       pageviews: {
         Row: {
+          active_seconds: number | null
           country_code: string | null
           country_name: string | null
           device: string | null
@@ -1313,6 +1374,7 @@ export type Database = {
           visitor_id: string | null
         }
         Insert: {
+          active_seconds?: number | null
           country_code?: string | null
           country_name?: string | null
           device?: string | null
@@ -1337,6 +1399,7 @@ export type Database = {
           visitor_id?: string | null
         }
         Update: {
+          active_seconds?: number | null
           country_code?: string | null
           country_name?: string | null
           device?: string | null
@@ -2226,6 +2289,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_engagement_score: {
+        Args: { p_org_id: string; p_session_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

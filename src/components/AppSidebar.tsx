@@ -1,7 +1,7 @@
 import {
   BarChart3, TableProperties, FileText, Download, Settings, LogOut,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
-  LayoutDashboard, TrendingUp,
+  LayoutDashboard, TrendingUp, ChevronRight,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -18,15 +18,33 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  HoverCard, HoverCardContent, HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
 
-const telemetryItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children?: { title: string; url: string; icon: React.ComponentType<{ className?: string }> }[];
+}
+
+const telemetryItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Performance", url: "/performance", icon: TrendingUp },
-  { title: "Forms", url: "/forms", icon: TableProperties },
+  {
+    title: "Performance", url: "/performance", icon: TrendingUp,
+    children: [
+      { title: "Reports", url: "/performance?tab=reports", icon: FileText },
+    ],
+  },
+  {
+    title: "Forms", url: "/forms", icon: TableProperties,
+    children: [
+      { title: "Exports", url: "/exports", icon: Download },
+    ],
+  },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
-  { title: "Reports", url: "/performance?tab=reports", icon: FileText },
-  { title: "Exports", url: "/exports", icon: Download },
 ];
 
 export function AppSidebar() {

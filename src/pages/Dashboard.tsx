@@ -504,6 +504,7 @@ const Dashboard = () => {
             totalForms: formsData?.filter((f) => !f.archived).length || 0,
             primaryFocus,
           }} />
+          <FormHealthPanel orgId={orgId} />
           <AlertsSection alerts={processedData.alerts} />
         </div>
       )}

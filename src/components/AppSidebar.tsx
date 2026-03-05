@@ -3,6 +3,7 @@ import {
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
   LayoutDashboard, TrendingUp,
 } from "lucide-react";
+import actvTrkrLogo from "@/assets/actv-trkr-logo.svg";
 import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,9 +37,7 @@ export function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-bold text-sidebar-foreground tracking-tight">
-            ACTV TRKR
-          </span>
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-6 w-auto" />
           <div className="flex items-center gap-1">
             <NotificationBell />
             {isAdmin && (

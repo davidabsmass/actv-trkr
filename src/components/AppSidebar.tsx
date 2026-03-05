@@ -1,7 +1,7 @@
 import {
   BarChart3, TableProperties, FileText, Download, Settings, LogOut,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
-  LayoutDashboard, TrendingUp, ChevronRight,
+  LayoutDashboard, TrendingUp,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -18,9 +18,6 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  HoverCard, HoverCardContent, HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
 
 interface NavItem {
@@ -102,49 +99,38 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {telemetryItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  {item.children ? (
-                    <HoverCard openDelay={100} closeDelay={200}>
-                      <HoverCardTrigger asChild>
-                        <SidebarMenuButton asChild>
-                          <NavLink
-                            to={item.url}
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-                            activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-                          >
-                            <item.icon className="h-4 w-4" />
-                            <span className="flex-1">{item.title}</span>
-                            <ChevronRight className="h-3 w-3 text-sidebar-foreground/40" />
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </HoverCardTrigger>
-                      <HoverCardContent side="right" align="start" sideOffset={4} className="w-40 p-1">
-                        {item.children.map((child) => (
-                          <NavLink
-                            key={child.title}
-                            to={child.url}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-foreground/70 rounded-md hover:bg-accent transition-colors"
-                            activeClassName="bg-accent text-foreground font-medium"
-                          >
-                            <child.icon className="h-3.5 w-3.5" />
-                            <span>{child.title}</span>
-                          </NavLink>
-                        ))}
-                      </HoverCardContent>
-                    </HoverCard>
-                  ) : (
+                <div key={item.title}>
+                  <SidebarMenuItem>
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
                         activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
                       >
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  {item.children && (
+                    <div className="ml-7 border-l border-sidebar-border pl-2 mt-0.5 mb-1">
+                      {item.children.map((child) => (
+                        <SidebarMenuItem key={child.title}>
+                          <SidebarMenuButton asChild>
+                            <NavLink
+                              to={child.url}
+                              className="flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/50 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+                              activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                            >
+                              <child.icon className="h-3.5 w-3.5" />
+                              <span>{child.title}</span>
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </div>
                   )}
-                </SidebarMenuItem>
+                </div>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

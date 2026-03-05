@@ -66,6 +66,13 @@ const Performance = () => {
       .map((p) => ({ ...p, expectedLeads: Math.round(p.sessions * sitewideCvr), gap: Math.round(p.sessions * sitewideCvr) - p.leads }))
       .filter((p) => p.gap > 0).sort((a, b) => b.gap - a.gap);
 
+    // Calculate forecast availability based on actual data span
+    const sortedDates = Object.keys(dailyMap).sort();
+    const REQUIRED_DAYS = 42;
+    const dataDays = sortedDates.length;
+    const sufficientData = dataDays >= REQUIRED_DAYS;
+    const daysUntilAvailable = Math.max(0, REQUIRED_DAYS - dataDays);
+
     return {
       kpis: {
         sessions: { value: totalSessions, delta: 0, label: "Sessions" },
@@ -74,7 +81,7 @@ const Performance = () => {
         cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
       dailyData, sources, campaigns, pages, opportunities,
-      forecast: { sufficient_data: false, days_until_available: 42, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
+      forecast: { sufficient_data: sufficientData, days_until_available: daysUntilAvailable, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
     };
   }, [isLoading, realtimeData]);
 

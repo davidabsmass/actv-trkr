@@ -122,13 +122,11 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         pageMap[p].leads++;
       });
 
-      // Country breakdown
-      const countrySessionMap: Record<string, Set<string>> = {};
-      pvCountryData.forEach((pv: any) => {
-        const cc = pv.country_code || "XX";
-        const sid = pv.session_id || cc;
-        if (!countrySessionMap[cc]) countrySessionMap[cc] = new Set();
-        countrySessionMap[cc].add(sid);
+      // Country breakdown from aggregated data
+      const countryTotals: Record<string, number> = {};
+      countryAggData.forEach((row: any) => {
+        const cc = row.dimension || "XX";
+        countryTotals[cc] = (countryTotals[cc] || 0) + Number(row.value || 0);
       });
 
       return {

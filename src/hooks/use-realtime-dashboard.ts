@@ -38,11 +38,12 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
           .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
           .eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
 
-        // Pageview country data
-        supabase.from("pageviews")
-          .select("country_code, session_id")
-          .eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd)
-          .not("country_code", "is", null),
+        // Country data from pre-aggregated table
+        supabase.from("traffic_daily")
+          .select("dimension, value")
+          .eq("org_id", orgId).eq("metric", "sessions_by_country")
+          .gte("date", startDate).lte("date", endDate)
+          .not("dimension", "is", null),
       ]);
 
       const totalPageviews = pvRes.count || 0;

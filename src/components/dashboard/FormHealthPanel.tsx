@@ -1,0 +1,117 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format, subDays } from "date-fns";
+import { CheckCircle2, AlertTriangle, XCircle, Clock } from "lucide-react";
+import { Link } from "react-router-dom";
+
+type FormHealth = {
+  id: string;
+  name: string;
+  status: "healthy" | "low_activity" | "errors" | "no_activity";
+  detail: string;
+};
+
+export function FormHealthPanel({ orgId }: { orgId: string | null }) {
+  const { data: healthData, isLoading } = useQuery({
+    queryKey: ["form_health", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+
+      const now = new Date();
+      const thirtyDaysAgo = format(subDays(now, 30), "yyyy-MM-dd");
+      const sevenDaysAgo = format(subDays(now, 7), "yyyy-MM-dd");
+
+      // Get active forms
+      const { data: forms } = await supabase
+        .from("forms").select("id, name")
+        .eq("org_id", orgId).eq("archived", false);
+      if (!forms || forms.length === 0) return [];
+
+      // Get 30-day submission counts per form
+      const { data: leads30d } = await supabase
+        .from("leads").select("form_id, submitted_at")
+        .eq("org_id", orgId)
+        .gte("submitted_at", `${thirtyDaysAgo}T00:00:00Z`);
+
+      // Get 7-day submission counts per form
+      const { data: leads7d } = await supabase
+        .from("leads").select("form_id")
+        .eq("org_id", orgId)
+        .gte("submitted_at", `${sevenDaysAgo}T00:00:00Z`);
+
+      // Get recent errors
+      const { data: errors } = await supabase
+        .from("form_submission_logs").select("form_id")
+        .eq("org_id", orgId).eq("status", "fail")
+        .gte("occurred_at", `${sevenDaysAgo}T00:00:00Z`);
+
+      const leads30Map: Record<string, number> = {};
+      const leads7Map: Record<string, number> = {};
+      const errorMap: Record<string, number> = {};
+
+      (leads30d || []).forEach(l => { leads30Map[l.form_id] = (leads30Map[l.form_id] || 0) + 1; });
+      (leads7d || []).forEach(l => { leads7Map[l.form_id] = (leads7Map[l.form_id] || 0) + 1; });
+      (errors || []).forEach(e => { if (e.form_id) errorMap[e.form_id] = (errorMap[e.form_id] || 0) + 1; });
+
+      return forms.map((form): FormHealth => {
+        const count30 = leads30Map[form.id] || 0;
+        const count7 = leads7Map[form.id] || 0;
+        const errCount = errorMap[form.id] || 0;
+        const baseline7 = Math.round(count30 / 4.3); // weekly baseline
+
+        if (errCount > 0) {
+          return { id: form.id, name: form.name, status: "errors", detail: `${errCount} error${errCount > 1 ? "s" : ""} this week` };
+        }
+        if (count30 === 0) {
+          return { id: form.id, name: form.name, status: "no_activity", detail: "No submissions in 30 days" };
+        }
+        if (baseline7 > 0 && count7 < baseline7 * 0.5) {
+          return { id: form.id, name: form.name, status: "low_activity", detail: `${count7} vs ${baseline7} expected this week` };
+        }
+        return { id: form.id, name: form.name, status: "healthy", detail: `${count7} submissions this week` };
+      });
+    },
+    enabled: !!orgId,
+  });
+
+  if (isLoading || !healthData || healthData.length === 0) return null;
+
+  const statusConfig = {
+    healthy: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10", label: "Healthy" },
+    low_activity: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/10", label: "Low Activity" },
+    errors: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: "Errors Detected" },
+    no_activity: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted", label: "No Activity" },
+  };
+
+  return (
+    <div className="glass-card p-5 animate-slide-up">
+      <h3 className="text-sm font-semibold text-foreground mb-3">Form Health</h3>
+      <div className="space-y-2">
+        {healthData.map((form) => {
+          const cfg = statusConfig[form.status];
+          const Icon = cfg.icon;
+          return (
+            <Link
+              key={form.id}
+              to="/forms"
+              className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-1.5 rounded-md ${cfg.bg}`}>
+                  <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{form.name}</p>
+                  <p className="text-xs text-muted-foreground">{form.detail}</p>
+                </div>
+              </div>
+              <span className={`text-[10px] uppercase font-semibold tracking-wider ${cfg.color}`}>
+                {cfg.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

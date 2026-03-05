@@ -21,10 +21,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const telemetryItems = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Performance", url: "/performance", icon: TrendingUp },
   { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
+  { title: "Reports", url: "/performance?tab=reports", icon: FileText },
+  { title: "Exports", url: "/exports", icon: Download },
 ];
 
 export function AppSidebar() {
@@ -78,7 +80,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-4">
-            Dashboard
+            Analytics
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

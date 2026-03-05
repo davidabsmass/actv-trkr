@@ -9,6 +9,8 @@ import { VisitorMapSection } from "@/components/dashboard/VisitorMapSection";
 import { FunnelView } from "@/components/dashboard/FunnelView";
 import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
+import { VisitorEngagement } from "@/components/dashboard/VisitorEngagement";
+import { ClickActivity } from "@/components/dashboard/ClickActivity";
 import { KPIRow } from "@/components/dashboard/KPIRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrg } from "@/hooks/use-org";
@@ -138,6 +140,10 @@ const Performance = () => {
             <div className="space-y-4">
               <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
               <TrendsChart data={processedData.dailyData} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <VisitorEngagement orgId={orgId} startDate={startDate} endDate={endDate} />
+                <ClickActivity orgId={orgId} startDate={startDate} endDate={endDate} />
+              </div>
               {renderSections()}
             </div>
           )}

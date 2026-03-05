@@ -11,8 +11,6 @@ async function hashKey(key: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-// ── Input sanitization ──────────────────────────────────────────
-
 function sanitizeStr(val: unknown, maxLen: number): string | null {
   if (val === null || val === undefined) return null;
   const s = String(val).trim();
@@ -35,8 +33,7 @@ function isValidEventId(val: string): boolean {
   return /^[a-zA-Z0-9_-]{1,128}$/.test(val);
 }
 
-// ── Simple in-memory rate limiter (per-isolate) ─────────────────
-
+// Rate limiting
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 120;
@@ -59,12 +56,10 @@ setInterval(() => {
   }
 }, 300_000);
 
-// ── IP Geolocation cache (per-isolate) ──────────────────────────
-
+// IP Geolocation cache
 const geoCache = new Map<string, { country: string | null; expiresAt: number }>();
-const GEO_CACHE_TTL_MS = 3600_000; // 1 hour
+const GEO_CACHE_TTL_MS = 3600_000;
 
-// Rate limiter for ip-api.com (max 40 req/min to stay under 45 limit)
 let geoApiCallCount = 0;
 let geoApiWindowReset = Date.now() + 60_000;
 const GEO_API_LIMIT = 40;
@@ -80,35 +75,24 @@ function canCallGeoApi(): boolean {
 
 async function lookupCountryByIp(ip: string): Promise<string | null> {
   if (!ip || ip === "127.0.0.1" || ip === "::1") return null;
-
-  // Check cache first (keyed by raw IP, not hash — stays in-memory only)
   const cached = geoCache.get(ip);
   if (cached && Date.now() < cached.expiresAt) return cached.country;
-
   if (!canCallGeoApi()) return null;
 
   try {
     geoApiCallCount++;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000); // 2s timeout
-    const resp = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode`, {
-      signal: controller.signal,
-    });
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const resp = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode`, { signal: controller.signal });
     clearTimeout(timeout);
-
     if (!resp.ok) return null;
     const data = await resp.json();
     const country = data.status === "success" && data.countryCode ? data.countryCode : null;
     geoCache.set(ip, { country, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
-
     return country;
-  } catch {
-    // Network error or timeout — don't block the pageview
-    return null;
-  }
+  } catch { return null; }
 }
 
-// Clean stale geo cache entries every 10 min
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of geoCache) {
@@ -117,18 +101,12 @@ setInterval(() => {
 }, 600_000);
 
 function extractClientIp(req: Request): string | null {
-  // Try standard proxy headers
   const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    const first = xff.split(",")[0].trim();
-    if (first) return first;
-  }
+  if (xff) { const first = xff.split(",")[0].trim(); if (first) return first; }
   const realIp = req.headers.get("x-real-ip");
   if (realIp) return realIp.trim();
   return null;
 }
-
-// ── Main handler ────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -165,6 +143,29 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Handle time_update (active_seconds update) ──────────────
+    if (body.type === "time_update") {
+      const eventId = sanitizeStr(body.event?.event_id, 128);
+      const activeSeconds = typeof body.event?.active_seconds === "number" ? Math.min(Math.max(0, Math.round(body.event.active_seconds)), 3600) : null;
+      const domain = sanitizeStr(body.source?.domain, 253);
+
+      if (!eventId || activeSeconds === null || !domain) {
+        return new Response(JSON.stringify({ error: "Missing fields for time_update" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Find the site
+      const { data: site } = await supabase.from("sites").select("id").eq("org_id", orgId).eq("domain", domain).maybeSingle();
+      if (!site) return new Response(JSON.stringify({ status: "ok", note: "site not found" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      // Update the pageview's active_seconds
+      await supabase.from("pageviews")
+        .update({ active_seconds: activeSeconds })
+        .eq("org_id", orgId).eq("site_id", site.id).eq("event_id", eventId);
+
+      return new Response(JSON.stringify({ status: "ok", active_seconds: activeSeconds }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Standard pageview tracking ──────────────────────────────
     const { source, event, attribution, visitor } = body;
 
     const pageUrl = sanitizeStr(event?.page_url, 2048);
@@ -216,11 +217,8 @@ Deno.serve(async (req) => {
 
     if (!siteId) return new Response(JSON.stringify({ error: "Failed to resolve site" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // ── Resolve country code ──────────────────────────────────────
-    // 1. Try infrastructure headers (Cloudflare, etc.)
+    // Resolve country code
     let countryCode = sanitizeStr(req.headers.get("cf-ipcountry") || req.headers.get("x-country-code"), 2)?.toUpperCase() || null;
-
-    // 2. Fallback: IP-based geolocation lookup
     if (!countryCode) {
       const clientIp = extractClientIp(req);
       if (clientIp) {

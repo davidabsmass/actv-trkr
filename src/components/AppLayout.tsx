@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-dark.svg";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();
@@ -54,7 +55,10 @@ function LayoutInner() {
         <AppSidebar />
         <main className="flex-1 flex flex-col min-w-0">
           <header className="h-12 flex items-center justify-between border-b border-border px-4 shrink-0">
-            <SidebarTrigger />
+            <div className="flex items-center gap-3">
+              <SidebarTrigger />
+              <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-5 w-auto" />
+            </div>
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => navigate("/admin-setup")} className="gap-1.5">
                 <Shield className="h-3.5 w-3.5" />

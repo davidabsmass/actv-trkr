@@ -183,6 +183,7 @@
       var sid = getCookie(COOKIE_SID);
       send(CFG.endpoint, {
         type: 'time_update',
+        api_key: CFG.apiKey,
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         event: {
           event_id: this.eventId,
@@ -200,6 +201,7 @@
       var sid = getCookie(COOKIE_SID);
       sendBeaconSafe(CFG.endpoint, {
         type: 'time_update',
+        api_key: CFG.apiKey,
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         event: {
           event_id: this.eventId,
@@ -328,6 +330,7 @@
     var eventEndpoint = CFG.endpoint.replace(/\/track-pageview$/, '/track-event');
 
     sendBeaconSafe(eventEndpoint, {
+      api_key: CFG.apiKey,
       source: {
         domain: CFG.domain,
         type: 'wordpress',

@@ -118,8 +118,22 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const rawBody = await req.text();
+    if (rawBody.length > 51200) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let body: any;
+    try { body = JSON.parse(rawBody); } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Support API key from Authorization header OR request body (sendBeacon can't set headers)
     const authHeader = req.headers.get("authorization") || "";
-    const apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
+    let apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!apiKey && body.api_key) {
+      apiKey = String(body.api_key).trim();
+    }
     if (!apiKey || apiKey.length > 256) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -131,16 +145,6 @@ Deno.serve(async (req) => {
 
     if (!checkRate(orgId)) {
       return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
-    }
-
-    const rawBody = await req.text();
-    if (rawBody.length > 51200) {
-      return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    let body: any;
-    try { body = JSON.parse(rawBody); } catch {
-      return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── Handle time_update (active_seconds update) ──────────────

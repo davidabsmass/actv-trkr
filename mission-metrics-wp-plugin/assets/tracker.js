@@ -10,6 +10,8 @@
   var COOKIE_UTM = 'mm_utm';
   var COOKIE_TS  = 'mm_ts';
   var SESSION_TIMEOUT = 30 * 60 * 1000;
+  var HEARTBEAT_INTERVAL = 10000; // 10 seconds
+  var MAX_EVENTS_PER_SESSION = 200;
 
   // ── Cookie helpers ──────────────────────────────────────────────
 
@@ -110,6 +112,264 @@
     });
   }
 
+  function sendBeaconSafe(endpoint, payload) {
+    var body = JSON.stringify(payload);
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
+      } else {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', endpoint, false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Authorization', 'Bearer ' + CFG.apiKey);
+        xhr.send(body);
+      }
+    } catch (e) { /* silent */ }
+  }
+
+  // ── Time-on-Page Tracking ─────────────────────────────────────
+
+  var pageTimer = {
+    startedAt: null,
+    activeMs: 0,
+    lastResumeAt: null,
+    isActive: true,
+    eventId: null,
+    heartbeatTimer: null,
+
+    start: function (eventId) {
+      this.eventId = eventId;
+      this.startedAt = Date.now();
+      this.lastResumeAt = Date.now();
+      this.activeMs = 0;
+      this.isActive = true;
+      this.startHeartbeat();
+    },
+
+    pause: function () {
+      if (this.isActive && this.lastResumeAt) {
+        this.activeMs += Date.now() - this.lastResumeAt;
+        this.isActive = false;
+      }
+    },
+
+    resume: function () {
+      if (!this.isActive) {
+        this.lastResumeAt = Date.now();
+        this.isActive = true;
+      }
+    },
+
+    getActiveSeconds: function () {
+      var total = this.activeMs;
+      if (this.isActive && this.lastResumeAt) {
+        total += Date.now() - this.lastResumeAt;
+      }
+      return Math.round(total / 1000);
+    },
+
+    startHeartbeat: function () {
+      var self = this;
+      this.heartbeatTimer = setInterval(function () {
+        if (self.isActive) {
+          self.sendTimeUpdate();
+        }
+      }, HEARTBEAT_INTERVAL);
+    },
+
+    sendTimeUpdate: function () {
+      if (!this.eventId) return;
+      var vid = getCookie(COOKIE_VID);
+      var sid = getCookie(COOKIE_SID);
+      send(CFG.endpoint, {
+        type: 'time_update',
+        source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
+        event: {
+          event_id: this.eventId,
+          session_id: sid,
+          active_seconds: this.getActiveSeconds(),
+        },
+        visitor: { visitor_id: vid },
+      });
+    },
+
+    sendFinal: function () {
+      if (!this.eventId) return;
+      clearInterval(this.heartbeatTimer);
+      var vid = getCookie(COOKIE_VID);
+      var sid = getCookie(COOKIE_SID);
+      sendBeaconSafe(CFG.endpoint, {
+        type: 'time_update',
+        source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
+        event: {
+          event_id: this.eventId,
+          session_id: sid,
+          active_seconds: this.getActiveSeconds(),
+        },
+        visitor: { visitor_id: vid },
+      });
+    },
+  };
+
+  // Visibility change handlers
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      pageTimer.pause();
+    } else {
+      pageTimer.resume();
+    }
+  });
+
+  window.addEventListener('beforeunload', function () {
+    pageTimer.sendFinal();
+    flushEventBatch();
+  });
+
+  // ── Intent-Based Click Tracking ───────────────────────────────
+
+  var eventBatch = [];
+  var sessionEventCount = 0;
+  var batchTimer = null;
+
+  var DOWNLOAD_EXTENSIONS = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|csv|txt|rtf|mp3|mp4|avi|mov|epub)$/i;
+
+  function classifyClick(el) {
+    if (!el) return null;
+
+    // Walk up to find meaningful element
+    var target = el;
+    for (var i = 0; i < 5 && target; i++) {
+      var tag = (target.tagName || '').toLowerCase();
+
+      // Check for data-actv="cta" attribute
+      if (target.getAttribute && target.getAttribute('data-actv') === 'cta') {
+        return { type: 'cta_click', text: getClickText(target), el: target };
+      }
+
+      if (tag === 'a') {
+        var href = target.getAttribute('href') || '';
+
+        // tel: links
+        if (href.indexOf('tel:') === 0) {
+          return { type: 'tel_click', text: href.replace('tel:', ''), el: target };
+        }
+
+        // mailto: links
+        if (href.indexOf('mailto:') === 0) {
+          return { type: 'mailto_click', text: href.replace('mailto:', ''), el: target };
+        }
+
+        // Download links
+        if (DOWNLOAD_EXTENSIONS.test(href)) {
+          return { type: 'download_click', text: getClickText(target) || href.split('/').pop(), el: target };
+        }
+
+        // Outbound links
+        try {
+          var linkHost = new URL(href, window.location.origin).hostname;
+          if (linkHost && linkHost !== window.location.hostname) {
+            return { type: 'outbound_click', text: getClickText(target) || linkHost, el: target };
+          }
+        } catch (e) { /* invalid URL */ }
+      }
+
+      // Button elements (not inside forms — those are form_start)
+      if (tag === 'button' || (target.getAttribute && target.getAttribute('role') === 'button')) {
+        var inForm = target.closest && target.closest('form');
+        var btnType = (target.getAttribute('type') || '').toLowerCase();
+        if (!inForm || btnType !== 'submit') {
+          return { type: 'cta_click', text: getClickText(target), el: target };
+        }
+      }
+
+      target = target.parentElement;
+    }
+
+    return null;
+  }
+
+  function getClickText(el) {
+    var text = (el.innerText || el.textContent || '').trim();
+    if (text.length > 100) text = text.substring(0, 100);
+    return text || el.getAttribute('aria-label') || el.getAttribute('title') || '';
+  }
+
+  function trackClick(e) {
+    if (sessionEventCount >= MAX_EVENTS_PER_SESSION) return;
+    var result = classifyClick(e.target);
+    if (!result) return;
+
+    sessionEventCount++;
+    var vid = getCookie(COOKIE_VID);
+    var sid = getCookie(COOKIE_SID);
+
+    eventBatch.push({
+      event_type: result.type,
+      target_text: result.text,
+      page_url: window.location.href,
+      page_path: window.location.pathname,
+      timestamp: new Date().toISOString(),
+      session_id: sid,
+      visitor_id: vid,
+    });
+
+    // Start batch timer if not already running
+    if (!batchTimer) {
+      batchTimer = setTimeout(flushEventBatch, HEARTBEAT_INTERVAL);
+    }
+  }
+
+  function flushEventBatch() {
+    clearTimeout(batchTimer);
+    batchTimer = null;
+    if (eventBatch.length === 0) return;
+
+    var events = eventBatch.splice(0);
+    var eventEndpoint = CFG.endpoint.replace(/\/track-pageview$/, '/track-event');
+
+    sendBeaconSafe(eventEndpoint, {
+      source: {
+        domain: CFG.domain,
+        type: 'wordpress',
+        plugin_version: CFG.pluginVersion,
+      },
+      events: events,
+    });
+  }
+
+  // Form start tracking
+  function trackFormFocus(e) {
+    if (sessionEventCount >= MAX_EVENTS_PER_SESSION) return;
+    var el = e.target;
+    if (!el || !el.closest) return;
+    var form = el.closest('form');
+    if (!form) return;
+    if (form._mmFormStarted) return;
+    form._mmFormStarted = true;
+
+    sessionEventCount++;
+    var vid = getCookie(COOKIE_VID);
+    var sid = getCookie(COOKIE_SID);
+
+    eventBatch.push({
+      event_type: 'form_start',
+      target_text: form.getAttribute('data-form-title') || form.getAttribute('aria-label') || form.getAttribute('id') || 'form',
+      page_url: window.location.href,
+      page_path: window.location.pathname,
+      timestamp: new Date().toISOString(),
+      session_id: sid,
+      visitor_id: vid,
+    });
+
+    if (!batchTimer) {
+      batchTimer = setTimeout(flushEventBatch, HEARTBEAT_INTERVAL);
+    }
+  }
+
+  // Attach click and focus listeners
+  document.addEventListener('click', trackClick, true);
+  document.addEventListener('focusin', trackFormFocus, true);
+
   // ── Pageview tracking ──────────────────────────────────────────
 
   function track() {
@@ -127,6 +387,9 @@
     var sid = resolveSession(urlUtms);
     var attribution = Object.assign({}, storedUtms(), urlUtms || {});
     var eventId = uuid();
+
+    // Start time-on-page tracking
+    pageTimer.start(eventId);
 
     send(CFG.endpoint, {
       source: {
@@ -153,7 +416,6 @@
 
   // ── Universal Form Capture (Layer 1) ───────────────────────────
 
-  // Fields to skip (security/privacy + WordPress internals)
   var SKIP_NAMES = [
     '_wpnonce', '_wp_http_referer', '_wpcf7', '_wpcf7_version',
     '_wpcf7_locale', '_wpcf7_unit_tag', '_wpcf7_container_post',
@@ -206,7 +468,6 @@
       var value = '';
 
       if (type === 'checkbox') {
-        // Collect all checked values for this name
         var checked = formEl.querySelectorAll('input[name="' + name + '"]:checked');
         var vals = [];
         for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
@@ -246,10 +507,8 @@
     var form = e.target;
     if (!form || form.tagName !== 'FORM') return;
 
-    // Allow opt-out
     if (form.getAttribute('data-mm-ignore') === 'true') return;
 
-    // Skip search forms and login forms
     var role = form.getAttribute('role');
     if (role === 'search') return;
     var action = (form.getAttribute('action') || '').toLowerCase();
@@ -261,7 +520,6 @@
     var vid = getCookie(COOKIE_VID);
     var sid = getCookie(COOKIE_SID);
 
-    // Build the form endpoint
     var formEndpoint = CFG.endpoint.replace(/\/track-pageview$/, '/ingest-form');
 
     send(formEndpoint, {
@@ -286,17 +544,12 @@
     });
   }
 
-  // Attach universal form listener via event delegation
   document.addEventListener('submit', handleFormSubmit, true);
 
-  // Also intercept AJAX-based form submissions for popular plugins
-
-  // CF7 fires this on success
   document.addEventListener('wpcf7mailsent', function (e) {
     // PHP hook handles it; JS submit event is the fallback
   });
 
-  // Avada / Fusion Forms — they submit via AJAX, no native submit event fires
   document.addEventListener('fusion-form-submit-success', function (e) {
     try {
       var formEl = e.target && e.target.closest ? e.target.closest('form') : null;
@@ -308,7 +561,6 @@
     } catch (err) { /* silent */ }
   });
 
-  // Hook into jQuery ajaxComplete for Avada forms (they use jQuery AJAX)
   if (window.jQuery) {
     window.jQuery(document).on('ajaxComplete', function (event, xhr, settings) {
       if (!settings || !settings.url) return;

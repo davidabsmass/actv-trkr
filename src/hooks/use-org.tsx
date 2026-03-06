@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OrgContextValue {
   orgId: string | null;
@@ -18,6 +19,7 @@ const OrgContext = createContext<OrgContextValue>({
 });
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
+  const { loading: authLoading } = useAuth();
   const { data: orgs, isLoading } = useOrgs();
   const [orgId, setOrgId] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         orgName: org?.name ?? null,
         orgs: orgs ?? [],
         setOrgId: handleSetOrg,
-        loading: isLoading,
+        loading: authLoading || isLoading,
       }}
     >
       {children}

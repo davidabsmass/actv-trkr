@@ -19,9 +19,12 @@ const OrgContext = createContext<OrgContextValue>({
 });
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
-  const { loading: authLoading } = useAuth();
-  const { data: orgs, isLoading } = useOrgs();
+  const { loading: authLoading, user } = useAuth();
+  const { data: orgs, isFetching, status } = useOrgs();
   const [orgId, setOrgId] = useState<string | null>(null);
+
+  // Consider loading until auth is done AND orgs query has succeeded at least once
+  const isReady = !authLoading && !!user && status === "success";
 
   useEffect(() => {
     if (orgs && orgs.length > 0 && !orgId) {
@@ -45,7 +48,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
         orgName: org?.name ?? null,
         orgs: orgs ?? [],
         setOrgId: handleSetOrg,
-        loading: authLoading || isLoading,
+        loading: !isReady,
       }}
     >
       {children}

@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export function useOrgs() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["orgs"],
+    queryKey: ["orgs", user?.id ?? "anon"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orgs")
@@ -12,6 +14,7 @@ export function useOrgs() {
       if (error) throw error;
       return data;
     },
+    enabled: !!user,
   });
 }
 

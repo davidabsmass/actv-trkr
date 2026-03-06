@@ -95,8 +95,8 @@ const Onboarding = () => {
     }
   };
 
-  // If user already has orgs (and isn't mid-creation), redirect to dashboard
-  if (authLoading || isLoading) {
+  const isReady = !authLoading && !!user && status === "success";
+  if (!isReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />

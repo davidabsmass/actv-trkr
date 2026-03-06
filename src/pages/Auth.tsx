@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, Eye, EyeOff, Ticket } from "lucide-react";
-import actvTrkrLogo from "@/assets/actv-trkr-logo.svg";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-dark.svg";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();

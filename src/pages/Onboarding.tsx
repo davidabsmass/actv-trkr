@@ -3,11 +3,13 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Zap, Plus, Copy, Check, Download, Globe } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
+import { useAuth } from "@/hooks/use-auth";
 import { downloadPlugin } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { loading: authLoading } = useAuth();
   const { data: orgs, isLoading, refetch } = useOrgs();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -94,7 +96,14 @@ const Onboarding = () => {
   };
 
   // If user already has orgs (and isn't mid-creation), redirect to dashboard
-  if (!isLoading && orgs && orgs.length > 0 && !createdOrg) {
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (orgs && orgs.length > 0 && !createdOrg) {
     return <Navigate to="/dashboard" replace />;
   }
 

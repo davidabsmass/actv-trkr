@@ -200,23 +200,13 @@ const Auth = () => {
           </form>
 
           <p className="text-xs text-muted-foreground mt-4 text-center">
-            {forgotMode ? (
+            {forgotMode && (
               <button
                 onClick={() => { setForgotMode(false); setError(null); setMessage(null); }}
                 className="text-primary hover:underline font-medium"
               >
                 Back to sign in
               </button>
-            ) : (
-              <>
-                {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-                <button
-                  onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(null); }}
-                  className="text-primary hover:underline font-medium"
-                >
-                  {isLogin ? "Sign up" : "Sign in"}
-                </button>
-              </>
             )}
           </p>
         </div>

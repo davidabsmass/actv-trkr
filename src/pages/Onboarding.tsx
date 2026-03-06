@@ -9,8 +9,8 @@ import { toast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { loading: authLoading } = useAuth();
-  const { data: orgs, isLoading, refetch } = useOrgs();
+  const { loading: authLoading, user } = useAuth();
+  const { data: orgs, status, refetch } = useOrgs();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [createdOrg, setCreatedOrg] = useState<any>(null);

@@ -2,6 +2,31 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, format as fnsFormat, parseISO } from "date-fns";
 
+const PAGE_SIZE = 1000;
+
+/**
+ * Fetch all rows from a query by paginating through results.
+ * Supabase limits each request to 1000 rows by default.
+ */
+async function fetchAllRows<T>(
+  buildQuery: (from: number, to: number) => any
+): Promise<T[]> {
+  const allRows: T[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data || []) as T[];
+    allRows.push(...rows);
+    hasMore = rows.length === PAGE_SIZE;
+    offset += PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
 /**
  * Real-time dashboard data — queries raw tables directly for live metrics.
  * No dependency on nightly aggregation.
@@ -15,31 +40,17 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
-      // Parallel queries for all metrics
-      const [pvRes, sessRes, leadRes, sessDetail, leadDetail, pvCountry] = await Promise.all([
-        // Pageview count
+      // Exact counts (head-only, no row limit issue)
+      const [pvRes, sessRes, leadRes, pvCountry] = await Promise.all([
         supabase.from("pageviews").select("*", { count: "exact", head: true })
           .eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd),
 
-        // Session count
         supabase.from("sessions").select("*", { count: "exact", head: true })
           .eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd),
 
-        // Lead count
         supabase.from("leads").select("*", { count: "exact", head: true })
           .eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
 
-        // Session details for source/campaign/page breakdowns
-        supabase.from("sessions")
-          .select("session_id, started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain")
-          .eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd),
-
-        // Lead details for source/campaign breakdowns
-        supabase.from("leads")
-          .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
-          .eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
-
-        // Country data from pre-aggregated table
         supabase.from("traffic_daily")
           .select("dimension, value")
           .eq("org_id", orgId).eq("metric", "sessions_by_country")
@@ -47,11 +58,27 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
           .not("dimension", "is", null),
       ]);
 
+      // Paginated detail fetches (bypass 1000-row limit)
+      const [sessions, leads] = await Promise.all([
+        fetchAllRows<any>((from, to) =>
+          supabase.from("sessions")
+            .select("session_id, started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain")
+            .eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd)
+            .order("started_at", { ascending: true })
+            .range(from, to)
+        ),
+        fetchAllRows<any>((from, to) =>
+          supabase.from("leads")
+            .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
+            .eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd)
+            .order("submitted_at", { ascending: true })
+            .range(from, to)
+        ),
+      ]);
+
       const totalPageviews = pvRes.count || 0;
       const totalSessions = sessRes.count || 0;
       const totalLeads = leadRes.count || 0;
-      const sessions = sessDetail.data || [];
-      const leads = leadDetail.data || [];
       const countryAggData = pvCountry.data || [];
 
       // Pre-populate dailyMap with all dates in range to prevent chart shifting
@@ -93,7 +120,6 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         sourceMap[src].sessions++;
       });
       leads.forEach((l: any) => {
-        // Use the session's source when available, otherwise fall back to lead's own fields
         const src = (l.session_id && sessionSourceLookup[l.session_id])
           ? sessionSourceLookup[l.session_id]
           : (l.source || l.utm_source || l.referrer_domain || "direct");
@@ -156,6 +182,6 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       };
     },
     enabled: !!orgId,
-    refetchInterval: 15_000, // auto-refresh every 15 seconds
+    refetchInterval: 15_000,
   });
 }

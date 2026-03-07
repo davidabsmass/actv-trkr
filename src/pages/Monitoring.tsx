@@ -405,6 +405,9 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
 
         {/* Domain & SSL */}
         <TabsContent value="domain-ssl" className="space-y-4">
+          <div className="flex justify-end mb-1">
+            <CheckDomainSslButton />
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="glass-card p-5">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -423,7 +426,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
                   <div className="flex justify-between"><span className="text-muted-foreground">Last checked</span><span className="text-foreground">{format(new Date(domainHealth.last_checked_at), "MMM d, HH:mm")}</span></div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">No domain data yet.</p>
+                <p className="text-xs text-muted-foreground">No domain data yet. Click "Check Now" above.</p>
               )}
             </div>
 
@@ -443,7 +446,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
                   <div className="flex justify-between"><span className="text-muted-foreground">Last checked</span><span className="text-foreground">{format(new Date(sslHealth.last_checked_at), "MMM d, HH:mm")}</span></div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">No SSL data yet.</p>
+                <p className="text-xs text-muted-foreground">No SSL data yet. Click "Check Now" above.</p>
               )}
             </div>
           </div>
@@ -555,6 +558,37 @@ function ScanBrokenLinksButton({ siteId }: { siteId: string }) {
     <Button size="sm" variant="outline" onClick={handleScan} disabled={scanning} className="gap-1">
       <RefreshCw className={`h-3.5 w-3.5 ${scanning ? "animate-spin" : ""}`} />
       {scanning ? "Scanning…" : "Scan Now"}
+    </Button>
+  );
+}
+
+// ─── Check Domain & SSL Button ──────────────────────────────────
+
+function CheckDomainSslButton() {
+  const queryClient = useQueryClient();
+  const [checking, setChecking] = useState(false);
+
+  const handleCheck = async () => {
+    setChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-domain-ssl", {
+        body: {},
+      });
+      if (error) throw error;
+      toast({ title: "Check complete", description: `Checked ${data?.checked || 0} site(s).` });
+      queryClient.invalidateQueries({ queryKey: ["domain_health"] });
+      queryClient.invalidateQueries({ queryKey: ["ssl_health"] });
+    } catch (err: any) {
+      toast({ title: "Check failed", description: err.message, variant: "destructive" });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleCheck} disabled={checking} className="gap-1">
+      <RefreshCw className={`h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} />
+      {checking ? "Checking…" : "Check Now"}
     </Button>
   );
 }

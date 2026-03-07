@@ -251,6 +251,11 @@ Deno.serve(async (req) => {
     const referrer = sanitizeStr(event?.referrer, 2048);
     if (referrer) { try { referrerDomain = new URL(referrer).hostname; } catch {} }
 
+    // Block spam referrer traffic
+    if (isSpamReferrer(referrerDomain)) {
+      return new Response(JSON.stringify({ status: "ok", filtered: "spam_referrer" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     let pagePath = sanitizeStr(event?.page_path, 2048) || "";
     try { pagePath = new URL(pageUrl).pathname; } catch {}
 

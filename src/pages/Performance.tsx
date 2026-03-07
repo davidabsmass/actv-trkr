@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
@@ -27,6 +28,18 @@ const Performance = () => {
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
+  const { data: formsData } = useForms(orgId);
+
+  // Compute weighted average estimated value per lead from forms
+  const avgEstimatedValue = useMemo(() => {
+    if (!formsData || formsData.length === 0) return null;
+    const activeForms = formsData.filter((f) => !f.archived && f.estimated_value && f.estimated_value > 0);
+    if (activeForms.length === 0) return null;
+    const totalWeight = activeForms.reduce((s, f) => s + (f.lead_weight ?? 1), 0);
+    if (totalWeight === 0) return null;
+    const weightedSum = activeForms.reduce((s, f) => s + (f.estimated_value! * (f.lead_weight ?? 1)), 0);
+    return weightedSum / totalWeight;
+  }, [formsData]);
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
@@ -89,7 +102,7 @@ const Performance = () => {
   const renderSections = () => {
     const sections = {
       attribution: hasFeature("attribution") && (
-        <div id="section-sources" key="roi"><TrafficSourceROI sources={processedData.sources} /></div>
+        <div id="section-sources" key="roi"><TrafficSourceROI sources={processedData.sources} estimatedValuePerLead={avgEstimatedValue} /></div>
       ),
       attributionDetail: (
         <div id="section-attribution" key="attr"><AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} /></div>

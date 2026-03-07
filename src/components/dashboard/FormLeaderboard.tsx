@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DeviceData {
   [formId: string]: { desktop: number; mobile: number; tablet: number };
@@ -60,18 +61,31 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
   }
 
   return (
+    <TooltipProvider>
     <div className="glass-card p-6">
-      <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+      <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
         <FileText className="h-4 w-4 text-primary" />
         Form Performance Leaderboard
       </h3>
+      <p className="text-[11px] text-muted-foreground mb-4">Based on tracked submissions</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
               <th className="text-left py-2 text-xs font-medium text-muted-foreground">Form</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground">Submissions</th>
-              <th className="text-right py-2 text-xs font-medium text-muted-foreground">Conv %</th>
+              <th className="text-right py-2 text-xs font-medium text-muted-foreground">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1 cursor-help">
+                      Site CVR <Info className="h-3 w-3" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-xs">
+                    Submissions as a percentage of total site sessions — not form-specific page views
+                  </TooltipContent>
+                </Tooltip>
+              </th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell">Desktop</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell">Mobile</th>
             </tr>
@@ -97,5 +111,6 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
         </table>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

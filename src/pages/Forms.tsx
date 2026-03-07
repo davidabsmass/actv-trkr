@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
@@ -112,10 +112,21 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
 export default function Forms() {
   const { orgId, orgName } = useOrg();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [days, setDays] = useState(30);
+
+  // Auto-select form from query param (deep link from Form Health panel)
+  useEffect(() => {
+    const selected = searchParams.get("selected");
+    if (selected && forms && forms.some((f) => f.id === selected)) {
+      setSelectedFormId(selected);
+      searchParams.delete("selected");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, forms, setSearchParams]);
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");

@@ -93,7 +93,7 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
           return (
             <Link
               key={form.id}
-              to="/forms"
+              to={`/forms?selected=${form.id}`}
               className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0">

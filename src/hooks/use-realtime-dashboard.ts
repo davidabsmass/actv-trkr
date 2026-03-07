@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { addDays, format as fnsFormat, parseISO } from "date-fns";
 
 /**
  * Real-time dashboard data — queries raw tables directly for live metrics.
@@ -53,8 +54,14 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       const leads = leadDetail.data || [];
       const countryAggData = pvCountry.data || [];
 
-      // Daily breakdown
+      // Pre-populate dailyMap with all dates in range to prevent chart shifting
       const dailyMap: Record<string, { sessions: number; leads: number; pageviews: number }> = {};
+      let cursor = parseISO(startDate);
+      const rangeEnd = parseISO(endDate);
+      while (cursor <= rangeEnd) {
+        dailyMap[fnsFormat(cursor, "yyyy-MM-dd")] = { sessions: 0, leads: 0, pageviews: 0 };
+        cursor = addDays(cursor, 1);
+      }
 
       sessions.forEach((s: any) => {
         const d = s.started_at?.split("T")[0];

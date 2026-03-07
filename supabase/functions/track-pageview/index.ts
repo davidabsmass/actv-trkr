@@ -133,6 +133,33 @@ function isBot(ua: string | null): boolean {
   return false;
 }
 
+// ── Referrer spam blocklist ─────────────────────────────────────
+const SPAM_REFERRER_DOMAINS = new Set([
+  "ebook-search-queen.com", "www.ebook-search-queen.com",
+  "panjoy.com", "www.panjoy.com",
+  "manyget.com", "www.manyget.com",
+  "event-tracking.com", "buttons-for-website.com",
+  "share-buttons.xyz", "best-seo-offer.com",
+  "free-social-buttons.com", "get-free-traffic-now.com",
+  "success-seo.com", "trafficmonetize.org",
+  "webmonetizer.net", "youfreetech.com", "rankscanner.com",
+  "icons-search.com", "searchgby.com", "oskope.com",
+  "wonderfl.com", "verbase.com", "pipl.com",
+  "www.123people.com", "www.258.com", "www.casttv.com",
+  "www.everyclick.com", "www.findsounds.com", "www.fresheye.com",
+  "www.geona.com", "www.goodsearch.com", "www.goofram.com",
+  "www.heapr.com", "www.hotbot.com", "www.iconseeker.com",
+  "www.ifacnet.com", "www.isearch.com", "www.magportal.com",
+  "www.mamma.com", "www.oolone.com", "www.recipebridge.com",
+  "www.slider.com", "www.spezify.com", "www.twicsy.com",
+  "www.yometa.com", "www.zuula.com",
+]);
+
+function isSpamReferrer(referrerDomain: string | null): boolean {
+  if (!referrerDomain) return false;
+  return SPAM_REFERRER_DOMAINS.has(referrerDomain.toLowerCase());
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -223,6 +250,11 @@ Deno.serve(async (req) => {
     let referrerDomain: string | null = null;
     const referrer = sanitizeStr(event?.referrer, 2048);
     if (referrer) { try { referrerDomain = new URL(referrer).hostname; } catch {} }
+
+    // Block spam referrer traffic
+    if (isSpamReferrer(referrerDomain)) {
+      return new Response(JSON.stringify({ status: "ok", filtered: "spam_referrer" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     let pagePath = sanitizeStr(event?.page_path, 2048) || "";
     try { pagePath = new URL(pageUrl).pathname; } catch {}

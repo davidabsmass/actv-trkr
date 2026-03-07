@@ -103,14 +103,26 @@ export function AppSidebar() {
                 <div key={item.title}>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-                        activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
+                      {item.children ? (
+                        <NavLink
+                          to={item.children[0].url}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+                          activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                          end={false}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      ) : (
+                        <NavLink
+                          to={item.url}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+                          activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   {item.children && (

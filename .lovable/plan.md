@@ -1,35 +1,42 @@
 
+## SSL & Domain Renewal Reliability Assessment
 
-## Allow Clients to Add Websites
+### Data Sources & Accuracy
 
-### Current State
-- The **Settings** page is hidden from users with `member` org role — only `admin` (org-level or global) sees it in the sidebar.
-- The **SitesSection** component on Settings allows adding/removing sites.
-- There is no standalone "Add Site" flow accessible to regular members.
+**Domain Expiry (RDAP Protocol)**
+- Source: `rdap.org` (Registry Data Access Protocol)
+- Accuracy: **High** — directly queries domain registrar databases
+- Limitation: RDAP coverage is global but some registrars may have delayed updates (typically <24hrs)
+- Fallback: Returns `null` if lookup fails; no cached data used
 
-### Options
+**SSL Certificate Expiry (crt.sh)**
+- Source: Certificate Transparency logs (public CT logs)
+- Accuracy: **Very High** — CT logs are authoritative for all publicly-trusted certs
+- Coverage: Works for any domain with a valid SSL cert issued by Let's Encrypt, DigiCert, etc.
+- Limitation: Self-signed or private certs won't appear; crt.sh may lag 1-2 hours behind cert issuance
 
-**Option A: Give members access to Settings**
-- Change the sidebar gate from `isAdmin || orgRole === "admin"` to `isAdmin || orgRole === "admin" || orgRole === "member"` (i.e., all org members).
-- This exposes all settings (API keys, plugin, forms, notifications) to members, which may not be desirable.
+**Renewals Table**
+- Source: Manual user input
+- Accuracy: **Dependent on data entry** — only as reliable as the user's records
+- No automated verification; users must keep dates updated
 
-**Option B: Add a dedicated "Sites" section visible to all users**
-- Extract the SitesSection into its own route or embed it on the Dashboard/Monitoring page.
-- Keep sensitive settings (API keys, plugin downloads) restricted to admins.
-- Add a simple "Add Site" button somewhere members can reach — e.g., the empty-state banner on the Dashboard or a new sidebar link.
+### Update Frequency & Latency
+- Checks are **manually triggered** via the edge functions (not on a schedule)
+- No automated cron job runs these checks; requires explicit invocation
+- Last check timestamp stored in `domain_health.last_checked_at` and `ssl_health.last_checked_at`
+- **Risk**: If checks aren't scheduled, data can become stale
 
-**Option C: Keep it admin-only (current behavior)**
-- Clients request site additions through their admin or through you.
-- No code changes needed.
+### Limitations & Gaps
+1. **No automatic scheduling**: Checks only run if explicitly called; there's no visible cron job
+2. **Network timeouts**: 10s for RDAP, 15s for crt.sh; slow registrars may fail silently
+3. **Renewal tracking**: Fully manual; no integration with registrar APIs
+4. **Private/internal certs**: Won't be detected by crt.sh
+5. **Grace periods**: System doesn't account for registrar/certificate grace periods
+6. **Alert timing**: Alerts trigger at 60, 30, 14, 7 days — but only if checks run at that exact threshold
 
-### Recommendation: Option B (lightweight version)
-
-1. **`src/components/AppSidebar.tsx`** — Show Settings to all authenticated org members (not just admins), but...
-2. **`src/pages/Settings.tsx`** — Conditionally render sections: show SitesSection and NotificationsSection to all members; hide ApiKeysSection and PluginSection for non-admins.
-3. No database changes needed — the `sites` table INSERT policy already allows `admin` and `member` roles.
-
-| File | Change |
-|------|--------|
-| `AppSidebar.tsx` | Show Settings link to all org members |
-| `Settings.tsx` | Gate ApiKeysSection and PluginSection behind admin check; show SitesSection and FormsSection to all |
-
+### Recommendation
+The data is **accurate when fresh** but **not proactively maintained**. You should:
+- Set up a scheduled edge function to run these checks daily/weekly
+- Display "last checked" timestamps prominently so users know data freshness
+- Consider adding a "Check Now" button for manual verification
+- Document that renewal dates are user-maintained and require regular updates

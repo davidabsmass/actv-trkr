@@ -14,10 +14,10 @@ interface Source {
 
 interface TrafficSourceROIProps {
   sources: Source[];
-  estimatedValuePerLead?: number;
+  estimatedValuePerLead?: number | null;
 }
 
-export function TrafficSourceROI({ sources, estimatedValuePerLead = 150 }: TrafficSourceROIProps) {
+export function TrafficSourceROI({ sources, estimatedValuePerLead = null }: TrafficSourceROIProps) {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
   const [editingSource, setEditingSource] = useState<string | null>(null);
@@ -81,7 +81,7 @@ export function TrafficSourceROI({ sources, estimatedValuePerLead = 150 }: Traff
               <th className="text-right py-2 text-xs font-medium text-muted-foreground">Sessions</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground">Leads</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground">Conv %</th>
-              <th className="text-right py-2 text-xs font-medium text-muted-foreground">Est Revenue</th>
+              <th className="text-right py-2 text-xs font-medium text-muted-foreground">{estimatedValuePerLead !== null ? "Est Revenue" : ""}</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden md:table-cell">Ad Spend</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden md:table-cell">CPL</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden md:table-cell">ROI</th>
@@ -89,10 +89,10 @@ export function TrafficSourceROI({ sources, estimatedValuePerLead = 150 }: Traff
           </thead>
           <tbody>
             {sources.slice(0, 10).map((s) => {
-              const estRevenue = s.leads * estimatedValuePerLead;
+              const estRevenue = estimatedValuePerLead !== null ? s.leads * estimatedValuePerLead : null;
               const spend = spendMap[s.source] || 0;
               const cpl = spend > 0 && s.leads > 0 ? spend / s.leads : null;
-              const roi = spend > 0 ? ((estRevenue - spend) / spend) * 100 : null;
+              const roi = spend > 0 && estRevenue !== null ? ((estRevenue - spend) / spend) * 100 : null;
 
               return (
                 <tr key={s.source} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
@@ -100,7 +100,7 @@ export function TrafficSourceROI({ sources, estimatedValuePerLead = 150 }: Traff
                   <td className="py-2.5 text-right font-mono-data">{s.sessions.toLocaleString()}</td>
                   <td className="py-2.5 text-right font-mono-data">{s.leads}</td>
                   <td className="py-2.5 text-right font-mono-data">{(s.cvr * 100).toFixed(1)}%</td>
-                  <td className="py-2.5 text-right font-mono-data">${estRevenue.toLocaleString()}</td>
+                  <td className="py-2.5 text-right font-mono-data">{estRevenue !== null ? `$${estRevenue.toLocaleString()}` : "—"}</td>
                   <td className="py-2.5 text-right hidden md:table-cell">
                     {editingSource === s.source ? (
                       <div className="flex items-center gap-1 justify-end">

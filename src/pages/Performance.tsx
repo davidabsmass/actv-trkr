@@ -140,7 +140,7 @@ const Performance = () => {
         <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
       </div>
 
-      <Tabs defaultValue={initialTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="space-y-4">
         <TabsList>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>

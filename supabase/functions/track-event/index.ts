@@ -39,9 +39,40 @@ function checkRate(orgId: string): boolean {
   return bucket.count <= RATE_LIMIT;
 }
 
+// ── Bot detection ────────────────────────────────────────────────
+const BOT_UA_PATTERNS = [
+  /bot\b/i, /crawl/i, /spider/i, /slurp/i, /mediapartners/i,
+  /googlebot/i, /bingbot/i, /yandexbot/i, /baiduspider/i,
+  /duckduckbot/i, /facebookexternalhit/i, /twitterbot/i,
+  /linkedinbot/i, /embedly/i, /quora link/i, /showyoubot/i,
+  /outbrain/i, /pinterest/i, /applebot/i, /semrushbot/i,
+  /ahrefsbot/i, /mj12bot/i, /dotbot/i, /petalbot/i,
+  /bytespider/i, /gptbot/i, /chatgpt/i, /claudebot/i,
+  /anthropic/i, /ccbot/i, /ia_archiver/i, /archive\.org/i,
+  /uptimerobot/i, /pingdom/i, /site24x7/i, /statuscake/i,
+  /headlesschrome/i, /phantomjs/i, /selenium/i, /puppeteer/i,
+  /wget/i, /curl\//i, /httpie/i, /python-requests/i,
+  /go-http-client/i, /java\//i, /libwww/i, /lwp-/i,
+  /node-fetch/i, /axios/i, /undici/i, /scrapy/i,
+];
+
+function isBot(ua: string | null): boolean {
+  if (!ua || ua.length < 10) return true;
+  for (const p of BOT_UA_PATTERNS) {
+    if (p.test(ua)) return true;
+  }
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+  // Reject bot traffic early
+  const userAgent = req.headers.get("user-agent");
+  if (isBot(userAgent)) {
+    return new Response(JSON.stringify({ status: "ok", filtered: "bot" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
   try {
     const contentLength = parseInt(req.headers.get("content-length") || "0", 10);

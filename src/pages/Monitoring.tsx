@@ -562,6 +562,37 @@ function ScanBrokenLinksButton({ siteId }: { siteId: string }) {
   );
 }
 
+// ─── Check Domain & SSL Button ──────────────────────────────────
+
+function CheckDomainSslButton() {
+  const queryClient = useQueryClient();
+  const [checking, setChecking] = useState(false);
+
+  const handleCheck = async () => {
+    setChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-domain-ssl", {
+        body: {},
+      });
+      if (error) throw error;
+      toast({ title: "Check complete", description: `Checked ${data?.checked || 0} site(s).` });
+      queryClient.invalidateQueries({ queryKey: ["domain_health"] });
+      queryClient.invalidateQueries({ queryKey: ["ssl_health"] });
+    } catch (err: any) {
+      toast({ title: "Check failed", description: err.message, variant: "destructive" });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleCheck} disabled={checking} className="gap-1">
+      <RefreshCw className={`h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} />
+      {checking ? "Checking…" : "Check Now"}
+    </Button>
+  );
+}
+
 // ─── Add Renewal Dialog ─────────────────────────────────────────
 
 function AddRenewalDialog({ onAdd }: { onAdd: (values: { type: string; provider_name: string; renewal_date: string }) => void }) {

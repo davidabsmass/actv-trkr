@@ -23,7 +23,8 @@ import Reports from "./Reports";
 const Performance = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "analytics";
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState<number | null>(30);
+  const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const { orgId, orgName } = useOrg();
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
@@ -41,8 +42,12 @@ const Performance = () => {
     return weightedSum / totalWeight;
   }, [formsData]);
 
-  const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
-  const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
+  const endDate = customRange
+    ? format(startOfDay(customRange.to), "yyyy-MM-dd")
+    : format(startOfDay(new Date()), "yyyy-MM-dd");
+  const startDate = customRange
+    ? format(startOfDay(customRange.from), "yyyy-MM-dd")
+    : format(subDays(startOfDay(new Date()), days ?? 30), "yyyy-MM-dd");
 
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
 
@@ -137,7 +142,12 @@ const Performance = () => {
           <h1 className="text-2xl font-bold text-foreground">Performance</h1>
           <p className="text-sm text-muted-foreground">{orgName} · Deeper analytics</p>
         </div>
-        <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+        <DateRangeSelector
+          selectedDays={days}
+          onDaysChange={(d) => { setDays(d); setCustomRange(null); }}
+          customRange={customRange}
+          onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="space-y-4">

@@ -21,8 +21,8 @@ import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import Reports from "./Reports";
 
 const Performance = () => {
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") || "analytics";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "analytics";
   const [days, setDays] = useState(30);
   const { orgId, orgName } = useOrg();
   const { hasFeature } = usePlanTier();
@@ -140,7 +140,7 @@ const Performance = () => {
         <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
       </div>
 
-      <Tabs defaultValue={initialTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="space-y-4">
         <TabsList>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>

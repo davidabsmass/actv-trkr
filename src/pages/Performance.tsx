@@ -21,8 +21,8 @@ import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import Reports from "./Reports";
 
 const Performance = () => {
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") || "analytics";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "analytics";
   const [days, setDays] = useState(30);
   const { orgId, orgName } = useOrg();
   const { hasFeature } = usePlanTier();

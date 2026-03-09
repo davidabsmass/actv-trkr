@@ -1,5 +1,5 @@
 import {
-  BarChart3, TableProperties, FileText, Download, Settings, LogOut,
+  TableProperties, Settings, LogOut,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
   LayoutDashboard, TrendingUp,
 } from "lucide-react";

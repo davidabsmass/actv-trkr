@@ -24,7 +24,6 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
-  children?: { title: string; url: string; icon: React.ComponentType<{ className?: string }> }[];
 }
 
 const telemetryItems: NavItem[] = [

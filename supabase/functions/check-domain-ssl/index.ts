@@ -5,31 +5,54 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function fetchWithRetry(url: string, opts: RequestInit = {}, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const resp = await fetch(url, { ...opts, signal: AbortSignal.timeout(15000) });
+      if (resp.ok) return resp;
+      if (i < retries) {
+        console.log(`Retry ${i + 1} for ${url} (status ${resp.status})`);
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+        continue;
+      }
+      return resp;
+    } catch (err) {
+      if (i < retries) {
+        console.log(`Retry ${i + 1} for ${url} after error: ${err}`);
+        await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 async function checkDomainExpiry(domain: string): Promise<{ expiry: string | null; source: string }> {
-  // Strip www. for RDAP lookup
   const baseDomain = domain.replace(/^www\./, "");
   try {
-    const resp = await fetch(`https://rdap.org/domain/${baseDomain}`, {
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!resp.ok) return { expiry: null, source: "rdap" };
+    const resp = await fetchWithRetry(`https://rdap.org/domain/${baseDomain}`);
+    if (!resp.ok) {
+      console.log(`RDAP returned ${resp.status} for ${baseDomain}`);
+      return { expiry: null, source: "rdap" };
+    }
     const data = await resp.json();
     const expiryEvent = data.events?.find((e: any) => e.eventAction === "expiration");
     if (expiryEvent?.eventDate) {
       return { expiry: expiryEvent.eventDate.split("T")[0], source: "rdap" };
     }
+    console.log(`RDAP: no expiration event found for ${baseDomain}`);
     return { expiry: null, source: "rdap" };
-  } catch {
+  } catch (err) {
+    console.error(`RDAP lookup failed for ${baseDomain}:`, err);
     return { expiry: null, source: "unknown" };
   }
 }
 
 async function checkSSLExpiry(domain: string): Promise<{ expiry: string | null; issuer: string | null; daysLeft: number | null }> {
-  // Use crt.sh to find the latest certificate for this domain
   try {
-    const resp = await fetch(
-      `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json&exclude=expired`,
-      { signal: AbortSignal.timeout(15000) }
+    const resp = await fetchWithRetry(
+      `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json&exclude=expired`
     );
     if (!resp.ok) {
       console.log(`crt.sh returned ${resp.status} for ${domain}`);
@@ -37,16 +60,17 @@ async function checkSSLExpiry(domain: string): Promise<{ expiry: string | null; 
     }
     const certs: any[] = await resp.json();
     if (!certs || certs.length === 0) {
+      console.log(`crt.sh: no certs found for ${domain}`);
       return { expiry: null, issuer: null, daysLeft: null };
     }
 
-    // Find the cert with the latest not_after that is still valid
     const now = new Date();
     const validCerts = certs
       .filter((c: any) => new Date(c.not_after) > now && new Date(c.not_before) <= now)
       .sort((a: any, b: any) => new Date(b.not_after).getTime() - new Date(a.not_after).getTime());
 
     if (validCerts.length === 0) {
+      console.log(`crt.sh: no currently valid certs for ${domain}`);
       return { expiry: null, issuer: null, daysLeft: null };
     }
 
@@ -74,7 +98,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ status: "ok", checked: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Deduplicate by domain to avoid redundant lookups
+    // Deduplicate by domain
     const uniqueDomains = new Map<string, typeof sites>();
     for (const site of sites) {
       if (!site.domain) continue;
@@ -85,19 +109,19 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     let checked = 0;
+    const results: Record<string, any> = {};
     const alertThresholds = [60, 30, 14, 7];
 
     for (const [baseDomain, domainSites] of uniqueDomains) {
-      // Domain expiry (use base domain)
       const domainResult = await checkDomainExpiry(baseDomain);
       const domainExpiry = domainResult.expiry ? new Date(domainResult.expiry) : null;
       const daysToDomain = domainExpiry ? Math.ceil((domainExpiry.getTime() - now.getTime()) / 86400000) : null;
 
-      // SSL expiry (check actual domain including www if present)
       const sslDomain = domainSites[0].domain;
       const sslResult = await checkSSLExpiry(sslDomain);
 
-      // Apply to all sites with this base domain
+      results[baseDomain] = { domain: domainResult, ssl: sslResult };
+
       for (const site of domainSites) {
         await supabase.from("domain_health").upsert({
           site_id: site.id,
@@ -118,7 +142,6 @@ Deno.serve(async (req) => {
           last_checked_at: now.toISOString(),
         }, { onConflict: "site_id" });
 
-        // Alert if domain expiring soon
         if (daysToDomain !== null && alertThresholds.includes(daysToDomain)) {
           await supabase.from("monitoring_alerts").insert({
             site_id: site.id,
@@ -130,7 +153,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Alert if SSL expiring soon
         if (sslResult.daysLeft !== null && alertThresholds.includes(sslResult.daysLeft)) {
           await supabase.from("monitoring_alerts").insert({
             site_id: site.id,
@@ -146,7 +168,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ status: "ok", checked }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    console.log("Domain/SSL check results:", JSON.stringify(results));
+    return new Response(JSON.stringify({ status: "ok", checked, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Domain/SSL check error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

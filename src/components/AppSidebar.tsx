@@ -29,19 +29,8 @@ interface NavItem {
 
 const telemetryItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  {
-    title: "Performance", url: "/performance", icon: TrendingUp,
-    children: [
-      { title: "Analytics", url: "/performance?tab=analytics", icon: BarChart3 },
-      { title: "Reports", url: "/performance?tab=reports", icon: FileText },
-    ],
-  },
-  {
-    title: "Forms", url: "/forms", icon: TableProperties,
-    children: [
-      { title: "Exports", url: "/exports", icon: Download },
-    ],
-  },
+  { title: "Performance", url: "/performance", icon: TrendingUp },
+  { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
 ];
 

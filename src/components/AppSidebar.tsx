@@ -1,5 +1,5 @@
 import {
-  BarChart3, TableProperties, FileText, Download, Settings, LogOut,
+  TableProperties, Settings, LogOut,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
   LayoutDashboard, TrendingUp,
 } from "lucide-react";
@@ -24,24 +24,12 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
-  children?: { title: string; url: string; icon: React.ComponentType<{ className?: string }> }[];
 }
 
 const telemetryItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  {
-    title: "Performance", url: "/performance", icon: TrendingUp,
-    children: [
-      { title: "Analytics", url: "/performance?tab=analytics", icon: BarChart3 },
-      { title: "Reports", url: "/performance?tab=reports", icon: FileText },
-    ],
-  },
-  {
-    title: "Forms", url: "/forms", icon: TableProperties,
-    children: [
-      { title: "Exports", url: "/exports", icon: Download },
-    ],
-  },
+  { title: "Performance", url: "/performance", icon: TrendingUp },
+  { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
 ];
 
@@ -100,50 +88,18 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {telemetryItems.map((item) => (
-                <div key={item.title}>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      {item.children ? (
-                        <NavLink
-                          to={item.children[0].url}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-                          activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-                          end={false}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      ) : (
-                        <NavLink
-                          to={item.url}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-                          activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  {item.children && (
-                    <div className="ml-7 border-l border-sidebar-border pl-2 mt-0.5 mb-1">
-                      {item.children.map((child) => (
-                        <SidebarMenuItem key={child.title}>
-                          <SidebarMenuButton asChild>
-                            <NavLink
-                              to={child.url}
-                              className="flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/50 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-                              activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-                            >
-                              <child.icon className="h-3.5 w-3.5" />
-                              <span>{child.title}</span>
-                            </NavLink>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

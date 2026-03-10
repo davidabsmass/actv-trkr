@@ -58,12 +58,15 @@ function LayoutInner() {
             <div className="flex items-center gap-3">
               <SidebarTrigger />
             </div>
-            {isAdmin && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/admin-setup")} className="gap-1.5">
-                <Shield className="h-3.5 w-3.5" />
-                Admin
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              {isAdmin && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/admin-setup")} className="gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  Admin
+                </Button>
+              )}
+            </div>
           </header>
           <div className="flex-1 overflow-auto p-6">
             <Outlet />

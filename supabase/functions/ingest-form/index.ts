@@ -114,8 +114,13 @@ Deno.serve(async (req) => {
     let referrerDomain: string | null = null;
     if (context?.referrer) { try { referrerDomain = new URL(context.referrer).hostname; } catch { /* ignore */ } }
 
-    const source = utmSource || referrerDomain || "direct";
-    const medium = utmMedium || (referrerDomain ? "referral" : "direct");
+    // Detect self-referral (source = own domain) and treat as direct
+    let siteDomain: string | null = null;
+    if (pageUrl) { try { siteDomain = new URL(pageUrl).hostname; } catch { /* ignore */ } }
+    const isSelfReferral = referrerDomain && siteDomain && referrerDomain === siteDomain;
+
+    const source = utmSource || (isSelfReferral ? "direct" : referrerDomain) || "direct";
+    const medium = utmMedium || (referrerDomain && !isSelfReferral ? "referral" : "direct");
 
     const { data: lead, error: leadErr } = await supabase.from("leads").insert({
       org_id: orgId, site_id: siteId, form_id: formId,
@@ -140,22 +145,55 @@ Deno.serve(async (req) => {
     const SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
 
     if (fields && Array.isArray(fields)) {
-      const flatRows = fields
-        .filter((f: any) => {
-          if (f.value === undefined || f.value === null || f.value === "") return false;
-          const key = f.name || f.id?.toString() || f.label || "unknown";
-          if (SKIP_KEYS.has(key)) return false;
-          if (SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
-          return true;
-        })
-        .map((f: any) => ({
-          org_id: orgId, lead_id: lead.id,
-          field_key: f.name || f.id?.toString() || f.label || "unknown",
-          field_label: f.label || f.name || f.id?.toString(),
-          field_type: f.type || "text",
-          value_text: f.value?.toString() || null,
-        }));
-      if (flatRows.length > 0) await supabase.from("lead_fields_flat").insert(flatRows);
+      // Check for Avada comma-separated format
+      const dataEntry = fields.find((f: any) => f.name === "data" || f.label === "data");
+      const typesEntry = fields.find((f: any) => f.name === "field_types" || f.label === "field_types");
+
+      if (dataEntry?.value && typesEntry?.value && providerName === "avada") {
+        // Parse Avada comma-separated format
+        const SKIP_AVADA_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page", "checkbox"]);
+        const values = dataEntry.value.split(", ").map((v: string) => v.trim());
+        const types = typesEntry.value.split(", ").map((t: string) => t.trim());
+        const labelsEntry = fields.find((f: any) => f.name === "field_labels" || f.label === "field_labels");
+        const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+
+        const flatRows: any[] = [];
+        let valueIdx = 0;
+        for (let i = 0; i < types.length; i++) {
+          const type = types[i]?.toLowerCase();
+          if (SKIP_AVADA_TYPES.has(type)) continue;
+          const val = values[valueIdx] || "";
+          valueIdx++;
+          if (!val || val === "Array") continue;
+          const label = (labels[valueIdx - 1] && labels[valueIdx - 1] !== "") ? labels[valueIdx - 1] : `Field ${valueIdx}`;
+          flatRows.push({
+            org_id: orgId, lead_id: lead.id,
+            field_key: label.toLowerCase().replace(/\s+/g, "_"),
+            field_label: label,
+            field_type: type,
+            value_text: val,
+          });
+        }
+        if (flatRows.length > 0) await supabase.from("lead_fields_flat").insert(flatRows);
+      } else {
+        // Standard field array format
+        const flatRows = fields
+          .filter((f: any) => {
+            if (f.value === undefined || f.value === null || f.value === "") return false;
+            const key = f.name || f.id?.toString() || f.label || "unknown";
+            if (SKIP_KEYS.has(key)) return false;
+            if (SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
+            return true;
+          })
+          .map((f: any) => ({
+            org_id: orgId, lead_id: lead.id,
+            field_key: f.name || f.id?.toString() || f.label || "unknown",
+            field_label: f.label || f.name || f.id?.toString(),
+            field_type: f.type || "text",
+            value_text: f.value?.toString() || null,
+          }));
+        if (flatRows.length > 0) await supabase.from("lead_fields_flat").insert(flatRows);
+      }
     }
 
     return new Response(JSON.stringify({ status: "ok", lead_id: lead.id, provider: providerName, deduplicated_js: jsAlreadyCaptured }), {

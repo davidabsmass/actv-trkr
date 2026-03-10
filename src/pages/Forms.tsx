@@ -627,13 +627,25 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
-        .from("leads").select("id, submitted_at, status, source, data")
+        .from("leads").select("id, submitted_at, status, source, data, site_id")
         .eq("org_id", orgId).eq("form_id", formId).neq("status", "trashed")
         .order("submitted_at", { ascending: false }).limit(200);
       if (error) throw error;
       return data;
     },
     enabled: !!orgId,
+  });
+
+  // Get site domain to detect self-referral sources
+  const siteId = leads?.[0]?.site_id;
+  const { data: siteData } = useQuery({
+    queryKey: ["site_domain", siteId],
+    queryFn: async () => {
+      if (!siteId) return null;
+      const { data } = await supabase.from("sites").select("domain").eq("id", siteId).single();
+      return data;
+    },
+    enabled: !!siteId,
   });
 
   const leadIds = (leads || []).map((l) => l.id);
@@ -888,7 +900,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
                           {lead.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{lead.source || "direct"}</TableCell>
+                      <TableCell className="text-sm">
+                        {(!lead.source || lead.source === siteData?.domain) ? "direct" : lead.source}
+                      </TableCell>
                       {fieldColumns.map((col) => (
                         <TableCell key={col.key} className="text-sm max-w-[200px] truncate">
                           {fields[col.key] || "—"}

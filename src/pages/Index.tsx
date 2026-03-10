@@ -406,7 +406,7 @@ const Index = () => {
         <img 
           src={pricingAstronaut} 
           alt="" 
-          className="absolute bottom-0 left-0 w-[220px] h-auto z-10 pointer-events-none hidden lg:block"
+          className="absolute bottom-[10%] left-[8%] w-[154px] h-auto z-10 pointer-events-none hidden lg:block"
           style={{ transform: `translateY(${(scrollY - 3200) * 0.05}px)`, willChange: 'transform' }}
         />
 

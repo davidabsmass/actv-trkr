@@ -599,7 +599,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-black/20"></div>
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="font-bold text-white mb-4 drop-shadow-lg" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+          <h2 className="font-normal text-white mb-4 drop-shadow-lg" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
             Ready for liftoff?
           </h2>
           <p className="text-xl text-white/90 mb-8 drop-shadow-md">

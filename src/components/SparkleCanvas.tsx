@@ -23,7 +23,7 @@ const SparkleCanvas = () => {
 
     let animId: number;
     const particles: Particle[] = [];
-    const PARTICLE_COUNT = 100;
+    const PARTICLE_COUNT = 250;
 
     const resize = () => {
       const parent = canvas.parentElement;

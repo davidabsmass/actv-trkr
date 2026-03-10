@@ -134,7 +134,7 @@ const Index = () => {
             </div>
 
             <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
-              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-[20px] md:mt-[-40px] md:-ml-16 lg:-ml-24">
+              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-[20px] md:mt-[-60px] md:-ml-16 lg:-ml-24">
                 <img
                   src={spaceboy}
                   alt="Floating astronaut"

@@ -199,28 +199,23 @@ const Index = () => {
 
       {/* Hero Section */}
       <section className="relative px-6 pt-[10rem] pb-16 md:py-24">
-        <style>{`
-          @keyframes hero-float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-12px) rotate(1deg); }
-            50% { transform: translateY(-5px) rotate(-0.7deg); }
-            75% { transform: translateY(-15px) rotate(0.3deg); }
-          }
-        `}</style>
-        
         <div
           className="max-w-7xl mx-auto relative"
           style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}
         >
+          {/* Centered logo over everything */}
+          <div className="flex justify-center mb-10">
+            <img src={logoActvTrkrWhite} alt="ACTV TRKR" className="h-10 md:h-14 lg:h-16 w-auto drop-shadow-lg" />
+          </div>
+
           <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
-            <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-[20px] md:mt-0">
+            {/* Spaceman — large, left-aligned, leg touches left edge */}
+            <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-[20px] md:mt-0 md:-ml-16 lg:-ml-24">
               <img
                 src={spaceboy}
                 alt="Floating astronaut"
-                className="w-56 md:w-72 lg:w-[28rem] drop-shadow-2xl"
+                className="w-64 md:w-80 lg:w-[36rem] drop-shadow-2xl"
                 style={{
-                  animation: 'hero-float 10s ease-in-out infinite',
-                  marginTop: '40px',
                   transform: `translateY(${scrollY * -0.25}px)`,
                   willChange: 'transform',
                 }}
@@ -228,13 +223,13 @@ const Index = () => {
             </div>
 
             <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left">
-              <h1 className="landing-hero-headline text-base md:text-[2.8rem] lg:text-7xl font-bold text-white mb-4 tracking-tight drop-shadow-lg" style={{ lineHeight: '1.1' }}>
+              <h1 className="text-3xl md:text-[2.8rem] lg:text-7xl font-bold text-white mb-4 tracking-tight drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "var(--font-sans)" }}>
                 Know Exactly Where
                 <br />
                 Your Website Lands
               </h1>
               
-              <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md max-w-xl">
+              <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md max-w-xl" style={{ fontFamily: "var(--font-sans)" }}>
                 ACTV TRKR is a lightweight intelligence platform for WordPress that shows you what visitors do, where your leads come from, and whether your website is actually working. Instead of juggling analytics tools, form exports, and monitoring services, ACTV TRKR brings everything together in one clean dashboard so you can understand performance at a glance.
               </p>
               

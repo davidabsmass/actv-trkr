@@ -372,6 +372,28 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Website Health Section */}
+      <section className="relative px-6 landing-section-pad overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${websiteHealthBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-5">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
+                <Shield className="h-4 w-4" />
+                Website Health
+              </div>
+              <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
+                Monitor the Health of Your Website
+              </h3>
+              <p className="text-muted-foreground max-w-xl">
+                ACTV TRKR continuously monitors your website so you always know if something needs attention. Built-in checks track uptime, broken links, domain expiration, and SSL certificates. Instead of discovering problems after visitors do, ACTV TRKR helps you catch them early.
+              </p>
+            </div>
+            <div className="relative flex items-center justify-end lg:col-span-7">
+              <img src={websiteHealthGraphic} alt="Website health monitoring dashboard" className="w-[85%] h-auto relative z-10" style={{ transform: `translateY(${(scrollY - 2400) * -0.06}px)`, willChange: 'transform' }} />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Pricing Section - Trial First */}
       <section id="pricing-section" className="px-6 py-20 landing-section-pad" style={{ backgroundImage: `url(${trialBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>

@@ -103,7 +103,7 @@ export function AppSidebar() {
         {/* Admin-only section */}
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-4">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-white/50 px-4">
               Admin
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -112,8 +112,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/clients"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Building2 className="h-4 w-4" />
                       <span>Clients</span>
@@ -124,8 +124,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/admin-setup"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
                     >
                       <ClipboardList className="h-4 w-4" />
                       <span>Setup & Inputs</span>

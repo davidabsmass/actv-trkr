@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
             const ruleEnabled = ruleMap.get(channel) ?? (channel === "in_app");
             // User subscription must be enabled (default: true)
             const subEnabled = subMap.get(channel) ?? true;
-            // User preference must be enabled (default: true for in_app)
-            const prefEnabled = userPrefMap.get(channel) ?? (channel === "in_app");
+            // User preference must be enabled (default: true for in_app and email)
+            const prefEnabled = userPrefMap.get(channel) ?? (channel === "in_app" || channel === "email");
 
             if (!ruleEnabled || !subEnabled || !prefEnabled) continue;
 

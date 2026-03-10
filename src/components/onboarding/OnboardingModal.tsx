@@ -28,6 +28,7 @@ export function OnboardingModal() {
     weekly_summary: true,
     break_alerts: true,
     daily_digest: false,
+    monitoring_alerts: true,
   });
   const [formToggles, setFormToggles] = useState<Record<string, boolean>>({});
   const [formValues, setFormValues] = useState<Record<string, string>>({});
@@ -205,6 +206,7 @@ export function OnboardingModal() {
               </div>
               <div className="space-y-4">
                 {[
+                  { key: "monitoring_alerts" as const, label: "Monitoring Alerts", desc: "Get notified about downtime, SSL expiry, and domain issues" },
                   { key: "weekly_summary" as const, label: "Weekly Performance Summary", desc: "Monday morning digest of your website performance" },
                   { key: "break_alerts" as const, label: "Immediate Break Alerts", desc: "Get notified when forms stop working or traffic drops" },
                   { key: "daily_digest" as const, label: "Daily Performance Digest", desc: "A quick overview of yesterday's performance" },

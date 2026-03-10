@@ -289,15 +289,18 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
             {/* Left: graphs + astronaut — parallax on the visuals */}
-            <div
-              className="relative flex items-end"
-              style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
-            >
-              <img src={platformInset} alt="Lead generation analytics" className="w-3/4 h-auto rounded-2xl shadow-2xl relative z-0" />
+            <div className="relative flex items-end">
+              <img
+                src={platformInset}
+                alt="Lead generation analytics"
+                className="w-3/4 h-auto rounded-2xl shadow-2xl relative z-0"
+                style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
+              />
               <img
                 src={spaceManBack}
                 alt="Astronaut"
-                className="absolute -bottom-[80px] right-[9%] h-[65%] w-auto object-contain pointer-events-none z-10"
+                className="absolute -bottom-[80px] right-[12%] h-[65%] w-auto object-contain pointer-events-none z-10"
+                style={{ transform: `translateY(${Math.max(0, (scrollY - 800) * 0.05)}px)`, willChange: 'transform' }}
               />
             </div>
             {/* Right: text, vertically centered */}

@@ -46,6 +46,17 @@ import pricingBg from "@/assets/pricing-bg.png";
 const Index = () => {
   const navigate = useNavigate();
 
+  const [scrollY, setScrollY] = useState(0);
+
+  const handleScroll = useCallback(() => {
+    setScrollY(window.scrollY);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
   // If a password reset link lands on "/" (instead of "/auth"), forward it while preserving tokens.
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));

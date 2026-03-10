@@ -31,7 +31,7 @@ import logoActvTrkrDark from "@/assets/actv-trkr-logo-dark-2.svg";
 import logoActvTrkrWhite from "@/assets/actv-trkr-logo-white.svg";
 import logoActvTrkr2 from "@/assets/actv-trkr-logo-2.png";
 import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";
-import spaceboy from "@/assets/spaceboy.png";
+import spaceboy from "@/assets/astroman-2.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import footerBackground from "@/assets/footer-background.jpg";

@@ -270,17 +270,6 @@ const Index = () => {
               <p className="text-lg text-muted-foreground mb-8">
                 ACTV TRKR gives you an immediate view of your website's health with clear metrics for sessions, leads, conversion rate, and overall site status. Week-over-week comparisons and performance trends help you quickly see whether your website is improving or if something needs attention. If a problem appears, ACTV TRKR highlights it right away so you can respond before it affects your leads.
               </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {dashboardFeatures.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Check className="h-3 w-3 text-primary" />
-                    </div>
-                    <span className="text-sm text-foreground">{feature}</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="relative flex items-center justify-center">

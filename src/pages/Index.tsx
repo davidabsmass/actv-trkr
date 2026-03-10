@@ -294,7 +294,7 @@ const Index = () => {
               <img
                 src={platformInset}
                 alt="Lead generation analytics"
-                className="w-3/4 h-auto rounded-2xl shadow-2xl"
+                className="w-[85%] h-auto rounded-2xl shadow-2xl"
                 style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
               />
             </div>

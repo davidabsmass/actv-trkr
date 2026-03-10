@@ -138,11 +138,11 @@ const Index = () => {
 
             <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
               {/* Astronaut — below buttons on mobile, left on desktop */}
-              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1">
+              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1 hero-astronaut-wrap">
                 <img
                   src={spaceboy}
                   alt="Floating astronaut"
-                  className="w-64 md:w-80 lg:w-[36rem] drop-shadow-2xl prlx"
+                  className="w-[32rem] md:w-80 lg:w-[36rem] drop-shadow-2xl prlx"
                   style={{
                     transform: `translateY(${scrollY * -0.25}px)`,
                     willChange: 'transform',

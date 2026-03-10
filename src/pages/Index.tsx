@@ -282,9 +282,9 @@ const Index = () => {
         <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(40px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
-              <img src={satelliteChart} alt="Form performance dashboard" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 form-monitoring-no-parallax" style={{ transform: `translateY(${(scrollY - 1800) * -0.06}px)`, willChange: 'transform' }} />
-              <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl shadow-lg form-monitoring-no-parallax" style={{ transform: `translateY(${(scrollY - 1800) * -0.12}px)`, willChange: 'transform' }} />
-              <img src={satelliteImg} alt="Satellite" className="absolute bottom-[-30px] right-[-15px] lg:bottom-[110px] lg:right-[2%] w-[130px] lg:w-[180px] h-auto z-20 pointer-events-none form-monitoring-no-parallax satellite-mobile" style={{ transform: `translateY(${(scrollY - 1800) * 0.05}px) rotate(-10deg)`, willChange: 'transform' }} />
+               <img src={satelliteChart} alt="Form performance dashboard" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.06}px)`, willChange: 'transform' }} />
+               <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl shadow-lg prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.12}px)`, willChange: 'transform' }} />
+               <img src={satelliteImg} alt="Satellite" className="absolute bottom-[-30px] right-[-15px] lg:bottom-[110px] lg:right-[2%] w-[130px] lg:w-[180px] h-auto z-20 pointer-events-none prlx satellite-mobile" style={{ transform: `translateY(${(scrollY - 1800) * 0.05}px) rotate(-10deg)`, willChange: 'transform' }} />
             </div>
             <div className="lg:col-span-5">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">

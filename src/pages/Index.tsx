@@ -285,8 +285,19 @@ const Index = () => {
       </section>
 
       {/* Multi-Site Management */}
-      <section className="px-6 landing-section-pad overflow-visible" style={{ paddingTop: '90px', paddingBottom: '80px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center top' }}>
-        <div className="max-w-7xl mx-auto">
+      <section className="relative px-6 landing-section-pad overflow-hidden" style={{ paddingTop: '90px', paddingBottom: '80px' }}>
+        {/* Parallax background */}
+        <div
+          className="absolute inset-0 w-full h-[140%]"
+          style={{
+            backgroundImage: `url(${platformBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            transform: `translateY(${(scrollY - 800) * 0.15}px)`,
+            willChange: 'transform',
+          }}
+        />
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
             {/* Left: graphs + astronaut */}
             <div className="relative flex items-end">

@@ -285,20 +285,21 @@ const Index = () => {
       </section>
 
       {/* Multi-Site Management */}
-      <section className="px-6 landing-section-pad overflow-visible" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <section className="px-6 landing-section-pad overflow-visible" style={{ paddingTop: '100px', paddingBottom: '0', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-end relative">
-            <div className="relative">
-              <img src={platformInset} alt="Lead generation analytics" className="w-4/5 h-auto rounded-2xl shadow-2xl" />
-              {/* Astronaut overlapping right side, bottom-aligned */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
+            {/* Left: graphs + astronaut */}
+            <div className="relative flex items-end">
+              <img src={platformInset} alt="Lead generation analytics" className="w-3/4 h-auto rounded-2xl shadow-2xl relative z-0" />
               <img
                 src={spaceManBack}
                 alt="Astronaut"
-                className="absolute bottom-0 right-[-10%] h-[90%] w-auto object-contain pointer-events-none z-10"
+                className="absolute bottom-0 right-[5%] h-[95%] w-auto object-contain pointer-events-none z-10"
               />
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
+            {/* Right: text, vertically centered */}
+            <div className="flex flex-col justify-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4 w-fit">
                 <Target className="h-4 w-4" />
                 Lead Generation
               </div>

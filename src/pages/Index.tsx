@@ -341,7 +341,7 @@ const Index = () => {
               </p>
             </div>
             <div className="relative flex items-center justify-end">
-              <img src={fourChart} alt="Traffic Source ROI table" className="w-[85%] h-auto rounded-2xl shadow-2xl relative z-10" />
+              <img src={fourChart} alt="Traffic Source ROI table" className="w-[85%] h-auto rounded-2xl relative z-10" />
               <img src={roverImg} alt="Space rover" className="absolute bottom-[-30px] left-[-40px] w-[220px] h-auto z-20 pointer-events-none" />
             </div>
           </div>

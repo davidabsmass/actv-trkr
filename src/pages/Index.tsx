@@ -285,8 +285,8 @@ const Index = () => {
       </section>
 
       {/* Multi-Site Management */}
-      <section className="relative px-6 landing-section-pad overflow-visible" style={{ paddingTop: '90px', paddingBottom: '80px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center -40px' }}>
-        <SparkleCanvas />
+      <section className="relative px-6 landing-section-pad overflow-visible" style={{ paddingTop: '120px', paddingBottom: '50px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center -40px' }}>
+        <div className="opacity-40"><SparkleCanvas /></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
             {/* Left: graphs with parallax */}
@@ -316,7 +316,7 @@ const Index = () => {
           <img
             src={spaceManBack}
             alt="Astronaut"
-            className="absolute bottom-[-80px] left-[30%] h-[65%] w-auto object-contain pointer-events-none z-10"
+            className="absolute bottom-[-50px] left-[33%] h-[65%] w-auto object-contain pointer-events-none z-10"
           />
         </div>
       </section>

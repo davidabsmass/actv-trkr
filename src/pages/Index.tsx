@@ -400,7 +400,7 @@ const Index = () => {
 
       {/* Pricing Section */}
       <section id="pricing-section" className="relative px-6 overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <SparkleCanvas particleCount={250} style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }} />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }}><SparkleCanvas /></div>
         
         {/* Astronaut on left */}
         <img 

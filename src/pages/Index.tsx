@@ -129,7 +129,7 @@ const Index = () => {
 
         <section className="relative px-6 pt-[10rem] pb-16 md:pt-[calc(10rem+10px)] md:pb-[calc(16px+80px)]">
           <div
-            className="max-w-7xl mx-auto relative"
+            className="max-w-7xl mx-auto relative prlx"
             style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}
           >
             <div className="flex justify-center mb-[60px]">

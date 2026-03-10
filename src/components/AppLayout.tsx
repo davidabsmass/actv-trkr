@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
-import actvTrkrLogo from "@/assets/actv-trkr-logo-dark.svg";
+import { NotificationBell } from "@/components/NotificationBell";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();

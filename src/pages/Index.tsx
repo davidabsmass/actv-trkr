@@ -415,7 +415,7 @@ const Index = () => {
               <Check className="h-4 w-4" />
               No Credit Card Required
             </div>
-            <h2 className="font-bold text-white mb-4" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-white mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
               Try it free with a real site
             </h2>
             <p className="text-xl text-white/70 max-w-2xl mx-auto">

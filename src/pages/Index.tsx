@@ -327,8 +327,8 @@ const Index = () => {
       {/* Conversion Section */}
       <section className="relative px-6 landing-section-pad overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${conversionBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-5">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
                 <GitBranch className="h-4 w-4" />
                 Conversion
@@ -340,7 +340,7 @@ const Index = () => {
                 ACTV TRKR captures meaningful visitor behavior so you can understand how people interact with your site. Track time spent on pages, key clicks, downloads, and navigation paths. Every lead includes an activity timeline showing what the visitor viewed and clicked before submitting a form, giving you valuable insight into how conversions happen.
               </p>
             </div>
-            <div className="relative flex items-center justify-end">
+            <div className="relative flex items-center justify-end lg:col-span-7">
               <img src={fourChart} alt="Traffic Source ROI table" className="w-[85%] h-auto rounded-2xl relative z-10" />
               <img src={roverImg} alt="Space rover" className="absolute bottom-[-30px] left-[-40px] w-[220px] h-auto z-20 pointer-events-none" />
             </div>

@@ -272,11 +272,11 @@ const Index = () => {
               </p>
             </div>
 
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex items-center justify-center lg:-ml-16">
               <img 
                 src={helmetImg}
                 alt="ACTV TRKR dashboard preview with astronaut helmet"
-                className="w-full max-w-lg h-auto object-contain"
+                className="w-full max-w-2xl h-auto object-contain"
               />
             </div>
           </div>

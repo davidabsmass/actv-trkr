@@ -363,7 +363,7 @@ const Index = () => {
                 Complete Visibility Into Your Forms
               </h3>
               <p className="text-white/70 max-w-xl">
-                ACTV TRKR automatically syncs your forms and tracks every submission in real time. Instantly see which forms are performing, identify failures before they cost you leads, and monitor conversion rates across your entire site. Export entries, set up alerts, and never miss a lead again.
+                Forms are often the most important part of a website—and the easiest to overlook. ACTV TRKR automatically syncs with your WordPress forms to track submissions, failures, and performance trends. View entries, analyze conversion rates, export leads, and monitor which forms generate the most value. If submissions suddenly drop or errors appear, ACTV TRKR alerts you so you can resolve issues quickly.
               </p>
             </div>
           </div>

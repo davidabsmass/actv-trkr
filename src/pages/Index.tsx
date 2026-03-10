@@ -298,7 +298,7 @@ const Index = () => {
               <img
                 src={spaceManBack}
                 alt="Astronaut"
-                className="absolute bottom-0 right-[12%] h-[65%] w-auto object-contain pointer-events-none z-10"
+                className="absolute -bottom-[40px] right-[12%] h-[65%] w-auto object-contain pointer-events-none z-10"
               />
             </div>
             {/* Right: text, vertically centered */}

@@ -132,6 +132,21 @@ export type Database = {
           },
         ]
       }
+      app_config: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
       archive_manifest: {
         Row: {
           archived_at: string
@@ -2289,6 +2304,10 @@ export type Database = {
       calculate_engagement_score: {
         Args: { p_org_id: string; p_session_id: string }
         Returns: number
+      }
+      call_edge_function: {
+        Args: { body?: Json; function_name: string }
+        Returns: undefined
       }
       has_role: {
         Args: {

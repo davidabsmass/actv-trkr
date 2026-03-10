@@ -261,13 +261,13 @@ const Index = () => {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
                 <Layout className="h-4 w-4" />
-                Live Dashboard
+                All In One Place
               </div>
               <h2 className="font-bold text-foreground mb-6" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Your entire marketing funnel, at a glance
+                A Dashboard That Shows What Matters
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Real-time KPIs, traffic breakdowns, conversion trends, and AI insights—all in one executive-level dashboard built for agencies and marketers.
+                ACTV TRKR gives you an immediate view of your website's health with clear metrics for sessions, leads, conversion rate, and overall site status. Week-over-week comparisons and performance trends help you quickly see whether your website is improving or if something needs attention. If a problem appears, ACTV TRKR highlights it right away so you can respond before it affects your leads.
               </p>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

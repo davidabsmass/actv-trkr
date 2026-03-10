@@ -43,9 +43,8 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0" style={{ background: "var(--sidebar-gradient)" }}>
       <SidebarHeader className="p-5">
-        <div className="flex items-center justify-between mb-1">
+        <div className="mb-1">
           <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto brightness-0 invert" />
-          <NotificationBell />
         </div>
         <span className="px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-4">Beta</span>
 

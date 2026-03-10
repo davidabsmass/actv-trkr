@@ -148,7 +148,7 @@ const Index = () => {
               </div>
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
-                <h1 className="text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
+                <h1 className="hero-headline text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
                   One Dashboard for<br />WordPress Insights
                 </h1>
                 

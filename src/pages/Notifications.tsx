@@ -160,21 +160,21 @@ export default function NotificationsPage() {
           ) : (
             <div className="space-y-2">
               {inbox.map(n => (
-                <div
-                  key={n.id}
-                  className={`glass-card p-4 flex items-start gap-3 transition-colors ${!n.is_read ? "border-primary/20 bg-primary/5" : ""}`}
-                >
-                  <Bell className={`h-4 w-4 mt-0.5 flex-shrink-0 ${!n.is_read ? "text-primary" : "text-muted-foreground"}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!n.is_read ? "font-semibold text-foreground" : "text-foreground"}`}>{n.title}</p>
-                    {n.body && <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>}
-                    <p className="text-[10px] text-muted-foreground mt-1">{format(new Date(n.created_at), "MMM d, HH:mm")}</p>
-                  </div>
-                  {!n.is_read && (
-                    <button onClick={() => markRead.mutate(n.id)} className="text-primary hover:text-primary/80">
-                      <Check className="h-4 w-4" />
-                    </button>
-                  )}
+                  <div
+                    key={n.id}
+                    className={`glass-card p-4 flex items-start gap-3 transition-colors ${!n.is_read ? "border-primary/20 bg-primary text-primary-foreground" : ""}`}
+                  >
+                    <Bell className={`h-4 w-4 mt-0.5 flex-shrink-0 ${!n.is_read ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm ${!n.is_read ? "font-semibold text-primary-foreground" : "text-foreground"}`}>{n.title}</p>
+                      {n.body && <p className={`text-xs mt-0.5 ${!n.is_read ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{n.body}</p>}
+                      <p className={`text-[10px] mt-1 ${!n.is_read ? "text-primary-foreground/60" : "text-muted-foreground"}`}>{format(new Date(n.created_at), "MMM d, HH:mm")}</p>
+                    </div>
+                    {!n.is_read && (
+                      <button onClick={() => markRead.mutate(n.id)} className="text-primary-foreground hover:text-primary-foreground/80">
+                        <Check className="h-4 w-4" />
+                      </button>
+                    )}
                 </div>
               ))}
             </div>

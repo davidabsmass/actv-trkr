@@ -206,7 +206,7 @@ const Index = () => {
           style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}
         >
           {/* Centered logo over everything */}
-          <div className="flex justify-center mb-[30px]">
+          <div className="flex justify-center mb-[60px]">
             <img src={logoActvTrkr2} alt="ACTV TRKR" className="h-11 md:h-16 lg:h-[72px] w-auto drop-shadow-lg" />
           </div>
 

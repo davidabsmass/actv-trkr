@@ -39,6 +39,7 @@ import helmetImg from "@/assets/helmet.png";
 import presentationBgImg from "@/assets/section-2-bgd.jpg";
 import platformBg from "@/assets/section-3-space.jpg";
 import platformInset from "@/assets/section-3-graphs.png";
+import spaceManBack from "@/assets/space-man-back.png";
 import workflowBg from "@/assets/workflow-bg.png";
 import workflowInset from "@/assets/workflow-inset.png";
 import accountabilityBg from "@/assets/accountability-bg-new.jpg";

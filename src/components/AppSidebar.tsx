@@ -9,7 +9,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import { NotificationBell } from "@/components/NotificationBell";
-import actvTrkrLogo from "@/assets/actv-trkr-logo.svg";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
 
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,

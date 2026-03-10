@@ -205,7 +205,7 @@ const Index = () => {
         >
           {/* Centered logo over everything */}
           <div className="flex justify-center mb-10">
-            <img src={logoActvTrkrWhite} alt="ACTV TRKR" className="h-10 md:h-14 lg:h-16 w-auto drop-shadow-lg" />
+            <img src={logoActvTrkrWhite} alt="ACTV TRKR" className="h-14 md:h-20 lg:h-[90px] w-auto drop-shadow-lg" />
           </div>
 
           <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">

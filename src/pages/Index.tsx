@@ -151,14 +151,14 @@ const Index = () => {
               </div>
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
-                <h1 className="text-xl md:text-[1.9rem] lg:text-[3.43rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg whitespace-nowrap" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
-                  See What Your Website<br />Is Really Doing
+                <h1 className="text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
+                  WordPress Analytics, Forms,<br />and Website Health —<br />All in One Place
                 </h1>
                 
-                <p className="text-base md:text-lg text-white/90 mb-4 leading-relaxed drop-shadow-md font-light">
+                <p className="text-base md:text-lg text-white/90 mb-4 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">
                   ACTV TRKR is the all-in-one WordPress intelligence platform for tracking visitor behavior, lead activity, form performance, and website health — all from one clean dashboard.
                 </p>
-                <p className="text-base md:text-lg text-white/70 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light">
+                <p className="text-base md:text-lg text-white/70 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">
                   Stop piecing together analytics, form exports, and monitoring tools. ACTV TRKR shows you what is working, where leads are coming from, and what needs attention before it costs you opportunities.
                 </p>
                 

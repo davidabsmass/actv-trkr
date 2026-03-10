@@ -72,7 +72,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
-      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } } @media (min-width: 768px) and (max-width: 1023px) { .hero-astronaut-wrap { margin-left: -160px; } .hero-astronaut-wrap img { width: 40rem !important; } }` }} />
+      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } } @media (min-width: 768px) and (max-width: 1023px) { .hero-astronaut-wrap { margin-left: -160px; } .hero-astronaut-wrap img { width: 80rem !important; } .hero-headline { font-size: 2.225rem !important; } }` }} />
       {/* Navigation — hidden until scrolled past logo, then sticky */}
       <nav className={`fixed top-0 left-0 right-0 z-50 bg-black transition-transform duration-300 ${showNav ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -148,7 +148,7 @@ const Index = () => {
               </div>
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
-                <h1 className="text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
+                <h1 className="hero-headline text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
                   One Dashboard for<br />WordPress Insights
                 </h1>
                 

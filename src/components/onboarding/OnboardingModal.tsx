@@ -28,6 +28,7 @@ export function OnboardingModal() {
     weekly_summary: true,
     break_alerts: true,
     daily_digest: false,
+    monitoring_alerts: true,
   });
   const [formToggles, setFormToggles] = useState<Record<string, boolean>>({});
   const [formValues, setFormValues] = useState<Record<string, string>>({});

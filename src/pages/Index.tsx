@@ -328,7 +328,7 @@ const Index = () => {
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
                 <GitBranch className="h-4 w-4" />
-                Site Monitoring – Conversion
+                Conversion
               </div>
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 See What Visitors Do Before They Convert

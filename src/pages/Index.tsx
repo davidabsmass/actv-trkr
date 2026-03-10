@@ -147,7 +147,7 @@ const Index = () => {
               </div>
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left">
-                <h1 className="text-xl md:text-[1.9rem] lg:text-[3.56rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg whitespace-nowrap" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
+                <h1 className="text-xl md:text-[1.9rem] lg:text-[3.43rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg whitespace-nowrap" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
                   See What Your Website<br />Is Really Doing
                 </h1>
                 

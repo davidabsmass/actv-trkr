@@ -297,13 +297,6 @@ const Index = () => {
                 style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
               />
             </div>
-          </div>
-          {/* Astronaut pinned to bottom of section */}
-          <img
-            src={spaceManBack}
-            alt="Astronaut"
-            className="absolute bottom-[-80px] left-[28%] h-[55%] w-auto object-contain pointer-events-none z-10"
-          />
             {/* Right: text, vertically centered */}
             <div className="flex flex-col justify-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4 w-fit">
@@ -318,6 +311,12 @@ const Index = () => {
               </p>
             </div>
           </div>
+          {/* Astronaut pinned to bottom of section container */}
+          <img
+            src={spaceManBack}
+            alt="Astronaut"
+            className="absolute bottom-[-80px] left-[28%] h-[55%] w-auto object-contain pointer-events-none z-10"
+          />
         </div>
       </section>
 

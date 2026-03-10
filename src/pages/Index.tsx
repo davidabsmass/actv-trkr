@@ -50,6 +50,10 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 import featuresBg from "@/assets/features-bg.png";
 import trialBg from "@/assets/trial-bg.png";
 import pricingBg from "@/assets/pricing-bg.png";
+import satelliteBgd from "@/assets/satellite-bgd.jpg";
+import satelliteChart from "@/assets/satellite-chart.png";
+import satelliteChartTiny from "@/assets/satellite-chart-tiny.png";
+import satelliteImg from "@/assets/satellite.png";
 
 const Index = () => {
   const navigate = useNavigate();

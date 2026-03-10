@@ -12,7 +12,7 @@ import {
   Layers,
   Eye,
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import logoActvTrkr2 from "@/assets/actv-trkr-logo-2.png";
 import logoActvTrkrDark from "@/assets/actv-trkr-logo-dark-2.svg";

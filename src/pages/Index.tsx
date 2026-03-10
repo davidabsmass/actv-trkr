@@ -241,7 +241,7 @@ const Index = () => {
                 <Button 
                   size="lg" 
                   variant="ghost" 
-                  className="text-lg px-8 py-6 border-2 border-white text-white hover:bg-white/10 bg-transparent"
+                  className="text-lg px-8 py-6 border-2 border-accent text-white hover:bg-accent/10 bg-transparent"
                   onClick={() => document.getElementById('features-grid')?.scrollIntoView({ behavior: 'smooth' })}
                 >
                   Full List of Features

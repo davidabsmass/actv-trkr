@@ -229,7 +229,7 @@ const Index = () => {
                 Know Exactly Where<br />Your Website Lands
               </h1>
               
-              <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md max-w-xl font-light">
+              <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light">
                 ACTV TRKR is a lightweight intelligence platform for WordPress that shows you what visitors do, where your leads come from, and whether your website is actually working. Instead of juggling analytics tools, form exports, and monitoring services, ACTV TRKR brings everything together in one clean dashboard so you can understand performance at a glance.
               </p>
               

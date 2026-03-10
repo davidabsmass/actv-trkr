@@ -155,11 +155,8 @@ const Index = () => {
                   One Dashboard for<br />WordPress Insights
                 </h1>
                 
-                <p className="text-base md:text-lg text-white/90 mb-4 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">
-                  ACTV TRKR is the all-in-one WordPress intelligence platform for tracking visitor behavior, lead activity, form performance, and website health — all from one clean dashboard.
-                </p>
-                <p className="text-base md:text-lg text-white/70 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">
-                  Stop piecing together analytics, form exports, and monitoring tools. ACTV TRKR shows you what is working, where leads are coming from, and what needs attention before it costs you opportunities.
+                <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">
+                  ACTV TRKR is an all-in-one WordPress intelligence platform that tracks visitor behavior, lead activity, form performance, and website health from one clean dashboard, giving you a clear view of what is working, where leads are coming from, and what needs attention before it costs you opportunities.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 pb-[30px]">

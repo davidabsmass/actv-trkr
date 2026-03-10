@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Call the WP REST endpoint
+    // The sync is now triggered by sending a request to the WP plugin.
+    // The WP plugin already has the API key stored locally and authenticates itself.
     const siteUrl = site.url || `https://${site.domain}`;
     const wpEndpoint = `${siteUrl.replace(/\/$/, "")}/wp-json/actv-trkr/v1/sync`;
 
@@ -79,9 +80,8 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKeyRow.key_plain}`,
       },
-      body: JSON.stringify({ triggered_from: "dashboard" }),
+      body: JSON.stringify({ triggered_from: "dashboard", key_hash: apiKeyRow.key_hash }),
     });
 
     if (!wpRes.ok) {

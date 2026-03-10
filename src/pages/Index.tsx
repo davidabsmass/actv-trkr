@@ -136,13 +136,6 @@ const Index = () => {
     "Instant downtime alerts via email & in-app",
   ];
 
-  const attributionFeatures = [
-    "Full UTM parameter tracking",
-    "Referrer domain attribution",
-    "Session-level engagement scoring",
-    "Lead-to-source mapping",
-    "Campaign performance analysis",
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">

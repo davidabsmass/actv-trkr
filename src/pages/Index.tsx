@@ -27,6 +27,7 @@ import {
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import logoActvTrkr from "@/assets/actv-trkr-logo.svg";
+import logoActvTrkrDark from "@/assets/actv-trkr-logo-dark.svg";
 import logoActvTrkrWhite from "@/assets/actv-trkr-logo-white.svg";
 import logoActvTrkr2 from "@/assets/actv-trkr-logo-2.png";
 import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";
@@ -575,34 +576,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA */}
-      <section 
-        className="relative px-6 py-24 overflow-hidden"
-        style={{
-          backgroundImage: `url(${footerBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <div className="absolute inset-0 bg-black/20"></div>
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="font-normal text-white mb-4 drop-shadow-lg" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-            Ready for liftoff?
-          </h2>
-          <p className="text-xl text-white/90 mb-8 drop-shadow-md">
-            Start tracking what matters—leads, conversions, and real ROI.
-          </p>
-          <Button
-            size="lg"
-            className="text-lg px-8 py-6 bg-white text-primary hover:bg-white/90 shadow-xl"
-            onClick={() => navigate("/auth")}
-          >
-            Get Started Free
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-        </div>
-      </section>
+
 
       {/* Footer */}
       <footer className="bg-surface border-t border-border">
@@ -610,7 +584,7 @@ const Index = () => {
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-2">
-                <img src={logoActvTrkr} alt="ACTV TRKR" className="h-6" />
+                <img src={logoActvTrkrDark} alt="ACTV TRKR" className="h-6" />
               </div>
               <p className="text-sm text-muted-foreground">
                 © 2026 ACTV TRKR. All rights reserved.

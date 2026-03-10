@@ -336,16 +336,6 @@ const Index = () => {
               <p className="text-muted-foreground max-w-xl mb-8">
                 ACTV TRKR captures meaningful visitor behavior so you can understand how people interact with your site. Track time spent on pages, key clicks, downloads, and navigation paths. Every lead includes an activity timeline showing what the visitor viewed and clicked before submitting a form, giving you valuable insight into how conversions happen.
               </p>
-              <div className="space-y-3">
-                {monitoringFeatures.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Check className="h-3 w-3 text-primary" />
-                    </div>
-                    <span className="text-foreground">{feature}</span>
-                  </div>
-                ))}
-              </div>
             </div>
             <div>
               <img src={workflowInset} alt="Monitoring dashboard" className="w-full h-auto" />

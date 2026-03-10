@@ -114,19 +114,17 @@ export default function Forms() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
-  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
-  const [days, setDays] = useState(30);
-
-  // Auto-select form from query param (deep link from Form Health panel)
-  useEffect(() => {
-    const selected = searchParams.get("selected");
-    if (selected && forms && forms.some((f) => f.id === selected)) {
-      setSelectedFormId(selected);
+  const selectedFormId = searchParams.get("selected") || null;
+  const setSelectedFormId = (id: string | null) => {
+    if (id) {
+      setSearchParams({ selected: id }, { replace: true });
+    } else {
       searchParams.delete("selected");
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, forms, setSearchParams]);
+  };
+  const [showArchived, setShowArchived] = useState(false);
+  const [days, setDays] = useState(30);
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");

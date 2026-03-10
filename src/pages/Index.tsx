@@ -120,8 +120,8 @@ const Index = () => {
             willChange: 'transform',
           }}
         />
-        {/* Dark gradient overlay for mobile readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70 md:hidden z-[1]" />
+        {/* Dark gradient overlay for mobile readability — concentrated behind text, letting sky show behind astronaut */}
+        <div className="absolute inset-0 md:hidden z-[1]" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.15) 62%, rgba(0,0,0,0.0) 72%, rgba(0,0,0,0.3) 100%)' }} />
         <SparkleCanvas />
 
         <section className="relative px-6 pt-[10rem] pb-16 md:pt-[calc(10rem+10px)] md:pb-[calc(16px+80px)]">

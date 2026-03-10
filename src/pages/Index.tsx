@@ -24,10 +24,11 @@ import {
   Lock,
   Link2,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import logoActvTrkr from "@/assets/actv-trkr-logo.svg";
-import astronautSpaceboy from "@/assets/astronaut-spaceboy.png";
+import spaceboy from "@/assets/spaceboy.png";
+import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import footerBackground from "@/assets/footer-background.jpg";
 import designPresentationBg from "@/assets/design-presentation-bg.jpg";
@@ -44,6 +45,17 @@ import pricingBg from "@/assets/pricing-bg.png";
 
 const Index = () => {
   const navigate = useNavigate();
+
+  const [scrollY, setScrollY] = useState(0);
+
+  const handleScroll = useCallback(() => {
+    setScrollY(window.scrollY);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   // If a password reset link lands on "/" (instead of "/auth"), forward it while preserving tokens.
   useEffect(() => {
@@ -167,37 +179,19 @@ const Index = () => {
       </nav>
 
       {/* Hero + Quick Setup wrapped in space background */}
-      <div
-        className="relative overflow-hidden bg-black hero-bg-wrapper"
-        style={{
-          backgroundSize: '100% auto',
-          backgroundPosition: 'left top',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        <style>{`
-          .hero-bg-wrapper {
-            background-image: url('/images/hero-bg-iphone-5.jpg');
-            background-position: center bottom;
-            background-size: cover;
-          }
-          @media (min-width: 768px) {
-            .hero-bg-wrapper {
-              background-image: url('/images/hero-bg-ipad.jpg');
-              background-size: 100% auto;
-              background-position: left top;
-            }
-          }
-          @media (min-width: 1024px) {
-            .hero-bg-wrapper {
-              background-image: url('/images/hero-bg-2.jpg');
-              background-size: cover;
-              background-position: center top;
-              image-rendering: -webkit-optimize-contrast;
-            }
-          }
-        `}</style>
-        <div className="absolute inset-0 bg-black/30" style={{ zIndex: 1 }}></div>
+      <div className="relative overflow-hidden bg-black">
+        {/* Parallax background - moves slower */}
+        <div
+          className="absolute inset-0 w-full h-[120%]"
+          style={{
+            backgroundImage: `url(${spaceBgd})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            transform: `translateY(${scrollY * 0.3}px)`,
+            willChange: 'transform',
+          }}
+        />
+        <div className="absolute inset-0 bg-black/20" style={{ zIndex: 1 }}></div>
         <div className="absolute bottom-0 left-0 right-0 h-[40%] lg:h-[20%] bg-gradient-to-t from-black via-black/60 to-transparent" style={{ zIndex: 1 }}></div>
         
         <SparkleCanvas />
@@ -213,14 +207,22 @@ const Index = () => {
           }
         `}</style>
         
-        <div className="max-w-7xl mx-auto relative" style={{ zIndex: 2 }}>
+        <div
+          className="max-w-7xl mx-auto relative"
+          style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}
+        >
           <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
             <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-center -ml-[50px] md:ml-0 mt-[20px] md:mt-0">
               <img
-                src={astronautSpaceboy}
+                src={spaceboy}
                 alt="Floating astronaut"
-                className="w-36 md:w-48 lg:w-[16rem] drop-shadow-2xl"
-                style={{ animation: 'hero-float 10s ease-in-out infinite', marginTop: '40px' }}
+                className="w-44 md:w-56 lg:w-[20rem] drop-shadow-2xl"
+                style={{
+                  animation: 'hero-float 10s ease-in-out infinite',
+                  marginTop: '40px',
+                  transform: `translateY(${scrollY * -0.25}px)`,
+                  willChange: 'transform',
+                }}
               />
             </div>
 

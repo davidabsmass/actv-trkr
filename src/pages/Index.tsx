@@ -192,7 +192,7 @@ const Index = () => {
             willChange: 'transform',
           }}
         />
-        <div className="absolute inset-0 bg-black/20" style={{ zIndex: 1 }}></div>
+        
         <div className="absolute bottom-0 left-0 right-0 h-[40%] lg:h-[20%] bg-gradient-to-t from-black via-black/60 to-transparent" style={{ zIndex: 1 }}></div>
         
         <SparkleCanvas />
@@ -223,7 +223,7 @@ const Index = () => {
             </div>
 
             <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left">
-              <h1 className="font-display text-3xl md:text-[2.8rem] lg:text-7xl font-light text-white mb-4 tracking-wide drop-shadow-lg uppercase" style={{ lineHeight: '1.1' }}>
+              <h1 className="text-3xl md:text-[2.8rem] lg:text-7xl font-normal text-white mb-4 tracking-wide drop-shadow-lg uppercase" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
                 Know Exactly Where
                 <br />
                 Your Website Lands

@@ -28,6 +28,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import logoActvTrkr from "@/assets/actv-trkr-logo.svg";
 import logoActvTrkrWhite from "@/assets/actv-trkr-logo-white.svg";
+import logoActvTrkr2 from "@/assets/actv-trkr-logo-2.png";
 import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";
 import spaceboy from "@/assets/spaceboy.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
@@ -141,7 +142,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="h-16 flex items-center justify-center md:justify-between">
             <div className="flex items-center gap-2 flex-shrink-0">
-              <img src={logoActvTrkr} alt="ACTV TRKR" className="h-8 w-auto object-contain" />
+              <img src={logoMshnCtrl} alt="MSHN CTRL" className="h-8 w-auto object-contain" />
             </div>
             <div className="hidden md:flex items-center gap-8">
               <button 
@@ -206,7 +207,7 @@ const Index = () => {
         >
           {/* Centered logo over everything */}
           <div className="flex justify-center mb-10">
-            <img src={logoMshnCtrl} alt="MSHN CTRL" className="h-14 md:h-20 lg:h-[90px] w-auto drop-shadow-lg" />
+            <img src={logoActvTrkr2} alt="ACTV TRKR" className="h-14 md:h-20 lg:h-[90px] w-auto drop-shadow-lg" />
           </div>
 
           <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">

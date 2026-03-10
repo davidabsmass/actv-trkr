@@ -272,7 +272,7 @@ const Index = () => {
               </p>
             </div>
 
-            <div className="relative flex items-center justify-center lg:-ml-16">
+            <div className="relative flex items-center justify-center lg:col-span-3 lg:-ml-16">
               <img 
                 src={helmetImg}
                 alt="ACTV TRKR dashboard preview with astronaut helmet"

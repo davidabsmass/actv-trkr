@@ -407,7 +407,7 @@ const Index = () => {
           src={pricingAstronaut} 
           alt="" 
            className="absolute top-1/2 left-[calc(8%+30px)] w-[154px] h-auto z-30 pointer-events-none hidden lg:block"
-          style={{ transform: `translateY(calc(-50% + 150px + ${(scrollY - 3200) * -0.08}px))`, willChange: 'transform' }}
+          style={{ transform: `translateY(calc(-50% + 300px + ${(scrollY - 3200) * -0.08}px))`, willChange: 'transform' }}
         />
 
         <div className="max-w-5xl mx-auto relative z-10">

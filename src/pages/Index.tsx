@@ -329,36 +329,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Section 6 — Why It Matters */}
-      <section className="relative px-6 overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${accountabilityBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
-                <Layers className="h-4 w-4" />
-                Why It Matters
-              </div>
-              <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Everything You Need, Without the Tool Sprawl
-              </h3>
-              <p className="text-white/90 max-w-xl mb-4">
-                Most teams end up piecing together analytics platforms, form tools, uptime monitors, and lead exports just to understand what their website is doing.
-              </p>
-              <p className="text-white/70 max-w-xl">
-                ACTV TRKR brings those core insights together in a single WordPress-focused platform built for agencies, marketers, and organizations that need visibility without unnecessary complexity.
-              </p>
-            </div>
-            <div className="relative flex items-center justify-center">
-              <img
-                src={accountabilityInset}
-                alt="All-in-one platform"
-                className="w-[80%] h-auto object-contain"
-                style={{ transform: `translateY(${(scrollY - 3000) * -0.05}px)`, willChange: 'transform' }}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Pricing Section */}
       <section id="pricing-section" className="relative px-6 overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>

@@ -136,7 +136,8 @@ const Index = () => {
             </div>
 
             <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
-              <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
+              {/* Astronaut — below buttons on mobile, left on desktop */}
+              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1">
                 <img
                   src={spaceboy}
                   alt="Floating astronaut"
@@ -148,8 +149,7 @@ const Index = () => {
                 />
               </div>
 
-              {/* Astronaut — below buttons on mobile/iPad, left on desktop */}
-              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1">
+              <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
                 <h1 className="text-xl md:text-[1.9rem] lg:text-[3.43rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg whitespace-nowrap" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
                   See What Your Website<br />Is Really Doing
                 </h1>

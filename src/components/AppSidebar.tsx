@@ -9,6 +9,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import { NotificationBell } from "@/components/NotificationBell";
+import actvTrkrLogo from "@/assets/actv-trkr-logo.svg";
 
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -40,33 +41,27 @@ export function AppSidebar() {
   const { orgRole } = useOrgRole(orgId);
 
   return (
-    <Sidebar className="border-r border-sidebar-border">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center justify-end mb-3">
-          <div className="flex items-center gap-1">
-            <NotificationBell />
-            {isAdmin && (
-              <Badge variant="outline" className="text-[9px] uppercase text-primary border-primary/20">
-                Admin
-              </Badge>
-            )}
-          </div>
+    <Sidebar className="border-r-0" style={{ background: "var(--sidebar-gradient)" }}>
+      <SidebarHeader className="p-5">
+        <div className="flex items-center justify-between mb-5">
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto brightness-0 invert" />
+          <NotificationBell />
         </div>
 
         {orgs.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-white hover:bg-sidebar-accent/80 transition-colors">
+              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-white/15 rounded-md text-white hover:bg-white/25 transition-colors">
                 <span className="truncate">{orgName ?? "Select org"}</span>
                 <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 text-white/60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 bg-sidebar border-sidebar-border">
+            <DropdownMenuContent align="start" className="w-52">
               {orgs.map((o) => (
                 <DropdownMenuItem
                   key={o.id}
                   onClick={() => setOrgId(o.id)}
-                  className={`text-white focus:text-white focus:bg-sidebar-accent ${o.id === orgId ? "bg-sidebar-accent" : ""}`}
+                  className={o.id === orgId ? "font-medium" : ""}
                 >
                   {o.name}
                 </DropdownMenuItem>
@@ -74,7 +69,7 @@ export function AppSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div className="px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-white truncate">
+          <div className="px-3 py-2 text-xs font-medium bg-white/15 rounded-md text-white truncate">
             {orgName ?? "—"}
           </div>
         )}
@@ -82,8 +77,8 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-4">
-            Analytics
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-white/50 px-4">
+            Dashboard
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -92,8 +87,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -108,7 +103,7 @@ export function AppSidebar() {
         {/* Admin-only section */}
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 px-4">
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-white/50 px-4">
               Admin
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -117,8 +112,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/clients"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Building2 className="h-4 w-4" />
                       <span>Clients</span>
@@ -129,8 +124,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/admin-setup"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
                     >
                       <ClipboardList className="h-4 w-4" />
                       <span>Setup & Inputs</span>
@@ -151,8 +146,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/settings"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Settings className="h-4 w-4" />
                       <span>Settings</span>
@@ -167,9 +162,9 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4">
         <div className="px-4 py-1.5 mb-2">
-          <p className="text-xs text-sidebar-foreground/50 truncate">{user?.email}</p>
+          <p className="text-xs text-white/50 truncate">{user?.email}</p>
           {orgRole && (
-            <p className="text-[10px] text-sidebar-foreground/40 uppercase tracking-wider">{orgRole}</p>
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">{orgRole}</p>
           )}
         </div>
         <SidebarMenu>
@@ -177,8 +172,8 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <NavLink
                 to="/account"
-                className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/60 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full"
-                activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
+                activeClassName="bg-white/20 text-white font-medium"
               >
                 <UserCircle className="h-4 w-4" />
                 <span>Account</span>
@@ -188,7 +183,7 @@ export function AppSidebar() {
         </SidebarMenu>
         <button
           onClick={signOut}
-          className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/60 rounded-md hover:bg-destructive/20 hover:text-destructive transition-colors w-full"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />
           <span>Sign Out</span>

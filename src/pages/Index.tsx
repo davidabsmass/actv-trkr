@@ -73,12 +73,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
       <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } }` }} />
-      {/* Navigation */}
-      <nav className="absolute top-0 left-0 right-0 z-50 bg-black">
+      {/* Navigation — hidden until scrolled past logo, then sticky */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 bg-black transition-transform duration-300 ${showNav ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="h-16 flex items-center justify-center md:justify-between">
             <div className="flex items-center gap-2 flex-shrink-0">
-              <img src={logoMshnCtrl} alt="MSHN CTRL" className="h-6 w-auto object-contain" />
+              <img src={logoActvTrkr2} alt="ACTV TRKR" className="h-8 w-auto object-contain" />
             </div>
             <div className="hidden md:flex items-center gap-8">
               <button 
@@ -104,15 +104,6 @@ const Index = () => {
                 Get Started
               </Button>
             </div>
-          </div>
-          {/* Mobile buttons row */}
-          <div className="flex md:hidden items-center justify-center gap-2 mt-3">
-            <Button variant="ghost" size="sm" className="text-white hover:text-white hover:bg-white/10 text-xs" onClick={() => navigate("/auth")}>
-              Sign In
-            </Button>
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs" onClick={() => navigate("/auth")}>
-              Get Started
-            </Button>
           </div>
         </div>
       </nav>

@@ -370,33 +370,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Extensive Features Grid */}
-      <section id="features-grid" className="px-6 py-20" style={{ backgroundImage: `url(${featuresBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="font-normal text-foreground mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-              Everything in one place
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              A complete toolkit for tracking traffic, leads, conversions, and site health.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {extensiveFeatures.map((feature, i) => (
-              <div
-                key={i}
-                className="flex flex-col items-center gap-3 p-6 rounded-xl border border-border bg-surface hover:bg-muted/50 hover:border-primary/30 transition-all group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="h-5 w-5 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-foreground text-center">{feature.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Pricing Section - Trial First */}
       <section id="pricing-section" className="px-6 py-20 landing-section-pad" style={{ backgroundImage: `url(${trialBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>

@@ -277,7 +277,7 @@ const Index = () => {
 
       {/* Section 4 — Form Monitoring */}
       <section className="px-6 overflow-hidden form-monitoring-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${satelliteBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
-        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .form-monitoring-section { background-position: left top !important; } }` }} />
+        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .form-monitoring-section { background-position: left top !important; } } .form-chart-container { margin-top: 253px; } @media (min-width: 1024px) { .form-chart-container { margin-top: 0; } }` }} />
         <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(40px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="relative lg:col-span-7 flex items-end justify-start min-h-[300px] lg:min-h-[460px]" style={{ marginTop: window.innerWidth < 1024 ? '253px' : '0' }}>

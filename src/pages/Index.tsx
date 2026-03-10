@@ -66,7 +66,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
-      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } }` }} />
+      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } }` }} />
       {/* Navigation */}
       <nav className="absolute top-0 left-0 right-0 z-50 bg-black">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -138,11 +138,11 @@ const Index = () => {
 
             <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
               {/* Astronaut — below buttons on mobile, left on desktop */}
-              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1">
+              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1 hero-astronaut-wrap">
                 <img
                   src={spaceboy}
                   alt="Floating astronaut"
-                  className="w-64 md:w-80 lg:w-[36rem] drop-shadow-2xl prlx"
+                  className="w-[32rem] md:w-80 lg:w-[36rem] drop-shadow-2xl prlx"
                   style={{
                     transform: `translateY(${scrollY * -0.25}px)`,
                     willChange: 'transform',
@@ -278,13 +278,13 @@ const Index = () => {
 
       {/* Section 4 — Form Monitoring */}
       <section className="px-6 overflow-hidden form-monitoring-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${satelliteBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
-        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .form-monitoring-section { background-position: left top !important; } } @media (max-width: 1023px) { .form-monitoring-section { padding-top: 0px !important; background-position: center bottom !important; } .satellite-mobile { width: 260px !important; left: -80px !important; right: auto !important; bottom: -60px !important; transform: rotate(-10deg) !important; } }` }} />
+        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .form-monitoring-section { background-position: left top !important; } } @media (max-width: 1023px) { .form-monitoring-section { padding-top: 0px !important; background-position: center bottom !important; } }` }} />
         <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(40px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
                <img src={satelliteChart} alt="Form performance dashboard" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.06}px)`, willChange: 'transform' }} />
                <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl shadow-lg prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.12}px)`, willChange: 'transform' }} />
-               <img src={satelliteImg} alt="Satellite" className="absolute bottom-[-30px] right-[-15px] lg:bottom-[110px] lg:right-[2%] w-[130px] lg:w-[180px] h-auto z-20 pointer-events-none prlx satellite-mobile" style={{ transform: `translateY(${(scrollY - 1800) * 0.05}px) rotate(-10deg)`, willChange: 'transform' }} />
+               <img src={satelliteImg} alt="Satellite" className="absolute bottom-[-30px] right-[-15px] lg:bottom-[110px] lg:right-[2%] w-[130px] lg:w-[180px] h-auto z-20 pointer-events-none prlx" style={{ transform: `translateY(${(scrollY - 1800) * 0.05}px) rotate(-10deg)`, willChange: 'transform' }} />
             </div>
             <div className="lg:col-span-5">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">

@@ -142,7 +142,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="h-16 flex items-center justify-center md:justify-between">
             <div className="flex items-center gap-2 flex-shrink-0">
-              <img src={logoActvTrkr} alt="ACTV TRKR" className="h-8 w-auto object-contain" />
+              <img src={logoMshnCtrl} alt="MSHN CTRL" className="h-8 w-auto object-contain" />
             </div>
             <div className="hidden md:flex items-center gap-8">
               <button 

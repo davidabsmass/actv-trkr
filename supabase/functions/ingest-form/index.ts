@@ -114,8 +114,13 @@ Deno.serve(async (req) => {
     let referrerDomain: string | null = null;
     if (context?.referrer) { try { referrerDomain = new URL(context.referrer).hostname; } catch { /* ignore */ } }
 
-    const source = utmSource || referrerDomain || "direct";
-    const medium = utmMedium || (referrerDomain ? "referral" : "direct");
+    // Detect self-referral (source = own domain) and treat as direct
+    let siteDomain: string | null = null;
+    if (pageUrl) { try { siteDomain = new URL(pageUrl).hostname; } catch { /* ignore */ } }
+    const isSelfReferral = referrerDomain && siteDomain && referrerDomain === siteDomain;
+
+    const source = utmSource || (isSelfReferral ? "direct" : referrerDomain) || "direct";
+    const medium = utmMedium || (referrerDomain && !isSelfReferral ? "referral" : "direct");
 
     const { data: lead, error: leadErr } = await supabase.from("leads").insert({
       org_id: orgId, site_id: siteId, form_id: formId,

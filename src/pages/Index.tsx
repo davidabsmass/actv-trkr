@@ -64,6 +64,7 @@ const Index = () => {
   const navigate = useNavigate();
 
   const [scrollY, setScrollY] = useState(0);
+  const [isAnnual, setIsAnnual] = useState(false);
 
   const handleScroll = useCallback(() => {
     setScrollY(window.scrollY);

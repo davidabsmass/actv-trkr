@@ -193,7 +193,7 @@ const Index = () => {
           }}
         />
         
-        <div className="absolute bottom-0 left-0 right-0 h-[40%] lg:h-[20%] bg-gradient-to-t from-black via-black/60 to-transparent" style={{ zIndex: 1 }}></div>
+        
         
         <SparkleCanvas />
 

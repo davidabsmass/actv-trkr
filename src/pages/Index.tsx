@@ -220,7 +220,7 @@ const Index = () => {
               <img
                 src={platformInset}
                 alt="Lead attribution analytics"
-                className="w-[85%] h-auto rounded-2xl shadow-2xl"
+                className="w-full lg:w-[85%] h-auto rounded-2xl shadow-2xl"
                 style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
               />
             </div>
@@ -243,7 +243,7 @@ const Index = () => {
           <img
             src={spaceManBack}
             alt="Astronaut"
-            className="absolute bottom-[-50px] left-[35%] h-[65%] w-auto object-contain pointer-events-none z-10"
+            className="absolute bottom-[-50px] left-[35%] h-[65%] w-auto object-contain pointer-events-none z-10 hidden lg:block"
           />
         </div>
       </section>

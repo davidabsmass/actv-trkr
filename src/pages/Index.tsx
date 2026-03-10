@@ -129,7 +129,7 @@ const Index = () => {
             className="max-w-7xl mx-auto relative prlx"
             style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}
           >
-            <div className="flex justify-center mb-[60px]">
+            <div className="flex justify-center mb-[60px] -mt-[40px]">
               <img ref={logoRef} src={logoActvTrkr2} alt="ACTV TRKR" className="h-11 md:h-16 lg:h-[72px] w-auto drop-shadow-lg" />
             </div>
 

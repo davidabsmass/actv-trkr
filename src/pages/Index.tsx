@@ -420,18 +420,19 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
             {/* Starter */}
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg">
-              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.6em', lineHeight: '1.2em' }}>
+              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
                 Starter
               </h3>
               <p className="text-sm text-muted-foreground mb-4">For small agencies</p>
               
-              <div className="mb-4">
+              <div className="mb-1">
                 <span className="text-3xl font-bold text-foreground">$19</span>
                 <span className="text-muted-foreground text-sm">/month</span>
               </div>
+              <p className="text-xs text-primary mb-4">$190/year — save 2 months</p>
               
               <p className="text-sm text-muted-foreground mb-6">
                 Perfect for individual WordPress websites that want clear insight into performance and leads.
@@ -460,15 +461,16 @@ const Index = () => {
 
             {/* Pro */}
             <div className="p-8 rounded-2xl bg-white shadow-lg" style={{ border: '2px solid transparent', backgroundClip: 'padding-box', outline: '2px solid', outlineColor: '#ac5bfc', outlineOffset: '2px', borderRadius: '1rem' }}>
-              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.6em', lineHeight: '1.2em' }}>
+              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
                 Pro
               </h3>
               <p className="text-sm text-muted-foreground mb-4">For growing agencies</p>
               
-              <div className="mb-4">
+              <div className="mb-1">
                 <span className="text-3xl font-bold text-foreground">$49</span>
                 <span className="text-muted-foreground text-sm">/month</span>
               </div>
+              <p className="text-xs text-primary mb-4">$490/year — save 2 months</p>
               
               <p className="text-sm text-muted-foreground mb-6">
                 For agencies and organizations managing multiple websites. Everything in starter, plus:

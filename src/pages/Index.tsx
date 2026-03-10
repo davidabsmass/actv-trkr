@@ -24,10 +24,11 @@ import {
   Lock,
   Link2,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import logoActvTrkr from "@/assets/actv-trkr-logo.svg";
-import astronautSpaceboy from "@/assets/astronaut-spaceboy.png";
+import spaceboy from "@/assets/spaceboy.png";
+import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import footerBackground from "@/assets/footer-background.jpg";
 import designPresentationBg from "@/assets/design-presentation-bg.jpg";

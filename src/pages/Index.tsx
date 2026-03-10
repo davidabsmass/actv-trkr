@@ -27,6 +27,7 @@ import {
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import logoActvTrkr from "@/assets/actv-trkr-logo.svg";
+import logoActvTrkrWhite from "@/assets/actv-trkr-logo-white.svg";
 import spaceboy from "@/assets/spaceboy.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";

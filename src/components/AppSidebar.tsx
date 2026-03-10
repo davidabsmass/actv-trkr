@@ -162,9 +162,9 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4">
         <div className="px-4 py-1.5 mb-2">
-          <p className="text-xs text-sidebar-foreground/50 truncate">{user?.email}</p>
+          <p className="text-xs text-white/50 truncate">{user?.email}</p>
           {orgRole && (
-            <p className="text-[10px] text-sidebar-foreground/40 uppercase tracking-wider">{orgRole}</p>
+            <p className="text-[10px] text-white/40 uppercase tracking-wider">{orgRole}</p>
           )}
         </div>
         <SidebarMenu>
@@ -172,8 +172,8 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <NavLink
                 to="/account"
-                className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/60 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full"
-                activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
+                activeClassName="bg-white/20 text-white font-medium"
               >
                 <UserCircle className="h-4 w-4" />
                 <span>Account</span>
@@ -183,7 +183,7 @@ export function AppSidebar() {
         </SidebarMenu>
         <button
           onClick={signOut}
-          className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/60 rounded-md hover:bg-destructive/20 hover:text-destructive transition-colors w-full"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />
           <span>Sign Out</span>

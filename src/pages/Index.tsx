@@ -254,55 +254,6 @@ const Index = () => {
 
       </div>{/* End space background wrapper */}
 
-      {/* Easy Setup Section */}
-      <section className="relative px-6 py-20 bg-background">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/15 text-success text-sm font-medium mb-4 border border-success/30">
-              <Zap className="h-4 w-4" />
-              Quick Setup
-            </div>
-            <h2 className="font-bold text-foreground mb-4" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
-              Get started in minutes, not hours
-            </h2>
-            <p className="text-lg text-muted-foreground mx-auto">
-              Install the plugin, connect your site, and start seeing real data immediately.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-[30px]">
-            {easySetupCards.map((card, i) => (
-              <div
-                key={i}
-                className="p-8 rounded-2xl border border-border bg-surface hover:shadow-lg transition-all"
-              >
-                <div className="flex items-center gap-4 mb-4 md:block">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 md:mb-6">
-                    <card.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="font-bold text-foreground md:mb-3" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
-                    {card.title}
-                  </h3>
-                </div>
-                <p className="text-muted-foreground mb-6">
-                  {card.description}
-                </p>
-                <div className="space-y-2">
-                  {card.features.map((feature, j) => (
-                    <div key={j} className="flex items-center gap-2 text-sm">
-                      <div className="w-4 h-4 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-                        <Check className="h-2.5 w-2.5 text-success" />
-                      </div>
-                      <span className="text-muted-foreground">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Dashboard Showcase */}
       <section className="px-6 bg-surface/50 landing-section-pad" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">

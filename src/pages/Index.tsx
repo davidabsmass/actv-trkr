@@ -388,8 +388,8 @@ const Index = () => {
                 ACTV TRKR continuously monitors your website so you always know if something needs attention. Built-in checks track uptime, broken links, domain expiration, and SSL certificates. Instead of discovering problems after visitors do, ACTV TRKR helps you catch them early.
               </p>
             </div>
-            <div className="relative flex items-center justify-center lg:col-span-7">
-              <img src={websiteHealthGraphic} alt="Website health monitoring dashboard" className="w-[85%] h-auto relative z-10" style={{ transform: `translateY(${(scrollY - 2400) * -0.06}px)`, willChange: 'transform' }} />
+            <div className="relative flex items-end justify-center lg:col-span-7 pt-12">
+              <img src={websiteHealthGraphic} alt="Website health monitoring dashboard" className="w-[85%] h-auto relative z-10" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />
             </div>
           </div>
         </div>

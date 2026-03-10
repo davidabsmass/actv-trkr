@@ -133,7 +133,7 @@ const Index = () => {
               <img ref={logoRef} src={logoActvTrkr2} alt="ACTV TRKR" className="h-11 md:h-16 lg:h-[72px] w-auto drop-shadow-lg" />
             </div>
 
-            <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
+            <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12 hero-content-row relative">
               {/* Astronaut — below buttons on mobile, left on desktop */}
               <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1 hero-astronaut-wrap">
                 <img

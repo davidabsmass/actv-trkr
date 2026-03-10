@@ -322,7 +322,7 @@ const Index = () => {
                 <GitBranch className="h-4 w-4" />
                 Site Monitoring
               </div>
-              <h3 className="font-bold text-foreground mb-3" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+              <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 Know when something breaks — before your client does
               </h3>
               <p className="text-muted-foreground max-w-xl mb-8">

@@ -91,6 +91,7 @@ const App = () => (
             <Route path="monitoring" element={<Monitoring />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="admin-setup" element={<AdminSetup />} />
+            <Route path="account" element={<Account />} />
           </Route>
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/snapshot/:id" element={<SnapshotView />} />

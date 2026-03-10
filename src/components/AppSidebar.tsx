@@ -1,5 +1,5 @@
 import {
-  TableProperties, Settings, LogOut,
+  TableProperties, Settings, LogOut, UserCircle,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
   LayoutDashboard, TrendingUp,
 } from "lucide-react";
@@ -172,6 +172,20 @@ export function AppSidebar() {
             <p className="text-[10px] text-sidebar-foreground/40 uppercase tracking-wider">{orgRole}</p>
           )}
         </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink
+                to="/account"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/60 rounded-md hover:bg-sidebar-accent/50 transition-colors w-full"
+                activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+              >
+                <UserCircle className="h-4 w-4" />
+                <span>Account</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <button
           onClick={signOut}
           className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/60 rounded-md hover:bg-destructive/20 hover:text-destructive transition-colors w-full"

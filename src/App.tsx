@@ -21,6 +21,7 @@ import SnapshotView from "./pages/SnapshotView";
 import ResetPassword from "./pages/ResetPassword";
 import Monitoring from "./pages/Monitoring";
 import Notifications from "./pages/Notifications";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -46,8 +47,21 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (session) return <Navigate to="/" replace />;
+  if (session) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
+}
+
+function LandingRoute() {
+  const { session, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (session) return <Navigate to="/dashboard" replace />;
+  return <Index />;
 }
 
 const App = () => (
@@ -57,6 +71,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route index element={<LandingRoute />} />
           <Route
             element={
               <ProtectedRoute>
@@ -64,7 +79,6 @@ const App = () => (
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="performance" element={<Performance />} />
             <Route path="forms" element={<Forms />} />

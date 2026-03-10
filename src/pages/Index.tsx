@@ -156,19 +156,24 @@ const Index = () => {
                   ACTV TRKR is an all-in-one WordPress intelligence platform that tracks visitor behavior, lead activity, form performance, and website health from one clean dashboard, giving you a clear view of what is working, where leads are coming from, and what needs attention before it costs you opportunities.
                 </p>
                 
-                <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 pb-[30px]">
-                  <Button size="lg" className="text-lg px-8 py-6 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
+                <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">
+                  <Button size="sm" className="text-sm px-5 py-2 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
                     Get Started
-                    <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                   <Button 
-                    size="lg" 
+                    size="sm" 
                     variant="ghost" 
-                    className="text-lg px-8 py-6 border-2 border-accent text-white hover:bg-accent/10 bg-transparent"
+                    className="text-sm px-5 py-2 border border-accent text-white hover:bg-accent/10 bg-transparent"
                     onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })}
                   >
                     View Features
                   </Button>
+                  <button
+                    onClick={() => navigate("/auth")}
+                    className="text-sm font-medium text-white/80 hover:text-white transition-colors inline-flex items-center gap-1"
+                  >
+                    Sign In <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             </div>

@@ -223,10 +223,8 @@ const Index = () => {
             </div>
 
             <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left">
-              <h1 className="text-3xl md:text-[2.8rem] lg:text-7xl font-normal text-white mb-4 tracking-wide drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
-                Know Exactly Where
-                <br />
-                Your Website Lands
+              <h1 className="text-3xl md:text-[2.8rem] lg:text-7xl font-normal text-white mb-4 tracking-wide drop-shadow-lg whitespace-nowrap" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
+                Know Exactly Where<br />Your Website Lands
               </h1>
               
               <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md max-w-xl font-light">

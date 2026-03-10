@@ -212,7 +212,7 @@ const Index = () => {
           style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}
         >
           <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
-            <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-center -ml-[50px] md:ml-0 mt-[20px] md:mt-0">
+            <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-[20px] md:mt-0">
               <img
                 src={spaceboy}
                 alt="Floating astronaut"

@@ -72,7 +72,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
-      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } } @media (min-width: 768px) and (max-width: 1023px) { .hero-astronaut-wrap { margin-left: -160px; } .hero-astronaut-wrap img { width: 40rem !important; max-width: none !important; } .hero-headline { font-size: 2.225rem !important; } }` }} />
+      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } } @media (min-width: 768px) and (max-width: 1023px) { .hero-astronaut-wrap { position: absolute !important; left: -180px !important; top: 0 !important; margin: 0 !important; z-index: 0 !important; } .hero-astronaut-wrap img { width: 40rem !important; max-width: none !important; } .hero-headline { font-size: 2.225rem !important; } .hero-content-row { position: relative; } .hero-copy-block { position: relative; z-index: 1; margin-left: auto !important; text-align: right !important; } .hero-copy-block .flex { justify-content: flex-end !important; } }` }} />
       {/* Navigation — hidden until scrolled past logo, then sticky */}
       <nav className={`fixed top-0 left-0 right-0 z-50 bg-black transition-transform duration-300 ${showNav ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -133,7 +133,7 @@ const Index = () => {
               <img ref={logoRef} src={logoActvTrkr2} alt="ACTV TRKR" className="h-11 md:h-16 lg:h-[72px] w-auto drop-shadow-lg" />
             </div>
 
-            <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
+            <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12 hero-content-row relative">
               {/* Astronaut — below buttons on mobile, left on desktop */}
               <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-4 md:mt-[-60px] md:-ml-16 lg:-ml-24 order-2 md:order-1 hero-astronaut-wrap">
                 <img
@@ -147,7 +147,7 @@ const Index = () => {
                 />
               </div>
 
-              <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
+              <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2 hero-copy-block">
                 <h1 className="hero-headline text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
                   One Dashboard for<br />WordPress Insights
                 </h1>

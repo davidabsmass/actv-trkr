@@ -358,7 +358,7 @@ const Index = () => {
                 <Eye className="h-4 w-4" />
                 Attribution
               </div>
-              <h3 className="font-bold text-white mb-3" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+              <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 Know exactly where every lead comes from
               </h3>
               <p className="text-white/70 max-w-xl mb-8">

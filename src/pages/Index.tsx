@@ -583,7 +583,7 @@ const Index = () => {
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-2">
-                <img src={logoActvTrkr} alt="ACTV TRKR" className="h-6" />
+                <img src={logoActvTrkrDark} alt="ACTV TRKR" className="h-6" />
               </div>
               <p className="text-sm text-muted-foreground">
                 © 2026 ACTV TRKR. All rights reserved.

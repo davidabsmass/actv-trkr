@@ -457,7 +457,7 @@ const Index = () => {
                 </div>
                 
                 <div>
-                  <h3 className="font-bold text-foreground mb-4 flex items-center gap-2" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+                  <h3 className="font-normal text-foreground mb-4 flex items-center gap-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                     <Shield className="h-5 w-5 text-primary" />
                     Trial Includes
                   </h3>

@@ -327,7 +327,7 @@ const Index = () => {
       {/* Conversion Section */}
       <section className="relative px-6 landing-section-pad overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${conversionBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
                 <GitBranch className="h-4 w-4" />

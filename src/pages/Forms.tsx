@@ -900,7 +900,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
                           {lead.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{lead.source || "direct"}</TableCell>
+                      <TableCell className="text-sm">
+                        {(!lead.source || lead.source === siteData?.domain) ? "direct" : lead.source}
+                      </TableCell>
                       {fieldColumns.map((col) => (
                         <TableCell key={col.key} className="text-sm max-w-[200px] truncate">
                           {fields[col.key] || "—"}

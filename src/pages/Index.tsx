@@ -144,7 +144,7 @@ const Index = () => {
                   alt="Floating astronaut"
                   className="w-[32rem] md:w-80 lg:w-[36rem] drop-shadow-2xl prlx"
                   style={{
-                    transform: `translateY(${scrollY * -0.25}px)`,
+                    transform: `translateY(${scrollY * -0.12}px)`,
                     willChange: 'transform',
                   }}
                 />

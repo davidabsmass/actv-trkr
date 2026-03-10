@@ -293,14 +293,12 @@ const Index = () => {
               <img
                 src={platformInset}
                 alt="Lead generation analytics"
-                className="w-3/4 h-auto rounded-2xl shadow-2xl relative z-0 lg:-ml-8"
-                style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
+                className="w-3/4 h-auto rounded-2xl shadow-2xl relative z-0"
               />
               <img
                 src={spaceManBack}
                 alt="Astronaut"
-                className="absolute -bottom-[80px] right-[12%] h-[65%] w-auto object-contain pointer-events-none z-10"
-                style={{ transform: `translateY(${Math.max(0, (scrollY - 800) * 0.05)}px)`, willChange: 'transform' }}
+                className="absolute bottom-0 right-[12%] h-[65%] w-auto object-contain pointer-events-none z-10"
               />
             </div>
             {/* Right: text, vertically centered */}

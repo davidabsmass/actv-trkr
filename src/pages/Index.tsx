@@ -216,7 +216,7 @@ const Index = () => {
               <img
                 src={spaceboy}
                 alt="Floating astronaut"
-                className="w-44 md:w-56 lg:w-[20rem] drop-shadow-2xl"
+                className="w-56 md:w-72 lg:w-[28rem] drop-shadow-2xl"
                 style={{
                   animation: 'hero-float 10s ease-in-out infinite',
                   marginTop: '40px',

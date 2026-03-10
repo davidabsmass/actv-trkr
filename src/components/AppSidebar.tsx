@@ -146,8 +146,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/settings"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-sidebar-foreground/70 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Settings className="h-4 w-4" />
                       <span>Settings</span>

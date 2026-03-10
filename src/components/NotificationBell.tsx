@@ -33,9 +33,7 @@ export function NotificationBell() {
     >
       <Bell className="h-4.5 w-4.5 text-muted-foreground" />
       {(unreadCount || 0) > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
-          {unreadCount! > 9 ? "9+" : unreadCount}
-        </span>
+        <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-warning border-2 border-background" />
       )}
     </button>
   );

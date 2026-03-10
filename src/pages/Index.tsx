@@ -383,7 +383,7 @@ const Index = () => {
       <section id="features-grid" className="px-6 py-20" style={{ backgroundImage: `url(${featuresBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="font-bold text-foreground mb-4" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-foreground mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
               Everything in one place
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">

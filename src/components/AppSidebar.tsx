@@ -1,5 +1,5 @@
 import {
-  TableProperties, Settings, LogOut,
+  TableProperties, Settings, LogOut, UserCircle,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
   LayoutDashboard, TrendingUp,
 } from "lucide-react";

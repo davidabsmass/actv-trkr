@@ -228,18 +228,18 @@ const Index = () => {
 
             <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left">
               <h1 className="landing-hero-headline text-base md:text-[2.8rem] lg:text-7xl font-bold text-white mb-4 tracking-tight drop-shadow-lg" style={{ lineHeight: '1.1' }}>
-                Revenue Intelligence
+                Know Exactly Where
                 <br />
-                for WordPress
+                Your Website Lands
               </h1>
               
-              <p className="text-base md:text-2xl text-white/95 mb-8 md:mb-12 leading-relaxed drop-shadow-md">
-                Track every lead, measure every conversion, and prove ROI—all from one beautifully simple dashboard.
+              <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md max-w-xl">
+                ACTV TRKR is a lightweight intelligence platform for WordPress that shows you what visitors do, where your leads come from, and whether your website is actually working. Instead of juggling analytics tools, form exports, and monitoring services, ACTV TRKR brings everything together in one clean dashboard so you can understand performance at a glance.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
                 <Button size="lg" className="text-lg px-8 py-6 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
-                  Start Free Trial
+                  Download Now
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <Button 

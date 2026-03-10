@@ -50,6 +50,10 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 import featuresBg from "@/assets/features-bg.png";
 import trialBg from "@/assets/trial-bg.png";
 import pricingBg from "@/assets/pricing-bg.png";
+import satelliteBgd from "@/assets/satellite-bgd.jpg";
+import satelliteChart from "@/assets/satellite-chart.png";
+import satelliteChartTiny from "@/assets/satellite-chart-tiny.png";
+import satelliteImg from "@/assets/satellite.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -132,13 +136,6 @@ const Index = () => {
     "Instant downtime alerts via email & in-app",
   ];
 
-  const attributionFeatures = [
-    "Full UTM parameter tracking",
-    "Referrer domain attribution",
-    "Session-level engagement scoring",
-    "Lead-to-source mapping",
-    "Campaign performance analysis",
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
@@ -349,33 +346,25 @@ const Index = () => {
       </section>
 
       {/* Attribution Section */}
-      <section className="px-6 landing-section-pad" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${accountabilityBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <section className="px-6 landing-section-pad" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${satelliteBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="flex items-center justify-center overflow-hidden" style={{ maxHeight: '500px' }}>
-              <img src={accountabilityInset} alt="Attribution tracking" className="w-full h-auto rounded-2xl shadow-2xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="relative lg:col-span-7 flex items-end justify-center min-h-[400px]">
+              <img src={satelliteChart} alt="Form Performance Leaderboard" className="w-[85%] h-auto rounded-2xl relative z-10 shadow-2xl" />
+              <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-4 right-0 w-[160px] h-auto z-20 rounded-xl shadow-lg" />
+              <img src={satelliteImg} alt="Satellite" className="absolute top-[-30px] left-[-20px] w-[140px] h-auto z-20 pointer-events-none" />
             </div>
-            <div>
+            <div className="lg:col-span-5">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
-                <Eye className="h-4 w-4" />
-                Attribution
+                <FileCheck className="h-4 w-4" />
+                Form Efficiency
               </div>
               <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Know exactly where every lead comes from
+                Complete Visibility Into Your Forms
               </h3>
-              <p className="text-white/70 max-w-xl mb-8">
-                Full-funnel attribution connects traffic sources to form submissions. See which campaigns, pages, and referrers are actually driving revenue.
+              <p className="text-white/70 max-w-xl">
+                ACTV TRKR automatically syncs your forms and tracks every submission in real time. Instantly see which forms are performing, identify failures before they cost you leads, and monitor conversion rates across your entire site. Export entries, set up alerts, and never miss a lead again.
               </p>
-              <div className="space-y-3">
-                {attributionFeatures.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <Check className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-white/90">{feature}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>

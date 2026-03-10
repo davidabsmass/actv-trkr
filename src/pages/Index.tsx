@@ -285,7 +285,7 @@ const Index = () => {
       </section>
 
       {/* Multi-Site Management */}
-      <section className="relative px-6 landing-section-pad overflow-visible" style={{ paddingTop: '90px', paddingBottom: '80px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center top' }}>
+      <section className="relative px-6 landing-section-pad overflow-visible" style={{ paddingTop: '90px', paddingBottom: '80px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center -40px' }}>
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
             {/* Left: graphs + astronaut — parallax on the visuals */}

@@ -431,7 +431,7 @@ const Index = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
                 <div>
-                  <h3 className="font-bold text-foreground mb-4 flex items-center gap-2" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+                  <h3 className="font-normal text-foreground mb-4 flex items-center gap-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                     <Check className="h-5 w-5 text-success" />
                     Full Product Access
                   </h3>

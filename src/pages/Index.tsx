@@ -164,7 +164,7 @@ const Index = () => {
               <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={() => navigate("/auth")}>
                 Sign In
               </Button>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate("/auth")}>
+              <Button className="bg-gradient-primary text-primary-foreground hover:opacity-90" onClick={() => navigate("/auth")}>
                 Get Started
               </Button>
             </div>

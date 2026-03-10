@@ -328,13 +328,13 @@ const Index = () => {
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
                 <GitBranch className="h-4 w-4" />
-                Site Monitoring
+                Site Monitoring – Conversion
               </div>
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Know when something breaks — before your client does
+                See What Visitors Do Before They Convert
               </h3>
               <p className="text-muted-foreground max-w-xl mb-8">
-                Automatic uptime checks, SSL monitoring, domain expiry tracking, and broken link detection keep you ahead of every issue.
+                ACTV TRKR captures meaningful visitor behavior so you can understand how people interact with your site. Track time spent on pages, key clicks, downloads, and navigation paths. Every lead includes an activity timeline showing what the visitor viewed and clicked before submitting a form, giving you valuable insight into how conversions happen.
               </p>
               <div className="space-y-3">
                 {monitoringFeatures.map((feature, i) => (

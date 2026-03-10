@@ -64,6 +64,7 @@ const Index = () => {
   const navigate = useNavigate();
 
   const [scrollY, setScrollY] = useState(0);
+  const [isAnnual, setIsAnnual] = useState(false);
 
   const handleScroll = useCallback(() => {
     setScrollY(window.scrollY);
@@ -418,27 +419,46 @@ const Index = () => {
             <p className="text-white/70 max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
               ACTV TRKR is designed to give organizations clear visibility into how their websites perform without the complexity of traditional analytics tools:
             </p>
+
+            {/* Billing Toggle */}
+            <div className="flex items-center justify-center gap-3 mt-8">
+              <span className={`text-sm font-medium transition-colors ${!isAnnual ? 'text-white' : 'text-white/50'}`}>Monthly</span>
+              <button
+                onClick={() => setIsAnnual(!isAnnual)}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors ${isAnnual ? 'bg-primary' : 'bg-white/20'}`}
+              >
+                <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${isAnnual ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+              <span className={`text-sm font-medium transition-colors ${isAnnual ? 'text-white' : 'text-white/50'}`}>
+                Annual
+                <span className="ml-1.5 inline-block px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold">Save 17%</span>
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
             {/* Starter */}
-            <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg">
+            <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col">
               <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
                 Starter
               </h3>
               <p className="text-sm text-muted-foreground mb-4">For small agencies</p>
               
               <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">$19</span>
+                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$15.83' : '$19'}</span>
                 <span className="text-muted-foreground text-sm">/month</span>
               </div>
-              <p className="text-xs text-primary mb-4">$190/year — save 2 months</p>
+              {isAnnual ? (
+                <p className="text-xs text-primary mb-4">$190/year — <span className="font-bold">save $38</span> vs monthly</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mb-4">$228/year billed monthly</p>
+              )}
               
               <p className="text-sm text-muted-foreground mb-6">
                 Perfect for individual WordPress websites that want clear insight into performance and leads.
               </p>
               
-              <div className="space-y-3">
+              <div className="space-y-3 flex-1">
                 {[
                   "Full ACTV TRKR dashboard",
                   "Visitor behavior tracking",
@@ -457,26 +477,34 @@ const Index = () => {
                   </div>
                 ))}
               </div>
+
+              <Button onClick={() => navigate('/signup')} className="w-full mt-8" size="lg">
+                Get Started <ArrowRight className="h-4 w-4" />
+              </Button>
             </div>
 
             {/* Pro */}
-            <div className="p-8 rounded-2xl bg-white shadow-lg" style={{ border: '2px solid transparent', backgroundClip: 'padding-box', outline: '2px solid', outlineColor: '#ac5bfc', outlineOffset: '2px', borderRadius: '1rem' }}>
+            <div className="p-8 rounded-2xl bg-white shadow-lg flex flex-col" style={{ border: '2px solid transparent', backgroundClip: 'padding-box', outline: '2px solid', outlineColor: '#ac5bfc', outlineOffset: '2px', borderRadius: '1rem' }}>
               <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
                 Pro
               </h3>
               <p className="text-sm text-muted-foreground mb-4">For growing agencies</p>
               
               <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">$49</span>
+                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$40.83' : '$49'}</span>
                 <span className="text-muted-foreground text-sm">/month</span>
               </div>
-              <p className="text-xs text-primary mb-4">$490/year — save 2 months</p>
+              {isAnnual ? (
+                <p className="text-xs text-primary mb-4">$490/year — <span className="font-bold">save $98</span> vs monthly</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mb-4">$588/year billed monthly</p>
+              )}
               
               <p className="text-sm text-muted-foreground mb-6">
                 For agencies and organizations managing multiple websites. Everything in starter, plus:
               </p>
               
-              <div className="space-y-3">
+              <div className="space-y-3 flex-1">
                 {[
                   "Up to 10 websites",
                   "12 months of data retention",
@@ -493,6 +521,10 @@ const Index = () => {
                   </div>
                 ))}
               </div>
+
+              <Button onClick={() => navigate('/signup')} className="w-full mt-8" size="lg">
+                Get Started <ArrowRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>

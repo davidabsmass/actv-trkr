@@ -233,7 +233,7 @@ const Index = () => {
                 ACTV TRKR is a lightweight intelligence platform for WordPress that shows you what visitors do, where your leads come from, and whether your website is actually working. Instead of juggling analytics tools, form exports, and monitoring services, ACTV TRKR brings everything together in one clean dashboard so you can understand performance at a glance.
               </p>
               
-              <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
+              <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 pb-[30px]">
                 <Button size="lg" className="text-lg px-8 py-6 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
                   Download Now
                   <ArrowRight className="ml-2 h-5 w-5" />

@@ -302,7 +302,7 @@ const Index = () => {
                 <Target className="h-4 w-4" />
                 Lead Generation
               </div>
-              <h3 className="font-bold text-white mb-3" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+              <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 Understand Where Your Leads Come From
               </h3>
               <p className="text-white/70 max-w-xl">
@@ -322,7 +322,7 @@ const Index = () => {
                 <GitBranch className="h-4 w-4" />
                 Site Monitoring
               </div>
-              <h3 className="font-bold text-foreground mb-3" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+              <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 Know when something breaks — before your client does
               </h3>
               <p className="text-muted-foreground max-w-xl mb-8">
@@ -358,7 +358,7 @@ const Index = () => {
                 <Eye className="h-4 w-4" />
                 Attribution
               </div>
-              <h3 className="font-bold text-white mb-3" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+              <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 Know exactly where every lead comes from
               </h3>
               <p className="text-white/70 max-w-xl mb-8">
@@ -383,7 +383,7 @@ const Index = () => {
       <section id="features-grid" className="px-6 py-20" style={{ backgroundImage: `url(${featuresBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="font-bold text-foreground mb-4" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-foreground mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
               Everything in one place
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -415,7 +415,7 @@ const Index = () => {
               <Check className="h-4 w-4" />
               No Credit Card Required
             </div>
-            <h2 className="font-bold text-white mb-4" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-white mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
               Try it free with a real site
             </h2>
             <p className="text-xl text-white/70 max-w-2xl mx-auto">
@@ -431,7 +431,7 @@ const Index = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
                 <div>
-                  <h3 className="font-bold text-foreground mb-4 flex items-center gap-2" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+                  <h3 className="font-normal text-foreground mb-4 flex items-center gap-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                     <Check className="h-5 w-5 text-success" />
                     Full Product Access
                   </h3>
@@ -457,7 +457,7 @@ const Index = () => {
                 </div>
                 
                 <div>
-                  <h3 className="font-bold text-foreground mb-4 flex items-center gap-2" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+                  <h3 className="font-normal text-foreground mb-4 flex items-center gap-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                     <Shield className="h-5 w-5 text-primary" />
                     Trial Includes
                   </h3>
@@ -599,7 +599,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-black/20"></div>
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="font-bold text-white mb-4 drop-shadow-lg" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+          <h2 className="font-normal text-white mb-4 drop-shadow-lg" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
             Ready for liftoff?
           </h2>
           <p className="text-xl text-white/90 mb-8 drop-shadow-md">

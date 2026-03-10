@@ -340,7 +340,7 @@ const Index = () => {
                 ACTV TRKR captures meaningful visitor behavior so you can understand how people interact with your site. Track time spent on pages, key clicks, downloads, and navigation paths. Every lead includes an activity timeline showing what the visitor viewed and clicked before submitting a form, giving you valuable insight into how conversions happen.
               </p>
             </div>
-            <div className="relative flex items-center justify-end">
+            <div className="relative flex items-center justify-end lg:col-span-7">
               <img src={fourChart} alt="Traffic Source ROI table" className="w-[85%] h-auto rounded-2xl relative z-10" />
               <img src={roverImg} alt="Space rover" className="absolute bottom-[-30px] left-[-40px] w-[220px] h-auto z-20 pointer-events-none" />
             </div>

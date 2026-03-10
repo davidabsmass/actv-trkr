@@ -37,8 +37,8 @@ import footerBackground from "@/assets/footer-background.jpg";
 import designPresentationBg from "@/assets/design-presentation-bg.jpg";
 import helmetImg from "@/assets/helmet.png";
 import presentationBgImg from "@/assets/section-2-bgd.jpg";
-import platformBg from "@/assets/platform-bg.png";
-import platformInset from "@/assets/platform-inset.png";
+import platformBg from "@/assets/section-3-space.jpg";
+import platformInset from "@/assets/section-3-graphs.png";
 import workflowBg from "@/assets/workflow-bg.png";
 import workflowInset from "@/assets/workflow-inset.png";
 import accountabilityBg from "@/assets/accountability-bg-new.jpg";
@@ -292,14 +292,14 @@ const Index = () => {
             </div>
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
-                <Palette className="h-4 w-4" />
-                Agency-Ready
+                <Target className="h-4 w-4" />
+                Lead Generation
               </div>
               <h3 className="font-bold text-white mb-3" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Built for agencies managing multiple sites
+                Understand Where Your Leads Come From
               </h3>
               <p className="text-white/70 max-w-xl">
-                One login, every client. Switch between organizations, manage team access, and keep each client's data completely isolated.
+                Most analytics tools focus on traffic. ACTV TRKR focuses on leads. Track which marketing channels, campaigns, and pages actually generate inquiries. Attribution reports connect visitor activity to form submissions so you can clearly see which marketing efforts are producing results.
               </p>
             </div>
           </div>

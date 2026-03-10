@@ -286,21 +286,24 @@ const Index = () => {
 
       {/* Multi-Site Management */}
       <section className="relative px-6 landing-section-pad overflow-visible" style={{ paddingTop: '90px', paddingBottom: '80px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center -40px' }}>
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto relative">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
-            {/* Left: graphs + astronaut — parallax on the visuals */}
-            <div className="relative flex items-end">
+            {/* Left: graphs with parallax */}
+            <div className="relative">
               <img
                 src={platformInset}
                 alt="Lead generation analytics"
-                className="w-3/4 h-auto rounded-2xl shadow-2xl relative z-0"
-              />
-              <img
-                src={spaceManBack}
-                alt="Astronaut"
-                className="absolute -bottom-[40px] right-[12%] h-[65%] w-auto object-contain pointer-events-none z-10"
+                className="w-3/4 h-auto rounded-2xl shadow-2xl"
+                style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
               />
             </div>
+          </div>
+          {/* Astronaut pinned to bottom of section */}
+          <img
+            src={spaceManBack}
+            alt="Astronaut"
+            className="absolute bottom-[-80px] left-[28%] h-[55%] w-auto object-contain pointer-events-none z-10"
+          />
             {/* Right: text, vertically centered */}
             <div className="flex flex-col justify-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4 w-fit">

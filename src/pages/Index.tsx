@@ -325,7 +325,7 @@ const Index = () => {
               </p>
             </div>
             <div className="relative flex items-end justify-center lg:col-span-7 pt-12">
-              <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-[85%] h-auto relative z-10" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />
+              <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-[85%] h-auto relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />
             </div>
           </div>
         </div>

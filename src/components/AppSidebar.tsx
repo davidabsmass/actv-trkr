@@ -56,7 +56,7 @@ export function AppSidebar() {
         {orgs.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-sidebar-foreground hover:bg-sidebar-accent/80 transition-colors">
+              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-white hover:bg-sidebar-accent/80 transition-colors">
                 <span className="truncate">{orgName ?? "Select org"}</span>
                 <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 text-sidebar-foreground/60" />
               </button>

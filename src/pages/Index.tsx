@@ -224,7 +224,7 @@ const Index = () => {
                  style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
               />
             </div>
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col justify-center section-copy-block">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4 w-fit">
                 <Target className="h-4 w-4" />
                 Lead Attribution

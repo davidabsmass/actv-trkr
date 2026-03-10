@@ -157,22 +157,22 @@ const Index = () => {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">
-                  <Button size="sm" className="text-sm px-5 py-2 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
+                  <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
                     Get Started
                   </Button>
                   <Button 
-                    size="sm" 
+                    size="default" 
                     variant="ghost" 
-                    className="text-sm px-5 py-2 border border-accent text-white hover:bg-accent/10 bg-transparent"
+                    className="text-base px-6 py-2.5 border border-accent text-white hover:bg-accent/10 bg-transparent"
                     onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })}
                   >
                     View Features
                   </Button>
                   <button
                     onClick={() => navigate("/auth")}
-                    className="text-sm font-medium text-white/80 hover:text-white transition-colors inline-flex items-center gap-1"
+                    className="text-base font-medium text-white/80 hover:text-white transition-colors inline-flex items-center gap-1"
                   >
-                    Sign In <ArrowRight className="h-3.5 w-3.5" />
+                    Sign In <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>

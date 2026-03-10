@@ -102,7 +102,6 @@ export type Database = {
           created_at: string
           id: string
           key_hash: string
-          key_plain: string | null
           label: string
           org_id: string
           revoked_at: string | null
@@ -111,7 +110,6 @@ export type Database = {
           created_at?: string
           id?: string
           key_hash: string
-          key_plain?: string | null
           label?: string
           org_id: string
           revoked_at?: string | null
@@ -120,7 +118,6 @@ export type Database = {
           created_at?: string
           id?: string
           key_hash?: string
-          key_plain?: string | null
           label?: string
           org_id?: string
           revoked_at?: string | null

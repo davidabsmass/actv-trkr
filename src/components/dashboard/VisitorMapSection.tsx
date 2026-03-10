@@ -1,27 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Globe, Plus, Minus } from "lucide-react";
-import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps";
-import { useMemo, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-
-// ISO 3166-1 alpha-2 → ISO 3166-1 numeric mapping for TopoJSON join
-const ALPHA2_TO_NUMERIC: Record<string, string> = {
-  US: "840", GB: "826", CA: "124", AU: "036", DE: "276", FR: "250", IN: "356",
-  BR: "076", JP: "392", MX: "484", IT: "380", ES: "724", NL: "528", KR: "410",
-  SE: "752", NO: "578", DK: "208", FI: "246", PL: "616", AT: "040", CH: "756",
-  BE: "056", PT: "620", IE: "372", NZ: "554", SG: "702", HK: "344", TW: "158",
-  PH: "608", TH: "764", ID: "360", MY: "458", VN: "704", ZA: "710", NG: "566",
-  EG: "818", KE: "404", AR: "032", CL: "152", CO: "170", PE: "604", RU: "643",
-  UA: "804", TR: "792", SA: "682", AE: "784", IL: "376", CZ: "203", RO: "642",
-  HU: "348", GR: "300", CN: "156",
-};
-
-// Reverse: numeric → alpha-2 for tooltip lookups
-const NUMERIC_TO_ALPHA2: Record<string, string> = {};
-Object.entries(ALPHA2_TO_NUMERIC).forEach(([a2, num]) => { NUMERIC_TO_ALPHA2[num] = a2; });
+import { Globe } from "lucide-react";
 
 const COUNTRY_NAMES: Record<string, string> = {
   US: "United States", GB: "United Kingdom", CA: "Canada", AU: "Australia", DE: "Germany",
@@ -56,18 +35,16 @@ function getFlagEmoji(code: string): string {
   return String.fromCodePoint(...codePoints);
 }
 
-// Heat map color stops: white → light grey → medium grey → dark grey → near black
 const HEAT_COLORS = [
-  { stop: 0,    color: "#E5E7EB" }, // gray-200
-  { stop: 0.25, color: "#9CA3AF" }, // gray-400
-  { stop: 0.5,  color: "#6B7280" }, // gray-500
-  { stop: 0.75, color: "#4B5563" }, // gray-600
-  { stop: 1,    color: "#1F2937" }, // gray-800
+  { stop: 0, color: "#E5E7EB" },
+  { stop: 0.25, color: "#9CA3AF" },
+  { stop: 0.5, color: "#6B7280" },
+  { stop: 0.75, color: "#4B5563" },
+  { stop: 1, color: "#1F2937" },
 ];
 
 function getHeatColor(intensity: number): string {
   const t = Math.max(0, Math.min(1, intensity));
-  // Find the two stops we're between
   for (let i = 0; i < HEAT_COLORS.length - 1; i++) {
     const lo = HEAT_COLORS[i];
     const hi = HEAT_COLORS[i + 1];
@@ -85,63 +62,13 @@ function interpolateHex(c1: string, c2: string, t: number): string {
   const r = Math.round(r1 + (r2 - r1) * t);
   const g = Math.round(g1 + (g2 - g1) * t);
   const b = Math.round(b1 + (b2 - b1) * t);
-  return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
-}
-
-// Micro-states that are too small to see as polygons — show as circle markers
-const MICRO_STATES: Record<string, [number, number]> = {
-  SG: [103.8198, 1.3521],   // Singapore
-  HK: [114.1694, 22.3193],  // Hong Kong
-  AE: [54.3773, 24.4539],   // UAE
-  IL: [34.8516, 31.0461],   // Israel
-  LU: [6.1296, 49.8153],    // Luxembourg
-  MT: [14.3754, 35.9375],   // Malta
-  BH: [50.5577, 26.0667],   // Bahrain
-  QA: [51.1839, 25.3548],   // Qatar
-  KW: [47.4818, 29.3117],   // Kuwait
-};
-
-interface TooltipInfo {
-  name: string;
-  sessions: number;
-  x: number;
-  y: number;
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
 export function VisitorMapSection({ data }: VisitorMapSectionProps) {
   const maxSessions = data?.[0]?.sessions || 1;
   const totalSessions = data?.reduce((s, d) => s + d.sessions, 0) || 0;
-  const [zoom, setZoom] = useState(1);
-  const [center, setCenter] = useState<[number, number]>([10, 0]);
-
-  const handleZoomIn = useCallback(() => {
-    setZoom((z) => Math.min(z * 1.5, 8));
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    setZoom((z) => Math.max(z / 1.5, 1));
-  }, []);
-
-  const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
-
-  // Build numeric-id → session count lookup
-  const numericMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    data.forEach((row) => {
-      const numId = ALPHA2_TO_NUMERIC[row.countryCode];
-      if (numId) m[numId] = row.sessions;
-    });
-    return m;
-  }, [data]);
-
   const hasData = data && data.length > 0;
-
-  const getColor = (numericId: string) => {
-    const count = numericMap[numericId];
-    if (!count) return "#F3F4F6"; // gray-100 for no-data countries
-    const intensity = Math.min(count / maxSessions, 1);
-    return getHeatColor(intensity);
-  };
 
   return (
     <Card className="glass-card animate-slide-up">
@@ -152,135 +79,6 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* World Map */}
-        <div
-          className="rounded-lg overflow-hidden bg-white mb-4 border border-border/50 relative"
-          onMouseLeave={() => setTooltip(null)}
-        >
-          {/* Zoom controls */}
-          <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
-            <Button variant="outline" size="icon" className="h-7 w-7 bg-white/90 backdrop-blur-sm" onClick={handleZoomIn}>
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-7 w-7 bg-white/90 backdrop-blur-sm" onClick={handleZoomOut}>
-              <Minus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-
-          <ComposableMap
-            projection="geoEquirectangular"
-            projectionConfig={{ rotate: [-10, 0, 0], scale: 180 }}
-            height={400}
-            style={{ width: "100%", height: "auto" }}
-          >
-            <ZoomableGroup
-              zoom={zoom}
-              center={center}
-              onMoveEnd={({ coordinates, zoom: z }) => { setCenter(coordinates as [number, number]); setZoom(z); }}
-              filterZoomEvent={(evt) => {
-                // Block scroll/wheel zoom events, allow only drag
-                if (evt instanceof WheelEvent) return false;
-                return true;
-              }}
-            >
-              <Geographies geography={GEO_URL}>
-                {({ geographies }) =>
-                  geographies.map((geo) => {
-                    const numId = geo.id;
-                    const fillColor = getColor(numId);
-                    const count = numericMap[numId] || 0;
-                    const alpha2 = NUMERIC_TO_ALPHA2[numId];
-                    const name = alpha2 ? getCountryName(alpha2) : geo.properties?.name || "Unknown";
-
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        fill={fillColor}
-                        stroke="#D1D5DB"
-                        strokeWidth={0.4}
-                        onMouseEnter={(e) => {
-                          const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect();
-                          if (rect) {
-                            setTooltip({
-                              name,
-                              sessions: count,
-                              x: e.clientX - rect.left,
-                              y: e.clientY - rect.top,
-                            });
-                          }
-                        }}
-                        onMouseMove={(e) => {
-                          const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect();
-                          if (rect) {
-                            setTooltip({
-                              name,
-                              sessions: count,
-                              x: e.clientX - rect.left,
-                              y: e.clientY - rect.top,
-                            });
-                          }
-                        }}
-                        onMouseLeave={() => setTooltip(null)}
-                        style={{
-                          default: { outline: "none" },
-                          hover: { outline: "none", fill: count > 0 ? getHeatColor(1) : "#E5E7EB", cursor: "pointer" },
-                          pressed: { outline: "none" },
-                        }}
-                      />
-                    );
-                  })
-                }
-              </Geographies>
-              {/* Dot markers for micro-states */}
-              {data.map((row) => {
-                const coords = MICRO_STATES[row.countryCode];
-                if (!coords) return null;
-                const intensity = Math.min(row.sessions / maxSessions, 1);
-                const fillColor = getHeatColor(intensity);
-                const name = getCountryName(row.countryCode);
-                return (
-                  <Marker key={`marker-${row.countryCode}`} coordinates={coords}>
-                    <circle
-                      r={5}
-                      fill={fillColor}
-                      stroke="#D1D5DB"
-                      strokeWidth={0.5}
-                      style={{ cursor: "pointer" }}
-                      onMouseEnter={(e) => {
-                        const rect = (e.target as SVGElement).closest("svg")?.getBoundingClientRect();
-                        if (rect) {
-                          setTooltip({ name, sessions: row.sessions, x: e.clientX - rect.left, y: e.clientY - rect.top });
-                        }
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                    />
-                  </Marker>
-                );
-              })}
-            </ZoomableGroup>
-          </ComposableMap>
-
-          {/* Tooltip */}
-          {tooltip && (
-            <div
-              className="absolute pointer-events-none z-50 px-3 py-1.5 rounded-md bg-popover border border-border shadow-lg text-sm text-popover-foreground"
-              style={{
-                left: tooltip.x + 12,
-                top: tooltip.y - 10,
-                transform: "translateY(-100%)",
-              }}
-            >
-              <span className="font-semibold">{tooltip.name}</span>
-              {tooltip.sessions > 0 && (
-                <span className="ml-2 text-muted-foreground">
-                  {tooltip.sessions.toLocaleString()} session{tooltip.sessions !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Heat map legend */}
         <div className="flex items-center gap-2 mb-4 px-1">
           <span className="text-xs text-muted-foreground">Low</span>

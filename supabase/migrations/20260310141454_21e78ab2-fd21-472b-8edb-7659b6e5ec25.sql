@@ -1,0 +1,1 @@
+ALTER TABLE public.api_keys DROP COLUMN IF EXISTS key_plain;

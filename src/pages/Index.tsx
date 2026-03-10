@@ -182,7 +182,7 @@ const Index = () => {
       </div>
 
       {/* Section 1 — Dashboard Overview */}
-      <section id="features-section" className="px-6 bg-surface/50" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <section id="features-section" className="px-6 bg-surface/50 landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-center">
             <div className="lg:col-span-2 lg:pl-[29px] section-copy-block">

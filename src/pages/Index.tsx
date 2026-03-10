@@ -111,7 +111,7 @@ const Index = () => {
       {/* Hero + space background */}
       <div className="relative overflow-hidden bg-black">
         <div
-          className="absolute inset-0 w-full h-[120%] prlx"
+          className="absolute inset-0 w-full h-[120%] prlx hero-space-bg"
           style={{
             backgroundImage: `url(${spaceBgd})`,
             backgroundSize: 'cover',

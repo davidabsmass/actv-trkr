@@ -66,6 +66,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
+      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } }` }} />
       {/* Navigation */}
       <nav className="absolute top-0 left-0 right-0 z-50 bg-black">
         <div className="max-w-7xl mx-auto px-4 md:px-6">

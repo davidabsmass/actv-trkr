@@ -61,12 +61,12 @@ export function AppSidebar() {
                 <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 text-white/60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="start" className="w-52 bg-sidebar border-sidebar-border">
               {orgs.map((o) => (
                 <DropdownMenuItem
                   key={o.id}
                   onClick={() => setOrgId(o.id)}
-                  className={o.id === orgId ? "bg-accent" : ""}
+                  className={`text-white focus:text-white focus:bg-sidebar-accent ${o.id === orgId ? "bg-sidebar-accent" : ""}`}
                 >
                   {o.name}
                 </DropdownMenuItem>

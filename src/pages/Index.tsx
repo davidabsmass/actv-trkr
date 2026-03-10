@@ -396,182 +396,100 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Pricing Section - Trial First */}
-      <section id="pricing-section" className="px-6 py-20 landing-section-pad" style={{ backgroundImage: `url(${trialBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <div className="max-w-6xl mx-auto">
+      {/* Pricing Section */}
+      <section id="pricing-section" className="relative px-6 overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <SparkleCanvas particleCount={250} style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }} />
+        
+        {/* Astronaut on left */}
+        <img 
+          src={pricingAstronaut} 
+          alt="" 
+          className="absolute bottom-0 left-0 w-[220px] h-auto z-10 pointer-events-none hidden lg:block"
+          style={{ transform: `translateY(${(scrollY - 3200) * 0.05}px)`, willChange: 'transform' }}
+        />
+
+        <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 text-success text-sm font-semibold mb-6">
-              <Check className="h-4 w-4" />
-              No Credit Card Required
-            </div>
-            <h2 className="font-normal text-white mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-              Try it free with a real site
+            <h2 className="font-normal text-white mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+              Simple Pricing
             </h2>
-            <p className="text-xl text-white/70 max-w-2xl mx-auto">
-              See real data from your WordPress site in 14 days. Full access. No risk.
+            <p className="text-white/70 max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+              ACTV TRKR is designed to give organizations clear visibility into how their websites perform without the complexity of traditional analytics tools:
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto mb-16">
-            <div className="relative p-8 md:p-10 rounded-3xl border-2 border-primary bg-white shadow-xl">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full bg-primary text-white text-sm font-bold">
-                14-Day Free Trial
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Starter */}
+            <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg">
+              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.6em', lineHeight: '1.2em' }}>
+                Starter
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">For small agencies</p>
+              
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-foreground">$19</span>
+                <span className="text-muted-foreground text-sm">/month</span>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-                <div>
-                  <h3 className="font-normal text-foreground mb-4 flex items-center gap-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                    <Check className="h-5 w-5 text-success" />
-                    Full Product Access
-                  </h3>
-                  <div className="space-y-3">
-                    {[
-                      "Real-time analytics dashboard",
-                      "Lead tracking & attribution",
-                      "Form conversion analytics",
-                      "Uptime & SSL monitoring",
-                      "AI-powered insights",
-                      "Smart notifications",
-                      "Unlimited team members",
-                      "Data export & reports",
-                    ].map((feature, i) => (
-                      <div key={i} className="flex items-center gap-3 text-sm">
-                        <div className="w-5 h-5 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-                          <Check className="h-3 w-3 text-success" />
-                        </div>
-                        <span className="text-foreground">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-normal text-foreground mb-4 flex items-center gap-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                    <Shield className="h-5 w-5 text-primary" />
-                    Trial Includes
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-background border border-border">
-                      <div className="text-3xl font-bold text-primary mb-1">1</div>
-                      <div className="text-sm text-muted-foreground">WordPress Site</div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Connect a real client site and see actual data flowing in
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-background border border-border">
-                      <div className="text-3xl font-bold text-foreground mb-1">∞</div>
-                      <div className="text-sm text-muted-foreground">Unlimited Forms & Pages</div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Track every form and page on that site with no limits
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                Perfect for individual WordPress websites that want clear insight into performance and leads.
+              </p>
               
-              <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">After trial:</span> Dashboard becomes read-only. No data lost.
-                </div>
-                <Button size="lg" className="px-8" onClick={() => navigate("/auth")}>
-                  Start Free Trial
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <div className="space-y-3">
+                {[
+                  "Full ACTV TRKR dashboard",
+                  "Visitor behavior tracking",
+                  "Time-on-page analytics",
+                  "WordPress form monitoring",
+                  "Lead activity insights",
+                  "Website health monitoring",
+                  "1 website",
+                  "90 days of data retention",
+                ].map((feature, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Check className="h-3 w-3 text-primary" />
+                    </div>
+                    <span className="text-foreground">{feature}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Ready to Scale - Paid Plans */}
-      <section className="px-6 landing-section-pad" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10">
-            <h3 className="font-bold text-foreground mb-2" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
-              Ready to scale?
-            </h3>
-            <p className="text-muted-foreground">
-              Upgrade anytime to add more sites and unlock premium features.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                name: "Starter",
-                price: 49,
-                description: "For solo marketers",
-                clients: "3 sites",
-                storage: "30-day retention",
-                features: ["Real-time dashboard", "Lead attribution", "Uptime monitoring", "Email support"],
-              },
-              {
-                name: "Pro",
-                price: 99,
-                description: "For agencies",
-                clients: "10 sites",
-                storage: "90-day retention",
-                popular: true,
-                features: ["Everything in Starter", "AI insights", "Priority support", "Advanced reports"],
-              },
-              {
-                name: "Agency",
-                price: 199,
-                description: "For large agencies",
-                clients: "Unlimited sites",
-                storage: "365-day retention",
-                features: ["Everything in Pro", "Dedicated support", "White-label reports", "Custom integrations"],
-              },
-            ].map((plan, i) => (
-              <div
-                key={i}
-                className={`relative p-6 rounded-2xl border flex flex-col bg-white ${
-                  plan.popular 
-                    ? 'border-primary shadow-lg' 
-                    : 'border-border'
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold">
-                    Most Popular
-                  </div>
-                )}
-                
-                <h4 className="font-bold text-foreground mb-1" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>{plan.name}</h4>
-                <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                
-                <div className="mb-4">
-                  <span className="text-3xl font-bold text-foreground">${plan.price}</span>
-                  <span className="text-muted-foreground text-sm">/month</span>
-                </div>
-                
-                <div className="flex gap-3 mb-4">
-                  <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                    {plan.clients}
-                  </div>
-                  <div className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
-                    {plan.storage}
-                  </div>
-                </div>
-                
-                <div className="space-y-2 mb-6 flex-1">
-                  {plan.features.map((feature, j) => (
-                    <div key={j} className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-success flex-shrink-0" />
-                      <span className="text-muted-foreground">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-                
-                <Button 
-                  className="w-full" 
-                  variant={plan.popular ? "default" : "outline"}
-                  disabled
-                >
-                  Coming Soon
-                </Button>
+            {/* Pro */}
+            <div className="p-8 rounded-2xl bg-white shadow-lg" style={{ border: '2px solid transparent', backgroundClip: 'padding-box', outline: '2px solid', outlineColor: '#ac5bfc', outlineOffset: '2px', borderRadius: '1rem' }}>
+              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.6em', lineHeight: '1.2em' }}>
+                Pro
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">For growing agencies</p>
+              
+              <div className="mb-4">
+                <span className="text-3xl font-bold text-foreground">$49</span>
+                <span className="text-muted-foreground text-sm">/month</span>
               </div>
-            ))}
+              
+              <p className="text-sm text-muted-foreground mb-6">
+                For agencies and organizations managing multiple websites. Everything in starter, plus:
+              </p>
+              
+              <div className="space-y-3">
+                {[
+                  "Up to 10 websites",
+                  "12 months of data retention",
+                  "Scheduled reports",
+                  "Advanced alerts and notifications",
+                  "Lead export tools",
+                  "Priority support",
+                ].map((feature, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Check className="h-3 w-3 text-primary" />
+                    </div>
+                    <span className="text-foreground">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>

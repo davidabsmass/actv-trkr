@@ -610,14 +610,10 @@ const Index = () => {
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-2">
-                <Rocket className="h-5 w-5 text-primary" />
-                <span className="text-lg font-semibold">
-                  <span className="text-foreground">ACTV</span>{" "}
-                  <span className="text-primary">TRKR</span>
-                </span>
+                <img src={logoActvTrkr} alt="ACTV TRKR" className="h-6" />
               </div>
               <p className="text-sm text-muted-foreground">
-                © 2025 ACTV TRKR. All rights reserved.
+                © 2026 ACTV TRKR. All rights reserved.
               </p>
               <div className="flex items-center gap-6 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <span className="cursor-pointer hover:text-foreground">Privacy</span>

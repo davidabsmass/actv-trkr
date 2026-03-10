@@ -50,6 +50,8 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 import featuresBg from "@/assets/features-bg.png";
 import trialBg from "@/assets/trial-bg.png";
 import pricingBg from "@/assets/pricing-bg.png";
+import websiteHealthBgd from "@/assets/website-health-bgd.jpg";
+import websiteHealthGraphic from "@/assets/website-health-graphic.png";
 import satelliteBgd from "@/assets/satellite-bgd.jpg";
 import satelliteChart from "@/assets/satellite-chart.png";
 import satelliteChartTiny from "@/assets/satellite-chart-tiny.png";

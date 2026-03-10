@@ -283,46 +283,12 @@ const Index = () => {
               </div>
             </div>
 
-            <div className="relative">
-              <div className="rounded-2xl overflow-hidden shadow-2xl border border-border bg-surface landing-mockup-font">
-                <div className="relative">
-                  <img 
-                    src={designPresentationBg}
-                    alt="Dashboard preview"
-                    className="w-full h-auto object-cover"
-                  />
-                </div>
-                <div className="p-4 bg-surface border-t border-border space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      <TrendingUp className="h-3 w-3" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-xs font-medium text-foreground">Leads up 23% this week</span>
-                      <p className="text-xs text-muted-foreground">Organic traffic driving most conversions</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      <Target className="h-3 w-3" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-xs font-medium text-foreground">Conversion rate: 4.2%</span>
-                      <p className="text-xs text-muted-foreground">Contact form outperforming quote request</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      <BarChart3 className="h-3 w-3" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-xs font-medium text-foreground">$12,400 estimated pipeline</span>
-                      <p className="text-xs text-muted-foreground">Based on form values & lead scoring</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="absolute -inset-4 bg-primary/10 rounded-3xl blur-xl -z-10"></div>
+            <div className="relative flex items-center justify-center">
+              <img 
+                src={helmetImg}
+                alt="ACTV TRKR dashboard preview with astronaut helmet"
+                className="w-full max-w-lg h-auto object-contain"
+              />
             </div>
           </div>
         </div>

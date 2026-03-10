@@ -192,7 +192,7 @@ const Index = () => {
             willChange: 'transform',
           }}
         />
-        <div className="absolute inset-0 bg-black/20" style={{ zIndex: 1 }}></div>
+        
         <div className="absolute bottom-0 left-0 right-0 h-[40%] lg:h-[20%] bg-gradient-to-t from-black via-black/60 to-transparent" style={{ zIndex: 1 }}></div>
         
         <SparkleCanvas />

@@ -316,7 +316,7 @@ const Index = () => {
           <img
             src={spaceManBack}
             alt="Astronaut"
-            className="absolute bottom-[-80px] left-[28%] h-[55%] w-auto object-contain pointer-events-none z-10"
+            className="absolute bottom-[-80px] left-[30%] h-[65%] w-auto object-contain pointer-events-none z-10"
           />
         </div>
       </section>

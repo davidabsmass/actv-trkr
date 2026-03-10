@@ -50,7 +50,7 @@ const Index = () => {
     setScrollY(window.scrollY);
     if (logoRef.current) {
       const rect = logoRef.current.getBoundingClientRect();
-      setShowNav(rect.bottom < 0);
+      setShowNav(rect.top <= 0);
     }
   }, []);
 

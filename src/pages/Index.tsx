@@ -337,7 +337,7 @@ const Index = () => {
           src={pricingAstronaut} 
           alt="" 
           className="absolute left-[calc(8%+30px)] w-[154px] h-auto z-30 pointer-events-none hidden lg:block"
-          style={{ bottom: `${-20 + (scrollY - 3600) * -0.08}px`, willChange: 'bottom' }}
+          style={{ bottom: `${180 + (scrollY - 3600) * -0.08}px`, willChange: 'bottom' }}
         />
 
         <div className="max-w-5xl mx-auto relative z-10">

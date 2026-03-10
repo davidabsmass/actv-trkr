@@ -66,6 +66,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
+      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } }` }} />
       {/* Navigation */}
       <nav className="absolute top-0 left-0 right-0 z-50 bg-black">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -113,7 +114,7 @@ const Index = () => {
       {/* Hero + space background */}
       <div className="relative overflow-hidden bg-black">
         <div
-          className="absolute inset-0 w-full h-[120%]"
+          className="absolute inset-0 w-full h-[120%] prlx"
           style={{
             backgroundImage: `url(${spaceBgd})`,
             backgroundSize: 'cover',
@@ -128,7 +129,7 @@ const Index = () => {
 
         <section className="relative px-6 pt-[10rem] pb-16 md:pt-[calc(10rem+10px)] md:pb-[calc(16px+80px)]">
           <div
-            className="max-w-7xl mx-auto relative"
+            className="max-w-7xl mx-auto relative prlx"
             style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}
           >
             <div className="flex justify-center mb-[60px]">
@@ -141,7 +142,7 @@ const Index = () => {
                 <img
                   src={spaceboy}
                   alt="Floating astronaut"
-                  className="w-64 md:w-80 lg:w-[36rem] drop-shadow-2xl"
+                  className="w-64 md:w-80 lg:w-[36rem] drop-shadow-2xl prlx"
                   style={{
                     transform: `translateY(${scrollY * -0.25}px)`,
                     willChange: 'transform',
@@ -220,8 +221,8 @@ const Index = () => {
               <img
                 src={platformInset}
                 alt="Lead attribution analytics"
-                className="w-full lg:w-[85%] h-auto rounded-2xl shadow-2xl"
-                style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
+                 className="w-full lg:w-[85%] h-auto rounded-2xl shadow-2xl prlx"
+                 style={{ transform: `translateY(${(scrollY - 800) * -0.08}px)`, willChange: 'transform' }}
               />
             </div>
             <div className="flex flex-col justify-center">
@@ -277,13 +278,13 @@ const Index = () => {
 
       {/* Section 4 — Form Monitoring */}
       <section className="px-6 overflow-hidden form-monitoring-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${satelliteBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
-        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .form-monitoring-section { background-position: left top !important; } } @media (max-width: 1023px) { .form-monitoring-section { padding-top: 0px !important; background-position: center bottom !important; } .form-monitoring-no-parallax { transform: none !important; will-change: auto !important; } .satellite-mobile { width: 260px !important; left: -80px !important; right: auto !important; bottom: -60px !important; } }` }} />
+        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .form-monitoring-section { background-position: left top !important; } } @media (max-width: 1023px) { .form-monitoring-section { padding-top: 0px !important; background-position: center bottom !important; } .satellite-mobile { width: 260px !important; left: -80px !important; right: auto !important; bottom: -60px !important; } }` }} />
         <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(40px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
-              <img src={satelliteChart} alt="Form performance dashboard" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 form-monitoring-no-parallax" style={{ transform: `translateY(${(scrollY - 1800) * -0.06}px)`, willChange: 'transform' }} />
-              <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl shadow-lg form-monitoring-no-parallax" style={{ transform: `translateY(${(scrollY - 1800) * -0.12}px)`, willChange: 'transform' }} />
-              <img src={satelliteImg} alt="Satellite" className="absolute bottom-[-30px] right-[-15px] lg:bottom-[110px] lg:right-[2%] w-[130px] lg:w-[180px] h-auto z-20 pointer-events-none form-monitoring-no-parallax satellite-mobile" style={{ transform: `translateY(${(scrollY - 1800) * 0.05}px) rotate(-10deg)`, willChange: 'transform' }} />
+               <img src={satelliteChart} alt="Form performance dashboard" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.06}px)`, willChange: 'transform' }} />
+               <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl shadow-lg prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.12}px)`, willChange: 'transform' }} />
+               <img src={satelliteImg} alt="Satellite" className="absolute bottom-[-30px] right-[-15px] lg:bottom-[110px] lg:right-[2%] w-[130px] lg:w-[180px] h-auto z-20 pointer-events-none prlx satellite-mobile" style={{ transform: `translateY(${(scrollY - 1800) * 0.05}px) rotate(-10deg)`, willChange: 'transform' }} />
             </div>
             <div className="lg:col-span-5">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
@@ -324,7 +325,7 @@ const Index = () => {
               </p>
             </div>
             <div className="relative flex items-end justify-center lg:col-span-7 pt-12">
-              <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-[85%] h-auto relative z-10" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />
+              <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-[85%] h-auto relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />
             </div>
           </div>
         </div>

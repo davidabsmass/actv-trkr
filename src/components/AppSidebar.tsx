@@ -41,33 +41,27 @@ export function AppSidebar() {
   const { orgRole } = useOrgRole(orgId);
 
   return (
-    <Sidebar className="border-r border-sidebar-border">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center justify-end mb-3">
-          <div className="flex items-center gap-1">
-            <NotificationBell />
-            {isAdmin && (
-              <Badge variant="outline" className="text-[9px] uppercase text-primary border-primary/20">
-                Admin
-              </Badge>
-            )}
-          </div>
+    <Sidebar className="border-r-0" style={{ background: "var(--sidebar-gradient)" }}>
+      <SidebarHeader className="p-5">
+        <div className="flex items-center justify-between mb-5">
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto brightness-0 invert" />
+          <NotificationBell />
         </div>
 
         {orgs.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-white hover:bg-sidebar-accent/80 transition-colors">
+              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-white/15 rounded-md text-white hover:bg-white/25 transition-colors">
                 <span className="truncate">{orgName ?? "Select org"}</span>
                 <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 text-white/60" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 bg-sidebar border-sidebar-border">
+            <DropdownMenuContent align="start" className="w-52">
               {orgs.map((o) => (
                 <DropdownMenuItem
                   key={o.id}
                   onClick={() => setOrgId(o.id)}
-                  className={`text-white focus:text-white focus:bg-sidebar-accent ${o.id === orgId ? "bg-sidebar-accent" : ""}`}
+                  className={o.id === orgId ? "font-medium" : ""}
                 >
                   {o.name}
                 </DropdownMenuItem>
@@ -75,7 +69,7 @@ export function AppSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div className="px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-white truncate">
+          <div className="px-3 py-2 text-xs font-medium bg-white/15 rounded-md text-white truncate">
             {orgName ?? "—"}
           </div>
         )}

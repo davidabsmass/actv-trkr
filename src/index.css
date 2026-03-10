@@ -115,14 +115,15 @@
     --font-sans: 'BR Omega', system-ui, -apple-system, sans-serif;
 
     /* Sidebar */
-    --sidebar-background: 210 100% 15%;
-    --sidebar-foreground: 220 20% 97%;
-    --sidebar-primary: 248 90% 66%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 80% 25%;
-    --sidebar-accent-foreground: 220 20% 97%;
-    --sidebar-border: 210 60% 25%;
-    --sidebar-ring: 248 90% 66%;
+    --sidebar-background: 252 80% 62%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 252 80% 62%;
+    --sidebar-accent: 252 70% 68%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 252 60% 70%;
+    --sidebar-ring: 0 0% 100%;
+    --sidebar-gradient: linear-gradient(180deg, hsl(260 75% 65%), hsl(248 85% 60%));
   }
 
   .dark {

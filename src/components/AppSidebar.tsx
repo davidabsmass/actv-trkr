@@ -74,7 +74,7 @@ export function AppSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div className="px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-sidebar-foreground truncate">
+          <div className="px-3 py-2 text-xs font-medium bg-sidebar-accent rounded-md text-white truncate">
             {orgName ?? "—"}
           </div>
         )}

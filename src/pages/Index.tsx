@@ -205,7 +205,7 @@ const Index = () => {
         >
           {/* Centered logo over everything */}
           <div className="flex justify-center mb-10">
-            <img src={logoActvTrkrWhite} alt="ACTV TRKR" className="h-10 md:h-14 lg:h-16 w-auto drop-shadow-lg" />
+            <img src={logoActvTrkrWhite} alt="ACTV TRKR" className="h-14 md:h-20 lg:h-[90px] w-auto drop-shadow-lg" />
           </div>
 
           <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
@@ -223,7 +223,7 @@ const Index = () => {
             </div>
 
             <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left">
-              <h1 className="text-3xl md:text-[2.8rem] lg:text-7xl font-normal text-white mb-4 tracking-wide drop-shadow-lg uppercase" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
+              <h1 className="text-3xl md:text-[2.8rem] lg:text-7xl font-normal text-white mb-4 tracking-wide drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
                 Know Exactly Where
                 <br />
                 Your Website Lands

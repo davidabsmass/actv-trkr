@@ -57,15 +57,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get the org's API key (plain text)
+    // Get the org's API key hash (the WP plugin stores and sends the key itself)
     const { data: apiKeyRow } = await supabase
-      .from("api_keys").select("key_plain")
+      .from("api_keys").select("key_hash")
       .eq("org_id", site.org_id).is("revoked_at", null)
-      .not("key_plain", "is", null)
       .limit(1).maybeSingle();
 
-    if (!apiKeyRow?.key_plain) {
-      return new Response(JSON.stringify({ error: "No API key found for this org. Please regenerate your API key." }), {
+    if (!apiKeyRow?.key_hash) {
+      return new Response(JSON.stringify({ error: "No API key found for this org. Please generate an API key first." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

@@ -138,7 +138,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
       {/* Navigation */}
-      <nav className="absolute top-0 left-0 right-0 z-50 bg-black py-[40px]">
+      <nav className="absolute top-0 left-0 right-0 z-50 bg-black">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="h-16 flex items-center justify-center md:justify-between">
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -164,7 +164,7 @@ const Index = () => {
               <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={() => navigate("/auth")}>
                 Sign In
               </Button>
-              <Button className="bg-gradient-primary text-primary-foreground hover:opacity-90" onClick={() => navigate("/auth")}>
+              <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={() => navigate("/auth")}>
                 Get Started
               </Button>
             </div>
@@ -200,7 +200,7 @@ const Index = () => {
         <SparkleCanvas />
 
       {/* Hero Section */}
-      <section className="relative px-6 pt-[10rem] pb-16 md:py-24">
+      <section className="relative px-6 pt-[10rem] pb-16 md:pt-[calc(10rem+40px)] md:pb-[calc(16px+40px)]">
         <div
           className="max-w-7xl mx-auto relative"
           style={{ zIndex: 2, transform: `translateY(${scrollY * -0.15}px)`, willChange: 'transform' }}

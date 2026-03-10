@@ -42,7 +42,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r-0" style={{ background: "var(--sidebar-gradient)" }}>
-      <SidebarHeader className="p-5">
+      <SidebarHeader className="p-5 pt-[42px]">
         <div className="mb-1">
           <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto brightness-0 invert" />
         </div>

@@ -43,9 +43,15 @@ const Index = () => {
   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
+  const [showNav, setShowNav] = useState(false);
+  const logoRef = useRef<HTMLImageElement>(null);
 
   const handleScroll = useCallback(() => {
     setScrollY(window.scrollY);
+    if (logoRef.current) {
+      const rect = logoRef.current.getBoundingClientRect();
+      setShowNav(rect.bottom < 0);
+    }
   }, []);
 
   useEffect(() => {

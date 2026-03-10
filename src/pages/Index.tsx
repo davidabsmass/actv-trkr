@@ -35,7 +35,7 @@ import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import footerBackground from "@/assets/footer-background.jpg";
 import designPresentationBg from "@/assets/design-presentation-bg.jpg";
-import presentationBgImg from "@/assets/presentation-bg.png";
+import presentationBgImg from "@/assets/section-2-bgd.jpg";
 import platformBg from "@/assets/platform-bg.png";
 import platformInset from "@/assets/platform-inset.png";
 import workflowBg from "@/assets/workflow-bg.png";

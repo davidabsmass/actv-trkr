@@ -152,7 +152,7 @@ const Index = () => {
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
                 <h1 className="text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
-                  WordPress Analytics, Forms,<br />and Website Health —<br />All in One Place
+                  WordPress Analytics, Forms, and<br />Website Health —<br />All in One Place
                 </h1>
                 
                 <p className="text-base md:text-lg text-white/90 mb-4 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">

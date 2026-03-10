@@ -212,7 +212,7 @@ const Index = () => {
       </section>
 
       {/* Section 2 — Lead Attribution */}
-      <section className="relative px-6 overflow-visible" style={{ paddingTop: '120px', paddingBottom: '50px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center -40px' }}>
+      <section className="relative px-6 overflow-visible landing-section" style={{ paddingTop: '120px', paddingBottom: '50px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center -40px' }}>
         <div style={{ opacity: 0.8 }}><SparkleCanvas /></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">

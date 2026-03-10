@@ -256,18 +256,20 @@ const Index = () => {
         </div>
       </section>
 
+      </div>{/* End space background wrapper */}
+
       {/* Easy Setup Section */}
-      <section className="relative px-6 py-20" style={{ zIndex: 2, marginTop: '-60px' }}>
+      <section className="relative px-6 py-20 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/15 text-success text-sm font-medium mb-4 backdrop-blur-sm border border-success/30">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/15 text-success text-sm font-medium mb-4 border border-success/30">
               <Zap className="h-4 w-4" />
               Quick Setup
             </div>
-            <h2 className="font-bold text-white mb-4" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+            <h2 className="font-bold text-foreground mb-4" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
               Get started in minutes, not hours
             </h2>
-            <p className="text-lg text-white/70 mx-auto">
+            <p className="text-lg text-muted-foreground mx-auto">
               Install the plugin, connect your site, and start seeing real data immediately.
             </p>
           </div>
@@ -304,8 +306,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      </div>{/* End space background wrapper */}
 
       {/* Dashboard Showcase */}
       <section className="px-6 bg-surface/50 landing-section-pad" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>

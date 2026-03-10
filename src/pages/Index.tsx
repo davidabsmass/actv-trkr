@@ -164,7 +164,7 @@ const Index = () => {
               <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={() => navigate("/auth")}>
                 Sign In
               </Button>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate("/auth")}>
+              <Button className="bg-gradient-primary text-primary-foreground hover:opacity-90" onClick={() => navigate("/auth")}>
                 Get Started
               </Button>
             </div>
@@ -207,7 +207,7 @@ const Index = () => {
         >
           {/* Centered logo over everything */}
           <div className="flex justify-center mb-10">
-            <img src={logoActvTrkr2} alt="ACTV TRKR" className="h-14 md:h-20 lg:h-[90px] w-auto drop-shadow-lg" />
+            <img src={logoActvTrkr2} alt="ACTV TRKR" className="h-11 md:h-16 lg:h-[72px] w-auto drop-shadow-lg" />
           </div>
 
           <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
@@ -241,7 +241,7 @@ const Index = () => {
                 <Button 
                   size="lg" 
                   variant="ghost" 
-                  className="text-lg px-8 py-6 border-2 border-white text-white hover:bg-white/10 bg-transparent"
+                  className="text-lg px-8 py-6 border-2 border-accent text-white hover:bg-accent/10 bg-transparent"
                   onClick={() => document.getElementById('features-grid')?.scrollIntoView({ behavior: 'smooth' })}
                 >
                   Full List of Features

@@ -122,6 +122,8 @@ const Index = () => {
             willChange: 'transform',
           }}
         />
+        {/* Dark gradient overlay for mobile readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70 md:hidden z-[1]" />
         <SparkleCanvas />
 
         <section className="relative px-6 pt-[10rem] pb-16 md:pt-[calc(10rem+10px)] md:pb-[calc(16px+80px)]">
@@ -133,8 +135,8 @@ const Index = () => {
               <img src={logoActvTrkr2} alt="ACTV TRKR" className="h-11 md:h-16 lg:h-[72px] w-auto drop-shadow-lg" />
             </div>
 
-            <div className="flex flex-col-reverse md:flex-row items-center gap-8 lg:gap-12">
-              <div className="w-full md:w-2/5 lg:w-1/2 flex justify-center md:justify-start mt-[20px] md:mt-[-60px] md:-ml-16 lg:-ml-24">
+            <div className="flex flex-col md:flex-row items-center gap-8 lg:gap-12">
+              <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2">
                 <img
                   src={spaceboy}
                   alt="Floating astronaut"

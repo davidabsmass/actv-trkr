@@ -42,6 +42,9 @@ import platformInset from "@/assets/section-3-graphs.png";
 import spaceManBack from "@/assets/space-man-back.png";
 import workflowBg from "@/assets/workflow-bg.png";
 import workflowInset from "@/assets/workflow-inset.png";
+import conversionBgd from "@/assets/conversion-bgd.jpg";
+import fourChart from "@/assets/four-chart.png";
+import roverImg from "@/assets/rover.png";
 import accountabilityBg from "@/assets/accountability-bg-new.jpg";
 import accountabilityInset from "@/assets/accountability-astronaut.png";
 import featuresBg from "@/assets/features-bg.png";
@@ -321,8 +324,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Monitoring Section */}
-      <section className="px-6 landing-section-pad" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${workflowBg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      {/* Conversion Section */}
+      <section className="relative px-6 landing-section-pad overflow-hidden" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${conversionBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -333,12 +336,13 @@ const Index = () => {
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 See What Visitors Do Before They Convert
               </h3>
-              <p className="text-muted-foreground max-w-xl mb-8">
+              <p className="text-muted-foreground max-w-xl">
                 ACTV TRKR captures meaningful visitor behavior so you can understand how people interact with your site. Track time spent on pages, key clicks, downloads, and navigation paths. Every lead includes an activity timeline showing what the visitor viewed and clicked before submitting a form, giving you valuable insight into how conversions happen.
               </p>
             </div>
-            <div>
-              <img src={workflowInset} alt="Monitoring dashboard" className="w-full h-auto" />
+            <div className="relative flex items-center justify-end">
+              <img src={fourChart} alt="Traffic Source ROI table" className="w-[85%] h-auto rounded-2xl shadow-2xl relative z-10" />
+              <img src={roverImg} alt="Space rover" className="absolute bottom-[-30px] left-[-40px] w-[220px] h-auto z-20 pointer-events-none" />
             </div>
           </div>
         </div>

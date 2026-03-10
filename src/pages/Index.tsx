@@ -263,7 +263,7 @@ const Index = () => {
                 <Layout className="h-4 w-4" />
                 All In One Place
               </div>
-              <h2 className="font-bold text-foreground mb-6" style={{ fontSize: '1.8em', lineHeight: '1.2em' }}>
+              <h2 className="font-bold text-foreground mb-6" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 A Dashboard That Shows What Matters
               </h2>
               <p className="text-lg text-muted-foreground mb-8">

@@ -149,7 +149,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         }
       });
 
-      // Page breakdown
+      // Page breakdown (sessions + leads)
       const pageMap: Record<string, { sessions: number; leads: number }> = {};
       sessions.forEach((s: any) => {
         const p = s.landing_page_path || "(unknown)";
@@ -160,6 +160,17 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         const p = l.page_path || "(unknown)";
         if (!pageMap[p]) pageMap[p] = { sessions: 0, leads: 0 };
         pageMap[p].leads++;
+      });
+
+      // Avg active seconds per page path
+      const pageTimeMap: Record<string, { total: number; count: number }> = {};
+      pageviewDetails.forEach((pv: any) => {
+        const p = pv.page_path || "(unknown)";
+        if (pv.active_seconds != null && pv.active_seconds > 0) {
+          if (!pageTimeMap[p]) pageTimeMap[p] = { total: 0, count: 0 };
+          pageTimeMap[p].total += pv.active_seconds;
+          pageTimeMap[p].count++;
+        }
       });
 
       // Country breakdown from aggregated data

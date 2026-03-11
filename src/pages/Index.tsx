@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 import logoActvTrkr2 from "@/assets/actv-trkr-logo-2.png";
 import logoActvTrkrDark from "@/assets/actv-trkr-logo-dark-2.svg";
 import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";
@@ -41,6 +42,8 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const handleSignIn = () => navigate(session ? "/dashboard" : "/auth");
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);
@@ -97,11 +100,11 @@ const Index = () => {
               </button>
             </div>
             <div className="hidden md:flex items-center gap-4">
-              <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={() => navigate("/auth")}>
-                Sign In
+              <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={handleSignIn}>
+                {session ? "Dashboard" : "Sign In"}
               </Button>
-              <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={() => navigate("/auth")}>
-                Get Started
+              <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleSignIn}>
+                {session ? "Dashboard" : "Get Started"}
               </Button>
             </div>
           </div>
@@ -157,8 +160,8 @@ const Index = () => {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">
-                  <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
-                    Get Started
+                  <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={handleSignIn}>
+                    {session ? "Go to Dashboard" : "Get Started"}
                   </Button>
                   <Button 
                     size="default" 
@@ -169,10 +172,10 @@ const Index = () => {
                     View Features
                   </Button>
                   <button
-                    onClick={() => navigate("/auth")}
+                    onClick={handleSignIn}
                     className="text-base font-medium text-white/80 hover:text-white transition-colors inline-flex items-center gap-1"
                   >
-                    Sign In <ArrowRight className="h-4 w-4" />
+                    {session ? "Dashboard" : "Sign In"} <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>

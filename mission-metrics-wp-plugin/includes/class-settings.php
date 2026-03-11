@@ -250,12 +250,23 @@ class MM_Settings {
 	 * Verify the incoming REST request has a valid API key matching ours.
 	 */
 	public static function rest_verify_api_key( $request ) {
-		$opts   = self::get();
-		$header = $request->get_header( 'Authorization' );
-		if ( ! $header ) return false;
+		$opts = self::get();
 
-		$token = preg_replace( '/^Bearer\s+/i', '', $header );
-		return hash_equals( $opts['api_key'], $token );
+		// Method 1: Authorization header with plaintext key
+		$header = $request->get_header( 'Authorization' );
+		if ( $header ) {
+			$token = preg_replace( '/^Bearer\s+/i', '', $header );
+			return hash_equals( $opts['api_key'], $token );
+		}
+
+		// Method 2: key_hash in request body (used by dashboard trigger)
+		$body = $request->get_json_params();
+		if ( ! empty( $body['key_hash'] ) ) {
+			$local_hash = hash( 'sha256', $opts['api_key'] );
+			return hash_equals( $local_hash, $body['key_hash'] );
+		}
+
+		return false;
 	}
 
 	/**

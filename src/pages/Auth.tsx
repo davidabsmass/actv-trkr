@@ -164,7 +164,7 @@ const Auth = () => {
 
       <div className="w-full max-w-sm overflow-hidden relative z-10">
         <div className="flex items-center justify-center mb-8">
-          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-9 w-auto" />
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-11 w-auto" />
         </div>
 
         <div className="relative">

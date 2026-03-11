@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, Eye, EyeOff, Ticket, ShieldCheck } from "lucide-react";
-import actvTrkrLogo from "@/assets/actv-trkr-logo-dark.svg";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
+import SparkleCanvas from "@/components/SparkleCanvas";
+import spaceBg from "@/assets/space-bgd.jpg";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -53,7 +55,7 @@ const Auth = () => {
         }
       }
 
-      navigate("/");
+      navigate("/dashboard");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -106,7 +108,7 @@ const Auth = () => {
             console.error("Pending invite redeem failed:", e);
           }
         }
-        navigate("/");
+        navigate("/dashboard");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
           email,
@@ -123,7 +125,7 @@ const Auth = () => {
           } catch (e) {
             console.error("Invite redeem failed:", e);
           }
-          navigate("/");
+          navigate("/dashboard");
           return;
         }
 
@@ -145,13 +147,27 @@ const Auth = () => {
   };
 
   const inputClass =
-    "w-full pl-10 pr-3 py-2.5 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50";
+    "w-full pl-10 pr-3 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50";
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm overflow-hidden">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
+      style={{
+        backgroundImage: `url(${spaceBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/60" />
+
+      {/* Space dust */}
+      <SparkleCanvas />
+
+      <div className="w-full max-w-sm overflow-hidden relative z-10">
         <div className="flex items-center justify-center mb-8">
-          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-8 w-auto" />
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-9 w-auto" />
         </div>
 
         <div className="relative">
@@ -161,11 +177,11 @@ const Auth = () => {
           >
             {/* Panel 1: Login / Signup */}
             <div className="w-full flex-shrink-0">
-              <div className="glass-card p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-1">
+              <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
+                <h2 className="text-lg font-semibold text-white mb-1">
                   {forgotMode ? "Reset password" : isLogin ? "Sign in" : "Create account"}
                 </h2>
-                <p className="text-sm text-muted-foreground mb-5">
+                <p className="text-sm text-white/60 mb-5">
                   {forgotMode
                     ? "Enter your email and we'll send a reset link"
                     : isLogin
@@ -176,7 +192,7 @@ const Auth = () => {
                 <form onSubmit={handleSubmit} className="space-y-3">
                   {!isLogin && !forgotMode && (
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                       <input
                         type="text"
                         placeholder="Full name"
@@ -187,7 +203,7 @@ const Auth = () => {
                     </div>
                   )}
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                     <input
                       type="email"
                       placeholder="Email"
@@ -199,7 +215,7 @@ const Auth = () => {
                   </div>
                   {!forgotMode && (
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                       <input
                         type={showPassword ? "text" : "password"}
                         placeholder="Password"
@@ -207,12 +223,12 @@ const Auth = () => {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         minLength={6}
-                        className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="w-full pl-10 pr-10 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -220,7 +236,7 @@ const Auth = () => {
                   )}
                   {!isLogin && !forgotMode && (
                     <div className="relative">
-                      <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                       <input
                         type="text"
                         placeholder="Invite code (optional)"
@@ -244,10 +260,10 @@ const Auth = () => {
                   )}
 
                   {error && !otpMode && (
-                    <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+                    <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
                   )}
                   {message && !otpMode && (
-                    <p className="text-xs text-success bg-success/10 rounded-lg px-3 py-2">{message}</p>
+                    <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
                   )}
 
                   <button
@@ -259,7 +275,7 @@ const Auth = () => {
                   </button>
                 </form>
 
-                <p className="text-xs text-muted-foreground mt-4 text-center">
+                <p className="text-xs text-white/50 mt-4 text-center">
                   {forgotMode && (
                     <button
                       onClick={() => { setForgotMode(false); setError(null); setMessage(null); }}
@@ -277,13 +293,13 @@ const Auth = () => {
 
             {/* Panel 2: OTP Verification */}
             <div className="w-full flex-shrink-0">
-              <div className="glass-card p-6">
+              <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
                 <div className="flex items-center gap-2 mb-1">
                   <ShieldCheck className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-foreground">Verify your email</h2>
+                  <h2 className="text-lg font-semibold text-white">Verify your email</h2>
                 </div>
-                <p className="text-sm text-muted-foreground mb-5">
-                  We sent a 6-digit code to <span className="font-medium text-foreground">{pendingEmail}</span>. Enter it below to confirm your account.
+                <p className="text-sm text-white/60 mb-5">
+                  We sent a 6-digit code to <span className="font-medium text-white">{pendingEmail}</span>. Enter it below to confirm your account.
                 </p>
 
                 <form onSubmit={handleVerifyOtp} className="space-y-3">
@@ -296,14 +312,14 @@ const Auth = () => {
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     required
                     maxLength={6}
-                    className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/40 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
 
                   {error && otpMode && (
-                    <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+                    <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
                   )}
                   {message && otpMode && (
-                    <p className="text-xs text-success bg-success/10 rounded-lg px-3 py-2">{message}</p>
+                    <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
                   )}
 
                   <button
@@ -325,7 +341,7 @@ const Auth = () => {
                   </button>
                   <button
                     onClick={() => { setOtpMode(false); setError(null); setMessage(null); setOtpCode(""); }}
-                    className="text-xs text-muted-foreground hover:underline"
+                    className="text-xs text-white/50 hover:underline"
                   >
                     Back
                   </button>

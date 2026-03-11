@@ -159,9 +159,6 @@ const Auth = () => {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/60" />
-
       {/* Space dust */}
       <SparkleCanvas />
 

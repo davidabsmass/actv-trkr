@@ -1,7 +1,7 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Clock } from "lucide-react";
 
 interface ContentProps {
-  pages: Array<{ path: string; sessions: number; leads: number; cvr: number }>;
+  pages: Array<{ path: string; sessions: number; leads: number; cvr: number; avgActiveSeconds?: number | null }>;
   opportunities: Array<{
     path: string;
     sessions: number;
@@ -9,7 +9,16 @@ interface ContentProps {
     expectedLeads: number;
     gap: number;
     cvr: number;
+    avgActiveSeconds?: number | null;
   }>;
+}
+
+function formatTime(seconds: number | null | undefined): string {
+  if (!seconds || seconds <= 0) return "—";
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
 export function ContentPerformance({ pages, opportunities }: ContentProps) {
@@ -26,6 +35,9 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
                 <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Sessions</th>
                 <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Leads</th>
                 <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">CVR</th>
+                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />Avg Time</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -42,6 +54,9 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
                   </td>
                   <td className="py-2 px-2 text-right font-mono-data text-foreground">
                     {(p.cvr * 100).toFixed(2)}%
+                  </td>
+                  <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">
+                    {formatTime(p.avgActiveSeconds)}
                   </td>
                 </tr>
               ))}
@@ -69,6 +84,9 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
                   <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Sessions</th>
                   <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Leads</th>
                   <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">CVR</th>
+                  <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">
+                    <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />Avg Time</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -85,6 +103,9 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
                     </td>
                     <td className="py-2 px-2 text-right font-mono-data text-foreground">
                       {(opp.cvr * 100).toFixed(2)}%
+                    </td>
+                    <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">
+                      {formatTime(opp.avgActiveSeconds)}
                     </td>
                   </tr>
                 ))}

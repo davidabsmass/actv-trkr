@@ -132,7 +132,7 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 252 60% 70%;
     --sidebar-ring: 0 0% 100%;
-    --sidebar-gradient: linear-gradient(180deg, #8875f7, #ac5bfc);
+    --sidebar-gradient: linear-gradient(180deg, #6d5dd4, #9449e0);
   }
 
   .dark {

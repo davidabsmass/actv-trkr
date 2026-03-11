@@ -147,9 +147,9 @@ Deno.serve(async (req) => {
             site_id: site.id,
             org_id: site.org_id,
             alert_type: "DOMAIN_EXPIRING",
-            severity: daysToDomain <= 7 ? "critical" : "warning",
+            severity: daysToDomain <= 5 ? "critical" : "warning",
             subject: `Domain expiring: ${site.domain}`,
-            message: `Domain expires in ${daysToDomain} days.`,
+            message: `Domain expires in ${daysToDomain} day${daysToDomain === 1 ? "" : "s"}.`,
           });
         }
 
@@ -158,9 +158,9 @@ Deno.serve(async (req) => {
             site_id: site.id,
             org_id: site.org_id,
             alert_type: "SSL_EXPIRING",
-            severity: sslResult.daysLeft <= 7 ? "critical" : "warning",
+            severity: sslResult.daysLeft <= 5 ? "critical" : "warning",
             subject: `SSL expiring: ${site.domain}`,
-            message: `SSL certificate expires in ${sslResult.daysLeft} days.`,
+            message: `SSL certificate expires in ${sslResult.daysLeft} day${sslResult.daysLeft === 1 ? "" : "s"}.`,
           });
         }
 

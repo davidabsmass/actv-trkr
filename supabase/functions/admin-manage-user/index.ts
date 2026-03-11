@@ -65,7 +65,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Create user with admin API
+      // Try to create user; if already exists, look them up instead
+      let userId: string;
+
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
         email,
         password,
@@ -74,25 +76,42 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // If user already exists, find them and add to org
+        if (createError.message.includes("already been registered")) {
+          const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
+          if (listErr) {
+            return new Response(JSON.stringify({ error: listErr.message }), {
+              status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          const existing = users.find((u: any) => u.email === email);
+          if (!existing) {
+            return new Response(JSON.stringify({ error: "User not found" }), {
+              status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          userId = existing.id;
+        } else {
+          return new Response(JSON.stringify({ error: createError.message }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        userId = newUser.user.id;
       }
 
-      // Add user to org
+      // Add user to org (ignore if already a member)
       const { error: orgError } = await adminClient
         .from("org_users")
-        .insert({ org_id, user_id: newUser.user.id, role: role || "member" });
+        .upsert({ org_id, user_id: userId, role: role || "member" }, { onConflict: "org_id,user_id", ignoreDuplicates: true });
 
       if (orgError) {
         return new Response(JSON.stringify({ error: orgError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ success: true, user_id: newUser.user.id }), {
+      return new Response(JSON.stringify({ success: true, user_id: userId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

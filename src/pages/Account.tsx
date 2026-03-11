@@ -134,21 +134,6 @@ export default function Account() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">Current Password</Label>
-              <div className="relative">
-                <Input
-                  type={showCurrent ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-9"
-                />
-                <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                  {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
               <Label className="text-xs">New Password</Label>
               <div className="relative">
                 <Input

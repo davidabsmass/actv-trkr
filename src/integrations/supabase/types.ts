@@ -1914,6 +1914,7 @@ export type Database = {
           created_at: string
           domain: string
           down_after_minutes: number
+          fail_count: number
           heartbeat_interval_minutes: number
           id: string
           last_heartbeat_at: string | null
@@ -1929,6 +1930,7 @@ export type Database = {
           created_at?: string
           domain: string
           down_after_minutes?: number
+          fail_count?: number
           heartbeat_interval_minutes?: number
           id?: string
           last_heartbeat_at?: string | null
@@ -1944,6 +1946,7 @@ export type Database = {
           created_at?: string
           domain?: string
           down_after_minutes?: number
+          fail_count?: number
           heartbeat_interval_minutes?: number
           id?: string
           last_heartbeat_at?: string | null

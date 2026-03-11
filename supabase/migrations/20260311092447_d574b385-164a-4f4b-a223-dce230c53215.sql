@@ -1,0 +1,1 @@
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS fail_count integer NOT NULL DEFAULT 0;

@@ -546,7 +546,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         </div>
       )}
       <div className="text-xs text-muted-foreground mb-3">
-        {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{statusFilter !== "all" || search ? " (filtered)" : ""}
+        {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{search ? " (filtered)" : ""}
       </div>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         {leadsLoading ? (

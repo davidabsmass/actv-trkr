@@ -248,56 +248,6 @@ function OrgDetail({ org }: { org: any }) {
         </div>
       </div>
 
-      {/* Invite Codes */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Ticket className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Invite Link</h3>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={generateInvite.isPending}
-            onClick={() => generateInvite.mutate()}
-          >
-            <Ticket className="h-3.5 w-3.5" />
-            {generateInvite.isPending ? "Generating…" : "Generate Invite"}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Generate an invite link to send to clients. They'll sign up and automatically join this organization.
-        </p>
-        {inviteCodes && inviteCodes.length > 0 && (
-          <div className="space-y-2">
-            {inviteCodes.map((ic: any) => (
-              <div key={ic.id} className="bg-secondary rounded-lg p-3 flex items-center gap-2">
-                <code className="text-xs font-mono text-secondary-foreground flex-1">
-                  {APP_DOMAIN}/auth?invite={ic.code}
-                </code>
-                <span className="text-[10px] text-muted-foreground tabular-nums">
-                  {ic.use_count} used
-                </span>
-                <button
-                  onClick={() => copyInviteLink(ic.code)}
-                  className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
-                  title="Copy invite link"
-                >
-                  <Copy className="h-3.5 w-3.5 text-secondary-foreground/60" />
-                </button>
-                <button
-                  onClick={() => deactivateInvite.mutate(ic.id)}
-                  className="flex-shrink-0 p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                  title="Deactivate"
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

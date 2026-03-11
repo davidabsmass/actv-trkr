@@ -172,10 +172,10 @@ const Index = () => {
                     View Features
                   </Button>
                   <button
-                    onClick={() => navigate("/auth")}
+                    onClick={handleSignIn}
                     className="text-base font-medium text-white/80 hover:text-white transition-colors inline-flex items-center gap-1"
                   >
-                    Sign In <ArrowRight className="h-4 w-4" />
+                    {session ? "Dashboard" : "Sign In"} <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>

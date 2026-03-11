@@ -53,11 +53,9 @@ export default function Account() {
     },
   });
 
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -72,19 +70,9 @@ export default function Account() {
     }
     setChangingPassword(true);
     try {
-      // Re-authenticate with current password first
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user!.email!,
-        password: currentPassword,
-      });
-      if (signInError) {
-        toast({ title: "Current password is incorrect", variant: "destructive" });
-        return;
-      }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast({ title: "Password updated successfully" });
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (e: any) {
@@ -146,21 +134,6 @@ export default function Account() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">Current Password</Label>
-              <div className="relative">
-                <Input
-                  type={showCurrent ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-9"
-                />
-                <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                  {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
               <Label className="text-xs">New Password</Label>
               <div className="relative">
                 <Input
@@ -193,7 +166,7 @@ export default function Account() {
             <Button
               size="sm"
               onClick={handlePasswordChange}
-              disabled={changingPassword || !currentPassword || !newPassword}
+              disabled={changingPassword || !newPassword}
             >
               {changingPassword ? "Updating…" : "Update Password"}
             </Button>

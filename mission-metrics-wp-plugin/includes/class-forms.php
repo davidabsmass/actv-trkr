@@ -454,9 +454,26 @@ class MM_Forms {
 					'value' => is_array( $value ) ? implode( ', ', $value ) : $value,
 				);
 			}
-		}
+	}
 
-		$form_title = 'Avada Form';
+	/**
+	 * Infer a meaningful field name for Avada forms when labels are empty.
+	 */
+	private static function infer_avada_field_name( $type, $value, $position ) {
+		$t = strtolower( $type );
+		if ( 'email' === $t ) return 'Email';
+		if ( 'textarea' === $t ) return 'Message';
+		if ( 'select' === $t ) return 'Category';
+		if ( 'text' === $t && $value ) {
+			if ( preg_match( '/^[^@\s]+@[^@\s]+\.[^@\s]+$/', $value ) ) return 'Email';
+			if ( preg_match( '/^[\d\s\-\+\(\)]{7,}$/', preg_replace( '/\s/', '', $value ) ) ) return 'Phone';
+			if ( preg_match( '/^\d{4,5}(-\d{4})?$/', $value ) ) return 'Zip Code';
+			if ( preg_match( '/^[A-Z]{2}$/', $value ) ) return 'State';
+		}
+		$pos_map = array( 1 => 'Name', 2 => 'Phone', 3 => 'Email', 4 => 'Category', 5 => 'City', 6 => 'Zip Code', 7 => 'State', 8 => 'Country', 9 => 'Subject', 10 => 'Message' );
+		return isset( $pos_map[ $position ] ) ? $pos_map[ $position ] : 'Field ' . $position;
+	}
+
 		$form_post  = get_post( $form_post_id );
 		if ( $form_post ) {
 			$form_title = $form_post->post_title ?: $form_title;

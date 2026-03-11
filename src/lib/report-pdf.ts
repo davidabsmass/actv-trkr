@@ -57,8 +57,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   const contentW = pageW - margin * 2;
   let y = 12;
 
-  const slug = report.templateSlug || "monthly_performance";
-  const title = slug === "weekly_brief" ? "Weekly Brief" : slug === "campaign_report" ? "Campaign Report" : "Monthly Performance Report";
+  const title = "Performance Report";
   const period = safe(`${fmtDate(report.periodStart)} - ${fmtDate(report.periodEnd)} | ${report.periodDays}-day period`);
 
   const checkPage = (needed: number) => {
@@ -93,11 +92,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.muted);
   doc.setFont("helvetica", "normal");
-  let sub = period;
-  if (report.compareMode && report.compareMode !== "none") {
-    sub += ` | vs ${report.compareMode === "yoy" ? "same period last year" : "previous period"}`;
-  }
-  doc.text(safe(sub), margin, y);
+  doc.text(safe(period), margin, y);
   y += 8;
 
   // Section header - navy accent bar
@@ -208,7 +203,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   };
 
   // ── Build by template ──
-  if (slug === "monthly_performance") {
+  {
     const es = report.executiveSummary;
     const ge = report.growthEngine;
     const ci = report.conversionIntelligence;
@@ -289,75 +284,6 @@ export function buildReportPdf(report: any, run: any): jsPDF {
         y += 5;
       });
     }
-  } else if (slug === "weekly_brief") {
-    const kpi = report.kpiSnapshot;
-    sectionHeader("KPI Snapshot");
-    kpiRow([
-      { label: "Leads", value: kpi.leads.current, change: kpi.leads.change },
-      { label: "Sessions", value: kpi.sessions.current, change: kpi.sessions.change },
-      { label: "CVR", value: `${kpi.cvr.current}%`, change: kpi.cvr.change },
-      { label: "Weighted Leads", value: kpi.weightedLeads, change: null },
-    ]);
-    if (kpi.goalTarget) {
-      doc.setFontSize(8);
-      doc.setTextColor(...COLORS.muted);
-      doc.setFont("helvetica", "normal");
-      doc.text(safe(`Goal: ${kpi.goalTarget} leads | ${Math.round((kpi.leads.current / kpi.goalTarget) * 100)}% achieved`), margin, y);
-      y += 6;
-    }
-
-    if (report.topChanges?.length) {
-      sectionHeader("Biggest Changes");
-      autoTable(doc, {
-        startY: y,
-        margin: { left: margin, right: margin },
-        head: [["Metric", "Current", "Previous", "Change"]],
-        body: (report.topChanges || []).map((c: any) => [
-          safe(c.metric), c.current, c.previous, changeText(c.change),
-        ]),
-        styles: { fontSize: 8, cellPadding: 2, font: "helvetica" },
-        headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: "bold" },
-        theme: "grid",
-      });
-      y = (doc as any).lastAutoTable.finalY + 6;
-    }
-
-    if (report.topSources?.length) {
-      sectionHeader("Top Sources");
-      rankList(report.topSources, 5);
-    }
-
-    sectionHeader("Quick Actions");
-    recommendations(report.actions);
-  } else if (slug === "campaign_report") {
-    const s = report.summary;
-    sectionHeader("Overview");
-    kpiRow([
-      { label: "Total Leads", value: s.totalLeads, change: s.leadsChange },
-      { label: "Sessions", value: s.totalSessions, change: null },
-      { label: "CVR", value: `${s.cvr}%`, change: null },
-      { label: "Spend", value: s.totalSpend ? `$${s.totalSpend.toLocaleString()}` : "-", change: null },
-    ]);
-
-    sectionHeader("Campaign Breakdown");
-    autoTable(doc, {
-      startY: y,
-      margin: { left: margin, right: margin },
-      head: [["Campaign", "Leads", "Sessions", "CVR", "Spend", "CPL"]],
-      body: (report.campaignBreakdown || []).map((c: any) => [
-        safe(c.campaign), c.leads, c.sessions, `${c.cvr}%`,
-        c.spend ? `$${c.spend.toLocaleString()}` : "-",
-        c.cpl ? `$${c.cpl}` : "-",
-      ]),
-      styles: { fontSize: 8, cellPadding: 2, font: "helvetica" },
-      headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: COLORS.bg },
-      theme: "grid",
-    });
-    y = (doc as any).lastAutoTable.finalY + 6;
-
-    sectionHeader("Recommendations");
-    recommendations(report.actions);
   }
 
   // Footer on every page - branded

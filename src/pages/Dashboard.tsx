@@ -438,7 +438,7 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-2">
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
-          <ShareableSnapshot snapshotData={snapshotData} startDate={startDate} endDate={endDate} />
+          
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
             <span className="text-[11px] font-medium text-success">Live</span>

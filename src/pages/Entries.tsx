@@ -581,7 +581,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
                   const fields = leadFieldMap.get(lead.id) || {};
                   return (
                     <TableRow key={lead.id}>
-                      </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                         {format(new Date(lead.submitted_at), "MMM d, yyyy HH:mm")}
                       </TableCell>

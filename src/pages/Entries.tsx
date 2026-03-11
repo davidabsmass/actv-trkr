@@ -331,8 +331,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [showExport, setShowExport] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads_by_form", orgId, formId],

@@ -42,6 +42,8 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const handleSignIn = () => navigate(session ? "/dashboard" : "/auth");
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);

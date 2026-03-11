@@ -47,29 +47,31 @@ Deno.serve(async (req) => {
     // Update last_heartbeat_at on site
     await supabase.from("sites").update({ last_heartbeat_at: now, status: "UP" }).eq("id", site.id);
 
-    // If site was DOWN and we got a heartbeat, check if we should resolve incident
+    // If site was DOWN and we got a response, recover it
     if (site.status === "DOWN") {
-      // Check for 2 recent heartbeats
-      const { data: recentBeats } = await supabase
-        .from("site_heartbeats")
-        .select("id")
+      // Resolve open DOWNTIME incident and send recovery notification
+      const { data: openIncident } = await supabase
+        .from("incidents")
+        .select("id, started_at")
         .eq("site_id", site.id)
-        .order("received_at", { ascending: false })
-        .limit(2);
+        .eq("type", "DOWNTIME")
+        .is("resolved_at", null)
+        .maybeSingle();
 
-      if (recentBeats && recentBeats.length >= 2) {
-        // Resolve open DOWNTIME incident
-        const { data: openIncident } = await supabase
-          .from("incidents")
-          .select("id")
-          .eq("site_id", site.id)
-          .eq("type", "DOWNTIME")
-          .is("resolved_at", null)
-          .maybeSingle();
+      if (openIncident) {
+        await supabase.from("incidents").update({ resolved_at: now }).eq("id", openIncident.id);
 
-        if (openIncident) {
-          await supabase.from("incidents").update({ resolved_at: now }).eq("id", openIncident.id);
-        }
+        const downtimeMinutes = Math.round((new Date(now).getTime() - new Date(openIncident.started_at).getTime()) / 60000);
+
+        await supabase.from("monitoring_alerts").insert({
+          site_id: site.id,
+          org_id: orgId,
+          incident_id: openIncident.id,
+          alert_type: "DOWNTIME",
+          severity: "info",
+          subject: `Site RECOVERED: ${domain}`,
+          message: `${domain} is back online after ${downtimeMinutes} minute${downtimeMinutes === 1 ? "" : "s"} of downtime.`,
+        });
       }
     }
 

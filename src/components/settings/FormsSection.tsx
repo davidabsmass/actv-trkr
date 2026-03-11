@@ -128,17 +128,15 @@ export default function FormsSection() {
             : "No active forms discovered yet. Install the plugin and click 'Sync Forms' in WordPress."}
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {displayedForms.map((form) => (
-            <div
-              key={form.id}
-              className="flex items-center justify-between p-3 rounded-md bg-secondary/50"
-            >
+            <div key={form.id} className="flex items-start gap-3 group">
+              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-secondary-foreground">
+                <p className="text-sm font-medium text-foreground">
                   {form.name}
                 </p>
-                <p className="text-[11px] text-secondary-foreground/70 truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {formFields?.[form.id]?.length
                     ? formFields[form.id].slice(0, 5).join(" · ") +
                       (formFields[form.id].length > 5
@@ -150,7 +148,7 @@ export default function FormsSection() {
               <button
                 onClick={() => toggleArchive(form.id, form.archived)}
                 disabled={togglingId === form.id}
-                className="flex items-center gap-1 p-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 p-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
                 title={form.archived ? "Restore form" : "Archive form"}
               >
                 {form.archived ? (

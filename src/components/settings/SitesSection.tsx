@@ -72,8 +72,12 @@ export default function SitesSection() {
         )}
       </div>
 
+      <p className="text-xs text-muted-foreground mb-4">
+        Sites connected via the WordPress plugin will appear here automatically.
+      </p>
+
       {showForm && (
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-4">
           <input
             type="text"
             placeholder="e.g. www.example.com"
@@ -101,34 +105,30 @@ export default function SitesSection() {
       {isLoading ? (
         <p className="text-xs text-muted-foreground">Loading…</p>
       ) : !sites || sites.length === 0 ? (
-        <div className="space-y-3">
-          <div className="flex items-start gap-2 p-3 rounded-md bg-warning/10 border border-warning/20">
-            <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-xs font-medium text-foreground mb-1">No sites connected yet</p>
-              <p className="text-xs text-muted-foreground">
-                Click "Add Site" above or install the WordPress plugin. The site will appear here once registered.
-              </p>
-            </div>
+        <div className="flex items-start gap-2 p-3 rounded-md bg-warning/10 border border-warning/20">
+          <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-foreground mb-1">No sites connected yet</p>
+            <p className="text-xs text-muted-foreground">
+              Click "Add Site" above or install the WordPress plugin. The site will appear here once registered.
+            </p>
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {sites.map((site) => (
-            <div key={site.id} className="flex items-center justify-between p-3 rounded-md bg-secondary/50">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-3.5 w-3.5 text-success flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-secondary-foreground">{site.domain}</p>
-                  <p className="text-[11px] text-secondary-foreground/70">
-                    {site.type} · {site.plugin_version ? `v${site.plugin_version}` : "version unknown"} · connected {format(new Date(site.created_at), "MMM d, yyyy")}
-                  </p>
-                </div>
+            <div key={site.id} className="flex items-start gap-3 group">
+              <CheckCircle className="h-4 w-4 text-success flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">{site.domain}</p>
+                <p className="text-xs text-muted-foreground">
+                  {site.type} · {site.plugin_version ? `v${site.plugin_version}` : "version unknown"} · connected {format(new Date(site.created_at), "MMM d, yyyy")}
+                </p>
               </div>
               <button
                 onClick={() => handleDelete(site.id, site.domain)}
                 disabled={deletingId === site.id}
-                className="p-1.5 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                className="p-1.5 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
                 title="Remove site"
               >
                 <Trash2 className="h-3.5 w-3.5" />

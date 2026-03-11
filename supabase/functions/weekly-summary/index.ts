@@ -72,6 +72,8 @@ Data for ${org.name}:
 - Leads this week: ${thisWeekLeads} (${leadsChange >= 0 ? '+' : ''}${leadsChange.toFixed(1)}% vs last week)
 - Conversion rate: ${cvr.toFixed(2)}%
 
+Use calm, professional language. Avoid dramatic words like "plummeted," "collapsed," "crashed," or "alarming." Use neutral terms like "decreased," "dropped," or "slowed" instead. Frame downturns as opportunities.
+
 Provide:
 1. A 2-3 sentence performance summary
 2. The top growth opportunity (one sentence)

@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
             alert_type: "DOWNTIME",
             severity: "critical",
             subject: `Site DOWN: ${site.domain}`,
-            message: `No heartbeat received for ${Math.round(minutesSince)} minutes.`,
+            message: `No check-in received from ${site.domain} for ${Math.round(minutesSince)} minutes. The site may be unreachable.`,
           });
         }
 

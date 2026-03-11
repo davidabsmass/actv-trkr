@@ -5,6 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const CONFIRM_THRESHOLD = 2; // Must fail this many consecutive checks before marking DOWN
+
 async function httpPing(domain: string): Promise<{ reachable: boolean; statusCode: number | null; latencyMs: number | null }> {
   const url = `https://${domain}`;
   const start = Date.now();
@@ -38,7 +40,7 @@ Deno.serve(async (req) => {
 
     const { data: sites } = await supabase
       .from("sites")
-      .select("id, org_id, domain, status, last_heartbeat_at, down_after_minutes");
+      .select("id, org_id, domain, status, fail_count");
 
     if (!sites || sites.length === 0) {
       return new Response(JSON.stringify({ status: "ok", checked: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -49,19 +51,16 @@ Deno.serve(async (req) => {
     let recoveredCount = 0;
 
     for (const site of sites) {
-      // Active HTTP ping — the primary reliability check
       const ping = await httpPing(site.domain);
+      const currentFailCount = site.fail_count || 0;
 
       if (!ping.reachable) {
-        // Also check heartbeat staleness as secondary signal
-        const lastBeat = site.last_heartbeat_at ? new Date(site.last_heartbeat_at) : null;
-        const minutesSince = lastBeat ? (now.getTime() - lastBeat.getTime()) / 60000 : null;
+        const newFailCount = currentFailCount + 1;
 
-        if (site.status !== "DOWN") {
-          // Mark site as DOWN
-          await supabase.from("sites").update({ status: "DOWN" }).eq("id", site.id);
+        if (newFailCount >= CONFIRM_THRESHOLD && site.status !== "DOWN") {
+          // Confirmed down after multiple consecutive failures — mark DOWN and alert
+          await supabase.from("sites").update({ status: "DOWN", fail_count: newFailCount }).eq("id", site.id);
 
-          // Create DOWNTIME incident
           const { data: incident } = await supabase.from("incidents").insert({
             site_id: site.id,
             org_id: site.org_id,
@@ -70,11 +69,10 @@ Deno.serve(async (req) => {
             details: {
               domain: site.domain,
               http_status: ping.statusCode,
-              last_response_minutes_ago: minutesSince ? Math.round(minutesSince) : null,
+              consecutive_failures: newFailCount,
             },
           }).select("id").single();
 
-          // Queue ONE alert (no duplicates — only fires when status transitions to DOWN)
           if (incident) {
             await supabase.from("monitoring_alerts").insert({
               site_id: site.id,
@@ -83,20 +81,25 @@ Deno.serve(async (req) => {
               alert_type: "DOWNTIME",
               severity: "critical",
               subject: `Site DOWN: ${site.domain}`,
-              message: `${site.domain} is not responding (HTTP ${ping.statusCode || "unreachable"}). We'll notify you when it recovers.`,
+              message: `${site.domain} is not responding after ${newFailCount} consecutive checks (HTTP ${ping.statusCode || "unreachable"}). We'll notify you when it recovers.`,
             });
           }
 
           downCount++;
+        } else if (site.status !== "DOWN") {
+          // First failure — increment counter but don't alert yet
+          await supabase.from("sites").update({ fail_count: newFailCount }).eq("id", site.id);
         }
-        // If already DOWN, do nothing — no duplicate alerts
-      } else {
-        // Site is reachable
+        // If already DOWN, just bump fail_count
         if (site.status === "DOWN") {
-          // RECOVERY — site came back
-          await supabase.from("sites").update({ status: "UP" }).eq("id", site.id);
+          await supabase.from("sites").update({ fail_count: newFailCount }).eq("id", site.id);
+        }
+      } else {
+        // Site is reachable — reset fail counter
+        if (site.status === "DOWN") {
+          // RECOVERY
+          await supabase.from("sites").update({ status: "UP", fail_count: 0 }).eq("id", site.id);
 
-          // Resolve open DOWNTIME incident
           const { data: openIncident } = await supabase
             .from("incidents")
             .select("id, started_at")
@@ -110,7 +113,6 @@ Deno.serve(async (req) => {
 
             const downtimeMinutes = Math.round((now.getTime() - new Date(openIncident.started_at).getTime()) / 60000);
 
-            // Send RECOVERY notification
             await supabase.from("monitoring_alerts").insert({
               site_id: site.id,
               org_id: site.org_id,
@@ -123,6 +125,9 @@ Deno.serve(async (req) => {
           }
 
           recoveredCount++;
+        } else if (currentFailCount > 0) {
+          // Was failing but recovered before threshold — just reset counter
+          await supabase.from("sites").update({ fail_count: 0 }).eq("id", site.id);
         }
       }
     }

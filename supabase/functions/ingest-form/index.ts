@@ -155,7 +155,8 @@ Deno.serve(async (req) => {
         const values = dataEntry.value.split(", ").map((v: string) => v.trim());
         const types = typesEntry.value.split(", ").map((t: string) => t.trim());
         const labelsEntry = fields.find((f: any) => f.name === "field_labels" || f.label === "field_labels");
-        const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+        const rawLabels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+        const allLabelsEmpty = rawLabels.every((l: string) => !l || l === "");
 
         const flatRows: any[] = [];
         let valueIdx = 0;
@@ -165,7 +166,15 @@ Deno.serve(async (req) => {
           const val = values[valueIdx] || "";
           valueIdx++;
           if (!val || val === "Array") continue;
-          const label = (labels[valueIdx - 1] && labels[valueIdx - 1] !== "") ? labels[valueIdx - 1] : `Field ${valueIdx}`;
+
+          let label: string;
+          const rawLabel = rawLabels[valueIdx - 1] || "";
+          if (rawLabel && !allLabelsEmpty) {
+            label = rawLabel;
+          } else {
+            label = inferAvadaFieldName(type, val, valueIdx);
+          }
+
           flatRows.push({
             org_id: orgId, lead_id: lead.id,
             field_key: label.toLowerCase().replace(/\s+/g, "_"),

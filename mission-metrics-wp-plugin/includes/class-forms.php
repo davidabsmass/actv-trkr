@@ -412,8 +412,12 @@ class MM_Forms {
 					continue;
 				}
 
-				// Use label as name if available, otherwise generate a field name
-				$name = $label ?: 'field_' . ( $i + 1 );
+			// Use label as name if available, otherwise infer from type/value
+				if ( $label ) {
+					$name = $label;
+				} else {
+					$name = self::infer_avada_field_name( $type, $value, $field_index );
+				}
 
 				$fields[] = array(
 					'name'  => $name,

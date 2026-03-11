@@ -59,7 +59,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       ]);
 
       // Paginated detail fetches (bypass 1000-row limit)
-      const [sessions, leads] = await Promise.all([
+      const [sessions, leads, pageviewDetails] = await Promise.all([
         fetchAllRows<any>((from, to) =>
           supabase.from("sessions")
             .select("session_id, started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain")
@@ -72,6 +72,13 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
             .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
             .eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd)
             .order("submitted_at", { ascending: true })
+            .range(from, to)
+        ),
+        fetchAllRows<any>((from, to) =>
+          supabase.from("pageviews")
+            .select("page_path, active_seconds")
+            .eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd)
+            .order("occurred_at", { ascending: true })
             .range(from, to)
         ),
       ]);
@@ -142,7 +149,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         }
       });
 
-      // Page breakdown
+      // Page breakdown (sessions + leads)
       const pageMap: Record<string, { sessions: number; leads: number }> = {};
       sessions.forEach((s: any) => {
         const p = s.landing_page_path || "(unknown)";
@@ -153,6 +160,17 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         const p = l.page_path || "(unknown)";
         if (!pageMap[p]) pageMap[p] = { sessions: 0, leads: 0 };
         pageMap[p].leads++;
+      });
+
+      // Avg active seconds per page path
+      const pageTimeMap: Record<string, { total: number; count: number }> = {};
+      pageviewDetails.forEach((pv: any) => {
+        const p = pv.page_path || "(unknown)";
+        if (pv.active_seconds != null && pv.active_seconds > 0) {
+          if (!pageTimeMap[p]) pageTimeMap[p] = { total: 0, count: 0 };
+          pageTimeMap[p].total += pv.active_seconds;
+          pageTimeMap[p].count++;
+        }
       });
 
       // Country breakdown from aggregated data
@@ -174,7 +192,11 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
           .map(([campaign, v]) => ({ campaign, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
           .sort((a, b) => b.sessions - a.sessions),
         pages: Object.entries(pageMap)
-          .map(([path, v]) => ({ path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
+          .map(([path, v]) => {
+            const timeData = pageTimeMap[path];
+            const avgActiveSeconds = timeData ? Math.round(timeData.total / timeData.count) : null;
+            return { path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0, avgActiveSeconds };
+          })
           .sort((a, b) => b.sessions - a.sessions),
         countries: Object.entries(countryTotals)
           .map(([countryCode, sessions]) => ({ countryCode, sessions }))

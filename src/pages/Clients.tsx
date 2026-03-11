@@ -581,117 +581,214 @@ function OrgDetail({ org }: { org: any }) {
         )}
       </div>
 
-      {/* Members */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" /> Members
-          </h3>
-          <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <UserPlus className="h-3.5 w-3.5" /> Create User
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Create User for {org.name}</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-2">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Full Name</label>
-                  <Input value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="Jane Smith" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
-                  <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="client@example.com" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Temporary Password</label>
-                  <Input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
-                  <Select value={newRole} onValueChange={setNewRole}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={!newEmail.trim() || !newPassword.trim() || newPassword.length < 6 || createUser.isPending}
-                  onClick={() => createUser.mutate()}
-                >
-                  {createUser.isPending ? "Creating…" : "Create User"}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  The user will be created with a confirmed email. Share the dashboard URL and temporary password, then send a password reset.
-                </p>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+    </div>
+  );
+}
 
-        {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">Loading members…</div>
-        ) : !members || members.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No members.</div>
-        ) : (
-          <div className="divide-y divide-border">
-            {members.map((m: any) => (
-              <div key={m.id} className="flex items-center justify-between px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {m.profile?.full_name || m.profile?.email || "Unknown"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{m.profile?.email || m.user_id}</p>
-                  </div>
+function MembersSection({ org }: { org: any }) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newRole, setNewRole] = useState("member");
+
+  const { data: members, isLoading } = useQuery({
+    queryKey: ["org_users", org.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("org_users").select("id, user_id, role, created_at")
+        .eq("org_id", org.id).order("created_at");
+      if (error) throw error;
+
+      const userIds = data.map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles").select("user_id, email, full_name")
+        .in("user_id", userIds);
+
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+      return data
+        .map((m) => ({ ...m, profile: profileMap.get(m.user_id) || null }))
+        .filter((m) => m.profile !== null);
+    },
+  });
+
+  const createUser = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: {
+          action: "create_user",
+          email: newEmail,
+          password: newPassword,
+          full_name: newFullName,
+          org_id: org.id,
+          role: newRole,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
+      toast.success("User created and added to organization!");
+      setCreateUserOpen(false);
+      setNewEmail("");
+      setNewPassword("");
+      setNewFullName("");
+      setNewRole("member");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to create user"),
+  });
+
+  const sendPasswordReset = useMutation({
+    mutationFn: async ({ email, new_password }: { email: string; new_password: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "reset_password", email, new_password },
+      });
+      const errMsg = data?.error || (error as any)?.message;
+      if (errMsg) throw new Error(errMsg);
+      return data;
+    },
+    onSuccess: () => toast.success("Password updated successfully!"),
+    onError: (err: any) => toast.error(err.message || "Failed to update password"),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { error } = await supabase.from("org_users").delete().eq("id", membershipId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
+      toast.success("User removed");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to remove user"),
+  });
+
+  const updateRole = useMutation({
+    mutationFn: async ({ id, role }: { id: string; role: string }) => {
+      const { error } = await supabase.from("org_users").update({ role }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
+      toast.success("Role updated");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to update role"),
+  });
+
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Users className="h-4 w-4 text-primary" /> Members
+        </h3>
+        <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <UserPlus className="h-3.5 w-3.5" /> Create User
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Create User for {org.name}</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Full Name</label>
+                <Input value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="Jane Smith" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
+                <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="client@example.com" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Temporary Password</label>
+                <Input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
+                <Select value={newRole} onValueChange={setNewRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full"
+                disabled={!newEmail.trim() || !newPassword.trim() || newPassword.length < 6 || createUser.isPending}
+                onClick={() => createUser.mutate()}
+              >
+                {createUser.isPending ? "Creating…" : "Create User"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                The user will be created with a confirmed email. Share the dashboard URL and temporary password, then send a password reset.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="p-8 text-center text-muted-foreground text-sm">Loading members…</div>
+      ) : !members || members.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground text-sm">No members.</div>
+      ) : (
+        <div className="divide-y divide-border">
+          {members.map((m: any) => (
+            <div key={m.id} className="flex items-center justify-between px-5 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                    disabled={sendPasswordReset.isPending}
-                    onClick={() => {
-                      const email = m.profile?.email;
-                      if (!email) { toast.error("No email found for this user"); return; }
-                      const newPw = window.prompt(`Set new password for ${email} (min 6 chars):`);
-                      if (!newPw || newPw.length < 6) {
-                        if (newPw !== null) toast.error("Password must be at least 6 characters");
-                        return;
-                      }
-                      sendPasswordReset.mutate({ email, new_password: newPw });
-                    }}
-                  >
-                    <KeyRound className="h-3.5 w-3.5" /> Reset Password
-                  </Button>
-                  <Select value={m.role} onValueChange={(role) => updateRole.mutate({ id: m.id, role })}>
-                    <SelectTrigger className="w-[110px] h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => removeMember.mutate(m.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {m.profile?.full_name || m.profile?.email || "Unknown"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{m.profile?.email || m.user_id}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  disabled={sendPasswordReset.isPending}
+                  onClick={() => {
+                    const email = m.profile?.email;
+                    if (!email) { toast.error("No email found for this user"); return; }
+                    const newPw = window.prompt(`Set new password for ${email} (min 6 chars):`);
+                    if (!newPw || newPw.length < 6) {
+                      if (newPw !== null) toast.error("Password must be at least 6 characters");
+                      return;
+                    }
+                    sendPasswordReset.mutate({ email, new_password: newPw });
+                  }}
+                >
+                  <KeyRound className="h-3.5 w-3.5" /> Reset Password
+                </Button>
+                <Select value={m.role} onValueChange={(role) => updateRole.mutate({ id: m.id, role })}>
+                  <SelectTrigger className="w-[110px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => removeMember.mutate(m.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

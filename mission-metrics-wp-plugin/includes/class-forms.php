@@ -474,6 +474,7 @@ class MM_Forms {
 		return isset( $pos_map[ $position ] ) ? $pos_map[ $position ] : 'Field ' . $position;
 	}
 
+	$form_title = 'Avada Form';
 		$form_post  = get_post( $form_post_id );
 		if ( $form_post ) {
 			$form_title = $form_post->post_title ?: $form_title;

@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     const now = new Date();
     let checked = 0;
     const results: Record<string, any> = {};
-    const alertThresholds = [60, 30, 14, 7];
+    const alertThresholds = [30, 7, 5, 3, 1];
 
     for (const [baseDomain, domainSites] of uniqueDomains) {
       const domainResult = await checkDomainExpiry(baseDomain);

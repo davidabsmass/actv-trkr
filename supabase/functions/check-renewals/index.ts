@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const alertThresholds = [60, 30, 14, 7, 1];
+    const alertThresholds = [30, 7, 5, 3, 1];
     let alertCount = 0;
 
     for (const r of renewals) {

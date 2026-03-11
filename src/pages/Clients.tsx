@@ -39,7 +39,7 @@ export default function Clients() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Clients</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-1">Users</h1>
       <p className="text-sm text-muted-foreground mb-6">Manage client organizations and users</p>
 
       {/* Client selector + Add */}

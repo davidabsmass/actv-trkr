@@ -70,19 +70,9 @@ export default function Account() {
     }
     setChangingPassword(true);
     try {
-      // Re-authenticate with current password first
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user!.email!,
-        password: currentPassword,
-      });
-      if (signInError) {
-        toast({ title: "Current password is incorrect", variant: "destructive" });
-        return;
-      }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       toast({ title: "Password updated successfully" });
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (e: any) {

@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const alertThresholds = [60, 30, 14, 7, 1];
+    const alertThresholds = [30, 7, 5, 3, 1];
     let alertCount = 0;
 
     for (const r of renewals) {
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
           site_id: r.site_id,
           org_id: r.org_id,
           alert_type: "RENEWAL_DUE",
-          severity: daysUntil <= 7 ? "critical" : "warning",
+          severity: daysUntil <= 5 ? "critical" : "warning",
           subject: `${r.type} renewal due: ${r.provider_name || "Unknown"}`,
           message: `${r.type} renewal is due in ${daysUntil} day${daysUntil === 1 ? "" : "s"}.`,
         });

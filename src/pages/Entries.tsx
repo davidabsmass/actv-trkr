@@ -568,18 +568,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             <Table>
               <TableHeader>
                 <TableRow>
-                <TableHead className="w-[40px] pr-0">
-                    <Checkbox
-                      checked={filtered.length > 0 && filtered.every((l) => selected.has(l.id))}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelected(new Set(filtered.map((l) => l.id)));
-                        } else {
-                          setSelected(new Set());
-                        }
-                      }}
-                    />
-                  </TableHead>
                   <TableHead className="w-[140px]">Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Source</TableHead>

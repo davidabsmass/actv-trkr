@@ -455,7 +455,7 @@ export default function Reports({ embedded }: { embedded?: boolean }) {
       const resp = await fetch(data.signedUrl);
       const report = await resp.json();
       const { buildReportPdf } = await import("@/lib/report-pdf");
-      const doc = buildReportPdf(report, run);
+      const doc = await buildReportPdf(report, run);
       doc.save(`report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF report downloaded");
     } catch {

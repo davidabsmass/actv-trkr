@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ALERT_TYPES = [
-  { key: "DOWNTIME", label: "Downtime", desc: "Site goes offline or misses heartbeats", icon: Globe },
+  { key: "DOWNTIME", label: "Downtime", desc: "Site goes offline or becomes unreachable", icon: Globe },
   { key: "SSL_EXPIRY", label: "SSL Expiry", desc: "SSL certificate expiring soon", icon: Lock },
   { key: "DOMAIN_EXPIRY", label: "Domain Expiry", desc: "Domain registration expiring soon", icon: Shield },
   { key: "BROKEN_LINKS", label: "Broken Links", desc: "New broken links detected on your site", icon: Link2 },

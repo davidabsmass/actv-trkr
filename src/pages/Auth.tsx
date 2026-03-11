@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Lock, User, Eye, EyeOff, Ticket } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Ticket, ShieldCheck } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-dark.svg";
 
 const Auth = () => {
@@ -17,7 +17,66 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [forgotMode, setForgotMode] = useState(false);
+  const [otpMode, setOtpMode] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingPassword, setPendingPassword] = useState("");
   const navigate = useNavigate();
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+        email: pendingEmail,
+        token: otpCode.trim(),
+        type: "signup",
+      });
+      if (verifyErr) throw verifyErr;
+
+      // If no session after OTP, sign in with credentials
+      if (!data.session) {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: pendingEmail,
+          password: pendingPassword,
+        });
+        if (signInErr) throw signInErr;
+      }
+
+      // Redeem invite code if present
+      const code = inviteCode || localStorage.getItem("pending_invite_code");
+      if (code) {
+        localStorage.removeItem("pending_invite_code");
+        try {
+          await supabase.functions.invoke("redeem-invite", { body: { code } });
+        } catch (e) {
+          console.error("Invite redeem failed:", e);
+        }
+      }
+
+      navigate("/");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setError(null);
+    setMessage(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
+      if (error) throw error;
+      setMessage("A new verification code has been sent to your email.");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +97,6 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Check for pending invite code from a previous signup
         const pendingCode = localStorage.getItem("pending_invite_code");
         if (pendingCode) {
           localStorage.removeItem("pending_invite_code");
@@ -59,14 +117,12 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        // If invite code provided and user was auto-confirmed, redeem it now
+        // If user was auto-confirmed (e.g. admin-created), redeem invite and go
         if (inviteCode && signUpData.session) {
           try {
-            const { data: redeemData, error: redeemErr } = await supabase.functions.invoke("redeem-invite", {
+            await supabase.functions.invoke("redeem-invite", {
               body: { code: inviteCode },
             });
-            if (redeemErr) console.error("Invite redeem error:", redeemErr);
-            if (redeemData?.error) console.error("Invite redeem error:", redeemData.error);
           } catch (e) {
             console.error("Invite redeem failed:", e);
           }
@@ -74,15 +130,15 @@ const Auth = () => {
           return;
         }
 
-        setMessage(
-          inviteCode
-            ? "Check your email to confirm your account. Once confirmed, sign in and your invite code will be applied."
-            : "Check your email to confirm your account."
-        );
-        // Store invite code in localStorage so it can be redeemed after email confirmation
+        // Store invite code for after verification
         if (inviteCode) {
           localStorage.setItem("pending_invite_code", inviteCode.trim().toUpperCase());
         }
+
+        // Switch to OTP verification mode
+        setPendingEmail(email);
+        setPendingPassword(password);
+        setOtpMode(true);
       }
     } catch (err: any) {
       setError(err.message);

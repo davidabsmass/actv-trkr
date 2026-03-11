@@ -166,7 +166,7 @@ export default function Account() {
             <Button
               size="sm"
               onClick={handlePasswordChange}
-              disabled={changingPassword || !currentPassword || !newPassword}
+              disabled={changingPassword || !newPassword}
             >
               {changingPassword ? "Updating…" : "Update Password"}
             </Button>

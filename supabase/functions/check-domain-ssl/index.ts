@@ -123,24 +123,37 @@ Deno.serve(async (req) => {
       results[baseDomain] = { domain: domainResult, ssl: sslResult };
 
       for (const site of domainSites) {
-        await supabase.from("domain_health").upsert({
-          site_id: site.id,
-          org_id: site.org_id,
-          domain: site.domain,
-          domain_expiry_date: domainResult.expiry,
-          days_to_domain_expiry: daysToDomain,
-          source: domainResult.source,
-          last_checked_at: now.toISOString(),
-        }, { onConflict: "site_id" });
+        const nowIso = now.toISOString();
 
-        await supabase.from("ssl_health").upsert({
-          site_id: site.id,
-          org_id: site.org_id,
-          ssl_expiry_date: sslResult.expiry,
-          days_to_ssl_expiry: sslResult.daysLeft,
-          issuer: sslResult.issuer,
-          last_checked_at: now.toISOString(),
-        }, { onConflict: "site_id" });
+        // Domain health: only write expiry fields when we got valid data
+        if (domainResult.expiry) {
+          await supabase.from("domain_health").upsert({
+            site_id: site.id,
+            org_id: site.org_id,
+            domain: site.domain,
+            domain_expiry_date: domainResult.expiry,
+            days_to_domain_expiry: daysToDomain,
+            source: domainResult.source,
+            last_checked_at: nowIso,
+          }, { onConflict: "site_id" });
+        } else {
+          // Just bump timestamp — don't overwrite good data with nulls
+          await supabase.from("domain_health").update({ last_checked_at: nowIso }).eq("site_id", site.id);
+        }
+
+        // SSL health: only write expiry fields when we got valid data
+        if (sslResult.expiry) {
+          await supabase.from("ssl_health").upsert({
+            site_id: site.id,
+            org_id: site.org_id,
+            ssl_expiry_date: sslResult.expiry,
+            days_to_ssl_expiry: sslResult.daysLeft,
+            issuer: sslResult.issuer,
+            last_checked_at: nowIso,
+          }, { onConflict: "site_id" });
+        } else {
+          await supabase.from("ssl_health").update({ last_checked_at: nowIso }).eq("site_id", site.id);
+        }
 
         if (daysToDomain !== null && alertThresholds.includes(daysToDomain)) {
           await supabase.from("monitoring_alerts").insert({

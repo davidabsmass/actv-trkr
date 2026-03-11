@@ -321,7 +321,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
@@ -451,17 +451,14 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   }, [fieldsRaw, leads]);
 
   const filtered = (leads || []).filter((lead) => {
-    if (statusFilter !== "all" && lead.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       const fields = leadFieldMap.get(lead.id);
-      const searchable = [lead.source, lead.status, ...(fields ? Object.values(fields) : [])].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, ...(fields ? Object.values(fields) : [])].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
     return true;
   });
-
-  const statuses = [...new Set((leads || []).map((l) => l.status))].sort();
 
   const createExport = useMutation({
     mutationFn: async () => {
@@ -549,7 +546,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         </div>
       )}
       <div className="text-xs text-muted-foreground mb-3">
-        {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{statusFilter !== "all" || search ? " (filtered)" : ""}
+        {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{search ? " (filtered)" : ""}
       </div>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         {leadsLoading ? (
@@ -564,7 +561,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[140px]">Date</TableHead>
-                  
                   <TableHead>Source</TableHead>
                   {fieldColumns.map((col) => (
                     <TableHead key={col.key}>{col.label}</TableHead>

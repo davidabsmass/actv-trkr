@@ -203,7 +203,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   };
 
   // ── Build by template ──
-  if (slug === "monthly_performance") {
+  {
     const es = report.executiveSummary;
     const ge = report.growthEngine;
     const ci = report.conversionIntelligence;

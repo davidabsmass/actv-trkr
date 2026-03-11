@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, Eye, EyeOff, Ticket, ShieldCheck } from "lucide-react";
-import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
-import spaceBg from "@/assets/space-bgd.jpg";
+import spaceBg from "@/assets/space-bgd-new.jpg";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -159,9 +159,6 @@ const Auth = () => {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/60" />
-
       {/* Space dust */}
       <SparkleCanvas />
 

@@ -9,10 +9,29 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Accept either cron secret OR valid JWT
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
-  if (!cronSecret || incoming !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const isCron = cronSecret && incoming === cronSecret;
+
+  let callerUserId: string | null = null;
+
+  if (!isCron) {
+    // Try JWT auth
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const tempClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: claims, error: claimsErr } = await tempClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+    if (claimsErr || !claims?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    callerUserId = claims.claims.sub as string;
   }
 
   try {

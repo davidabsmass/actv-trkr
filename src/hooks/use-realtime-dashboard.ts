@@ -59,7 +59,7 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       ]);
 
       // Paginated detail fetches (bypass 1000-row limit)
-      const [sessions, leads] = await Promise.all([
+      const [sessions, leads, pageviewDetails] = await Promise.all([
         fetchAllRows<any>((from, to) =>
           supabase.from("sessions")
             .select("session_id, started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain")
@@ -72,6 +72,13 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
             .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
             .eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd)
             .order("submitted_at", { ascending: true })
+            .range(from, to)
+        ),
+        fetchAllRows<any>((from, to) =>
+          supabase.from("pageviews")
+            .select("page_path, active_seconds")
+            .eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd)
+            .order("occurred_at", { ascending: true })
             .range(from, to)
         ),
       ]);

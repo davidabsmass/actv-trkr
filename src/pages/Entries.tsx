@@ -575,6 +575,18 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             <Table>
               <TableHeader>
                 <TableRow>
+                <TableHead className="w-[40px] pr-0">
+                    <Checkbox
+                      checked={filtered.length > 0 && filtered.every((l) => selected.has(l.id))}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelected(new Set(filtered.map((l) => l.id)));
+                        } else {
+                          setSelected(new Set());
+                        }
+                      }}
+                    />
+                  </TableHead>
                   <TableHead className="w-[140px]">Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Source</TableHead>
@@ -587,7 +599,17 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
                 {filtered.map((lead) => {
                   const fields = leadFieldMap.get(lead.id) || {};
                   return (
-                    <TableRow key={lead.id}>
+                    <TableRow key={lead.id} data-state={selected.has(lead.id) ? "selected" : undefined}>
+                      <TableCell className="pr-0">
+                        <Checkbox
+                          checked={selected.has(lead.id)}
+                          onCheckedChange={(checked) => {
+                            const next = new Set(selected);
+                            if (checked) next.add(lead.id); else next.delete(lead.id);
+                            setSelected(next);
+                          }}
+                        />
+                      </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                         {format(new Date(lead.submitted_at), "MMM d, yyyy HH:mm")}
                       </TableCell>

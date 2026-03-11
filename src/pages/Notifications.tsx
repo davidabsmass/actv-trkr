@@ -26,19 +26,27 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
 
   const { data: inbox, isLoading } = useQuery({
-    queryKey: ["notification_inbox", user?.id],
+    queryKey: ["notification_inbox", user?.id, orgId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id || !orgId) return [];
+      // Get site IDs for current org
+      const { data: orgSites } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("org_id", orgId);
+      const siteIds = orgSites?.map(s => s.id) || [];
+      if (siteIds.length === 0) return [];
       const { data, error } = await supabase
         .from("notification_inbox")
         .select("*")
         .eq("user_id", user.id)
+        .in("site_id", siteIds)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!orgId,
   });
 
   const { data: prefs } = useQuery({

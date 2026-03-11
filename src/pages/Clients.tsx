@@ -508,9 +508,6 @@ function OrgDetail({ org }: { org: any }) {
       <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
       <p className="text-sm text-muted-foreground mb-6">{org.timezone}</p>
 
-      {/* API Keys & Plugin - scoped to THIS client org */}
-      <ClientApiKeys orgId={org.id} />
-
       {/* Dashboard URL card */}
       <div className="rounded-lg border border-border bg-card p-4 mb-4">
         <div className="flex items-center gap-2 mb-2">

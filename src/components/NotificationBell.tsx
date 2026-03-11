@@ -1,27 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useOrg } from "@/hooks/use-org";
 import { Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 
 export function NotificationBell() {
   const { user } = useAuth();
+  const { orgId } = useOrg();
   const navigate = useNavigate();
 
   const { data: unreadCount } = useQuery({
-    queryKey: ["unread_notifications", user?.id],
+    queryKey: ["unread_notifications", user?.id, orgId],
     queryFn: async () => {
-      if (!user?.id) return 0;
+      if (!user?.id || !orgId) return 0;
+      const { data: orgSites } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("org_id", orgId);
+      const siteIds = orgSites?.map(s => s.id) || [];
+      if (siteIds.length === 0) return 0;
       const { count, error } = await supabase
         .from("notification_inbox")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
+        .in("site_id", siteIds)
         .eq("is_read", false);
       if (error) return 0;
       return count || 0;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!orgId,
     refetchInterval: 30000,
   });
 

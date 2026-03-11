@@ -605,51 +605,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         )}
       </div>
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selected.size} {selected.size === 1 ? "entry" : "entries"}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove the selected entries and their associated field data. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => {
-                try {
-                  const ids = [...selected];
-                  // Delete child field records first
-                  await supabase.from("lead_fields_flat").delete().in("lead_id", ids);
-                  // Delete leads
-                  const { error } = await supabase.from("leads").delete().in("id", ids);
-                  if (error) throw error;
-                  setSelected(new Set());
-                  // Invalidate all queries that depend on leads data
-                  queryClient.invalidateQueries({ queryKey: ["leads_by_form"] });
-                  queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] });
-                  queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
-                  queryClient.invalidateQueries({ queryKey: ["leads"] });
-                  queryClient.invalidateQueries({ queryKey: ["leads_analytics"] });
-                  queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] });
-                  queryClient.invalidateQueries({ queryKey: ["total_submissions"] });
-                  // Invalidate dashboard metrics
-                  queryClient.invalidateQueries({ queryKey: ["kpi_daily"] });
-                  queryClient.invalidateQueries({ queryKey: ["realtime_dashboard"] });
-                  queryClient.invalidateQueries({ queryKey: ["weekly_summary"] });
-                  queryClient.invalidateQueries({ queryKey: ["ai_dashboard_insights"] });
-                  toast.success(`Deleted ${ids.length} ${ids.length === 1 ? "entry" : "entries"}`);
-                } catch (err: any) {
-                  toast.error(err.message || "Failed to delete entries");
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

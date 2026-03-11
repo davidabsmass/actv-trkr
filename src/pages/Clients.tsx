@@ -149,11 +149,6 @@ function CreateOrgForm({
 function OrgDetail({ org }: { org: any }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [createUserOpen, setCreateUserOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newFullName, setNewFullName] = useState("");
-  const [newRole, setNewRole] = useState("member");
   const [urlCopied, setUrlCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
 
@@ -167,7 +162,7 @@ function OrgDetail({ org }: { org: any }) {
   };
 
   // Invite codes
-  const { data: inviteCodes, isLoading: inviteLoading } = useQuery({
+  const { data: inviteCodes } = useQuery({
     queryKey: ["invite_codes", org.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -226,92 +221,6 @@ function OrgDetail({ org }: { org: any }) {
     setTimeout(() => setInviteCopied(false), 2000);
   };
 
-  const { data: members, isLoading } = useQuery({
-    queryKey: ["org_users", org.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("org_users").select("id, user_id, role, created_at")
-        .eq("org_id", org.id).order("created_at");
-      if (error) throw error;
-
-      const userIds = data.map((m) => m.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles").select("user_id, email, full_name")
-        .in("user_id", userIds);
-
-      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
-      // Filter out org_users whose auth account no longer exists (no profile)
-      return data
-        .map((m) => ({ ...m, profile: profileMap.get(m.user_id) || null }))
-        .filter((m) => m.profile !== null);
-    },
-  });
-
-  const createUser = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
-        body: {
-          action: "create_user",
-          email: newEmail,
-          password: newPassword,
-          full_name: newFullName,
-          org_id: org.id,
-          role: newRole,
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
-      toast.success("User created and added to organization!");
-      setCreateUserOpen(false);
-      setNewEmail("");
-      setNewPassword("");
-      setNewFullName("");
-      setNewRole("member");
-    },
-    onError: (err: any) => toast.error(err.message || "Failed to create user"),
-  });
-
-  const sendPasswordReset = useMutation({
-    mutationFn: async ({ email, new_password }: { email: string; new_password: string }) => {
-      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
-        body: { action: "reset_password", email, new_password },
-      });
-      const errMsg = data?.error || (error as any)?.message;
-      if (errMsg) throw new Error(errMsg);
-      return data;
-    },
-    onSuccess: () => toast.success("Password updated successfully!"),
-    onError: (err: any) => toast.error(err.message || "Failed to update password"),
-  });
-
-  const removeMember = useMutation({
-    mutationFn: async (membershipId: string) => {
-      const { error } = await supabase.from("org_users").delete().eq("id", membershipId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
-      toast.success("User removed");
-    },
-    onError: (err: any) => toast.error(err.message || "Failed to remove user"),
-  });
-
-  const updateRole = useMutation({
-    mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      const { error } = await supabase.from("org_users").update({ role }).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["org_users", org.id] });
-      toast.success("Role updated");
-    },
-    onError: (err: any) => toast.error(err.message || "Failed to update role"),
-  });
-
   return (
     <div className="space-y-4">
       <div>
@@ -319,11 +228,11 @@ function OrgDetail({ org }: { org: any }) {
         <p className="text-sm text-muted-foreground">{org.timezone}</p>
       </div>
 
-      {/* Members - moved to top */}
+      {/* Members - at top */}
       <MembersSection org={org} />
 
       {/* Dashboard URL card */}
-      <div className="rounded-lg border border-border bg-card p-4 mb-4">
+      <div className="rounded-lg border border-border bg-card p-4">
         <div className="flex items-center gap-2 mb-2">
           <Link className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">ACTV TRKR Dashboard URL</h3>
@@ -340,7 +249,7 @@ function OrgDetail({ org }: { org: any }) {
       </div>
 
       {/* Invite Codes */}
-      <div className="rounded-lg border border-border bg-card p-4 mb-4">
+      <div className="rounded-lg border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Ticket className="h-4 w-4 text-primary" />
@@ -389,11 +298,9 @@ function OrgDetail({ org }: { org: any }) {
           </div>
         )}
       </div>
-
     </div>
   );
 }
-
 function MembersSection({ org }: { org: any }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();

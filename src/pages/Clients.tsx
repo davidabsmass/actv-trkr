@@ -19,7 +19,6 @@ import {
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { downloadPlugin } from "@/lib/plugin-download";
 
 export default function Clients() {
   const { isAdmin, loading: roleLoading } = useUserRole();

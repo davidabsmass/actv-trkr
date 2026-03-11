@@ -7,7 +7,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, UserPlus, Users, Mail, Trash2, Copy, Check, Link, KeyRound, Ticket,
-  Key, Plus, Ban, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,6 @@ import {
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { downloadPlugin } from "@/lib/plugin-download";
 
 export default function Clients() {
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -39,7 +37,7 @@ export default function Clients() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Clients</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-1">Users</h1>
       <p className="text-sm text-muted-foreground mb-6">Manage client organizations and users</p>
 
       {/* Client selector + Add */}
@@ -148,203 +146,9 @@ function CreateOrgForm({
   );
 }
 
-function ClientApiKeys({ orgId }: { orgId: string }) {
-  const queryClient = useQueryClient();
-  const [newKey, setNewKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [revokingId, setRevokingId] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
-
-  const { data: keys, isLoading } = useQuery({
-    queryKey: ["api_keys", orgId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("api_keys")
-        .select("id, label, created_at, revoked_at")
-        .eq("org_id", orgId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const generateKey = async () => {
-    setGenerating(true);
-    try {
-      const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      const hashBuffer = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(rawKey)
-      );
-      const keyHash = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-
-      const { error } = await supabase
-        .from("api_keys")
-        .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
-      if (error) throw error;
-
-      setNewKey(rawKey);
-      queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });
-      toast.success("API key generated — copy it now.");
-    } catch (err: any) {
-      toast.error(err?.message || "Error generating key");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const revokeKey = async (id: string) => {
-    setRevokingId(id);
-    try {
-      const { error } = await supabase
-        .from("api_keys")
-        .update({ revoked_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });
-      toast.success("Key revoked");
-    } catch (err: any) {
-      toast.error(err?.message || "Error revoking key");
-    } finally {
-      setRevokingId(null);
-    }
-  };
-
-  const copyKey = (key: string) => {
-    navigator.clipboard.writeText(key);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownload = async (key: string) => {
-    setDownloading(true);
-    try {
-      await downloadPlugin(key);
-      toast.success("Plugin downloaded with this client's API key.");
-    } catch (err: any) {
-      toast.error(err?.message || "Download failed");
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-4 mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">API Keys & Plugin</h3>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          disabled={generating}
-          onClick={generateKey}
-        >
-          <Plus className="h-3 w-3" />
-          {generating ? "Generating…" : "New Key"}
-        </Button>
-      </div>
-
-      {newKey && (
-        <div className="mb-3 rounded-lg bg-secondary p-3 space-y-2">
-          <p className="text-xs text-secondary-foreground/70 font-medium">
-            New API key — copy it now, it won't be shown again:
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">
-              {newKey}
-            </code>
-            <button
-              onClick={() => copyKey(newKey)}
-              className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-primary" />
-              ) : (
-                <Copy className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
-          </div>
-          <button
-            onClick={() => handleDownload(newKey)}
-            disabled={downloading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
-          >
-            <Download className="h-3 w-3" />
-            {downloading ? "Downloading…" : "Download Plugin with this key"}
-          </button>
-        </div>
-      )}
-
-      {isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading keys…</p>
-      ) : !keys?.length ? (
-        <p className="text-xs text-muted-foreground">No API keys yet. Generate one to get started.</p>
-      ) : (
-        <ScrollArea className="max-h-[240px]">
-          <div className="space-y-2 pr-2">
-            {keys.map((k) => (
-              <div
-                key={k.id}
-                className="flex items-center justify-between rounded-lg border border-border p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">{k.label}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Created {new Date(k.created_at).toLocaleDateString()}
-                    {k.revoked_at && (
-                      <span className="ml-2 text-destructive">
-                        · Revoked {new Date(k.revoked_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  {!k.revoked_at && newKey && (
-                    <button
-                      onClick={() => handleDownload(newKey)}
-                      disabled={downloading}
-                      className="flex items-center gap-1 px-2 py-1 text-xs text-foreground hover:bg-accent rounded transition-colors"
-                      title="Download plugin with this key"
-                    >
-                      <Download className="h-3 w-3" />
-                    </button>
-                  )}
-                  {!k.revoked_at && (
-                    <button
-                      onClick={() => revokeKey(k.id)}
-                      disabled={revokingId === k.id}
-                      className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded transition-colors disabled:opacity-50"
-                    >
-                      <Ban className="h-3 w-3" />
-                      {revokingId === k.id ? "…" : "Revoke"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
-    </div>
-  );
-}
-
 function OrgDetail({ org }: { org: any }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [createUserOpen, setCreateUserOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newFullName, setNewFullName] = useState("");
-  const [newRole, setNewRole] = useState("member");
   const [urlCopied, setUrlCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
 
@@ -358,7 +162,7 @@ function OrgDetail({ org }: { org: any }) {
   };
 
   // Invite codes
-  const { data: inviteCodes, isLoading: inviteLoading } = useQuery({
+  const { data: inviteCodes } = useQuery({
     queryKey: ["invite_codes", org.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -417,6 +221,95 @@ function OrgDetail({ org }: { org: any }) {
     setTimeout(() => setInviteCopied(false), 2000);
   };
 
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
+        <p className="text-sm text-muted-foreground">{org.timezone}</p>
+      </div>
+
+      {/* Members - at top */}
+      <MembersSection org={org} />
+
+      {/* Dashboard URL card */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Link className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">ACTV TRKR Dashboard URL</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Share this link with client users so they can log in and view their dashboard.
+        </p>
+        <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">
+          <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">{dashboardUrl}</code>
+          <button onClick={copyDashboardUrl} className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors">
+            {urlCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4 text-secondary-foreground/60" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Invite Codes */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Ticket className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Invite Link</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={generateInvite.isPending}
+            onClick={() => generateInvite.mutate()}
+          >
+            <Ticket className="h-3.5 w-3.5" />
+            {generateInvite.isPending ? "Generating…" : "Generate Invite"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Generate an invite link to send to clients. They'll sign up and automatically join this organization.
+        </p>
+        {inviteCodes && inviteCodes.length > 0 && (
+          <div className="space-y-2">
+            {inviteCodes.map((ic: any) => (
+              <div key={ic.id} className="bg-secondary rounded-lg p-3 flex items-center gap-2">
+                <code className="text-xs font-mono text-secondary-foreground flex-1">
+                  {APP_DOMAIN}/auth?invite={ic.code}
+                </code>
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {ic.use_count} used
+                </span>
+                <button
+                  onClick={() => copyInviteLink(ic.code)}
+                  className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
+                  title="Copy invite link"
+                >
+                  <Copy className="h-3.5 w-3.5 text-secondary-foreground/60" />
+                </button>
+                <button
+                  onClick={() => deactivateInvite.mutate(ic.id)}
+                  className="flex-shrink-0 p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                  title="Deactivate"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+function MembersSection({ org }: { org: any }) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newRole, setNewRole] = useState("member");
+
   const { data: members, isLoading } = useQuery({
     queryKey: ["org_users", org.id],
     queryFn: async () => {
@@ -431,7 +324,6 @@ function OrgDetail({ org }: { org: any }) {
         .in("user_id", userIds);
 
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
-      // Filter out org_users whose auth account no longer exists (no profile)
       return data
         .map((m) => ({ ...m, profile: profileMap.get(m.user_id) || null }))
         .filter((m) => m.profile !== null);
@@ -504,192 +396,115 @@ function OrgDetail({ org }: { org: any }) {
   });
 
   return (
-    <div>
-      <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
-      <p className="text-sm text-muted-foreground mb-6">{org.timezone}</p>
-
-      {/* API Keys & Plugin - scoped to THIS client org */}
-      <ClientApiKeys orgId={org.id} />
-
-      {/* Dashboard URL card */}
-      <div className="rounded-lg border border-border bg-card p-4 mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Link className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">ACTV TRKR Dashboard URL</h3>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Share this link with client users so they can log in and view their dashboard.
-        </p>
-        <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">
-          <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">{dashboardUrl}</code>
-          <button onClick={copyDashboardUrl} className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors">
-            {urlCopied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4 text-secondary-foreground/60" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Invite Codes */}
-      <div className="rounded-lg border border-border bg-card p-4 mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Ticket className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Invite Link</h3>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={generateInvite.isPending}
-            onClick={() => generateInvite.mutate()}
-          >
-            <Ticket className="h-3.5 w-3.5" />
-            {generateInvite.isPending ? "Generating…" : "Generate Invite"}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Generate an invite link to send to clients. They'll sign up and automatically join this organization.
-        </p>
-        {inviteCodes && inviteCodes.length > 0 && (
-          <div className="space-y-2">
-            {inviteCodes.map((ic: any) => (
-              <div key={ic.id} className="bg-secondary rounded-lg p-3 flex items-center gap-2">
-                <code className="text-xs font-mono text-secondary-foreground flex-1">
-                  {APP_DOMAIN}/auth?invite={ic.code}
-                </code>
-                <span className="text-[10px] text-muted-foreground tabular-nums">
-                  {ic.use_count} used
-                </span>
-                <button
-                  onClick={() => copyInviteLink(ic.code)}
-                  className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
-                  title="Copy invite link"
-                >
-                  <Copy className="h-3.5 w-3.5 text-secondary-foreground/60" />
-                </button>
-                <button
-                  onClick={() => deactivateInvite.mutate(ic.id)}
-                  className="flex-shrink-0 p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                  title="Deactivate"
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </button>
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Users className="h-4 w-4 text-primary" /> Members
+        </h3>
+        <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <UserPlus className="h-3.5 w-3.5" /> Create User
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Create User for {org.name}</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Full Name</label>
+                <Input value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="Jane Smith" />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Members */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" /> Members
-          </h3>
-          <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <UserPlus className="h-3.5 w-3.5" /> Create User
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
+                <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="client@example.com" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Temporary Password</label>
+                <Input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
+                <Select value={newRole} onValueChange={setNewRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full"
+                disabled={!newEmail.trim() || !newPassword.trim() || newPassword.length < 6 || createUser.isPending}
+                onClick={() => createUser.mutate()}
+              >
+                {createUser.isPending ? "Creating…" : "Create User"}
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Create User for {org.name}</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-2">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Full Name</label>
-                  <Input value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="Jane Smith" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
-                  <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="client@example.com" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Temporary Password</label>
-                  <Input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Role</label>
-                  <Select value={newRole} onValueChange={setNewRole}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  className="w-full"
-                  disabled={!newEmail.trim() || !newPassword.trim() || newPassword.length < 6 || createUser.isPending}
-                  onClick={() => createUser.mutate()}
-                >
-                  {createUser.isPending ? "Creating…" : "Create User"}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  The user will be created with a confirmed email. Share the dashboard URL and temporary password, then send a password reset.
-                </p>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">Loading members…</div>
-        ) : !members || members.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No members.</div>
-        ) : (
-          <div className="divide-y divide-border">
-            {members.map((m: any) => (
-              <div key={m.id} className="flex items-center justify-between px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {m.profile?.full_name || m.profile?.email || "Unknown"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{m.profile?.email || m.user_id}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                    disabled={sendPasswordReset.isPending}
-                    onClick={() => {
-                      const email = m.profile?.email;
-                      if (!email) { toast.error("No email found for this user"); return; }
-                      const newPw = window.prompt(`Set new password for ${email} (min 6 chars):`);
-                      if (!newPw || newPw.length < 6) {
-                        if (newPw !== null) toast.error("Password must be at least 6 characters");
-                        return;
-                      }
-                      sendPasswordReset.mutate({ email, new_password: newPw });
-                    }}
-                  >
-                    <KeyRound className="h-3.5 w-3.5" /> Reset Password
-                  </Button>
-                  <Select value={m.role} onValueChange={(role) => updateRole.mutate({ id: m.id, role })}>
-                    <SelectTrigger className="w-[110px] h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => removeMember.mutate(m.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              <p className="text-xs text-muted-foreground">
+                The user will be created with a confirmed email. Share the dashboard URL and temporary password, then send a password reset.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {isLoading ? (
+        <div className="p-8 text-center text-muted-foreground text-sm">Loading members…</div>
+      ) : !members || members.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground text-sm">No members.</div>
+      ) : (
+        <div className="divide-y divide-border">
+          {members.map((m: any) => (
+            <div key={m.id} className="flex items-center justify-between px-5 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {m.profile?.full_name || m.profile?.email || "Unknown"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{m.profile?.email || m.user_id}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  disabled={sendPasswordReset.isPending}
+                  onClick={() => {
+                    const email = m.profile?.email;
+                    if (!email) { toast.error("No email found for this user"); return; }
+                    const newPw = window.prompt(`Set new password for ${email} (min 6 chars):`);
+                    if (!newPw || newPw.length < 6) {
+                      if (newPw !== null) toast.error("Password must be at least 6 characters");
+                      return;
+                    }
+                    sendPasswordReset.mutate({ email, new_password: newPw });
+                  }}
+                >
+                  <KeyRound className="h-3.5 w-3.5" /> Reset Password
+                </Button>
+                <Select value={m.role} onValueChange={(role) => updateRole.mutate({ id: m.id, role })}>
+                  <SelectTrigger className="w-[110px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => removeMember.mutate(m.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

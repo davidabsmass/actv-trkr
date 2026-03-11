@@ -100,9 +100,6 @@ const Index = () => {
               </button>
             </div>
             <div className="hidden md:flex items-center gap-4">
-              <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={handleSignIn}>
-                {session ? "Dashboard" : "Sign In"}
-              </Button>
               <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleSignIn}>
                 {session ? "Dashboard" : "Get Started"}
               </Button>

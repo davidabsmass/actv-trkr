@@ -67,12 +67,12 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Page</th>
                   <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Sessions</th>
+                  <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Leads</th>
                   <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">CVR</th>
-                  <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider">Potential</th>
                 </tr>
               </thead>
               <tbody>
-                {opportunities.map((opp, i) => (
+                {[...opportunities].sort((a, b) => b.sessions - a.sessions).map((opp, i) => (
                   <tr key={i} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
                     <td className="py-2 px-2 font-medium text-foreground truncate max-w-[200px]" title={opp.path}>
                       {opp.path}
@@ -80,11 +80,11 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
                     <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">
                       {opp.sessions.toLocaleString()}
                     </td>
+                    <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">
+                      {opp.leads.toLocaleString()}
+                    </td>
                     <td className="py-2 px-2 text-right font-mono-data text-foreground">
                       {(opp.cvr * 100).toFixed(2)}%
-                    </td>
-                    <td className="py-2 px-2 text-right font-mono-data text-warning font-medium">
-                      +{opp.gap}
                     </td>
                   </tr>
                 ))}

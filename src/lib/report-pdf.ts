@@ -57,8 +57,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   const contentW = pageW - margin * 2;
   let y = 12;
 
-  const slug = report.templateSlug || "monthly_performance";
-  const title = slug === "weekly_brief" ? "Weekly Brief" : slug === "campaign_report" ? "Campaign Report" : "Monthly Performance Report";
+  const title = "Performance Report";
   const period = safe(`${fmtDate(report.periodStart)} - ${fmtDate(report.periodEnd)} | ${report.periodDays}-day period`);
 
   const checkPage = (needed: number) => {

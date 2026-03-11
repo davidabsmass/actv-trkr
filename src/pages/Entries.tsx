@@ -4,7 +4,12 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
-import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore } from "lucide-react";
+import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -326,6 +331,8 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [showExport, setShowExport] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads_by_form", orgId, formId],
@@ -501,6 +508,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search entries..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
+        {selected.size > 0 && (
+          <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setShowDeleteConfirm(true)}>
+            <Trash2 className="h-3.5 w-3.5" /> Delete {selected.size} {selected.size === 1 ? "entry" : "entries"}
+          </Button>
+        )}
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowExport(!showExport)}>
           <Download className="h-3.5 w-3.5" /> Export
         </Button>
@@ -563,6 +575,18 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             <Table>
               <TableHeader>
                 <TableRow>
+                <TableHead className="w-[40px] pr-0">
+                    <Checkbox
+                      checked={filtered.length > 0 && filtered.every((l) => selected.has(l.id))}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelected(new Set(filtered.map((l) => l.id)));
+                        } else {
+                          setSelected(new Set());
+                        }
+                      }}
+                    />
+                  </TableHead>
                   <TableHead className="w-[140px]">Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Source</TableHead>
@@ -575,7 +599,17 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
                 {filtered.map((lead) => {
                   const fields = leadFieldMap.get(lead.id) || {};
                   return (
-                    <TableRow key={lead.id}>
+                    <TableRow key={lead.id} data-state={selected.has(lead.id) ? "selected" : undefined}>
+                      <TableCell className="pr-0">
+                        <Checkbox
+                          checked={selected.has(lead.id)}
+                          onCheckedChange={(checked) => {
+                            const next = new Set(selected);
+                            if (checked) next.add(lead.id); else next.delete(lead.id);
+                            setSelected(next);
+                          }}
+                        />
+                      </TableCell>
                       <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                         {format(new Date(lead.submitted_at), "MMM d, yyyy HH:mm")}
                       </TableCell>
@@ -598,6 +632,42 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           </div>
         )}
       </div>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selected.size} {selected.size === 1 ? "entry" : "entries"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the selected entries and their associated field data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                try {
+                  const ids = [...selected];
+                  // Delete child field records first
+                  await supabase.from("lead_fields_flat").delete().in("lead_id", ids);
+                  // Delete leads
+                  const { error } = await supabase.from("leads").delete().in("id", ids);
+                  if (error) throw error;
+                  setSelected(new Set());
+                  queryClient.invalidateQueries({ queryKey: ["leads_by_form"] });
+                  queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] });
+                  queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
+                  toast.success(`Deleted ${ids.length} ${ids.length === 1 ? "entry" : "entries"}`);
+                } catch (err: any) {
+                  toast.error(err.message || "Failed to delete entries");
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

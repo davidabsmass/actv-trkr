@@ -34,7 +34,7 @@ Rules:
 - Reference the actual data provided.
 - Suggestions should feel like they come from a strategist, not a chatbot.
 - If data is sparse (zeros or very low numbers), acknowledge the early stage and focus on setup/launch actions.
-- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words like "plummeted," "collapsed," "crashed," "nosedived," "alarming," "devastating," or "critical." Instead use neutral phrases like "decreased," "dropped," "declined," "slowed," or "dipped." Frame downturns as opportunities for improvement, not disasters.
+- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words like "plummeted," "collapsed," "crashed," "nosedived," "alarming," "devastating," or "critical." Instead use neutral phrases like "decreased," "dropped," "declined," "slowed," or "dipped." Frame downturns as opportunities for improvement, not disasters.`;
 
     const userPrompt = `Here are the current dashboard metrics:
 

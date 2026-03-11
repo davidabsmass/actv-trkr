@@ -17,6 +17,21 @@ async function hashFingerprint(parts: string[]): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
+function inferAvadaFieldName(type: string, value: string, position: number): string {
+  const t = type.toLowerCase();
+  if (t === "email") return "Email";
+  if (t === "textarea") return "Message";
+  if (t === "select") return "Category";
+  if (t === "text" && value) {
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) return "Email";
+    if (/^[\d\s\-\+\(\)]{7,}$/.test(value.replace(/\s/g, ""))) return "Phone";
+    if (/^\d{4,5}(-\d{4})?$/.test(value)) return "Zip Code";
+    if (/^[A-Z]{2}$/.test(value)) return "State";
+  }
+  const posMap: Record<number, string> = { 1: "Name", 2: "Phone", 3: "Email", 4: "Category", 5: "City", 6: "Zip Code", 7: "State", 8: "Country", 9: "Subject", 10: "Message" };
+  return posMap[position] || `Field ${position}`;
+}
+
 // In-memory dedup cache (survives within a single isolate lifetime)
 const recentFingerprints = new Map<string, number>();
 setInterval(() => {
@@ -155,7 +170,8 @@ Deno.serve(async (req) => {
         const values = dataEntry.value.split(", ").map((v: string) => v.trim());
         const types = typesEntry.value.split(", ").map((t: string) => t.trim());
         const labelsEntry = fields.find((f: any) => f.name === "field_labels" || f.label === "field_labels");
-        const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+        const rawLabels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+        const allLabelsEmpty = rawLabels.every((l: string) => !l || l === "");
 
         const flatRows: any[] = [];
         let valueIdx = 0;
@@ -165,7 +181,15 @@ Deno.serve(async (req) => {
           const val = values[valueIdx] || "";
           valueIdx++;
           if (!val || val === "Array") continue;
-          const label = (labels[valueIdx - 1] && labels[valueIdx - 1] !== "") ? labels[valueIdx - 1] : `Field ${valueIdx}`;
+
+          let label: string;
+          const rawLabel = rawLabels[valueIdx - 1] || "";
+          if (rawLabel && !allLabelsEmpty) {
+            label = rawLabel;
+          } else {
+            label = inferAvadaFieldName(type, val, valueIdx);
+          }
+
           flatRows.push({
             org_id: orgId, lead_id: lead.id,
             field_key: label.toLowerCase().replace(/\s+/g, "_"),

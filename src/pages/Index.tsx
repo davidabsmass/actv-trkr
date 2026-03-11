@@ -160,8 +160,8 @@ const Index = () => {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">
-                  <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={() => navigate("/auth")}>
-                    Get Started
+                  <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={handleSignIn}>
+                    {session ? "Go to Dashboard" : "Get Started"}
                   </Button>
                   <Button 
                     size="default" 

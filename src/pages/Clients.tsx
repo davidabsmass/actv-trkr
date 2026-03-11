@@ -504,9 +504,14 @@ function OrgDetail({ org }: { org: any }) {
   });
 
   return (
-    <div>
-      <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
-      <p className="text-sm text-muted-foreground mb-6">{org.timezone}</p>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
+        <p className="text-sm text-muted-foreground">{org.timezone}</p>
+      </div>
+
+      {/* Members - moved to top */}
+      <MembersSection org={org} />
 
       {/* Dashboard URL card */}
       <div className="rounded-lg border border-border bg-card p-4 mb-4">

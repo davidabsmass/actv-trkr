@@ -648,14 +648,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
               onClick={async () => {
                 try {
                   const ids = [...selected];
-                  // Delete child records first, then leads
+                  // Delete child field records first
                   await supabase.from("lead_fields_flat").delete().in("lead_id", ids);
-                  await supabase.from("lead_events_raw").delete().eq("form_id", formId).in("id",
-                    // We need to match by the lead's external_entry_id or just clean up by org
-                    // Actually lead_events_raw doesn't have lead_id, so we delete leads directly
-                    // and rely on no FK constraint from lead_events_raw to leads
-                    ids // This won't work for lead_events_raw - skip it
-                  ).throwOnError().then(() => {}).catch(() => {});
+                  // Delete leads
                   const { error } = await supabase.from("leads").delete().in("id", ids);
                   if (error) throw error;
                   setSelected(new Set());

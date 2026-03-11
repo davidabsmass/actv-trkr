@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 import logoActvTrkr2 from "@/assets/actv-trkr-logo-2.png";
 import logoActvTrkrDark from "@/assets/actv-trkr-logo-dark-2.svg";
 import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";

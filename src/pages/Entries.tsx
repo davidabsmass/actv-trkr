@@ -579,11 +579,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
                       <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                         {format(new Date(lead.submitted_at), "MMM d, yyyy HH:mm")}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`text-[10px] uppercase ${statusColors[lead.status] || ""}`}>
-                          {lead.status}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-sm">{lead.source || "direct"}</TableCell>
                       {fieldColumns.map((col) => (
                         <TableCell key={col.key} className="text-sm max-w-[200px] truncate">

@@ -451,17 +451,14 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   }, [fieldsRaw, leads]);
 
   const filtered = (leads || []).filter((lead) => {
-    if (statusFilter !== "all" && lead.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
       const fields = leadFieldMap.get(lead.id);
-      const searchable = [lead.source, lead.status, ...(fields ? Object.values(fields) : [])].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, ...(fields ? Object.values(fields) : [])].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
     return true;
   });
-
-  const statuses = [...new Set((leads || []).map((l) => l.status))].sort();
 
   const createExport = useMutation({
     mutationFn: async () => {

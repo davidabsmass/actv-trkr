@@ -1,17 +1,25 @@
 
 
-## Problem
-In the DateRangeSelector dropdown on the Performance page, the preset buttons (like "Last 7 days", "Last 30 days") show black text on a black/dark background when hovering, making the text invisible.
+## SSL & Domain Renewal Reliability — Implemented
 
-## Root Cause
-The hover styles apply `hover:bg-secondary` (which has a dark background) but keep the text color as `text-foreground` (also dark/black), causing insufficient contrast.
+### What was done
 
-## Solution
-Add `hover:text-secondary-foreground` to the hover state of both the preset buttons and the "Custom range…" button in DateRangeSelector. This follows the standard Tailwind pattern where background and foreground colors are paired.
+1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
+   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
+   - `check-uptime` runs **every 10 minutes**
+   - `check-renewals` runs daily at 06:00 UTC
 
-**File to modify:** `src/components/dashboard/DateRangeSelector.tsx`
+2. **Retry logic** added to `check-domain-ssl` edge function:
+   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
+   - 15-second timeout per request
+   - Detailed console logging for debugging
 
-**Changes:**
-1. Line 69: Change `"text-foreground hover:bg-secondary"` to `"text-foreground hover:bg-secondary hover:text-secondary-foreground"`
-2. Line 87: Same fix for the "Custom range…" button
+3. **False downtime prevention**:
+   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
+   - Cleaned up 11 false DOWNTIME incidents and related alerts
 
+4. **"Check Now" button** on the Monitoring page triggers on-demand checks
+
+### Extensions enabled
+- `pg_cron` (scheduling)
+- `pg_net` (HTTP calls from SQL)

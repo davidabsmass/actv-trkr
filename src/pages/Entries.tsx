@@ -321,7 +321,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();

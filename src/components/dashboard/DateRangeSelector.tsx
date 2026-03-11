@@ -96,6 +96,7 @@ export function DateRangeSelector({ selectedDays, onDaysChange, customRange, onC
                   selected={pendingRange}
                   onSelect={setPendingRange}
                   numberOfMonths={2}
+                  defaultMonth={pendingRange?.from || new Date()}
                   disabled={(date) => date > new Date()}
                   className={cn("p-2 pointer-events-auto text-xs")}
                   classNames={{

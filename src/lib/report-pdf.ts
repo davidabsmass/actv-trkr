@@ -92,11 +92,7 @@ export function buildReportPdf(report: any, run: any): jsPDF {
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.muted);
   doc.setFont("helvetica", "normal");
-  let sub = period;
-  if (report.compareMode && report.compareMode !== "none") {
-    sub += ` | vs ${report.compareMode === "yoy" ? "same period last year" : "previous period"}`;
-  }
-  doc.text(safe(sub), margin, y);
+  doc.text(safe(period), margin, y);
   y += 8;
 
   // Section header - navy accent bar

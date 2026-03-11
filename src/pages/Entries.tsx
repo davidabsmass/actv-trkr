@@ -564,7 +564,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[140px]">Date</TableHead>
-                  
                   <TableHead>Source</TableHead>
                   {fieldColumns.map((col) => (
                     <TableHead key={col.key}>{col.label}</TableHead>

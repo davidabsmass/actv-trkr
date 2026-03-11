@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { User, Lock, Mail } from "lucide-react";
+import { User, Lock, Mail, Eye, EyeOff } from "lucide-react";
 
 export default function Account() {
   const { user } = useAuth();

@@ -84,7 +84,7 @@ export function DateRangeSelector({ selectedDays, onDaysChange, customRange, onC
                 "w-full text-left px-3 py-1.5 text-xs transition-colors",
                 isCustom
                   ? "text-primary font-semibold bg-primary/5"
-                  : "text-foreground hover:bg-secondary"
+                  : "text-foreground hover:bg-secondary hover:text-secondary-foreground"
               )}
             >
               Custom range…

@@ -192,7 +192,11 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
           .map(([campaign, v]) => ({ campaign, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
           .sort((a, b) => b.sessions - a.sessions),
         pages: Object.entries(pageMap)
-          .map(([path, v]) => ({ path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
+          .map(([path, v]) => {
+            const timeData = pageTimeMap[path];
+            const avgActiveSeconds = timeData ? Math.round(timeData.total / timeData.count) : null;
+            return { path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0, avgActiveSeconds };
+          })
           .sort((a, b) => b.sessions - a.sessions),
         countries: Object.entries(countryTotals)
           .map(([countryCode, sessions]) => ({ countryCode, sessions }))

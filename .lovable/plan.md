@@ -1,25 +1,22 @@
 
 
-## SSL & Domain Renewal Reliability — Implemented
+## Problem
 
-### What was done
+The `check-domain-ssl` edge function **always upserts** SSL and domain health data, even when the external lookups (crt.sh, rdap.org) fail and return nulls. This means a single failed cron run wipes out previously good data, causing the UI to show "Unknown."
 
-1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
-   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
-   - `check-uptime` runs **every 10 minutes**
-   - `check-renewals` runs daily at 06:00 UTC
+I just triggered a manual run and the data is back (apyxmedical.com SSL expires 2026-09-07, newuniformdesign.com SSL expires 2026-05-28). But the next cron run could wipe it again if crt.sh is temporarily unavailable.
 
-2. **Retry logic** added to `check-domain-ssl` edge function:
-   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
-   - 15-second timeout per request
-   - Detailed console logging for debugging
+## Fix
 
-3. **False downtime prevention**:
-   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
-   - Cleaned up 11 false DOWNTIME incidents and related alerts
+In `supabase/functions/check-domain-ssl/index.ts`, add guard clauses so the upsert only runs when valid data was returned:
 
-4. **"Check Now" button** on the Monitoring page triggers on-demand checks
+1. **SSL health upsert** — only write if `sslResult.expiry` is not null
+2. **Domain health upsert** — only write if `domainResult.expiry` is not null
+3. **Always update `last_checked_at`** — even on failure, update the timestamp so we know the check ran, but don't overwrite the expiry/issuer fields with nulls
 
-### Extensions enabled
-- `pg_cron` (scheduling)
-- `pg_net` (HTTP calls from SQL)
+Concretely: split each upsert into two paths:
+- **Success path**: upsert all fields as today
+- **Failure path**: only update `last_checked_at` on the existing row (no insert if row doesn't exist yet)
+
+This is a ~15-line change in the edge function's main loop. No database migration needed.
+

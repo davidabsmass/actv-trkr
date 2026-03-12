@@ -276,7 +276,7 @@ const Auth = () => {
                   {forgotMode && (
                     <button
                       onClick={() => { setForgotMode(false); setError(null); setMessage(null); }}
-                      className="text-primary hover:underline font-medium"
+                      className="text-white hover:underline font-medium"
                     >
                       Back to sign in
                     </button>

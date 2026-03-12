@@ -456,6 +456,157 @@ function MembersSection({ org }: { org: any }) {
           ))}
         </div>
       )}
+
+      {/* User Activity / Login History */}
+      <UserActivitySection />
+    </div>
+  );
+}
+
+function UserActivitySection() {
+  const { data: loginEvents, isLoading } = useQuery({
+    queryKey: ["login-events"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("login_events")
+        .select("*")
+        .order("logged_in_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        user_id: string;
+        email: string | null;
+        full_name: string | null;
+        org_id: string | null;
+        ip_address: string | null;
+        user_agent: string | null;
+        logged_in_at: string;
+      }>;
+    },
+  });
+
+  // Aggregate stats per user
+  const userStats = (loginEvents || []).reduce((acc, ev) => {
+    const key = ev.user_id;
+    if (!acc[key]) {
+      acc[key] = {
+        user_id: ev.user_id,
+        email: ev.email,
+        full_name: ev.full_name,
+        total_logins: 0,
+        last_login: ev.logged_in_at,
+        first_login: ev.logged_in_at,
+      };
+    }
+    acc[key].total_logins++;
+    if (ev.logged_in_at > acc[key].last_login) acc[key].last_login = ev.logged_in_at;
+    if (ev.logged_in_at < acc[key].first_login) acc[key].first_login = ev.logged_in_at;
+    return acc;
+  }, {} as Record<string, { user_id: string; email: string | null; full_name: string | null; total_logins: number; last_login: string; first_login: string }>);
+
+  const sortedUsers = Object.values(userStats).sort((a, b) =>
+    new Date(b.last_login).getTime() - new Date(a.last_login).getTime()
+  );
+
+  return (
+    <div className="mt-10 border-t border-border pt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold text-foreground">User Activity</h2>
+        <span className="text-xs text-muted-foreground ml-2">
+          {loginEvents?.length ?? 0} login events tracked
+        </span>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading activity…</p>
+      ) : sortedUsers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No login events recorded yet. Activity will appear here once users log in.</p>
+      ) : (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total Users</p>
+              <p className="text-2xl font-bold text-foreground">{sortedUsers.length}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total Logins</p>
+              <p className="text-2xl font-bold text-foreground">{loginEvents?.length ?? 0}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground mb-1">Last Activity</p>
+              <p className="text-sm font-medium text-foreground">
+                {sortedUsers[0] ? formatDistanceToNow(new Date(sortedUsers[0].last_login), { addSuffix: true }) : "—"}
+              </p>
+            </div>
+          </div>
+
+          {/* User table */}
+          <div className="rounded-lg border border-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">User</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Email</th>
+                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Logins</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Last Login</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">First Seen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedUsers.map((u) => (
+                    <tr key={u.user_id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-2.5 font-medium text-foreground">{u.full_name || "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{u.email || "—"}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{u.total_logins}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {formatDistanceToNow(new Date(u.last_login), { addSuffix: true })}
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {format(new Date(u.first_login), "MMM d, yyyy")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Recent login log */}
+          <details className="mt-4">
+            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+              View raw login log ({loginEvents?.length} events)
+            </summary>
+            <div className="mt-2 rounded-lg border border-border overflow-hidden max-h-64 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-muted/50 backdrop-blur-sm">
+                  <tr className="border-b border-border">
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Time</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">User</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Email</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">IP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(loginEvents || []).map((ev) => (
+                    <tr key={ev.id} className="border-b border-border last:border-0">
+                      <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">
+                        {format(new Date(ev.logged_in_at), "MMM d, HH:mm")}
+                      </td>
+                      <td className="px-3 py-1.5 text-foreground">{ev.full_name || "—"}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground">{ev.email || "—"}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground font-mono">{ev.ip_address || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </>
+      )}
     </div>
   );
 }

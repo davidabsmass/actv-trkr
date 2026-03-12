@@ -486,6 +486,18 @@ function UserActivitySection() {
     },
   });
 
+  // Get the true total count separately
+  const { data: totalCount } = useQuery({
+    queryKey: ["login-events-count"],
+    queryFn: async () => {
+      const { count, error } = await (supabase as any)
+        .from("login_events")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count as number;
+    },
+  });
+
   // Aggregate stats per user
   const userStats = (loginEvents || []).reduce((acc, ev) => {
     const key = ev.user_id;

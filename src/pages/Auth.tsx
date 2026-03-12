@@ -249,7 +249,7 @@ const Auth = () => {
                       <button
                         type="button"
                         onClick={() => { setForgotMode(true); setError(null); setMessage(null); }}
-                        className="text-xs text-primary hover:underline font-medium"
+                        className="text-xs text-primary-foreground hover:underline font-medium"
                       >
                         Lost your password?
                       </button>

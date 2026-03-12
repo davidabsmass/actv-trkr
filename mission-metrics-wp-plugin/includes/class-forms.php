@@ -11,6 +11,9 @@ class MM_Forms {
 	public static function init() {
 		$opts = MM_Settings::get();
 
+		// Register REST API route for dashboard-triggered sync
+		add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ) );
+
 		// Auto-sync forms on admin pages (once per 6 hours)
 		if ( is_admin() && ! empty( $opts['api_key'] ) ) {
 			add_action( 'admin_init', array( __CLASS__, 'maybe_auto_sync' ) );

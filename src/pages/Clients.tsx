@@ -467,13 +467,36 @@ function UserActivitySection() {
   const { data: loginEvents, isLoading } = useQuery({
     queryKey: ["login-events"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("login_events")
-        .select("*")
-        .order("logged_in_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data as Array<{
+      // Fetch all login events using pagination to avoid the 1000-row limit
+      const allRows: Array<{
+        id: string;
+        user_id: string;
+        email: string | null;
+        full_name: string | null;
+        org_id: string | null;
+        ip_address: string | null;
+        user_agent: string | null;
+        logged_in_at: string;
+      }> = [];
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await (supabase as any)
+          .from("login_events")
+          .select("*")
+          .order("logged_in_at", { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allRows.push(...data);
+          from += PAGE_SIZE;
+          hasMore = data.length === PAGE_SIZE;
+        } else {
+          hasMore = false;
+        }
+      }
+      return allRows as Array<{
         id: string;
         user_id: string;
         email: string | null;

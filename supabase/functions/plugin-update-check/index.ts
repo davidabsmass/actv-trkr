@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
             : "You are running the latest version.",
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
         }
       );
     }

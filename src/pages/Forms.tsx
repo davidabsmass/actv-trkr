@@ -197,6 +197,37 @@ export default function Forms() {
     enabled: !!orgId && !!leadsData && leadsData.length > 0,
   });
 
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncAll = async () => {
+    if (!orgId || !forms || forms.length === 0) return;
+    const siteId = forms[0]?.site_id;
+    if (!siteId) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
+        body: { site_id: siteId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const result = data?.wp_result?.result;
+      const parts: string[] = [];
+      if (result?.synced) parts.push(`${result.synced} form(s) synced`);
+      if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
+      if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
+      toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["total_submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["forms"] });
+      queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] });
+    } catch (err: any) {
+      toast.error(err.message || "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const selectedForm = forms?.find((f) => f.id === selectedFormId);
   const activeForms = forms?.filter((f) => !f.archived) || [];
   const archivedForms = forms?.filter((f) => f.archived) || [];

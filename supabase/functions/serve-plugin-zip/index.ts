@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PLUGIN_VERSION = "1.2.0";
+const PLUGIN_VERSION = "1.3.0";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -76,18 +76,21 @@ require_once AT_PLUGIN_DIR.'includes/class-forms.php';
 require_once AT_PLUGIN_DIR.'includes/class-retry-queue.php';
 require_once AT_PLUGIN_DIR.'includes/class-updater.php';
 require_once AT_PLUGIN_DIR.'includes/class-heartbeat.php';
+require_once AT_PLUGIN_DIR.'includes/class-broken-links.php';
 function at_activate(){
   AT_Retry_Queue::create_table();
   if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
   if(!wp_next_scheduled('at_heartbeat_cron')){wp_schedule_event(time(),'at_every_5_min','at_heartbeat_cron');}
+  if(!wp_next_scheduled('at_form_probe_cron')){wp_schedule_event(time(),'hourly','at_form_probe_cron');}
 }
 register_activation_hook(__FILE__,'at_activate');
-function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');}
+function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');wp_clear_scheduled_hook('at_form_probe_cron');}
 register_deactivation_hook(__FILE__,'at_deactivate');
 add_filter('cron_schedules',function($s){$s['at_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return $s;});
-AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();
+AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();AT_Broken_Links::init();
 add_action('at_retry_cron',array('AT_Retry_Queue','process'));
 add_action('at_heartbeat_cron',array('AT_Heartbeat','send_cron_heartbeat'));
+add_action('at_form_probe_cron',array('AT_Forms','probe_form_pages'));
 `,
 
     "actv-trkr/includes/class-settings.php": `<?php
@@ -166,6 +169,8 @@ $opts=AT_Settings::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/sync-forms
 $response=wp_remote_post($endpoint,array('timeout'=>15,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode(array('forms'=>$discovered,'domain'=>$domain))));
 if(is_wp_error($response)){error_log('[ACTV TRKR] Form sync error: '.$response->get_error_message());return array('synced'=>0,'discovered'=>count($discovered),'error'=>$response->get_error_message());}
 $body=json_decode(wp_remote_retrieve_body($response),true);return array('synced'=>$body['synced']??0,'discovered'=>count($discovered));}
+public static function probe_form_pages(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;$pages=get_posts(array('post_type'=>array('page','post'),'post_status'=>'publish','numberposts'=>50));foreach($pages as $p){$url=get_permalink($p);$resp=wp_remote_get($url,array('timeout'=>10));if(is_wp_error($resp))continue;$body=wp_remote_retrieve_body($resp);if(stripos($body,'<form')!==false){$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-form-health';wp_remote_post($endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','x-actvtrkr-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'page_url'=>$url,'is_rendered'=>true))));}}
+}
 private static function get_tracking_context(){$vid=isset($_COOKIE['at_vid'])?sanitize_text_field($_COOKIE['at_vid']):null;$sid=isset($_COOKIE['at_sid'])?sanitize_text_field($_COOKIE['at_sid']):null;$utm=isset($_COOKIE['at_utm'])?json_decode(stripslashes($_COOKIE['at_utm']),true):array();if(!is_array($utm))$utm=array();return array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'referrer'=>wp_get_referer()?:null,'visitor_id'=>$vid,'session_id'=>$sid,'utm'=>$utm,'plugin_version'=>AT_PLUGIN_VERSION);}
 private static function send($payload){$opts=AT_Settings::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-form';$response=wp_remote_post($endpoint,array('timeout'=>10,'blocking'=>true,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode($payload)));if(is_wp_error($response)){error_log('[ACTV TRKR] Form send error: '.$response->get_error_message());AT_Retry_Queue::enqueue($endpoint,$opts['api_key'],$payload);}else{$code=wp_remote_retrieve_response_code($response);if($code>=400){error_log('[ACTV TRKR] Form send HTTP '.$code.': '.wp_remote_retrieve_body($response));}}}
 public static function handle_gravity($entry,$form){$fields=array();if(!empty($form['fields'])){foreach($form['fields'] as $field){$fid=$field->id;$value=rgar($entry,(string)$fid);$fields[]=array('id'=>$fid,'name'=>$field->label,'label'=>$field->label,'type'=>$field->type,'value'=>$value);}}self::send(array('provider'=>'gravity_forms','entry'=>array('form_id'=>rgar($entry,'form_id'),'form_title'=>$form['title']??'','entry_id'=>rgar($entry,'id'),'source_url'=>rgar($entry,'source_url'),'submitted_at'=>rgar($entry,'date_created')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
@@ -204,7 +209,7 @@ if(!defined('ABSPATH'))exit;
 // DEPRECATED: Form capture is now handled by class-forms.php.
 `,
 
-    "actv-trkr/assets/tracker.js": `(function(){'use strict';if(typeof window==='undefined'||typeof document==='undefined')return;if(!window.atConfig)return;var CFG=window.atConfig;var COOKIE_VID='at_vid';var COOKIE_SID='at_sid';var COOKIE_UTM='at_utm';var COOKIE_TS='at_ts';var SESSION_TIMEOUT=30*60*1000;
+    "actv-trkr/assets/tracker.js": `(function(){'use strict';if(typeof window==='undefined'||typeof document==='undefined')return;if(!window.atConfig)return;var CFG=window.atConfig;var COOKIE_VID='at_vid';var COOKIE_SID='at_sid';var COOKIE_UTM='at_utm';var COOKIE_TS='at_ts';var SESSION_TIMEOUT=30*60*1000;var HEARTBEAT_INTERVAL=10000;var MAX_EVENTS_PER_SESSION=200;
 function setCookie(n,v,d){var e=new Date();e.setTime(e.getTime()+d*864e5);document.cookie=n+'='+encodeURIComponent(v)+';expires='+e.toUTCString()+';path=/;SameSite=Lax';}
 function getCookie(n){var v=document.cookie.match('(^|;)\\\\s*'+n+'=([^;]*)');return v?decodeURIComponent(v[2]):null;}
 function uuid(){if(crypto&&crypto.randomUUID)return crypto.randomUUID();return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=(Math.random()*16)|0;return(c==='x'?r:(r&0x3)|0x8).toString(16);});}
@@ -214,7 +219,19 @@ function utmsChanged(nu){if(!nu)return false;var old=storedUtms();return['utm_so
 function resolveSession(urlUtms){var sid=getCookie(COOKIE_SID);var lastTs=parseInt(getCookie(COOKIE_TS)||'0',10);var now=Date.now();var expired=!sid||!lastTs||(now-lastTs>SESSION_TIMEOUT);var utmSwitch=urlUtms&&utmsChanged(urlUtms);if(expired||utmSwitch){sid=uuid();}setCookie(COOKIE_SID,sid,1);setCookie(COOKIE_TS,String(now),1);return sid;}
 function deviceType(){var w=window.innerWidth;if(w<768)return'mobile';if(w<1024)return'tablet';return'desktop';}
 function send(endpoint,payload){var body=JSON.stringify(payload);fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}
-function track(){var vid=getCookie(COOKIE_VID);if(!vid){vid=uuid();setCookie(COOKIE_VID,vid,365);}var urlUtms=getUtms();if(urlUtms){setCookie(COOKIE_UTM,JSON.stringify(urlUtms),30);}var sid=resolveSession(urlUtms);var attribution=Object.assign({},storedUtms(),urlUtms||{});var eventId=uuid();send(CFG.endpoint,{source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:eventId,session_id:sid,page_url:window.location.href,page_path:window.location.pathname,title:document.title,referrer:document.referrer||null,device:deviceType(),occurred_at:new Date().toISOString()},attribution:attribution,visitor:{visitor_id:vid}});}
+function sendBeaconSafe(endpoint,payload){var body=JSON.stringify(payload);try{if(navigator.sendBeacon){navigator.sendBeacon(endpoint,new Blob([body],{type:'application/json'}));}else{var xhr=new XMLHttpRequest();xhr.open('POST',endpoint,false);xhr.setRequestHeader('Content-Type','application/json');xhr.setRequestHeader('Authorization','Bearer '+CFG.apiKey);xhr.send(body);}}catch(e){}}
+var pageTimer={startedAt:null,activeMs:0,lastResumeAt:null,isActive:true,eventId:null,heartbeatTimer:null,start:function(eventId){this.eventId=eventId;this.startedAt=Date.now();this.lastResumeAt=Date.now();this.activeMs=0;this.isActive=true;this.startHeartbeat();},pause:function(){if(this.isActive&&this.lastResumeAt){this.activeMs+=Date.now()-this.lastResumeAt;this.isActive=false;}},resume:function(){if(!this.isActive){this.lastResumeAt=Date.now();this.isActive=true;}},getActiveSeconds:function(){var total=this.activeMs;if(this.isActive&&this.lastResumeAt){total+=Date.now()-this.lastResumeAt;}return Math.round(total/1000);},startHeartbeat:function(){var self=this;this.heartbeatTimer=setInterval(function(){if(self.isActive){self.sendTimeUpdate();}},HEARTBEAT_INTERVAL);},sendTimeUpdate:function(){if(!this.eventId)return;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);send(CFG.endpoint,{type:'time_update',api_key:CFG.apiKey,source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:this.eventId,session_id:sid,active_seconds:this.getActiveSeconds()},visitor:{visitor_id:vid}});},sendFinal:function(){if(!this.eventId)return;clearInterval(this.heartbeatTimer);var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);sendBeaconSafe(CFG.endpoint,{type:'time_update',api_key:CFG.apiKey,source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:this.eventId,session_id:sid,active_seconds:this.getActiveSeconds()},visitor:{visitor_id:vid}});}};
+document.addEventListener('visibilitychange',function(){if(document.hidden){pageTimer.pause();}else{pageTimer.resume();}});
+window.addEventListener('beforeunload',function(){pageTimer.sendFinal();flushEventBatch();});
+var eventBatch=[];var sessionEventCount=0;var batchTimer=null;
+var DOWNLOAD_EXTENSIONS=/\\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|csv|txt|rtf|mp3|mp4|avi|mov|epub)$/i;
+function classifyClick(el){if(!el)return null;var target=el;for(var i=0;i<5&&target;i++){var tag=(target.tagName||'').toLowerCase();if(target.getAttribute&&target.getAttribute('data-actv')==='cta'){return{type:'cta_click',text:getClickText(target),el:target};}if(tag==='a'){var href=target.getAttribute('href')||'';if(href.indexOf('tel:')===0){return{type:'tel_click',text:href.replace('tel:',''),el:target};}if(href.indexOf('mailto:')===0){return{type:'mailto_click',text:href.replace('mailto:',''),el:target};}if(DOWNLOAD_EXTENSIONS.test(href)){return{type:'download_click',text:getClickText(target)||href.split('/').pop(),el:target};}try{var linkHost=new URL(href,window.location.origin).hostname;if(linkHost&&linkHost!==window.location.hostname){return{type:'outbound_click',text:getClickText(target)||linkHost,el:target};}}catch(e){}}if(tag==='button'||(target.getAttribute&&target.getAttribute('role')==='button')){var inForm=target.closest&&target.closest('form');var btnType=(target.getAttribute('type')||'').toLowerCase();if(!inForm||btnType!=='submit'){return{type:'cta_click',text:getClickText(target),el:target};}}target=target.parentElement;}return null;}
+function getClickText(el){var text=(el.innerText||el.textContent||'').trim();if(text.length>100)text=text.substring(0,100);return text||el.getAttribute('aria-label')||el.getAttribute('title')||'';}
+function trackClick(e){if(sessionEventCount>=MAX_EVENTS_PER_SESSION)return;var result=classifyClick(e.target);if(!result)return;sessionEventCount++;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);eventBatch.push({event_type:result.type,target_text:result.text,page_url:window.location.href,page_path:window.location.pathname,timestamp:new Date().toISOString(),session_id:sid,visitor_id:vid});if(!batchTimer){batchTimer=setTimeout(flushEventBatch,HEARTBEAT_INTERVAL);}}
+function flushEventBatch(){clearTimeout(batchTimer);batchTimer=null;if(eventBatch.length===0)return;var events=eventBatch.splice(0);var eventEndpoint=CFG.endpoint.replace(/\\/track-pageview$/,'/track-event');sendBeaconSafe(eventEndpoint,{api_key:CFG.apiKey,source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},events:events});}
+function trackFormFocus(e){if(sessionEventCount>=MAX_EVENTS_PER_SESSION)return;var el=e.target;if(!el||!el.closest)return;var form=el.closest('form');if(!form)return;if(form._atFormStarted)return;form._atFormStarted=true;sessionEventCount++;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);eventBatch.push({event_type:'form_start',target_text:form.getAttribute('data-form-title')||form.getAttribute('aria-label')||form.getAttribute('id')||'form',page_url:window.location.href,page_path:window.location.pathname,timestamp:new Date().toISOString(),session_id:sid,visitor_id:vid});if(!batchTimer){batchTimer=setTimeout(flushEventBatch,HEARTBEAT_INTERVAL);}}
+document.addEventListener('click',trackClick,true);document.addEventListener('focusin',trackFormFocus,true);
+function track(){var vid=getCookie(COOKIE_VID);if(!vid){vid=uuid();setCookie(COOKIE_VID,vid,365);}var urlUtms=getUtms();if(urlUtms){setCookie(COOKIE_UTM,JSON.stringify(urlUtms),30);}var sid=resolveSession(urlUtms);var attribution=Object.assign({},storedUtms(),urlUtms||{});var eventId=uuid();pageTimer.start(eventId);send(CFG.endpoint,{source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:eventId,session_id:sid,page_url:window.location.href,page_path:window.location.pathname,title:document.title,referrer:document.referrer||null,device:deviceType(),occurred_at:new Date().toISOString()},attribution:attribution,visitor:{visitor_id:vid}});}
 var SKIP_NAMES=['_wpnonce','_wp_http_referer','_wpcf7','_wpcf7_version','_wpcf7_locale','_wpcf7_unit_tag','_wpcf7_container_post','action','gform_ajax','gform_field_values','is_submit','gform_submit','gform_unique_id','gform_target_page_number','gform_source_page_number'];
 var SKIP_PAT=[/^_/,/nonce/i,/token/i,/csrf/i,/captcha/i,/^g-recaptcha/,/^h-captcha/,/^cf-turnstile/];
 var SENS_PAT=[/password/i,/passwd/i,/cc[-_]?num/i,/card[-_]?number/i,/cvv/i,/cvc/i,/ssn/i,/social[-_]?security/i,/credit[-_]?card/i];
@@ -230,6 +247,18 @@ class AT_Heartbeat{
 public static function init(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;if(empty($opts['enable_heartbeat'])||$opts['enable_heartbeat']!=='1')return;add_action('wp_enqueue_scripts',array(__CLASS__,'enqueue_beacon'));}
 public static function enqueue_beacon(){if(is_admin())return;$opts=AT_Settings::get();wp_enqueue_script('at-heartbeat',AT_PLUGIN_URL.'assets/heartbeat.js',array(),AT_PLUGIN_VERSION,true);wp_localize_script('at-heartbeat','atHeartbeat',array('endpoint'=>rtrim($opts['endpoint_url'],'/').'/ingest-heartbeat','apiKey'=>$opts['api_key'],'domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'interval'=>60000));}
 public static function send_cron_heartbeat(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;if(empty($opts['enable_heartbeat'])||$opts['enable_heartbeat']!=='1')return;$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-heartbeat';$domain=wp_parse_url(home_url(),PHP_URL_HOST);wp_remote_post($endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','x-actvtrkr-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain,'source'=>'cron','meta'=>array('php_version'=>PHP_VERSION,'wp_version'=>get_bloginfo('version'))))));}
+}`,
+
+    "actv-trkr/includes/class-broken-links.php": `<?php
+if(!defined('ABSPATH'))exit;
+class AT_Broken_Links{
+const MAX_PAGES=200;
+public static function init(){add_action('wp_ajax_at_scan_broken_links',array(__CLASS__,'ajax_scan'));add_action('at_broken_links_cron',array(__CLASS__,'scan_and_report'));if(!wp_next_scheduled('at_broken_links_cron')){wp_schedule_event(time(),'weekly','at_broken_links_cron');}}
+public static function ajax_scan(){check_ajax_referer('at_scan_links','_wpnonce');if(!current_user_can('manage_options')){wp_send_json_error('Unauthorized');}$result=self::scan_and_report();if(isset($result['error'])){wp_send_json_error($result['error']);}wp_send_json_success($result);}
+public static function scan_and_report(){$pages=self::get_pages_from_sitemap();if(empty($pages)){$pages=self::get_pages_from_db();}$broken=array();$checked=0;foreach(array_slice($pages,0,self::MAX_PAGES) as $page_url){$response=wp_remote_get($page_url,array('timeout'=>10,'redirection'=>3));if(is_wp_error($response))continue;$body=wp_remote_retrieve_body($response);if(empty($body))continue;$links=self::extract_links($body,$page_url);$checked++;foreach($links as $link){$link_resp=wp_remote_head($link,array('timeout'=>5,'redirection'=>3));if(is_wp_error($link_resp)){$broken[]=array('source_page'=>$page_url,'broken_url'=>$link,'status_code'=>0);continue;}$code=wp_remote_retrieve_response_code($link_resp);if($code>=400){$broken[]=array('source_page'=>$page_url,'broken_url'=>$link,'status_code'=>$code);}}}if(empty($broken)){return array('pages_checked'=>$checked,'broken_found'=>0);}$opts=AT_Settings::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-broken-links';$domain=wp_parse_url(home_url(),PHP_URL_HOST);wp_remote_post($endpoint,array('timeout'=>30,'headers'=>array('Content-Type'=>'application/json','x-actvtrkr-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain,'links'=>$broken))));return array('pages_checked'=>$checked,'broken_found'=>count($broken));}
+private static function get_pages_from_sitemap(){$sitemap_url=home_url('/sitemap.xml');$response=wp_remote_get($sitemap_url,array('timeout'=>10));if(is_wp_error($response))return array();$body=wp_remote_retrieve_body($response);preg_match_all('/<loc>(.*?)<\\/loc>/',$body,$matches);return $matches[1]??array();}
+private static function get_pages_from_db(){$posts=get_posts(array('post_type'=>array('page','post'),'post_status'=>'publish','numberposts'=>self::MAX_PAGES));return array_map(function($p){return get_permalink($p);},$posts);}
+private static function extract_links($html,$page_url){$host=wp_parse_url(home_url(),PHP_URL_HOST);preg_match_all('/href=["\\']([ ^"\\' ]+)["\\']/',$html,$matches);$links=array();foreach($matches[1] as $href){if(strpos($href,'#')===0||strpos($href,'mailto:')===0||strpos($href,'tel:')===0)continue;if(strpos($href,'javascript:')===0)continue;if(strpos($href,'/')===0){$href=home_url($href);}$link_host=wp_parse_url($href,PHP_URL_HOST);if($link_host&&$link_host!==$host)continue;$links[]=$href;}return array_unique(array_slice($links,0,50));}
 }`,
 
     "actv-trkr/assets/heartbeat.js": `(function(){'use strict';if(typeof window==='undefined'||!window.atHeartbeat)return;var CFG=window.atHeartbeat;var sent=false;function sendHeartbeat(){if(sent)return;sent=true;var body=JSON.stringify({domain:CFG.domain,source:'js',meta:{user_agent:navigator.userAgent}});fetch(CFG.endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-actvtrkr-key':CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(CFG.endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}setTimeout(sendHeartbeat,2000);})();`,
@@ -258,10 +287,20 @@ Supports all form plugins: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion 
 4. That's it! Tracking starts automatically.
 
 == Changelog ==
-= ${PLUGIN_VERSION} =
-* Universal form capture: supports any HTML form plus dedicated hooks for Gravity Forms, CF7, WPForms, Avada, Ninja Forms, Fluent Forms
-* Deduplication between JS and server-side captures
-* Security: auto-redact sensitive fields (passwords, credit cards, SSNs)
+= 1.3.0 =
+* Active time-on-page tracking with focus-aware heartbeats
+* Intent-based click tracking (CTAs, downloads, outbound links)
+* Form liveness monitoring (hourly probe for rendered forms)
+* Broken link scanning improvements
+
+= 1.2.0 =
+* Added self-hosted auto-update support
+* WordPress admin will now show update notifications automatically
+
+= 1.1.0 =
+* Universal form capture (CF7, WPForms, Avada, Ninja, Fluent)
+* Retry queue for failed submissions
+* Pre-configured API key on download
 
 = 1.0.0 =
 * Initial release`,

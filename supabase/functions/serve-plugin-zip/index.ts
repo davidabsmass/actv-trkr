@@ -61,7 +61,7 @@ function buildFiles(endpointBase: string): Record<string, string> {
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
  * Version:     ${PLUGIN_VERSION}
- * Author:      ACTV TRKR
+ * Author:      MSHN CTRL
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
  */

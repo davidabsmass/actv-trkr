@@ -111,7 +111,8 @@ function buildReportHtml(report: any): string {
     html += sectionEnd;
   }
 
-  // Executive Summary
+  // Executive Summary — force page break before
+  html += `<div class="force-page-break" style="height:4px"></div>`;
   html += sectionStart("◎", "Executive Summary");
   html += `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">`;
   html += kpiCard("Leads", es.leads.current, es.leads.change);

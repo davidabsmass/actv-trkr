@@ -300,7 +300,13 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
   document.body.appendChild(container);
 
   // Wait for rendering
-  await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 150));
+
+  // Collect forced page-break positions from DOM before rasterizing
+  const forceBreakEls = container.querySelectorAll('.force-page-break');
+  const forcedBreakOffsets = Array.from(forceBreakEls).map(
+    (el) => (el as HTMLElement).offsetTop
+  );
 
   try {
     const canvas = await html2canvas(container, {

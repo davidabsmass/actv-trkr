@@ -223,6 +223,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ status: "ok", active_seconds: activeSeconds }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Reject bot traffic for standard pageview requests (time_update is already handled above)
+    if (isBot(userAgent)) {
+      return new Response(JSON.stringify({ status: "ok", filtered: "bot" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Standard pageview tracking ──────────────────────────────
     const { source, event, attribution, visitor } = body;
 

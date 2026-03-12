@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
           name: "ACTV TRKR",
           slug: "actv-trkr",
           version: LATEST_VERSION,
-          author: "ACTV TRKR",
+          author: "MSHN CTRL",
           homepage: "https://actvtrkr.com",
           requires: "5.8",
           tested: "6.7",

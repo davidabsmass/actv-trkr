@@ -67,5 +67,6 @@ MM_Updater::init();
 MM_Heartbeat::init();
 MM_Broken_Links::init();
 
-// Cron hook.
+// Cron hooks.
 add_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );
+add_action( 'mm_form_probe_cron', array( 'MM_Forms', 'probe_form_pages' ) );

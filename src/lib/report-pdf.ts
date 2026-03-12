@@ -1,62 +1,16 @@
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas";
 
-// Strip emoji and non-Latin1 characters that jsPDF's default fonts can't render
+/**
+ * Renders a report data object into a hidden DOM container that mirrors
+ * the in-browser MonthlyPerformanceViewer, captures it with html2canvas,
+ * and splits it across A4 pages in a jsPDF document.
+ */
+
+// ── helpers ──
+
 function safe(s: any): string {
-  return String(s ?? "")
-    .replace(/[\u{1F000}-\u{1FFFF}]/gu, "")
-    .replace(/[\u{2600}-\u{27BF}]/gu, "")
-    .replace(/[\u{FE00}-\u{FE0F}]/gu, "")
-    .replace(/[\u200D\u200B\u200C\u200E\u200F]/g, "")
-    .replace(/\u2013/g, "-")
-    .replace(/\u2014/g, "--")
-    .replace(/\u2019/g, "'")
-    .replace(/\u201C/g, '"')
-    .replace(/\u201D/g, '"')
-    .replace(/\u2026/g, "...")
-    .replace(/[^\x20-\x7E\xA0-\xFF]/g, "")
-    .trim();
-}
-
-// ── Design System Colors (from index.css) ──
-const C = {
-  indigo:     [99, 91, 255]   as [number, number, number],
-  purple:     [112, 88, 255]  as [number, number, number],
-  navy:       [0, 38, 77]     as [number, number, number],
-  navyLight:  [20, 64, 128]   as [number, number, number],
-  success:    [33, 196, 93]   as [number, number, number],
-  warning:    [245, 158, 11]  as [number, number, number],
-  danger:     [236, 54, 54]   as [number, number, number],
-  text:       [0, 38, 77]     as [number, number, number],
-  muted:      [107, 111, 128] as [number, number, number],
-  border:     [228, 230, 237] as [number, number, number],
-  bg:         [245, 246, 250] as [number, number, number],
-  bgCard:     [250, 250, 253] as [number, number, number],
-  white:      [255, 255, 255] as [number, number, number],
-  chart1:     [99, 91, 255]   as [number, number, number],
-  chart2:     [33, 196, 93]   as [number, number, number],
-  chart3:     [150, 120, 255] as [number, number, number],
-  chart4:     [245, 158, 11]  as [number, number, number],
-  chart5:     [236, 80, 120]  as [number, number, number],
-  chart6:     [14, 165, 233]  as [number, number, number],
-};
-
-const CHART_PALETTE: [number, number, number][] = [C.chart1, C.chart2, C.chart3, C.chart4, C.chart5, C.chart6];
-
-const GRADIENT_TOP: [number, number, number] = [109, 93, 212];
-const GRADIENT_BOT: [number, number, number] = [148, 73, 224];
-
-// Footer height reserved at page bottom
-const FOOTER_H = 16;
-
-function changeText(change: number | null): string {
-  if (change === null || change === undefined) return "";
-  return `${change > 0 ? "+" : ""}${change}%`;
-}
-
-function changeColor(change: number | null): [number, number, number] {
-  if (!change) return C.muted;
-  return change > 0 ? C.success : change < 0 ? C.danger : C.muted;
+  return String(s ?? "").trim();
 }
 
 function fmtDate(d: string): string {
@@ -73,432 +27,16 @@ function fmtNum(n: number): string {
   return n.toLocaleString();
 }
 
-// ── Font Loading ──
-async function loadFont(url: string): Promise<string> {
-  const resp = await fetch(url);
-  const buf = await resp.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+function changeHtml(change: number | null): string {
+  if (change === null || change === undefined) return "";
+  const color = change > 0 ? "#21c45d" : change < 0 ? "#ec3636" : "#6b6f80";
+  const arrow = change > 0 ? "↑" : change < 0 ? "↓" : "–";
+  return `<span style="color:${color};font-size:11px;font-weight:600">${arrow} ${change > 0 ? "+" : ""}${change}%</span>`;
 }
 
-async function registerFonts(doc: jsPDF): Promise<boolean> {
-  try {
-    const [regularB64, boldB64, semiBoldB64, lightB64, mediumB64] = await Promise.all([
-      loadFont("/fonts/BROmega-Regular.otf"),
-      loadFont("/fonts/BROmega-Bold.otf"),
-      loadFont("/fonts/BROmega-SemiBold.otf"),
-      loadFont("/fonts/BROmega-Light.otf"),
-      loadFont("/fonts/BROmega-Medium.otf"),
-    ]);
+// ── Build the HTML string that mirrors MonthlyPerformanceViewer ──
 
-    doc.addFileToVFS("BROmega-Regular.otf", regularB64);
-    doc.addFont("BROmega-Regular.otf", "BROmega", "normal");
-
-    doc.addFileToVFS("BROmega-Bold.otf", boldB64);
-    doc.addFont("BROmega-Bold.otf", "BROmega", "bold");
-
-    doc.addFileToVFS("BROmega-SemiBold.otf", semiBoldB64);
-    doc.addFont("BROmega-SemiBold.otf", "BROmega", "normal", 600);
-
-    doc.addFileToVFS("BROmega-Light.otf", lightB64);
-    doc.addFont("BROmega-Light.otf", "BROmega", "normal", 300);
-
-    doc.addFileToVFS("BROmega-Medium.otf", mediumB64);
-    doc.addFont("BROmega-Medium.otf", "BROmega", "normal", 500);
-
-    return true;
-  } catch (e) {
-    console.warn("Failed to load BROmega fonts, falling back to helvetica", e);
-    return false;
-  }
-}
-
-// ── Drawing Helpers ──
-
-function drawBarChart(
-  doc: jsPDF,
-  items: Array<{ label: string; count: number }>,
-  x: number, y: number, w: number,
-  fontFamily: string,
-  maxItems = 8,
-  barColor: [number, number, number] = C.indigo,
-): number {
-  const data = (items || []).slice(0, maxItems);
-  if (!data.length) return y;
-  const maxVal = Math.max(...data.map(d => d.count), 1);
-  const barH = 5;
-  const gap = 3;
-  const labelW = Math.min(w * 0.4, 55);
-  const barArea = w - labelW - 18;
-
-  data.forEach((item, i) => {
-    const rowY = y + i * (barH + gap);
-    doc.setFontSize(7);
-    doc.setTextColor(...C.text);
-    doc.setFont(fontFamily, "normal");
-    const label = safe(item.label).substring(0, 30);
-    doc.text(label, x, rowY + barH - 1);
-
-    doc.setFillColor(...C.bg);
-    doc.roundedRect(x + labelW, rowY, barArea, barH, 1, 1, "F");
-
-    const fillW = Math.max((item.count / maxVal) * barArea, 2);
-    const ci = i % CHART_PALETTE.length;
-    doc.setFillColor(...(barColor === C.indigo ? CHART_PALETTE[ci] : barColor));
-    doc.roundedRect(x + labelW, rowY, fillW, barH, 1, 1, "F");
-
-    doc.setFontSize(7);
-    doc.setTextColor(...C.muted);
-    doc.setFont(fontFamily, "bold");
-    doc.text(fmtNum(item.count), x + labelW + barArea + 2, rowY + barH - 1);
-  });
-
-  return y + data.length * (barH + gap) + 4;
-}
-
-function drawStackedBar(
-  doc: jsPDF,
-  items: Array<{ label: string; count: number }>,
-  x: number, y: number, w: number,
-  fontFamily: string,
-): number {
-  const data = (items || []).slice(0, 6);
-  if (!data.length) return y;
-  const total = data.reduce((s, d) => s + d.count, 0) || 1;
-  const barH = 8;
-  let cx = x;
-
-  data.forEach((item, i) => {
-    const segW = Math.max((item.count / total) * w, 1);
-    doc.setFillColor(...CHART_PALETTE[i % CHART_PALETTE.length]);
-    if (i === 0) {
-      doc.roundedRect(cx, y, segW, barH, 2, 2, "F");
-      doc.rect(cx + segW - 2, y, 2, barH, "F");
-    } else if (i === data.length - 1) {
-      doc.roundedRect(cx, y, segW, barH, 2, 2, "F");
-      doc.rect(cx, y, 2, barH, "F");
-    } else {
-      doc.rect(cx, y, segW, barH, "F");
-    }
-    cx += segW;
-  });
-
-  let ly = y + barH + 4;
-  let lx = x;
-  data.forEach((item, i) => {
-    const pct = Math.round((item.count / total) * 100);
-    const legendText = safe(`${item.label} (${pct}%)`);
-    doc.setFillColor(...CHART_PALETTE[i % CHART_PALETTE.length]);
-    doc.circle(lx + 1.5, ly - 1, 1.5, "F");
-    doc.setFontSize(6.5);
-    doc.setTextColor(...C.text);
-    doc.setFont(fontFamily, "normal");
-    doc.text(legendText, lx + 4.5, ly);
-    const textW = doc.getTextWidth(legendText) + 8;
-    lx += textW;
-    if (lx > x + w - 20) {
-      lx = x;
-      ly += 5;
-    }
-  });
-
-  return ly + 5;
-}
-
-function drawDonutChart(
-  doc: jsPDF,
-  items: Array<{ label: string; count: number }>,
-  cx: number, cy: number, radius: number,
-  fontFamily: string,
-): number {
-  const data = (items || []).slice(0, 6);
-  if (!data.length) return cy + radius + 4;
-  const total = data.reduce((s, d) => s + d.count, 0) || 1;
-  const innerR = radius * 0.55;
-  const steps = 60;
-  let startAngle = -Math.PI / 2;
-
-  data.forEach((item, i) => {
-    const sweep = (item.count / total) * Math.PI * 2;
-    const endAngle = startAngle + sweep;
-    const color = CHART_PALETTE[i % CHART_PALETTE.length];
-    doc.setFillColor(...color);
-
-    const points: [number, number][] = [];
-    const segSteps = Math.max(Math.ceil(steps * (sweep / (Math.PI * 2))), 3);
-    for (let s = 0; s <= segSteps; s++) {
-      const a = startAngle + (sweep * s) / segSteps;
-      points.push([cx + Math.cos(a) * radius, cy + Math.sin(a) * radius]);
-    }
-    for (let s = segSteps; s >= 0; s--) {
-      const a = startAngle + (sweep * s) / segSteps;
-      points.push([cx + Math.cos(a) * innerR, cy + Math.sin(a) * innerR]);
-    }
-
-    if (points.length >= 3) {
-      doc.setFillColor(...color);
-      for (let t = 1; t < points.length - 1; t++) {
-        doc.triangle(
-          points[0][0], points[0][1],
-          points[t][0], points[t][1],
-          points[t + 1][0], points[t + 1][1],
-          "F",
-        );
-      }
-    }
-
-    startAngle = endAngle;
-  });
-
-  doc.setFillColor(...C.white);
-  doc.circle(cx, cy, innerR, "F");
-
-  doc.setFontSize(10);
-  doc.setTextColor(...C.navy);
-  doc.setFont(fontFamily, "bold");
-  doc.text(fmtNum(total), cx, cy + 1, { align: "center" });
-  doc.setFontSize(5);
-  doc.setTextColor(...C.muted);
-  doc.setFont(fontFamily, "normal");
-  doc.text("TOTAL", cx, cy + 4.5, { align: "center" });
-
-  return cy + radius + 4;
-}
-
-// ── Simple icon drawing helpers (matching Lucide style) ──
-
-function drawCheckIcon(doc: jsPDF, x: number, y: number, size: number, color: [number, number, number]) {
-  doc.setDrawColor(...color);
-  doc.setLineWidth(0.6);
-  // Checkmark
-  doc.line(x + size * 0.2, y + size * 0.5, x + size * 0.4, y + size * 0.7);
-  doc.line(x + size * 0.4, y + size * 0.7, x + size * 0.8, y + size * 0.25);
-}
-
-function drawAlertIcon(doc: jsPDF, x: number, y: number, size: number, color: [number, number, number]) {
-  doc.setDrawColor(...color);
-  doc.setLineWidth(0.6);
-  // Triangle outline
-  const cx = x + size / 2;
-  doc.line(cx, y + size * 0.15, x + size * 0.15, y + size * 0.85);
-  doc.line(x + size * 0.15, y + size * 0.85, x + size * 0.85, y + size * 0.85);
-  doc.line(x + size * 0.85, y + size * 0.85, cx, y + size * 0.15);
-  // Exclamation mark
-  doc.setFillColor(...color);
-  doc.line(cx, y + size * 0.35, cx, y + size * 0.6);
-  doc.circle(cx, y + size * 0.72, 0.3, "F");
-}
-
-function drawTrendUpIcon(doc: jsPDF, x: number, y: number, size: number, color: [number, number, number]) {
-  doc.setDrawColor(...color);
-  doc.setLineWidth(0.6);
-  doc.line(x + size * 0.15, y + size * 0.7, x + size * 0.85, y + size * 0.3);
-  // Arrow head
-  doc.line(x + size * 0.85, y + size * 0.3, x + size * 0.6, y + size * 0.3);
-  doc.line(x + size * 0.85, y + size * 0.3, x + size * 0.85, y + size * 0.55);
-}
-
-// ── Main PDF Builder ──
-
-export async function buildReportPdf(report: any, run: any): Promise<jsPDF> {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 15;
-  const contentW = pageW - margin * 2;
-  let y = 12;
-
-  // Load custom fonts
-  const fontsLoaded = await registerFonts(doc);
-  const fontFamily = fontsLoaded ? "BROmega" : "helvetica";
-
-  const period = safe(`${fmtDate(report.periodStart)}  -  ${fmtDate(report.periodEnd)}  |  ${report.periodDays}-day period`);
-
-  // Safe zone: content must not go past this Y
-  const maxY = pageH - FOOTER_H - 4;
-
-  const checkPage = (needed: number) => {
-    if (y + needed > maxY) {
-      doc.addPage();
-      y = 18;
-    }
-  };
-
-  // ─── HEADER ───
-  doc.setFillColor(...GRADIENT_TOP);
-  doc.rect(0, 0, pageW, 32, "F");
-  doc.setFillColor(...GRADIENT_BOT);
-  doc.rect(0, 28, pageW, 4, "F");
-  doc.setFillColor(...C.white);
-  doc.rect(0, 32, pageW, 0.3, "F");
-
-  // Brand name
-  doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont(fontFamily, "bold");
-  doc.text("ACTV TRKR", margin, 10);
-
-  doc.setFillColor(255, 255, 255);
-  doc.circle(margin + doc.getTextWidth("ACTV TRKR") + 3, 9, 0.6, "F");
-
-  doc.setFontSize(7);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont(fontFamily, "normal");
-  doc.text("Performance Intelligence", margin + doc.getTextWidth("ACTV TRKR") + 6, 10);
-
-  // Title
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont(fontFamily, "bold");
-  doc.text("Performance Report", margin, 22);
-
-  // Period
-  doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont(fontFamily, "normal");
-  doc.text(safe(period), margin, 28);
-
-  y = 40;
-
-  // ─── SECTION HEADER (clean, no "attach" decorations) ───
-  const sectionHeader = (label: string) => {
-    checkPage(16);
-    y += 4;
-    // Simple left accent line
-    doc.setFillColor(...GRADIENT_TOP);
-    doc.roundedRect(margin, y, 2.5, 6, 0.8, 0.8, "F");
-    // Label
-    doc.setFontSize(11);
-    doc.setTextColor(...C.navy);
-    doc.setFont(fontFamily, "bold");
-    doc.text(safe(label).toUpperCase(), margin + 6, y + 4.5);
-    // Subtle divider line after text
-    const textW = doc.getTextWidth(safe(label).toUpperCase());
-    doc.setDrawColor(...C.border);
-    doc.setLineWidth(0.3);
-    doc.line(margin + 6 + textW + 3, y + 3, pageW - margin, y + 3);
-    y += 12;
-  };
-
-  // ─── KPI CARDS ───
-  const kpiRow = (kpis: Array<{ label: string; value: any; change: number | null }>) => {
-    checkPage(28);
-    const cardW = (contentW - (kpis.length - 1) * 3) / kpis.length;
-    kpis.forEach((k, i) => {
-      const x = margin + i * (cardW + 3);
-      // Card shadow
-      doc.setFillColor(235, 236, 242);
-      doc.roundedRect(x + 0.5, y + 0.5, cardW, 22, 2, 2, "F");
-      doc.setFillColor(...C.white);
-      doc.roundedRect(x, y, cardW, 22, 2, 2, "F");
-      // Top accent line
-      doc.setFillColor(...GRADIENT_TOP);
-      doc.rect(x + 2, y, cardW - 4, 1.2, "F");
-      // Label
-      doc.setFontSize(6.5);
-      doc.setTextColor(...C.muted);
-      doc.setFont(fontFamily, "bold");
-      doc.text(safe(k.label).toUpperCase(), x + 4, y + 7);
-      // Value
-      doc.setFontSize(16);
-      doc.setTextColor(...C.navy);
-      doc.setFont(fontFamily, "bold");
-      doc.text(safe(String(k.value)), x + 4, y + 15);
-      // Change badge
-      if (k.change !== null && k.change !== undefined) {
-        const cc = changeColor(k.change);
-        const ct = changeText(k.change);
-        const badgeBg: [number, number, number] = k.change > 0 ? [236, 253, 245] : k.change < 0 ? [254, 242, 242] : [245, 245, 245];
-        const badgeW = doc.getTextWidth(ct) + 4;
-        doc.setFillColor(...badgeBg);
-        doc.roundedRect(x + 4, y + 17, badgeW + 2, 4, 1, 1, "F");
-        doc.setFontSize(7);
-        doc.setTextColor(...cc);
-        doc.setFont(fontFamily, "bold");
-        doc.text(safe(ct), x + 5, y + 20);
-      }
-    });
-    y += 28;
-  };
-
-  // ─── INSIGHT BOX (clean — icon-based, no [+]/[!] markers) ───
-  const insightBox = (label: string, text: string, isWin: boolean) => {
-    checkPage(16);
-    const bgColor: [number, number, number] = isWin ? [236, 253, 245] : [254, 242, 242];
-    const accentColor = isWin ? C.success : C.danger;
-    doc.setFillColor(...bgColor);
-    doc.roundedRect(margin, y, contentW, 12, 2, 2, "F");
-    // Left accent bar
-    doc.setFillColor(...accentColor);
-    doc.roundedRect(margin, y, 2, 12, 1, 1, "F");
-
-    // Draw icon
-    if (isWin) {
-      drawCheckIcon(doc, margin + 4, y + 1.5, 4, accentColor);
-    } else {
-      drawAlertIcon(doc, margin + 4, y + 1.5, 4, accentColor);
-    }
-
-    // Label
-    doc.setFontSize(7.5);
-    doc.setTextColor(...accentColor);
-    doc.setFont(fontFamily, "bold");
-    doc.text(safe(label), margin + 10, y + 5.5);
-    // Text
-    const prefixW = doc.getTextWidth(safe(label) + " ");
-    doc.setTextColor(...C.text);
-    doc.setFont(fontFamily, "normal");
-    const safeText = safe(text);
-    const available = contentW - 14 - prefixW;
-    const lines = doc.splitTextToSize(safeText, available);
-    doc.text(lines[0] || "", margin + 10 + prefixW, y + 5.5);
-    if (lines[1]) {
-      doc.text(lines[1], margin + 10, y + 10);
-    }
-    y += 15;
-  };
-
-  // ─── COLUMN TITLE ───
-  const colTitle = (label: string) => {
-    checkPage(8);
-    doc.setFontSize(8);
-    doc.setTextColor(...C.muted);
-    doc.setFont(fontFamily, "bold");
-    doc.text(safe(label).toUpperCase(), margin, y);
-    y += 5;
-  };
-
-  // ─── RECOMMENDATIONS ───
-  const recommendations = (actions: string[]) => {
-    (actions || []).forEach((a, i) => {
-      checkPage(10);
-      // Numbered circle
-      doc.setFillColor(...GRADIENT_TOP);
-      doc.circle(margin + 3, y + 1, 2.5, "F");
-      doc.setFontSize(7);
-      doc.setTextColor(...C.white);
-      doc.setFont(fontFamily, "bold");
-      doc.text(`${i + 1}`, margin + 3, y + 2, { align: "center" });
-      // Text
-      doc.setTextColor(...C.text);
-      doc.setFont(fontFamily, "normal");
-      const lines = doc.splitTextToSize(safe(a), contentW - 14);
-      doc.text(lines, margin + 9, y + 2);
-      y += lines.length * 4 + 3;
-    });
-  };
-
-  // Bottom margin for autoTable to respect footer
-  const tableBottomMargin = FOOTER_H + 4;
-
-  // ════════════════════════════════════════
-  // BUILD REPORT CONTENT
-  // ════════════════════════════════════════
-
+function buildReportHtml(report: any): string {
   const es = report.executiveSummary;
   const ge = report.growthEngine;
   const ci = report.conversionIntelligence;
@@ -508,294 +46,332 @@ export async function buildReportPdf(report: any, run: any): Promise<jsPDF> {
   const fh = report.formHealth;
   const aiInsights = report.aiInsights;
 
-  // ── AI Insights ──
+  const periodLabel = `${fmtDate(report.periodStart)} – ${fmtDate(report.periodEnd)} · ${report.periodDays}-day period`;
+
+  const kpiCard = (label: string, value: any, change: number | null) => `
+    <div style="flex:1;min-width:100px;background:#f5f5fa;border-radius:8px;padding:12px 14px">
+      <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:4px;font-weight:600">${safe(label)}</div>
+      <div style="font-size:20px;font-weight:700;color:#00264d">${safe(String(value))}</div>
+      ${changeHtml(change)}
+    </div>`;
+
+  const sectionStart = (icon: string, title: string) => `
+    <div style="border:1px solid #e4e6ed;border-radius:8px;background:#fff;padding:20px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:#00264d;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+        <span style="color:#635bff">${icon}</span> ${safe(title)}
+      </div>`;
+  const sectionEnd = `</div>`;
+
+  const rankList = (items: Array<{ label: string; count: number }>, max = 8) => {
+    const top = (items || []).slice(0, max);
+    const maxCount = top[0]?.count || 1;
+    return top.map((item, i) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right">${i + 1}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+            <span style="font-size:11px;font-weight:500;color:#00264d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safe(item.label)}</span>
+            <span style="font-size:11px;color:#6b6f80;margin-left:8px">${fmtNum(item.count)}</span>
+          </div>
+          <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden">
+            <div style="height:100%;background:rgba(99,91,255,0.5);border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
+          </div>
+        </div>
+      </div>`).join("");
+  };
+
+  let html = `
+<div style="font-family:'BR Omega','Segoe UI',system-ui,sans-serif;color:#00264d;width:680px;padding:0;background:#fff">
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#6d5dd4,#9449e0);padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">ACTV TRKR</span>
+      <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.8)">Performance Intelligence</span>
+    </div>
+    <div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:6px">Performance Report</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.85)">${safe(periodLabel)}</div>
+  </div>`;
+
+  // AI Insights
   if (aiInsights?.length > 0) {
-    sectionHeader("AI-Generated Insights");
-    aiInsights.forEach((insight: any, i: number) => {
-      checkPage(14);
-      doc.setFillColor(...C.bgCard);
-      doc.roundedRect(margin, y, contentW, 12, 2, 2, "F");
-      doc.setFillColor(...GRADIENT_BOT);
-      doc.roundedRect(margin, y, 2, 12, 1, 1, "F");
-      doc.setFontSize(8);
-      doc.setTextColor(...C.indigo);
-      doc.setFont(fontFamily, "bold");
-      doc.text(safe(insight.title), margin + 5, y + 5);
-      doc.setFontSize(7);
-      doc.setTextColor(...C.muted);
-      doc.setFont(fontFamily, "normal");
-      const lines = doc.splitTextToSize(safe(insight.body), contentW - 10);
-      doc.text(lines[0] || "", margin + 5, y + 9.5);
-      y += 15;
+    html += sectionStart("✦", "AI Insights");
+    aiInsights.forEach((ins: any, i: number) => {
+      html += `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;background:rgba(99,91,255,0.05);border:1px solid rgba(99,91,255,0.1);margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;color:#635bff;flex-shrink:0">${i + 1}.</span>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#00264d">${safe(ins.title)}</div>
+          <div style="font-size:11px;color:#6b6f80;margin-top:2px">${safe(ins.body)}</div>
+        </div>
+      </div>`;
     });
+    html += sectionEnd;
   }
 
-  // ── Executive Summary ──
-  sectionHeader("Executive Summary");
-  kpiRow([
-    { label: "Leads", value: fmtNum(es.leads.current), change: es.leads.change },
-    { label: "Sessions", value: fmtNum(es.sessions.current), change: es.sessions.change },
-    { label: "Pageviews", value: fmtNum(es.pageviews.current), change: es.pageviews.change },
-    { label: "CVR", value: `${es.cvr.current}%`, change: es.cvr.change },
-  ]);
+  // Executive Summary
+  html += sectionStart("◎", "Executive Summary");
+  html += `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">`;
+  html += kpiCard("Leads", es.leads.current, es.leads.change);
+  html += kpiCard("Sessions", fmtNum(es.sessions.current), es.sessions.change);
+  html += kpiCard("Pageviews", fmtNum(es.pageviews.current), es.pageviews.change);
+  html += kpiCard("CVR", `${es.cvr.current}%`, es.cvr.change);
+  if (es.weightedLeads) html += kpiCard("Weighted Leads", es.weightedLeads, null);
+  html += `</div>`;
 
-  if (es.weightedLeads) {
-    checkPage(8);
-    doc.setFillColor(...C.bgCard);
-    doc.roundedRect(margin, y, contentW / 2 - 2, 8, 2, 2, "F");
-    doc.setFontSize(7);
-    doc.setTextColor(...C.muted);
-    doc.setFont(fontFamily, "normal");
-    doc.text("WEIGHTED LEADS", margin + 3, y + 3.5);
-    doc.setFontSize(10);
-    doc.setTextColor(...C.navy);
-    doc.setFont(fontFamily, "bold");
-    doc.text(String(es.weightedLeads), margin + 3 + doc.getTextWidth("WEIGHTED LEADS  "), y + 3.5);
-
-    if (es.goalTarget) {
-      const gx = margin + contentW / 2 + 2;
-      const gw = contentW / 2 - 2;
-      const pct = Math.min(Math.round((es.leads.current / es.goalTarget) * 100), 100);
-      doc.setFillColor(...C.bgCard);
-      doc.roundedRect(gx, y, gw, 8, 2, 2, "F");
-      doc.setFontSize(7);
-      doc.setTextColor(...C.muted);
-      doc.setFont(fontFamily, "normal");
-      doc.text(`GOAL: ${es.goalTarget} leads (${pct}%)`, gx + 3, y + 3.5);
-      // Progress bar
-      doc.setFillColor(...C.border);
-      doc.roundedRect(gx + 3, y + 5, gw - 6, 2, 1, 1, "F");
-      doc.setFillColor(...(pct >= 100 ? C.success : C.indigo));
-      doc.roundedRect(gx + 3, y + 5, Math.max((pct / 100) * (gw - 6), 2), 2, 1, 1, "F");
-    }
-    y += 12;
+  if (es.goalTarget) {
+    const pct = Math.round((es.leads.current / es.goalTarget) * 100);
+    html += `<div style="font-size:11px;color:#6b6f80;margin-bottom:10px">🎯 Monthly goal: ${es.goalTarget} leads · ${pct}% achieved</div>`;
   }
 
-  insightBox("Key Win:", es.keyWin, true);
-  insightBox("Key Risk:", es.keyRisk, false);
+  // Key Win / Risk
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+    <div style="padding:10px 12px;border-radius:6px;background:rgba(33,196,93,0.08);border:1px solid rgba(33,196,93,0.15)">
+      <div style="font-size:11px;font-weight:600;color:#00264d;margin-bottom:2px">✓ Key Win</div>
+      <div style="font-size:11px;color:#6b6f80">${safe(es.keyWin)}</div>
+    </div>
+    <div style="padding:10px 12px;border-radius:6px;background:rgba(236,54,54,0.06);border:1px solid rgba(236,54,54,0.12)">
+      <div style="font-size:11px;font-weight:600;color:#00264d;margin-bottom:2px">⚠ Key Risk</div>
+      <div style="font-size:11px;color:#6b6f80">${safe(es.keyRisk)}</div>
+    </div>
+  </div>`;
+  html += sectionEnd;
 
-  // ── Growth Engine ──
-  sectionHeader("Growth Engine");
-
-  if (ge.trafficBySource?.length) {
-    colTitle("Traffic by Source");
-    y = drawBarChart(doc, ge.trafficBySource, margin, y, contentW, fontFamily, 8);
-  }
-
-  if (ge.trafficByMedium?.length) {
-    checkPage(25);
-    colTitle("Traffic by Medium");
-    y = drawStackedBar(doc, ge.trafficByMedium, margin, y, contentW, fontFamily);
-  }
-
-  if (ge.topLandingPages?.length) {
-    checkPage(50);
-    colTitle("Top Landing Pages");
-    y = drawBarChart(doc, ge.topLandingPages, margin, y, contentW, fontFamily, 8, C.indigo);
-  }
-
-  // ── Conversion Intelligence ──
-  sectionHeader("Conversion Intelligence");
-
-  if (ci.leadsByForm?.length) {
-    const tableHead = [["Form", "Category", "Wt", "Leads", "CVR", "Failures", "Change"]];
-    const tableBody = (ci.leadsByForm || []).map((f: any) => [
-      safe(f.formName),
-      safe(f.formCategory),
-      `${f.weight}x`,
-      String(f.leads),
-      `${f.cvr || 0}%`,
-      String(f.failures || 0),
-      changeText(f.change),
-    ]);
-
-    autoTable(doc, {
-      startY: y,
-      margin: { left: margin, right: margin, bottom: tableBottomMargin },
-      head: tableHead,
-      body: tableBody,
-      styles: {
-        fontSize: 7,
-        cellPadding: 2.5,
-        font: fontFamily,
-        lineColor: C.border,
-        lineWidth: 0.2,
-      },
-      headStyles: {
-        fillColor: GRADIENT_TOP,
-        textColor: C.white,
-        fontStyle: "bold",
-        fontSize: 7,
-      },
-      alternateRowStyles: { fillColor: C.bgCard },
-      columnStyles: {
-        0: { cellWidth: 45 },
-        6: { fontStyle: "bold" },
-      },
-      didParseCell: (data: any) => {
-        if (data.section === "body" && data.column.index === 6) {
-          const val = parseFloat(data.cell.raw);
-          if (val > 0) data.cell.styles.textColor = C.success;
-          else if (val < 0) data.cell.styles.textColor = C.danger;
-        }
-        if (data.section === "body" && data.column.index === 5) {
-          const val = parseInt(data.cell.raw);
-          if (val > 0) data.cell.styles.textColor = C.danger;
-        }
-      },
-      theme: "grid",
-    });
-    y = (doc as any).lastAutoTable.finalY + 6;
-  }
-
-  if (ci.leadSources?.length) {
-    checkPage(45);
-    colTitle("Lead Sources");
-    const donutR = 14;
-    const donutCx = margin + donutR + 5;
-    const donutCy = y + donutR;
-    drawDonutChart(doc, ci.leadSources.slice(0, 6), donutCx, donutCy, donutR, fontFamily);
-
-    const legendX = margin + donutR * 2 + 18;
-    const legendData = (ci.leadSources || []).slice(0, 6);
-    const total = legendData.reduce((s: number, d: any) => s + d.count, 0) || 1;
-    legendData.forEach((item: any, i: number) => {
-      const ly = y + i * 5 + 2;
-      doc.setFillColor(...CHART_PALETTE[i % CHART_PALETTE.length]);
-      doc.circle(legendX, ly, 1.5, "F");
-      doc.setFontSize(7);
-      doc.setTextColor(...C.text);
-      doc.setFont(fontFamily, "normal");
-      doc.text(safe(item.label), legendX + 4, ly + 1);
-      doc.setTextColor(...C.muted);
-      const pct = Math.round((item.count / total) * 100);
-      doc.text(`${item.count} (${pct}%)`, legendX + 50, ly + 1);
-    });
-
-    y += donutR * 2 + 6;
-  }
-
-  if (ci.topConvertingPages?.length) {
-    checkPage(40);
-    colTitle("Top Converting Pages");
-    y = drawBarChart(doc, ci.topConvertingPages, margin, y, contentW, fontFamily, 6, C.indigo);
-  }
-
-  // ── Site Health ──
+  // Site Health
   if (sh) {
-    sectionHeader("Site Health");
+    html += sectionStart("⚡", "Site Health & Uptime");
+    html += `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">`;
+    html += kpiCard("Uptime", `${sh.uptimePercent}%`, null);
+    html += kpiCard("Downtime", `${sh.totalDowntimeMinutes || 0}m`, null);
+    html += kpiCard("Incidents", sh.downtimeIncidents?.length || 0, null);
+    html += kpiCard("Broken Links", sh.brokenLinksCount || 0, null);
+    html += `</div>`;
 
-    const healthKpis: Array<{ label: string; value: any; change: null }> = [];
-    if (sh.uptimePercent !== undefined) healthKpis.push({ label: "Uptime", value: `${sh.uptimePercent}%`, change: null });
-    if (sh.brokenLinksCount !== undefined) healthKpis.push({ label: "Broken Links", value: sh.brokenLinksCount, change: null });
-    if (sh.downtimeIncidents?.length !== undefined) healthKpis.push({ label: "Incidents", value: sh.downtimeIncidents.length, change: null });
-    if (healthKpis.length) kpiRow(healthKpis);
+    if (sh.sites?.length > 0) {
+      html += `<div style="margin-bottom:10px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:6px">Current Status</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+      sh.sites.forEach((s: any) => {
+        const col = s.status === "UP" ? "#21c45d" : "#ec3636";
+        html += `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:500;background:${col}15;color:${col}">
+          <span style="width:5px;height:5px;border-radius:50%;background:${col}"></span>${safe(s.domain)}</span>`;
+      });
+      html += `</div></div>`;
+    }
 
     if (sh.downtimeIncidents?.length > 0) {
-      colTitle("Downtime Incidents");
-      autoTable(doc, {
-        startY: y,
-        margin: { left: margin, right: margin, bottom: tableBottomMargin },
-        head: [["Type", "Severity", "Started", "Duration"]],
-        body: sh.downtimeIncidents.slice(0, 10).map((inc: any) => [
-          safe(inc.type), safe(inc.severity),
-          fmtDate(inc.started_at),
-          inc.resolved_at ? safe(`${Math.round((new Date(inc.resolved_at).getTime() - new Date(inc.started_at).getTime()) / 60000)}m`) : "Ongoing",
-        ]),
-        styles: { fontSize: 7, cellPadding: 2, font: fontFamily, lineColor: C.border, lineWidth: 0.2 },
-        headStyles: { fillColor: C.danger, textColor: C.white, fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [254, 242, 242] },
-        theme: "grid",
+      html += `<div style="margin-bottom:8px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:6px">Downtime Incidents</div>`;
+      sh.downtimeIncidents.forEach((inc: any) => {
+        html += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e4e6ed">
+          <span style="font-size:11px;color:#00264d">▲ ${safe(inc.domain || "Site")}</span>
+          <span style="font-size:11px;color:#6b6f80">${inc.durationMinutes}m · ${fmtDate(inc.startedAt)}</span>
+        </div>`;
       });
-      y = (doc as any).lastAutoTable.finalY + 6;
+      html += `</div>`;
     }
+
+    if (sh.sslExpiry?.length > 0) {
+      html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:6px">SSL & Domain</div><div style="display:flex;flex-wrap:wrap;gap:10px">`;
+      sh.sslExpiry.forEach((s: any) => {
+        const col = s.daysLeft <= 14 ? "#ec3636" : s.daysLeft <= 30 ? "#f59e0b" : "#6b6f80";
+        html += `<span style="font-size:11px;color:#00264d">🔒 ${safe(s.domain)} <span style="color:${col}">SSL: ${s.daysLeft}d left</span></span>`;
+      });
+      html += `</div></div>`;
+    }
+    html += sectionEnd;
   }
 
-  // ── Form Health ──
+  // Form Health
   if (fh) {
-    sectionHeader("Form Health");
-    const fhKpis: Array<{ label: string; value: any; change: null }> = [];
-    if (fh.overallFailureRate !== undefined) fhKpis.push({ label: "Failure Rate", value: `${fh.overallFailureRate}%`, change: null });
-    if (fh.totalEstimatedValue !== undefined) fhKpis.push({ label: "Pipeline Value", value: `$${fmtNum(fh.totalEstimatedValue)}`, change: null });
-    if (fhKpis.length) kpiRow(fhKpis);
+    html += sectionStart("📋", "Form Health");
+    html += `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">`;
+    html += kpiCard("Total Submissions", fmtNum(fh.totalSubmissions || 0), null);
+    html += kpiCard("Failures", fh.totalFailures || 0, null);
+    html += kpiCard("Failure Rate", `${fh.overallFailureRate || 0}%`, null);
+    html += kpiCard("Pipeline Value", `$${fmtNum(fh.totalEstimatedValue || 0)}`, null);
+    html += `</div>`;
+    html += sectionEnd;
   }
 
-  // ── User Experience ──
-  sectionHeader("User Experience Signals");
+  // Growth Engine
+  html += sectionStart("🌐", "Growth Engine");
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Traffic by Source</div>${rankList(ge.trafficBySource)}</div>`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Top Landing Pages</div>${rankList(ge.topLandingPages)}</div>`;
+  html += `</div>`;
+  html += sectionEnd;
 
-  if (ux.deviceBreakdown?.length) {
-    colTitle("Device Breakdown");
-    y = drawStackedBar(doc, ux.deviceBreakdown, margin, y, contentW, fontFamily);
+  // Conversion Intelligence
+  html += sectionStart("📊", "Conversion Intelligence");
+  if (ci.leadsByForm?.length > 0) {
+    html += `<div style="margin-bottom:16px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:8px">Leads by Form</div>`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="border-bottom:1px solid #e4e6ed;text-align:left">
+        <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Form</th>
+        <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Category</th>
+        <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Weight</th>
+        <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Leads</th>
+        <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">CVR</th>
+        <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Failures</th>
+        <th style="padding:6px 0 6px 8px;font-weight:500;color:#6b6f80;text-align:right">Est. Value</th>
+      </tr></thead><tbody>`;
+    ci.leadsByForm.forEach((f: any) => {
+      const failColor = f.failures > 0 ? "color:#ec3636" : "color:#6b6f80";
+      html += `<tr style="border-bottom:1px solid rgba(228,230,237,0.5)">
+        <td style="padding:6px 8px 6px 0;font-weight:500;color:#00264d;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safe(f.formName)}</td>
+        <td style="padding:6px 8px;color:#6b6f80;text-transform:capitalize">${safe(f.formCategory)}</td>
+        <td style="padding:6px 8px;color:#6b6f80;text-align:right">${f.weight}x</td>
+        <td style="padding:6px 8px;color:#00264d;text-align:right">${f.leads}</td>
+        <td style="padding:6px 8px;color:#6b6f80;text-align:right">${f.cvr}%</td>
+        <td style="padding:6px 8px;text-align:right;${failColor}">${f.failures}</td>
+        <td style="padding:6px 0 6px 8px;color:#6b6f80;text-align:right">$${(f.totalValue || 0).toLocaleString()}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
   }
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Top Converting Pages</div>${rankList(ci.topConvertingPages)}</div>`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Lead Sources</div>${rankList(ci.leadSources)}</div>`;
+  html += `</div>`;
+  html += sectionEnd;
 
-  if (ux.geoBreakdown?.length) {
-    checkPage(45);
-    colTitle("Geography");
-    y = drawBarChart(doc, ux.geoBreakdown, margin, y, contentW, fontFamily, 10, C.indigo);
-  }
+  // User Experience
+  html += sectionStart("👤", "User Experience Signals");
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Device Breakdown</div>${rankList(ux.deviceBreakdown)}</div>`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Geography</div>${rankList(ux.geoBreakdown, 10)}</div>`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Top Pages</div>${rankList((ux.topPages || []).slice(0, 10))}</div>`;
+  html += `<div><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Referrers</div>${rankList(ux.referrerBreakdown)}</div>`;
+  html += `</div>`;
+  html += sectionEnd;
 
-  if (ux.topPages?.length) {
-    checkPage(45);
-    colTitle("Top Pages by Views");
-    y = drawBarChart(doc, ux.topPages.slice(0, 8), margin, y, contentW, fontFamily, 8, C.indigo);
-  }
-
-  if (ux.referrerBreakdown?.length) {
-    checkPage(35);
-    colTitle("Referrers");
-    y = drawBarChart(doc, ux.referrerBreakdown, margin, y, contentW, fontFamily, 6, C.indigo);
-  }
-
-  // ── Action Plan ──
-  sectionHeader("Action Plan & Forecast");
-
+  // Action Plan
+  html += sectionStart("💡", "Action Plan & Forecast");
   if (ap.forecast?.projectedNextMonth > 0) {
-    checkPage(16);
     const low = Math.round(ap.forecast.projectedNextMonth * 0.9);
     const high = Math.round(ap.forecast.projectedNextMonth * 1.1);
-    insightBox("Lead Forecast:", `Avg. ${ap.forecast.avgDailyLeads} leads/day - Projected next month: ${fmtNum(low)}-${fmtNum(high)}`, true);
+    html += `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:6px;background:rgba(99,91,255,0.05);border:1px solid rgba(99,91,255,0.1);margin-bottom:14px">
+      <span style="color:#635bff;font-size:12px;margin-top:1px">↗</span>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:#00264d">Lead Forecast</div>
+        <div style="font-size:11px;color:#6b6f80">Avg. ${ap.forecast.avgDailyLeads} leads/day · Projected next month: ${fmtNum(low)}–${fmtNum(high)}</div>
+      </div>
+    </div>`;
   }
-
-  if (ap.recommendations?.length) {
-    colTitle("Recommendations");
-    recommendations(ap.recommendations);
+  if (ap.recommendations?.length > 0) {
+    ap.recommendations.forEach((a: string, i: number) => {
+      html += `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+        <span style="font-size:11px;font-weight:700;color:#635bff;flex-shrink:0">${i + 1}.</span>
+        <span style="font-size:12px;color:#00264d">${safe(a)}</span>
+      </div>`;
+    });
   }
-
   if (ap.contentOpportunities?.length > 0) {
-    checkPage(30);
-    colTitle("Content Opportunities");
-    y = drawBarChart(
-      doc,
-      ap.contentOpportunities.map((o: any) => ({ label: o.page, count: o.views })),
-      margin, y, contentW, fontFamily, 6, C.indigo,
-    );
+    html += `<div style="margin-top:14px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:10px">Content Opportunities</div>`;
+    html += rankList((ap.contentOpportunities || []).map((o: any) => ({ label: o.page, count: o.views })));
+    html += `</div>`;
   }
+  html += sectionEnd;
 
-  // ─── FOOTER ON EVERY PAGE ───
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    const pH = doc.internal.pageSize.getHeight();
+  // Footer watermark
+  html += `<div style="text-align:center;padding:12px 0;font-size:10px;color:#6b6f80">
+    ACTV TRKR · Generated ${fmtDate(report.generatedAt)}
+  </div>`;
 
-    doc.setFillColor(...C.bg);
-    doc.rect(0, pH - FOOTER_H, pageW, FOOTER_H, "F");
-    doc.setFillColor(...GRADIENT_TOP);
-    doc.rect(0, pH - FOOTER_H, pageW, 0.5, "F");
+  html += `</div>`;
+  return html;
+}
 
-    doc.setFontSize(7);
-    doc.setTextColor(...C.muted);
-    doc.setFont(fontFamily, "normal");
-    doc.text(safe(`ACTV TRKR  |  Generated ${fmtDate(report.generatedAt)}`), margin, pH - FOOTER_H / 2 + 1);
+// ── Main export: render HTML → canvas → PDF ──
 
-    doc.setFillColor(...GRADIENT_TOP);
-    const pageText = `${i} / ${pageCount}`;
-    const pageTextW = doc.getTextWidth(pageText) + 4;
-    doc.roundedRect(pageW - margin - pageTextW, pH - FOOTER_H / 2 - 2, pageTextW, 5, 1, 1, "F");
-    doc.setFontSize(7);
-    doc.setTextColor(...C.white);
-    doc.setFont(fontFamily, "bold");
-    doc.text(pageText, pageW - margin - pageTextW / 2, pH - FOOTER_H / 2 + 1, { align: "center" });
+export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
+  // Create off-screen container
+  const container = document.createElement("div");
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
+  container.style.top = "0";
+  container.style.width = "680px";
+  container.style.background = "#ffffff";
+  container.style.zIndex = "-1";
+  container.innerHTML = buildReportHtml(report);
+  document.body.appendChild(container);
+
+  // Wait for rendering
+  await new Promise((r) => setTimeout(r, 100));
+
+  try {
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+      width: 680,
+      windowWidth: 680,
+    });
+
+    // A4 dimensions in mm
+    const pageW = 210;
+    const pageH = 297;
+    const margin = 10;
+    const contentW = pageW - margin * 2;
+    const headerH = 8;
+    const footerH = 8;
+    const printableH = pageH - margin * 2 - headerH - footerH;
+
+    // Calculate how tall the content is in mm, based on the canvas aspect ratio
+    const imgW = canvas.width;
+    const imgH = canvas.height;
+    const contentHmm = (imgH / imgW) * contentW;
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const totalPages = Math.ceil(contentHmm / printableH);
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) doc.addPage();
+
+      // Slice out the portion of the canvas for this page
+      const srcY = Math.round((page * printableH / contentHmm) * imgH);
+      const srcH = Math.round((printableH / contentHmm) * imgH);
+      const actualSrcH = Math.min(srcH, imgH - srcY);
+
+      if (actualSrcH <= 0) break;
+
+      // Create a page-sized canvas slice
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = imgW;
+      pageCanvas.height = actualSrcH;
+      const ctx = pageCanvas.getContext("2d")!;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, imgW, actualSrcH);
+      ctx.drawImage(canvas, 0, srcY, imgW, actualSrcH, 0, 0, imgW, actualSrcH);
+
+      const sliceDataUrl = pageCanvas.toDataURL("image/png");
+      const sliceHmm = (actualSrcH / imgW) * contentW;
+
+      doc.addImage(sliceDataUrl, "PNG", margin, margin + headerH, contentW, sliceHmm);
+
+      // Footer
+      doc.setFillColor(245, 246, 250);
+      doc.rect(0, pageH - footerH - margin + 2, pageW, footerH + margin, "F");
+      doc.setDrawColor(109, 93, 212);
+      doc.setLineWidth(0.3);
+      doc.line(0, pageH - footerH - margin + 2, pageW, pageH - footerH - margin + 2);
+
+      doc.setFontSize(7);
+      doc.setTextColor(107, 111, 128);
+      doc.text(`ACTV TRKR  |  Generated ${fmtDate(report.generatedAt)}`, margin, pageH - margin + 1);
+
+      // Page badge
+      doc.setFillColor(109, 93, 212);
+      const pageText = `${page + 1} / ${totalPages}`;
+      const ptw = doc.getTextWidth(pageText) + 4;
+      doc.roundedRect(pageW - margin - ptw, pageH - margin - 1, ptw, 5, 1, 1, "F");
+      doc.setFontSize(7);
+      doc.setTextColor(255, 255, 255);
+      doc.text(pageText, pageW - margin - ptw / 2, pageH - margin + 2, { align: "center" });
+    }
+
+    return doc;
+  } finally {
+    document.body.removeChild(container);
   }
-
-  return doc;
 }

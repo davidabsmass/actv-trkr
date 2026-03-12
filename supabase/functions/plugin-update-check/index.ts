@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
+// v1.3.0: active time-on-page, click tracking, broken link scanning, form probes
 const LATEST_VERSION = "1.3.0";
 
 function getZipUrl(req: Request): string {

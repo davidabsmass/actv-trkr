@@ -602,6 +602,61 @@ export type Database = {
           },
         ]
       }
+      form_health_checks: {
+        Row: {
+          form_id: string
+          id: string
+          is_rendered: boolean
+          last_checked_at: string
+          last_rendered_at: string | null
+          org_id: string
+          page_url: string | null
+          site_id: string
+        }
+        Insert: {
+          form_id: string
+          id?: string
+          is_rendered?: boolean
+          last_checked_at?: string
+          last_rendered_at?: string | null
+          org_id: string
+          page_url?: string | null
+          site_id: string
+        }
+        Update: {
+          form_id?: string
+          id?: string
+          is_rendered?: boolean
+          last_checked_at?: string
+          last_rendered_at?: string | null
+          org_id?: string
+          page_url?: string | null
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_health_checks_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_health_checks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_health_checks_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_submission_logs: {
         Row: {
           error_message: string | null
@@ -672,6 +727,7 @@ export type Database = {
           lead_weight: number
           name: string
           org_id: string
+          page_url: string | null
           provider: string
           site_id: string
         }
@@ -686,6 +742,7 @@ export type Database = {
           lead_weight?: number
           name?: string
           org_id: string
+          page_url?: string | null
           provider?: string
           site_id: string
         }
@@ -700,6 +757,7 @@ export type Database = {
           lead_weight?: number
           name?: string
           org_id?: string
+          page_url?: string | null
           provider?: string
           site_id?: string
         }

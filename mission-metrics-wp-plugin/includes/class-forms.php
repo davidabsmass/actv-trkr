@@ -553,4 +553,215 @@ class MM_Forms {
 			'fields'  => $fields,
 		) );
 	}
+
+	// ── Form Liveness Probe ────────────────────────────────────────
+
+	/**
+	 * Probe all known form pages to verify forms are still rendered.
+	 * Called via hourly cron hook 'mm_form_probe_cron'.
+	 */
+	public static function probe_form_pages() {
+		$opts = MM_Settings::get();
+		if ( empty( $opts['api_key'] ) || $opts['enable_gravity'] !== '1' ) return;
+
+		$discovered = array();
+
+		// Build a list of forms with their expected page URLs
+		$form_checks = self::get_form_page_checks();
+		if ( empty( $form_checks ) ) return;
+
+		$checks = array();
+		foreach ( $form_checks as $check ) {
+			$page_url  = $check['page_url'];
+			$form_id   = $check['form_id'];
+			$provider  = $check['provider'];
+			$rendered  = false;
+
+			if ( ! $page_url ) {
+				continue; // Skip forms without a known page URL
+			}
+
+			// Fetch the page locally
+			$response = wp_remote_get( $page_url, array(
+				'timeout'    => 15,
+				'sslverify'  => false,
+				'user-agent' => 'ACTV-TRKR-FormProbe/' . MM_PLUGIN_VERSION,
+			) );
+
+			if ( is_wp_error( $response ) ) {
+				error_log( '[ACTV-TRKR] Form probe fetch error for ' . $page_url . ': ' . $response->get_error_message() );
+				$checks[] = array(
+					'form_id'  => $form_id,
+					'provider' => $provider,
+					'rendered' => false,
+					'page_url' => $page_url,
+				);
+				continue;
+			}
+
+			$code = wp_remote_retrieve_response_code( $response );
+			if ( $code >= 400 ) {
+				$checks[] = array(
+					'form_id'  => $form_id,
+					'provider' => $provider,
+					'rendered' => false,
+					'page_url' => $page_url,
+				);
+				continue;
+			}
+
+			$body = wp_remote_retrieve_body( $response );
+			$rendered = self::detect_form_in_html( $body, $provider, $form_id );
+
+			$checks[] = array(
+				'form_id'  => $form_id,
+				'provider' => $provider,
+				'rendered' => $rendered,
+				'page_url' => $page_url,
+			);
+		}
+
+		if ( empty( $checks ) ) return;
+
+		// Send results to edge function
+		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form-health';
+		$domain   = wp_parse_url( home_url(), PHP_URL_HOST );
+
+		$response = wp_remote_post( $endpoint, array(
+			'timeout' => 15,
+			'headers' => array(
+				'Content-Type'  => 'application/json',
+				'Authorization' => 'Bearer ' . $opts['api_key'],
+			),
+			'body' => wp_json_encode( array(
+				'domain' => $domain,
+				'checks' => $checks,
+			) ),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			error_log( '[ACTV-TRKR] Form health report error: ' . $response->get_error_message() );
+		}
+	}
+
+	/**
+	 * Build a list of forms with their page URLs for probing.
+	 * Searches post content for shortcodes/blocks containing forms.
+	 */
+	private static function get_form_page_checks() {
+		$checks = array();
+
+		// Gravity Forms
+		if ( class_exists( 'GFAPI' ) ) {
+			$gf_forms = \GFAPI::get_forms();
+			if ( is_array( $gf_forms ) ) {
+				foreach ( $gf_forms as $form ) {
+					$fid = $form['id'] ?? '';
+					if ( ! $fid ) continue;
+					$page_url = self::find_page_with_shortcode( '[gravityform', 'id="' . $fid . '"' );
+					if ( ! $page_url ) $page_url = self::find_page_with_shortcode( '[gravityforms', 'id="' . $fid . '"' );
+					if ( $page_url ) {
+						$checks[] = array( 'form_id' => (string) $fid, 'provider' => 'gravity_forms', 'page_url' => $page_url );
+					}
+				}
+			}
+		}
+
+		// Contact Form 7
+		if ( class_exists( 'WPCF7_ContactForm' ) ) {
+			$cf7_forms = \WPCF7_ContactForm::find();
+			if ( is_array( $cf7_forms ) ) {
+				foreach ( $cf7_forms as $form ) {
+					$fid = $form->id();
+					$page_url = self::find_page_with_shortcode( '[contact-form-7', 'id="' . $fid . '"' );
+					if ( $page_url ) {
+						$checks[] = array( 'form_id' => (string) $fid, 'provider' => 'cf7', 'page_url' => $page_url );
+					}
+				}
+			}
+		}
+
+		// WPForms
+		if ( function_exists( 'wpforms' ) && isset( wpforms()->form ) ) {
+			$wp_forms = wpforms()->form->get( '', array( 'posts_per_page' => -1 ) );
+			if ( is_array( $wp_forms ) ) {
+				foreach ( $wp_forms as $form ) {
+					$fid = $form->ID;
+					$page_url = self::find_page_with_shortcode( '[wpforms', 'id="' . $fid . '"' );
+					if ( $page_url ) {
+						$checks[] = array( 'form_id' => (string) $fid, 'provider' => 'wpforms', 'page_url' => $page_url );
+					}
+				}
+			}
+		}
+
+		// Avada / Fusion Forms — search for fusion_form shortcode or block
+		$avada_pages = get_posts( array(
+			'post_type'   => array( 'page', 'post' ),
+			'post_status' => 'publish',
+			's'           => 'fusion_form',
+			'posts_per_page' => 50,
+			'fields'      => 'ids',
+		) );
+		if ( is_array( $avada_pages ) ) {
+			foreach ( $avada_pages as $pid ) {
+				$content = get_post_field( 'post_content', $pid );
+				if ( preg_match_all( '/\[fusion_form\s+form_post_id=["\']?(\d+)/i', $content, $matches ) ) {
+					foreach ( $matches[1] as $fid ) {
+						$checks[] = array(
+							'form_id'  => (string) $fid,
+							'provider' => 'avada',
+							'page_url' => get_permalink( $pid ),
+						);
+					}
+				}
+			}
+		}
+
+		return $checks;
+	}
+
+	/**
+	 * Search published posts/pages for a shortcode containing a form ID.
+	 */
+	private static function find_page_with_shortcode( $shortcode_start, $id_fragment ) {
+		global $wpdb;
+
+		$like = $wpdb->esc_like( $shortcode_start ) . '%' . $wpdb->esc_like( $id_fragment ) . '%';
+		$post_id = $wpdb->get_var( $wpdb->prepare(
+			"SELECT ID FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type IN ('page','post') AND post_content LIKE %s LIMIT 1",
+			$like
+		) );
+
+		return $post_id ? get_permalink( $post_id ) : null;
+	}
+
+	/**
+	 * Detect whether a form is present in the HTML response.
+	 */
+	private static function detect_form_in_html( $html, $provider, $form_id ) {
+		switch ( $provider ) {
+			case 'gravity_forms':
+				return (bool) preg_match( '/gform_wrapper[^"]*_' . preg_quote( $form_id, '/' ) . '|gf_browser_|gform_submit/i', $html );
+
+			case 'cf7':
+				return (bool) preg_match( '/class=["\'][^"\']*wpcf7[^"\']*["\']|wpcf7-form/i', $html );
+
+			case 'wpforms':
+				return (bool) preg_match( '/class=["\'][^"\']*wpforms-form[^"\']*["\']|wpforms-container/i', $html );
+
+			case 'avada':
+				return (bool) preg_match( '/class=["\'][^"\']*fusion-form[^"\']*["\']|fusion-form-form-wrapper/i', $html );
+
+			case 'ninja_forms':
+				return (bool) preg_match( '/class=["\'][^"\']*nf-form-cont[^"\']*["\']|ninja-forms-/i', $html );
+
+			case 'fluent_forms':
+				return (bool) preg_match( '/class=["\'][^"\']*fluentform[^"\']*["\']|ff-el-group/i', $html );
+
+			default:
+				// Generic form detection
+				return (bool) preg_match( '/<form[^>]*>/i', $html );
+		}
+	}
 }

@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
-import { CheckCircle2, AlertTriangle, XCircle, Clock } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Clock, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
 type FormHealth = {
   id: string;
   name: string;
-  status: "healthy" | "low_activity" | "errors" | "no_activity";
+  status: "healthy" | "low_activity" | "errors" | "no_activity" | "not_rendered";
   detail: string;
 };
 
@@ -26,6 +26,17 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
         .from("forms").select("id, name")
         .eq("org_id", orgId).eq("archived", false);
       if (!forms || forms.length === 0) return [];
+
+      // Get form health checks (liveness probes)
+      const { data: healthChecks } = await supabase
+        .from("form_health_checks")
+        .select("form_id, is_rendered, last_checked_at, page_url")
+        .eq("org_id", orgId);
+
+      const healthCheckMap: Record<string, { is_rendered: boolean; last_checked_at: string; page_url: string | null }> = {};
+      (healthChecks || []).forEach(h => {
+        healthCheckMap[h.form_id] = h;
+      });
 
       // Get 30-day submission counts per form
       const { data: leads30d } = await supabase
@@ -57,8 +68,13 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
         const count30 = leads30Map[form.id] || 0;
         const count7 = leads7Map[form.id] || 0;
         const errCount = errorMap[form.id] || 0;
-        const baseline7 = Math.round(count30 / 4.3); // weekly baseline
+        const baseline7 = Math.round(count30 / 4.3);
+        const probe = healthCheckMap[form.id];
 
+        // Liveness probe failure takes highest priority
+        if (probe && !probe.is_rendered) {
+          return { id: form.id, name: form.name, status: "not_rendered", detail: `Not detected on page since ${format(new Date(probe.last_checked_at), "MMM d, HH:mm")}` };
+        }
         if (errCount > 0) {
           return { id: form.id, name: form.name, status: "errors", detail: `${errCount} error${errCount > 1 ? "s" : ""} this week` };
         }
@@ -81,6 +97,7 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
     low_activity: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/10", label: "Low Activity" },
     errors: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: "Errors Detected" },
     no_activity: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted", label: "No Activity" },
+    not_rendered: { icon: EyeOff, color: "text-destructive", bg: "bg-destructive/10", label: "Not Found" },
   };
 
   return (

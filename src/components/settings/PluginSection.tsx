@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plug, Check, Download, Loader2 } from "lucide-react";
+import { Check, Download, Loader2 } from "lucide-react";
+import pluginThumb from "@/assets/actv-trkr-plugin-thumb.jpg";
 import { toast } from "sonner";
 
 export default function PluginSection() {

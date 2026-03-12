@@ -309,6 +309,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
       <Tabs defaultValue={initialTab || "overview"} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="form-checks">Form Checks</TabsTrigger>
           <TabsTrigger value="broken-links">Broken Links</TabsTrigger>
           <TabsTrigger value="domain-ssl">Domain & SSL</TabsTrigger>
           <TabsTrigger value="renewals">Renewals</TabsTrigger>

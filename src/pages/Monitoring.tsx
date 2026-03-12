@@ -374,6 +374,11 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           </div>
         </TabsContent>
 
+        {/* Form Checks */}
+        <TabsContent value="form-checks" className="space-y-4">
+          <FormChecksTab siteId={site.id} orgId={orgId!} />
+        </TabsContent>
+
         {/* Broken Links */}
         <TabsContent value="broken-links" className="space-y-4">
           <div className="glass-card p-5">

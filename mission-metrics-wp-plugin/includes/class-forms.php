@@ -161,11 +161,13 @@ class MM_Forms {
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		// Sync entry IDs to detect deletions
-		self::sync_entry_ids( $discovered, $domain, $opts );
+		$entry_result = self::sync_entry_ids( $discovered, $domain, $opts );
 
 		return array(
 			'synced'     => $body['synced'] ?? 0,
 			'discovered' => count( $discovered ),
+			'trashed'    => $entry_result['trashed'] ?? 0,
+			'restored'   => $entry_result['restored'] ?? 0,
 		);
 	}
 
@@ -173,7 +175,11 @@ class MM_Forms {
 	 * For each discovered form, gather active entry IDs and send them
 	 * to the sync-entries endpoint so deleted entries get trashed.
 	 */
-	private static function sync_entry_ids( $discovered, $domain, $opts ) {
+	public static function sync_entry_ids( $discovered = null, $domain = null, $opts = null ) {
+		if ( ! $opts ) $opts = self::get();
+		if ( ! $domain ) $domain = wp_parse_url( home_url(), PHP_URL_HOST );
+		if ( ! $discovered ) $discovered = self::discover_forms_list();
+
 		$forms_with_entries = array();
 
 		foreach ( $discovered as $form_info ) {
@@ -182,7 +188,7 @@ class MM_Forms {
 			if ( ! $form_id ) continue;
 
 			$entry_ids = self::get_active_entry_ids( $provider, $form_id );
-			if ( $entry_ids === null ) continue; // provider doesn't support entry listing
+			if ( $entry_ids === null ) continue;
 
 			$forms_with_entries[] = array(
 				'form_id'   => $form_id,
@@ -191,7 +197,7 @@ class MM_Forms {
 			);
 		}
 
-		if ( empty( $forms_with_entries ) ) return;
+		if ( empty( $forms_with_entries ) ) return array( 'trashed' => 0, 'restored' => 0 );
 
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-entries';
 
@@ -209,7 +215,38 @@ class MM_Forms {
 
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Entry sync error: ' . $response->get_error_message() );
+			return array( 'trashed' => 0, 'restored' => 0, 'error' => $response->get_error_message() );
 		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		return array(
+			'trashed'  => $body['trashed'] ?? 0,
+			'restored' => $body['restored'] ?? 0,
+		);
+	}
+
+	/**
+	 * Helper: returns discovered forms list without sending to server.
+	 */
+	private static function discover_forms_list() {
+		$discovered = array();
+		if ( class_exists( 'GFAPI' ) ) {
+			$gf_forms = \GFAPI::get_forms();
+			if ( is_array( $gf_forms ) ) {
+				foreach ( $gf_forms as $form ) {
+					$discovered[] = array( 'form_id' => (string) ( $form['id'] ?? '' ), 'provider' => 'gravity_forms' );
+				}
+			}
+		}
+		if ( function_exists( 'wpforms' ) && isset( wpforms()->form ) ) {
+			$wp_forms = wpforms()->form->get( '', array( 'posts_per_page' => -1 ) );
+			if ( is_array( $wp_forms ) ) {
+				foreach ( $wp_forms as $form ) {
+					$discovered[] = array( 'form_id' => (string) $form->ID, 'provider' => 'wpforms' );
+				}
+			}
+		}
+		return $discovered;
 	}
 
 	/**

@@ -112,6 +112,7 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
 export default function Forms() {
   const { orgId, orgName } = useOrg();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
   const selectedFormId = searchParams.get("selected") || null;
@@ -197,6 +198,37 @@ export default function Forms() {
     enabled: !!orgId && !!leadsData && leadsData.length > 0,
   });
 
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncAll = async () => {
+    if (!orgId || !forms || forms.length === 0) return;
+    const siteId = forms[0]?.site_id;
+    if (!siteId) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
+        body: { site_id: siteId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const result = data?.wp_result?.result;
+      const parts: string[] = [];
+      if (result?.synced) parts.push(`${result.synced} form(s) synced`);
+      if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
+      if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
+      toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["total_submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["forms"] });
+      queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] });
+    } catch (err: any) {
+      toast.error(err.message || "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const selectedForm = forms?.find((f) => f.id === selectedFormId);
   const activeForms = forms?.filter((f) => !f.archived) || [];
   const archivedForms = forms?.filter((f) => f.archived) || [];
@@ -236,7 +268,13 @@ export default function Forms() {
           <h1 className="text-2xl font-bold text-foreground">Forms</h1>
           <p className="text-sm text-muted-foreground">Lead submissions for {orgName}</p>
         </div>
-        <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSyncAll} disabled={syncing || !forms || forms.length === 0}>
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Syncing…" : "Sync Entries"}
+          </Button>
+          <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+        </div>
       </div>
 
       {/* Summary Row */}
@@ -357,9 +395,16 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(`Sync complete — ${data?.wp_result?.result?.synced ?? 0} form(s) synced`);
+      const result = data?.wp_result?.result;
+      const parts: string[] = [];
+      if (result?.synced) parts.push(`${result.synced} form(s) synced`);
+      if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
+      if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
+      toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
       queryClient.invalidateQueries({ queryKey: ["leads_by_form"] });
       queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["total_submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] });
       queryClient.invalidateQueries({ queryKey: ["forms"] });
     } catch (err: any) {
       toast.error(err.message || "Sync failed");

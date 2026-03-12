@@ -164,11 +164,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  // Reject bot traffic early
   const userAgent = req.headers.get("user-agent");
-  if (isBot(userAgent)) {
-    return new Response(JSON.stringify({ status: "ok", filtered: "bot" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
 
   try {
     const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
@@ -225,6 +221,11 @@ Deno.serve(async (req) => {
         .eq("org_id", orgId).eq("site_id", site.id).eq("event_id", eventId);
 
       return new Response(JSON.stringify({ status: "ok", active_seconds: activeSeconds }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Reject bot traffic for standard pageview requests (time_update is already handled above)
+    if (isBot(userAgent)) {
+      return new Response(JSON.stringify({ status: "ok", filtered: "bot" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ── Standard pageview tracking ──────────────────────────────

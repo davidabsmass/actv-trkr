@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-const LATEST_VERSION = "1.2.0";
+const LATEST_VERSION = "1.3.0";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -15,6 +15,12 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.0
+- Active time-on-page tracking with focus-aware heartbeats
+- Intent-based click tracking (CTAs, downloads, outbound links)
+- Form liveness monitoring (hourly probe for rendered forms)
+- Broken link scanning improvements
+
 ## 1.2.0
 - Added self-hosted auto-update support
 - WordPress admin will now show update notifications automatically

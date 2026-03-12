@@ -112,6 +112,7 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
 export default function Forms() {
   const { orgId, orgName } = useOrg();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
   const selectedFormId = searchParams.get("selected") || null;

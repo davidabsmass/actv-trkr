@@ -10,7 +10,7 @@
   var COOKIE_UTM = 'mm_utm';
   var COOKIE_TS  = 'mm_ts';
   var SESSION_TIMEOUT = 30 * 60 * 1000;
-  var HEARTBEAT_INTERVAL = 10000; // 10 seconds
+  var HEARTBEAT_INTERVAL = 30000; // 30 seconds
   var MAX_EVENTS_PER_SESSION = 200;
 
   // ── Cookie helpers ──────────────────────────────────────────────

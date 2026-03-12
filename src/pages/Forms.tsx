@@ -395,9 +395,16 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(`Sync complete — ${data?.wp_result?.result?.synced ?? 0} form(s) synced`);
+      const result = data?.wp_result?.result;
+      const parts: string[] = [];
+      if (result?.synced) parts.push(`${result.synced} form(s) synced`);
+      if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
+      if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
+      toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
       queryClient.invalidateQueries({ queryKey: ["leads_by_form"] });
       queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
+      queryClient.invalidateQueries({ queryKey: ["total_submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] });
       queryClient.invalidateQueries({ queryKey: ["forms"] });
     } catch (err: any) {
       toast.error(err.message || "Sync failed");

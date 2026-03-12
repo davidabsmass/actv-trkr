@@ -40,6 +40,44 @@ class MM_Forms {
 		add_action( 'fluentform/submission_inserted', array( __CLASS__, 'handle_fluent' ), 10, 3 );
 	}
 
+	// ── REST API ───────────────────────────────────────────────────
+
+	/**
+	 * Register REST route so the dashboard can trigger a sync remotely.
+	 */
+	public static function register_rest_routes() {
+		register_rest_route( 'actv-trkr/v1', '/sync', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'handle_rest_sync' ),
+			'permission_callback' => '__return_true',
+		) );
+	}
+
+	/**
+	 * Handle the REST sync request from the dashboard.
+	 * Validates the key_hash against the stored API key hash.
+	 */
+	public static function handle_rest_sync( $request ) {
+		$opts = MM_Settings::get();
+		if ( empty( $opts['api_key'] ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
+		}
+
+		$body     = $request->get_json_params();
+		$key_hash = $body['key_hash'] ?? '';
+
+		// Verify: hash the stored key and compare
+		$stored_hash = hash( 'sha256', $opts['api_key'] );
+		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
+		}
+
+		// Run the full sync
+		$result = self::scan_all_forms();
+
+		return new \WP_REST_Response( array( 'ok' => true, 'result' => $result ), 200 );
+	}
+
 	// ── Form Discovery / Sync ───────────────────────────────────────
 
 	/**

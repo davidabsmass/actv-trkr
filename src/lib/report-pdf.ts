@@ -360,33 +360,54 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
       return breaks;
     };
 
-    const breakPoints = findBreakPoints();
+    const naturalBreaks = findBreakPoints();
 
-    // Build page slices using natural break points
+    // Convert DOM-measured forced break offsets to canvas pixel positions
+    const scale = canvas.width / 680;
+    const forcedBreaksPx = forcedBreakOffsets.map((o) => Math.round(o * scale));
+
+    // Build page slices: forced breaks always trigger a new page,
+    // natural breaks prevent cutting sections in half.
     const pageSlices: Array<{ srcY: number; srcH: number }> = [];
     let currentY = 0;
     const maxSliceH = Math.round(printableH * pxPerMm);
+
+    // Sort all forced breaks ascending
+    const sortedForced = [...forcedBreaksPx].sort((a, b) => a - b);
 
     while (currentY < imgH) {
       const idealEnd = currentY + maxSliceH;
 
       if (idealEnd >= imgH) {
-        // Last page
         pageSlices.push({ srcY: currentY, srcH: imgH - currentY });
         break;
       }
 
-      // Find the nearest break point before idealEnd (with some tolerance)
-      let bestBreak = idealEnd;
-      const searchStart = idealEnd - Math.round(maxSliceH * 0.25); // look back up to 25%
-      for (let i = breakPoints.length - 1; i >= 0; i--) {
-        if (breakPoints[i] <= idealEnd && breakPoints[i] >= searchStart) {
-          bestBreak = breakPoints[i];
+      // Check if any forced break falls within [currentY+1 .. idealEnd]
+      let breakAt = -1;
+      for (const fb of sortedForced) {
+        if (fb <= currentY) continue;
+        if (fb <= idealEnd) {
+          // Always break at the FIRST forced break within this page
+          breakAt = fb;
           break;
         }
+        break; // no more forced breaks in range
       }
 
-      const sliceH = bestBreak - currentY;
+      if (breakAt < 0) {
+        // No forced break — use the nearest natural break before idealEnd
+        const searchStart = idealEnd - Math.round(maxSliceH * 0.35);
+        for (let i = naturalBreaks.length - 1; i >= 0; i--) {
+          if (naturalBreaks[i] <= idealEnd && naturalBreaks[i] >= searchStart) {
+            breakAt = naturalBreaks[i];
+            break;
+          }
+        }
+        if (breakAt < 0) breakAt = idealEnd;
+      }
+
+      const sliceH = breakAt - currentY;
       if (sliceH <= 0) break;
       pageSlices.push({ srcY: currentY, srcH: sliceH });
       currentY += sliceH;

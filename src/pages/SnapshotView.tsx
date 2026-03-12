@@ -10,13 +10,12 @@ const SnapshotView = () => {
     queryKey: ["snapshot", id],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase
-        .from("dashboard_snapshots")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke("get-snapshot", {
+        body: { id },
+      });
       if (error) throw error;
-      return data;
+      if (data?.error) throw new Error(data.error);
+      return data.snapshot;
     },
     enabled: !!id,
   });
@@ -36,19 +35,6 @@ const SnapshotView = () => {
           <Lock className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-foreground mb-2">Snapshot Not Found</h2>
           <p className="text-sm text-muted-foreground">This link may have expired or is invalid.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const isExpired = new Date(snapshot.expires_at) < new Date();
-  if (isExpired) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="glass-card p-8 text-center max-w-sm">
-          <Lock className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-foreground mb-2">Snapshot Expired</h2>
-          <p className="text-sm text-muted-foreground">This snapshot expired on {new Date(snapshot.expires_at).toLocaleDateString()}.</p>
         </div>
       </div>
     );

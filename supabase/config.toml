@@ -53,3 +53,5 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.trigger-site-sync]
     verify_jwt = false
+  [functions.ingest-form-health]
+    verify_jwt = false

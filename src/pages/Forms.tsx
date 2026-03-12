@@ -267,7 +267,13 @@ export default function Forms() {
           <h1 className="text-2xl font-bold text-foreground">Forms</h1>
           <p className="text-sm text-muted-foreground">Lead submissions for {orgName}</p>
         </div>
-        <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSyncAll} disabled={syncing || !forms || forms.length === 0}>
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Syncing…" : "Sync Entries"}
+          </Button>
+          <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+        </div>
       </div>
 
       {/* Summary Row */}

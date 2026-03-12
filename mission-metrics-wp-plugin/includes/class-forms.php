@@ -161,11 +161,13 @@ class MM_Forms {
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		// Sync entry IDs to detect deletions
-		self::sync_entry_ids( $discovered, $domain, $opts );
+		$entry_result = self::sync_entry_ids( $discovered, $domain, $opts );
 
 		return array(
 			'synced'     => $body['synced'] ?? 0,
 			'discovered' => count( $discovered ),
+			'trashed'    => $entry_result['trashed'] ?? 0,
+			'restored'   => $entry_result['restored'] ?? 0,
 		);
 	}
 

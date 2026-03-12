@@ -486,6 +486,18 @@ function UserActivitySection() {
     },
   });
 
+  // Get the true total count separately
+  const { data: totalCount } = useQuery({
+    queryKey: ["login-events-count"],
+    queryFn: async () => {
+      const { count, error } = await (supabase as any)
+        .from("login_events")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count as number;
+    },
+  });
+
   // Aggregate stats per user
   const userStats = (loginEvents || []).reduce((acc, ev) => {
     const key = ev.user_id;
@@ -515,7 +527,7 @@ function UserActivitySection() {
         <Activity className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-semibold text-foreground">User Activity</h2>
         <span className="text-xs text-muted-foreground ml-2">
-          {loginEvents?.length ?? 0} login events tracked
+          {totalCount ?? loginEvents?.length ?? 0} login events tracked
         </span>
       </div>
 
@@ -533,7 +545,7 @@ function UserActivitySection() {
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground mb-1">Total Logins</p>
-              <p className="text-2xl font-bold text-foreground">{loginEvents?.length ?? 0}</p>
+              <p className="text-2xl font-bold text-foreground">{totalCount ?? loginEvents?.length ?? 0}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground mb-1">Last Activity</p>

@@ -9,20 +9,48 @@ import {
   Legend,
 } from "recharts";
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
 
 interface AttributionProps {
   sources: Array<{ source: string; sessions: number; leads: number; cvr: number }>;
   campaigns: Array<{ campaign: string; sessions: number; leads: number; cvr: number }>;
 }
 
-const INITIAL_ROWS = 15;
+type SortKey = "sessions" | "leads" | "cvr";
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return null;
+  return dir === "desc"
+    ? <ChevronDown className="h-3 w-3 text-primary" />
+    : <ChevronUp className="h-3 w-3 text-primary" />;
+}
 
 export function AttributionSection({ sources, campaigns }: AttributionProps) {
   const [tab, setTab] = useState<"source" | "campaign">("source");
-  const data = tab === "source" ? sources : campaigns;
+  const [sortKey, setSortKey] = useState<SortKey>("sessions");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
+  const rawData = tab === "source" ? sources : campaigns;
   const labelKey = tab === "source" ? "source" : "campaign";
+
+  const data = [...rawData].sort((a, b) => {
+    const av = a[sortKey] as number;
+    const bv = b[sortKey] as number;
+    return sortDir === "desc" ? bv - av : av - bv;
+  });
+
+  const thClass = "text-right py-2 px-2 text-muted-foreground font-medium tracking-wider sticky top-0 bg-card cursor-pointer select-none hover:text-foreground transition-colors text-xs";
 
   return (
     <div className="glass-card p-5 animate-slide-up">
@@ -51,7 +79,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Chart — top 10 only */}
         {(() => {
-          const chartData = data.slice(0, 10);
+          const chartData = rawData.slice(0, 10);
           const chartHeight = Math.max(200, chartData.length * 28);
           return (
         <div style={{ height: chartHeight }}>
@@ -94,12 +122,18 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium tracking-wider sticky top-0 bg-card text-xs">
                   {tab === "source" ? "Source" : "Campaign"}
                 </th>
-                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">Sessions</th>
-                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">Leads</th>
-                <th className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider sticky top-0 bg-card">CVR</th>
+                <th className={thClass} onClick={() => handleSort("sessions")}>
+                  <span className="inline-flex items-center gap-1 justify-end">Sessions <SortIcon active={sortKey === "sessions"} dir={sortDir} /></span>
+                </th>
+                <th className={thClass} onClick={() => handleSort("leads")}>
+                  <span className="inline-flex items-center gap-1 justify-end">Leads <SortIcon active={sortKey === "leads"} dir={sortDir} /></span>
+                </th>
+                <th className={thClass} onClick={() => handleSort("cvr")}>
+                  <span className="inline-flex items-center gap-1 justify-end">CVR <SortIcon active={sortKey === "cvr"} dir={sortDir} /></span>
+                </th>
               </tr>
             </thead>
             <tbody>

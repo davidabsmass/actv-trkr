@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PLUGIN_VERSION = "1.3.0";
+const PLUGIN_VERSION = "1.3.1";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

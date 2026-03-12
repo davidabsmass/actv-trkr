@@ -52,8 +52,8 @@ export default function PluginSection() {
   return (
     <div className="rounded-lg border border-border bg-card p-5 lg:col-span-2">
       <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <Plug className="h-4 w-4 text-primary" />
+        <div className="flex items-center gap-3">
+          <img src={pluginThumb} alt="ACTV TRKR Plugin" className="h-10 w-10 rounded-lg object-cover" />
           <h3 className="text-sm font-semibold text-foreground">WordPress Plugin</h3>
         </div>
         <button

@@ -527,7 +527,7 @@ function UserActivitySection() {
         <Activity className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-semibold text-foreground">User Activity</h2>
         <span className="text-xs text-muted-foreground ml-2">
-          {loginEvents?.length ?? 0} login events tracked
+          {totalCount ?? loginEvents?.length ?? 0} login events tracked
         </span>
       </div>
 

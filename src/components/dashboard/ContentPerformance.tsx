@@ -56,7 +56,7 @@ function SortableHeader({
   const isActive = activeKey === sortKey;
   return (
     <th
-      className="text-right py-2 px-2 text-muted-foreground font-medium uppercase tracking-wider cursor-pointer select-none hover:text-foreground transition-colors"
+      className="text-right py-2 px-2 text-muted-foreground font-medium tracking-wider cursor-pointer select-none hover:text-foreground transition-colors"
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-1 justify-end">

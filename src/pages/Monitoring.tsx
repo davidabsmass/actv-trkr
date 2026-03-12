@@ -6,7 +6,7 @@ import { useOrg } from "@/hooks/use-org";
 import { format } from "date-fns";
 import {
   Activity, Globe, Shield, Link2, RefreshCw, AlertTriangle, CheckCircle2,
-  XCircle, Plus, Trash2, Bell, ChevronRight, ExternalLink,
+  XCircle, Plus, Trash2, Bell, ChevronRight, ExternalLink, FileSearch, EyeOff,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

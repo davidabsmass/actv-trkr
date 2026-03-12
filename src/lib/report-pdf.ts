@@ -317,35 +317,88 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
     const footerH = 8;
     const printableH = pageH - margin * 2 - headerH - footerH;
 
-    // Calculate how tall the content is in mm, based on the canvas aspect ratio
     const imgW = canvas.width;
     const imgH = canvas.height;
     const contentHmm = (imgH / imgW) * contentW;
+    const pxPerMm = imgH / contentHmm;
+
+    // Find section boundaries by scanning for the 16px (margin-bottom) white gaps
+    // between section cards in the rendered canvas
+    const findBreakPoints = (): number[] => {
+      const ctx = canvas.getContext("2d")!;
+      const breaks: number[] = [];
+      const scanWidth = Math.min(imgW, 100); // scan left strip
+      const gapThreshold = Math.round(12 * (canvas.width / 680)); // ~12px gap in source units
+
+      for (let y = gapThreshold; y < imgH - gapThreshold; y += 2) {
+        // Check if this row is all-white (gap between sections)
+        const row = ctx.getImageData(10, y, scanWidth, 1).data;
+        let isWhite = true;
+        for (let x = 0; x < row.length; x += 4) {
+          if (row[x] < 250 || row[x + 1] < 250 || row[x + 2] < 250) {
+            isWhite = false;
+            break;
+          }
+        }
+        if (isWhite) {
+          // Avoid duplicate nearby breaks
+          if (breaks.length === 0 || y - breaks[breaks.length - 1] > gapThreshold) {
+            breaks.push(y);
+          }
+        }
+      }
+      return breaks;
+    };
+
+    const breakPoints = findBreakPoints();
+
+    // Build page slices using natural break points
+    const pageSlices: Array<{ srcY: number; srcH: number }> = [];
+    let currentY = 0;
+    const maxSliceH = Math.round(printableH * pxPerMm);
+
+    while (currentY < imgH) {
+      const idealEnd = currentY + maxSliceH;
+
+      if (idealEnd >= imgH) {
+        // Last page
+        pageSlices.push({ srcY: currentY, srcH: imgH - currentY });
+        break;
+      }
+
+      // Find the nearest break point before idealEnd (with some tolerance)
+      let bestBreak = idealEnd;
+      const searchStart = idealEnd - Math.round(maxSliceH * 0.25); // look back up to 25%
+      for (let i = breakPoints.length - 1; i >= 0; i--) {
+        if (breakPoints[i] <= idealEnd && breakPoints[i] >= searchStart) {
+          bestBreak = breakPoints[i];
+          break;
+        }
+      }
+
+      const sliceH = bestBreak - currentY;
+      if (sliceH <= 0) break;
+      pageSlices.push({ srcY: currentY, srcH: sliceH });
+      currentY += sliceH;
+    }
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const totalPages = Math.ceil(contentHmm / printableH);
+    const totalPages = pageSlices.length;
 
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) doc.addPage();
+      const { srcY, srcH } = pageSlices[page];
 
-      // Slice out the portion of the canvas for this page
-      const srcY = Math.round((page * printableH / contentHmm) * imgH);
-      const srcH = Math.round((printableH / contentHmm) * imgH);
-      const actualSrcH = Math.min(srcH, imgH - srcY);
-
-      if (actualSrcH <= 0) break;
-
-      // Create a page-sized canvas slice
       const pageCanvas = document.createElement("canvas");
       pageCanvas.width = imgW;
-      pageCanvas.height = actualSrcH;
+      pageCanvas.height = srcH;
       const ctx = pageCanvas.getContext("2d")!;
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, imgW, actualSrcH);
-      ctx.drawImage(canvas, 0, srcY, imgW, actualSrcH, 0, 0, imgW, actualSrcH);
+      ctx.fillRect(0, 0, imgW, srcH);
+      ctx.drawImage(canvas, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
 
       const sliceDataUrl = pageCanvas.toDataURL("image/png");
-      const sliceHmm = (actualSrcH / imgW) * contentW;
+      const sliceHmm = (srcH / imgW) * contentW;
 
       doc.addImage(sliceDataUrl, "PNG", margin, margin + headerH, contentW, sliceHmm);
 

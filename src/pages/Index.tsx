@@ -69,7 +69,7 @@ const Index = () => {
     const isRecovery = hashParams.get('type') === 'recovery' || urlParams.get('type') === 'recovery';
     const hasTokens = hashParams.has('access_token') || urlParams.has('code');
     if (isRecovery && hasTokens) {
-      navigate(`/auth${window.location.search}${window.location.hash}`, { replace: true });
+      navigate(`/reset-password${window.location.search}${window.location.hash}`, { replace: true });
     }
   }, [navigate]);
 

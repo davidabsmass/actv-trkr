@@ -17,6 +17,10 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
         setSession(session);
+        // Log login event (fire-and-forget)
+        if (event === "SIGNED_IN" && session) {
+          supabase.functions.invoke("log-login").catch(() => {});
+        }
       } else if (event === "SIGNED_OUT") {
         setSession(null);
         queryClient.clear();

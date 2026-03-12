@@ -1115,6 +1115,39 @@ export type Database = {
           },
         ]
       }
+      login_events: {
+        Row: {
+          email: string | null
+          full_name: string | null
+          id: string
+          ip_address: string | null
+          logged_in_at: string
+          org_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          ip_address?: string | null
+          logged_in_at?: string
+          org_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          ip_address?: string | null
+          logged_in_at?: string
+          org_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       monitoring_alerts: {
         Row: {
           alert_type: string

@@ -642,3 +642,133 @@ function AddRenewalDialog({ onAdd }: { onAdd: (values: { type: string; provider_
     </Dialog>
   );
 }
+
+// ─── Form Checks Tab ────────────────────────────────────────────
+
+function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
+  const queryClient = useQueryClient();
+
+  const { data: checks, isLoading } = useQuery({
+    queryKey: ["form_health_checks", siteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("form_health_checks")
+        .select("*, forms(name, provider, external_form_id)")
+        .eq("site_id", siteId)
+        .eq("org_id", orgId);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: forms } = useQuery({
+    queryKey: ["site_forms_for_checks", siteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("forms")
+        .select("id, name, page_url")
+        .eq("site_id", siteId)
+        .eq("org_id", orgId)
+        .eq("archived", false);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  if (isLoading) {
+    return <div className="glass-card p-6 animate-pulse"><div className="h-20 bg-muted rounded" /></div>;
+  }
+
+  const checksMap = new Map((checks || []).map(c => [c.form_id, c]));
+
+  return (
+    <div className="glass-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <FileSearch className="h-4 w-4" /> Form Liveness Checks
+        </h3>
+        <TriggerSyncButton siteId={siteId} />
+      </div>
+
+      {(!forms || forms.length === 0) ? (
+        <p className="text-xs text-muted-foreground">No forms discovered for this site yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {forms.map(form => {
+            const check = checksMap.get(form.id);
+            const isRendered = check ? check.is_rendered : null;
+            const lastChecked = check?.last_checked_at;
+
+            return (
+              <div key={form.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-1.5 rounded-md ${isRendered === false ? "bg-destructive/10" : isRendered === true ? "bg-success/10" : "bg-muted"}`}>
+                    {isRendered === false ? (
+                      <EyeOff className="h-3.5 w-3.5 text-destructive" />
+                    ) : isRendered === true ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                    ) : (
+                      <FileSearch className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{form.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {form.page_url || "No page URL detected"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right ml-3">
+                  <Badge variant={isRendered === false ? "destructive" : isRendered === true ? "default" : "outline"}>
+                    {isRendered === false ? "Not Found" : isRendered === true ? "Detected" : "Pending"}
+                  </Badge>
+                  {lastChecked && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {format(new Date(lastChecked), "MMM d, HH:mm")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground mt-4">
+        The plugin checks each form's page hourly to verify the form HTML is still present. Forms behind logins or modals may not be detected.
+      </p>
+    </div>
+  );
+}
+
+// ─── Trigger Sync Button ────────────────────────────────────────
+
+function TriggerSyncButton({ siteId }: { siteId: string }) {
+  const [syncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
+        body: { site_id: siteId },
+      });
+      if (error) throw error;
+      toast({ title: "Sync triggered", description: "Form health checks will update shortly." });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
+      }, 5000);
+    } catch (err: any) {
+      toast({ title: "Sync failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="gap-1">
+      <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+      {syncing ? "Syncing…" : "Re-check Now"}
+    </Button>
+  );
+}

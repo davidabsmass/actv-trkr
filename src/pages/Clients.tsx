@@ -545,7 +545,7 @@ function UserActivitySection() {
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground mb-1">Total Logins</p>
-              <p className="text-2xl font-bold text-foreground">{loginEvents?.length ?? 0}</p>
+              <p className="text-2xl font-bold text-foreground">{totalCount ?? loginEvents?.length ?? 0}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground mb-1">Last Activity</p>

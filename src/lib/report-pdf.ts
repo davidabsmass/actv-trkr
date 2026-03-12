@@ -202,7 +202,8 @@ function buildReportHtml(report: any): string {
   html += `</div>`;
   html += sectionEnd;
 
-  // Conversion Intelligence
+  // Conversion Intelligence — force page break before
+  html += `<div class="force-page-break" style="height:4px"></div>`;
   html += sectionStart("📊", "Conversion Intelligence");
   if (ci.leadsByForm?.length > 0) {
     html += `<div style="margin-bottom:16px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:8px">Leads by Form</div>`;

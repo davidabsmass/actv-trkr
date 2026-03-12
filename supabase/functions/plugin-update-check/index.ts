@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.3.0: active time-on-page, click tracking, broken link scanning, form probes
-const LATEST_VERSION = "1.3.0";
+const LATEST_VERSION = "1.3.1";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.1
+- Reduced heartbeat interval from 10s to 30s for lower resource usage
+- Added cache headers to plugin update checks
+
 ## 1.3.0
 - Active time-on-page tracking with focus-aware heartbeats
 - Intent-based click tracking (CTAs, downloads, outbound links)
@@ -79,7 +83,7 @@ Deno.serve(async (req) => {
             : "You are running the latest version.",
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
         }
       );
     }
@@ -103,7 +107,7 @@ Deno.serve(async (req) => {
           },
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
         }
       );
     }

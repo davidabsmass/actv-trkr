@@ -1,18 +1,25 @@
 
 
-## Plan: Reduce Costs — Heartbeat Interval + Plugin Update Caching
+## SSL & Domain Renewal Reliability — Implemented
 
-### Changes
+### What was done
 
-**1. Increase heartbeat interval from 10s → 30s** (`mission-metrics-wp-plugin/assets/tracker.js`)
-- Change `HEARTBEAT_INTERVAL` from `10000` to `30000`
-- This cuts time-update edge function calls by ~66%
+1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
+   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
+   - `check-uptime` runs **every 10 minutes**
+   - `check-renewals` runs daily at 06:00 UTC
 
-**2. Add `Cache-Control` headers to `plugin-update-check`** (`supabase/functions/plugin-update-check/index.ts`)
-- Add `Cache-Control: public, max-age=3600` (1 hour) to both `check` and `info` responses
-- The WordPress updater already uses a 12-hour transient (`CHECK_HOURS = 12`), but the cache header ensures CDN/browser-level caching too, reducing redundant function invocations
+2. **Retry logic** added to `check-domain-ssl` edge function:
+   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
+   - 15-second timeout per request
+   - Detailed console logging for debugging
 
-**3. Bump plugin version to 1.3.1** (`supabase/functions/plugin-update-check/index.ts`)
-- Update `LATEST_VERSION` to `"1.3.1"` and add a changelog entry noting the heartbeat optimization
-- This ensures existing installs pick up the new tracker.js via the auto-update mechanism
+3. **False downtime prevention**:
+   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
+   - Cleaned up 11 false DOWNTIME incidents and related alerts
 
+4. **"Check Now" button** on the Monitoring page triggers on-demand checks
+
+### Extensions enabled
+- `pg_cron` (scheduling)
+- `pg_net` (HTTP calls from SQL)

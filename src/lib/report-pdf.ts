@@ -66,15 +66,17 @@ function buildReportHtml(report: any): string {
     const top = (items || []).slice(0, max);
     const maxCount = top[0]?.count || 1;
     return top.map((item, i) => `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0">${i + 1}</span>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;gap:12px">
-            <span style="font-size:11px;font-weight:500;color:#00264d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${safe(item.label)}</span>
-            <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums">${fmtNum(item.count)}</span>
-          </div>
-          <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden">
-            <div style="height:100%;background:rgba(99,91,255,0.5);border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
+      <div style="display:block;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0">${i + 1}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px">
+              <span style="font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.4">${safe(item.label)}</span>
+              <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.4">${fmtNum(item.count)}</span>
+            </div>
+            <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden;margin-top:0">
+              <div style="height:100%;background:rgba(99,91,255,0.5);border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
+            </div>
           </div>
         </div>
       </div>`).join("");
@@ -109,7 +111,8 @@ function buildReportHtml(report: any): string {
     html += sectionEnd;
   }
 
-  // Executive Summary
+  // Executive Summary — force page break before
+  html += `<div class="force-page-break" style="height:4px"></div>`;
   html += sectionStart("◎", "Executive Summary");
   html += `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">`;
   html += kpiCard("Leads", es.leads.current, es.leads.change);
@@ -199,7 +202,8 @@ function buildReportHtml(report: any): string {
   html += `</div>`;
   html += sectionEnd;
 
-  // Conversion Intelligence
+  // Conversion Intelligence — force page break before
+  html += `<div class="force-page-break" style="height:4px"></div>`;
   html += sectionStart("📊", "Conversion Intelligence");
   if (ci.leadsByForm?.length > 0) {
     html += `<div style="margin-bottom:16px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:8px">Leads by Form</div>`;
@@ -296,7 +300,13 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
   document.body.appendChild(container);
 
   // Wait for rendering
-  await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 150));
+
+  // Collect forced page-break positions from DOM before rasterizing
+  const forceBreakEls = container.querySelectorAll('.force-page-break');
+  const forcedBreakOffsets = Array.from(forceBreakEls).map(
+    (el) => (el as HTMLElement).offsetTop
+  );
 
   try {
     const canvas = await html2canvas(container, {
@@ -350,33 +360,54 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
       return breaks;
     };
 
-    const breakPoints = findBreakPoints();
+    const naturalBreaks = findBreakPoints();
 
-    // Build page slices using natural break points
+    // Convert DOM-measured forced break offsets to canvas pixel positions
+    const scale = canvas.width / 680;
+    const forcedBreaksPx = forcedBreakOffsets.map((o) => Math.round(o * scale));
+
+    // Build page slices: forced breaks always trigger a new page,
+    // natural breaks prevent cutting sections in half.
     const pageSlices: Array<{ srcY: number; srcH: number }> = [];
     let currentY = 0;
     const maxSliceH = Math.round(printableH * pxPerMm);
+
+    // Sort all forced breaks ascending
+    const sortedForced = [...forcedBreaksPx].sort((a, b) => a - b);
 
     while (currentY < imgH) {
       const idealEnd = currentY + maxSliceH;
 
       if (idealEnd >= imgH) {
-        // Last page
         pageSlices.push({ srcY: currentY, srcH: imgH - currentY });
         break;
       }
 
-      // Find the nearest break point before idealEnd (with some tolerance)
-      let bestBreak = idealEnd;
-      const searchStart = idealEnd - Math.round(maxSliceH * 0.25); // look back up to 25%
-      for (let i = breakPoints.length - 1; i >= 0; i--) {
-        if (breakPoints[i] <= idealEnd && breakPoints[i] >= searchStart) {
-          bestBreak = breakPoints[i];
+      // Check if any forced break falls within [currentY+1 .. idealEnd]
+      let breakAt = -1;
+      for (const fb of sortedForced) {
+        if (fb <= currentY) continue;
+        if (fb <= idealEnd) {
+          // Always break at the FIRST forced break within this page
+          breakAt = fb;
           break;
         }
+        break; // no more forced breaks in range
       }
 
-      const sliceH = bestBreak - currentY;
+      if (breakAt < 0) {
+        // No forced break — use the nearest natural break before idealEnd
+        const searchStart = idealEnd - Math.round(maxSliceH * 0.35);
+        for (let i = naturalBreaks.length - 1; i >= 0; i--) {
+          if (naturalBreaks[i] <= idealEnd && naturalBreaks[i] >= searchStart) {
+            breakAt = naturalBreaks[i];
+            break;
+          }
+        }
+        if (breakAt < 0) breakAt = idealEnd;
+      }
+
+      const sliceH = breakAt - currentY;
       if (sliceH <= 0) break;
       pageSlices.push({ srcY: currentY, srcH: sliceH });
       currentY += sliceH;

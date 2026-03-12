@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { FileText, Info } from "lucide-react";
+import { useMemo, useState } from "react";
+import { FileText, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DeviceData {
@@ -10,6 +10,7 @@ interface FormStat {
   name: string;
   submissions: number;
   sessions: number;
+  cvr: number;
   deviceSplit?: { desktop: number; mobile: number } | null;
 }
 
@@ -20,12 +21,33 @@ interface FormLeaderboardProps {
   deviceData?: DeviceData;
 }
 
+type SortKey = "submissions" | "cvr" | "desktop" | "mobile";
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return null;
+  return dir === "desc"
+    ? <ChevronDown className="h-3 w-3 text-primary" />
+    : <ChevronUp className="h-3 w-3 text-primary" />;
+}
+
 export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLeaderboardProps) {
+  const [sortKey, setSortKey] = useState<SortKey>("submissions");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
   const stats = useMemo(() => {
     const formMap: Record<string, FormStat> = {};
     const activeForms = forms.filter((f) => !f.archived);
     activeForms.forEach((f) => {
-      // Compute device split from real data if available
       let deviceSplit: { desktop: number; mobile: number } | null = null;
       if (deviceData && deviceData[f.id]) {
         const d = deviceData[f.id];
@@ -42,6 +64,7 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
         name: f.name,
         submissions: 0,
         sessions,
+        cvr: 0,
         deviceSplit,
       };
     });
@@ -52,9 +75,26 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
       }
     });
 
-    return Object.values(formMap)
-      .sort((a, b) => b.submissions - a.submissions);
-  }, [forms, leads, sessions, deviceData]);
+    // Compute CVR
+    Object.values(formMap).forEach((s) => {
+      s.cvr = s.sessions > 0 ? (s.submissions / s.sessions) * 100 : 0;
+    });
+
+    const arr = Object.values(formMap);
+
+    arr.sort((a, b) => {
+      let av: number, bv: number;
+      switch (sortKey) {
+        case "submissions": av = a.submissions; bv = b.submissions; break;
+        case "cvr": av = a.cvr; bv = b.cvr; break;
+        case "desktop": av = a.deviceSplit?.desktop ?? -1; bv = b.deviceSplit?.desktop ?? -1; break;
+        case "mobile": av = a.deviceSplit?.mobile ?? -1; bv = b.deviceSplit?.mobile ?? -1; break;
+      }
+      return sortDir === "desc" ? bv - av : av - bv;
+    });
+
+    return arr;
+  }, [forms, leads, sessions, deviceData, sortKey, sortDir]);
 
   if (stats.length === 0) {
     return null;
@@ -73,12 +113,14 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
           <thead>
             <tr className="border-b border-border">
               <th className="text-left py-2 text-xs font-medium text-muted-foreground">Form</th>
-              <th className="text-right py-2 text-xs font-medium text-muted-foreground">Submissions</th>
-              <th className="text-right py-2 text-xs font-medium text-muted-foreground">
+              <th className="text-right py-2 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("submissions")}>
+                <span className="inline-flex items-center gap-1 justify-end">Submissions <SortIcon active={sortKey === "submissions"} dir={sortDir} /></span>
+              </th>
+              <th className="text-right py-2 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("cvr")}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 cursor-help">
-                      Site CVR <Info className="h-3 w-3" />
+                    <span className="inline-flex items-center gap-1 cursor-help justify-end">
+                      Site CVR <Info className="h-3 w-3" /> <SortIcon active={sortKey === "cvr"} dir={sortDir} />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[220px] text-xs">
@@ -86,27 +128,28 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
                   </TooltipContent>
                 </Tooltip>
               </th>
-              <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell">Desktop</th>
-              <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell">Mobile</th>
+              <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("desktop")}>
+                <span className="inline-flex items-center gap-1 justify-end">Desktop <SortIcon active={sortKey === "desktop"} dir={sortDir} /></span>
+              </th>
+              <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("mobile")}>
+                <span className="inline-flex items-center gap-1 justify-end">Mobile <SortIcon active={sortKey === "mobile"} dir={sortDir} /></span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {stats.map((s) => {
-              const cvr = s.sessions > 0 ? (s.submissions / s.sessions) * 100 : 0;
-              return (
-                <tr key={s.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                  <td className="py-2.5 font-medium text-foreground">{s.name}</td>
-                  <td className="py-2.5 text-right font-mono-data">{s.submissions}</td>
-                  <td className="py-2.5 text-right font-mono-data">{cvr.toFixed(1)}%</td>
-                  <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
-                    {s.deviceSplit ? `${s.deviceSplit.desktop}%` : "—"}
-                  </td>
-                  <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
-                    {s.deviceSplit ? `${s.deviceSplit.mobile}%` : "—"}
-                  </td>
-                </tr>
-              );
-            })}
+            {stats.map((s) => (
+              <tr key={s.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                <td className="py-2.5 font-medium text-foreground">{s.name}</td>
+                <td className="py-2.5 text-right font-mono-data">{s.submissions}</td>
+                <td className="py-2.5 text-right font-mono-data">{s.cvr.toFixed(1)}%</td>
+                <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
+                  {s.deviceSplit ? `${s.deviceSplit.desktop}%` : "—"}
+                </td>
+                <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
+                  {s.deviceSplit ? `${s.deviceSplit.mobile}%` : "—"}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

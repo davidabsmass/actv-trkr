@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.1
+- Reduced heartbeat interval from 10s to 30s for lower resource usage
+- Added cache headers to plugin update checks
+
 ## 1.3.0
 - Active time-on-page tracking with focus-aware heartbeats
 - Intent-based click tracking (CTAs, downloads, outbound links)

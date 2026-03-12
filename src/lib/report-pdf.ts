@@ -66,15 +66,17 @@ function buildReportHtml(report: any): string {
     const top = (items || []).slice(0, max);
     const maxCount = top[0]?.count || 1;
     return top.map((item, i) => `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0">${i + 1}</span>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;gap:12px">
-            <span style="font-size:11px;font-weight:500;color:#00264d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${safe(item.label)}</span>
-            <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums">${fmtNum(item.count)}</span>
-          </div>
-          <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden">
-            <div style="height:100%;background:rgba(99,91,255,0.5);border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
+      <div style="display:block;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0">${i + 1}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px">
+              <span style="font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.4">${safe(item.label)}</span>
+              <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.4">${fmtNum(item.count)}</span>
+            </div>
+            <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden;margin-top:0">
+              <div style="height:100%;background:rgba(99,91,255,0.5);border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
+            </div>
           </div>
         </div>
       </div>`).join("");

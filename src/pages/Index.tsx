@@ -473,7 +473,7 @@ const Index = () => {
               </Button>
             </div>
 
-            <p className="text-center text-sm text-white/60 mt-6" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+            <p className="text-center text-sm text-muted-foreground mt-6" style={{ fontFamily: "'BR Omega', sans-serif" }}>
               No bloated analytics stack. No scattered reports. Just clear visibility into what your website is doing.
             </p>
           </div>

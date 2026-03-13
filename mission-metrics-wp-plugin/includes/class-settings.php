@@ -11,7 +11,7 @@ class MM_Settings {
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'wp_ajax_mm_test_connection', array( __CLASS__, 'ajax_test_connection' ) );
 		add_action( 'wp_ajax_mm_sync_forms', array( __CLASS__, 'ajax_sync_forms' ) );
-		add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ) );
+		
 	}
 
 	public static function defaults() {

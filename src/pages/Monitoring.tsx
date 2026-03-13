@@ -643,17 +643,40 @@ function TriggerSyncButton({ siteId }: { siteId: string }) {
         body: { site_id: siteId },
       });
       if (error) throw error;
-      toast({ title: "Sync triggered", description: "Form health checks will update shortly." });
-      setTimeout(() => {
+
+      if (data?.fallback) {
+        toast({
+          title: "Form checks refreshed",
+          description: `Checked ${data.checked || 0} form(s)${data.updatedPageUrls ? ` · mapped ${data.updatedPageUrls} page URL(s)` : ""}.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] });
         queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
-      }, 5000);
+      } else {
+        toast({ title: "Sync triggered", description: "Form health checks will update shortly." });
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] });
+          queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
+        }, 2000);
+      }
     } catch (err: any) {
-      const msg = err.message || "";
-      const isPluginIssue = msg.includes("404") || msg.includes("rest_no_route");
+      let msg = err?.message || "Sync failed";
+
+      if (err?.context instanceof Response) {
+        const body = await err.context.json().catch(() => null);
+        if (body?.error) {
+          msg = body.details ? `${body.error}: ${body.details}` : body.error;
+        }
+      }
+
+      const isPluginIssue =
+        msg.includes("404") ||
+        msg.includes("rest_no_route") ||
+        msg.toLowerCase().includes("wordpress sync route unavailable");
+
       toast({
         title: "Sync failed",
         description: isPluginIssue
-          ? "The ACTV TRKR plugin may need to be updated or re-activated on this WordPress site."
+          ? "The WordPress plugin on this site is outdated or inactive; update/re-activate it, then retry."
           : msg,
         variant: "destructive",
       });

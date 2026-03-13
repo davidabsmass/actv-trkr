@@ -223,18 +223,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     },
   });
 
-  const { data: renewals } = useQuery({
-    queryKey: ["renewals", site.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("renewals")
-        .select("*")
-        .eq("site_id", site.id)
-        .order("renewal_date", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-  });
+
 
   const { data: notifRules } = useQuery({
     queryKey: ["notif_rules", site.id],

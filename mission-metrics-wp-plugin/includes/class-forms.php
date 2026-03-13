@@ -177,6 +177,9 @@ class MM_Forms {
 			return array( 'synced' => 0, 'discovered' => 0 );
 		}
 
+		// Discover page URLs for each form by scanning post content
+		$discovered = self::enrich_with_page_urls( $discovered );
+
 		// Send to sync-forms endpoint
 		$opts     = MM_Settings::get();
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-forms';

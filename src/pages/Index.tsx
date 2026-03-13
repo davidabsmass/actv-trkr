@@ -11,6 +11,17 @@ import {
   Target, 
   Layers,
   Eye,
+  Globe,
+  Link2,
+  Lock,
+  CalendarClock,
+  Download,
+  Share2,
+  Sparkles,
+  FileText,
+  TrendingUp,
+  Search,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";

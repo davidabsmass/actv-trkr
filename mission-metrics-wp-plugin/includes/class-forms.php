@@ -743,7 +743,7 @@ class MM_Forms {
 			'entry'    => array(
 				'form_id'      => $form_data['form_id'] ?? '',
 				'form_title'   => $form_data['settings']['title'] ?? 'Ninja Form',
-				'entry_id'     => 'ninja_' . time() . '_' . wp_rand(),
+				'entry_id'     => self::get_ninja_db_entry_id( $form_data ),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),
 			),

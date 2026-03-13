@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {

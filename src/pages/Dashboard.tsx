@@ -353,15 +353,7 @@ const Dashboard = () => {
     : null;
   const lastHeartbeat = sitesData?.[0]?.last_heartbeat_at;
 
-  const revenueImpact = useMemo(() => {
-    if (!formsData || !thisWeekData) return null;
-    const totalValue = formsData.reduce((sum, f) => {
-      if (f.archived || !f.estimated_value) return sum;
-      return sum + (f.estimated_value * (wowData.leads.current || 0));
-    }, 0);
-    if (totalValue === 0) return null;
-    return totalValue;
-  }, [formsData, thisWeekData, wowData]);
+
 
   const snapshotData = useMemo(() => ({
     kpis: processedData.kpis, wowData, orgName,

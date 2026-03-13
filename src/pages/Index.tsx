@@ -343,20 +343,31 @@ const Index = () => {
         />
 
         <div className="max-w-3xl mx-auto relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="font-normal text-white mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+          <div className="text-center mb-6">
+            <h2 className="font-normal text-white mb-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Simple Pricing
             </h2>
             <p className="text-white/70 max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
               ACTV TRKR
             </p>
+
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <span className={`text-sm font-medium ${!isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Monthly</span>
+              <button
+                onClick={() => setIsAnnual(!isAnnual)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isAnnual ? 'bg-primary' : 'bg-white/20'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-5' : ''}`} />
+              </button>
+              <span className={`text-sm font-medium ${isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-primary text-xs font-semibold">Save 17%</span></span>
+            </div>
           </div>
 
-          <div className="max-w-lg mx-auto" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
+          <div className="max-w-lg mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col">
               <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">$25</span>
-                <span className="text-muted-foreground text-sm">/month</span>
+                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$250' : '$25'}</span>
+                <span className="text-muted-foreground text-sm">{isAnnual ? '/year' : '/month'}</span>
               </div>
               
               <p className="text-sm text-muted-foreground mb-6">

@@ -431,7 +431,7 @@ const Index = () => {
               </p>
               
               <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>
-              <div className="grid grid-cols-3 gap-x-6 gap-y-3 flex-1">
+              <div className="columns-3 gap-x-6 space-y-3 flex-1">
                 {[
                   "1 website",
                   "Traffic source tracking",

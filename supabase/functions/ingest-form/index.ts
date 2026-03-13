@@ -167,27 +167,51 @@ Deno.serve(async (req) => {
       if (dataEntry?.value && typesEntry?.value && providerName === "avada") {
         // Parse Avada comma-separated format
         const SKIP_AVADA_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page", "checkbox"]);
-        const values = dataEntry.value.split(", ").map((v: string) => v.trim());
         const types = typesEntry.value.split(", ").map((t: string) => t.trim());
         const labelsEntry = fields.find((f: any) => f.name === "field_labels" || f.label === "field_labels");
         const rawLabels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
         const allLabelsEmpty = rawLabels.every((l: string) => !l || l === "");
 
-        const flatRows: any[] = [];
-        let valueIdx = 0;
+        // Count non-skip field types to know expected value count
+        const realTypes: { type: string; index: number }[] = [];
         for (let i = 0; i < types.length; i++) {
-          const type = types[i]?.toLowerCase();
-          if (SKIP_AVADA_TYPES.has(type)) continue;
-          const val = values[valueIdx] || "";
-          valueIdx++;
+          if (!SKIP_AVADA_TYPES.has(types[i]?.toLowerCase())) {
+            realTypes.push({ type: types[i], index: i });
+          }
+        }
+
+        // Smart split: split from front, last field gets all remaining text
+        // This handles commas inside message/textarea fields
+        const rawDataStr = dataEntry.value as string;
+        const fieldValues: string[] = [];
+        let remaining = rawDataStr;
+        for (let fi = 0; fi < realTypes.length; fi++) {
+          if (fi === realTypes.length - 1) {
+            fieldValues.push(remaining.trim());
+          } else {
+            const commaIdx = remaining.indexOf(", ");
+            if (commaIdx === -1) {
+              fieldValues.push(remaining.trim());
+              remaining = "";
+            } else {
+              fieldValues.push(remaining.substring(0, commaIdx).trim());
+              remaining = remaining.substring(commaIdx + 2);
+            }
+          }
+        }
+
+        const flatRows: any[] = [];
+        for (let fi = 0; fi < realTypes.length; fi++) {
+          const type = realTypes[fi].type.toLowerCase();
+          const val = fieldValues[fi] || "";
           if (!val || val === "Array") continue;
 
           let label: string;
-          const rawLabel = rawLabels[valueIdx - 1] || "";
+          const rawLabel = rawLabels[realTypes[fi].index] || "";
           if (rawLabel && !allLabelsEmpty) {
             label = rawLabel;
           } else {
-            label = inferAvadaFieldName(type, val, valueIdx);
+            label = inferAvadaFieldName(type, val, fi + 1);
           }
 
           flatRows.push({

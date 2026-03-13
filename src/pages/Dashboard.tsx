@@ -408,7 +408,7 @@ const Dashboard = () => {
     };
 
     return focusOrder[primaryFocus] || focusOrder.lead_volume;
-  }, [siteUp, lastHeartbeat, wowData, revenueImpact, primaryFocus]);
+  }, [siteUp, lastHeartbeat, wowData, primaryFocus]);
 
   return (
     <div>

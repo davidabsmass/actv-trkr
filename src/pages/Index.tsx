@@ -419,7 +419,7 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="max-w-lg mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
+          <div className="max-w-4xl mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col">
               <div className="mb-1">
                 <span className="text-3xl font-bold text-foreground">{isAnnual ? '$250' : '$25'}</span>
@@ -431,7 +431,7 @@ const Index = () => {
               </p>
               
               <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 flex-1">
+              <div className="grid grid-cols-3 gap-x-6 gap-y-3 flex-1">
                 {[
                   "1 website",
                   "Traffic source tracking",

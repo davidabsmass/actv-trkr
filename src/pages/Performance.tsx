@@ -52,7 +52,7 @@ const Performance = () => {
           cvr: { value: 0, delta: 0, label: "Conversion Rate" },
         },
         dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
-        forecast: { sufficient_data: false, days_until_available: 42, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
+        
       };
     }
 

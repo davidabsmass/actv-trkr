@@ -390,16 +390,7 @@ const Dashboard = () => {
         icon={<BarChart3 className="h-5 w-5" />}
       />
     );
-    const revenueCard = revenueImpact !== null ? (
-      <StatusCard
-        key="revenue"
-        label="Revenue Impact"
-        value={`$${revenueImpact.toLocaleString()}`}
-        trend={pctChange(wowData.leads.current, wowData.leads.previous)}
-        sub="estimated"
-        icon={<Zap className="h-5 w-5" />}
-      />
-    ) : (
+    const sessionsCard = (
       <StatusCard
         key="sessions"
         label="Sessions (7d)"
@@ -410,10 +401,10 @@ const Dashboard = () => {
     );
 
     const focusOrder: Record<PrimaryFocus, React.ReactNode[]> = {
-      lead_volume: [leadsCard, cvrCard, siteCard, revenueCard],
-      marketing_impact: [revenueCard, siteCard, leadsCard, cvrCard],
-      conversion_performance: [cvrCard, leadsCard, siteCard, revenueCard],
-      paid_optimization: [revenueCard, cvrCard, leadsCard, siteCard],
+      lead_volume: [leadsCard, cvrCard, siteCard, sessionsCard],
+      marketing_impact: [sessionsCard, siteCard, leadsCard, cvrCard],
+      conversion_performance: [cvrCard, leadsCard, siteCard, sessionsCard],
+      paid_optimization: [sessionsCard, cvrCard, leadsCard, siteCard],
     };
 
     return focusOrder[primaryFocus] || focusOrder.lead_volume;

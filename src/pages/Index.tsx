@@ -149,11 +149,11 @@ const Index = () => {
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2 hero-copy-block">
                 <h1 className="hero-headline text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
-                  One Dashboard for<br />WordPress Insights
+                  WordPress Activity. Lead Tracking. Site Health.
                 </h1>
                 
                 <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">
-                  ACTV TRKR is an all-in-one WordPress intelligence platform that tracks visitor behavior, lead activity, form performance, and website health from one clean dashboard, giving you a clear view of what is working, where leads are coming from, and what needs attention before it costs you opportunities.
+                  ACTV TRKR gives you one clear dashboard for traffic, forms, lead attribution, reporting, and website health — so you can see what's working, what needs attention, and where your leads are really coming from.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">

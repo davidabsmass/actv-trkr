@@ -237,28 +237,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     },
   });
 
-  const addRenewal = useMutation({
-    mutationFn: async (values: { type: string; provider_name: string; renewal_date: string }) => {
-      const { error } = await supabase.from("renewals").insert({
-        site_id: site.id,
-        org_id: orgId!,
-        ...values,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["renewals", site.id] });
-      toast({ title: "Renewal added" });
-    },
-  });
 
-  const deleteRenewal = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("renewals").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["renewals", site.id] }),
-  });
 
   const toggleRule = useMutation({
     mutationFn: async ({ alertType, channel, enabled }: { alertType: string; channel: string; enabled: boolean }) => {

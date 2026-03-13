@@ -67,7 +67,8 @@ Deno.serve(async (req) => {
             .eq("org_id", orgId)
             .maybeSingle();
 
-          const retentionDays = settings?.raw_retention_days || 365;
+          // 60 days of live detailed data; aggregates remain for 12+ months
+          const retentionDays = settings?.raw_retention_days || 60;
           const archiveEnabled = settings?.archive_enabled !== false;
 
           if (archiveEnabled) {
@@ -76,14 +77,16 @@ Deno.serve(async (req) => {
             const cutoffStr = cutoff.toISOString().split("T")[0];
 
             const tables = [
-              { name: "pageviews", dateCol: "occurred_at" },
-              { name: "sessions", dateCol: "started_at" },
-              { name: "leads", dateCol: "submitted_at" },
+              { name: "pageviews", dateCol: "occurred_at", manifest: "pageviews" },
+              { name: "sessions", dateCol: "started_at", manifest: "sessions" },
+              { name: "leads", dateCol: "submitted_at", manifest: "form_submissions" },
+              { name: "events", dateCol: "occurred_at", manifest: "events" },
+              { name: "lead_events_raw", dateCol: "received_at", manifest: "lead_events" },
+              { name: "form_submission_logs", dateCol: "occurred_at", manifest: "form_events" },
             ] as const;
 
             for (const table of tables) {
-              const tableName = table.name === "leads" ? "form_submissions" : table.name;
-              await archiveTable(supabase, orgId, table.name, tableName, table.dateCol, cutoffStr);
+              await archiveTable(supabase, orgId, table.name, table.manifest, table.dateCol, cutoffStr);
             }
             orgResult.archive = "ok";
           }

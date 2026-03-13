@@ -187,20 +187,7 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
-  const { data: renewalsDue } = useQuery({
-    queryKey: ["renewals_due", orgId],
-    queryFn: async () => {
-      if (!orgId) return [];
-      const cutoff = format(subDays(new Date(), -30), "yyyy-MM-dd");
-      const { data, error } = await supabase
-        .from("renewals").select("type, renewal_date, provider_name")
-        .eq("org_id", orgId).eq("is_enabled", true)
-        .lte("renewal_date", cutoff).gte("renewal_date", format(new Date(), "yyyy-MM-dd"));
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!orgId,
-  });
+
 
   const isLoading = !realtimeData;
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
@@ -333,19 +320,9 @@ const Dashboard = () => {
       });
     }
 
-    // Renewals due
-    if (renewalsDue && renewalsDue.length > 0) {
-      items.push({
-        severity: "info",
-        label: `${renewalsDue.length} renewal${renewalsDue.length > 1 ? "s" : ""} due soon`,
-        detail: renewalsDue.map((r) => `${r.type}${r.provider_name ? ` (${r.provider_name})` : ""}`).join(", "),
-        link: "/monitoring",
-        linkLabel: "View renewals",
-      });
-    }
 
     return items;
-  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, renewalsDue]);
+  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains, expiringSSL]);
 
   // Status cards – focus-aware ordering
   const siteUp = sitesData && sitesData.length > 0
@@ -353,15 +330,7 @@ const Dashboard = () => {
     : null;
   const lastHeartbeat = sitesData?.[0]?.last_heartbeat_at;
 
-  const revenueImpact = useMemo(() => {
-    if (!formsData || !thisWeekData) return null;
-    const totalValue = formsData.reduce((sum, f) => {
-      if (f.archived || !f.estimated_value) return sum;
-      return sum + (f.estimated_value * (wowData.leads.current || 0));
-    }, 0);
-    if (totalValue === 0) return null;
-    return totalValue;
-  }, [formsData, thisWeekData, wowData]);
+
 
   const snapshotData = useMemo(() => ({
     kpis: processedData.kpis, wowData, orgName,
@@ -398,16 +367,7 @@ const Dashboard = () => {
         icon={<BarChart3 className="h-5 w-5" />}
       />
     );
-    const revenueCard = revenueImpact !== null ? (
-      <StatusCard
-        key="revenue"
-        label="Revenue Impact"
-        value={`$${revenueImpact.toLocaleString()}`}
-        trend={pctChange(wowData.leads.current, wowData.leads.previous)}
-        sub="estimated"
-        icon={<Zap className="h-5 w-5" />}
-      />
-    ) : (
+    const sessionsCard = (
       <StatusCard
         key="sessions"
         label="Sessions (7d)"
@@ -418,14 +378,14 @@ const Dashboard = () => {
     );
 
     const focusOrder: Record<PrimaryFocus, React.ReactNode[]> = {
-      lead_volume: [leadsCard, cvrCard, siteCard, revenueCard],
-      marketing_impact: [revenueCard, siteCard, leadsCard, cvrCard],
-      conversion_performance: [cvrCard, leadsCard, siteCard, revenueCard],
-      paid_optimization: [revenueCard, cvrCard, leadsCard, siteCard],
+      lead_volume: [leadsCard, cvrCard, siteCard, sessionsCard],
+      marketing_impact: [sessionsCard, siteCard, leadsCard, cvrCard],
+      conversion_performance: [cvrCard, leadsCard, siteCard, sessionsCard],
+      paid_optimization: [sessionsCard, cvrCard, leadsCard, siteCard],
     };
 
     return focusOrder[primaryFocus] || focusOrder.lead_volume;
-  }, [siteUp, lastHeartbeat, wowData, revenueImpact, primaryFocus]);
+  }, [siteUp, lastHeartbeat, wowData, primaryFocus]);
 
   return (
     <div>
@@ -511,7 +471,7 @@ const Dashboard = () => {
       )}
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
         <BarChart3 className="h-3.5 w-3.5" />
-        <span>Live data • Auto-refreshes every 15s</span>
+        <span>Fresh data • Auto-refreshes every 15s</span>
       </div>
     </div>
   );

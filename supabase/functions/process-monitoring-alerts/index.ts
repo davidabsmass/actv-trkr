@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
           const ruleMap = new Map((rules || []).map(r => [r.channel, r.is_enabled]));
 
           // Determine which channels to send to
-          const channels = ["in_app", "email", "sms"];
+          const channels = ["in_app", "email"];
 
           for (const channel of channels) {
             // Rule must be enabled (default: in_app is always on)

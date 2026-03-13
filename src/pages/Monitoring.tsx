@@ -223,18 +223,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     },
   });
 
-  const { data: renewals } = useQuery({
-    queryKey: ["renewals", site.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("renewals")
-        .select("*")
-        .eq("site_id", site.id)
-        .order("renewal_date", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-  });
+
 
   const { data: notifRules } = useQuery({
     queryKey: ["notif_rules", site.id],
@@ -248,28 +237,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     },
   });
 
-  const addRenewal = useMutation({
-    mutationFn: async (values: { type: string; provider_name: string; renewal_date: string }) => {
-      const { error } = await supabase.from("renewals").insert({
-        site_id: site.id,
-        org_id: orgId!,
-        ...values,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["renewals", site.id] });
-      toast({ title: "Renewal added" });
-    },
-  });
 
-  const deleteRenewal = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("renewals").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["renewals", site.id] }),
-  });
 
   const toggleRule = useMutation({
     mutationFn: async ({ alertType, channel, enabled }: { alertType: string; channel: string; enabled: boolean }) => {
@@ -285,8 +253,8 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notif_rules", site.id] }),
   });
 
-  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING", "RENEWAL_DUE"];
-  const channels = ["in_app", "email", "sms"];
+  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING"];
+  const channels = ["in_app", "email"];
 
   const getRuleEnabled = (alertType: string, channel: string) => {
     return notifRules?.find(r => r.alert_type === alertType && r.channel === channel)?.is_enabled ?? false;
@@ -312,7 +280,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           <TabsTrigger value="form-checks">Form Checks</TabsTrigger>
           <TabsTrigger value="broken-links">Broken Links</TabsTrigger>
           <TabsTrigger value="domain-ssl">Domain & SSL</TabsTrigger>
-          <TabsTrigger value="renewals">Renewals</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
 
@@ -458,45 +426,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           </div>
         </TabsContent>
 
-        {/* Renewals */}
-        <TabsContent value="renewals" className="space-y-4">
-          <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <RefreshCw className="h-4 w-4" /> Renewals
-              </h3>
-              <AddRenewalDialog onAdd={(values) => addRenewal.mutate(values)} />
-            </div>
 
-            {(!renewals || renewals.length === 0) ? (
-              <p className="text-xs text-muted-foreground">No renewals tracked yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {renewals.map(r => {
-                  const daysUntil = r.renewal_date ? Math.ceil((new Date(r.renewal_date).getTime() - Date.now()) / 86400000) : null;
-                  return (
-                    <div key={r.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <div>
-                        <p className="text-sm text-foreground font-medium">{r.provider_name || r.type}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{r.type} • {r.renewal_date || "No date"}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {daysUntil !== null && (
-                          <Badge variant={daysUntil <= 14 ? "destructive" : "outline"}>
-                            {daysUntil}d
-                          </Badge>
-                        )}
-                        <button onClick={() => deleteRenewal.mutate(r.id)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </TabsContent>
 
         {/* Notifications */}
         <TabsContent value="notifications" className="space-y-4">
@@ -601,47 +531,7 @@ function CheckDomainSslButton() {
 
 // ─── Add Renewal Dialog ─────────────────────────────────────────
 
-function AddRenewalDialog({ onAdd }: { onAdd: (values: { type: string; provider_name: string; renewal_date: string }) => void }) {
-  const [open, setOpen] = useState(false);
-  const [type, setType] = useState("hosting");
-  const [provider, setProvider] = useState("");
-  const [date, setDate] = useState("");
 
-  const handleSubmit = () => {
-    if (!date) return;
-    onAdd({ type, provider_name: provider, renewal_date: date });
-    setOpen(false);
-    setProvider("");
-    setDate("");
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1">
-          <Plus className="h-3.5 w-3.5" /> Add
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Add Renewal</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hosting">Hosting</SelectItem>
-              <SelectItem value="domain">Domain</SelectItem>
-              <SelectItem value="ssl">SSL</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input placeholder="Provider name" value={provider} onChange={e => setProvider(e.target.value)} />
-          <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
-          <Button onClick={handleSubmit} className="w-full">Add Renewal</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ─── Form Checks Tab ────────────────────────────────────────────
 

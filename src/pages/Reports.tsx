@@ -233,10 +233,6 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
               <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Failure Rate</p>
               <p className={`text-lg font-bold ${fh.overallFailureRate > 5 ? "text-destructive" : "text-foreground"}`}>{fh.overallFailureRate}%</p>
             </div>
-            <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Pipeline Value</p>
-              <p className="text-lg font-bold text-foreground">${(fh.totalEstimatedValue || 0).toLocaleString()}</p>
-            </div>
           </div>
         </Section>
       )}
@@ -270,7 +266,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
                     <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Leads</th>
                     <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">CVR</th>
                     <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Failures</th>
-                    <th className="py-2 pl-3 text-xs font-medium text-muted-foreground text-right">Est. Value</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Failures</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -89,7 +89,7 @@ function buildReportHtml(report: any): string {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
       <span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">ACTV TRKR</span>
       <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
-      <span style="font-size:10px;color:rgba(255,255,255,0.8)">Performance Intelligence</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.8)">Activity Report</span>
     </div>
     <div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:6px">Performance Report</div>
     <div style="font-size:11px;color:rgba(255,255,255,0.85)">${safe(periodLabel)}</div>
@@ -189,7 +189,6 @@ function buildReportHtml(report: any): string {
     html += kpiCard("Total Submissions", fmtNum(fh.totalSubmissions || 0), null);
     html += kpiCard("Failures", fh.totalFailures || 0, null);
     html += kpiCard("Failure Rate", `${fh.overallFailureRate || 0}%`, null);
-    html += kpiCard("Pipeline Value", `$${fmtNum(fh.totalEstimatedValue || 0)}`, null);
     html += `</div>`;
     html += sectionEnd;
   }
@@ -215,7 +214,7 @@ function buildReportHtml(report: any): string {
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Leads</th>
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">CVR</th>
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Failures</th>
-        <th style="padding:6px 0 6px 8px;font-weight:500;color:#6b6f80;text-align:right">Est. Value</th>
+        </tr></thead><tbody>`;
       </tr></thead><tbody>`;
     ci.leadsByForm.forEach((f: any) => {
       const failColor = f.failures > 0 ? "color:#ec3636" : "color:#6b6f80";
@@ -226,7 +225,7 @@ function buildReportHtml(report: any): string {
         <td style="padding:6px 8px;color:#00264d;text-align:right">${f.leads}</td>
         <td style="padding:6px 8px;color:#6b6f80;text-align:right">${f.cvr}%</td>
         <td style="padding:6px 8px;text-align:right;${failColor}">${f.failures}</td>
-        <td style="padding:6px 0 6px 8px;color:#6b6f80;text-align:right">$${(f.totalValue || 0).toLocaleString()}</td>
+        </tr>`;
       </tr>`;
     });
     html += `</tbody></table></div>`;

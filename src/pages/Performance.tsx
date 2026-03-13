@@ -1,14 +1,11 @@
 import { useState, useMemo } from "react";
-import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { AttributionSection } from "@/components/dashboard/AttributionSection";
-import { TrafficSourceROI } from "@/components/dashboard/TrafficSourceROI";
 import { ContentPerformance } from "@/components/dashboard/ContentPerformance";
 import { VisitorMapSection } from "@/components/dashboard/VisitorMapSection";
 import { FunnelView } from "@/components/dashboard/FunnelView";
-import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorEngagement } from "@/components/dashboard/VisitorEngagement";
 import { ClickActivity } from "@/components/dashboard/ClickActivity";
@@ -29,18 +26,6 @@ const Performance = () => {
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
-  const { data: formsData } = useForms(orgId);
-
-  // Compute weighted average estimated value per lead from forms
-  const avgEstimatedValue = useMemo(() => {
-    if (!formsData || formsData.length === 0) return null;
-    const activeForms = formsData.filter((f) => !f.archived && f.estimated_value && f.estimated_value > 0);
-    if (activeForms.length === 0) return null;
-    const totalWeight = activeForms.reduce((s, f) => s + (f.lead_weight ?? 1), 0);
-    if (totalWeight === 0) return null;
-    const weightedSum = activeForms.reduce((s, f) => s + (f.estimated_value! * (f.lead_weight ?? 1)), 0);
-    return weightedSum / totalWeight;
-  }, [formsData]);
 
   const endDate = customRange
     ? format(startOfDay(customRange.to), "yyyy-MM-dd")
@@ -63,7 +48,6 @@ const Performance = () => {
           cvr: { value: 0, delta: 0, label: "Conversion Rate" },
         },
         dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
-        forecast: { sufficient_data: false, days_until_available: 42, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
       };
     }
 
@@ -84,13 +68,6 @@ const Performance = () => {
       .map((p) => ({ ...p, expectedLeads: Math.round(p.sessions * sitewideCvr), gap: Math.round(p.sessions * sitewideCvr) - p.leads }))
       .filter((p) => p.gap > 0).sort((a, b) => b.gap - a.gap);
 
-    // Calculate forecast availability based on actual data span
-    const sortedDates = Object.keys(dailyMap).sort();
-    const REQUIRED_DAYS = 42;
-    const dataDays = sortedDates.length;
-    const sufficientData = dataDays >= REQUIRED_DAYS;
-    const daysUntilAvailable = Math.max(0, REQUIRED_DAYS - dataDays);
-
     return {
       kpis: {
         sessions: { value: totalSessions, delta: 0, label: "Sessions" },
@@ -99,16 +76,12 @@ const Performance = () => {
         cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
       dailyData, sources, campaigns, pages, opportunities,
-      forecast: { sufficient_data: sufficientData, days_until_available: daysUntilAvailable, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
     };
   }, [isLoading, realtimeData]);
 
   // Focus-aware section ordering
   const renderSections = () => {
     const sections = {
-      attribution: hasFeature("attribution") && (
-        <div id="section-sources" key="roi"><TrafficSourceROI sources={processedData.sources} estimatedValuePerLead={avgEstimatedValue} /></div>
-      ),
       attributionDetail: (
         <div id="section-attribution" key="attr"><AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} /></div>
       ),
@@ -121,14 +94,13 @@ const Performance = () => {
       content: (
         <div id="section-pages" key="content"><ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} /></div>
       ),
-      forecast: <div id="section-forecast" key="forecast"><ForecastSection forecast={processedData.forecast} /></div>,
     };
 
     const focusOrder: Record<PrimaryFocus, (keyof typeof sections)[]> = {
-      lead_volume: ["content", "attributionDetail", "attribution", "funnel", "map", "forecast"],
-      marketing_impact: ["attribution", "attributionDetail", "content", "funnel", "map", "forecast"],
-      conversion_performance: ["funnel", "content", "attribution", "attributionDetail", "map", "forecast"],
-      paid_optimization: ["attribution", "attributionDetail", "funnel", "content", "map", "forecast"],
+      lead_volume: ["content", "attributionDetail", "funnel", "map"],
+      marketing_impact: ["attributionDetail", "content", "funnel", "map"],
+      conversion_performance: ["funnel", "content", "attributionDetail", "map"],
+      paid_optimization: ["attributionDetail", "funnel", "content", "map"],
     };
 
     const order = focusOrder[primaryFocus] || focusOrder.lead_volume;

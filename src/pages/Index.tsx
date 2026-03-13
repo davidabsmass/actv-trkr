@@ -342,64 +342,48 @@ const Index = () => {
           style={{ bottom: `${180 + (scrollY - 3600) * -0.08}px`, willChange: 'bottom' }}
         />
 
-        <div className="max-w-5xl mx-auto relative z-10">
+        <div className="max-w-3xl mx-auto relative z-10">
           <div className="text-center mb-12">
             <h2 className="font-normal text-white mb-4" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Simple Pricing
             </h2>
             <p className="text-white/70 max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
-              Choose the plan that fits your website footprint and reporting needs.
+              ACTV TRKR
             </p>
-
-            {/* Billing Toggle */}
-            <div className="flex items-center justify-center gap-3 mt-8">
-              <span className={`text-sm font-medium transition-colors ${!isAnnual ? 'text-white' : 'text-white/50'}`}>Monthly</span>
-              <button
-                onClick={() => setIsAnnual(!isAnnual)}
-                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors ${isAnnual ? 'bg-primary' : 'bg-white/20'}`}
-              >
-                <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${isAnnual ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
-              <span className={`text-sm font-medium transition-colors ${isAnnual ? 'text-white' : 'text-white/50'}`}>
-                Annual
-                <span className="ml-1.5 inline-block px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold">Save 2 months</span>
-              </span>
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
-            {/* Starter */}
+          <div className="max-w-lg mx-auto" style={{ paddingTop: '40px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col">
-              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
-                Starter
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">For single-site businesses and small agencies</p>
-              
               <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">${isAnnual ? '24.17' : '29'}</span>
+                <span className="text-3xl font-bold text-foreground">$25</span>
                 <span className="text-muted-foreground text-sm">/month</span>
               </div>
-              {isAnnual ? (
-                <p className="text-xs text-primary mb-4">$290/year — <span className="font-bold">save 2 months</span></p>
-              ) : (
-                <p className="text-xs text-muted-foreground mb-4">$348/year billed monthly</p>
-              )}
               
               <p className="text-sm text-muted-foreground mb-6">
-                A streamlined way to monitor website performance, visitor behavior, forms, and lead activity for one WordPress website.
+                Everything you need to track website activity, leads, site health, and reporting in one streamlined WordPress dashboard.
               </p>
               
+              <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>
               <div className="space-y-3 flex-1">
                 {[
-                  "Full ACTV TRKR dashboard",
-                  "Visitor behavior tracking",
-                  "Time-on-page analytics",
-                  "WordPress form monitoring",
-                  "Lead activity insights",
-                  "Website health monitoring",
                   "1 website",
-                  "90 days of data retention",
-                  "Standard support",
+                  "Traffic source tracking",
+                  "UTM capture",
+                  "Form tracking",
+                  "Lead attribution",
+                  "Conversion tracking",
+                  "Top page insights",
+                  "Site health monitoring",
+                  "Broken form checks",
+                  "Broken link detection",
+                  "SSL and domain alerts",
+                  "AI suggestions",
+                  "Weekly and monthly summaries",
+                  "Custom date range reports",
+                  "12 months reporting history",
+                  "60 days recent detailed activity",
+                  "CSV/XLSX exports",
+                  "Shareable snapshots",
                 ].map((feature, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">
                     <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -415,50 +399,9 @@ const Index = () => {
               </Button>
             </div>
 
-            {/* Pro */}
-            <div className="p-8 rounded-2xl bg-white shadow-lg flex flex-col" style={{ border: '2px solid transparent', backgroundClip: 'padding-box', outline: '2px solid', outlineColor: '#ac5bfc', outlineOffset: '2px', borderRadius: '1rem' }}>
-              <h3 className="font-normal text-foreground mb-1" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
-                Pro
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">For growing agencies and multi-site teams</p>
-              
-              <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">${isAnnual ? '40.83' : '49'}</span>
-                <span className="text-muted-foreground text-sm">/month</span>
-              </div>
-              {isAnnual ? (
-                <p className="text-xs text-primary mb-4">$490/year — <span className="font-bold">save 2 months</span></p>
-              ) : (
-                <p className="text-xs text-muted-foreground mb-4">$588/year billed monthly</p>
-              )}
-              
-              <p className="text-sm text-muted-foreground mb-6">
-                Everything in Starter, plus deeper reporting and multi-site visibility for teams managing several WordPress websites.
-              </p>
-              
-              <p className="text-xs font-semibold text-foreground mb-3">Includes everything in Starter, plus:</p>
-              <div className="space-y-3 flex-1">
-                {[
-                  "Up to 10 websites",
-                  "12 months of data retention",
-                  "Scheduled reports",
-                  "Advanced alerts and notifications",
-                  "Lead export tools",
-                  "Priority support",
-                ].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Check className="h-3 w-3 text-primary" />
-                    </div>
-                    <span className="text-foreground">{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Button onClick={() => navigate('/signup')} className="w-full mt-8" size="lg">
-                Start Pro <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <p className="text-center text-sm text-white/60 mt-6" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+              No bloated analytics stack. No scattered reports. Just clear visibility into what your website is doing.
+            </p>
           </div>
         </div>
       </section>

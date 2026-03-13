@@ -713,7 +713,7 @@ class MM_Forms {
 			'entry'    => array(
 				'form_id'      => $form_post_id,
 				'form_title'   => $form_title,
-				'entry_id'     => 'avada_' . time() . '_' . wp_rand(),
+				'entry_id'     => self::get_avada_db_entry_id( $form_post_id ),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),
 			),

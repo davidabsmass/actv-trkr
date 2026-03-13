@@ -225,7 +225,7 @@ function buildReportHtml(report: any): string {
         <td style="padding:6px 8px;color:#00264d;text-align:right">${f.leads}</td>
         <td style="padding:6px 8px;color:#6b6f80;text-align:right">${f.cvr}%</td>
         <td style="padding:6px 8px;text-align:right;${failColor}">${f.failures}</td>
-        <td style="padding:6px 0 6px 8px;color:#6b6f80;text-align:right">$${(f.totalValue || 0).toLocaleString()}</td>
+        </tr>`;
       </tr>`;
     });
     html += `</tbody></table></div>`;

@@ -357,13 +357,14 @@ const Index = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%)' }}>
-        <div className="max-w-6xl mx-auto">
+      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }}><SparkleCanvas /></div>
+        <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-12">
-            <h2 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Everything You Need in One Place
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-white/70 max-w-2xl mx-auto">
               From traffic insights to site health alerts, ACTV TRKR covers every angle of your WordPress performance.
             </p>
           </div>
@@ -385,9 +386,9 @@ const Index = () => {
               { icon: Download, label: "CSV Exports" },
               { icon: Share2, label: "Shareable Snapshots" },
             ] as { icon: LucideIcon; label: string }[]).map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-background border border-border/50 shadow-sm hover:shadow-md hover:border-accent/40 transition-all duration-200">
+              <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-white/10 border border-white/10 shadow-sm hover:bg-white/15 hover:border-accent/40 transition-all duration-200">
                 <Icon className="h-6 w-6 text-accent" />
-                <span className="text-sm font-medium text-foreground text-center">{label}</span>
+                <span className="text-sm font-medium text-white text-center">{label}</span>
               </div>
             ))}
           </div>
@@ -395,8 +396,7 @@ const Index = () => {
       </section>
 
 
-      <section id="pricing-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }}><SparkleCanvas /></div>
+      <section id="pricing-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         
         <img 
           src={pricingAstronaut} 
@@ -407,22 +407,22 @@ const Index = () => {
 
         <div className="max-w-3xl mx-auto relative z-10">
           <div className="text-center mb-6">
-            <h2 className="font-normal text-white mb-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-foreground mb-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Simple Pricing
             </h2>
-            <p className="text-white/70 max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+            <p className="text-muted-foreground max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
               ACTV TRKR
             </p>
 
             <div className="flex items-center justify-center gap-3 mt-4">
-              <span className={`text-sm font-medium ${!isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Monthly</span>
+              <span className={`text-sm font-medium ${!isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Monthly</span>
               <button
                 onClick={() => setIsAnnual(!isAnnual)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isAnnual ? 'bg-primary' : 'bg-white/20'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isAnnual ? 'bg-primary' : 'bg-muted-foreground/30'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-5' : ''}`} />
               </button>
-              <span className={`text-sm font-medium ${isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-white text-xs font-semibold">Save 17%</span></span>
+              <span className={`text-sm font-medium ${isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-foreground text-xs font-semibold">Save 17%</span></span>
             </div>
           </div>
 

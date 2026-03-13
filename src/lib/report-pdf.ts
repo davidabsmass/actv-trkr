@@ -189,7 +189,6 @@ function buildReportHtml(report: any): string {
     html += kpiCard("Total Submissions", fmtNum(fh.totalSubmissions || 0), null);
     html += kpiCard("Failures", fh.totalFailures || 0, null);
     html += kpiCard("Failure Rate", `${fh.overallFailureRate || 0}%`, null);
-    html += kpiCard("Pipeline Value", `$${fmtNum(fh.totalEstimatedValue || 0)}`, null);
     html += `</div>`;
     html += sectionEnd;
   }

@@ -431,32 +431,32 @@ const Index = () => {
               </p>
               
               <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>
-              <div className="columns-3 gap-x-6 space-y-3 flex-1">
+              <div className="grid grid-cols-3 gap-x-8 gap-y-3 flex-1">
                 {[
                   "1 website",
+                  "Site health monitoring",
+                  "Weekly and monthly summaries",
                   "Traffic source tracking",
+                  "Broken form checks",
+                  "Custom date range reports",
                   "UTM capture",
+                  "Broken link detection",
+                  "12 months reporting history",
                   "Form tracking",
+                  "SSL and domain alerts",
+                  "60 days recent detailed activity",
                   "Lead attribution",
+                  "AI suggestions",
+                  "PDF exports",
                   "Conversion tracking",
                   "Top page insights",
-                  "Site health monitoring",
-                  "Broken form checks",
-                  "Broken link detection",
-                  "SSL and domain alerts",
-                  "AI suggestions",
-                  "Weekly and monthly summaries",
-                  "Custom date range reports",
-                  "12 months reporting history",
-                  "60 days recent detailed activity",
-                  "PDF exports",
                   "Shareable snapshots",
                 ].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
+                  <div key={i} className="flex items-center gap-3 text-sm h-7">
                     <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Check className="h-3 w-3 text-primary" />
                     </div>
-                    <span className="text-foreground">{feature}</span>
+                    <span className="text-foreground whitespace-nowrap">{feature}</span>
                   </div>
                 ))}
               </div>

@@ -270,7 +270,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
                     <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Leads</th>
                     <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">CVR</th>
                     <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Failures</th>
-                    <th className="py-2 pl-3 text-xs font-medium text-muted-foreground text-right">Est. Value</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Failures</th>
                   </tr>
                 </thead>
                 <tbody>

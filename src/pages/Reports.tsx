@@ -233,10 +233,6 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
               <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Failure Rate</p>
               <p className={`text-lg font-bold ${fh.overallFailureRate > 5 ? "text-destructive" : "text-foreground"}`}>{fh.overallFailureRate}%</p>
             </div>
-            <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Pipeline Value</p>
-              <p className="text-lg font-bold text-foreground">${(fh.totalEstimatedValue || 0).toLocaleString()}</p>
-            </div>
           </div>
         </Section>
       )}

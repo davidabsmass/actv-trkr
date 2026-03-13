@@ -48,8 +48,6 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { domain, forms } = body;
 
-    // forms = [{ form_id: "5", provider: "gravity_forms", entry_ids: ["1","2","3"] }, ...]
-
     if (!domain || !Array.isArray(forms)) {
       return new Response(JSON.stringify({ error: "Missing domain or forms array" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -78,81 +76,112 @@ Deno.serve(async (req) => {
 
       // Find the internal form id
       const { data: formRow } = await supabase
-        .from("forms").select("id")
+        .from("forms").select("id, provider")
         .eq("org_id", orgId).eq("site_id", siteId).eq("external_form_id", extFormId)
         .maybeSingle();
 
       if (!formRow) continue;
       const formId = formRow.id;
+      const provider = formRow.provider || "";
 
-      // Get all lead_events_raw for this form to map external_entry_id → lead
+      // Get all lead_events_raw for this form
       const { data: rawEvents } = await supabase
         .from("lead_events_raw")
-        .select("external_entry_id")
+        .select("external_entry_id, submitted_at")
         .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
 
       if (!rawEvents || rawEvents.length === 0) continue;
 
-      const allExternalIds = rawEvents.map(r => r.external_entry_id);
       const activeSet = new Set(activeEntryIds);
 
-      // IDs that exist in our DB but NOT in WordPress anymore → trash
-      const toTrash = allExternalIds.filter(id => !activeSet.has(id));
-      // IDs that exist in both → restore if previously trashed
-      const toRestore = allExternalIds.filter(id => activeSet.has(id));
+      // For providers that switched to DB-backed IDs (avada_db_, ninja_db_, cf7_db_),
+      // legacy entries won't match. We need to identify which entries are NOT active.
+      // Strategy: match by external_entry_id directly, then for unmatched legacy entries
+      // that use old format (avada_timestamp_rand), consider them orphaned and trash them.
+      
+      const toTrashEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
+      const toRestoreEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
 
-      if (toTrash.length > 0) {
-        // Find leads by matching through lead_events_raw
-        // We need to get lead IDs — leads are linked by form_id + approximate matching
-        // Since leads don't store external_entry_id directly, we match via lead_events_raw
-        // lead_events_raw has external_entry_id, and leads are created at the same time
-        // We'll use the submitted_at + form_id correlation, but more reliably:
-        // Update leads whose data came from these entries by joining through submitted_at
+      for (const rawEvent of rawEvents) {
+        const eid = rawEvent.external_entry_id;
+        
+        if (activeSet.has(eid)) {
+          // This entry is active in WordPress — restore if trashed
+          toRestoreEntries.push(rawEvent);
+        } else {
+          // Check if this is a legacy ID format that we can't match
+          // For legacy avada/ninja/cf7 entries with random IDs, we can't know if they're
+          // still active or not. Only trash entries that use the NEW DB-backed format
+          // and are NOT in the active set (meaning they were definitely deleted).
+          const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
+          const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
 
-        // Actually, the simplest approach: query leads by form and match on data/timestamps
-        // But really we need a link. Let's use lead_events_raw to find the submitted_at times
-        // and match leads.
-
-        // Better approach: batch update leads that match these external entry IDs
-        // by looking them up through lead_events_raw
-        for (const extId of toTrash) {
-          const { data: rawEvent } = await supabase
-            .from("lead_events_raw")
-            .select("submitted_at")
-            .eq("org_id", orgId).eq("form_id", formId).eq("external_entry_id", extId)
-            .maybeSingle();
-
-          if (!rawEvent) continue;
-
-          const { count } = await supabase
-            .from("leads")
-            .update({ status: "trashed" })
-            .eq("org_id", orgId).eq("form_id", formId)
-            .eq("submitted_at", rawEvent.submitted_at)
-            .neq("status", "trashed");
-
-          totalTrashed += (count || 0);
+          if (isNewFormat || isStandardProvider) {
+            // This entry uses a format we can reliably match — it's genuinely missing
+            toTrashEntries.push(rawEvent);
+          }
+          // For legacy format entries (avada_timestamp_rand), we skip — can't determine
+          // if they were deleted. They'll be reconciled once new entries use DB IDs.
         }
       }
 
-      if (toRestore.length > 0) {
-        for (const extId of toRestore) {
-          const { data: rawEvent } = await supabase
-            .from("lead_events_raw")
-            .select("submitted_at")
-            .eq("org_id", orgId).eq("form_id", formId).eq("external_entry_id", extId)
-            .maybeSingle();
+      // Trash entries that are confirmed deleted
+      for (const entry of toTrashEntries) {
+        if (!entry.submitted_at) continue;
+        const { count } = await supabase
+          .from("leads")
+          .update({ status: "trashed" })
+          .eq("org_id", orgId).eq("form_id", formId)
+          .eq("submitted_at", entry.submitted_at)
+          .neq("status", "trashed");
+        totalTrashed += (count || 0);
+      }
 
-          if (!rawEvent) continue;
+      // Restore entries that are active
+      for (const entry of toRestoreEntries) {
+        if (!entry.submitted_at) continue;
+        const { count } = await supabase
+          .from("leads")
+          .update({ status: "new" })
+          .eq("org_id", orgId).eq("form_id", formId)
+          .eq("submitted_at", entry.submitted_at)
+          .eq("status", "trashed");
+        totalRestored += (count || 0);
+      }
 
-          const { count } = await supabase
-            .from("leads")
-            .update({ status: "new" })
-            .eq("org_id", orgId).eq("form_id", formId)
-            .eq("submitted_at", rawEvent.submitted_at)
-            .eq("status", "trashed");
+      // Also update legacy external_entry_ids in lead_events_raw to new format
+      // so future syncs can match them properly.
+      // Match legacy entries to active DB IDs by position (oldest first)
+      if (provider === "avada" || provider === "ninja_forms" || provider === "cf7") {
+        const legacyPrefix = provider === "avada" ? "avada_" : provider === "ninja_forms" ? "ninja_" : "cf7_";
+        const newPrefix = provider === "avada" ? "avada_db_" : provider === "ninja_forms" ? "ninja_db_" : "cf7_db_";
 
-          totalRestored += (count || 0);
+        // Get legacy entries sorted by submitted_at
+        const legacyEntries = rawEvents
+          .filter(e => e.external_entry_id.startsWith(legacyPrefix) && !e.external_entry_id.startsWith(newPrefix))
+          .sort((a, b) => (a.submitted_at || "").localeCompare(b.submitted_at || ""));
+
+        // Get active DB IDs sorted numerically
+        const activeDbIds = activeEntryIds
+          .filter(id => id.startsWith(newPrefix))
+          .sort((a, b) => {
+            const numA = parseInt(a.replace(newPrefix, ""), 10);
+            const numB = parseInt(b.replace(newPrefix, ""), 10);
+            return numA - numB;
+          });
+
+        // Match legacy to new by chronological order if counts align
+        if (legacyEntries.length > 0 && activeDbIds.length > 0 && legacyEntries.length <= activeDbIds.length) {
+          for (let i = 0; i < legacyEntries.length; i++) {
+            if (i < activeDbIds.length) {
+              await supabase
+                .from("lead_events_raw")
+                .update({ external_entry_id: activeDbIds[i] })
+                .eq("org_id", orgId)
+                .eq("form_id", formId)
+                .eq("external_entry_id", legacyEntries[i].external_entry_id);
+            }
+          }
         }
       }
     }

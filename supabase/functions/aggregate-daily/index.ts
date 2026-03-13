@@ -92,6 +92,32 @@ Deno.serve(async (req) => {
           const { data: lbcmp } = await supabase.from("leads").select("utm_campaign").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd).not("utm_campaign", "is", null);
           if (lbcmp) { const m: Record<string, number> = {}; lbcmp.forEach((l: any) => { const d = l.utm_campaign; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_campaign", d, v); }
 
+          // sessions_by_device
+          const { data: sbd } = await supabase.from("pageviews").select("device, session_id").eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd).not("device", "is", null);
+          if (sbd) {
+            const deviceMap: Record<string, Set<string>> = {};
+            sbd.forEach((pv: any) => { const d = pv.device || "unknown"; if (!deviceMap[d]) deviceMap[d] = new Set(); deviceMap[d].add(pv.session_id || d); });
+            for (const [d, sessions] of Object.entries(deviceMap)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_device", d, sessions.size);
+          }
+
+          // sessions_by_landing_page (top landing pages by session count)
+          const { data: slp } = await supabase.from("sessions").select("landing_page_path").eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd).not("landing_page_path", "is", null);
+          if (slp) { const m: Record<string, number> = {}; slp.forEach((s: any) => { const d = s.landing_page_path; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_landing_page", d, v); }
+
+          // leads_by_form
+          const { data: lbf } = await supabase.from("leads").select("form_id").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
+          if (lbf) { const m: Record<string, number> = {}; lbf.forEach((l: any) => { const d = l.form_id || "(unknown)"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_by_form", d, v); }
+
+          // form_submissions_total (all form_submission_logs)
+          const { count: fslCount } = await supabase.from("form_submission_logs").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd);
+          await upsert(supabase, "kpi_daily", orgId, dateStr, "form_submissions_total", null, fslCount || 0);
+
+          // conversion_rate (leads / sessions)
+          const dayLeads = leadsCount || 0;
+          const daySessions = sessCount || 0;
+          const cvr = daySessions > 0 ? Number(((dayLeads / daySessions) * 100).toFixed(2)) : 0;
+          await upsert(supabase, "kpi_daily", orgId, dateStr, "conversion_rate", null, cvr);
+
           orgResults[dateStr] = { status: "ok" };
         } catch (err) { console.error(`Agg error ${orgId} ${dateStr}:`, err); orgResults[dateStr] = { status: "error" }; }
       }

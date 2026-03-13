@@ -175,7 +175,7 @@ const Index = () => {
                     size="default" 
                     variant="ghost" 
                     className="text-base px-6 py-2.5 border border-accent text-white hover:bg-accent/10 bg-transparent"
-                    onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })}
+                    onClick={() => document.getElementById('all-features-section')?.scrollIntoView({ behavior: 'smooth' })}
                   >
                     View Features
                   </Button>
@@ -357,7 +357,7 @@ const Index = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <section id="all-features-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }}><SparkleCanvas /></div>
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-12">

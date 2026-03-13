@@ -270,18 +270,23 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-5 lg:pl-[29px]">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
-                <Eye className="h-4 w-4" />
-                Visitor Behavior
+                <Sparkles className="h-4 w-4" />
+                Smart Insights
               </div>
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                See What Visitors Do Before They Convert
+                Built-In Suggestions, Without the Noise
               </h3>
-              <p className="text-muted-foreground max-w-xl mb-4">
-                ACTV TRKR tracks meaningful visitor activity so you can better understand how people move through your website.
+              <p className="text-muted-foreground max-w-xl mb-6">
+                ACTV TRKR includes automated suggestions based on your activity, lead trends, and site health signals. It is designed to help you spot opportunities and issues quickly — without turning your dashboard into an overcomplicated AI tool.
               </p>
-              <p className="text-muted-foreground max-w-xl">
-                Measure time on page, key clicks, downloads, and navigation paths. For every lead, view an activity timeline showing what they looked at before submitting a form. That gives you a clearer picture of how conversions happen — and where your website may be losing them.
-              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl">
+                {["AI-powered suggestions", "Weekly insights", "Monthly summaries", "Recommended actions", "Clear performance signals"].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
             <div className="relative flex items-center justify-end lg:col-span-7">
               <img src={fourChart} alt="Visitor behavior analytics" className="w-[85%] h-auto rounded-2xl relative z-10" />

@@ -564,7 +564,7 @@ class MM_Forms {
 			'entry'    => array(
 				'form_id'      => $contact_form->id(),
 				'form_title'   => $contact_form->title(),
-				'entry_id'     => 'cf7_' . time() . '_' . wp_rand(),
+				'entry_id'     => self::get_cf7_db_entry_id( $contact_form ),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),
 			),

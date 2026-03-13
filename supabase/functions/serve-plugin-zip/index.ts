@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
@@ -15,19 +15,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const domain = url.searchParams.get("domain") || "";
-
-    if (domain) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const sb = createClient(supabaseUrl, serviceKey);
-      await sb
-        .from("sites")
-        .update({ plugin_version: PLUGIN_VERSION })
-        .eq("domain", domain);
-    }
-
     const endpointBase = `${Deno.env.get("SUPABASE_URL")!}/functions/v1`;
     const files = buildFiles(endpointBase);
 

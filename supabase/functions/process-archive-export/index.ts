@@ -82,11 +82,14 @@ Deno.serve(async (req) => {
         pageviews: { dbTable: "pageviews", dateCol: "occurred_at", manifestName: "pageviews" },
         form_submissions: { dbTable: "leads", dateCol: "submitted_at", manifestName: "form_submissions" },
         leads: { dbTable: "leads", dateCol: "submitted_at", manifestName: "form_submissions" },
+        events: { dbTable: "events", dateCol: "occurred_at", manifestName: "events" },
+        lead_events: { dbTable: "lead_events_raw", dateCol: "received_at", manifestName: "lead_events" },
+        form_events: { dbTable: "form_submission_logs", dateCol: "occurred_at", manifestName: "form_events" },
       };
 
       const config = tableMap[tableName] || tableMap["leads"];
       const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - 365);
+      cutoff.setDate(cutoff.getDate() - 60);
       const cutoffStr = cutoff.toISOString().split("T")[0];
 
       let allRows: any[] = [];

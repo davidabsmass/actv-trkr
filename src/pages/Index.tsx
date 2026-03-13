@@ -382,7 +382,7 @@ const Index = () => {
                   "Custom date range reports",
                   "12 months reporting history",
                   "60 days recent detailed activity",
-                  "CSV/XLSX exports",
+                  "PDF exports",
                   "Shareable snapshots",
                 ].map((feature, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">

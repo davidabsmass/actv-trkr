@@ -466,6 +466,73 @@ class MM_Forms {
 		return $discovered;
 	}
 
+	// ── DB-backed entry ID helpers ──────────────────────────────────
+
+	/**
+	 * Get the latest Avada submission DB ID for this form.
+	 * Falls back to timestamp-based ID if table doesn't exist.
+	 */
+	private static function get_avada_db_entry_id( $form_post_id ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'fusion_form_submissions';
+		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) === $table ) {
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT id FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 1",
+				intval( $form_post_id )
+			) );
+			if ( $row ) {
+				return 'avada_db_' . $row->id;
+			}
+		}
+		return 'avada_' . time() . '_' . wp_rand();
+	}
+
+	/**
+	 * Get the latest Ninja Forms submission DB ID.
+	 * Falls back to timestamp-based ID if table doesn't exist.
+	 */
+	private static function get_ninja_db_entry_id( $form_data ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'nf3_objects';
+		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) === $table ) {
+			$row = $wpdb->get_row(
+				"SELECT id FROM {$table} WHERE type = 'submission' ORDER BY id DESC LIMIT 1"
+			);
+			if ( $row ) {
+				return 'ninja_db_' . $row->id;
+			}
+		}
+		return 'ninja_' . time() . '_' . wp_rand();
+	}
+
+	/**
+	 * Get the CF7 entry ID via Flamingo if available.
+	 * Falls back to timestamp-based ID.
+	 */
+	private static function get_cf7_db_entry_id( $contact_form ) {
+		if ( post_type_exists( 'flamingo_inbound' ) ) {
+			// Query the latest Flamingo inbound message for this CF7 form
+			$posts = get_posts( array(
+				'post_type'      => 'flamingo_inbound',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'meta_query'     => array(
+					array(
+						'key'   => '_flamingo_channel',
+						'value' => 'contact-form-7_' . $contact_form->id(),
+					),
+				),
+				'fields' => 'ids',
+			) );
+			if ( ! empty( $posts ) ) {
+				return 'cf7_db_' . $posts[0];
+			}
+		}
+		return 'cf7_' . time() . '_' . wp_rand();
+	}
+
 	// ── Shared helpers ──────────────────────────────────────────────
 
 	private static function get_tracking_context() {

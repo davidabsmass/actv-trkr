@@ -426,45 +426,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           </div>
         </TabsContent>
 
-        {/* Renewals */}
-        <TabsContent value="renewals" className="space-y-4">
-          <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <RefreshCw className="h-4 w-4" /> Renewals
-              </h3>
-              <AddRenewalDialog onAdd={(values) => addRenewal.mutate(values)} />
-            </div>
 
-            {(!renewals || renewals.length === 0) ? (
-              <p className="text-xs text-muted-foreground">No renewals tracked yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {renewals.map(r => {
-                  const daysUntil = r.renewal_date ? Math.ceil((new Date(r.renewal_date).getTime() - Date.now()) / 86400000) : null;
-                  return (
-                    <div key={r.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <div>
-                        <p className="text-sm text-foreground font-medium">{r.provider_name || r.type}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{r.type} • {r.renewal_date || "No date"}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {daysUntil !== null && (
-                          <Badge variant={daysUntil <= 14 ? "destructive" : "outline"}>
-                            {daysUntil}d
-                          </Badge>
-                        )}
-                        <button onClick={() => deleteRenewal.mutate(r.id)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </TabsContent>
 
         {/* Notifications */}
         <TabsContent value="notifications" className="space-y-4">

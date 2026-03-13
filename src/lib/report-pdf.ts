@@ -214,7 +214,7 @@ function buildReportHtml(report: any): string {
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Leads</th>
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">CVR</th>
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Failures</th>
-        <th style="padding:6px 0 6px 8px;font-weight:500;color:#6b6f80;text-align:right">Est. Value</th>
+        </tr></thead><tbody>`;
       </tr></thead><tbody>`;
     ci.leadsByForm.forEach((f: any) => {
       const failColor = f.failures > 0 ? "color:#ec3636" : "color:#6b6f80";

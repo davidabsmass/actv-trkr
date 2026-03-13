@@ -95,9 +95,6 @@ const Performance = () => {
   // Focus-aware section ordering
   const renderSections = () => {
     const sections = {
-      attribution: hasFeature("attribution") && (
-        <div id="section-sources" key="roi"><TrafficSourceROI sources={processedData.sources} estimatedValuePerLead={avgEstimatedValue} /></div>
-      ),
       attributionDetail: (
         <div id="section-attribution" key="attr"><AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} /></div>
       ),
@@ -110,14 +107,13 @@ const Performance = () => {
       content: (
         <div id="section-pages" key="content"><ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} /></div>
       ),
-      forecast: <div id="section-forecast" key="forecast"><ForecastSection forecast={processedData.forecast} /></div>,
     };
 
     const focusOrder: Record<PrimaryFocus, (keyof typeof sections)[]> = {
-      lead_volume: ["content", "attributionDetail", "attribution", "funnel", "map", "forecast"],
-      marketing_impact: ["attribution", "attributionDetail", "content", "funnel", "map", "forecast"],
-      conversion_performance: ["funnel", "content", "attribution", "attributionDetail", "map", "forecast"],
-      paid_optimization: ["attribution", "attributionDetail", "funnel", "content", "map", "forecast"],
+      lead_volume: ["content", "attributionDetail", "funnel", "map"],
+      marketing_impact: ["attributionDetail", "content", "funnel", "map"],
+      conversion_performance: ["funnel", "content", "attributionDetail", "map"],
+      paid_optimization: ["attributionDetail", "funnel", "content", "map"],
     };
 
     const order = focusOrder[primaryFocus] || focusOrder.lead_volume;

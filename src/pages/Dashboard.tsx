@@ -471,7 +471,7 @@ const Dashboard = () => {
       )}
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
         <BarChart3 className="h-3.5 w-3.5" />
-        <span>Live data • Auto-refreshes every 15s</span>
+        <span>Fresh data • Auto-refreshes every 15s</span>
       </div>
     </div>
   );

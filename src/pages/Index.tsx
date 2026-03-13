@@ -407,22 +407,22 @@ const Index = () => {
 
         <div className="max-w-3xl mx-auto relative z-10">
           <div className="text-center mb-6">
-            <h2 className="font-normal text-white mb-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-foreground mb-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Simple Pricing
             </h2>
-            <p className="text-white/70 max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+            <p className="text-muted-foreground max-w-3xl mx-auto" style={{ fontFamily: "'BR Omega', sans-serif" }}>
               ACTV TRKR
             </p>
 
             <div className="flex items-center justify-center gap-3 mt-4">
-              <span className={`text-sm font-medium ${!isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Monthly</span>
+              <span className={`text-sm font-medium ${!isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Monthly</span>
               <button
                 onClick={() => setIsAnnual(!isAnnual)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isAnnual ? 'bg-primary' : 'bg-white/20'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${isAnnual ? 'bg-primary' : 'bg-muted-foreground/30'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-5' : ''}`} />
               </button>
-              <span className={`text-sm font-medium ${isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-white text-xs font-semibold">Save 17%</span></span>
+              <span className={`text-sm font-medium ${isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-foreground text-xs font-semibold">Save 17%</span></span>
             </div>
           </div>
 

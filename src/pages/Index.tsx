@@ -368,7 +368,7 @@ const Index = () => {
               From traffic insights to site health alerts, ACTV TRKR covers every angle of your WordPress performance.
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 pt-[50px] pb-[50px]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 pt-[10px] pb-[50px]">
             {([
               { icon: Globe, label: "Traffic Sources" },
               { icon: Target, label: "UTM Tracking" },

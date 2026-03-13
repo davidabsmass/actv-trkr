@@ -359,7 +359,7 @@ const Index = () => {
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-5' : ''}`} />
               </button>
-              <span className={`text-sm font-medium ${isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-primary text-xs font-semibold">Save 17%</span></span>
+              <span className={`text-sm font-medium ${isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-white text-xs font-semibold">Save 17%</span></span>
             </div>
           </div>
 

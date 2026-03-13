@@ -298,6 +298,8 @@ class MM_Forms {
 	 * Returns null if the provider doesn't support entry listing.
 	 */
 	private static function get_active_entry_ids( $provider, $form_id ) {
+		global $wpdb;
+
 		switch ( $provider ) {
 			case 'gravity_forms':
 				if ( ! class_exists( 'GFAPI' ) ) return null;
@@ -312,9 +314,71 @@ class MM_Forms {
 				if ( ! is_array( $entries ) ) return array();
 				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
 
+			case 'avada':
+				// Avada stores submissions in fusion_form_submissions table
+				$table = $wpdb->prefix . 'fusion_form_submissions';
+				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+					return null; // Table doesn't exist
+				}
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT id, date_time FROM {$table} WHERE form_id = %d AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
+					intval( $form_id )
+				) );
+				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+				// Return both the new DB-based ID format AND submitted_at timestamps for legacy matching
+				$result = array();
+				foreach ( $rows as $row ) {
+					$result[] = 'avada_db_' . $row->id;
+				}
+				return $result;
+
+			case 'ninja_forms':
+				// Ninja Forms stores submissions in nf3_objects table (type = 'submission')
+				$table = $wpdb->prefix . 'nf3_objects';
+				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+					return null;
+				}
+				// Ninja Forms uses nf3_objects with type='submission' and parent_id=form_id
+				// But the actual data is in nf3_object_meta. Let's query the objects table.
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT id FROM {$table} WHERE type = 'submission' LIMIT 5000"
+				) );
+				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+				return array_map( function( $r ) { return 'ninja_db_' . $r->id; }, $rows );
+
+			case 'fluent_forms':
+				// Fluent Forms stores submissions in fluentform_submissions table
+				$table = $wpdb->prefix . 'fluentform_submissions';
+				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+					return null;
+				}
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT id FROM {$table} WHERE form_id = %d AND status = 'read' OR status = 'unread' ORDER BY id DESC LIMIT 5000",
+					intval( $form_id )
+				) );
+				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+				// Fluent Forms already uses the actual entry_id, so return as-is
+				return array_map( function( $r ) { return (string) $r->id; }, $rows );
+
+			case 'cf7':
+				// CF7 doesn't store entries natively. Check for Flamingo plugin.
+				if ( ! post_type_exists( 'flamingo_inbound' ) ) return null;
+				$posts = get_posts( array(
+					'post_type'      => 'flamingo_inbound',
+					'post_status'    => 'publish',
+					'posts_per_page' => 5000,
+					'meta_query'     => array(
+						array(
+							'key'   => '_flamingo_channel',
+							'value' => 'contact-form-7_' . $form_id,
+						),
+					),
+					'fields' => 'ids',
+				) );
+				if ( ! is_array( $posts ) || empty( $posts ) ) return array();
+				return array_map( function( $id ) { return 'cf7_db_' . $id; }, $posts );
+
 			default:
-				// CF7, Ninja Forms, Fluent Forms, Avada — these don't reliably store entries
-				// or use generated IDs (timestamps), so we can't reconcile them.
 				return null;
 		}
 	}

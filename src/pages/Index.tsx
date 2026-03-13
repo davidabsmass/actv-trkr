@@ -386,9 +386,9 @@ const Index = () => {
               { icon: Download, label: "CSV Exports" },
               { icon: Share2, label: "Shareable Snapshots" },
             ] as { icon: LucideIcon; label: string }[]).map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-white/20 border border-white/20 shadow-sm hover:bg-white/25 hover:border-accent/40 transition-all duration-200 backdrop-blur-sm">
-                <Icon className="h-6 w-6 text-accent" />
-                <span className="text-sm font-medium text-white text-center">{label}</span>
+              <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-white/90 border border-white/40 shadow-sm hover:shadow-md hover:border-accent/40 transition-all duration-200 backdrop-blur-sm">
+                <Icon className="h-6 w-6 text-primary" />
+                <span className="text-sm font-medium text-foreground text-center">{label}</span>
               </div>
             ))}
           </div>

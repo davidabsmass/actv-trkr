@@ -319,14 +319,19 @@ const Index = () => {
                 Website Health
               </div>
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Catch Website Issues Before Your Visitors Do
+                Catch Problems Before They Cost You
               </h3>
-              <p className="text-muted-foreground max-w-xl mb-4">
-                ACTV TRKR continuously monitors key website health signals so you always know when something needs attention.
+              <p className="text-muted-foreground max-w-xl mb-6">
+                ACTV TRKR does more than track traffic. It helps you monitor the health of your website so you can catch broken forms, broken links, SSL issues, and domain-related problems before they impact leads and performance.
               </p>
-              <p className="text-muted-foreground max-w-xl">
-                Track uptime, broken links, SSL status, and domain expiration from the same dashboard you use to monitor traffic and leads. No more discovering website issues after they start affecting user experience or conversions.
-              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl">
+                {["Site health alerts", "Broken form checks", "Broken link detection", "SSL expiry alerts", "Domain expiry alerts"].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
             <div className="relative flex items-end justify-center lg:col-span-7 pt-12">
               <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-[85%] h-auto relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />

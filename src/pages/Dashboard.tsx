@@ -333,19 +333,9 @@ const Dashboard = () => {
       });
     }
 
-    // Renewals due
-    if (renewalsDue && renewalsDue.length > 0) {
-      items.push({
-        severity: "info",
-        label: `${renewalsDue.length} renewal${renewalsDue.length > 1 ? "s" : ""} due soon`,
-        detail: renewalsDue.map((r) => `${r.type}${r.provider_name ? ` (${r.provider_name})` : ""}`).join(", "),
-        link: "/monitoring",
-        linkLabel: "View renewals",
-      });
-    }
 
     return items;
-  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, renewalsDue]);
+  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains, expiringSSL]);
 
   // Status cards – focus-aware ordering
   const siteUp = sitesData && sitesData.length > 0

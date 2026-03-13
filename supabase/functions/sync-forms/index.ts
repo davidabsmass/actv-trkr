@@ -91,21 +91,26 @@ Deno.serve(async (req) => {
       const formId = String(f.form_id || "");
       const formTitle = String(f.form_title || "Untitled Form");
       const provider = String(f.provider || "unknown");
+      const pageUrl = f.page_url ? String(f.page_url) : null;
 
       if (!formId) continue;
 
+      const upsertData: Record<string, unknown> = {
+        org_id: orgId,
+        site_id: siteId,
+        external_form_id: formId,
+        name: formTitle,
+        provider,
+      };
+
+      // Only update page_url if we have one (don't overwrite existing with null)
+      if (pageUrl) {
+        upsertData.page_url = pageUrl;
+      }
+
       const { error } = await supabase
         .from("forms")
-        .upsert(
-          {
-            org_id: orgId,
-            site_id: siteId,
-            external_form_id: formId,
-            name: formTitle,
-            provider,
-          },
-          { onConflict: "org_id,site_id,provider,external_form_id" },
-        );
+        .upsert(upsertData, { onConflict: "org_id,site_id,provider,external_form_id" });
 
       if (!error) synced++;
     }

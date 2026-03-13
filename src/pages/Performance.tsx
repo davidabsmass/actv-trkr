@@ -1,14 +1,11 @@
 import { useState, useMemo } from "react";
-import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { AttributionSection } from "@/components/dashboard/AttributionSection";
-import { TrafficSourceROI } from "@/components/dashboard/TrafficSourceROI";
 import { ContentPerformance } from "@/components/dashboard/ContentPerformance";
 import { VisitorMapSection } from "@/components/dashboard/VisitorMapSection";
 import { FunnelView } from "@/components/dashboard/FunnelView";
-import { ForecastSection } from "@/components/dashboard/ForecastSection";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorEngagement } from "@/components/dashboard/VisitorEngagement";
 import { ClickActivity } from "@/components/dashboard/ClickActivity";
@@ -29,7 +26,6 @@ const Performance = () => {
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
-
 
   const endDate = customRange
     ? format(startOfDay(customRange.to), "yyyy-MM-dd")
@@ -52,7 +48,6 @@ const Performance = () => {
           cvr: { value: 0, delta: 0, label: "Conversion Rate" },
         },
         dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
-        
       };
     }
 
@@ -73,13 +68,6 @@ const Performance = () => {
       .map((p) => ({ ...p, expectedLeads: Math.round(p.sessions * sitewideCvr), gap: Math.round(p.sessions * sitewideCvr) - p.leads }))
       .filter((p) => p.gap > 0).sort((a, b) => b.gap - a.gap);
 
-    // Calculate forecast availability based on actual data span
-    const sortedDates = Object.keys(dailyMap).sort();
-    const REQUIRED_DAYS = 42;
-    const dataDays = sortedDates.length;
-    const sufficientData = dataDays >= REQUIRED_DAYS;
-    const daysUntilAvailable = Math.max(0, REQUIRED_DAYS - dataDays);
-
     return {
       kpis: {
         sessions: { value: totalSessions, delta: 0, label: "Sessions" },
@@ -88,7 +76,6 @@ const Performance = () => {
         cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
       },
       dailyData, sources, campaigns, pages, opportunities,
-      forecast: { sufficient_data: sufficientData, days_until_available: daysUntilAvailable, metric: "total_leads", horizon: 0, projected_total: 0, points: [] as any[] },
     };
   }, [isLoading, realtimeData]);
 

@@ -202,13 +202,13 @@ const Index = () => {
                 Dashboard Overview
               </div>
               <h2 className="font-normal text-foreground mb-6" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                A Dashboard Built for Action
+                See What Needs Attention
               </h2>
               <p className="text-lg text-muted-foreground mb-4">
-                ACTV TRKR gives you an immediate view of the metrics that matter most: sessions, leads, conversion rate, visitor activity, and overall website health.
+                ACTV TRKR puts your most important website metrics in one clear dashboard, so you can quickly see traffic, leads, conversions, visitor activity, and site health at a glance.
               </p>
               <p className="text-lg text-muted-foreground">
-                See week-over-week trends, identify performance changes quickly, and spot problems before they affect your business. Instead of digging through multiple tools, you get a clear picture of how your website is performing in one place.
+                Track changes week over week, spot performance shifts early, and catch problems before they start costing you opportunities. Instead of piecing together data from multiple tools, you get one clean view of how your website is really performing.
               </p>
             </div>
             <div className="relative flex items-center justify-center lg:col-span-3 lg:-ml-16">

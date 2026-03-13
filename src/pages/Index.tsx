@@ -351,8 +351,45 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Features Grid */}
+      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%)' }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+              Everything You Need in One Place
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              From traffic insights to site health alerts, ACTV TRKR covers every angle of your WordPress performance.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {([
+              { icon: Globe, label: "Traffic Sources" },
+              { icon: Target, label: "UTM Tracking" },
+              { icon: TrendingUp, label: "Lead Attribution" },
+              { icon: FileCheck, label: "Form Tracking" },
+              { icon: MousePointer2, label: "Conversion Tracking" },
+              { icon: BarChart3, label: "Top Pages" },
+              { icon: FileText, label: "Activity Reports" },
+              { icon: Sparkles, label: "AI Suggestions" },
+              { icon: Shield, label: "Site Health" },
+              { icon: Search, label: "Form Checks" },
+              { icon: Link2, label: "Broken Links" },
+              { icon: Lock, label: "SSL Alerts" },
+              { icon: CalendarClock, label: "Domain Alerts" },
+              { icon: Download, label: "CSV Exports" },
+              { icon: Share2, label: "Shareable Snapshots" },
+            ] as { icon: LucideIcon; label: string }[]).map(({ icon: Icon, label }) => (
+              <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-background border border-border/50 shadow-sm hover:shadow-md hover:border-accent/40 transition-all duration-200">
+                <Icon className="h-6 w-6 text-accent" />
+                <span className="text-sm font-medium text-foreground text-center">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {/* Pricing Section */}
+
       <section id="pricing-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }}><SparkleCanvas /></div>
         

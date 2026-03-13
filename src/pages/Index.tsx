@@ -396,7 +396,7 @@ const Index = () => {
       </section>
 
 
-      <section id="pricing-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <section id="pricing-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '120px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
         <div className="max-w-3xl mx-auto relative z-10">
           <div className="text-center mb-6">

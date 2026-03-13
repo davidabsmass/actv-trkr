@@ -253,8 +253,8 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notif_rules", site.id] }),
   });
 
-  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING", "RENEWAL_DUE"];
-  const channels = ["in_app", "email", "sms"];
+  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING"];
+  const channels = ["in_app", "email"];
 
   const getRuleEnabled = (alertType: string, channel: string) => {
     return notifRules?.find(r => r.alert_type === alertType && r.channel === channel)?.is_enabled ?? false;

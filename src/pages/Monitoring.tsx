@@ -531,47 +531,7 @@ function CheckDomainSslButton() {
 
 // ─── Add Renewal Dialog ─────────────────────────────────────────
 
-function AddRenewalDialog({ onAdd }: { onAdd: (values: { type: string; provider_name: string; renewal_date: string }) => void }) {
-  const [open, setOpen] = useState(false);
-  const [type, setType] = useState("hosting");
-  const [provider, setProvider] = useState("");
-  const [date, setDate] = useState("");
 
-  const handleSubmit = () => {
-    if (!date) return;
-    onAdd({ type, provider_name: provider, renewal_date: date });
-    setOpen(false);
-    setProvider("");
-    setDate("");
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1">
-          <Plus className="h-3.5 w-3.5" /> Add
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Add Renewal</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hosting">Hosting</SelectItem>
-              <SelectItem value="domain">Domain</SelectItem>
-              <SelectItem value="ssl">SSL</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input placeholder="Provider name" value={provider} onChange={e => setProvider(e.target.value)} />
-          <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
-          <Button onClick={handleSubmit} className="w-full">Add Renewal</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ─── Form Checks Tab ────────────────────────────────────────────
 

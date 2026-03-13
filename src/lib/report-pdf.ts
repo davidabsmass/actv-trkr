@@ -215,7 +215,6 @@ function buildReportHtml(report: any): string {
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">CVR</th>
         <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Failures</th>
         </tr></thead><tbody>`;
-      </tr></thead><tbody>`;
     ci.leadsByForm.forEach((f: any) => {
       const failColor = f.failures > 0 ? "color:#ec3636" : "color:#6b6f80";
       html += `<tr style="border-bottom:1px solid rgba(228,230,237,0.5)">
@@ -226,7 +225,6 @@ function buildReportHtml(report: any): string {
         <td style="padding:6px 8px;color:#6b6f80;text-align:right">${f.cvr}%</td>
         <td style="padding:6px 8px;text-align:right;${failColor}">${f.failures}</td>
         </tr>`;
-      </tr>`;
     });
     html += `</tbody></table></div>`;
   }

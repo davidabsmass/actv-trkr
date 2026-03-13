@@ -78,6 +78,7 @@ const App = () => (
             <Route path="entries" element={<Navigate to="/forms" replace />} />
             <Route path="reports" element={<Navigate to="/performance?tab=reports" replace />} />
             <Route path="exports" element={<Exports />} />
+            <Route path="archives" element={<Archives />} />
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="monitoring" element={<Monitoring />} />

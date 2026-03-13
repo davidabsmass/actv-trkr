@@ -32,6 +32,7 @@ const telemetryItems: NavItem[] = [
   { title: "Performance", url: "/performance", icon: TrendingUp },
   { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
+  { title: "Archives", url: "/archives", icon: Archive },
 ];
 
 export function AppSidebar() {

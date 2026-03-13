@@ -281,7 +281,6 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           <TabsTrigger value="broken-links">Broken Links</TabsTrigger>
           <TabsTrigger value="domain-ssl">Domain & SSL</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
 
         {/* Overview */}

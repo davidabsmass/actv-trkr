@@ -1,28 +1,25 @@
 
 
-## Issues Found
+## SSL & Domain Renewal Reliability — Implemented
 
-### 1. Duplicate Notifications Tab
-Line 283-284 in `src/pages/Monitoring.tsx` has the Notifications tab trigger duplicated:
-```tsx
-<TabsTrigger value="notifications">Notifications</TabsTrigger>
-<TabsTrigger value="notifications">Notifications</TabsTrigger>
-```
-**Fix**: Remove line 284 (the duplicate).
+### What was done
 
-### 2. Forms Sync Failed
-The "Re-check Now" button in the Form Checks tab calls `trigger-site-sync`, which makes a request to the WordPress site's REST API (`/wp-json/actv-trkr/v1/sync`). If the WP site blocks the request, is behind authentication, or the REST endpoint isn't registered, the sync will fail with a 502 or 500 error.
+1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
+   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
+   - `check-uptime` runs **every 10 minutes**
+   - `check-renewals` runs daily at 06:00 UTC
 
-The edge function sends a `key_hash` in the body, but the WordPress `rest_verify_api_key` method likely expects the raw API key (not the hash) for verification. This mismatch would cause authentication failure on the WP side.
+2. **Retry logic** added to `check-domain-ssl` edge function:
+   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
+   - 15-second timeout per request
+   - Detailed console logging for debugging
 
-**Fix**: The `trigger-site-sync` function cannot send the raw API key (it only has the hash). The WP plugin's REST endpoint needs to accept verification via `key_hash` directly. Update `class-settings.php`'s `rest_verify_api_key` to also check by hash comparison, or update the edge function to pass a service-level token instead.
+3. **False downtime prevention**:
+   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
+   - Cleaned up 11 false DOWNTIME incidents and related alerts
 
-However, since the WP plugin code is bundled in this repo but runs externally, the more practical fix is to update the error handling in the UI to show a more helpful error message, and verify the WP plugin's `rest_sync` handler accepts the `key_hash` parameter.
+4. **"Check Now" button** on the Monitoring page triggers on-demand checks
 
-### Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/Monitoring.tsx` (line 284) | Remove duplicate Notifications TabsTrigger |
-| `mission-metrics-wp-plugin/includes/class-settings.php` | Update `rest_verify_api_key` to support `key_hash` authentication from the dashboard |
-
+### Extensions enabled
+- `pg_cron` (scheduling)
+- `pg_net` (HTTP calls from SQL)

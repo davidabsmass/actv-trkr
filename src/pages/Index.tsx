@@ -175,7 +175,7 @@ const Index = () => {
                     size="default" 
                     variant="ghost" 
                     className="text-base px-6 py-2.5 border border-accent text-white hover:bg-accent/10 bg-transparent"
-                    onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })}
+                    onClick={() => document.getElementById('all-features-section')?.scrollIntoView({ behavior: 'smooth' })}
                   >
                     View Features
                   </Button>

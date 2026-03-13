@@ -187,20 +187,7 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
-  const { data: renewalsDue } = useQuery({
-    queryKey: ["renewals_due", orgId],
-    queryFn: async () => {
-      if (!orgId) return [];
-      const cutoff = format(subDays(new Date(), -30), "yyyy-MM-dd");
-      const { data, error } = await supabase
-        .from("renewals").select("type, renewal_date, provider_name")
-        .eq("org_id", orgId).eq("is_enabled", true)
-        .lte("renewal_date", cutoff).gte("renewal_date", format(new Date(), "yyyy-MM-dd"));
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!orgId,
-  });
+
 
   const isLoading = !realtimeData;
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";

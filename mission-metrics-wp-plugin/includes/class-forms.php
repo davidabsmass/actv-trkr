@@ -298,6 +298,8 @@ class MM_Forms {
 	 * Returns null if the provider doesn't support entry listing.
 	 */
 	private static function get_active_entry_ids( $provider, $form_id ) {
+		global $wpdb;
+
 		switch ( $provider ) {
 			case 'gravity_forms':
 				if ( ! class_exists( 'GFAPI' ) ) return null;
@@ -312,9 +314,71 @@ class MM_Forms {
 				if ( ! is_array( $entries ) ) return array();
 				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
 
+			case 'avada':
+				// Avada stores submissions in fusion_form_submissions table
+				$table = $wpdb->prefix . 'fusion_form_submissions';
+				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+					return null; // Table doesn't exist
+				}
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT id, date_time FROM {$table} WHERE form_id = %d AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
+					intval( $form_id )
+				) );
+				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+				// Return both the new DB-based ID format AND submitted_at timestamps for legacy matching
+				$result = array();
+				foreach ( $rows as $row ) {
+					$result[] = 'avada_db_' . $row->id;
+				}
+				return $result;
+
+			case 'ninja_forms':
+				// Ninja Forms stores submissions in nf3_objects table (type = 'submission')
+				$table = $wpdb->prefix . 'nf3_objects';
+				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+					return null;
+				}
+				// Ninja Forms uses nf3_objects with type='submission' and parent_id=form_id
+				// But the actual data is in nf3_object_meta. Let's query the objects table.
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT id FROM {$table} WHERE type = 'submission' LIMIT 5000"
+				) );
+				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+				return array_map( function( $r ) { return 'ninja_db_' . $r->id; }, $rows );
+
+			case 'fluent_forms':
+				// Fluent Forms stores submissions in fluentform_submissions table
+				$table = $wpdb->prefix . 'fluentform_submissions';
+				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+					return null;
+				}
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT id FROM {$table} WHERE form_id = %d AND status = 'read' OR status = 'unread' ORDER BY id DESC LIMIT 5000",
+					intval( $form_id )
+				) );
+				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+				// Fluent Forms already uses the actual entry_id, so return as-is
+				return array_map( function( $r ) { return (string) $r->id; }, $rows );
+
+			case 'cf7':
+				// CF7 doesn't store entries natively. Check for Flamingo plugin.
+				if ( ! post_type_exists( 'flamingo_inbound' ) ) return null;
+				$posts = get_posts( array(
+					'post_type'      => 'flamingo_inbound',
+					'post_status'    => 'publish',
+					'posts_per_page' => 5000,
+					'meta_query'     => array(
+						array(
+							'key'   => '_flamingo_channel',
+							'value' => 'contact-form-7_' . $form_id,
+						),
+					),
+					'fields' => 'ids',
+				) );
+				if ( ! is_array( $posts ) || empty( $posts ) ) return array();
+				return array_map( function( $id ) { return 'cf7_db_' . $id; }, $posts );
+
 			default:
-				// CF7, Ninja Forms, Fluent Forms, Avada — these don't reliably store entries
-				// or use generated IDs (timestamps), so we can't reconcile them.
 				return null;
 		}
 	}
@@ -400,6 +464,73 @@ class MM_Forms {
 		}
 
 		return $discovered;
+	}
+
+	// ── DB-backed entry ID helpers ──────────────────────────────────
+
+	/**
+	 * Get the latest Avada submission DB ID for this form.
+	 * Falls back to timestamp-based ID if table doesn't exist.
+	 */
+	private static function get_avada_db_entry_id( $form_post_id ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'fusion_form_submissions';
+		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) === $table ) {
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT id FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 1",
+				intval( $form_post_id )
+			) );
+			if ( $row ) {
+				return 'avada_db_' . $row->id;
+			}
+		}
+		return 'avada_' . time() . '_' . wp_rand();
+	}
+
+	/**
+	 * Get the latest Ninja Forms submission DB ID.
+	 * Falls back to timestamp-based ID if table doesn't exist.
+	 */
+	private static function get_ninja_db_entry_id( $form_data ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'nf3_objects';
+		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) === $table ) {
+			$row = $wpdb->get_row(
+				"SELECT id FROM {$table} WHERE type = 'submission' ORDER BY id DESC LIMIT 1"
+			);
+			if ( $row ) {
+				return 'ninja_db_' . $row->id;
+			}
+		}
+		return 'ninja_' . time() . '_' . wp_rand();
+	}
+
+	/**
+	 * Get the CF7 entry ID via Flamingo if available.
+	 * Falls back to timestamp-based ID.
+	 */
+	private static function get_cf7_db_entry_id( $contact_form ) {
+		if ( post_type_exists( 'flamingo_inbound' ) ) {
+			// Query the latest Flamingo inbound message for this CF7 form
+			$posts = get_posts( array(
+				'post_type'      => 'flamingo_inbound',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'meta_query'     => array(
+					array(
+						'key'   => '_flamingo_channel',
+						'value' => 'contact-form-7_' . $contact_form->id(),
+					),
+				),
+				'fields' => 'ids',
+			) );
+			if ( ! empty( $posts ) ) {
+				return 'cf7_db_' . $posts[0];
+			}
+		}
+		return 'cf7_' . time() . '_' . wp_rand();
 	}
 
 	// ── Shared helpers ──────────────────────────────────────────────
@@ -500,7 +631,7 @@ class MM_Forms {
 			'entry'    => array(
 				'form_id'      => $contact_form->id(),
 				'form_title'   => $contact_form->title(),
-				'entry_id'     => 'cf7_' . time() . '_' . wp_rand(),
+				'entry_id'     => self::get_cf7_db_entry_id( $contact_form ),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),
 			),
@@ -649,7 +780,7 @@ class MM_Forms {
 			'entry'    => array(
 				'form_id'      => $form_post_id,
 				'form_title'   => $form_title,
-				'entry_id'     => 'avada_' . time() . '_' . wp_rand(),
+				'entry_id'     => self::get_avada_db_entry_id( $form_post_id ),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),
 			),
@@ -679,7 +810,7 @@ class MM_Forms {
 			'entry'    => array(
 				'form_id'      => $form_data['form_id'] ?? '',
 				'form_title'   => $form_data['settings']['title'] ?? 'Ninja Form',
-				'entry_id'     => 'ninja_' . time() . '_' . wp_rand(),
+				'entry_id'     => self::get_ninja_db_entry_id( $form_data ),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),
 			),

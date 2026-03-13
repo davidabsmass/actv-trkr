@@ -199,7 +199,7 @@ const Index = () => {
             <div className="lg:col-span-2 lg:pl-[29px] section-copy-block">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
                 <Layout className="h-4 w-4" />
-                Dashboard Overview
+                Performance Snapshot
               </div>
               <h2 className="font-normal text-foreground mb-6" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
                 See What Needs Attention

@@ -319,6 +319,89 @@ class MM_Forms {
 		}
 	}
 
+	/**
+	 * Look up which published page/post contains shortcodes or blocks for each form.
+	 * Appends 'page_url' to each discovered form entry.
+	 */
+	private static function enrich_with_page_urls( $discovered ) {
+		// Build shortcode patterns per provider + form_id
+		$patterns = array();
+		foreach ( $discovered as $idx => $form ) {
+			$fid      = $form['form_id'];
+			$provider = $form['provider'];
+			$searches = array();
+
+			switch ( $provider ) {
+				case 'gravity_forms':
+					$searches[] = '[gravityform id="' . $fid . '"';
+					$searches[] = '[gravityform id=\'' . $fid . '\'';
+					$searches[] = 'wp:gravityforms/form {"formId":"' . $fid . '"';
+					break;
+				case 'cf7':
+					$searches[] = '[contact-form-7 id="' . $fid . '"';
+					$searches[] = '[contact-form-7 id=\'' . $fid . '\'';
+					break;
+				case 'wpforms':
+					$searches[] = '[wpforms id="' . $fid . '"';
+					$searches[] = '[wpforms id=\'' . $fid . '\'';
+					break;
+				case 'ninja_forms':
+					$searches[] = '[ninja_form id="' . $fid . '"';
+					$searches[] = '[ninja_form id=' . $fid . ']';
+					break;
+				case 'fluent_forms':
+					$searches[] = '[fluentform id="' . $fid . '"';
+					break;
+			}
+
+			if ( ! empty( $searches ) ) {
+				$patterns[ $idx ] = $searches;
+			}
+		}
+
+		if ( empty( $patterns ) ) return $discovered;
+
+		// Query published posts/pages in batches
+		$posts = get_posts( array(
+			'post_type'      => array( 'page', 'post' ),
+			'post_status'    => 'publish',
+			'posts_per_page' => 500,
+			'fields'         => 'ids',
+		) );
+
+		foreach ( $posts as $post_id ) {
+			$content = get_post_field( 'post_content', $post_id );
+			if ( empty( $content ) ) continue;
+
+			foreach ( $patterns as $idx => $searches ) {
+				if ( ! empty( $discovered[ $idx ]['page_url'] ) ) continue; // already found
+
+				foreach ( $searches as $needle ) {
+					if ( stripos( $content, $needle ) !== false ) {
+						$discovered[ $idx ]['page_url'] = get_permalink( $post_id );
+						break;
+					}
+				}
+			}
+		}
+
+		// Also check Avada/Fusion — these use post meta or the Avada builder
+		foreach ( $discovered as $idx => &$form ) {
+			if ( ! empty( $form['page_url'] ) ) continue;
+			if ( $form['provider'] !== 'avada' ) continue;
+
+			// Avada stores forms in fusion_form post type
+			$fusion_post = get_posts( array(
+				'post_type' => 'fusion_form',
+				'p'         => intval( $form['form_id'] ),
+				'posts_per_page' => 1,
+			) );
+			// Avada forms are typically embedded via builder — harder to detect page URL
+		}
+
+		return $discovered;
+	}
+
 	// ── Shared helpers ──────────────────────────────────────────────
 
 	private static function get_tracking_context() {

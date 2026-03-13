@@ -648,7 +648,15 @@ function TriggerSyncButton({ siteId }: { siteId: string }) {
         queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
       }, 5000);
     } catch (err: any) {
-      toast({ title: "Sync failed", description: err.message, variant: "destructive" });
+      const msg = err.message || "";
+      const isPluginIssue = msg.includes("404") || msg.includes("rest_no_route");
+      toast({
+        title: "Sync failed",
+        description: isPluginIssue
+          ? "The ACTV TRKR plugin may need to be updated or re-activated on this WordPress site."
+          : msg,
+        variant: "destructive",
+      });
     } finally {
       setSyncing(false);
     }

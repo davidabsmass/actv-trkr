@@ -235,46 +235,4 @@ class MM_Settings {
 		wp_send_json_success( $result );
 	}
 
-	/**
-	 * Register REST API routes for remote sync triggers.
-	 */
-	public static function register_rest_routes() {
-		register_rest_route( 'actv-trkr/v1', '/sync', array(
-			'methods'             => 'POST',
-			'callback'            => array( __CLASS__, 'rest_sync' ),
-			'permission_callback' => array( __CLASS__, 'rest_verify_api_key' ),
-		) );
-	}
-
-	/**
-	 * Verify the incoming REST request has a valid API key matching ours.
-	 */
-	public static function rest_verify_api_key( $request ) {
-		$opts = self::get();
-
-		// Method 1: Authorization header with plaintext key
-		$header = $request->get_header( 'Authorization' );
-		if ( $header ) {
-			$token = preg_replace( '/^Bearer\s+/i', '', $header );
-			return hash_equals( $opts['api_key'], $token );
-		}
-
-		// Method 2: key_hash in request body (used by dashboard trigger)
-		$body = $request->get_json_params();
-		if ( ! empty( $body['key_hash'] ) ) {
-			$local_hash = hash( 'sha256', $opts['api_key'] );
-			return hash_equals( $local_hash, $body['key_hash'] );
-		}
-
-		return false;
-	}
-
-	/**
-	 * REST handler: trigger form + entry sync on demand.
-	 */
-	public static function rest_sync( $request ) {
-		// Clear the cooldown transient so scan_all_forms actually runs
-		delete_transient( 'actv_trkr_last_form_sync' );
-		$result = MM_Forms::scan_all_forms();
-		return new WP_REST_Response( array( 'ok' => true, 'result' => $result ), 200 );
-	}
+}

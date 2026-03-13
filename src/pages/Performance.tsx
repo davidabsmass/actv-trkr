@@ -29,18 +29,7 @@ const Performance = () => {
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
-  const { data: formsData } = useForms(orgId);
 
-  // Compute weighted average estimated value per lead from forms
-  const avgEstimatedValue = useMemo(() => {
-    if (!formsData || formsData.length === 0) return null;
-    const activeForms = formsData.filter((f) => !f.archived && f.estimated_value && f.estimated_value > 0);
-    if (activeForms.length === 0) return null;
-    const totalWeight = activeForms.reduce((s, f) => s + (f.lead_weight ?? 1), 0);
-    if (totalWeight === 0) return null;
-    const weightedSum = activeForms.reduce((s, f) => s + (f.estimated_value! * (f.lead_weight ?? 1)), 0);
-    return weightedSum / totalWeight;
-  }, [formsData]);
 
   const endDate = customRange
     ? format(startOfDay(customRange.to), "yyyy-MM-dd")

@@ -89,7 +89,7 @@ function buildReportHtml(report: any): string {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
       <span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">ACTV TRKR</span>
       <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
-      <span style="font-size:10px;color:rgba(255,255,255,0.8)">Performance Intelligence</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.8)">Activity Report</span>
     </div>
     <div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:6px">Performance Report</div>
     <div style="font-size:11px;color:rgba(255,255,255,0.85)">${safe(periodLabel)}</div>

@@ -214,7 +214,7 @@ function OrgDetail({ org }: { org: any }) {
   });
 
   const copyInviteLink = (code: string) => {
-    const url = `https://actvtrkr.com/auth?invite=${code}`;
+    const url = `${window.location.origin}/auth?invite=${code}`;
     navigator.clipboard.writeText(url);
     setInviteCopied(true);
     toast.success("Invite link copied!");

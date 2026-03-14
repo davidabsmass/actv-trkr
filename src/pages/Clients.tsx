@@ -317,7 +317,7 @@ function MembersSection({ org }: { org: any }) {
   const sendPasswordReset = useMutation({
     mutationFn: async ({ email, new_password }: { email: string; new_password: string }) => {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
-        body: { action: "reset_password", email, new_password },
+        body: { action: "reset_password", email, new_password, org_id: org.id },
       });
       const errMsg = data?.error || (error as any)?.message;
       if (errMsg) throw new Error(errMsg);

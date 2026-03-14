@@ -14,23 +14,25 @@ const ResetPassword = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for recovery type in URL hash
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery")) {
-      setReady(true);
-    } else {
-      // Listen for auth state change (recovery event)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        if (event === "PASSWORD_RECOVERY") {
-          setReady(true);
-        }
-      });
-      // Also check if already logged in via recovery
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setReady(true);
-      });
-      return () => subscription.unsubscribe();
-    }
+    let mounted = true;
+
+    // Listen for PASSWORD_RECOVERY or SIGNED_IN (recovery triggers SIGNED_IN in v2)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        setReady(true);
+      }
+    });
+
+    // Also check immediately — the event may have already fired before mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted && session) setReady(true);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

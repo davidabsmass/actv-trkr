@@ -9,6 +9,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Section,
   Text,
@@ -29,7 +30,7 @@ export const RecoveryEmail = ({
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
-          <Text style={logo}>⚡ ACTV TRKR</Text>
+          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.svg" alt="ACTV TRKR" width="180" height="auto" style={logoImg} />
         </Section>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
@@ -53,7 +54,7 @@ export default RecoveryEmail
 const main = { backgroundColor: '#ffffff', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }
 const container = { padding: '40px 25px' }
 const logoSection = { marginBottom: '24px' }
-const logo = { fontSize: '18px', fontWeight: 'bold' as const, color: '#00264D', letterSpacing: '-0.02em', margin: '0' }
+const logoImg = { margin: '0' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 16px' }
 const text = { fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: '0 0 24px' }
 const button = { backgroundColor: '#6C5CE7', color: '#ffffff', fontSize: '14px', fontWeight: '600' as const, borderRadius: '12px', padding: '12px 24px', textDecoration: 'none' }

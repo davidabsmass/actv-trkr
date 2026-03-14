@@ -9,6 +9,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -34,7 +35,7 @@ export const EmailChangeEmail = ({
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
-          <Text style={logo}>⚡ ACTV TRKR</Text>
+          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.svg" alt="ACTV TRKR" width="180" height="auto" style={logoImg} />
         </Section>
         <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
@@ -60,7 +61,7 @@ export default EmailChangeEmail
 const main = { backgroundColor: '#ffffff', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }
 const container = { padding: '40px 25px' }
 const logoSection = { marginBottom: '24px' }
-const logo = { fontSize: '18px', fontWeight: 'bold' as const, color: '#00264D', letterSpacing: '-0.02em', margin: '0' }
+const logoImg = { margin: '0' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 16px' }
 const text = { fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: '0 0 24px' }
 const link = { color: '#6C5CE7', textDecoration: 'underline' }

@@ -91,7 +91,8 @@ const Auth = () => {
     clearMessages();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      const normalizedForgotEmail = forgotEmail.trim().toLowerCase();
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedForgotEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
@@ -109,8 +110,10 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
         const pendingCode = localStorage.getItem("pending_invite_code");
         if (pendingCode) {
@@ -124,7 +127,7 @@ const Auth = () => {
         navigate("/dashboard");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: { data: { full_name: fullName } },
         });
@@ -144,7 +147,7 @@ const Auth = () => {
           localStorage.setItem("pending_invite_code", inviteCode.trim().toUpperCase());
         }
 
-        setPendingEmail(email);
+        setPendingEmail(normalizedEmail);
         setPendingPassword(password);
         goToPanel("otp");
       }

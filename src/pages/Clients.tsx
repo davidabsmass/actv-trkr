@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { APP_DOMAIN } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
@@ -152,8 +151,8 @@ function OrgDetail({ org }: { org: any }) {
   const { user } = useAuth();
   const [urlCopied, setUrlCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
-
-  const dashboardUrl = `https://actvtrkr.com/auth`;
+  const isPreviewEnvironment = window.location.hostname.includes("preview--");
+  const dashboardUrl = `${window.location.origin}/auth`;
 
   const copyDashboardUrl = () => {
     navigator.clipboard.writeText(dashboardUrl);
@@ -192,7 +191,7 @@ function OrgDetail({ org }: { org: any }) {
     },
     onSuccess: (code) => {
       queryClient.invalidateQueries({ queryKey: ["invite_codes", org.id] });
-      const inviteUrl = `https://actvtrkr.com/auth?invite=${code}`;
+      const inviteUrl = `${window.location.origin}/auth?invite=${code}`;
       navigator.clipboard.writeText(inviteUrl);
       toast.success("Invite link copied to clipboard!");
     },
@@ -215,7 +214,7 @@ function OrgDetail({ org }: { org: any }) {
   });
 
   const copyInviteLink = (code: string) => {
-    const url = `https://actvtrkr.com/auth?invite=${code}`;
+    const url = `${window.location.origin}/auth?invite=${code}`;
     navigator.clipboard.writeText(url);
     setInviteCopied(true);
     toast.success("Invite link copied!");
@@ -228,6 +227,14 @@ function OrgDetail({ org }: { org: any }) {
         <h2 className="text-xl font-bold text-foreground mb-1">{org.name}</h2>
         <p className="text-sm text-muted-foreground">{org.timezone}</p>
       </div>
+
+      {isPreviewEnvironment && (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
+          <p className="text-xs text-warning-foreground">
+            You’re in Preview. Users and passwords created here only work in this Preview environment.
+          </p>
+        </div>
+      )}
 
       {/* Members - at top */}
       <MembersSection org={org} />

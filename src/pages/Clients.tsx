@@ -465,16 +465,15 @@ function MembersSection({ org }: { org: any }) {
       )}
 
       {/* User Activity / Login History */}
-      <UserActivitySection />
+      <UserActivitySection orgId={org.id} />
     </div>
   );
 }
 
-function UserActivitySection() {
+function UserActivitySection({ orgId }: { orgId: string }) {
   const { data: loginEvents, isLoading } = useQuery({
-    queryKey: ["login-events"],
+    queryKey: ["login-events", orgId],
     queryFn: async () => {
-      // Fetch all login events using pagination to avoid the 1000-row limit
       const allRows: Array<{
         id: string;
         user_id: string;
@@ -492,6 +491,7 @@ function UserActivitySection() {
         const { data, error } = await (supabase as any)
           .from("login_events")
           .select("*")
+          .eq("org_id", orgId)
           .order("logged_in_at", { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
         if (error) throw error;
@@ -503,26 +503,18 @@ function UserActivitySection() {
           hasMore = false;
         }
       }
-      return allRows as Array<{
-        id: string;
-        user_id: string;
-        email: string | null;
-        full_name: string | null;
-        org_id: string | null;
-        ip_address: string | null;
-        user_agent: string | null;
-        logged_in_at: string;
-      }>;
+      return allRows;
     },
   });
 
   // Get the true total count separately
   const { data: totalCount } = useQuery({
-    queryKey: ["login-events-count"],
+    queryKey: ["login-events-count", orgId],
     queryFn: async () => {
       const { count, error } = await (supabase as any)
         .from("login_events")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId);
       if (error) throw error;
       return count as number;
     },

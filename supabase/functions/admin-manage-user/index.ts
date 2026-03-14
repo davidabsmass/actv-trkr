@@ -182,11 +182,34 @@ Deno.serve(async (req) => {
     }
 
     if (action === "reset_password") {
-      const { email, new_password } = body;
+      const { email, new_password, org_id } = body;
+      const normalizedEmail = String(email || "").trim().toLowerCase();
 
-      if (!email) {
-        return new Response(JSON.stringify({ error: "email is required" }), {
+      if (!normalizedEmail || !org_id) {
+        return new Response(JSON.stringify({ error: "email and org_id are required" }), {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Enforce org-scoped admin permission
+      const { data: callerOrgAccess, error: callerOrgAccessError } = await adminClient
+        .from("org_users")
+        .select("role")
+        .eq("org_id", org_id)
+        .eq("user_id", caller.id)
+        .maybeSingle();
+
+      if (callerOrgAccessError) {
+        return new Response(JSON.stringify({ error: callerOrgAccessError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
+        return new Response(JSON.stringify({ error: "Org admin access required" }), {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -199,10 +222,33 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const targetUser = users.find((u: any) => u.email === email);
+
+      const targetUser = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
       if (!targetUser) {
         return new Response(JSON.stringify({ error: "User not found" }), {
           status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Ensure target user belongs to this org
+      const { data: targetMembership, error: targetMembershipError } = await adminClient
+        .from("org_users")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("user_id", targetUser.id)
+        .maybeSingle();
+
+      if (targetMembershipError) {
+        return new Response(JSON.stringify({ error: targetMembershipError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!targetMembership) {
+        return new Response(JSON.stringify({ error: "User does not belong to this client account" }), {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -226,7 +272,7 @@ Deno.serve(async (req) => {
       // Fallback: generate recovery link (admin can share it manually)
       const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
         type: "recovery",
-        email,
+        email: normalizedEmail,
       });
       if (linkError) {
         return new Response(JSON.stringify({ error: linkError.message }), {

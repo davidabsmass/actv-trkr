@@ -228,6 +228,14 @@ function OrgDetail({ org }: { org: any }) {
         <p className="text-sm text-muted-foreground">{org.timezone}</p>
       </div>
 
+      {isPreviewEnvironment && (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
+          <p className="text-xs text-warning-foreground">
+            You’re in Preview. Users and passwords created here only work in this Preview environment.
+          </p>
+        </div>
+      )}
+
       {/* Members - at top */}
       <MembersSection org={org} />
 

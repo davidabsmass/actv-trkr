@@ -504,34 +504,17 @@ function UserActivitySection({ orgId }: { orgId: string }) {
         }
       }
       return allRows;
-        if (data && data.length > 0) {
-          allRows.push(...data);
-          from += PAGE_SIZE;
-          hasMore = data.length === PAGE_SIZE;
-        } else {
-          hasMore = false;
-        }
-      }
-      return allRows as Array<{
-        id: string;
-        user_id: string;
-        email: string | null;
-        full_name: string | null;
-        org_id: string | null;
-        ip_address: string | null;
-        user_agent: string | null;
-        logged_in_at: string;
-      }>;
     },
   });
 
   // Get the true total count separately
   const { data: totalCount } = useQuery({
-    queryKey: ["login-events-count"],
+    queryKey: ["login-events-count", orgId],
     queryFn: async () => {
       const { count, error } = await (supabase as any)
         .from("login_events")
-        .select("*", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId);
       if (error) throw error;
       return count as number;
     },

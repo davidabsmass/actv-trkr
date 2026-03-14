@@ -75,6 +75,28 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Enforce org-scoped admin permission
+      const { data: callerOrgAccess, error: callerOrgAccessError } = await adminClient
+        .from("org_users")
+        .select("role")
+        .eq("org_id", org_id)
+        .eq("user_id", caller.id)
+        .maybeSingle();
+
+      if (callerOrgAccessError) {
+        return new Response(JSON.stringify({ error: callerOrgAccessError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
+        return new Response(JSON.stringify({ error: "Org admin access required" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Try to create user; if already exists, look them up and set the provided password
       let userId: string;
 

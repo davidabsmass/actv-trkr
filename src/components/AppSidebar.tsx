@@ -1,7 +1,7 @@
 import {
   TableProperties, Settings, LogOut, UserCircle,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
-  LayoutDashboard, TrendingUp, Users, Archive, Rocket,
+  LayoutDashboard, TrendingUp, Users, Archive,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -33,7 +33,6 @@ const telemetryItems: NavItem[] = [
   { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
   { title: "Archives", url: "/archives", icon: Archive },
-  { title: "Website Setup", url: "/website-setup", icon: Rocket },
 ];
 
 export function AppSidebar() {

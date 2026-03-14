@@ -286,9 +286,9 @@ function MembersSection({ org }: { org: any }) {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: {
           action: "create_user",
-          email: newEmail,
+          email: newEmail.trim().toLowerCase(),
           password: newPassword,
-          full_name: newFullName,
+          full_name: newFullName.trim(),
           org_id: org.id,
           role: newRole,
         },

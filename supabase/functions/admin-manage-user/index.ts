@@ -57,26 +57,36 @@ Deno.serve(async (req) => {
 
     if (action === "create_user") {
       const { email, password, full_name, org_id, role } = body;
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+      const normalizedPassword = String(password || "");
+      const normalizedFullName = String(full_name || "").trim();
 
-      if (!email || !password || !org_id) {
+      if (!normalizedEmail || !normalizedPassword || !org_id) {
         return new Response(JSON.stringify({ error: "email, password, and org_id are required" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Try to create user; if already exists, look them up instead
+      if (normalizedPassword.length < 6) {
+        return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Try to create user; if already exists, look them up and set the provided password
       let userId: string;
 
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-        email,
-        password,
+        email: normalizedEmail,
+        password: normalizedPassword,
         email_confirm: true,
-        user_metadata: { full_name: full_name || "" },
+        user_metadata: { full_name: normalizedFullName },
       });
 
       if (createError) {
-        // If user already exists, find them and add to org
+        // If user already exists, find them, set the provided password, and add to org
         if (createError.message.includes("already been registered")) {
           const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
           if (listErr) {
@@ -84,12 +94,25 @@ Deno.serve(async (req) => {
               status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          const existing = users.find((u: any) => u.email === email);
+          const existing = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
           if (!existing) {
             return new Response(JSON.stringify({ error: "User not found" }), {
               status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
+
+          const { error: pwErr } = await adminClient.auth.admin.updateUserById(existing.id, {
+            password: normalizedPassword,
+            email_confirm: true,
+            user_metadata: { full_name: normalizedFullName },
+          });
+
+          if (pwErr) {
+            return new Response(JSON.stringify({ error: pwErr.message }), {
+              status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
           userId = existing.id;
         } else {
           return new Response(JSON.stringify({ error: createError.message }), {

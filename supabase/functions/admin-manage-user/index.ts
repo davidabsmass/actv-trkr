@@ -123,6 +123,26 @@ Deno.serve(async (req) => {
             });
           }
 
+          // Prevent cross-client account linking for existing global users
+          const { data: existingMembership, error: existingMembershipError } = await adminClient
+            .from("org_users")
+            .select("id")
+            .eq("org_id", org_id)
+            .eq("user_id", existing.id)
+            .maybeSingle();
+
+          if (existingMembershipError) {
+            return new Response(JSON.stringify({ error: existingMembershipError.message }), {
+              status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          if (!existingMembership) {
+            return new Response(JSON.stringify({ error: "Email already exists in a different client account. Use a unique email for this client." }), {
+              status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
           const { error: pwErr } = await adminClient.auth.admin.updateUserById(existing.id, {
             password: normalizedPassword,
             email_confirm: true,

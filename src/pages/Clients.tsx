@@ -358,10 +358,8 @@ function MembersSection({ org }: { org: any }) {
           <Users className="h-4 w-4 text-primary" /> Members
         </h3>
         <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <UserPlus className="h-3.5 w-3.5" /> Create User
-            </Button>
+          <DialogTrigger className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}>
+            <UserPlus className="h-3.5 w-3.5" /> Create User
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create User for {org.name}</DialogTitle></DialogHeader>

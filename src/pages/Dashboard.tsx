@@ -427,13 +427,23 @@ const Dashboard = () => {
       ) : (
         <div className="space-y-4">
           {sitesData && sitesData.length === 0 && (
-            <div className="flex items-start gap-3 p-4 rounded-lg border border-warning/30 bg-warning/5 animate-slide-up">
-              <AlertTriangle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-foreground">No site connected yet</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Make sure the plugin is activated on your WordPress site.</p>
-                <button onClick={() => navigate("/settings")} className="text-xs font-medium text-primary hover:underline mt-1.5">
-                  Go to Settings →
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 animate-slide-up">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Zap className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-foreground mb-1">Get started — connect your website</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Download the ACTV TRKR plugin, install it on WordPress, and paste your API key to start tracking leads and traffic in minutes.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate("/settings?tab=setup")}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
+                >
+                  Start Setup
+                  <ArrowUpRight className="h-4 w-4" />
                 </button>
               </div>
             </div>

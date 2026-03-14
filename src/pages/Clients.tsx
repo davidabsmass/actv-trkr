@@ -151,8 +151,8 @@ function OrgDetail({ org }: { org: any }) {
   const { user } = useAuth();
   const [urlCopied, setUrlCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
-
-  const dashboardUrl = `https://actvtrkr.com/auth`;
+  const isPreviewEnvironment = window.location.hostname.includes("preview--");
+  const dashboardUrl = `${window.location.origin}/auth`;
 
   const copyDashboardUrl = () => {
     navigator.clipboard.writeText(dashboardUrl);

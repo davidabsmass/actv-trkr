@@ -8,7 +8,7 @@ import {
   Building2, UserPlus, Users, Mail, Trash2, Copy, Check, Link, KeyRound, Ticket, Activity,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 export default function Clients() {
   const { isAdmin, loading: roleLoading } = useUserRole();

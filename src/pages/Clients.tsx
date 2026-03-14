@@ -191,7 +191,7 @@ function OrgDetail({ org }: { org: any }) {
     },
     onSuccess: (code) => {
       queryClient.invalidateQueries({ queryKey: ["invite_codes", org.id] });
-      const inviteUrl = `https://actvtrkr.com/auth?invite=${code}`;
+      const inviteUrl = `${window.location.origin}/auth?invite=${code}`;
       navigator.clipboard.writeText(inviteUrl);
       toast.success("Invite link copied to clipboard!");
     },

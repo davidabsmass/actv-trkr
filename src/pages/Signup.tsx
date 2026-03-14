@@ -213,10 +213,10 @@ const Signup = () => {
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-1">
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">1</span>
-                <h3 className="text-sm font-medium text-foreground">Install the WordPress Plugin</h3>
+                <h3 className="text-sm font-medium text-foreground">Download the Plugin</h3>
               </div>
               <p className="text-xs text-muted-foreground mb-3 ml-7">
-                Your API key is pre-configured. Just upload to WordPress and activate.
+                Your API key is already baked in — no configuration needed.
               </p>
               <button
                 onClick={() => downloadPlugin(apiKey)}
@@ -227,17 +227,41 @@ const Signup = () => {
               </button>
             </div>
 
-            {/* Step 2: Dashboard URL */}
+            {/* Step 2: Upload to WordPress */}
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-1">
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">2</span>
+                <h3 className="text-sm font-medium text-foreground">Upload &amp; Activate in WordPress</h3>
+              </div>
+              <ol className="text-xs text-muted-foreground ml-7 space-y-1.5 list-decimal list-inside">
+                <li>Log in to your WordPress admin panel</li>
+                <li>Go to <span className="font-medium text-foreground">Plugins → Add New → Upload Plugin</span></li>
+                <li>Choose the <span className="font-medium text-foreground">actv-trkr.zip</span> file you just downloaded</li>
+                <li>Click <span className="font-medium text-foreground">Install Now</span>, then <span className="font-medium text-foreground">Activate</span></li>
+              </ol>
+            </div>
+
+            {/* Step 3: Automatic sync */}
+            <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">3</span>
+                <h3 className="text-sm font-medium text-foreground">You're Connected</h3>
+              </div>
+              <p className="text-xs text-muted-foreground ml-7">
+                Once activated, the plugin automatically registers your site, discovers your forms, and starts tracking pageviews and leads. Data typically appears on your dashboard within a few minutes.
+              </p>
+            </div>
+
+            {/* Dashboard URL */}
+            <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+              <div className="flex items-center gap-2 mb-1">
+                <Globe className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-medium text-foreground">Your Dashboard</h3>
               </div>
-              <p className="text-xs text-muted-foreground mb-3 ml-7">
-                Bookmark this link — it's where you'll see your results once the plugin is active.
+              <p className="text-xs text-muted-foreground mb-2 ml-6">
+                Bookmark this — it's where you'll see your results.
               </p>
               <div className="bg-secondary rounded-lg p-3 flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <code className="text-xs font-mono text-foreground flex-1 break-all">
                   {`https://actvtrkr.com/auth`}
                 </code>

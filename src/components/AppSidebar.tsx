@@ -129,7 +129,7 @@ export function AppSidebar() {
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <ClipboardList className="h-4 w-4" />
-                      <span>Setup & Inputs</span>
+                      <span>Clients</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { APP_DOMAIN } from "@/lib/utils";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";

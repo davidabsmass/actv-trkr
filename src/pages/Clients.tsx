@@ -470,11 +470,10 @@ function MembersSection({ org }: { org: any }) {
   );
 }
 
-function UserActivitySection() {
+function UserActivitySection({ orgId }: { orgId: string }) {
   const { data: loginEvents, isLoading } = useQuery({
-    queryKey: ["login-events"],
+    queryKey: ["login-events", orgId],
     queryFn: async () => {
-      // Fetch all login events using pagination to avoid the 1000-row limit
       const allRows: Array<{
         id: string;
         user_id: string;
@@ -492,9 +491,19 @@ function UserActivitySection() {
         const { data, error } = await (supabase as any)
           .from("login_events")
           .select("*")
+          .eq("org_id", orgId)
           .order("logged_in_at", { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
         if (error) throw error;
+        if (data && data.length > 0) {
+          allRows.push(...data);
+          from += PAGE_SIZE;
+          hasMore = data.length === PAGE_SIZE;
+        } else {
+          hasMore = false;
+        }
+      }
+      return allRows;
         if (data && data.length > 0) {
           allRows.push(...data);
           from += PAGE_SIZE;

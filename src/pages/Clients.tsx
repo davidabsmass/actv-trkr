@@ -56,10 +56,8 @@ export default function Clients() {
         </Select>
 
         <Dialog open={createOrgOpen} onOpenChange={setCreateOrgOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 flex-shrink-0">
-              <Building2 className="h-3.5 w-3.5" /> Add Client
-            </Button>
+          <DialogTrigger className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5 flex-shrink-0")}>
+            <Building2 className="h-3.5 w-3.5" /> Add Client
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>New Client Organization</DialogTitle></DialogHeader>

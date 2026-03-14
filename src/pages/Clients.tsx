@@ -465,7 +465,7 @@ function MembersSection({ org }: { org: any }) {
       )}
 
       {/* User Activity / Login History */}
-      <UserActivitySection />
+      <UserActivitySection orgId={org.id} />
     </div>
   );
 }

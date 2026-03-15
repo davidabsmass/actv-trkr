@@ -341,8 +341,8 @@ const Dashboard = () => {
             />
             <KPICard
               label="Top Source"
-              value={topSource?.source || topSource?.referrer_domain || "—"}
-              sub={topSource ? `${topSource.sessions || topSource.count || 0} sessions` : undefined}
+              value={topSource?.source || "—"}
+              sub={topSource ? `${topSource.sessions} sessions` : undefined}
               icon={<Megaphone className="h-4 w-4" />}
               accent="text-accent-foreground"
             />

@@ -13,8 +13,39 @@ interface SeoIssue {
   impact: "Critical" | "High" | "Medium" | "Low";
   category: "SEO" | "Performance" | "Content" | "Technical";
   count?: number;
+  ai_detected?: boolean;
 }
 
+/* ── Scoring logic (mirrors src/lib/seo-scoring.ts) ── */
+const BASE_WEIGHTS: Record<string, number> = { Critical: 15, High: 8, Medium: 4, Low: 2 };
+
+function severityMultiplier(issueId: string, count?: number): number {
+  if (!count || count <= 1) return 1.0;
+  switch (issueId) {
+    case "h1-multiple":
+    case "multiple-h1":
+      return count <= 2 ? 1.0 : count <= 5 ? 1.3 : count <= 10 ? 1.7 : 2.0;
+    case "images-without-alt":
+    case "images-missing-alt":
+      return count <= 5 ? 1.0 : count <= 15 ? 1.3 : count <= 30 ? 1.6 : 2.0;
+    case "render-blocking-scripts":
+      return count <= 2 ? 1.0 : count <= 5 ? 1.3 : 1.6;
+    default:
+      return count <= 3 ? 1.0 : count <= 10 ? 1.2 : 1.4;
+  }
+}
+
+function calculateScore(issues: SeoIssue[]): number {
+  if (issues.length === 0) return 100;
+  const deductions = issues.reduce((sum, i) => {
+    const base = BASE_WEIGHTS[i.impact] || 4;
+    const mult = Math.min(severityMultiplier(i.id, i.count), 3.0);
+    return sum + base * mult;
+  }, 0);
+  return Math.max(0, Math.round(100 - Math.min(deductions, 100)));
+}
+
+/* ── Platform detection ── */
 function detectPlatform(html: string): string | null {
   const h = html.toLowerCase();
   if (h.includes("wp-content") || h.includes("wp-includes") || h.includes("wp-json")) return "wordpress";
@@ -23,6 +54,73 @@ function detectPlatform(html: string): string | null {
   if (h.includes("squarespace.com") || h.includes("squarespace-cdn")) return "squarespace";
   if (h.includes("webflow.com") || h.includes("wf-section")) return "webflow";
   return null;
+}
+
+/* ── Deterministic issue builders ── */
+function buildDeterministicIssues(ctx: {
+  titleStatus: string; titleLength: number; titleContent: string | null;
+  metaDescContent: string | null; metaDescLength: number;
+  h1Count: number; isSPA: boolean;
+  hasCanonical: boolean; hasOgTitle: boolean; hasOgDesc: boolean; hasOgImage: boolean;
+  isHttps: boolean; blockingScriptsCount: number; imgsNoLazy: number;
+}): SeoIssue[] {
+  const issues: SeoIssue[] = [];
+
+  // Title
+  if (ctx.titleStatus === "missing") {
+    issues.push({ id: "title-missing", title: "Page title is missing", fix: "", impact: "Critical", category: "SEO" });
+  } else if (ctx.titleStatus === "too-short") {
+    issues.push({ id: "title-too-short", title: `Page title is too short (${ctx.titleLength} chars, aim for 30-60)`, fix: "", impact: "Medium", category: "SEO" });
+  } else if (ctx.titleStatus === "too-long") {
+    issues.push({ id: "title-too-long", title: `Page title is too long (${ctx.titleLength} chars, aim for 30-60)`, fix: "", impact: "Medium", category: "SEO" });
+  }
+
+  // Meta description
+  if (!ctx.metaDescContent) {
+    issues.push({ id: "meta-desc-missing", title: "Meta description is missing", fix: "", impact: "High", category: "SEO" });
+  } else if (ctx.metaDescLength < 120) {
+    issues.push({ id: "meta-desc-too-short", title: `Meta description is too short (${ctx.metaDescLength} chars, aim for 120-160)`, fix: "", impact: "Medium", category: "SEO" });
+  } else if (ctx.metaDescLength > 160) {
+    issues.push({ id: "meta-desc-too-long", title: `Meta description is too long (${ctx.metaDescLength} chars, aim for 120-160)`, fix: "", impact: "Medium", category: "SEO" });
+  }
+
+  // H1
+  if (!ctx.isSPA && ctx.h1Count === 0) {
+    issues.push({ id: "h1-missing", title: "No H1 heading found", fix: "", impact: "Critical", category: "SEO" });
+  } else if (ctx.h1Count > 1) {
+    issues.push({ id: "h1-multiple", title: `Multiple H1 tags found (${ctx.h1Count})`, fix: "", impact: "Medium", category: "Content", count: ctx.h1Count });
+  }
+
+  // Canonical
+  if (!ctx.hasCanonical) {
+    issues.push({ id: "canonical-missing", title: "No canonical tag found", fix: "", impact: "Medium", category: "Technical" });
+  }
+
+  // OG tags
+  const missingOg: string[] = [];
+  if (!ctx.hasOgTitle) missingOg.push("og:title");
+  if (!ctx.hasOgDesc) missingOg.push("og:description");
+  if (!ctx.hasOgImage) missingOg.push("og:image");
+  if (missingOg.length > 0) {
+    issues.push({ id: "og-tags-missing", title: `Missing Open Graph tags: ${missingOg.join(", ")}`, fix: "", impact: "Low", category: "SEO", count: missingOg.length });
+  }
+
+  // HTTPS
+  if (!ctx.isHttps) {
+    issues.push({ id: "not-https", title: "Site is not using HTTPS", fix: "", impact: "Critical", category: "Technical" });
+  }
+
+  // Render-blocking scripts
+  if (ctx.blockingScriptsCount > 0) {
+    issues.push({ id: "render-blocking-scripts", title: `${ctx.blockingScriptsCount} render-blocking script(s) in <head>`, fix: "", impact: "Medium", category: "Performance", count: ctx.blockingScriptsCount });
+  }
+
+  // Lazy loading
+  if (ctx.imgsNoLazy > 5) {
+    issues.push({ id: "images-no-lazy", title: `${ctx.imgsNoLazy} images without lazy loading`, fix: "", impact: "Low", category: "Performance", count: ctx.imgsNoLazy });
+  }
+
+  return issues;
 }
 
 serve(async (req) => {
@@ -113,7 +211,7 @@ serve(async (req) => {
       });
     }
 
-    // Pre-checks
+    // ── Parse HTML signals ──
     const platform = detectPlatform(html);
     const headMatch = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
     const headContent = headMatch ? headMatch[0] : "";
@@ -139,18 +237,30 @@ serve(async (req) => {
     const imgTags = html.match(/<img[^>]*>/gi) || [];
     const imgsNoLazy = imgTags.filter(t => !/loading=/i.test(t)).length;
 
-    // Build deterministic issues
     let titleStatus = "missing";
     if (titleContent) titleStatus = titleLength < 30 ? "too-short" : titleLength > 60 ? "too-long" : "good";
 
     const bodyContent = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]*>/g, "").trim();
     const isSPA = bodyContent.length < 500 && /<div[^>]+id=["'](root|app|__next)["']/i.test(html);
 
-    // Build prompt
-    const analyzableHtml = headContent + "\n" + html.slice(0, 20000);
+    // ── Step 1: Build deterministic issues ──
+    const deterministicIssues = buildDeterministicIssues({
+      titleStatus, titleLength, titleContent,
+      metaDescContent, metaDescLength,
+      h1Count, isSPA,
+      hasCanonical, hasOgTitle, hasOgDesc, hasOgImage,
+      isHttps, blockingScriptsCount: blockingScripts.length, imgsNoLazy,
+    });
+    const deterministicIds = new Set(deterministicIssues.map(i => i.id));
 
+    console.log(`Deterministic issues found: ${deterministicIssues.length}`);
+
+    // ── Step 2: Call AI for fix text + supplementary issues ──
+    const analyzableHtml = headContent + "\n" + html.slice(0, 20000);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    const deterministicSummary = deterministicIssues.map(i => `- [${i.impact}] ${i.id}: ${i.title}`).join("\n");
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -161,20 +271,15 @@ serve(async (req) => {
         max_tokens: 4000,
         messages: [{
           role: "user",
-          content: `You are an SEO audit system. Analyze this page and report issues.
+          content: `You are an SEO audit system. A deterministic scan already found these issues:
 
-DETECTION CRITERIA:
-Title: ${titleStatus === "missing" ? "MISSING" : titleStatus === "too-short" ? `TOO SHORT (${titleLength} chars)` : titleStatus === "too-long" ? `TOO LONG (${titleLength} chars)` : `GOOD (${titleLength} chars)`}
-Meta Desc: ${!metaDescContent ? "MISSING" : metaDescLength < 120 ? `TOO SHORT (${metaDescLength})` : metaDescLength > 160 ? `TOO LONG (${metaDescLength})` : `GOOD (${metaDescLength})`}
-H1: ${isSPA && h1Count === 0 ? "CANNOT VERIFY (SPA)" : h1Count === 0 ? "MISSING" : h1Count === 1 ? "GOOD" : `${h1Count} FOUND`}
-Canonical: ${hasCanonical ? "GOOD" : "MISSING"}
-OG Tags: title=${hasOgTitle}, desc=${hasOgDesc}, image=${hasOgImage}
-HTTPS: ${isHttps ? "YES" : "NO"}
-Blocking Scripts: ${blockingScripts.length}
-Images without lazy loading: ${imgsNoLazy}
+${deterministicSummary || "(none)"}
 
-Write simple, beginner-friendly fixes. ${platform ? `Platform: ${platform.toUpperCase()}. Give platform-specific steps.` : "Give general fix steps."}
-Start each fix with "One way to fix this:"
+Your tasks:
+1. For each deterministic issue above, write a beginner-friendly fix instruction starting with "One way to fix this:". ${platform ? `Platform: ${platform.toUpperCase()}. Give platform-specific steps.` : "Give general fix steps."}
+2. Identify up to 3 ADDITIONAL issues NOT already listed above (e.g. thin content, keyword stuffing, accessibility, structured data). Only report real problems you can see in the HTML.
+
+Return ALL issues (both deterministic + your additions) via the tool call. For deterministic issues, use the EXACT same id. For new issues, use a descriptive kebab-case id.
 
 URL: ${url}
 HTML: ${analyzableHtml}`,
@@ -199,7 +304,7 @@ HTML: ${analyzableHtml}`,
                       category: { type: "string", enum: ["SEO", "Performance", "Content", "Technical"] },
                       count: { type: "number" },
                     },
-                    required: ["id", "title", "fix", "impact", "category", "count"],
+                    required: ["id", "title", "fix", "impact", "category"],
                   },
                 },
               },
@@ -222,31 +327,44 @@ HTML: ${analyzableHtml}`,
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No AI response");
 
-    const { issues } = JSON.parse(toolCall.function.arguments) as { issues: SeoIssue[] };
+    const aiResult = JSON.parse(toolCall.function.arguments) as { issues: SeoIssue[] };
 
-    // Enrich with server-side counts
-    const enriched = issues.map((i: SeoIssue) => {
-      if (["h1-multiple", "multiple-h1"].includes(i.id)) return { ...i, count: h1Count };
-      if (["render-blocking-scripts"].includes(i.id)) return { ...i, count: blockingScripts.length };
-      return i;
-    });
+    // ── Step 3: Merge — deterministic issues are authoritative ──
+    const finalIssues: SeoIssue[] = [];
 
-    // Calculate score
-    const BASE_WEIGHTS: Record<string, number> = { Critical: 15, High: 8, Medium: 4, Low: 2 };
-    const score = Math.max(0, Math.round(100 - Math.min(
-      enriched.reduce((s: number, i: SeoIssue) => s + (BASE_WEIGHTS[i.impact] || 4) * Math.min(i.count && i.count > 1 ? 1.3 : 1.0, 3.0), 0),
-      100
-    )));
+    // Start with deterministic issues, enriched with AI fix text
+    for (const det of deterministicIssues) {
+      const aiMatch = aiResult.issues.find(ai => ai.id === det.id);
+      finalIssues.push({
+        ...det,
+        fix: aiMatch?.fix || det.fix || "",
+      });
+    }
+
+    // Add AI-only supplementary issues (capped at 3, deduped)
+    let aiExtras = 0;
+    const MAX_AI_EXTRAS = 3;
+    for (const ai of aiResult.issues) {
+      if (deterministicIds.has(ai.id)) continue;
+      if (aiExtras >= MAX_AI_EXTRAS) break;
+      finalIssues.push({ ...ai, ai_detected: true });
+      aiExtras++;
+    }
+
+    console.log(`Final issues: ${finalIssues.length} (${deterministicIssues.length} deterministic + ${aiExtras} AI)`);
+
+    // ── Step 4: Score using shared logic ──
+    const score = calculateScore(finalIssues);
 
     // Store scan result
     await adminClient.from("seo_scans").insert({
       org_id, site_id, url, score,
-      issues_json: enriched,
+      issues_json: finalIssues,
       recommendations_json: [],
       platform,
     });
 
-    return new Response(JSON.stringify({ score, issues: enriched, platform, url }), {
+    return new Response(JSON.stringify({ score, issues: finalIssues, platform, url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

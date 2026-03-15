@@ -16,7 +16,9 @@ import type { SeoIssue } from "@/lib/seo-scoring";
 import SeoScanHistory from "./SeoScanHistory";
 import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
+import type { FixQueueItem } from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
+import SeoFixModal from "./SeoFixModal";
 
 export default function SeoTab() {
   const { orgId } = useOrg();

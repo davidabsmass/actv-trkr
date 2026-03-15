@@ -267,6 +267,10 @@ serve(async (req) => {
 
     const headScripts = (headContent.match(/<script[^>]*>/gi) || []);
     const blockingScripts = headScripts.filter(t => /src=/i.test(t) && !/async/i.test(t) && !/defer/i.test(t));
+    const blockingScriptSrcs = blockingScripts.map(t => {
+      const m = t.match(/src=["']([^"']+)["']/i);
+      return m ? m[1] : "(inline)";
+    });
     const imgTags = html.match(/<img[^>]*>/gi) || [];
     const imgsNoLazy = imgTags.filter(t => !/loading=/i.test(t)).length;
 

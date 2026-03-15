@@ -83,6 +83,9 @@ function buildDeterministicIssues(ctx: {
   } else if (ctx.metaDescLength > 160) {
     issues.push({ id: "meta-desc-too-long", title: `Meta description is too long (${ctx.metaDescLength} chars, aim for 120-160)`, fix: "", impact: "Medium", category: "SEO" });
   }
+  if (ctx.metaDescCount > 1) {
+    issues.push({ id: "meta-desc-duplicate", title: `${ctx.metaDescCount} meta description tags found (should be exactly 1)`, fix: "", impact: "High", category: "SEO", count: ctx.metaDescCount });
+  }
 
   // H1
   if (!ctx.isSPA && ctx.h1Count === 0) {

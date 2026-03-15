@@ -120,7 +120,10 @@ function buildDeterministicIssues(ctx: {
 
   // Render-blocking scripts
   if (ctx.blockingScriptsCount > 0) {
-    issues.push({ id: "render-blocking-scripts", title: `${ctx.blockingScriptsCount} render-blocking script(s) in <head>`, fix: "", impact: "Medium", category: "Performance", count: ctx.blockingScriptsCount });
+    const detail = ctx.blockingScriptSrcs.length > 0
+      ? `\n\nBlocking scripts:\n${ctx.blockingScriptSrcs.map(s => `• ${s}`).join("\n")}`
+      : "";
+    issues.push({ id: "render-blocking-scripts", title: `${ctx.blockingScriptsCount} render-blocking script(s) in <head>${detail}`, fix: "", impact: "Medium", category: "Performance", count: ctx.blockingScriptsCount });
   }
 
   // Lazy loading

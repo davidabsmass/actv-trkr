@@ -134,6 +134,66 @@ Respond ONLY with valid JSON:
         console.error(`Error saving summary for ${org.name}:`, error);
       } else {
         results.push(`Generated summary for ${org.name}`);
+
+        // Send weekly summary email to org members
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0a1628; color: #e2e8f0; padding: 32px; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h1 style="color: #ffffff; font-size: 20px; margin: 0;">📊 Weekly Performance Summary</h1>
+              <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0;">${org.name} — Week of ${weekStartDate}</p>
+            </div>
+            <div style="background: #1e293b; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+              <p style="color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0;">${summaryText}</p>
+            </div>
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+              <div style="flex: 1; background: #1e293b; border-radius: 8px; padding: 16px; text-align: center;">
+                <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0;">Sessions</p>
+                <p style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 4px 0;">${thisWeekSess}</p>
+                <p style="color: ${sessionsChange >= 0 ? '#4ade80' : '#f87171'}; font-size: 12px; margin: 0;">${sessionsChange >= 0 ? '↑' : '↓'} ${Math.abs(sessionsChange).toFixed(1)}%</p>
+              </div>
+              <div style="flex: 1; background: #1e293b; border-radius: 8px; padding: 16px; text-align: center;">
+                <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0;">Leads</p>
+                <p style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 4px 0;">${thisWeekLeads}</p>
+                <p style="color: ${leadsChange >= 0 ? '#4ade80' : '#f87171'}; font-size: 12px; margin: 0;">${leadsChange >= 0 ? '↑' : '↓'} ${Math.abs(leadsChange).toFixed(1)}%</p>
+              </div>
+              <div style="flex: 1; background: #1e293b; border-radius: 8px; padding: 16px; text-align: center;">
+                <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0;">CVR</p>
+                <p style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 4px 0;">${cvr.toFixed(1)}%</p>
+              </div>
+            </div>
+            ${topOpportunity ? `<div style="background: #1e3a5f; border-left: 3px solid #6C5CE7; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+              <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">💡 Top Opportunity</p>
+              <p style="color: #e2e8f0; font-size: 13px; margin: 0;">${topOpportunity}</p>
+            </div>` : ''}
+            ${riskAlert ? `<div style="background: #3b1c1c; border-left: 3px solid #f87171; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+              <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">⚠️ Risk Alert</p>
+              <p style="color: #fca5a5; font-size: 13px; margin: 0;">${riskAlert}</p>
+            </div>` : ''}
+            <div style="text-align: center; margin-top: 24px;">
+              <a href="https://actvtrkr.com/dashboard" style="display: inline-block; background: #6C5CE7; color: #ffffff; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">View Dashboard</a>
+            </div>
+            <p style="color: #64748b; font-size: 11px; text-align: center; margin-top: 24px;">Sent by ACTV TRKR · You can manage notification preferences in Settings</p>
+          </div>`;
+
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+              "x-cron-secret": cronSecret,
+            },
+            body: JSON.stringify({
+              type: "weekly_summary",
+              org_id: org.id,
+              subject: `📊 Weekly Summary — ${org.name} (${weekStartDate})`,
+              html_body: emailHtml,
+              text_body: `Weekly Summary for ${org.name}\n\nSessions: ${thisWeekSess} (${sessionsChange.toFixed(1)}% change)\nLeads: ${thisWeekLeads} (${leadsChange.toFixed(1)}% change)\nCVR: ${cvr.toFixed(1)}%\n\n${summaryText}\n\n${topOpportunity ? 'Top Opportunity: ' + topOpportunity + '\n' : ''}${riskAlert ? 'Risk Alert: ' + riskAlert + '\n' : ''}\nView dashboard: https://actvtrkr.com/dashboard`,
+            }),
+          });
+        } catch (emailErr) {
+          console.error(`Failed to send weekly email for ${org.name}:`, emailErr);
+        }
       }
     }
 

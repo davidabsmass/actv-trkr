@@ -37,6 +37,9 @@ function mm_activate() {
 	if ( ! wp_next_scheduled( 'mm_form_probe_cron' ) ) {
 		wp_schedule_event( time(), 'hourly', 'mm_form_probe_cron' );
 	}
+	if ( ! wp_next_scheduled( 'mm_seo_fix_cron' ) ) {
+		wp_schedule_event( time(), 'mm_every_5_min', 'mm_seo_fix_cron' );
+	}
 }
 register_activation_hook( __FILE__, 'mm_activate' );
 

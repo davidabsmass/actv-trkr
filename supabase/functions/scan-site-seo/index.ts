@@ -28,6 +28,9 @@ function severityMultiplier(issueId: string, count?: number): number {
     case "images-without-alt":
     case "images-missing-alt":
       return count <= 5 ? 1.0 : count <= 15 ? 1.3 : count <= 30 ? 1.6 : 2.0;
+    case "meta-desc-duplicate":
+    case "canonical-duplicate":
+      return count <= 2 ? 1.0 : count <= 4 ? 1.3 : 1.6;
     case "render-blocking-scripts":
       return count <= 2 ? 1.0 : count <= 5 ? 1.3 : 1.6;
     default:

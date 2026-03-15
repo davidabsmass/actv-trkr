@@ -1,10 +1,18 @@
 import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useOrg } from "@/hooks/use-org";
+import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import SeoTab from "@/components/reports/SeoTab";
+import { Navigate } from "react-router-dom";
 
 export default function Seo() {
-  const { orgName } = useOrg();
+  const { orgName, orgId } = useOrg();
+  const { isAdmin } = useUserRole();
+  const { orgRole } = useOrgRole(orgId);
+
+  if (!isAdmin && orgRole !== "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div>

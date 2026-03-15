@@ -252,6 +252,7 @@ function scoreFinding(f: Finding): number {
 }
 
 serve(async (req) => {
+  console.log("nightly-summary invoked", req.method);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // Auth: accept cron secret header, service-role key, or anon key (internal only)

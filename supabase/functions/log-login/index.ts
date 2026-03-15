@@ -11,20 +11,26 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("authorization") || "";
-    if (!authHeader) {
+    if (!authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const token = authHeader.replace("Bearer ", "");
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { data, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !data?.claims) {
+      // Stale/invalid token — silently succeed since this is fire-and-forget
+      console.warn("log-login: invalid token, skipping", claimsError?.message);
+      return new Response(JSON.stringify({ status: "skipped" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    const userId = data.claims.sub as string;
+    const email = data.claims.email as string | undefined;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -35,19 +41,21 @@ Deno.serve(async (req) => {
     const { data: orgUser } = await supabase
       .from("org_users")
       .select("org_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .limit(1)
       .maybeSingle();
 
-    // Get user agent from request
+    // Get full name from user metadata
+    const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+
     const userAgent = req.headers.get("user-agent") || null;
     const xff = req.headers.get("x-forwarded-for");
     const ip = xff ? xff.split(",")[0].trim() : req.headers.get("x-real-ip") || null;
 
     await supabase.from("login_events").insert({
-      user_id: user.id,
-      email: user.email || null,
-      full_name: user.user_metadata?.full_name || null,
+      user_id: userId,
+      email: email || null,
+      full_name: user?.user_metadata?.full_name || null,
       org_id: orgUser?.org_id || null,
       ip_address: ip,
       user_agent: userAgent,

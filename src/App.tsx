@@ -77,7 +77,7 @@ const App = () => (
             <Route path="performance" element={<Performance />} />
             <Route path="forms" element={<Forms />} />
             <Route path="entries" element={<Navigate to="/forms" replace />} />
-            <Route path="reports" element={<Navigate to="/performance?tab=reports" replace />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="exports" element={<Exports />} />
             <Route path="archives" element={<Archives />} />
             <Route path="clients" element={<Clients />} />

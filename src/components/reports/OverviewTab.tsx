@@ -57,7 +57,7 @@ export default function OverviewTab() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as NightlySummary | null;
+      return data as unknown as NightlySummary | null;
     },
     enabled: !!orgId,
   });

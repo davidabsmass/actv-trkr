@@ -24,6 +24,7 @@ require_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';
 require_once MM_PLUGIN_DIR . 'includes/class-updater.php';
 require_once MM_PLUGIN_DIR . 'includes/class-heartbeat.php';
 require_once MM_PLUGIN_DIR . 'includes/class-broken-links.php';
+require_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';
 
 /**
  * Activation: create retry-queue table and schedule cron.

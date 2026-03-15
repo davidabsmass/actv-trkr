@@ -210,7 +210,30 @@ export default function SeoTab() {
     enabled: !!orgId && !!activeScan?.url,
   });
 
-  const [markedFixed, setMarkedFixed] = useState<Set<string>>(new Set());
+  // Load persisted marked-fixed issues from DB
+  const { data: fixHistoryData } = useQuery({
+    queryKey: ["seo_fix_history", orgId, activeScan?.url],
+    queryFn: async () => {
+      if (!orgId || !activeScan?.url) return [];
+      const { data } = await supabase
+        .from("seo_fix_history")
+        .select("issue_id")
+        .eq("org_id", orgId)
+        .eq("page_url", activeScan.url);
+      return (data || []).map(r => r.issue_id);
+    },
+    enabled: !!orgId && !!activeScan?.url,
+  });
+
+  const [localMarkedFixed, setLocalMarkedFixed] = useState<Set<string>>(new Set());
+  const markedFixed = useMemo(() => {
+    const set = new Set(fixHistoryData || []);
+    localMarkedFixed.forEach(id => set.add(id));
+    return set;
+  }, [fixHistoryData, localMarkedFixed]);
+
+  // Filter out marked-fixed issues from display
+  const visibleIssues = useMemo(() => issues.filter(i => !markedFixed.has(i.id)), [issues, markedFixed]);
 
   const handleMarkFixed = async (issueId: string) => {
     if (!orgId || !activeScan) return;
@@ -223,8 +246,9 @@ export default function SeoTab() {
       page_url: activeScan.url,
       before_score: score,
     });
-    setMarkedFixed(prev => new Set(prev).add(issueId));
-    toast.success("Issue marked as fixed");
+    setLocalMarkedFixed(prev => new Set(prev).add(issueId));
+    queryClient.invalidateQueries({ queryKey: ["seo_fix_history", orgId, activeScan.url] });
+    toast.success("Issue marked as fixed — it won't appear on future scans for this page");
   };
 
   const [fixModal, setFixModal] = useState<{ issueId: string; fixType: string; title: string } | null>(null);
@@ -338,9 +362,9 @@ export default function SeoTab() {
       )}
 
       {/* Issues */}
-      {activeScan && issues.length > 0 && (
+      {activeScan && visibleIssues.length > 0 && (
         <SeoIssuesList
-          issues={issues}
+          issues={visibleIssues}
           fixQueue={fixQueue || []}
           markedFixed={markedFixed}
           onFixClick={handleFixClick}

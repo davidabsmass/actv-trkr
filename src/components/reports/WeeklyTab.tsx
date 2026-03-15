@@ -32,7 +32,7 @@ export default function WeeklyTab() {
         .eq("org_id", orgId)
         .order("week_start", { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle() as { data: any; error: any };
       if (error) throw error;
       return data;
     },

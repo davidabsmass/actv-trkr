@@ -74,7 +74,7 @@ export default function SeoTab() {
     onError: (err: any) => toast.error(err.message || "Scan failed"),
   });
 
-  const issues = (latestScan?.issues_json as SeoIssue[] | null) || [];
+  const issues = (latestScan?.issues_json as unknown as SeoIssue[] | null) || [];
   const score = latestScan?.score || 0;
   const grade = getScoreGrade(score);
   const status = getScoreStatus(score);

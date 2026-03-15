@@ -15,19 +15,33 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.check-uptime]
     verify_jwt = false
+  [functions.daily-digest]
+    verify_jwt = false
   [functions.dashboard-ai-insights]
+    verify_jwt = false
+  [functions.get-snapshot]
+    verify_jwt = false
+  [functions.import-csv-entries]
     verify_jwt = false
   [functions.ingest-broken-links]
     verify_jwt = false
   [functions.ingest-form]
     verify_jwt = false
+  [functions.ingest-form-health]
+    verify_jwt = false
   [functions.ingest-gravity]
     verify_jwt = false
   [functions.ingest-heartbeat]
     verify_jwt = false
+  [functions.log-login]
+    verify_jwt = false
+  [functions.nightly-summary]
+    verify_jwt = false
   [functions.plugin-update-check]
     verify_jwt = false
   [functions.process-archive-export]
+    verify_jwt = false
+  [functions.process-email-queue]
     verify_jwt = false
   [functions.process-export]
     verify_jwt = false
@@ -37,51 +51,35 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.redeem-invite]
     verify_jwt = false
+  [functions.reports-ai-copy]
+    verify_jwt = false
   [functions.retention-cleanup]
-    verify_jwt = false
-  [functions.serve-plugin-zip]
-    verify_jwt = false
-  [functions.sync-forms]
-    verify_jwt = false
-  [functions.track-pageview]
-    verify_jwt = false
-  [functions.weekly-summary]
     verify_jwt = false
   [functions.scan-broken-links]
     verify_jwt = false
-  [functions.sync-entries]
-    verify_jwt = false
-  [functions.trigger-site-sync]
-    verify_jwt = false
-  [functions.ingest-form-health]
-    verify_jwt = false
-  [functions.get-snapshot]
-    verify_jwt = false
-  [functions.nightly-summary]
-    verify_jwt = false
-  [functions.reports-ai-copy]
-    verify_jwt = false
   [functions.scan-site-seo]
     verify_jwt = false
-  [functions.check-renewals]
-    verify_jwt = false
-  [functions.import-csv-entries]
-    verify_jwt = false
-  [functions.log-login]
-    verify_jwt = false
-  [functions.track-event]
+  [functions.send-notification-email]
     verify_jwt = false
   [functions.seo-fix-command]
     verify_jwt = false
-  [functions.seo-fix-poll]
-    verify_jwt = false
   [functions.seo-fix-confirm]
+    verify_jwt = false
+  [functions.seo-fix-poll]
     verify_jwt = false
   [functions.seo-suggest-fix]
     verify_jwt = false
-  [functions.process-email-queue]
-    verify_jwt = true
-  [functions.send-notification-email]
+  [functions.serve-plugin-zip]
     verify_jwt = false
-  [functions.daily-digest]
+  [functions.sync-entries]
+    verify_jwt = false
+  [functions.sync-forms]
+    verify_jwt = false
+  [functions.track-event]
+    verify_jwt = false
+  [functions.track-pageview]
+    verify_jwt = false
+  [functions.trigger-site-sync]
+    verify_jwt = false
+  [functions.weekly-summary]
     verify_jwt = false

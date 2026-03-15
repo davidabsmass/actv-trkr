@@ -57,3 +57,17 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.get-snapshot]
     verify_jwt = false
+  [functions.nightly-summary]
+    verify_jwt = false
+  [functions.reports-ai-copy]
+    verify_jwt = false
+  [functions.scan-site-seo]
+    verify_jwt = false
+  [functions.check-renewals]
+    verify_jwt = false
+  [functions.import-csv-entries]
+    verify_jwt = false
+  [functions.log-login]
+    verify_jwt = false
+  [functions.track-event]
+    verify_jwt = false

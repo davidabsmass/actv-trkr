@@ -1,7 +1,7 @@
 import {
   TableProperties, Settings, LogOut, UserCircle,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
-  LayoutDashboard, TrendingUp, Users, Archive,
+  LayoutDashboard, TrendingUp, Users, Archive, FileText,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -30,6 +30,7 @@ interface NavItem {
 const telemetryItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Performance", url: "/performance", icon: TrendingUp },
+  { title: "Reports", url: "/reports", icon: FileText },
   { title: "Forms", url: "/forms", icon: TableProperties },
   { title: "Monitoring", url: "/monitoring", icon: Activity },
   { title: "Archives", url: "/archives", icon: Archive },

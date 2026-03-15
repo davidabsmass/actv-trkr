@@ -152,7 +152,7 @@ const Performance = () => {
         </TabsContent>
 
         <TabsContent value="reports">
-          <Reports embedded />
+          <Reports />
         </TabsContent>
       </Tabs>
     </div>

@@ -11,6 +11,7 @@ import Forms from "./pages/Forms";
 import Reports from "./pages/Reports";
 import Exports from "./pages/Exports";
 import Archives from "./pages/Archives";
+import Seo from "./pages/Seo";
 import Clients from "./pages/Clients";
 import SettingsPage from "./pages/Settings";
 import AdminSetup from "./pages/AdminSetup";

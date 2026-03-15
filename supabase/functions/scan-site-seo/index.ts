@@ -97,6 +97,8 @@ function buildDeterministicIssues(ctx: {
   // Canonical
   if (!ctx.hasCanonical) {
     issues.push({ id: "canonical-missing", title: "No canonical tag found", fix: "", impact: "Medium", category: "Technical" });
+  } else if (ctx.canonicalCount > 1) {
+    issues.push({ id: "canonical-duplicate", title: `${ctx.canonicalCount} canonical tags found (should be exactly 1)`, fix: "", impact: "High", category: "Technical", count: ctx.canonicalCount });
   }
 
   // OG tags

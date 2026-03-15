@@ -155,11 +155,25 @@ serve(async (req) => {
       });
     }
 
-    // Admin-only check
-    const { data: orgBody } = await req.clone().json().catch(() => ({ data: null }));
-    // We need org_id from body to check role, so parse it early
-    const bodyJson = await req.json();
-    const { url, site_id, org_id } = bodyJson;
+    const { url, site_id, org_id } = await req.json();
+    if (!url || !site_id || !org_id) {
+      return new Response(JSON.stringify({ error: "url, site_id, org_id required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Admin-only: verify user has admin role in this org
+    const { data: roleRow } = await adminClient
+      .from("org_users")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("org_id", org_id)
+      .maybeSingle();
+    if (!roleRow || roleRow.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Admin access required for SEO scanning" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!url || !site_id || !org_id) {
       return new Response(JSON.stringify({ error: "url, site_id, org_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

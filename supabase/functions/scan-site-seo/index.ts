@@ -286,7 +286,7 @@ serve(async (req) => {
       metaDescContent, metaDescLength, metaDescCount,
       h1Count, isSPA,
       hasCanonical, canonicalCount, hasOgTitle, hasOgDesc, hasOgImage,
-      isHttps, blockingScriptsCount: blockingScripts.length, imgsNoLazy,
+      isHttps, blockingScriptsCount: blockingScripts.length, blockingScriptSrcs, imgsNoLazy,
     });
     const deterministicIds = new Set(deterministicIssues.map(i => i.id));
 

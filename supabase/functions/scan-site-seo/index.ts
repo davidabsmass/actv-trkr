@@ -354,10 +354,21 @@ HTML: ${analyzableHtml}`,
     }
 
     // Add AI-only supplementary issues (capped at 3, deduped)
+    // Important: We do NOT trust AI for duplicate meta/canonical claims (hallucination-prone).
+    // Those must be surfaced only via deterministic counters above.
+    const blockedAiIds = new Set([
+      "duplicate-meta-description",
+      "multiple-canonical-tags",
+      "duplicate-canonical-tags",
+      "duplicate-meta-description-tag",
+      "multiple-canonical",
+    ]);
+
     let aiExtras = 0;
     const MAX_AI_EXTRAS = 3;
     for (const ai of aiResult.issues) {
       if (deterministicIds.has(ai.id)) continue;
+      if (blockedAiIds.has(ai.id)) continue;
       if (aiExtras >= MAX_AI_EXTRAS) break;
       finalIssues.push({ ...ai, ai_detected: true });
       aiExtras++;

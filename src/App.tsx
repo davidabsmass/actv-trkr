@@ -11,6 +11,7 @@ import Forms from "./pages/Forms";
 import Reports from "./pages/Reports";
 import Exports from "./pages/Exports";
 import Archives from "./pages/Archives";
+import Seo from "./pages/Seo";
 import Clients from "./pages/Clients";
 import SettingsPage from "./pages/Settings";
 import AdminSetup from "./pages/AdminSetup";
@@ -79,7 +80,8 @@ const App = () => (
             <Route path="entries" element={<Navigate to="/forms" replace />} />
             <Route path="reports" element={<Reports />} />
             <Route path="exports" element={<Exports />} />
-            <Route path="archives" element={<Archives />} />
+            <Route path="archives" element={<Navigate to="/reports?tab=archives" replace />} />
+            <Route path="seo" element={<Seo />} />
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="monitoring" element={<Monitoring />} />

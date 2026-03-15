@@ -1,28 +1,25 @@
 
 
-# Plan: Promote SEO to Main Nav, Move Archives into Reports
+## SSL & Domain Renewal Reliability — Implemented
 
-## Changes
+### What was done
 
-### 1. Sidebar Navigation (`src/components/AppSidebar.tsx`)
-- Remove **Archives** from `telemetryItems`
-- Replace **Reports** icon with `FileText` (keep as-is)
-- Add **SEO** as a new standalone nav item using `Search` icon from lucide-react, with a BETA badge
-- Final nav order: Dashboard, Performance, Reports, Forms, SEO, Monitoring
+1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
+   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
+   - `check-uptime` runs **every 10 minutes**
+   - `check-renewals` runs daily at 06:00 UTC
 
-### 2. SEO Page (`src/pages/Seo.tsx`)
-- Create a new standalone page that renders the existing `SeoTab` component
-- Page title: "SEO Insights" with BETA badge
+2. **Retry logic** added to `check-domain-ssl` edge function:
+   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
+   - 15-second timeout per request
+   - Detailed console logging for debugging
 
-### 3. Reports Page (`src/pages/Reports.tsx`)
-- Remove the **SEO Insights** tab
-- Add an **Archives** tab that renders the existing Archives page content inline
-- Final tabs: Overview, Weekly Summary, Monthly Summary, Activity Reports, Archives
+3. **False downtime prevention**:
+   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
+   - Cleaned up 11 false DOWNTIME incidents and related alerts
 
-### 4. Routing (`src/App.tsx`)
-- Add route `/seo` → new `Seo` page
-- Keep `/archives` as a redirect to `/reports?tab=archives` for backward compatibility
+4. **"Check Now" button** on the Monitoring page triggers on-demand checks
 
-### 5. Archives Page (`src/pages/Archives.tsx`)
-- Extract the main content into an `ArchivesContent` component that can be rendered both standalone and inside the Reports tab
-
+### Extensions enabled
+- `pg_cron` (scheduling)
+- `pg_net` (HTTP calls from SQL)

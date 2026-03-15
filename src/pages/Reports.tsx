@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import OverviewTab from "@/components/reports/OverviewTab";
 import WeeklyTab from "@/components/reports/WeeklyTab";
 import MonthlyTab from "@/components/reports/MonthlyTab";
-import SeoTab from "@/components/reports/SeoTab";
+import ArchivesContent from "@/components/archives/ArchivesContent";
 
 // ── Shared sub-components ──
 const TrendBadge = ({ change }: { change: number | null }) => {
@@ -561,18 +561,15 @@ export default function Reports() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="weekly">Weekly Summary</TabsTrigger>
           <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
-          <TabsTrigger value="seo" className="gap-1.5">
-            SEO Insights
-            <Badge variant="outline" className="text-[9px] uppercase tracking-wider px-1.5 py-0 h-4 text-primary border-primary/30 ml-1">Beta</Badge>
-          </TabsTrigger>
           <TabsTrigger value="activity">Activity Reports</TabsTrigger>
+          <TabsTrigger value="archives">Archives</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="weekly"><WeeklyTab /></TabsContent>
         <TabsContent value="monthly"><MonthlyTab /></TabsContent>
-        <TabsContent value="seo"><SeoTab /></TabsContent>
         <TabsContent value="activity"><ActivityReportsTab /></TabsContent>
+        <TabsContent value="archives"><ArchivesContent /></TabsContent>
       </Tabs>
     </div>
   );

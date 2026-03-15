@@ -155,7 +155,11 @@ serve(async (req) => {
       });
     }
 
-    const { url, site_id, org_id } = await req.json();
+    // Admin-only check
+    const { data: orgBody } = await req.clone().json().catch(() => ({ data: null }));
+    // We need org_id from body to check role, so parse it early
+    const bodyJson = await req.json();
+    const { url, site_id, org_id } = bodyJson;
     if (!url || !site_id || !org_id) {
       return new Response(JSON.stringify({ error: "url, site_id, org_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -259,12 +259,15 @@ serve(async (req) => {
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incomingCron = req.headers.get("x-cron-secret");
   const authHeader = req.headers.get("authorization") || "";
+  const apikeyHeader = req.headers.get("apikey") || "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  const token = authHeader.replace("Bearer ", "");
   const isValidCron = cronSecret && incomingCron === cronSecret;
-  const isValidService = serviceKey && authHeader === `Bearer ${serviceKey}`;
-  const isValidAnon = anonKey && authHeader === `Bearer ${anonKey}`;
+  const isValidService = serviceKey && (token === serviceKey || apikeyHeader === serviceKey);
+  const isValidAnon = anonKey && (token === anonKey || apikeyHeader === anonKey);
   if (!isValidCron && !isValidService && !isValidAnon) {
+    console.log("Auth failed", { hasCron: !!incomingCron, hasAuth: !!authHeader, hasApikey: !!apikeyHeader, anonMatch: token === anonKey, apikeyMatch: apikeyHeader === anonKey });
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

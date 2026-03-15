@@ -6,6 +6,8 @@ import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { LatestSummary } from "@/components/dashboard/LatestSummary";
 import { WhatsWorking } from "@/components/dashboard/WhatsWorking";
 import { TopPagesAndSources } from "@/components/dashboard/TopPagesAndSources";
+import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
+import { FunnelWidget } from "@/components/dashboard/FunnelWidget";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";

@@ -65,7 +65,7 @@ function buildDeterministicIssues(ctx: {
   metaDescContent: string | null; metaDescLength: number; metaDescCount: number;
   h1Count: number; isSPA: boolean;
   hasCanonical: boolean; canonicalCount: number; hasOgTitle: boolean; hasOgDesc: boolean; hasOgImage: boolean;
-  isHttps: boolean; blockingScriptsCount: number; imgsNoLazy: number;
+  isHttps: boolean; blockingScriptsCount: number; blockingScriptSrcs: string[]; imgsNoLazy: number;
 }): SeoIssue[] {
   const issues: SeoIssue[] = [];
 
@@ -120,7 +120,10 @@ function buildDeterministicIssues(ctx: {
 
   // Render-blocking scripts
   if (ctx.blockingScriptsCount > 0) {
-    issues.push({ id: "render-blocking-scripts", title: `${ctx.blockingScriptsCount} render-blocking script(s) in <head>`, fix: "", impact: "Medium", category: "Performance", count: ctx.blockingScriptsCount });
+    const detail = ctx.blockingScriptSrcs.length > 0
+      ? `\n\nBlocking scripts:\n${ctx.blockingScriptSrcs.map(s => `• ${s}`).join("\n")}`
+      : "";
+    issues.push({ id: "render-blocking-scripts", title: `${ctx.blockingScriptsCount} render-blocking script(s) in <head>${detail}`, fix: "", impact: "Medium", category: "Performance", count: ctx.blockingScriptsCount });
   }
 
   // Lazy loading
@@ -153,6 +156,24 @@ serve(async (req) => {
     }
 
     const { url, site_id, org_id } = await req.json();
+    if (!url || !site_id || !org_id) {
+      return new Response(JSON.stringify({ error: "url, site_id, org_id required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Admin-only: verify user has admin role in this org
+    const { data: roleRow } = await adminClient
+      .from("org_users")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("org_id", org_id)
+      .maybeSingle();
+    if (!roleRow || roleRow.role !== "admin") {
+      return new Response(JSON.stringify({ error: "Admin access required for SEO scanning" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (!url || !site_id || !org_id) {
       return new Response(JSON.stringify({ error: "url, site_id, org_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -246,6 +267,10 @@ serve(async (req) => {
 
     const headScripts = (headContent.match(/<script[^>]*>/gi) || []);
     const blockingScripts = headScripts.filter(t => /src=/i.test(t) && !/async/i.test(t) && !/defer/i.test(t));
+    const blockingScriptSrcs = blockingScripts.map(t => {
+      const m = t.match(/src=["']([^"']+)["']/i);
+      return m ? m[1] : "(inline)";
+    });
     const imgTags = html.match(/<img[^>]*>/gi) || [];
     const imgsNoLazy = imgTags.filter(t => !/loading=/i.test(t)).length;
 
@@ -261,7 +286,7 @@ serve(async (req) => {
       metaDescContent, metaDescLength, metaDescCount,
       h1Count, isSPA,
       hasCanonical, canonicalCount, hasOgTitle, hasOgDesc, hasOgImage,
-      isHttps, blockingScriptsCount: blockingScripts.length, imgsNoLazy,
+      isHttps, blockingScriptsCount: blockingScripts.length, blockingScriptSrcs, imgsNoLazy,
     });
     const deterministicIds = new Set(deterministicIssues.map(i => i.id));
 

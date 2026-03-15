@@ -406,11 +406,22 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Row 2 – Latest Summary */}
+          {/* Row 2 – Trends Mini Chart */}
+          {realtimeData?.dailyMap && (
+            <TrendsMiniChart dailyMap={realtimeData.dailyMap} />
+          )}
+
+          {/* Row 3 – Latest Summary */}
           <LatestSummary />
 
-          {/* Row 3 – Three-column grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Row 4 – Funnel + Three-column grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <FunnelWidget
+              totalSessions={realtimeData?.totalSessions || 0}
+              totalPageviews={realtimeData?.totalPageviews || 0}
+              totalLeads={realtimeData?.totalLeads || 0}
+              formStarts={formStartsCount || undefined}
+            />
             <AttentionPanel items={attentionItems} />
             <WhatsWorking />
             <TopPagesAndSources />

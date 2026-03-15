@@ -6,7 +6,6 @@ import { toast } from "@/hooks/use-toast";
 
 interface NotificationPrefs {
   weekly_summary: boolean;
-  break_alerts: boolean;
   daily_digest: boolean;
   lead_realtime_email: boolean;
   lead_email_digest: boolean;
@@ -15,7 +14,6 @@ interface NotificationPrefs {
 
 const DEFAULT_PREFS: NotificationPrefs = {
   weekly_summary: true,
-  break_alerts: true,
   daily_digest: false,
   lead_realtime_email: false,
   lead_email_digest: false,

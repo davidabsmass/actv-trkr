@@ -71,3 +71,10 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.track-event]
     verify_jwt = false
+  [functions.seo-fix-command]
+    verify_jwt = false
+  [functions.seo-fix-poll]
+    verify_jwt = false
+  [functions.seo-fix-confirm]
+    verify_jwt = false
+    verify_jwt = false

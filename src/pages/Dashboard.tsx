@@ -213,6 +213,42 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
+  const { data: expiringSSL } = useQuery({
+    queryKey: ["expiring_ssl", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data } = await supabase
+        .from("ssl_health").select("site_id, days_to_ssl_expiry")
+        .eq("org_id", orgId).lt("days_to_ssl_expiry", 30).gt("days_to_ssl_expiry", 0);
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: unhealthyForms } = useQuery({
+    queryKey: ["unhealthy_forms", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data } = await supabase
+        .from("form_health_checks").select("form_id, is_rendered, last_checked_at, page_url")
+        .eq("org_id", orgId).eq("is_rendered", false);
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: formStartsCount } = useQuery({
+    queryKey: ["form_starts_count", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count } = await supabase
+        .from("form_submission_logs").select("*", { count: "exact", head: true })
+        .eq("org_id", orgId).gte("occurred_at", `${startDate}T00:00:00Z`).lte("occurred_at", `${endDate}T23:59:59.999Z`);
+      return count || 0;
+    },
+    enabled: !!orgId,
+  });
+
   const isLoading = !realtimeData;
 
   const wowData = useMemo(() => {
@@ -257,9 +293,14 @@ const Dashboard = () => {
     if (expiringDomains && expiringDomains.length > 0) {
       items.push({ severity: "warning", label: "Domain expiring soon", detail: expiringDomains.map((d) => `${d.domain} (${d.days_to_domain_expiry}d)`).join(", "), link: "/monitoring", linkLabel: "View" });
     }
-    // Add nightly negative findings
+    if (expiringSSL && expiringSSL.length > 0) {
+      items.push({ severity: "warning", label: `SSL expiring soon`, detail: `${expiringSSL.length} certificate${expiringSSL.length > 1 ? "s" : ""} expiring within 30 days`, link: "/monitoring", linkLabel: "View" });
+    }
+    if (unhealthyForms && unhealthyForms.length > 0) {
+      items.push({ severity: "warning", label: `${unhealthyForms.length} form${unhealthyForms.length > 1 ? "s" : ""} not rendering`, detail: "Forms may be broken or missing from pages", link: "/settings?tab=forms", linkLabel: "Check" });
+    }
     return items;
-  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains]);
+  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms]);
 
   return (
     <div>

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getScoreGrade, getScoreStatus } from "@/lib/seo-scoring";
+import { getScoreGrade, getScoreStatus, calculateScore, calculateSeverityMultiplier } from "@/lib/seo-scoring";
 import type { SeoIssue } from "@/lib/seo-scoring";
 import SeoScanHistory from "./SeoScanHistory";
 import SeoScoreCard from "./SeoScoreCard";
@@ -235,6 +235,17 @@ export default function SeoTab() {
   // Filter out marked-fixed issues from display
   const visibleIssues = useMemo(() => issues.filter(i => !markedFixed.has(i.id)), [issues, markedFixed]);
 
+  // Recalculate score based on visible issues (after filtering marked-fixed)
+  const adjustedScore = useMemo(() => {
+    if (!activeScan) return 0;
+    if (markedFixed.size === 0) return activeScan.score || 0;
+    const scoredIssues = visibleIssues.map(i => ({
+      ...i,
+      severityMultiplier: calculateSeverityMultiplier(i.id, i.count),
+    }));
+    return calculateScore(scoredIssues);
+  }, [visibleIssues, activeScan, markedFixed]);
+
   const handleMarkFixed = async (issueId: string) => {
     if (!orgId || !activeScan) return;
     const site = sites?.[0];
@@ -337,8 +348,8 @@ export default function SeoTab() {
       {/* Score card */}
       {activeScan && (
         <SeoScoreCard
-          score={score}
-          issues={issues}
+          score={adjustedScore}
+          issues={visibleIssues}
           platform={activeScan.platform}
           url={activeScan.url}
           scannedAt={activeScan.scanned_at}

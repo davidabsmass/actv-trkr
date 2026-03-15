@@ -255,9 +255,9 @@ serve(async (req) => {
     // ── Step 1: Build deterministic issues ──
     const deterministicIssues = buildDeterministicIssues({
       titleStatus, titleLength, titleContent,
-      metaDescContent, metaDescLength,
+      metaDescContent, metaDescLength, metaDescCount,
       h1Count, isSPA,
-      hasCanonical, hasOgTitle, hasOgDesc, hasOgImage,
+      hasCanonical, canonicalCount, hasOgTitle, hasOgDesc, hasOgImage,
       isHttps, blockingScriptsCount: blockingScripts.length, imgsNoLazy,
     });
     const deterministicIds = new Set(deterministicIssues.map(i => i.id));

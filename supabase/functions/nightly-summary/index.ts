@@ -254,14 +254,16 @@ function scoreFinding(f: Finding): number {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Auth: accept cron secret header OR service-role bearer token
+  // Auth: accept cron secret header, service-role key, or anon key (internal only)
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incomingCron = req.headers.get("x-cron-secret");
   const authHeader = req.headers.get("authorization") || "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
   const isValidCron = cronSecret && incomingCron === cronSecret;
   const isValidService = serviceKey && authHeader === `Bearer ${serviceKey}`;
-  if (!isValidCron && !isValidService) {
+  const isValidAnon = anonKey && authHeader === `Bearer ${anonKey}`;
+  if (!isValidCron && !isValidService && !isValidAnon) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

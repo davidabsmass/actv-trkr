@@ -334,16 +334,6 @@ export default function SeoTab() {
         )}
       </div>
 
-      {/* Scan History */}
-      {scanHistory && scanHistory.length > 0 && (
-        <SeoScanHistory
-          scans={scanHistory}
-          activeScanId={activeScanId}
-          onSelect={setSelectedScanId}
-          getPathFromUrl={getPathFromUrl}
-        />
-      )}
-
       {/* Score card */}
       {activeScan && (
         <SeoScoreCard
@@ -395,6 +385,16 @@ export default function SeoTab() {
           <p className="text-sm text-muted-foreground">SEO insights will appear once you run your first scan.</p>
           <p className="text-xs text-muted-foreground mt-1">Click "Scan Now" above to get started.</p>
         </div>
+      )}
+
+      {/* Scan History */}
+      {scanHistory && scanHistory.length > 0 && (
+        <SeoScanHistory
+          scans={scanHistory}
+          activeScanId={activeScanId}
+          onSelect={setSelectedScanId}
+          getPathFromUrl={getPathFromUrl}
+        />
       )}
     </div>
   );

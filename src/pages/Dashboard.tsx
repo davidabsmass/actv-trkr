@@ -389,13 +389,24 @@ const Dashboard = () => {
               icon={<Megaphone className="h-4 w-4" />}
               accent="text-accent-foreground"
             />
-            <KPICard
-              label="Needs Attention"
-              value={needsAttentionPage?.path || "—"}
-              sub={needsAttentionPage ? `${Math.round(needsAttentionPage.exitRate)}% exit rate` : undefined}
-              icon={<MapPin className="h-4 w-4" />}
-              accent="text-warning"
-            />
+            <div className="glass-card p-4 animate-slide-up">
+              <div className="flex items-start justify-between mb-2">
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Needs Attention</span>
+                <span className="text-warning"><AlertTriangle className="h-4 w-4" /></span>
+              </div>
+              {attentionItems.length > 0 ? (
+                <div className="space-y-1.5 max-h-[80px] overflow-y-auto">
+                  {attentionItems.map((item, i) => (
+                    <Link key={i} to={item.link} className="flex items-center gap-1.5 group">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.severity === "critical" ? "bg-destructive" : item.severity === "warning" ? "bg-warning" : "bg-primary"}`} />
+                      <span className="text-[11px] text-foreground group-hover:text-primary truncate">{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Everything looks good — no issues detected.</p>
+              )}
+            </div>
             <KPICard
               label="SEO Score"
               value={seoMovement?.score ?? "—"}
@@ -415,14 +426,13 @@ const Dashboard = () => {
           <LatestSummary />
 
           {/* Row 4 – Funnel + Three-column grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <FunnelWidget
               totalSessions={realtimeData?.totalSessions || 0}
               totalPageviews={realtimeData?.totalPageviews || 0}
               totalLeads={realtimeData?.totalLeads || 0}
               formStarts={formStartsCount || undefined}
             />
-            <AttentionPanel items={attentionItems} />
             <WhatsWorking />
             <TopPagesAndSources />
           </div>

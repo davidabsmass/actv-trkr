@@ -362,9 +362,9 @@ export default function SeoTab() {
       )}
 
       {/* Issues */}
-      {activeScan && issues.length > 0 && (
+      {activeScan && visibleIssues.length > 0 && (
         <SeoIssuesList
-          issues={issues}
+          issues={visibleIssues}
           fixQueue={fixQueue || []}
           markedFixed={markedFixed}
           onFixClick={handleFixClick}

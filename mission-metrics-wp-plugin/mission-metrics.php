@@ -49,6 +49,7 @@ register_activation_hook( __FILE__, 'mm_activate' );
 function mm_deactivate() {
 	wp_clear_scheduled_hook( 'mm_retry_cron' );
 	wp_clear_scheduled_hook( 'mm_form_probe_cron' );
+	wp_clear_scheduled_hook( 'mm_seo_fix_cron' );
 }
 register_deactivation_hook( __FILE__, 'mm_deactivate' );
 

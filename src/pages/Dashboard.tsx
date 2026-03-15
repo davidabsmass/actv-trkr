@@ -15,7 +15,7 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import {
   BarChart3, Zap, AlertTriangle, Globe, Search,
   ArrowUpRight, ArrowDownRight, Minus, TrendingUp, TrendingDown,
-  MapPin, Megaphone,
+  MapPin, Megaphone, CheckCircle2, ShieldAlert,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

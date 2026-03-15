@@ -358,6 +358,7 @@ export default function SeoTab() {
           issueTitle={fixModal.title}
           fixType={fixModal.fixType}
           suggestedValue=""
+          pageUrl={activeScan?.url || ""}
           onConfirm={(value) => queueFix.mutate({ issueId: fixModal.issueId, fixType: fixModal.fixType, fixValue: value })}
           isPending={queueFix.isPending}
         />

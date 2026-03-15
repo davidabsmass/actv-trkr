@@ -426,14 +426,13 @@ const Dashboard = () => {
           <LatestSummary />
 
           {/* Row 4 – Funnel + Three-column grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <FunnelWidget
               totalSessions={realtimeData?.totalSessions || 0}
               totalPageviews={realtimeData?.totalPageviews || 0}
               totalLeads={realtimeData?.totalLeads || 0}
               formStarts={formStartsCount || undefined}
             />
-            <AttentionPanel items={attentionItems} />
             <WhatsWorking />
             <TopPagesAndSources />
           </div>

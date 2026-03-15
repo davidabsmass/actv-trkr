@@ -230,6 +230,8 @@ serve(async (req) => {
                           html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i);
     const metaDescContent = metaDescMatch ? metaDescMatch[1].trim() : null;
     const metaDescLength = metaDescContent ? metaDescContent.length : 0;
+    const metaDescAllMatches = html.match(/<meta[^>]+name=["']description["']/gi) || [];
+    const metaDescCount = metaDescAllMatches.length;
 
     const canonicalMatches = html.match(/<link[^>]+rel=["']canonical["']/gi) || [];
     const canonicalCount = canonicalMatches.length;

@@ -73,10 +73,10 @@ export default function OverviewTab() {
     queryFn: async () => {
       if (!orgId) return null;
       const [sessionsRes, prevSessionsRes, leadsRes, prevLeadsRes, brokenRes, incidentsRes] = await Promise.all([
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "sessions").gte("date", start),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "sessions").gte("date", prevStart).lt("date", prevEnd),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads").gte("date", start),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads").gte("date", prevStart).lt("date", prevEnd),
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", start),
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStart).lt("date", prevEnd),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", start),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", prevStart).lt("date", prevEnd),
         supabase.from("broken_links").select("id", { count: "exact", head: true }).eq("org_id", orgId),
         supabase.from("incidents").select("id", { count: "exact", head: true }).eq("org_id", orgId).is("resolved_at", null),
       ]);

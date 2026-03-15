@@ -79,3 +79,9 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.seo-suggest-fix]
     verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.send-notification-email]
+    verify_jwt = false
+  [functions.daily-digest]
+    verify_jwt = false

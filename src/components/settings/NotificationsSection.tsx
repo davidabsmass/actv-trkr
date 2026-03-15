@@ -6,7 +6,6 @@ import { toast } from "@/hooks/use-toast";
 
 interface NotificationPrefs {
   weekly_summary: boolean;
-  break_alerts: boolean;
   daily_digest: boolean;
   lead_realtime_email: boolean;
   lead_email_digest: boolean;
@@ -15,7 +14,6 @@ interface NotificationPrefs {
 
 const DEFAULT_PREFS: NotificationPrefs = {
   weekly_summary: true,
-  break_alerts: true,
   daily_digest: false,
   lead_realtime_email: false,
   lead_email_digest: false,
@@ -27,7 +25,6 @@ const NOTIFICATION_OPTIONS: { key: keyof NotificationPrefs; label: string; descr
   { key: "lead_email_digest", label: "Lead email digest", description: "Receive a periodic summary of new leads" },
   { key: "lead_browser_push", label: "Browser push notifications", description: "Desktop notifications for new leads (requires permission)" },
   { key: "weekly_summary", label: "Weekly summary", description: "Weekly performance recap email" },
-  { key: "break_alerts", label: "Break alerts", description: "Alert when no submissions are received during business hours" },
   { key: "daily_digest", label: "Daily digest", description: "Daily summary of activity" },
 ];
 

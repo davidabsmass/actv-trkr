@@ -235,6 +235,17 @@ export default function SeoTab() {
   // Filter out marked-fixed issues from display
   const visibleIssues = useMemo(() => issues.filter(i => !markedFixed.has(i.id)), [issues, markedFixed]);
 
+  // Recalculate score based on visible issues (after filtering marked-fixed)
+  const adjustedScore = useMemo(() => {
+    if (!activeScan) return 0;
+    if (markedFixed.size === 0) return activeScan.score || 0;
+    const scoredIssues = visibleIssues.map(i => ({
+      ...i,
+      severityMultiplier: calculateSeverityMultiplier(i.id, i.count),
+    }));
+    return calculateScore(scoredIssues);
+  }, [visibleIssues, activeScan, markedFixed]);
+
   const handleMarkFixed = async (issueId: string) => {
     if (!orgId || !activeScan) return;
     const site = sites?.[0];

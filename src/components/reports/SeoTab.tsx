@@ -16,7 +16,9 @@ import type { SeoIssue } from "@/lib/seo-scoring";
 import SeoScanHistory from "./SeoScanHistory";
 import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
+import type { FixQueueItem } from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
+import SeoFixModal from "./SeoFixModal";
 
 export default function SeoTab() {
   const { orgId } = useOrg();
@@ -192,7 +194,78 @@ export default function SeoTab() {
   const issues = (activeScan?.issues_json as unknown as SeoIssue[] | null) || [];
   const score = activeScan?.score || 0;
 
-  // Extract path from URL for display
+  // Fix queue for active scan's page
+  const { data: fixQueue } = useQuery({
+    queryKey: ["seo_fix_queue", orgId, activeScan?.url],
+    queryFn: async () => {
+      if (!orgId || !activeScan?.url) return [];
+      const { data } = await supabase
+        .from("seo_fix_queue")
+        .select("id, issue_id, status")
+        .eq("org_id", orgId)
+        .eq("page_url", activeScan.url)
+        .order("created_at", { ascending: false });
+      return (data || []) as FixQueueItem[];
+    },
+    enabled: !!orgId && !!activeScan?.url,
+  });
+
+  const [markedFixed, setMarkedFixed] = useState<Set<string>>(new Set());
+
+  const handleMarkFixed = async (issueId: string) => {
+    if (!orgId || !activeScan) return;
+    const site = sites?.[0];
+    if (!site) return;
+    await supabase.from("seo_fix_history").insert({
+      org_id: orgId,
+      site_id: site.id,
+      issue_id: issueId,
+      page_url: activeScan.url,
+      before_score: score,
+    });
+    setMarkedFixed(prev => new Set(prev).add(issueId));
+    toast.success("Issue marked as fixed");
+  };
+
+  const [fixModal, setFixModal] = useState<{ issueId: string; fixType: string; title: string } | null>(null);
+
+  const queueFix = useMutation({
+    mutationFn: async ({ issueId, fixType, fixValue }: { issueId: string; fixType: string; fixValue: string }) => {
+      if (!orgId || !sites?.length || !activeScan) throw new Error("Missing context");
+      const { data, error } = await supabase.functions.invoke("seo-fix-command", {
+        body: {
+          org_id: orgId,
+          site_id: sites[0].id,
+          page_url: activeScan.url,
+          issue_id: issueId,
+          fix_type: fixType,
+          fix_value: fixValue,
+          scan_id: activeScan.id,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seo_fix_queue", orgId] });
+      setFixModal(null);
+      toast.success("Fix queued — your site plugin will apply it shortly");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to queue fix"),
+  });
+
+  const handleFixClick = (issueId: string, fixType: string) => {
+    const issue = issues.find(i => i.id === issueId);
+    setFixModal({ issueId, fixType, title: issue?.title || issueId });
+  };
+
+  const handleVerify = () => {
+    if (activeScan?.url) {
+      setScanUrl(activeScan.url);
+      runScan.mutate();
+    }
+  };
+
   const getPathFromUrl = (url: string) => {
     try {
       const parsed = new URL(url);
@@ -266,7 +339,28 @@ export default function SeoTab() {
 
       {/* Issues */}
       {activeScan && issues.length > 0 && (
-        <SeoIssuesList issues={issues} />
+        <SeoIssuesList
+          issues={issues}
+          fixQueue={fixQueue || []}
+          markedFixed={markedFixed}
+          onFixClick={handleFixClick}
+          onMarkFixed={handleMarkFixed}
+          onVerify={handleVerify}
+        />
+      )}
+
+      {/* Fix Modal */}
+      {fixModal && (
+        <SeoFixModal
+          open={!!fixModal}
+          onOpenChange={(open) => !open && setFixModal(null)}
+          issueId={fixModal.issueId}
+          issueTitle={fixModal.title}
+          fixType={fixModal.fixType}
+          suggestedValue=""
+          onConfirm={(value) => queueFix.mutate({ issueId: fixModal.issueId, fixType: fixModal.fixType, fixValue: value })}
+          isPending={queueFix.isPending}
+        />
       )}
 
       {/* Empty state */}

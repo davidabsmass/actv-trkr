@@ -1907,6 +1907,118 @@ export type Database = {
           },
         ]
       }
+      seo_fix_history: {
+        Row: {
+          after_score: number | null
+          before_score: number | null
+          fixed_at: string
+          id: string
+          issue_id: string
+          org_id: string
+          page_url: string
+          site_id: string
+        }
+        Insert: {
+          after_score?: number | null
+          before_score?: number | null
+          fixed_at?: string
+          id?: string
+          issue_id: string
+          org_id: string
+          page_url: string
+          site_id: string
+        }
+        Update: {
+          after_score?: number | null
+          before_score?: number | null
+          fixed_at?: string
+          id?: string
+          issue_id?: string
+          org_id?: string
+          page_url?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_fix_history_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_fix_history_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_fix_queue: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          fix_type: string
+          fix_value: string
+          id: string
+          issue_id: string
+          org_id: string
+          page_url: string
+          scan_id: string | null
+          site_id: string
+          status: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          fix_type: string
+          fix_value?: string
+          id?: string
+          issue_id: string
+          org_id: string
+          page_url: string
+          scan_id?: string | null
+          site_id: string
+          status?: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          fix_type?: string
+          fix_value?: string
+          id?: string
+          issue_id?: string
+          org_id?: string
+          page_url?: string
+          scan_id?: string | null
+          site_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_fix_queue_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_fix_queue_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "seo_scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_fix_queue_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_scans: {
         Row: {
           id: string

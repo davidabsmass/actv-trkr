@@ -365,7 +365,7 @@ HTML: ${analyzableHtml}`,
     ]);
 
     let aiExtras = 0;
-    const MAX_AI_EXTRAS = 3;
+    const MAX_AI_EXTRAS = 0; // Only show deterministic issues; AI provides fix text only
     for (const ai of aiResult.issues) {
       if (deterministicIds.has(ai.id)) continue;
       if (blockedAiIds.has(ai.id)) continue;

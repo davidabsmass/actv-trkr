@@ -348,8 +348,8 @@ export default function SeoTab() {
       {/* Score card */}
       {activeScan && (
         <SeoScoreCard
-          score={score}
-          issues={issues}
+          score={adjustedScore}
+          issues={visibleIssues}
           platform={activeScan.platform}
           url={activeScan.url}
           scannedAt={activeScan.scanned_at}

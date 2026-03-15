@@ -71,7 +71,9 @@ MM_Forms::init();
 MM_Updater::init();
 MM_Heartbeat::init();
 MM_Broken_Links::init();
+MM_SEO_Fixes::init();
 
 // Cron hooks.
 add_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );
 add_action( 'mm_form_probe_cron', array( 'MM_Forms', 'probe_form_pages' ) );
+add_action( 'mm_seo_fix_cron', array( 'MM_SEO_Fixes', 'poll_fixes' ) );

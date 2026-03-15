@@ -1349,6 +1349,59 @@ export type Database = {
           },
         ]
       }
+      nightly_summaries: {
+        Row: {
+          findings: Json
+          generated_at: string
+          id: string
+          insights: Json
+          metrics_snapshot: Json
+          org_id: string
+          period_end: string
+          period_start: string
+          seo_snapshot: Json | null
+          suggested_actions: Json
+          summary_text: string
+          top_findings: Json
+        }
+        Insert: {
+          findings?: Json
+          generated_at?: string
+          id?: string
+          insights?: Json
+          metrics_snapshot?: Json
+          org_id: string
+          period_end: string
+          period_start: string
+          seo_snapshot?: Json | null
+          suggested_actions?: Json
+          summary_text?: string
+          top_findings?: Json
+        }
+        Update: {
+          findings?: Json
+          generated_at?: string
+          id?: string
+          insights?: Json
+          metrics_snapshot?: Json
+          org_id?: string
+          period_end?: string
+          period_start?: string
+          seo_snapshot?: Json | null
+          suggested_actions?: Json
+          summary_text?: string
+          top_findings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nightly_summaries_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_inbox: {
         Row: {
           alert_id: string | null

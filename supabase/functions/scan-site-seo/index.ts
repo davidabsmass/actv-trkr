@@ -65,7 +65,7 @@ function buildDeterministicIssues(ctx: {
   metaDescContent: string | null; metaDescLength: number; metaDescCount: number;
   h1Count: number; isSPA: boolean;
   hasCanonical: boolean; canonicalCount: number; hasOgTitle: boolean; hasOgDesc: boolean; hasOgImage: boolean;
-  isHttps: boolean; blockingScriptsCount: number; imgsNoLazy: number;
+  isHttps: boolean; blockingScriptsCount: number; blockingScriptSrcs: string[]; imgsNoLazy: number;
 }): SeoIssue[] {
   const issues: SeoIssue[] = [];
 

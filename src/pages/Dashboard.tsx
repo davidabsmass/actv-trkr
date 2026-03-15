@@ -392,7 +392,15 @@ const Dashboard = () => {
             <div className="glass-card p-4 animate-slide-up">
               <div className="flex items-start justify-between mb-2">
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Needs Attention</span>
-                <span className="text-warning"><AlertTriangle className="h-4 w-4" /></span>
+                <span className={attentionItems.length === 0 ? "text-success" : attentionItems.some(i => i.severity === "critical") ? "text-destructive" : "text-warning"}>
+                  {attentionItems.length === 0 ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : attentionItems.some(i => i.severity === "critical") ? (
+                    <ShieldAlert className="h-4 w-4" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4" />
+                  )}
+                </span>
               </div>
               {attentionItems.length > 0 ? (
                 <div className="space-y-1.5 max-h-[80px] overflow-y-auto">
@@ -404,7 +412,7 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">Everything looks good — no issues detected.</p>
+                <p className="text-xs font-medium text-success">All clear — no issues detected.</p>
               )}
             </div>
             <KPICard

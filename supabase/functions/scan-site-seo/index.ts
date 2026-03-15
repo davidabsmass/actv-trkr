@@ -231,7 +231,9 @@ serve(async (req) => {
     const metaDescContent = metaDescMatch ? metaDescMatch[1].trim() : null;
     const metaDescLength = metaDescContent ? metaDescContent.length : 0;
 
-    const hasCanonical = !!html.match(/<link[^>]+rel=["']canonical["']/i);
+    const canonicalMatches = html.match(/<link[^>]+rel=["']canonical["']/gi) || [];
+    const canonicalCount = canonicalMatches.length;
+    const hasCanonical = canonicalCount > 0;
     const hasOgTitle = !!html.match(/<meta[^>]+property=["']og:title["']/i);
     const hasOgDesc = !!html.match(/<meta[^>]+property=["']og:description["']/i);
     const hasOgImage = !!html.match(/<meta[^>]+property=["']og:image["']/i);

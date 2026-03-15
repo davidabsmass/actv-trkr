@@ -28,6 +28,9 @@ function severityMultiplier(issueId: string, count?: number): number {
     case "images-without-alt":
     case "images-missing-alt":
       return count <= 5 ? 1.0 : count <= 15 ? 1.3 : count <= 30 ? 1.6 : 2.0;
+    case "meta-desc-duplicate":
+    case "canonical-duplicate":
+      return count <= 2 ? 1.0 : count <= 4 ? 1.3 : 1.6;
     case "render-blocking-scripts":
       return count <= 2 ? 1.0 : count <= 5 ? 1.3 : 1.6;
     default:
@@ -59,9 +62,9 @@ function detectPlatform(html: string): string | null {
 /* ── Deterministic issue builders ── */
 function buildDeterministicIssues(ctx: {
   titleStatus: string; titleLength: number; titleContent: string | null;
-  metaDescContent: string | null; metaDescLength: number;
+  metaDescContent: string | null; metaDescLength: number; metaDescCount: number;
   h1Count: number; isSPA: boolean;
-  hasCanonical: boolean; hasOgTitle: boolean; hasOgDesc: boolean; hasOgImage: boolean;
+  hasCanonical: boolean; canonicalCount: number; hasOgTitle: boolean; hasOgDesc: boolean; hasOgImage: boolean;
   isHttps: boolean; blockingScriptsCount: number; imgsNoLazy: number;
 }): SeoIssue[] {
   const issues: SeoIssue[] = [];
@@ -83,6 +86,9 @@ function buildDeterministicIssues(ctx: {
   } else if (ctx.metaDescLength > 160) {
     issues.push({ id: "meta-desc-too-long", title: `Meta description is too long (${ctx.metaDescLength} chars, aim for 120-160)`, fix: "", impact: "Medium", category: "SEO" });
   }
+  if (ctx.metaDescCount > 1) {
+    issues.push({ id: "meta-desc-duplicate", title: `${ctx.metaDescCount} meta description tags found (should be exactly 1)`, fix: "", impact: "High", category: "SEO", count: ctx.metaDescCount });
+  }
 
   // H1
   if (!ctx.isSPA && ctx.h1Count === 0) {
@@ -94,6 +100,8 @@ function buildDeterministicIssues(ctx: {
   // Canonical
   if (!ctx.hasCanonical) {
     issues.push({ id: "canonical-missing", title: "No canonical tag found", fix: "", impact: "Medium", category: "Technical" });
+  } else if (ctx.canonicalCount > 1) {
+    issues.push({ id: "canonical-duplicate", title: `${ctx.canonicalCount} canonical tags found (should be exactly 1)`, fix: "", impact: "High", category: "Technical", count: ctx.canonicalCount });
   }
 
   // OG tags
@@ -225,8 +233,12 @@ serve(async (req) => {
                           html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i);
     const metaDescContent = metaDescMatch ? metaDescMatch[1].trim() : null;
     const metaDescLength = metaDescContent ? metaDescContent.length : 0;
+    const metaDescAllMatches = html.match(/<meta[^>]+name=["']description["']/gi) || [];
+    const metaDescCount = metaDescAllMatches.length;
 
-    const hasCanonical = !!html.match(/<link[^>]+rel=["']canonical["']/i);
+    const canonicalMatches = html.match(/<link[^>]+rel=["']canonical["']/gi) || [];
+    const canonicalCount = canonicalMatches.length;
+    const hasCanonical = canonicalCount > 0;
     const hasOgTitle = !!html.match(/<meta[^>]+property=["']og:title["']/i);
     const hasOgDesc = !!html.match(/<meta[^>]+property=["']og:description["']/i);
     const hasOgImage = !!html.match(/<meta[^>]+property=["']og:image["']/i);
@@ -246,9 +258,9 @@ serve(async (req) => {
     // ── Step 1: Build deterministic issues ──
     const deterministicIssues = buildDeterministicIssues({
       titleStatus, titleLength, titleContent,
-      metaDescContent, metaDescLength,
+      metaDescContent, metaDescLength, metaDescCount,
       h1Count, isSPA,
-      hasCanonical, hasOgTitle, hasOgDesc, hasOgImage,
+      hasCanonical, canonicalCount, hasOgTitle, hasOgDesc, hasOgImage,
       isHttps, blockingScriptsCount: blockingScripts.length, imgsNoLazy,
     });
     const deterministicIds = new Set(deterministicIssues.map(i => i.id));

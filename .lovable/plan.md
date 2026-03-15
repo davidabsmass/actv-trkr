@@ -1,28 +1,25 @@
 
 
-# Add Deterministic Checks for Duplicate Meta Descriptions and Canonical Tags
+## SSL & Domain Renewal Reliability — Implemented
 
-## Problem
-"Duplicate meta description" and "Multiple canonical tags" issues are currently only detected by the AI layer, which can hallucinate. These should be deterministic checks based on actual HTML tag counting.
+### What was done
 
-## Changes
+1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
+   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
+   - `check-uptime` runs **every 10 minutes**
+   - `check-renewals` runs daily at 06:00 UTC
 
-### 1. `supabase/functions/scan-site-seo/index.ts`
+2. **Retry logic** added to `check-domain-ssl` edge function:
+   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
+   - 15-second timeout per request
+   - Detailed console logging for debugging
 
-**In the HTML parsing section (~lines 224-229):**
-- Count all `<meta name="description">` tags instead of just matching the first one
-- Count all `<link rel="canonical">` tags instead of just checking existence
+3. **False downtime prevention**:
+   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
+   - Cleaned up 11 false DOWNTIME incidents and related alerts
 
-**In `buildDeterministicIssues` function signature (~line 60):**
-- Add `metaDescCount: number` and `canonicalCount: number` to the context object
+4. **"Check Now" button** on the Monitoring page triggers on-demand checks
 
-**In `buildDeterministicIssues` body:**
-- After the existing meta description checks, add: if `metaDescCount > 1`, push a `"meta-desc-duplicate"` issue (impact: High, category: SEO)
-- After the existing canonical check, add: if `canonicalCount > 1`, push a `"canonical-duplicate"` issue (impact: High, category: Technical)
-
-### 2. `src/lib/seo-scoring.ts`
-
-- Add `"meta-desc-duplicate"` and `"canonical-duplicate"` to the severity multiplier if needed (they use count, so the existing default multiplier handles it)
-
-No database changes needed — the issues are stored as JSON in `seo_scans.issues_json`.
-
+### Extensions enabled
+- `pg_cron` (scheduling)
+- `pg_net` (HTTP calls from SQL)

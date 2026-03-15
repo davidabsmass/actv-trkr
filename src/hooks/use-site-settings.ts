@@ -14,8 +14,10 @@ export interface SiteSettings {
   primary_focus: PrimaryFocus;
   notification_preferences: {
     weekly_summary: boolean;
-    break_alerts: boolean;
     daily_digest: boolean;
+    lead_realtime_email?: boolean;
+    lead_email_digest?: boolean;
+    lead_browser_push?: boolean;
   };
   onboarding_completed: boolean;
 }

@@ -59,9 +59,9 @@ function detectPlatform(html: string): string | null {
 /* ── Deterministic issue builders ── */
 function buildDeterministicIssues(ctx: {
   titleStatus: string; titleLength: number; titleContent: string | null;
-  metaDescContent: string | null; metaDescLength: number;
+  metaDescContent: string | null; metaDescLength: number; metaDescCount: number;
   h1Count: number; isSPA: boolean;
-  hasCanonical: boolean; hasOgTitle: boolean; hasOgDesc: boolean; hasOgImage: boolean;
+  hasCanonical: boolean; canonicalCount: number; hasOgTitle: boolean; hasOgDesc: boolean; hasOgImage: boolean;
   isHttps: boolean; blockingScriptsCount: number; imgsNoLazy: number;
 }): SeoIssue[] {
   const issues: SeoIssue[] = [];

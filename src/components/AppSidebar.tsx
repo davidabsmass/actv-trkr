@@ -84,20 +84,36 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {telemetryItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
-                      activeClassName="bg-white/20 text-white font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {telemetryItems.map((item) => {
+                const isSeoLocked = item.url === "/seo" && !isAdmin && orgRole !== "admin";
+                if (isSeoLocked) {
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <div className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/40 rounded-lg cursor-default select-none">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                        <span className="ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/15 text-white/60 leading-none">
+                          Coming Soon
+                        </span>
+                      </div>
+                    </SidebarMenuItem>
+                  );
+                }
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                        activeClassName="bg-white/20 text-white font-medium"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -42,10 +42,10 @@ export default function MonthlyTab() {
       const prevEnd = format(endOfMonth(prevMonth), "yyyy-MM-dd");
 
       const [sessRes, prevSessRes, leadsRes, prevLeadsRes] = await Promise.all([
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "sessions").gte("date", monthStart).lte("date", monthEnd),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "sessions").gte("date", prevStart).lte("date", prevEnd),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads").gte("date", monthStart).lte("date", monthEnd),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads").gte("date", prevStart).lte("date", prevEnd),
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", monthStart).lte("date", monthEnd),
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStart).lte("date", prevEnd),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", monthStart).lte("date", monthEnd),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", prevStart).lte("date", prevEnd),
       ]);
 
       const sum = (rows: any[]) => (rows || []).reduce((s, r) => s + Number(r.value || 0), 0);

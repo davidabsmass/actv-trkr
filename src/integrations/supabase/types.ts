@@ -1308,6 +1308,47 @@ export type Database = {
           },
         ]
       }
+      monthly_summaries: {
+        Row: {
+          focus_areas: Json
+          generated_at: string
+          id: string
+          metrics_json: Json
+          month: string
+          org_id: string
+          summary_text: string
+          top_performers: Json
+        }
+        Insert: {
+          focus_areas?: Json
+          generated_at?: string
+          id?: string
+          metrics_json?: Json
+          month: string
+          org_id: string
+          summary_text?: string
+          top_performers?: Json
+        }
+        Update: {
+          focus_areas?: Json
+          generated_at?: string
+          id?: string
+          metrics_json?: Json
+          month?: string
+          org_id?: string
+          summary_text?: string
+          top_performers?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_summaries_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_inbox: {
         Row: {
           alert_id: string | null
@@ -1809,6 +1850,57 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seo_scans: {
+        Row: {
+          id: string
+          issues_json: Json
+          org_id: string
+          platform: string | null
+          recommendations_json: Json
+          scanned_at: string
+          score: number
+          site_id: string
+          url: string
+        }
+        Insert: {
+          id?: string
+          issues_json?: Json
+          org_id: string
+          platform?: string | null
+          recommendations_json?: Json
+          scanned_at?: string
+          score?: number
+          site_id: string
+          url: string
+        }
+        Update: {
+          id?: string
+          issues_json?: Json
+          org_id?: string
+          platform?: string | null
+          recommendations_json?: Json
+          scanned_at?: string
+          score?: number
+          site_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_scans_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_scans_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]

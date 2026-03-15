@@ -83,3 +83,5 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = true
   [functions.send-notification-email]
     verify_jwt = false
+  [functions.daily-digest]
+    verify_jwt = false

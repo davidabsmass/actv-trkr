@@ -280,15 +280,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!isVersionAtLeast(site.plugin_version, "1.3.3")) {
-      return new Response(JSON.stringify({
-        error: "Plugin update required",
-        details: `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer, then run Sync Entries again.`,
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.3");
 
     const { data: membership } = await supabase
       .from("org_users").select("role")
@@ -326,6 +318,9 @@ Deno.serve(async (req) => {
           reason: `WordPress sync route unavailable (${wpRes.status})`,
           wp_error: text,
           endpoint_attempted: wpEndpoint,
+          plugin_warning: pluginOutdated
+            ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer for reliable entry reconciliation.`
+            : null,
           ...fallback,
         }), {
           status: 200,
@@ -348,7 +343,14 @@ Deno.serve(async (req) => {
 
     const fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
 
-    return new Response(JSON.stringify({ ok: true, wp_result: wpData, ...fallback }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      wp_result: wpData,
+      plugin_warning: pluginOutdated
+        ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer for reliable entry reconciliation.`
+        : null,
+      ...fallback,
+    }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

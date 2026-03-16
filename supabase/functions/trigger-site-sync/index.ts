@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.8");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.9");
 
     // Check if site has any Avada forms
     const { count: avadaFormCount } = await supabase

@@ -342,15 +342,8 @@ export default function Forms() {
       {/* Summary Row */}
       <FormsSummary orgId={orgId} days={days} />
 
-      {/* Form Leaderboard */}
-      {forms && forms.length > 0 && (
-        <div className="mb-4">
-          <FormLeaderboard forms={forms} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} deviceData={deviceData} />
-        </div>
-      )}
-
       {/* Form List */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Forms</h3>
           {archivedForms.length > 0 && (
@@ -404,6 +397,11 @@ export default function Forms() {
           </div>
         )}
       </div>
+
+      {/* Form Leaderboard */}
+      {forms && forms.length > 0 && (
+        <FormLeaderboard forms={forms} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} deviceData={deviceData} />
+      )}
     </div>
   );
 }

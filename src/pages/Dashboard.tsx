@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { format, subDays, startOfDay, startOfWeek, subWeeks, differenceInCalendarDays, addDays } from "date-fns";
+import { format, subDays, startOfDay } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { LatestSummary } from "@/components/dashboard/LatestSummary";
@@ -122,18 +122,13 @@ const Dashboard = () => {
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
-  const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const daysSoFar = differenceInCalendarDays(new Date(), thisWeekStart); // 0 on Monday, 6 on Sunday
-  const thisWeekStartStr = format(thisWeekStart, "yyyy-MM-dd");
-  // Compare same # of elapsed days from last week (apples-to-apples)
-  const lastWeekSameStart = subWeeks(thisWeekStart, 1);
-  const lastWeekSameEnd = addDays(lastWeekSameStart, daysSoFar);
-  const lastWeekStartStr = format(lastWeekSameStart, "yyyy-MM-dd");
-  const lastWeekEndStr = format(lastWeekSameEnd, "yyyy-MM-dd");
+
+  // Previous period for comparison (same length, immediately before)
+  const prevEndDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
+  const prevStartDate = format(subDays(startOfDay(new Date()), days * 2), "yyyy-MM-dd");
 
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
-  const { data: thisWeekData } = useRealtimeDashboard(orgId, thisWeekStartStr, endDate);
-  const { data: lastWeekData } = useRealtimeDashboard(orgId, lastWeekStartStr, lastWeekEndStr);
+  const { data: prevPeriodData } = useRealtimeDashboard(orgId, prevStartDate, prevEndDate);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 
@@ -256,17 +251,17 @@ const Dashboard = () => {
 
   const isLoading = !realtimeData;
 
-  const wowData = useMemo(() => {
-    const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
-    const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
-    const twCvr = tw.totalSessions > 0 ? tw.totalLeads / tw.totalSessions : 0;
-    const lwCvr = lw.totalSessions > 0 ? lw.totalLeads / lw.totalSessions : 0;
+  const periodData = useMemo(() => {
+    const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
+    const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
+    const currCvr = curr.totalSessions > 0 ? curr.totalLeads / curr.totalSessions : 0;
+    const prevCvr = prev.totalSessions > 0 ? prev.totalLeads / prev.totalSessions : 0;
     return {
-      sessions: { current: tw.totalSessions, previous: lw.totalSessions },
-      leads: { current: tw.totalLeads, previous: lw.totalLeads },
-      cvr: { current: twCvr, previous: lwCvr },
+      sessions: { current: curr.totalSessions, previous: prev.totalSessions },
+      leads: { current: curr.totalLeads, previous: prev.totalLeads },
+      cvr: { current: currCvr, previous: prevCvr },
     };
-  }, [thisWeekData, lastWeekData]);
+  }, [realtimeData, prevPeriodData]);
 
   const topSource = useMemo(() => {
     const sources = realtimeData?.sources || [];
@@ -370,21 +365,21 @@ const Dashboard = () => {
           {/* Row 1 – 6 KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <KPICard
-              label="Sessions (7d)"
-              value={wowData.sessions.current.toLocaleString()}
-              trend={pctChange(wowData.sessions.current, wowData.sessions.previous)}
+              label={`Sessions (${days}d)`}
+              value={periodData.sessions.current.toLocaleString()}
+              trend={pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
             />
             <KPICard
-              label="Leads (7d)"
-              value={wowData.leads.current}
-              trend={pctChange(wowData.leads.current, wowData.leads.previous)}
+              label={`Leads (${days}d)`}
+              value={periodData.leads.current}
+              trend={pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <KPICard
               label="Conversion Rate"
-              value={`${(wowData.cvr.current * 100).toFixed(1)}%`}
-              trend={pctChange(wowData.cvr.current, wowData.cvr.previous)}
+              value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
+              trend={pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
             />
             <KPICard

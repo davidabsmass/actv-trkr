@@ -230,7 +230,7 @@ export default function OverviewTab() {
     { key: "7d", label: "7 Days" },
     { key: "14d", label: "14 Days" },
     { key: "30d", label: "30 Days" },
-    { key: "weekly", label: "Weekly" },
+    
     { key: "monthly", label: "Monthly" },
   ];
 

@@ -29,19 +29,29 @@ export default function PluginSection() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip`;
-      const response = await fetch(zipUrl);
+      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
+      const response = await fetch(zipUrl, { cache: "no-store" });
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
+
+      // Extract versioned filename from Content-Disposition header
+      const contentDisposition = response.headers.get("content-disposition") || "";
+      const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
+      const fileName = match?.[1] || "actv-trkr.zip";
+
+      // Extract version from filename for toast
+      const versionMatch = /actv-trkr-(\d+\.\d+\.\d+)\.zip/.exec(fileName);
+      const version = versionMatch?.[1] || "";
+
       const a = document.createElement("a");
       a.href = url;
-      a.download = "actv-trkr.zip";
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success("Plugin downloaded! Upload via WordPress → Plugins → Add New → Upload.");
+      toast.success(`Plugin v${version || "latest"} downloaded! Upload via WordPress → Plugins → Add New → Upload.`);
     } catch (e: any) {
       toast.error(e.message || "Failed to download plugin");
     } finally {

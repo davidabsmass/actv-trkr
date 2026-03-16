@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const minimumPluginVersion = "1.3.4";
-    const minimumAvadaPluginVersion = "1.3.9";
+    const minimumAvadaPluginVersion = "1.3.10";
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, minimumPluginVersion);
 
     // Check if site has any Avada forms
@@ -379,7 +379,7 @@ Deno.serve(async (req) => {
       const avadaWarnings = wpWarnings.filter((w) => w.toLowerCase().includes("avada"));
       const hasAllAvadaWarnings = avadaWarnings.length > 0 && avadaWarnings.length === wpWarnings.length;
       const hasAllEmptyWarning = warningText.includes("reported 0 active entries");
-      const hasDuplicateSetWarning = warningText.includes("identical entry lists") || warningText.includes("duplicate/overlapping active id sets");
+      const hasDuplicateSetWarning = warningText.includes("identical entry lists") || warningText.includes("identical active-entry lists") || warningText.includes("duplicate/overlapping active id sets");
 
       if (hasAllAvadaWarnings && hasAllEmptyWarning && trashed === 0 && restored === 0) {
         syncStatus = "blocked";

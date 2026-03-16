@@ -707,7 +707,7 @@ class MM_Forms {
 					continue;
 				}
 
-			// Use label as name if available, otherwise infer from type/value
+				// Use label as name if available, otherwise infer from type/value
 				if ( $label ) {
 					$name = $label;
 				} else {
@@ -749,6 +749,26 @@ class MM_Forms {
 					'value' => is_array( $value ) ? implode( ', ', $value ) : $value,
 				);
 			}
+		}
+
+		$form_title = 'Avada Form';
+		$form_post  = get_post( $form_post_id );
+		if ( $form_post ) {
+			$form_title = $form_post->post_title ?: $form_title;
+		}
+
+		self::send( array(
+			'provider' => 'avada',
+			'entry'    => array(
+				'form_id'      => $form_post_id,
+				'form_title'   => $form_title,
+				'entry_id'     => self::get_avada_db_entry_id( $form_post_id ),
+				'source_url'   => wp_get_referer() ?: home_url(),
+				'submitted_at' => current_time( 'c' ),
+			),
+			'context' => self::get_tracking_context(),
+			'fields'  => $fields,
+		) );
 	}
 
 	/**
@@ -767,26 +787,6 @@ class MM_Forms {
 		}
 		$pos_map = array( 1 => 'Name', 2 => 'Phone', 3 => 'Email', 4 => 'Category', 5 => 'City', 6 => 'Zip Code', 7 => 'State', 8 => 'Country', 9 => 'Subject', 10 => 'Message' );
 		return isset( $pos_map[ $position ] ) ? $pos_map[ $position ] : 'Field ' . $position;
-	}
-
-	$form_title = 'Avada Form';
-		$form_post  = get_post( $form_post_id );
-		if ( $form_post ) {
-			$form_title = $form_post->post_title ?: $form_title;
-		}
-
-		self::send( array(
-			'provider' => 'avada',
-			'entry'    => array(
-				'form_id'      => $form_post_id,
-				'form_title'   => $form_title,
-				'entry_id'     => self::get_avada_db_entry_id( $form_post_id ),
-				'source_url'   => wp_get_referer() ?: home_url(),
-				'submitted_at' => current_time( 'c' ),
-			),
-			'context' => self::get_tracking_context(),
-			'fields'  => $fields,
-		) );
 	}
 
 	// ── Ninja Forms ─────────────────────────────────────────────────

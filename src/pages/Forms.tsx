@@ -475,7 +475,7 @@ export default function Forms() {
       </div>
 
       {/* Plugin Update Banner */}
-      <PluginUpdateBanner orgId={orgId} />
+      <PluginUpdateBanner orgId={orgId} siteIds={formSiteIds} />
 
       {/* Summary Row */}
       <FormsSummary orgId={orgId} days={days} />

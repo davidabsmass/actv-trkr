@@ -173,6 +173,24 @@ class MM_Forms {
 			}
 		}
 
+		// Avada / Fusion Forms
+		$avada_forms = get_posts( array(
+			'post_type'      => 'fusion_form',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
+			foreach ( $avada_forms as $form_post_id ) {
+				$title = get_the_title( $form_post_id ) ?: 'Avada Form';
+				$discovered[] = array(
+					'form_id'    => (string) $form_post_id,
+					'form_title' => $title,
+					'provider'   => 'avada',
+				);
+			}
+		}
+
 		if ( empty( $discovered ) ) {
 			return array( 'synced' => 0, 'discovered' => 0 );
 		}

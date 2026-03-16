@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.4: Avada form discovery + stable DB-backed entry IDs for reconciliation
-const LATEST_VERSION = "1.3.9";
+// v1.3.10: Avada small-table filtering bugfix + safer per-form reconciliation
+const LATEST_VERSION = "1.3.10";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,12 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.10
+- Fixes Avada small-table fallback returning identical entry sets for every form
+- Filters fallback rows by per-form markers (form_id, fusion_form_id, form_post_id, post_id)
+- Prevents stale deleted entries from persisting due ambiguous global entry lists
+- Improves reconciliation safety by skipping unscoped fallback rows
+
 ## 1.3.9
 - Wildcard table discovery: finds Avada submission tables even with non-standard names
 - Small-table fallback: if table has ≤200 rows and no form_ref match, returns all entries

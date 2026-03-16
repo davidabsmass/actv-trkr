@@ -3,28 +3,105 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const cronSecret = Deno.env.get("CRON_SECRET");
-  const incoming = req.headers.get("x-cron-secret");
-  if (!cronSecret || incoming !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+  const incomingSecret = req.headers.get("x-cron-secret");
+  const isCronRequest = !!cronSecret && incomingSecret === cronSecret;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY")!;
+
+    if (!publishableKey) {
+      throw new Error("Missing publishable key");
+    }
+
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get all orgs
-    const { data: orgs } = await supabase.from("orgs").select("id, name");
+    let body: Record<string, unknown> = {};
+    if (req.method !== "GET") {
+      try {
+        body = await req.json();
+      } catch {
+        body = {};
+      }
+    }
+
+    let requestedOrgId = typeof body.org_id === "string" ? body.org_id : null;
+
+    if (!isCronRequest) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const userClient = createClient(supabaseUrl, publishableKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+
+      const { data: authData, error: authError } = await userClient.auth.getUser();
+      if (authError || !authData.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!requestedOrgId) {
+        const { data: membership } = await supabase
+          .from("org_users")
+          .select("org_id")
+          .eq("user_id", authData.user.id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        requestedOrgId = membership?.org_id ?? null;
+      }
+
+      if (!requestedOrgId) {
+        return new Response(JSON.stringify({ error: "No organization found for user" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: canAccess } = await supabase
+        .from("org_users")
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .eq("org_id", requestedOrgId)
+        .maybeSingle();
+
+      if (!canAccess) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const orgsQuery = supabase.from("orgs").select("id, name");
+    const { data: orgs, error: orgsError } = isCronRequest
+      ? await orgsQuery
+      : await orgsQuery.eq("id", requestedOrgId!).limit(1);
+
+    if (orgsError) throw orgsError;
+
     if (!orgs || orgs.length === 0) {
-      return new Response(JSON.stringify({ message: "No orgs" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ message: "No orgs" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const now = new Date();
@@ -38,16 +115,33 @@ serve(async (req) => {
     const results: string[] = [];
 
     for (const org of orgs) {
-      // Current week metrics
       const [sessThis, leadsThis, sessPrev, leadsPrev] = await Promise.all([
-        supabase.from("sessions").select("*", { count: "exact", head: true })
-          .eq("org_id", org.id).gte("started_at", weekStartStr).lte("started_at", nowStr),
-        supabase.from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", org.id).gte("submitted_at", weekStartStr).lte("submitted_at", nowStr),
-        supabase.from("sessions").select("*", { count: "exact", head: true })
-          .eq("org_id", org.id).gte("started_at", prevWeekStartStr).lt("started_at", weekStartStr),
-        supabase.from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", org.id).gte("submitted_at", prevWeekStartStr).lt("submitted_at", weekStartStr),
+        supabase
+          .from("sessions")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", org.id)
+          .gte("started_at", weekStartStr)
+          .lte("started_at", nowStr),
+        supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", org.id)
+          .neq("status", "trashed")
+          .gte("submitted_at", weekStartStr)
+          .lte("submitted_at", nowStr),
+        supabase
+          .from("sessions")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", org.id)
+          .gte("started_at", prevWeekStartStr)
+          .lt("started_at", weekStartStr),
+        supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", org.id)
+          .neq("status", "trashed")
+          .gte("submitted_at", prevWeekStartStr)
+          .lt("submitted_at", weekStartStr),
       ]);
 
       const thisWeekSess = sessThis.count || 0;
@@ -57,19 +151,29 @@ serve(async (req) => {
 
       const sessionsChange = prevWeekSess > 0 ? ((thisWeekSess - prevWeekSess) / prevWeekSess) * 100 : 0;
       const leadsChange = prevWeekLeads > 0 ? ((thisWeekLeads - prevWeekLeads) / prevWeekLeads) * 100 : 0;
-      const cvr = thisWeekSess > 0 ? (thisWeekLeads / thisWeekSess * 100) : 0;
+      const cvr = thisWeekSess > 0 ? (thisWeekLeads / thisWeekSess) * 100 : 0;
+      const prevCvr = prevWeekSess > 0 ? (prevWeekLeads / prevWeekSess) * 100 : 0;
+      const cvrChange = prevCvr > 0 ? ((cvr - prevCvr) / prevCvr) * 100 : 0;
 
-      // Get first site_id for this org
-      const { data: sites } = await supabase.from("sites").select("id").eq("org_id", org.id).limit(1);
-      const siteId = sites?.[0]?.id;
-      if (!siteId) continue;
+      const { data: site } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("org_id", org.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-      // Generate AI summary
+      const siteId = site?.id;
+      if (!siteId) {
+        results.push(`Skipped ${org.name}: no site configured`);
+        continue;
+      }
+
       const prompt = `You are an analytics expert. Generate a concise weekly performance summary for a website.
 
 Data for ${org.name}:
-- Sessions this week: ${thisWeekSess} (${sessionsChange >= 0 ? '+' : ''}${sessionsChange.toFixed(1)}% vs last week)
-- Leads this week: ${thisWeekLeads} (${leadsChange >= 0 ? '+' : ''}${leadsChange.toFixed(1)}% vs last week)
+- Sessions this week: ${thisWeekSess} (${sessionsChange >= 0 ? "+" : ""}${sessionsChange.toFixed(1)}% vs last week)
+- Leads this week: ${thisWeekLeads} (${leadsChange >= 0 ? "+" : ""}${leadsChange.toFixed(1)}% vs last week)
 - Conversion rate: ${cvr.toFixed(2)}%
 
 Use calm, professional language. Avoid dramatic words like "plummeted," "collapsed," "crashed," or "alarming." Use neutral terms like "decreased," "dropped," or "slowed" instead. Frame downturns as opportunities.
@@ -102,7 +206,6 @@ Respond ONLY with valid JSON:
         const aiData = await aiResp.json();
         const content = aiData.choices?.[0]?.message?.content || "";
         try {
-          // Extract JSON from response (handle markdown code blocks)
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
@@ -111,11 +214,10 @@ Respond ONLY with valid JSON:
             riskAlert = parsed.risk_alert || null;
           }
         } catch {
-          // Use fallback summary
+          // fallback text already set
         }
       }
 
-      // Upsert into weekly_summaries
       const { error } = await supabase.from("weekly_summaries").upsert(
         {
           org_id: org.id,
@@ -123,19 +225,33 @@ Respond ONLY with valid JSON:
           week_start: weekStartDate,
           sessions_change: sessionsChange,
           leads_change: leadsChange,
+          conversion_anomalies: {
+            sessions_current: thisWeekSess,
+            sessions_previous: prevWeekSess,
+            sessions_change: Number(sessionsChange.toFixed(1)),
+            leads_current: thisWeekLeads,
+            leads_previous: prevWeekLeads,
+            leads_change: Number(leadsChange.toFixed(1)),
+            cvr_current: Number(cvr.toFixed(2)),
+            cvr_previous: Number(prevCvr.toFixed(2)),
+            cvr_change: Number(cvrChange.toFixed(1)),
+          },
           summary_text: summaryText,
           top_opportunity: topOpportunity,
           risk_alert: riskAlert,
         },
-        { onConflict: "site_id,week_start" }
+        { onConflict: "site_id,week_start" },
       );
 
       if (error) {
         console.error(`Error saving summary for ${org.name}:`, error);
-      } else {
-        results.push(`Generated summary for ${org.name}`);
+        results.push(`Failed ${org.name}: ${error.message}`);
+        continue;
+      }
 
-        // Send weekly summary email to org members
+      results.push(`Generated summary for ${org.name}`);
+
+      if (isCronRequest) {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0a1628; color: #e2e8f0; padding: 32px; border-radius: 12px;">
             <div style="text-align: center; margin-bottom: 24px;">
@@ -149,26 +265,20 @@ Respond ONLY with valid JSON:
               <div style="flex: 1; background: #1e293b; border-radius: 8px; padding: 16px; text-align: center;">
                 <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0;">Sessions</p>
                 <p style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 4px 0;">${thisWeekSess}</p>
-                <p style="color: ${sessionsChange >= 0 ? '#4ade80' : '#f87171'}; font-size: 12px; margin: 0;">${sessionsChange >= 0 ? '↑' : '↓'} ${Math.abs(sessionsChange).toFixed(1)}%</p>
+                <p style="color: ${sessionsChange >= 0 ? "#4ade80" : "#f87171"}; font-size: 12px; margin: 0;">${sessionsChange >= 0 ? "↑" : "↓"} ${Math.abs(sessionsChange).toFixed(1)}%</p>
               </div>
               <div style="flex: 1; background: #1e293b; border-radius: 8px; padding: 16px; text-align: center;">
                 <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0;">Leads</p>
                 <p style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 4px 0;">${thisWeekLeads}</p>
-                <p style="color: ${leadsChange >= 0 ? '#4ade80' : '#f87171'}; font-size: 12px; margin: 0;">${leadsChange >= 0 ? '↑' : '↓'} ${Math.abs(leadsChange).toFixed(1)}%</p>
+                <p style="color: ${leadsChange >= 0 ? "#4ade80" : "#f87171"}; font-size: 12px; margin: 0;">${leadsChange >= 0 ? "↑" : "↓"} ${Math.abs(leadsChange).toFixed(1)}%</p>
               </div>
               <div style="flex: 1; background: #1e293b; border-radius: 8px; padding: 16px; text-align: center;">
                 <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0;">CVR</p>
                 <p style="color: #ffffff; font-size: 22px; font-weight: bold; margin: 4px 0;">${cvr.toFixed(1)}%</p>
               </div>
             </div>
-            ${topOpportunity ? `<div style="background: #1e3a5f; border-left: 3px solid #6C5CE7; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-              <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">💡 Top Opportunity</p>
-              <p style="color: #e2e8f0; font-size: 13px; margin: 0;">${topOpportunity}</p>
-            </div>` : ''}
-            ${riskAlert ? `<div style="background: #3b1c1c; border-left: 3px solid #f87171; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-              <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">⚠️ Risk Alert</p>
-              <p style="color: #fca5a5; font-size: 13px; margin: 0;">${riskAlert}</p>
-            </div>` : ''}
+            ${topOpportunity ? `<div style="background: #1e3a5f; border-left: 3px solid #6C5CE7; border-radius: 8px; padding: 16px; margin-bottom: 12px;"><p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">💡 Top Opportunity</p><p style="color: #e2e8f0; font-size: 13px; margin: 0;">${topOpportunity}</p></div>` : ""}
+            ${riskAlert ? `<div style="background: #3b1c1c; border-left: 3px solid #f87171; border-radius: 8px; padding: 16px; margin-bottom: 12px;"><p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; margin: 0 0 4px;">⚠️ Risk Alert</p><p style="color: #fca5a5; font-size: 13px; margin: 0;">${riskAlert}</p></div>` : ""}
             <div style="text-align: center; margin-top: 24px;">
               <a href="https://actvtrkr.com/dashboard" style="display: inline-block; background: #6C5CE7; color: #ffffff; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">View Dashboard</a>
             </div>
@@ -180,7 +290,7 @@ Respond ONLY with valid JSON:
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+              Authorization: `Bearer ${publishableKey}`,
               "x-cron-secret": cronSecret,
             },
             body: JSON.stringify({
@@ -188,7 +298,7 @@ Respond ONLY with valid JSON:
               org_id: org.id,
               subject: `📊 Weekly Summary — ${org.name} (${weekStartDate})`,
               html_body: emailHtml,
-              text_body: `Weekly Summary for ${org.name}\n\nSessions: ${thisWeekSess} (${sessionsChange.toFixed(1)}% change)\nLeads: ${thisWeekLeads} (${leadsChange.toFixed(1)}% change)\nCVR: ${cvr.toFixed(1)}%\n\n${summaryText}\n\n${topOpportunity ? 'Top Opportunity: ' + topOpportunity + '\n' : ''}${riskAlert ? 'Risk Alert: ' + riskAlert + '\n' : ''}\nView dashboard: https://actvtrkr.com/dashboard`,
+              text_body: `Weekly Summary for ${org.name}\n\nSessions: ${thisWeekSess} (${sessionsChange.toFixed(1)}% change)\nLeads: ${thisWeekLeads} (${leadsChange.toFixed(1)}% change)\nCVR: ${cvr.toFixed(1)}%\n\n${summaryText}\n\n${topOpportunity ? "Top Opportunity: " + topOpportunity + "\n" : ""}${riskAlert ? "Risk Alert: " + riskAlert + "\n" : ""}\nView dashboard: https://actvtrkr.com/dashboard`,
             }),
           });
         } catch (emailErr) {
@@ -197,7 +307,7 @@ Respond ONLY with valid JSON:
       }
     }
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    return new Response(JSON.stringify({ success: true, results, generated: results.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

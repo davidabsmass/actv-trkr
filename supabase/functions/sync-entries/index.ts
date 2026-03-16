@@ -177,10 +177,16 @@ Deno.serve(async (req) => {
       const formId = formRow.id;
       const provider = formRow.provider || "";
 
-      // ── AVADA SAFETY: skip if any guard triggered ──
-      if (provider === "avada" && (allAvadaEmpty || hasDuplicateAvadaSets)) {
-        console.log(`sync-entries: form=${extFormId} provider=avada safety_guard_active=true -> skipping`);
+      // ── AVADA SAFETY: all-empty payload means discovery failed, skip completely ──
+      if (provider === "avada" && allAvadaEmpty) {
+        console.log(`sync-entries: form=${extFormId} provider=avada safety_guard_all_empty=true -> skipping`);
         continue;
+      }
+
+      // Duplicate ID-set bug mode: allow restore/remap, but never trash Avada entries.
+      const avadaDuplicateProtectionMode = provider === "avada" && hasDuplicateAvadaSets;
+      if (avadaDuplicateProtectionMode) {
+        console.log(`sync-entries: form=${extFormId} provider=avada duplicate_set_safe_mode=true`);
       }
 
       const { data: rawEvents } = await supabase

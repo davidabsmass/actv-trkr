@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
 
       // ── SAFETY GUARD 3: Full-trash pattern for Avada ──
       // If we would trash ALL raw events with zero restores, something is wrong
-      if (provider === "avada" && toTrashEntries.length > 0 && toRestoreEntries.length === 0 && toTrashEntries.length === rawEvents.length) {
+      if (provider === "avada" && !avadaDuplicateProtectionMode && toTrashEntries.length > 0 && toRestoreEntries.length === 0 && toTrashEntries.length === rawEvents.length) {
         console.log(`sync-entries: form=${extFormId} provider=avada full_trash_pattern=true (${toTrashEntries.length}/${rawEvents.length}) -> skipping destructive sync`);
         warnings.push(`Avada sync for form ${extFormId} skipped — all ${toTrashEntries.length} entries would be trashed with zero matches. Likely a discovery issue.`);
         continue;

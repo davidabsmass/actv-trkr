@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { format, subDays, startOfDay, startOfWeek, subWeeks } from "date-fns";
+import { format, subDays, startOfDay, startOfWeek, subWeeks, differenceInCalendarDays, addDays } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { LatestSummary } from "@/components/dashboard/LatestSummary";
@@ -122,13 +122,18 @@ const Dashboard = () => {
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
-  const thisWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
-  const lastWeekStart = format(subWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "yyyy-MM-dd");
-  const lastWeekEnd = format(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "yyyy-MM-dd");
+  const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const daysSoFar = differenceInCalendarDays(new Date(), thisWeekStart); // 0 on Monday, 6 on Sunday
+  const thisWeekStartStr = format(thisWeekStart, "yyyy-MM-dd");
+  // Compare same # of elapsed days from last week (apples-to-apples)
+  const lastWeekSameStart = subWeeks(thisWeekStart, 1);
+  const lastWeekSameEnd = addDays(lastWeekSameStart, daysSoFar);
+  const lastWeekStartStr = format(lastWeekSameStart, "yyyy-MM-dd");
+  const lastWeekEndStr = format(lastWeekSameEnd, "yyyy-MM-dd");
 
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
-  const { data: thisWeekData } = useRealtimeDashboard(orgId, thisWeekStart, endDate);
-  const { data: lastWeekData } = useRealtimeDashboard(orgId, lastWeekStart, lastWeekEnd);
+  const { data: thisWeekData } = useRealtimeDashboard(orgId, thisWeekStartStr, endDate);
+  const { data: lastWeekData } = useRealtimeDashboard(orgId, lastWeekStartStr, lastWeekEndStr);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 

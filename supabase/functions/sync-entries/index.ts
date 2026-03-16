@@ -136,58 +136,70 @@ Deno.serve(async (req) => {
       // Get all lead_events_raw for this form
       const { data: rawEvents } = await supabase
         .from("lead_events_raw")
-        .select("external_entry_id, submitted_at")
+        .select("external_entry_id, submitted_at, payload")
         .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
 
       if (!rawEvents || rawEvents.length === 0) continue;
 
       const activeSet = new Set(activeEntryIds);
-      
+
       // Build a set of active timestamps for Avada legacy matching
       const activeTimestampSet = new Set<string>();
       for (const ts of Object.values(entryTimestamps)) {
-        if (ts) {
-          // Normalize: "2026-03-10 10:10:31" → try multiple formats
-          activeTimestampSet.add(ts);
-          // Also add ISO format variant
-          if (!ts.includes("T")) {
-            activeTimestampSet.add(ts.replace(" ", "T") + "+00:00");
-          }
-        }
+        if (!ts) continue;
+        activeTimestampSet.add(normalizeTimestampForCompare(ts));
       }
+
+      const hasComparableAvadaActiveIds = activeEntryIds.some((id) =>
+        id.startsWith("avada_") || id.startsWith("avada_db_"),
+      );
 
       const toTrashEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
       const toRestoreEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
+      const remapCandidates: { legacyId: string; canonicalId: string; submittedAt: string | null }[] = [];
+
+      console.log(
+        `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
+      );
 
       for (const rawEvent of rawEvents) {
         const eid = rawEvent.external_entry_id;
         const submittedAt = rawEvent.submitted_at;
-        
-        // Check if entry is active by ID match
+
+        // Check if entry is active by exact ID match
         if (activeSet.has(eid)) {
           toRestoreEntries.push(rawEvent);
           continue;
         }
 
-        // For legacy Avada entries, check by timestamp match
-        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_") && submittedAt) {
-          // Check if this entry's submitted_at matches any active entry's timestamp
-          const submittedAtNorm = submittedAt.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "");
-          let foundMatch = false;
-          for (const activeTs of activeTimestampSet) {
-            const activeTsNorm = activeTs.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "");
-            if (submittedAtNorm === activeTsNorm) {
-              foundMatch = true;
-              break;
-            }
+        // Avada legacy reconciliation: try payload-derived canonical ID first
+        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
+          const canonicalId = deriveAvadaCanonicalId(rawEvent.payload);
+
+          if (canonicalId && canonicalId !== eid) {
+            remapCandidates.push({ legacyId: eid, canonicalId, submittedAt });
           }
-          if (foundMatch) {
+
+          if (canonicalId && activeSet.has(canonicalId)) {
             toRestoreEntries.push(rawEvent);
-          } else if (activeTimestampSet.size > 0) {
-            // We have timestamps to compare against, so this entry is confirmed deleted
+            continue;
+          }
+
+          // Timestamp fallback for older payloads / plugin responses
+          if (submittedAt && activeTimestampSet.size > 0) {
+            const submittedAtNorm = normalizeTimestampForCompare(submittedAt);
+            if (activeTimestampSet.has(submittedAtNorm)) {
+              toRestoreEntries.push(rawEvent);
+            } else {
+              toTrashEntries.push(rawEvent);
+            }
+            continue;
+          }
+
+          // If Avada provided a comparable active set and this ID/canonical ID is absent, trash it.
+          if (hasComparableAvadaActiveIds && activeSet.size > 0) {
             toTrashEntries.push(rawEvent);
           }
-          // If no timestamps provided (old plugin), skip to avoid false trashing
           continue;
         }
 
@@ -199,6 +211,10 @@ Deno.serve(async (req) => {
           toTrashEntries.push(rawEvent);
         }
       }
+
+      console.log(
+        `sync-entries: form=${extFormId} to_trash=${toTrashEntries.length} to_restore=${toRestoreEntries.length} remap_candidates=${remapCandidates.length}`,
+      );
 
       // Trash entries that are confirmed deleted
       for (const entry of toTrashEntries) {

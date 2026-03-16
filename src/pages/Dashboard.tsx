@@ -10,7 +10,7 @@ import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
 import { FunnelWidget } from "@/components/dashboard/FunnelWidget";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
-import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
+import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import {
   BarChart3, Zap, AlertTriangle, Globe, Search,
@@ -127,8 +127,8 @@ const Dashboard = () => {
   const prevEndDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
   const prevStartDate = format(subDays(startOfDay(new Date()), days * 2), "yyyy-MM-dd");
 
-  const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
-  const { data: prevPeriodData } = useRealtimeDashboard(orgId, prevStartDate, prevEndDate);
+  const { data: realtimeData } = useDashboardOverview(orgId, startDate, endDate);
+  const { data: prevPeriodData } = useDashboardOverview(orgId, prevStartDate, prevEndDate);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 
@@ -425,10 +425,6 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Row 2 – Trends Mini Chart */}
-          {realtimeData?.dailyMap && (
-            <TrendsMiniChart dailyMap={realtimeData.dailyMap} />
-          )}
 
           {/* Row 3 – Latest Summary */}
           <LatestSummary />

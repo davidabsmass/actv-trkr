@@ -31,6 +31,21 @@ function normalizeTimestampForCompare(ts: string): string {
   return ts.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "").trim();
 }
 
+function parseVersion(version: string | null | undefined): [number, number, number] {
+  if (!version) return [0, 0, 0];
+  const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function isVersionAtLeast(version: string | null | undefined, minimum: string): boolean {
+  const [major, minor, patch] = parseVersion(version);
+  const [minMajor, minMinor, minPatch] = parseVersion(minimum);
+
+  if (major !== minMajor) return major > minMajor;
+  if (minor !== minMinor) return minor > minMinor;
+  return patch >= minPatch;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {
@@ -75,7 +90,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: site } = await supabase
-      .from("sites").select("id")
+      .from("sites").select("id, plugin_version")
       .eq("org_id", orgId).eq("domain", domain).maybeSingle();
 
     if (!site) {
@@ -85,6 +100,7 @@ Deno.serve(async (req) => {
     }
 
     const siteId = site.id;
+    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
     let totalTrashed = 0;
     let totalRestored = 0;
 
@@ -154,6 +170,25 @@ Deno.serve(async (req) => {
       console.log(
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
+
+      // Safety: outdated plugin versions can return empty Avada active IDs incorrectly.
+      // In that case, restore any previously trashed Avada leads and skip destructive sync.
+      if (provider === "avada" && pluginOutdated && activeEntryIds.length === 0) {
+        const { data: restoredRows, error: restoreLegacyError } = await supabase
+          .from("leads")
+          .update({ status: "new" })
+          .eq("org_id", orgId)
+          .eq("form_id", formId)
+          .eq("status", "trashed")
+          .select("id");
+
+        if (restoreLegacyError) throw restoreLegacyError;
+
+        const restoredNow = restoredRows?.length || 0;
+        totalRestored += restoredNow;
+        console.log(`sync-entries: form=${extFormId} provider=avada plugin_outdated=true active=0 -> restored_all=${restoredNow}`);
+        continue;
+      }
 
       // CRITICAL: If plugin reports ZERO active entries, hard-trash all leads for this form.
       // This avoids fragile timestamp matching when providers return empty active sets.

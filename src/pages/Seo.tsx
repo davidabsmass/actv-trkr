@@ -7,8 +7,12 @@ import { Navigate } from "react-router-dom";
 
 export default function Seo() {
   const { orgName, orgId } = useOrg();
-  const { isAdmin } = useUserRole();
-  const { orgRole } = useOrgRole(orgId);
+  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
+
+  if (roleLoading || orgRoleLoading) {
+    return null;
+  }
 
   if (!isAdmin && orgRole !== "admin") {
     return <Navigate to="/dashboard" replace />;

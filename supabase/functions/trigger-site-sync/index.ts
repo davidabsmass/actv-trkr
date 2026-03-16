@@ -318,6 +318,9 @@ Deno.serve(async (req) => {
           reason: `WordPress sync route unavailable (${wpRes.status})`,
           wp_error: text,
           endpoint_attempted: wpEndpoint,
+          plugin_warning: pluginOutdated
+            ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer for reliable entry reconciliation.`
+            : null,
           ...fallback,
         }), {
           status: 200,

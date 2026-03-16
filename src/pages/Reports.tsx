@@ -30,8 +30,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 import OverviewTab from "@/components/reports/OverviewTab";
-import WeeklyTab from "@/components/reports/WeeklyTab";
-import MonthlyTab from "@/components/reports/MonthlyTab";
 import ArchivesContent from "@/components/archives/ArchivesContent";
 
 // ── Shared sub-components ──

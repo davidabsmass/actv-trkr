@@ -94,7 +94,7 @@ export default function OverviewTab() {
         findings: generateFindings(inputs),
       };
     },
-    enabled: !!orgId && !nightlySummary,
+    enabled: !!orgId && (!nightlySummary || (nightlySummary.metrics_snapshot?.sessions?.current === 0 && nightlySummary.metrics_snapshot?.leads?.current === 0)),
   });
 
   const fetchAiSummaries = async () => {

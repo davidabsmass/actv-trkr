@@ -10,7 +10,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
 import { SummaryCard, InsightCard } from "./InsightCard";
-import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DateRange } from "react-day-picker";
 
 type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 

@@ -1,11 +1,22 @@
-const PLUGIN_VERSION = "1.3.4";
-const PLUGIN_ZIP_PATH = `/actv-trkr-${PLUGIN_VERSION}.zip`;
-
 export async function downloadPlugin(_apiKey?: string) {
+  const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
+
+  const response = await fetch(zipUrl, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error("Failed to download latest plugin package");
+  }
+
+  const blob = await response.blob();
+  const fileUrl = URL.createObjectURL(blob);
+  const contentDisposition = response.headers.get("content-disposition") || "";
+  const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
+  const fileName = match?.[1] || "actv-trkr.zip";
+
   const link = document.createElement("a");
-  link.href = PLUGIN_ZIP_PATH;
-  link.download = `actv-trkr-${PLUGIN_VERSION}.zip`;
+  link.href = fileUrl;
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(fileUrl);
 }

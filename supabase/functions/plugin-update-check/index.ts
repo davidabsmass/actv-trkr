@@ -16,6 +16,13 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.8
+- Expanded Avada entry discovery with multi-column form-ref matching (form_id, fusion_form_id, post_id, parent_id)
+- Searches blob/payload columns (submission, data, fields, form_data) for form_id and URL markers
+- Per-form Avada diagnostics (strategy used, row count) returned in sync response
+- Plugin runtime version included in sync payload for accurate update gating
+- Dashboard surfaces blocked/partial sync status with persistent warnings
+
 ## 1.3.7
 - CRITICAL: Removed global Avada fallback that caused mass-trashing of all entries
 - Each Avada form now only returns entries scoped to its own form_id

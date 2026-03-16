@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.7");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.8");
 
     const { data: membership } = await supabase
       .from("org_users").select("role")

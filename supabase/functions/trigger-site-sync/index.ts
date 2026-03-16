@@ -344,22 +344,46 @@ Deno.serve(async (req) => {
 
     const fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
 
-    // Check if WP result shows all Avada forms with 0 trashed (discovery failure)
+    // Extract structured data from WP result
     const wpResult = (wpData as Record<string, unknown>)?.result as Record<string, unknown> | undefined;
     const trashed = Number(wpResult?.trashed || 0);
     const restored = Number(wpResult?.restored || 0);
+    const wpWarnings = (wpResult?.warnings as string[]) || [];
+    const avadaDiagnostics = (wpResult?.avada_diagnostics as unknown[]) || [];
+    const runtimePluginVersion = (wpResult?.plugin_version as string) || site.plugin_version || null;
+
+    // Update site plugin_version if runtime version is newer
+    if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {
+      await supabase.from("sites").update({ plugin_version: runtimePluginVersion }).eq("id", site.id);
+    }
+
+    // Classify sync_status
+    let syncStatus: "ok" | "partial" | "blocked" = "ok";
+    if (wpWarnings.length > 0) {
+      // If all warnings are about Avada and trashed+restored=0, it's blocked
+      const avadaWarnings = wpWarnings.filter(w => w.toLowerCase().includes("avada"));
+      if (avadaWarnings.length === wpWarnings.length && trashed === 0 && restored === 0) {
+        syncStatus = "blocked";
+      } else {
+        syncStatus = "partial";
+      }
+    }
 
     let pluginWarning: string | null = null;
     if (pluginOutdated) {
-      pluginWarning = `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`;
+      pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v1.3.8 or newer for reliable entry reconciliation.`;
     } else if (pluginNeedsAvadaFix && trashed === 0 && restored === 0) {
-      pluginWarning = `Plugin v${site.plugin_version || "unknown"} may have trouble reading Avada form entries. Please update to v1.3.7+ and re-sync.`;
+      pluginWarning = `Plugin v${runtimePluginVersion || "unknown"} may have trouble reading Avada form entries. Please update to v1.3.8+ and re-sync.`;
     }
 
     return new Response(JSON.stringify({
       ok: true,
+      sync_status: syncStatus,
       wp_result: wpData,
       plugin_warning: pluginWarning,
+      warnings: wpWarnings,
+      avada_diagnostics: avadaDiagnostics,
+      runtime_plugin_version: runtimePluginVersion,
       ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

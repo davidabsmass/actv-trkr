@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     const hasDuplicateAvadaSets = detectDuplicateAvadaSets(avadaPayloadForms);
     if (hasDuplicateAvadaSets) {
       console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — skipping destructive sync for ALL Avada forms (global fallback bug detected)`);
-      warnings.push(`Avada entry sync skipped — multiple forms reported identical entry lists (plugin bug). Please update to v1.3.7+ and re-sync.`);
+      warnings.push(`Avada entry sync skipped — multiple forms reported identical entry lists (plugin bug). Please update to v1.3.8+ and re-sync.`);
     }
 
     for (const f of forms) {

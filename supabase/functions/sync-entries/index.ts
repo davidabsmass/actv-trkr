@@ -114,6 +114,8 @@ Deno.serve(async (req) => {
     for (const f of forms) {
       const extFormId = String(f.form_id || "");
       const activeEntryIds: string[] = (f.entry_ids || []).map(String);
+      // Optional: timestamps keyed by entry_id for Avada legacy matching
+      const entryTimestamps: Record<string, string> = f.entry_timestamps || {};
 
       if (!extFormId) continue;
 
@@ -127,41 +129,70 @@ Deno.serve(async (req) => {
       const formId = formRow.id;
       const provider = formRow.provider || "";
 
-      // Get all lead_events_raw for this form (include payload for legacy ID derivation)
+      // Get all lead_events_raw for this form
       const { data: rawEvents } = await supabase
         .from("lead_events_raw")
-        .select("external_entry_id, submitted_at, payload")
+        .select("external_entry_id, submitted_at")
         .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
 
       if (!rawEvents || rawEvents.length === 0) continue;
 
       const activeSet = new Set(activeEntryIds);
+      
+      // Build a set of active timestamps for Avada legacy matching
+      const activeTimestampSet = new Set<string>();
+      for (const ts of Object.values(entryTimestamps)) {
+        if (ts) {
+          // Normalize: "2026-03-10 10:10:31" → try multiple formats
+          activeTimestampSet.add(ts);
+          // Also add ISO format variant
+          if (!ts.includes("T")) {
+            activeTimestampSet.add(ts.replace(" ", "T") + "+00:00");
+          }
+        }
+      }
 
       const toTrashEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
       const toRestoreEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
 
       for (const rawEvent of rawEvents) {
         const eid = rawEvent.external_entry_id;
+        const submittedAt = rawEvent.submitted_at;
         
-        // For legacy Avada IDs (avada_<timestamp>_<rand>), try to derive canonical ID from payload
-        let canonicalId = eid;
-        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
-          const derived = deriveAvadaCanonicalId(rawEvent.payload);
-          if (derived) canonicalId = derived;
+        // Check if entry is active by ID match
+        if (activeSet.has(eid)) {
+          toRestoreEntries.push(rawEvent);
+          continue;
         }
 
-        if (activeSet.has(eid) || (canonicalId !== eid && activeSet.has(canonicalId))) {
-          // This entry is active in WordPress — restore if trashed
-          toRestoreEntries.push(rawEvent);
-        } else {
-          const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
-          const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
-          const hasCanonicalDerived = canonicalId !== eid; // We derived a canonical ID we can compare
-
-          if (isNewFormat || isStandardProvider || hasCanonicalDerived) {
+        // For legacy Avada entries, check by timestamp match
+        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_") && submittedAt) {
+          // Check if this entry's submitted_at matches any active entry's timestamp
+          const submittedAtNorm = submittedAt.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "");
+          let foundMatch = false;
+          for (const activeTs of activeTimestampSet) {
+            const activeTsNorm = activeTs.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "");
+            if (submittedAtNorm === activeTsNorm) {
+              foundMatch = true;
+              break;
+            }
+          }
+          if (foundMatch) {
+            toRestoreEntries.push(rawEvent);
+          } else if (activeTimestampSet.size > 0) {
+            // We have timestamps to compare against, so this entry is confirmed deleted
             toTrashEntries.push(rawEvent);
           }
-          // Legacy entries without derivable canonical IDs are skipped to avoid false trashing
+          // If no timestamps provided (old plugin), skip to avoid false trashing
+          continue;
+        }
+
+        // Standard matching for new-format or standard providers
+        const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
+        const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
+
+        if (isNewFormat || isStandardProvider) {
+          toTrashEntries.push(rawEvent);
         }
       }
 

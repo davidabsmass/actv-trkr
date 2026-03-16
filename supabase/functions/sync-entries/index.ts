@@ -155,12 +155,23 @@ Deno.serve(async (req) => {
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
 
-      // CRITICAL: If the plugin reports ZERO active entries, every raw event should be trashed.
-      // This handles the case where all submissions were deleted from WordPress.
+      // CRITICAL: If plugin reports ZERO active entries, hard-trash all leads for this form.
+      // This avoids fragile timestamp matching when providers return empty active sets.
       if (activeEntryIds.length === 0) {
-        for (const rawEvent of rawEvents) {
-          toTrashEntries.push(rawEvent);
-        }
+        const { data: trashedRows, error: trashAllError } = await supabase
+          .from("leads")
+          .update({ status: "trashed" })
+          .eq("org_id", orgId)
+          .eq("form_id", formId)
+          .neq("status", "trashed")
+          .select("id");
+
+        if (trashAllError) throw trashAllError;
+
+        const trashedNow = trashedRows?.length || 0;
+        totalTrashed += trashedNow;
+        console.log(`sync-entries: form=${extFormId} provider=${provider} active=0 -> trashed_all=${trashedNow}`);
+        continue;
       } else {
         for (const rawEvent of rawEvents) {
           const eid = rawEvent.external_entry_id;
@@ -241,23 +252,27 @@ Deno.serve(async (req) => {
       }
 
       if (leadIdsToTrash.size > 0) {
-        const { count } = await supabase
+        const { data: trashedRows, error: trashError } = await supabase
           .from("leads")
           .update({ status: "trashed" })
           .in("id", Array.from(leadIdsToTrash))
           .neq("status", "trashed")
-          .select("id", { count: "exact" });
-        totalTrashed += (count || 0);
+          .select("id");
+
+        if (trashError) throw trashError;
+        totalTrashed += (trashedRows?.length || 0);
       }
 
       if (leadIdsToRestore.size > 0) {
-        const { count } = await supabase
+        const { data: restoredRows, error: restoreError } = await supabase
           .from("leads")
           .update({ status: "new" })
           .in("id", Array.from(leadIdsToRestore))
           .eq("status", "trashed")
-          .select("id", { count: "exact" });
-        totalRestored += (count || 0);
+          .select("id");
+
+        if (restoreError) throw restoreError;
+        totalRestored += (restoredRows?.length || 0);
       }
 
       // Update legacy external_entry_ids in lead_events_raw to stable canonical IDs where possible.

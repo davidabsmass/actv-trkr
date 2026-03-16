@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { CheckCircle2, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
+import { subDays, format } from "date-fns";
+
+interface PositiveFinding {
+  title: string;
+  explanation: string;
+}
 
 export function WhatsWorking() {
   const { orgId } = useOrg();
@@ -11,16 +16,80 @@ export function WhatsWorking() {
     queryKey: ["dashboard_positive_findings", orgId],
     queryFn: async () => {
       if (!orgId) return [];
-      const { data, error } = await supabase
+
+      // Try nightly summaries first
+      const { data } = await supabase
         .from("nightly_summaries")
         .select("top_findings")
         .eq("org_id", orgId)
         .order("generated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (error) throw error;
+
       const all = (data?.top_findings as any[]) || [];
-      return all.filter((f: any) => f.positive).slice(0, 4);
+      const positiveFromSummary = all.filter((f: any) => f.positive).slice(0, 4);
+      if (positiveFromSummary.length > 0) return positiveFromSummary;
+
+      // Fallback: compute positive signals from raw data
+      const now = new Date();
+      const curStart = format(subDays(now, 7), "yyyy-MM-dd") + "T00:00:00Z";
+      const prevStart = format(subDays(now, 14), "yyyy-MM-dd") + "T00:00:00Z";
+      const prevEnd = format(subDays(now, 7), "yyyy-MM-dd") + "T00:00:00Z";
+
+      const [curSess, prevSess, curLeads, prevLeads] = await Promise.all([
+        supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", curStart),
+        supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", prevStart).lt("started_at", prevEnd),
+        supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", curStart),
+        supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", prevStart).lt("submitted_at", prevEnd),
+      ]);
+
+      const cs = curSess.count || 0;
+      const ps = prevSess.count || 0;
+      const cl = curLeads.count || 0;
+      const pl = prevLeads.count || 0;
+
+      const results: PositiveFinding[] = [];
+
+      if (ps > 0 && cs > ps * 1.1) {
+        const pct = Math.round(((cs - ps) / ps) * 100);
+        results.push({ title: "Traffic is growing", explanation: `Sessions up ${pct}% vs previous week (${cs} vs ${ps}).` });
+      }
+
+      if (pl > 0 && cl > pl * 1.1) {
+        const pct = Math.round(((cl - pl) / pl) * 100);
+        results.push({ title: "Lead volume is up", explanation: `Leads increased ${pct}% vs previous week (${cl} vs ${pl}).` });
+      }
+
+      if (cs > 0 && ps > 0) {
+        const curCvr = cl / cs;
+        const prevCvr = pl / ps;
+        if (prevCvr > 0 && curCvr > prevCvr * 1.1) {
+          const pct = Math.round(((curCvr - prevCvr) / prevCvr) * 100);
+          results.push({ title: "Conversion rate improved", explanation: `CVR improved ${pct}% compared to last week.` });
+        }
+      }
+
+      // Top performing source
+      const { data: sessData } = await supabase
+        .from("sessions")
+        .select("utm_source, landing_referrer_domain")
+        .eq("org_id", orgId)
+        .gte("started_at", curStart)
+        .limit(1000);
+
+      if (sessData && sessData.length > 0) {
+        const srcMap: Record<string, number> = {};
+        for (const r of sessData) {
+          const src = r.utm_source || r.landing_referrer_domain || "Direct";
+          srcMap[src] = (srcMap[src] || 0) + 1;
+        }
+        const topSrc = Object.entries(srcMap).sort((a, b) => b[1] - a[1])[0];
+        if (topSrc && topSrc[1] > 5) {
+          results.push({ title: `Top source: ${topSrc[0]}`, explanation: `${topSrc[1]} sessions from ${topSrc[0]} this week.` });
+        }
+      }
+
+      return results.slice(0, 4);
     },
     enabled: !!orgId,
   });

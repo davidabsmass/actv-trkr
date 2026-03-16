@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
-import { BarChart3, Globe } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { subDays, format } from "date-fns";
 
 interface PageRow {
@@ -22,40 +22,39 @@ export function TopPagesAndSources() {
     queryFn: async () => {
       if (!orgId) return { pages: [], sources: [] };
       const start = format(subDays(new Date(), 7), "yyyy-MM-dd");
+      const startTs = `${start}T00:00:00Z`;
 
-      const [pagesRes, sourcesRes] = await Promise.all([
-        supabase
-          .from("kpi_daily")
-          .select("dimension, value")
-          .eq("org_id", orgId)
-          .eq("metric", "page_views")
-          .gte("date", start)
-          .not("dimension", "is", null),
-        supabase
-          .from("kpi_daily")
-          .select("dimension, value")
-          .eq("org_id", orgId)
-          .eq("metric", "source_sessions")
-          .gte("date", start)
-          .not("dimension", "is", null),
-      ]);
+      // Query raw pageviews for top pages
+      const { data: pvData } = await supabase
+        .from("pageviews")
+        .select("page_path")
+        .eq("org_id", orgId)
+        .gte("occurred_at", startTs)
+        .not("page_path", "is", null);
 
-      // Aggregate pages
+      // Aggregate pages client-side
       const pageMap: Record<string, number> = {};
-      for (const r of pagesRes.data || []) {
-        if (!r.dimension) continue;
-        pageMap[r.dimension] = (pageMap[r.dimension] || 0) + Number(r.value || 0);
+      for (const r of pvData || []) {
+        if (!r.page_path) continue;
+        pageMap[r.page_path] = (pageMap[r.page_path] || 0) + 1;
       }
       const pages: PageRow[] = Object.entries(pageMap)
         .map(([path, views]) => ({ path, views }))
         .sort((a, b) => b.views - a.views)
         .slice(0, 5);
 
-      // Aggregate sources
+      // Query raw sessions for top sources
+      const { data: sessData } = await supabase
+        .from("sessions")
+        .select("utm_source, landing_referrer_domain")
+        .eq("org_id", orgId)
+        .gte("started_at", startTs);
+
       const srcMap: Record<string, number> = {};
-      for (const r of sourcesRes.data || []) {
-        if (!r.dimension) continue;
-        srcMap[r.dimension] = (srcMap[r.dimension] || 0) + Number(r.value || 0);
+      for (const r of sessData || []) {
+        const src = r.utm_source || r.landing_referrer_domain || "Direct";
+        if (!src) continue;
+        srcMap[src] = (srcMap[src] || 0) + 1;
       }
       const sources: SourceRow[] = Object.entries(srcMap)
         .map(([source, sessions]) => ({ source, sessions }))

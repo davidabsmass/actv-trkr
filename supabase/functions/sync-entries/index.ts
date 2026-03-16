@@ -153,11 +153,11 @@ Deno.serve(async (req) => {
     const avadaPayloadForms = forms.filter((f: any) => avadaFormIds.has(String(f.form_id || "")));
     const hasDuplicateAvadaSets = detectDuplicateAvadaSets(avadaPayloadForms);
     if (hasDuplicateAvadaSets) {
-      console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — skipping destructive sync for ALL Avada forms (global fallback bug detected)`);
+      console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — enabling safe mode (no Avada trashing)`);
       warnings.push(
         pluginNeedsAvadaFix
           ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v1.3.9+ and re-sync.`
-          : `Avada entry sync skipped on ACTV TRKR v${detectedPluginVersion} — multiple forms reported identical entry lists. Run "Sync Forms" in WordPress, then re-sync entries.`
+          : `Avada returned identical active-entry lists across multiple forms on ACTV TRKR v${detectedPluginVersion}. To protect your data, Avada delete-sync is running in safe mode (no trashing) until per-form entry IDs are detected.`
       );
     }
 
@@ -177,10 +177,16 @@ Deno.serve(async (req) => {
       const formId = formRow.id;
       const provider = formRow.provider || "";
 
-      // ── AVADA SAFETY: skip if any guard triggered ──
-      if (provider === "avada" && (allAvadaEmpty || hasDuplicateAvadaSets)) {
-        console.log(`sync-entries: form=${extFormId} provider=avada safety_guard_active=true -> skipping`);
+      // ── AVADA SAFETY: all-empty payload means discovery failed, skip completely ──
+      if (provider === "avada" && allAvadaEmpty) {
+        console.log(`sync-entries: form=${extFormId} provider=avada safety_guard_all_empty=true -> skipping`);
         continue;
+      }
+
+      // Duplicate ID-set bug mode: allow restore/remap, but never trash Avada entries.
+      const avadaDuplicateProtectionMode = provider === "avada" && hasDuplicateAvadaSets;
+      if (avadaDuplicateProtectionMode) {
+        console.log(`sync-entries: form=${extFormId} provider=avada duplicate_set_safe_mode=true`);
       }
 
       const { data: rawEvents } = await supabase
@@ -314,7 +320,7 @@ Deno.serve(async (req) => {
 
       // ── SAFETY GUARD 3: Full-trash pattern for Avada ──
       // If we would trash ALL raw events with zero restores, something is wrong
-      if (provider === "avada" && toTrashEntries.length > 0 && toRestoreEntries.length === 0 && toTrashEntries.length === rawEvents.length) {
+      if (provider === "avada" && !avadaDuplicateProtectionMode && toTrashEntries.length > 0 && toRestoreEntries.length === 0 && toTrashEntries.length === rawEvents.length) {
         console.log(`sync-entries: form=${extFormId} provider=avada full_trash_pattern=true (${toTrashEntries.length}/${rawEvents.length}) -> skipping destructive sync`);
         warnings.push(`Avada sync for form ${extFormId} skipped — all ${toTrashEntries.length} entries would be trashed with zero matches. Likely a discovery issue.`);
         continue;
@@ -345,6 +351,11 @@ Deno.serve(async (req) => {
       // Prefer restore when a timestamp collision appears in both buckets.
       for (const id of leadIdsToRestore) {
         leadIdsToTrash.delete(id);
+      }
+
+      if (avadaDuplicateProtectionMode && leadIdsToTrash.size > 0) {
+        console.log(`sync-entries: form=${extFormId} provider=avada duplicate_set_safe_mode=true -> suppressing_trash=${leadIdsToTrash.size}`);
+        leadIdsToTrash.clear();
       }
 
       if (leadIdsToTrash.size > 0) {

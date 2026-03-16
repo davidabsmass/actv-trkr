@@ -110,8 +110,9 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
 }
 
 /* ─── Plugin Update Banner ─── */
-function PluginUpdateBanner({ orgId }: { orgId: string | null }) {
+function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds: string[] }) {
   const [downloading, setDownloading] = useState(false);
+  const relevantSiteIds = useMemo(() => new Set(siteIds), [siteIds]);
 
   const { data: siteVersions } = useQuery({
     queryKey: ["site_plugin_versions", orgId],
@@ -140,10 +141,13 @@ function PluginUpdateBanner({ orgId }: { orgId: string | null }) {
     staleTime: 1000 * 60 * 60,
   });
 
-  const outdatedSites = siteVersions?.filter((s) => {
+  if (relevantSiteIds.size === 0) return null;
+
+  const scopedSiteVersions = (siteVersions || []).filter((s) => relevantSiteIds.has(s.id));
+  const outdatedSites = scopedSiteVersions.filter((s) => {
     if (!s.plugin_version || !latestVersion) return false;
     return compareVersions(latestVersion, s.plugin_version) > 0;
-  }) || [];
+  });
 
   if (outdatedSites.length === 0) return null;
 
@@ -208,6 +212,14 @@ function compareVersions(a: string, b: string): number {
     if (na < nb) return -1;
   }
   return 0;
+}
+
+function getBlockedSyncMessage(runtimeVersion: string | null | undefined): string {
+  const minimumVersion = "1.3.9";
+  if (!runtimeVersion || compareVersions(runtimeVersion, minimumVersion) < 0) {
+    return `Sync blocked — Avada entry discovery failed. Update the plugin to v${minimumVersion}+ and re-sync.`;
+  }
+  return `Sync blocked — Avada entry discovery failed on v${runtimeVersion}. Run “Sync Forms” in WordPress, then sync entries again.`;
 }
 
 export default function Forms() {

@@ -202,29 +202,77 @@ export default function Forms() {
 
   const handleSyncAll = async () => {
     if (!orgId || !forms || forms.length === 0) return;
-    const siteId = forms[0]?.site_id;
-    if (!siteId) return;
+
+    const siteIds = [...new Set(forms.map((f) => f.site_id).filter(Boolean))] as string[];
+    if (siteIds.length === 0) return;
+
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
-        body: { site_id: siteId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      if (data?.fallback) {
-        const warning = data?.plugin_warning || "Sync route unavailable on WordPress. Entry reconciliation did not run.";
-        throw new Error(warning);
-      }
-      if (data?.plugin_warning) {
-        toast.warning(data.plugin_warning);
+      const results = await Promise.allSettled(
+        siteIds.map((siteId) =>
+          supabase.functions.invoke("trigger-site-sync", {
+            body: { site_id: siteId },
+          })
+        )
+      );
+
+      let successCount = 0;
+      let synced = 0;
+      let trashed = 0;
+      let restored = 0;
+      let checked = 0;
+      const warnings: string[] = [];
+      const errors: string[] = [];
+
+      for (const res of results) {
+        if (res.status === "rejected") {
+          errors.push(res.reason?.message || "Request failed");
+          continue;
+        }
+
+        const { data, error } = res.value;
+        if (error) {
+          errors.push(error.message || "Sync failed");
+          continue;
+        }
+        if (data?.error) {
+          errors.push(data.error);
+          continue;
+        }
+
+        successCount += 1;
+
+        if (data?.plugin_warning) {
+          warnings.push(data.plugin_warning);
+        }
+
+        const wpResult = data?.wp_result?.result;
+        if (wpResult?.synced) synced += Number(wpResult.synced) || 0;
+        if (wpResult?.trashed) trashed += Number(wpResult.trashed) || 0;
+        if (wpResult?.restored) restored += Number(wpResult.restored) || 0;
+
+        if (data?.checked) checked += Number(data.checked) || 0;
       }
 
-      const result = data?.wp_result?.result;
+      if (successCount === 0) {
+        throw new Error(errors[0] || "Sync failed");
+      }
+
       const parts: string[] = [];
-      if (result?.synced) parts.push(`${result.synced} form(s) synced`);
-      if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
-      if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
+      if (synced) parts.push(`${synced} form(s) synced`);
+      if (trashed) parts.push(`${trashed} entry/entries trashed`);
+      if (restored) parts.push(`${restored} entry/entries restored`);
+      if (checked) parts.push(`${checked} form check(s) completed`);
+
       toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+
+      if (warnings.length > 0) {
+        toast.warning(warnings[0]);
+      }
+      if (errors.length > 0) {
+        toast.warning(`Some sites failed to sync (${errors.length})`);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
       queryClient.invalidateQueries({ queryKey: ["total_submissions"] });

@@ -353,6 +353,11 @@ Deno.serve(async (req) => {
         leadIdsToTrash.delete(id);
       }
 
+      if (avadaDuplicateProtectionMode && leadIdsToTrash.size > 0) {
+        console.log(`sync-entries: form=${extFormId} provider=avada duplicate_set_safe_mode=true -> suppressing_trash=${leadIdsToTrash.size}`);
+        leadIdsToTrash.clear();
+      }
+
       if (leadIdsToTrash.size > 0) {
         const { data: trashedRows, error: trashError } = await supabase
           .from("leads")

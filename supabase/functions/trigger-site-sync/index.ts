@@ -375,10 +375,18 @@ Deno.serve(async (req) => {
     const reasonCodes: string[] = [];
 
     if (wpWarnings.length > 0) {
-      const avadaWarnings = wpWarnings.filter(w => w.toLowerCase().includes("avada"));
-      if (avadaWarnings.length === wpWarnings.length && trashed === 0 && restored === 0) {
+      const warningText = wpWarnings.map((w) => w.toLowerCase()).join("\n");
+      const avadaWarnings = wpWarnings.filter((w) => w.toLowerCase().includes("avada"));
+      const hasAllAvadaWarnings = avadaWarnings.length > 0 && avadaWarnings.length === wpWarnings.length;
+      const hasAllEmptyWarning = warningText.includes("reported 0 active entries");
+      const hasDuplicateSetWarning = warningText.includes("identical entry lists") || warningText.includes("duplicate/overlapping active id sets");
+
+      if (hasAllAvadaWarnings && hasAllEmptyWarning && trashed === 0 && restored === 0) {
         syncStatus = "blocked";
         reasonCodes.push("avada_discovery_empty");
+      } else if (hasAllAvadaWarnings && hasDuplicateSetWarning) {
+        syncStatus = "partial";
+        reasonCodes.push("avada_duplicate_sets_safe_mode");
       } else {
         syncStatus = "partial";
       }

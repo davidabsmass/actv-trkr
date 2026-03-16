@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       const extFormId = String(f.form_id || "");
       const activeEntryIds: string[] = (f.entry_ids || []).map(String);
 
-      if (!extFormId || activeEntryIds.length === 0) continue;
+      if (!extFormId) continue;
 
       // Find the internal form id
       const { data: formRow } = await supabase
@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
           .update({ status: "trashed" })
           .eq("org_id", orgId).eq("form_id", formId)
           .eq("submitted_at", entry.submitted_at)
-          .neq("status", "trashed");
+          .neq("status", "trashed")
+          .select("id", { count: "exact" });
         totalTrashed += (count || 0);
       }
 
@@ -145,7 +146,8 @@ Deno.serve(async (req) => {
           .update({ status: "new" })
           .eq("org_id", orgId).eq("form_id", formId)
           .eq("submitted_at", entry.submitted_at)
-          .eq("status", "trashed");
+          .eq("status", "trashed")
+          .select("id", { count: "exact" });
         totalRestored += (count || 0);
       }
 

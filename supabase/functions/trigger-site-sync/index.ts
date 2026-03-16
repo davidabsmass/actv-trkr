@@ -13,6 +13,21 @@ type FormRow = {
   page_url: string | null;
 };
 
+function parseVersion(version: string | null | undefined): [number, number, number] {
+  if (!version) return [0, 0, 0];
+  const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function isVersionAtLeast(version: string | null | undefined, minimum: string): boolean {
+  const [major, minor, patch] = parseVersion(version);
+  const [minMajor, minMinor, minPatch] = parseVersion(minimum);
+
+  if (major !== minMajor) return major > minMajor;
+  if (minor !== minMinor) return minor > minMinor;
+  return patch >= minPatch;
+}
+
 function normalizePageUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;
 
@@ -256,12 +271,22 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const { data: site } = await supabase
-      .from("sites").select("id, domain, org_id, url")
+      .from("sites").select("id, domain, org_id, url, plugin_version")
       .eq("id", site_id).maybeSingle();
 
     if (!site) {
       return new Response(JSON.stringify({ error: "Site not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!isVersionAtLeast(site.plugin_version, "1.3.3")) {
+      return new Response(JSON.stringify({
+        error: "Plugin update required",
+        details: `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer, then run Sync Entries again.`,
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

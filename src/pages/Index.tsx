@@ -398,7 +398,7 @@ const Index = () => {
 
       <section id="pricing-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '120px', paddingBottom: '100px', backgroundImage: `url(${presentationBgImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
-        <div className="max-w-3xl mx-auto relative z-10">
+        <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center mb-6">
             <h2 className="font-normal text-foreground mb-2" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Simple Pricing

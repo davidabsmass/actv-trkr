@@ -56,8 +56,9 @@ class MM_Heartbeat {
 				'x-actvtrkr-key' => $opts['api_key'],
 			),
 			'body' => wp_json_encode( array(
-				'domain' => $domain,
-				'source' => 'cron',
+				'domain'         => $domain,
+				'source'         => 'cron',
+				'plugin_version' => MM_PLUGIN_VERSION,
 				'meta'   => array( 'php_version' => PHP_VERSION, 'wp_version' => get_bloginfo( 'version' ) ),
 			) ),
 		) );

@@ -84,49 +84,41 @@ Deno.serve(async (req) => {
       const formId = formRow.id;
       const provider = formRow.provider || "";
 
-      // Get all lead_events_raw for this form
+      // Get all lead_events_raw for this form (include payload for legacy ID derivation)
       const { data: rawEvents } = await supabase
         .from("lead_events_raw")
-        .select("external_entry_id, submitted_at")
+        .select("external_entry_id, submitted_at, payload")
         .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
 
       if (!rawEvents || rawEvents.length === 0) continue;
 
       const activeSet = new Set(activeEntryIds);
 
-      // For providers that switched to DB-backed IDs (avada_db_, ninja_db_, cf7_db_),
-      // legacy entries won't match. We need to identify which entries are NOT active.
-      // Strategy: match by external_entry_id directly, then for unmatched legacy entries
-      // that use old format (avada_timestamp_rand), consider them orphaned and trash them.
-      
       const toTrashEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
       const toRestoreEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
 
       for (const rawEvent of rawEvents) {
         const eid = rawEvent.external_entry_id;
         
-        if (activeSet.has(eid)) {
+        // For legacy Avada IDs (avada_<timestamp>_<rand>), try to derive canonical ID from payload
+        let canonicalId = eid;
+        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
+          const derived = deriveAvadaCanonicalId(rawEvent.payload);
+          if (derived) canonicalId = derived;
+        }
+
+        if (activeSet.has(eid) || (canonicalId !== eid && activeSet.has(canonicalId))) {
           // This entry is active in WordPress — restore if trashed
           toRestoreEntries.push(rawEvent);
         } else {
           const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
           const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
+          const hasCanonicalDerived = canonicalId !== eid; // We derived a canonical ID we can compare
 
-          const legacyPrefix = provider === "avada" ? "avada_" : provider === "ninja_forms" ? "ninja_" : provider === "cf7" ? "cf7_" : null;
-          const newPrefix = provider === "avada" ? "avada_db_" : provider === "ninja_forms" ? "ninja_db_" : provider === "cf7" ? "cf7_db_" : null;
-
-          const hasComparableLegacyActiveIds = !!legacyPrefix && activeEntryIds.some((id) =>
-            id.startsWith(legacyPrefix) && (!newPrefix || !id.startsWith(newPrefix))
-          );
-
-          const isComparableLegacyEntry = !!legacyPrefix && eid.startsWith(legacyPrefix) && (!newPrefix || !eid.startsWith(newPrefix));
-
-          if (isNewFormat || isStandardProvider || (hasComparableLegacyActiveIds && isComparableLegacyEntry)) {
-            // This entry uses an ID format we can reliably compare against active IDs.
+          if (isNewFormat || isStandardProvider || hasCanonicalDerived) {
             toTrashEntries.push(rawEvent);
           }
-          // If active IDs are in new DB-backed format but historical raw IDs are legacy random IDs,
-          // comparison is ambiguous; we intentionally skip those to avoid false trashing.
+          // Legacy entries without derivable canonical IDs are skipped to avoid false trashing
         }
       }
 

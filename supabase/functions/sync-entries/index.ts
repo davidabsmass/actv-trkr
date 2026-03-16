@@ -158,17 +158,17 @@ Deno.serve(async (req) => {
       // CRITICAL: If plugin reports ZERO active entries, hard-trash all leads for this form.
       // This avoids fragile timestamp matching when providers return empty active sets.
       if (activeEntryIds.length === 0) {
-        const { count, error: trashAllError } = await supabase
+        const { data: trashedRows, error: trashAllError } = await supabase
           .from("leads")
           .update({ status: "trashed" })
           .eq("org_id", orgId)
           .eq("form_id", formId)
           .neq("status", "trashed")
-          .select("id", { count: "exact" });
+          .select("id");
 
         if (trashAllError) throw trashAllError;
 
-        const trashedNow = count || 0;
+        const trashedNow = trashedRows?.length || 0;
         totalTrashed += trashedNow;
         console.log(`sync-entries: form=${extFormId} provider=${provider} active=0 -> trashed_all=${trashedNow}`);
         continue;

@@ -242,19 +242,34 @@ Deno.serve(async (req) => {
         totalRestored += (count || 0);
       }
 
-      // Also update legacy external_entry_ids in lead_events_raw to new format
-      // so future syncs can match them properly.
-      // Match legacy entries to active DB IDs by position (oldest first)
-      if (provider === "avada" || provider === "ninja_forms" || provider === "cf7") {
-        const legacyPrefix = provider === "avada" ? "avada_" : provider === "ninja_forms" ? "ninja_" : "cf7_";
-        const newPrefix = provider === "avada" ? "avada_db_" : provider === "ninja_forms" ? "ninja_db_" : "cf7_db_";
+      // Update legacy external_entry_ids in lead_events_raw to stable canonical IDs where possible.
+      // This improves matching reliability on subsequent syncs.
+      if (provider === "avada" && remapCandidates.length > 0) {
+        for (const remap of remapCandidates) {
+          const query = supabase
+            .from("lead_events_raw")
+            .update({ external_entry_id: remap.canonicalId })
+            .eq("org_id", orgId)
+            .eq("form_id", formId)
+            .eq("external_entry_id", remap.legacyId);
 
-        // Get legacy entries sorted by submitted_at
+          if (remap.submittedAt) {
+            await query.eq("submitted_at", remap.submittedAt);
+          } else {
+            await query;
+          }
+        }
+      }
+
+      // Keep positional remap fallback for providers where payload canonical derivation is unavailable.
+      if (provider === "ninja_forms" || provider === "cf7") {
+        const legacyPrefix = provider === "ninja_forms" ? "ninja_" : "cf7_";
+        const newPrefix = provider === "ninja_forms" ? "ninja_db_" : "cf7_db_";
+
         const legacyEntries = rawEvents
           .filter(e => e.external_entry_id.startsWith(legacyPrefix) && !e.external_entry_id.startsWith(newPrefix))
           .sort((a, b) => (a.submitted_at || "").localeCompare(b.submitted_at || ""));
 
-        // Get active DB IDs sorted numerically
         const activeDbIds = activeEntryIds
           .filter(id => id.startsWith(newPrefix))
           .sort((a, b) => {
@@ -263,7 +278,6 @@ Deno.serve(async (req) => {
             return numA - numB;
           });
 
-        // Match legacy to new by chronological order if counts align
         if (legacyEntries.length > 0 && activeDbIds.length > 0 && legacyEntries.length <= activeDbIds.length) {
           for (let i = 0; i < legacyEntries.length; i++) {
             if (i < activeDbIds.length) {

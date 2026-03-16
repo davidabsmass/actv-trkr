@@ -44,6 +44,11 @@ No. The tracking script is tiny (~3 KB) and sends data asynchronously.
 
 == Changelog ==
 
+= 1.3.4 =
+* Avada/Fusion Forms now included in form discovery and entry sync.
+* Avada entries use stable DB-backed IDs for reliable delete reconciliation.
+* All form providers included in discover_forms_list fallback.
+
 = 1.3.3 =
 * Fix Avada handler method structure so the plugin loads correctly and sync routes register.
 * Restores manual sync route availability for entry reconciliation.

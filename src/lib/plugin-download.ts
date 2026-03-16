@@ -1,4 +1,4 @@
-const PLUGIN_VERSION = "1.3.3";
+const PLUGIN_VERSION = "1.3.4";
 const PLUGIN_ZIP_PATH = `/actv-trkr-${PLUGIN_VERSION}.zip`;
 
 export async function downloadPlugin(_apiKey?: string) {

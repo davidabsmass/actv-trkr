@@ -308,6 +308,49 @@ class MM_Forms {
 				}
 			}
 		}
+		// Avada / Fusion Forms
+		$avada_forms = get_posts( array(
+			'post_type'      => 'fusion_form',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
+			foreach ( $avada_forms as $form_post_id ) {
+				$discovered[] = array( 'form_id' => (string) $form_post_id, 'provider' => 'avada' );
+			}
+		}
+		// Ninja Forms
+		if ( function_exists( 'Ninja_Forms' ) ) {
+			try {
+				$nf_forms = Ninja_Forms()->form()->get_forms();
+				if ( is_array( $nf_forms ) ) {
+					foreach ( $nf_forms as $form ) {
+						$discovered[] = array( 'form_id' => (string) $form->get_id(), 'provider' => 'ninja_forms' );
+					}
+				}
+			} catch ( \Exception $e ) {}
+		}
+		// Fluent Forms
+		if ( function_exists( 'wpFluent' ) ) {
+			try {
+				$ff_forms = wpFluent()->table( 'fluentform_forms' )->get();
+				if ( is_array( $ff_forms ) || $ff_forms instanceof \Traversable ) {
+					foreach ( $ff_forms as $form ) {
+						$discovered[] = array( 'form_id' => (string) ( $form->id ?? '' ), 'provider' => 'fluent_forms' );
+					}
+				}
+			} catch ( \Exception $e ) {}
+		}
+		// CF7
+		if ( class_exists( 'WPCF7_ContactForm' ) ) {
+			$cf7_forms = \WPCF7_ContactForm::find();
+			if ( is_array( $cf7_forms ) ) {
+				foreach ( $cf7_forms as $form ) {
+					$discovered[] = array( 'form_id' => (string) $form->id(), 'provider' => 'cf7' );
+				}
+			}
+		}
 		return $discovered;
 	}
 

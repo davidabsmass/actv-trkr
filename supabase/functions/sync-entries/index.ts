@@ -13,32 +13,40 @@ async function hashKey(key: string): Promise<string> {
 
 /**
  * Derive a canonical avada_db_<id> from a legacy Avada payload.
- * The payload's 'submission' field often contains the DB entry ID.
+ * The payload's 'submission' field (in the fields array) contains the DB entry ID.
+ * Format: "form_id, datetime, url, DB_ENTRY_ID, ..."
  */
 function deriveAvadaCanonicalId(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const p = payload as Record<string, unknown>;
   
-  // Check entry.entry_id in payload (some formats store it there)
+  // Check entry.entry_id in payload (already canonical)
   const entry = p.entry as Record<string, unknown> | undefined;
   if (entry?.entry_id && typeof entry.entry_id === "string" && entry.entry_id.startsWith("avada_db_")) {
     return entry.entry_id;
   }
 
-  // Try to extract from 'submission' metadata string
-  // Format is typically: "form_id, some_data, ..., db_entry_id, ..."
-  const submission = (p.submission as string) || 
-    ((p.fields as Record<string, unknown>)?.submission as string) ||
-    ((p as any)?.data?.submission as string);
+  // Look in the fields array for a field named "submission"
+  const fields = p.fields as Array<Record<string, unknown>> | undefined;
+  let submissionValue: string | null = null;
   
-  if (submission && typeof submission === "string") {
-    // Look for a numeric token that could be the DB entry ID
-    const parts = submission.split(",").map((s: string) => s.trim());
-    // The entry ID is typically a standalone integer, often the last or near-last token
-    for (let i = parts.length - 1; i >= 0; i--) {
-      const token = parts[i];
-      if (/^\d+$/.test(token) && parseInt(token, 10) > 100) {
-        return "avada_db_" + token;
+  if (Array.isArray(fields)) {
+    for (const field of fields) {
+      if (field.name === "submission" && typeof field.value === "string") {
+        submissionValue = field.value;
+        break;
+      }
+    }
+  }
+
+  if (submissionValue) {
+    // Format: "form_id, datetime, url, DB_ENTRY_ID, is_read, user_agent, ip, ..."
+    // The 4th token (index 3) is typically the DB entry ID
+    const parts = submissionValue.split(",").map((s: string) => s.trim());
+    if (parts.length >= 4) {
+      const candidate = parts[3];
+      if (/^\d+$/.test(candidate) && parseInt(candidate, 10) > 0) {
+        return "avada_db_" + candidate;
       }
     }
   }

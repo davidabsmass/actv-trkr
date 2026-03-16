@@ -34,10 +34,11 @@ class MM_Heartbeat {
 		);
 
 		wp_localize_script( 'mm-heartbeat', 'mmHeartbeat', array(
-			'endpoint' => rtrim( $opts['endpoint_url'], '/' ) . '/ingest-heartbeat',
-			'apiKey'   => $opts['api_key'],
-			'domain'   => wp_parse_url( home_url(), PHP_URL_HOST ),
-			'interval' => 60000, // 60s debounce
+			'endpoint'      => rtrim( $opts['endpoint_url'], '/' ) . '/ingest-heartbeat',
+			'apiKey'         => $opts['api_key'],
+			'domain'         => wp_parse_url( home_url(), PHP_URL_HOST ),
+			'interval'       => 60000, // 60s debounce
+			'pluginVersion'  => MM_PLUGIN_VERSION,
 		) );
 	}
 

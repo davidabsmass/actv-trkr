@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.0: active time-on-page, click tracking, broken link scanning, form probes
-const LATEST_VERSION = "1.3.1";
+// v1.3.2: restored dashboard-triggered /sync REST route + sync-entries reconciliation
+const LATEST_VERSION = "1.3.2";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.2
+- Fixed dashboard manual sync route (/wp-json/actv-trkr/v1/sync)
+- Restored deleted-entry reconciliation via sync-entries
+
 ## 1.3.1
 - Reduced heartbeat interval from 10s to 30s for lower resource usage
 - Added cache headers to plugin update checks

@@ -109,19 +109,24 @@ Deno.serve(async (req) => {
           // This entry is active in WordPress — restore if trashed
           toRestoreEntries.push(rawEvent);
         } else {
-          // Check if this is a legacy ID format that we can't match
-          // For legacy avada/ninja/cf7 entries with random IDs, we can't know if they're
-          // still active or not. Only trash entries that use the NEW DB-backed format
-          // and are NOT in the active set (meaning they were definitely deleted).
           const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
           const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
 
-          if (isNewFormat || isStandardProvider) {
-            // This entry uses a format we can reliably match — it's genuinely missing
+          const legacyPrefix = provider === "avada" ? "avada_" : provider === "ninja_forms" ? "ninja_" : provider === "cf7" ? "cf7_" : null;
+          const newPrefix = provider === "avada" ? "avada_db_" : provider === "ninja_forms" ? "ninja_db_" : provider === "cf7" ? "cf7_db_" : null;
+
+          const hasComparableLegacyActiveIds = !!legacyPrefix && activeEntryIds.some((id) =>
+            id.startsWith(legacyPrefix) && (!newPrefix || !id.startsWith(newPrefix))
+          );
+
+          const isComparableLegacyEntry = !!legacyPrefix && eid.startsWith(legacyPrefix) && (!newPrefix || !eid.startsWith(newPrefix));
+
+          if (isNewFormat || isStandardProvider || (hasComparableLegacyActiveIds && isComparableLegacyEntry)) {
+            // This entry uses an ID format we can reliably compare against active IDs.
             toTrashEntries.push(rawEvent);
           }
-          // For legacy format entries (avada_timestamp_rand), we skip — can't determine
-          // if they were deleted. They'll be reconciled once new entries use DB IDs.
+          // If active IDs are in new DB-backed format but historical raw IDs are legacy random IDs,
+          // comparison is ambiguous; we intentionally skip those to avoid false trashing.
         }
       }
 

@@ -155,12 +155,23 @@ Deno.serve(async (req) => {
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
 
-      // CRITICAL: If the plugin reports ZERO active entries, every raw event should be trashed.
-      // This handles the case where all submissions were deleted from WordPress.
+      // CRITICAL: If plugin reports ZERO active entries, hard-trash all leads for this form.
+      // This avoids fragile timestamp matching when providers return empty active sets.
       if (activeEntryIds.length === 0) {
-        for (const rawEvent of rawEvents) {
-          toTrashEntries.push(rawEvent);
-        }
+        const { count, error: trashAllError } = await supabase
+          .from("leads")
+          .update({ status: "trashed" })
+          .eq("org_id", orgId)
+          .eq("form_id", formId)
+          .neq("status", "trashed")
+          .select("id", { count: "exact" });
+
+        if (trashAllError) throw trashAllError;
+
+        const trashedNow = count || 0;
+        totalTrashed += trashedNow;
+        console.log(`sync-entries: form=${extFormId} provider=${provider} active=0 -> trashed_all=${trashedNow}`);
+        continue;
       } else {
         for (const rawEvent of rawEvents) {
           const eid = rawEvent.external_entry_id;

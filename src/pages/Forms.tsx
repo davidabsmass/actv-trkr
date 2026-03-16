@@ -458,6 +458,9 @@ export default function Forms() {
         </div>
       </div>
 
+      {/* Plugin Update Banner */}
+      <PluginUpdateBanner orgId={orgId} />
+
       {/* Summary Row */}
       <FormsSummary orgId={orgId} days={days} />
 

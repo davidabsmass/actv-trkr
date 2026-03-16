@@ -8,6 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  */
 class MM_Forms {
 
+	/** @var string|null Last Avada discovery strategy used (for diagnostics). */
+	private static $last_avada_strategy = null;
+
 	public static function init() {
 		$opts = MM_Settings::get();
 
@@ -192,7 +195,7 @@ class MM_Forms {
 		}
 
 		if ( empty( $discovered ) ) {
-			return array( 'synced' => 0, 'discovered' => 0 );
+			return array( 'synced' => 0, 'discovered' => 0, 'plugin_version' => MM_PLUGIN_VERSION );
 		}
 
 		// Discover page URLs for each form by scanning post content
@@ -217,7 +220,7 @@ class MM_Forms {
 
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Form sync error: ' . $response->get_error_message() );
-			return array( 'synced' => 0, 'discovered' => count( $discovered ), 'error' => $response->get_error_message() );
+			return array( 'synced' => 0, 'discovered' => count( $discovered ), 'error' => $response->get_error_message(), 'plugin_version' => MM_PLUGIN_VERSION );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -226,10 +229,13 @@ class MM_Forms {
 		$entry_result = self::sync_entry_ids( $discovered, $domain, $opts );
 
 		return array(
-			'synced'     => $body['synced'] ?? 0,
-			'discovered' => count( $discovered ),
-			'trashed'    => $entry_result['trashed'] ?? 0,
-			'restored'   => $entry_result['restored'] ?? 0,
+			'synced'            => $body['synced'] ?? 0,
+			'discovered'        => count( $discovered ),
+			'trashed'           => $entry_result['trashed'] ?? 0,
+			'restored'          => $entry_result['restored'] ?? 0,
+			'warnings'          => $entry_result['warnings'] ?? array(),
+			'avada_diagnostics' => $entry_result['avada_diagnostics'] ?? array(),
+			'plugin_version'    => MM_PLUGIN_VERSION,
 		);
 	}
 
@@ -243,6 +249,7 @@ class MM_Forms {
 		if ( ! $discovered ) $discovered = self::discover_forms_list();
 
 		$forms_with_entries = array();
+		$avada_diagnostics = array();
 
 		foreach ( $discovered as $form_info ) {
 			$provider = $form_info['provider'] ?? '';
@@ -251,6 +258,24 @@ class MM_Forms {
 
 			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null );
 			if ( $entry_ids === null ) continue;
+
+			// Collect Avada per-form diagnostics
+			if ( $provider === 'avada' ) {
+				$diag = array(
+					'form_id'   => $form_id,
+					'count'     => 0,
+					'strategy'  => 'none',
+				);
+
+				if ( is_array( $entry_ids ) && ! empty( $entry_ids ) && is_array( $entry_ids[0] ) ) {
+					$diag['count'] = count( $entry_ids );
+					$diag['strategy'] = self::$last_avada_strategy ?? 'unknown';
+				} elseif ( is_array( $entry_ids ) ) {
+					$diag['count'] = count( $entry_ids );
+					$diag['strategy'] = self::$last_avada_strategy ?? 'unknown';
+				}
+				$avada_diagnostics[] = $diag;
+			}
 
 			// Avada returns array of {id, ts} objects; others return plain string arrays
 			if ( $provider === 'avada' && ! empty( $entry_ids ) && is_array( $entry_ids[0] ) ) {
@@ -274,7 +299,7 @@ class MM_Forms {
 			}
 		}
 
-		if ( empty( $forms_with_entries ) ) return array( 'trashed' => 0, 'restored' => 0 );
+		if ( empty( $forms_with_entries ) ) return array( 'trashed' => 0, 'restored' => 0, 'warnings' => array(), 'avada_diagnostics' => $avada_diagnostics );
 
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-entries';
 
@@ -292,13 +317,15 @@ class MM_Forms {
 
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Entry sync error: ' . $response->get_error_message() );
-			return array( 'trashed' => 0, 'restored' => 0, 'error' => $response->get_error_message() );
+			return array( 'trashed' => 0, 'restored' => 0, 'error' => $response->get_error_message(), 'warnings' => array(), 'avada_diagnostics' => $avada_diagnostics );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		return array(
-			'trashed'  => $body['trashed'] ?? 0,
-			'restored' => $body['restored'] ?? 0,
+			'trashed'           => $body['trashed'] ?? 0,
+			'restored'          => $body['restored'] ?? 0,
+			'warnings'          => $body['warnings'] ?? array(),
+			'avada_diagnostics' => $avada_diagnostics,
 		);
 	}
 
@@ -392,7 +419,7 @@ class MM_Forms {
 
 		case 'avada':
 				// Avada stores submissions in fusion_form_submissions (or variant table names).
-				// We try multiple candidate table names and detect timestamp column dynamically.
+				// v1.3.8: Expanded multi-strategy discovery with diagnostics.
 				$candidate_tables = array(
 					$wpdb->prefix . 'fusion_form_submissions',
 					$wpdb->prefix . 'fusionbuilder_form_submissions',
@@ -409,6 +436,7 @@ class MM_Forms {
 
 				if ( ! $table ) {
 					error_log( '[MissionMetrics] Avada entry sync: no submission table found. Tried: ' . implode( ', ', $candidate_tables ) );
+					self::$last_avada_strategy = 'no_table';
 					return null;
 				}
 
@@ -416,12 +444,13 @@ class MM_Forms {
 				$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
 				if ( ! is_array( $columns ) || empty( $columns ) ) {
 					error_log( '[MissionMetrics] Avada entry sync: could not read columns from ' . $table );
+					self::$last_avada_strategy = 'no_columns';
 					return null;
 				}
 
 				// Detect timestamp column
 				$ts_col = null;
-				$ts_candidates = array( 'date_time', 'created_at', 'submitted_at', 'date', 'created' );
+				$ts_candidates = array( 'date_time', 'created_at', 'submitted_at', 'date', 'created', 'updated_at' );
 				foreach ( $ts_candidates as $tc ) {
 					if ( in_array( $tc, $columns, true ) ) {
 						$ts_col = $tc;
@@ -430,25 +459,70 @@ class MM_Forms {
 				}
 				if ( ! $ts_col ) {
 					error_log( '[MissionMetrics] Avada entry sync: no timestamp column found in ' . $table . '. Columns: ' . implode( ', ', $columns ) );
-					$ts_col = 'id'; // fallback — use id as dummy so query still works
+					$ts_col = 'id';
 				}
 
-				$has_form_id_col = in_array( 'form_id', $columns, true );
-				$has_submission_col = in_array( 'submission', $columns, true );
+				// Expanded form-ref column candidates
+				$form_ref_candidates = array( 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id' );
+				// Expanded payload/blob column candidates for URL matching
+				$blob_candidates = array( 'submission', 'data', 'fields', 'form_data', 'meta', 'content' );
 
-				static $avada_global_rows = null;
-
-				// Layer 1: direct form_id match
 				$rows = array();
-				if ( $has_form_id_col ) {
+				$strategy_used = 'none';
+
+				// Layer 1: Try all form-ref columns for direct match
+				foreach ( $form_ref_candidates as $frc ) {
+					if ( ! in_array( $frc, $columns, true ) ) continue;
 					$rows = $wpdb->get_results( $wpdb->prepare(
-						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 5000",
+						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %d ORDER BY id DESC LIMIT 5000",
 						intval( $form_id )
 					) );
+					if ( is_array( $rows ) && ! empty( $rows ) ) {
+						$strategy_used = 'form_ref_col:' . $frc;
+						break;
+					}
+					// Also try string match (some tables store form_id as string)
+					$rows = $wpdb->get_results( $wpdb->prepare(
+						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
+						(string) $form_id
+					) );
+					if ( is_array( $rows ) && ! empty( $rows ) ) {
+						$strategy_used = 'form_ref_col_str:' . $frc;
+						break;
+					}
 				}
 
-				// Layer 2: source page URL match in submission blob
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) && $has_submission_col ) {
+				// Layer 2: Search blob/payload columns for form_id or page_url markers
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) ) {
+					foreach ( $blob_candidates as $bc ) {
+						if ( ! in_array( $bc, $columns, true ) ) continue;
+
+						// 2a: Search for form_id in blob
+						$like_fid = '%' . $wpdb->esc_like( '"form_id":"' . $form_id . '"' ) . '%';
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+							$like_fid
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'blob_form_id:' . $bc;
+							break;
+						}
+
+						// 2b: Also try numeric form_id pattern in blob
+						$like_fid2 = '%form_id%' . $wpdb->esc_like( $form_id ) . '%';
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+							$like_fid2
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'blob_form_id_loose:' . $bc;
+							break;
+						}
+					}
+				}
+
+				// Layer 3: page_url match in blob columns
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) ) {
 					$normalized = esc_url_raw( $page_url );
 					$url_candidates = array_values( array_unique( array_filter( array(
 						$normalized,
@@ -456,27 +530,31 @@ class MM_Forms {
 						trailingslashit( $normalized ),
 					) ) ) );
 
-					foreach ( $url_candidates as $url_candidate ) {
-						$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE submission LIKE %s ORDER BY id DESC LIMIT 5000",
-							$like
-						) );
-						if ( is_array( $rows ) && ! empty( $rows ) ) break;
+					foreach ( $blob_candidates as $bc ) {
+						if ( ! in_array( $bc, $columns, true ) ) continue;
+						foreach ( $url_candidates as $url_candidate ) {
+							$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								$like
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'blob_url:' . $bc;
+								break 2;
+							}
+						}
 					}
 				}
 
-			// Layer 3: REMOVED — global fallback caused all Avada forms to report
-			// identical entry sets, leading to mass-trash on sync. If neither form_id
-			// nor page_url matched, we return empty (safe failure) rather than returning
-			// every row in the table for every form.
+				// No global fallback — safe failure
+				self::$last_avada_strategy = $strategy_used;
 
 				if ( ! is_array( $rows ) || empty( $rows ) ) {
-					error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows found across all layers' );
+					error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
 					return array();
 				}
 
-				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries' );
+				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
 
 				$result = array();
 				foreach ( $rows as $row ) {

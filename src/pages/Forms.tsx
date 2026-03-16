@@ -223,6 +223,7 @@ export default function Forms() {
       let checked = 0;
       const warnings: string[] = [];
       const errors: string[] = [];
+      let worstStatus: "ok" | "partial" | "blocked" = "ok";
 
       for (const res of results) {
         if (res.status === "rejected") {
@@ -242,6 +243,11 @@ export default function Forms() {
 
         successCount += 1;
 
+        // Track worst sync_status across all sites
+        const siteStatus = data?.sync_status as string | undefined;
+        if (siteStatus === "blocked") worstStatus = "blocked";
+        else if (siteStatus === "partial" && worstStatus !== "blocked") worstStatus = "partial";
+
         if (data?.plugin_warning) {
           warnings.push(data.plugin_warning);
         }
@@ -252,7 +258,7 @@ export default function Forms() {
         if (wpResult?.restored) restored += Number(wpResult.restored) || 0;
 
         // Surface warnings from sync-entries backend (e.g. safety guards)
-        const syncWarnings = wpResult?.warnings as string[] | undefined;
+        const syncWarnings = (data?.warnings || wpResult?.warnings) as string[] | undefined;
         if (syncWarnings && Array.isArray(syncWarnings)) {
           warnings.push(...syncWarnings);
         }
@@ -270,9 +276,15 @@ export default function Forms() {
       if (restored) parts.push(`${restored} entry/entries restored`);
       if (checked) parts.push(`${checked} form check(s) completed`);
 
-      toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      if (worstStatus === "blocked") {
+        toast.error("Sync blocked — Avada entry discovery failed. Update the plugin to v1.3.8+ and re-sync.");
+      } else if (worstStatus === "partial") {
+        toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
+      } else {
+        toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      }
 
-      if (warnings.length > 0) {
+      if (warnings.length > 0 && worstStatus !== "blocked") {
         toast.warning(warnings[0]);
       }
       if (errors.length > 0) {
@@ -466,6 +478,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
         toast.warning(data.plugin_warning);
       }
 
+      const syncStatus = data?.sync_status as string | undefined;
       const result = data?.wp_result?.result;
       const parts: string[] = [];
       if (result?.synced) parts.push(`${result.synced} form(s) synced`);
@@ -473,7 +486,19 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
       if (data?.checked) parts.push(`${data.checked} form check(s) completed`);
 
-      toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      const syncWarnings = (data?.warnings || result?.warnings) as string[] | undefined;
+      if (syncWarnings && Array.isArray(syncWarnings) && syncWarnings.length > 0) {
+        syncWarnings.forEach((w: string) => toast.warning(w));
+      }
+
+      if (syncStatus === "blocked") {
+        toast.error("Sync blocked — Avada entry discovery failed. Update the plugin to v1.3.8+ and re-sync.");
+      } else if (syncStatus === "partial") {
+        toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
+      } else {
+        toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      }
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["leads_by_form"] }),
         queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] }),

@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
 
     const siteId = site.id;
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.10");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.9");
     const detectedPluginVersion = site.plugin_version || "unknown";
     const warnings: string[] = [];
     let totalTrashed = 0;
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
       console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync`);
       warnings.push(
         pluginNeedsAvadaFix
-          ? `Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.10+ and click "Sync Forms" in WordPress.`
+          ? `Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.9+ and click "Sync Forms" in WordPress.`
           : `Avada entry discovery failed on ACTV TRKR v${detectedPluginVersion} — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Run "Sync Forms" in WordPress, then re-sync entries.`
       );
     }
@@ -156,10 +156,9 @@ Deno.serve(async (req) => {
       console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — enabling safe mode (no Avada trashing)`);
       warnings.push(
         pluginNeedsAvadaFix
-          ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v1.3.10+ and re-sync.`
+          ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v1.3.9+ and re-sync.`
           : `Avada returned identical active-entry lists across multiple forms on ACTV TRKR v${detectedPluginVersion}. To protect your data, Avada delete-sync is running in safe mode (no trashing) until per-form entry IDs are detected.`
       );
-    }
     }
 
     for (const f of forms) {

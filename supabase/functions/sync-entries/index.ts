@@ -31,6 +31,21 @@ function normalizeTimestampForCompare(ts: string): string {
   return ts.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "").trim();
 }
 
+function parseVersion(version: string | null | undefined): [number, number, number] {
+  if (!version) return [0, 0, 0];
+  const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function isVersionAtLeast(version: string | null | undefined, minimum: string): boolean {
+  const [major, minor, patch] = parseVersion(version);
+  const [minMajor, minMinor, minPatch] = parseVersion(minimum);
+
+  if (major !== minMajor) return major > minMajor;
+  if (minor !== minMinor) return minor > minMinor;
+  return patch >= minPatch;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {

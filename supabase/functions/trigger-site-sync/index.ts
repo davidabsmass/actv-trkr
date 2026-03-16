@@ -367,23 +367,31 @@ Deno.serve(async (req) => {
       await supabase.from("sites").update({ plugin_version: runtimePluginVersion }).eq("id", site.id);
     }
 
-    // Classify sync_status
+    // Classify sync_status with reason codes
     let syncStatus: "ok" | "partial" | "blocked" = "ok";
+    const reasonCodes: string[] = [];
+
     if (wpWarnings.length > 0) {
-      // If all warnings are about Avada and trashed+restored=0, it's blocked
       const avadaWarnings = wpWarnings.filter(w => w.toLowerCase().includes("avada"));
       if (avadaWarnings.length === wpWarnings.length && trashed === 0 && restored === 0) {
         syncStatus = "blocked";
+        reasonCodes.push("avada_discovery_empty");
       } else {
         syncStatus = "partial";
       }
     }
 
+    // Force blocked/partial when plugin is outdated and site has Avada forms
+    if (hasAvadaForms && pluginNeedsAvadaFix && syncStatus === "ok") {
+      syncStatus = "partial";
+      reasonCodes.push("plugin_outdated");
+    }
+
     let pluginWarning: string | null = null;
     if (pluginOutdated) {
       pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v1.3.8 or newer for reliable entry reconciliation.`;
-    } else if (pluginNeedsAvadaFix && trashed === 0 && restored === 0) {
-      pluginWarning = `Plugin v${runtimePluginVersion || "unknown"} may have trouble reading Avada form entries. Please update to v1.3.8+ and re-sync.`;
+    } else if (hasAvadaForms && pluginNeedsAvadaFix) {
+      pluginWarning = `Plugin v${runtimePluginVersion || "unknown"} cannot read Avada form entries correctly. Download v1.3.8 from Settings → Plugin and re-sync.`;
     }
 
     return new Response(JSON.stringify({

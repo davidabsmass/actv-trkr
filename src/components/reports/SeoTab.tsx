@@ -201,7 +201,7 @@ export default function SeoTab() {
       if (!orgId || !activeScan?.url) return [];
       const { data } = await supabase
         .from("seo_fix_queue")
-        .select("id, issue_id, status")
+        .select("id, issue_id, status, created_at")
         .eq("org_id", orgId)
         .eq("page_url", activeScan.url)
         .order("created_at", { ascending: false });

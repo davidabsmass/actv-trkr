@@ -73,6 +73,19 @@ MM_Heartbeat::init();
 MM_Broken_Links::init();
 MM_SEO_Fixes::init();
 
+// Ensure crons are scheduled even after updates (activation hook only fires on first install).
+add_action( 'init', function () {
+	if ( ! wp_next_scheduled( 'mm_retry_cron' ) ) {
+		wp_schedule_event( time(), 'mm_every_5_min', 'mm_retry_cron' );
+	}
+	if ( ! wp_next_scheduled( 'mm_form_probe_cron' ) ) {
+		wp_schedule_event( time(), 'hourly', 'mm_form_probe_cron' );
+	}
+	if ( ! wp_next_scheduled( 'mm_seo_fix_cron' ) ) {
+		wp_schedule_event( time(), 'mm_every_5_min', 'mm_seo_fix_cron' );
+	}
+}, 20 );
+
 // Cron hooks.
 add_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );
 add_action( 'mm_form_probe_cron', array( 'MM_Forms', 'probe_form_pages' ) );

@@ -212,7 +212,11 @@ export default function Forms() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.fallback) {
-        throw new Error("Sync route unavailable on WordPress (404). Entry reconciliation did not run — ensure ACTV TRKR v1.3.2 is active.");
+        const warning = data?.plugin_warning || "Sync route unavailable on WordPress. Entry reconciliation did not run.";
+        throw new Error(warning);
+      }
+      if (data?.plugin_warning) {
+        toast.warning(data.plugin_warning);
       }
 
       const result = data?.wp_result?.result;

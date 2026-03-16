@@ -283,6 +283,16 @@ Deno.serve(async (req) => {
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
     const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.8");
 
+    // Check if site has any Avada forms
+    const { count: avadaFormCount } = await supabase
+      .from("forms")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", site.org_id)
+      .eq("site_id", site.id)
+      .eq("provider", "avada")
+      .eq("archived", false);
+    const hasAvadaForms = (avadaFormCount || 0) > 0;
+
     const { data: membership } = await supabase
       .from("org_users").select("role")
       .eq("org_id", site.org_id).eq("user_id", user.id).maybeSingle();

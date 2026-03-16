@@ -155,53 +155,61 @@ Deno.serve(async (req) => {
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
 
-      for (const rawEvent of rawEvents) {
-        const eid = rawEvent.external_entry_id;
-        const submittedAt = rawEvent.submitted_at;
-
-        // Check if entry is active by exact ID match
-        if (activeSet.has(eid)) {
-          toRestoreEntries.push(rawEvent);
-          continue;
+      // CRITICAL: If the plugin reports ZERO active entries, every raw event should be trashed.
+      // This handles the case where all submissions were deleted from WordPress.
+      if (activeEntryIds.length === 0) {
+        for (const rawEvent of rawEvents) {
+          toTrashEntries.push(rawEvent);
         }
+      } else {
+        for (const rawEvent of rawEvents) {
+          const eid = rawEvent.external_entry_id;
+          const submittedAt = rawEvent.submitted_at;
 
-        // Avada legacy reconciliation: try payload-derived canonical ID first
-        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
-          const canonicalId = deriveAvadaCanonicalId(rawEvent.payload);
-
-          if (canonicalId && canonicalId !== eid) {
-            remapCandidates.push({ legacyId: eid, canonicalId, submittedAt });
-          }
-
-          if (canonicalId && activeSet.has(canonicalId)) {
+          // Check if entry is active by exact ID match
+          if (activeSet.has(eid)) {
             toRestoreEntries.push(rawEvent);
             continue;
           }
 
-          // Timestamp fallback for older payloads / plugin responses
-          if (submittedAt && activeTimestampSet.size > 0) {
-            const submittedAtNorm = normalizeTimestampForCompare(submittedAt);
-            if (activeTimestampSet.has(submittedAtNorm)) {
+          // Avada legacy reconciliation: try payload-derived canonical ID first
+          if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
+            const canonicalId = deriveAvadaCanonicalId(rawEvent.payload);
+
+            if (canonicalId && canonicalId !== eid) {
+              remapCandidates.push({ legacyId: eid, canonicalId, submittedAt });
+            }
+
+            if (canonicalId && activeSet.has(canonicalId)) {
               toRestoreEntries.push(rawEvent);
-            } else {
+              continue;
+            }
+
+            // Timestamp fallback for older payloads / plugin responses
+            if (submittedAt && activeTimestampSet.size > 0) {
+              const submittedAtNorm = normalizeTimestampForCompare(submittedAt);
+              if (activeTimestampSet.has(submittedAtNorm)) {
+                toRestoreEntries.push(rawEvent);
+              } else {
+                toTrashEntries.push(rawEvent);
+              }
+              continue;
+            }
+
+            // If Avada provided a comparable active set and this ID/canonical ID is absent, trash it.
+            if (hasComparableAvadaActiveIds && activeSet.size > 0) {
               toTrashEntries.push(rawEvent);
             }
             continue;
           }
 
-          // If Avada provided a comparable active set and this ID/canonical ID is absent, trash it.
-          if (hasComparableAvadaActiveIds && activeSet.size > 0) {
+          // Standard matching for new-format or standard providers
+          const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
+          const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
+
+          if (isNewFormat || isStandardProvider) {
             toTrashEntries.push(rawEvent);
           }
-          continue;
-        }
-
-        // Standard matching for new-format or standard providers
-        const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
-        const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
-
-        if (isNewFormat || isStandardProvider) {
-          toTrashEntries.push(rawEvent);
         }
       }
 

@@ -923,7 +923,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[140px]">Date</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Source</TableHead>
                   {fieldColumns.map((col) => (
                     <TableHead key={col.key}>{col.label}</TableHead>
@@ -937,11 +936,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
                     <TableRow key={lead.id}>
                       <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                         {format(new Date(lead.submitted_at), "MMM d, yyyy HH:mm")}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`text-[10px] uppercase ${statusColors[lead.status] || ""}`}>
-                          {lead.status}
-                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm">
                         {(!lead.source || lead.source === siteData?.domain) ? "direct" : lead.source}

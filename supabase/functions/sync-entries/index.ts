@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: site } = await supabase
-      .from("sites").select("id")
+      .from("sites").select("id, plugin_version")
       .eq("org_id", orgId).eq("domain", domain).maybeSingle();
 
     if (!site) {

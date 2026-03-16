@@ -1,0 +1,1 @@
+UPDATE public.forms SET archived = true WHERE id = '6c57ef45-66bb-47f2-9638-afb659d5a040';

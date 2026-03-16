@@ -390,62 +390,102 @@ class MM_Forms {
 				if ( ! is_array( $entries ) ) return array();
 				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
 
-			case 'avada':
-				// Avada stores submissions in fusion_form_submissions.
-				// Some installs use a different internal form_id than the fusion_form post ID,
-				// so we use layered matching:
-				// 1) form_id direct match
-				// 2) source page URL match in submission blob
-				// 3) global ID fallback (IDs are globally unique in the table)
-				$table = $wpdb->prefix . 'fusion_form_submissions';
-				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
-					return null; // Table doesn't exist
+		case 'avada':
+				// Avada stores submissions in fusion_form_submissions (or variant table names).
+				// We try multiple candidate table names and detect timestamp column dynamically.
+				$candidate_tables = array(
+					$wpdb->prefix . 'fusion_form_submissions',
+					$wpdb->prefix . 'fusionbuilder_form_submissions',
+					$wpdb->prefix . 'avada_form_submissions',
+				);
+
+				$table = null;
+				foreach ( $candidate_tables as $candidate_table ) {
+					if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $candidate_table ) ) === $candidate_table ) {
+						$table = $candidate_table;
+						break;
+					}
 				}
+
+				if ( ! $table ) {
+					error_log( '[MissionMetrics] Avada entry sync: no submission table found. Tried: ' . implode( ', ', $candidate_tables ) );
+					return null;
+				}
+
+				// Detect columns dynamically
+				$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+				if ( ! is_array( $columns ) || empty( $columns ) ) {
+					error_log( '[MissionMetrics] Avada entry sync: could not read columns from ' . $table );
+					return null;
+				}
+
+				// Detect timestamp column
+				$ts_col = null;
+				$ts_candidates = array( 'date_time', 'created_at', 'submitted_at', 'date', 'created' );
+				foreach ( $ts_candidates as $tc ) {
+					if ( in_array( $tc, $columns, true ) ) {
+						$ts_col = $tc;
+						break;
+					}
+				}
+				if ( ! $ts_col ) {
+					error_log( '[MissionMetrics] Avada entry sync: no timestamp column found in ' . $table . '. Columns: ' . implode( ', ', $columns ) );
+					$ts_col = 'id'; // fallback — use id as dummy so query still works
+				}
+
+				$has_form_id_col = in_array( 'form_id', $columns, true );
+				$has_submission_col = in_array( 'submission', $columns, true );
 
 				static $avada_global_rows = null;
 
-				$rows = $wpdb->get_results( $wpdb->prepare(
-					"SELECT id, date_time FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 5000",
-					intval( $form_id )
-				) );
-
-				$columns = null;
-				if ( ! is_array( $rows ) || empty( $rows ) ) {
-					$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+				// Layer 1: direct form_id match
+				$rows = array();
+				if ( $has_form_id_col ) {
+					$rows = $wpdb->get_results( $wpdb->prepare(
+						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 5000",
+						intval( $form_id )
+					) );
 				}
 
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) && is_array( $columns ) && in_array( 'submission', $columns, true ) ) {
+				// Layer 2: source page URL match in submission blob
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) && $has_submission_col ) {
 					$normalized = esc_url_raw( $page_url );
-					$candidates = array_values( array_unique( array_filter( array(
+					$url_candidates = array_values( array_unique( array_filter( array(
 						$normalized,
 						rtrim( $normalized, '/' ),
 						trailingslashit( $normalized ),
 					) ) ) );
 
-					foreach ( $candidates as $candidate ) {
-						$like = '%' . $wpdb->esc_like( $candidate ) . '%';
+					foreach ( $url_candidates as $url_candidate ) {
+						$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
 						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, date_time FROM {$table} WHERE submission LIKE %s ORDER BY id DESC LIMIT 5000",
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE submission LIKE %s ORDER BY id DESC LIMIT 5000",
 							$like
 						) );
 						if ( is_array( $rows ) && ! empty( $rows ) ) break;
 					}
 				}
 
+				// Layer 3: global fallback (all rows in table)
 				if ( ! is_array( $rows ) || empty( $rows ) ) {
 					if ( $avada_global_rows === null ) {
-						$avada_global_rows = $wpdb->get_results( "SELECT id, date_time FROM {$table} ORDER BY id DESC LIMIT 5000" );
+						$avada_global_rows = $wpdb->get_results( "SELECT id, {$ts_col} AS ts FROM {$table} ORDER BY id DESC LIMIT 5000" );
 					}
 					$rows = $avada_global_rows;
 				}
 
-				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
+				if ( ! is_array( $rows ) || empty( $rows ) ) {
+					error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows found across all layers' );
+					return array();
+				}
+
+				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries' );
 
 				$result = array();
 				foreach ( $rows as $row ) {
 					$result[] = array(
 						'id' => 'avada_db_' . $row->id,
-						'ts' => $row->date_time,
+						'ts' => $row->ts,
 					);
 				}
 				return $result;

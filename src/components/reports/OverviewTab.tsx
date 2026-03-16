@@ -201,20 +201,6 @@ export default function OverviewTab() {
       };
     }
 
-    if (period === "weekly") {
-      const weekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-      const weekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-      const prevWeekEnd = endOfWeek(subWeeks(now, 2), { weekStartsOn: 1 });
-      const prevWeekStart = startOfWeek(subWeeks(now, 2), { weekStartsOn: 1 });
-      return {
-        startDate: format(weekStart, "yyyy-MM-dd"),
-        endDate: format(weekEnd, "yyyy-MM-dd"),
-        prevStartDate: format(prevWeekStart, "yyyy-MM-dd"),
-        prevEndDate: format(prevWeekEnd, "yyyy-MM-dd"),
-        periodLabel: "week",
-      };
-    }
-
     if (period === "monthly") {
       const monthStart = startOfMonth(subMonths(now, 1));
       const monthEnd = endOfMonth(subMonths(now, 1));

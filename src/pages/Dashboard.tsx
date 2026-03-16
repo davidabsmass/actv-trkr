@@ -251,17 +251,17 @@ const Dashboard = () => {
 
   const isLoading = !realtimeData;
 
-  const wowData = useMemo(() => {
-    const tw = thisWeekData || { totalSessions: 0, totalLeads: 0 };
-    const lw = lastWeekData || { totalSessions: 0, totalLeads: 0 };
-    const twCvr = tw.totalSessions > 0 ? tw.totalLeads / tw.totalSessions : 0;
-    const lwCvr = lw.totalSessions > 0 ? lw.totalLeads / lw.totalSessions : 0;
+  const periodData = useMemo(() => {
+    const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
+    const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
+    const currCvr = curr.totalSessions > 0 ? curr.totalLeads / curr.totalSessions : 0;
+    const prevCvr = prev.totalSessions > 0 ? prev.totalLeads / prev.totalSessions : 0;
     return {
-      sessions: { current: tw.totalSessions, previous: lw.totalSessions },
-      leads: { current: tw.totalLeads, previous: lw.totalLeads },
-      cvr: { current: twCvr, previous: lwCvr },
+      sessions: { current: curr.totalSessions, previous: prev.totalSessions },
+      leads: { current: curr.totalLeads, previous: prev.totalLeads },
+      cvr: { current: currCvr, previous: prevCvr },
     };
-  }, [thisWeekData, lastWeekData]);
+  }, [realtimeData, prevPeriodData]);
 
   const topSource = useMemo(() => {
     const sources = realtimeData?.sources || [];

@@ -373,35 +373,38 @@ class MM_Forms {
 	 * Get active (non-trashed) entry IDs for a given form provider + form ID.
 	 * Returns null if the provider doesn't support entry listing.
 	 */
-	private static function get_active_entry_ids( $provider, $form_id ) {
+	private static function get_active_entry_ids( $provider, $form_id, $page_url = null ) {
 		global $wpdb;
 
 		switch ( $provider ) {
-			case 'gravity_forms':
-				if ( ! class_exists( 'GFAPI' ) ) return null;
-				$search = array( 'status' => 'active' );
-				$entries = \GFAPI::get_entries( $form_id, $search, null, array( 'offset' => 0, 'page_size' => 5000 ) );
-				if ( ! is_array( $entries ) ) return array();
-				return array_map( function( $e ) { return (string) $e['id']; }, $entries );
-
-			case 'wpforms':
-				if ( ! function_exists( 'wpforms' ) || ! isset( wpforms()->entry ) ) return null;
-				$entries = wpforms()->entry->get_entries( array( 'form_id' => $form_id ) );
-				if ( ! is_array( $entries ) ) return array();
-				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
-
+...
 			case 'avada':
-				// Avada stores submissions in fusion_form_submissions table
+				// Avada stores submissions in fusion_form_submissions table.
+				// Some installs use an internal form_id that differs from fusion_form post ID,
+				// so we try form_id first, then fallback to URL matching inside submission payload.
 				$table = $wpdb->prefix . 'fusion_form_submissions';
 				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
 					return null; // Table doesn't exist
 				}
+
 				$rows = $wpdb->get_results( $wpdb->prepare(
 					"SELECT id, date_time FROM {$table} WHERE form_id = %d AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
 					intval( $form_id )
 				) );
+
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) ) {
+					$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+					if ( is_array( $columns ) && in_array( 'submission', $columns, true ) ) {
+						$like = '%' . $wpdb->esc_like( esc_url_raw( $page_url ) ) . '%';
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, date_time FROM {$table} WHERE submission LIKE %s AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
+							$like
+						) );
+					}
+				}
+
 				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
-				// Return both entry IDs and timestamps for legacy matching
+
 				$result = array();
 				foreach ( $rows as $row ) {
 					$result[] = array(

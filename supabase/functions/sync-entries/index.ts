@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
 
     if (allAvadaEmpty) {
       console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync`);
-      warnings.push(`Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.7+ and click "Sync Forms" in WordPress.`);
+      warnings.push(`Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.8+ and click "Sync Forms" in WordPress.`);
     }
 
     // ── SAFETY GUARD 2: Duplicate active ID sets across Avada forms (global fallback bug) ──

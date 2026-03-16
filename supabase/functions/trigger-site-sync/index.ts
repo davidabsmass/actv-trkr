@@ -280,8 +280,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.9");
+    const minimumPluginVersion = "1.3.4";
+    const minimumAvadaPluginVersion = "1.3.9";
+    const pluginOutdated = !isVersionAtLeast(site.plugin_version, minimumPluginVersion);
 
     // Check if site has any Avada forms
     const { count: avadaFormCount } = await supabase
@@ -361,6 +362,8 @@ Deno.serve(async (req) => {
     const wpWarnings = (wpResult?.warnings as string[]) || [];
     const avadaDiagnostics = (wpResult?.avada_diagnostics as unknown[]) || [];
     const runtimePluginVersion = (wpResult?.plugin_version as string) || site.plugin_version || null;
+    const runtimePluginOutdated = !isVersionAtLeast(runtimePluginVersion, minimumPluginVersion);
+    const runtimeNeedsAvadaFix = hasAvadaForms && !isVersionAtLeast(runtimePluginVersion, minimumAvadaPluginVersion);
 
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {
@@ -382,16 +385,16 @@ Deno.serve(async (req) => {
     }
 
     // Force blocked/partial when plugin is outdated and site has Avada forms
-    if (hasAvadaForms && pluginNeedsAvadaFix && syncStatus === "ok") {
+    if (runtimeNeedsAvadaFix && syncStatus === "ok") {
       syncStatus = "partial";
       reasonCodes.push("plugin_outdated");
     }
 
     let pluginWarning: string | null = null;
-    if (pluginOutdated) {
-      pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v1.3.9 or newer for reliable entry reconciliation.`;
-    } else if (hasAvadaForms && pluginNeedsAvadaFix) {
-      pluginWarning = `Plugin v${runtimePluginVersion || "unknown"} cannot read Avada form entries correctly. Download v1.3.9 from Settings → Plugin and re-sync.`;
+    if (runtimePluginOutdated) {
+      pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v${minimumPluginVersion} or newer for reliable sync.`;
+    } else if (runtimeNeedsAvadaFix) {
+      pluginWarning = `Plugin v${runtimePluginVersion || "unknown"} cannot read Avada form entries correctly. Download v${minimumAvadaPluginVersion} from Settings → Plugin and re-sync.`;
     }
 
     return new Response(JSON.stringify({

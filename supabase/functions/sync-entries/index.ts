@@ -121,6 +121,8 @@ Deno.serve(async (req) => {
 
     const siteId = site.id;
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.9");
+    const detectedPluginVersion = site.plugin_version || "unknown";
     const warnings: string[] = [];
     let totalTrashed = 0;
     let totalRestored = 0;
@@ -140,7 +142,11 @@ Deno.serve(async (req) => {
 
     if (allAvadaEmpty) {
       console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync`);
-      warnings.push(`Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.9+ and click "Sync Forms" in WordPress.`);
+      warnings.push(
+        pluginNeedsAvadaFix
+          ? `Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.9+ and click "Sync Forms" in WordPress.`
+          : `Avada entry discovery failed on ACTV TRKR v${detectedPluginVersion} — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Run "Sync Forms" in WordPress, then re-sync entries.`
+      );
     }
 
     // ── SAFETY GUARD 2: Duplicate active ID sets across Avada forms (global fallback bug) ──
@@ -148,7 +154,11 @@ Deno.serve(async (req) => {
     const hasDuplicateAvadaSets = detectDuplicateAvadaSets(avadaPayloadForms);
     if (hasDuplicateAvadaSets) {
       console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — skipping destructive sync for ALL Avada forms (global fallback bug detected)`);
-      warnings.push(`Avada entry sync skipped — multiple forms reported identical entry lists (plugin bug). Please update to v1.3.9+ and re-sync.`);
+      warnings.push(
+        pluginNeedsAvadaFix
+          ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v1.3.9+ and re-sync.`
+          : `Avada entry sync skipped on ACTV TRKR v${detectedPluginVersion} — multiple forms reported identical entry lists. Run "Sync Forms" in WordPress, then re-sync entries.`
+      );
     }
 
     for (const f of forms) {

@@ -252,27 +252,27 @@ Deno.serve(async (req) => {
       }
 
       if (leadIdsToTrash.size > 0) {
-        const { count, error: trashError } = await supabase
+        const { data: trashedRows, error: trashError } = await supabase
           .from("leads")
           .update({ status: "trashed" })
           .in("id", Array.from(leadIdsToTrash))
           .neq("status", "trashed")
-          .select("id", { count: "exact" });
+          .select("id");
 
         if (trashError) throw trashError;
-        totalTrashed += (count || 0);
+        totalTrashed += (trashedRows?.length || 0);
       }
 
       if (leadIdsToRestore.size > 0) {
-        const { count, error: restoreError } = await supabase
+        const { data: restoredRows, error: restoreError } = await supabase
           .from("leads")
           .update({ status: "new" })
           .in("id", Array.from(leadIdsToRestore))
           .eq("status", "trashed")
-          .select("id", { count: "exact" });
+          .select("id");
 
         if (restoreError) throw restoreError;
-        totalRestored += (count || 0);
+        totalRestored += (restoredRows?.length || 0);
       }
 
       // Update legacy external_entry_ids in lead_events_raw to stable canonical IDs where possible.

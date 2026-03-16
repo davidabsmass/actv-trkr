@@ -12,7 +12,7 @@ import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
 import { SummaryCard, InsightCard } from "./InsightCard";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 
-type Period = "7d" | "14d" | "30d" | "weekly" | "monthly" | "custom";
+type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 
 function pctChange(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;

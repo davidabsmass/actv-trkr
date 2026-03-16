@@ -287,21 +287,11 @@ Deno.serve(async (req) => {
     }
 
     const siteUrl = site.url || `https://${site.domain}`;
-    const wpEndpoint = `${siteUrl.replace(/\/$/, "")}/wp-json/actv-trkr/v1/sync`;
-
-    console.log(`Triggering sync on ${wpEndpoint}`);
-
-    const wpRes = await fetch(wpEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ triggered_from: "dashboard", key_hash: apiKeyRow.key_hash }),
-    });
+    const { response: wpRes, endpoint: wpEndpoint } = await triggerWordPressSync(siteUrl, apiKeyRow.key_hash);
 
     if (!wpRes.ok) {
       const text = await wpRes.text();
-      console.error(`WP sync failed: ${wpRes.status} ${text}`);
+      console.error(`WP sync failed (${wpEndpoint}): ${wpRes.status} ${text}`);
 
       const fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
       if (fallback.checked > 0 || fallback.updatedPageUrls > 0) {
@@ -310,6 +300,7 @@ Deno.serve(async (req) => {
           fallback: true,
           reason: `WordPress sync route unavailable (${wpRes.status})`,
           wp_error: text,
+          endpoint_attempted: wpEndpoint,
           ...fallback,
         }), {
           status: 200,
@@ -317,7 +308,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify({ error: `WordPress returned ${wpRes.status}`, details: text }), {
+      return new Response(JSON.stringify({ error: `WordPress returned ${wpRes.status}`, details: text, endpoint_attempted: wpEndpoint }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

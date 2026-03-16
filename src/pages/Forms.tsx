@@ -341,6 +341,7 @@ export default function Forms() {
       const warnings: string[] = [];
       const errors: string[] = [];
       let worstStatus: "ok" | "partial" | "blocked" = "ok";
+      let blockedRuntimeVersion: string | null = null;
 
       for (const res of results) {
         if (res.status === "rejected") {
@@ -360,16 +361,22 @@ export default function Forms() {
 
         successCount += 1;
 
+        const wpResult = data?.wp_result?.result;
+        const runtimePluginVersion = (data?.runtime_plugin_version || wpResult?.plugin_version || null) as string | null;
+
         // Track worst sync_status across all sites
         const siteStatus = data?.sync_status as string | undefined;
-        if (siteStatus === "blocked") worstStatus = "blocked";
-        else if (siteStatus === "partial" && worstStatus !== "blocked") worstStatus = "partial";
+        if (siteStatus === "blocked") {
+          worstStatus = "blocked";
+          if (!blockedRuntimeVersion && runtimePluginVersion) blockedRuntimeVersion = runtimePluginVersion;
+        } else if (siteStatus === "partial" && worstStatus !== "blocked") {
+          worstStatus = "partial";
+        }
 
         if (data?.plugin_warning) {
           warnings.push(data.plugin_warning);
         }
 
-        const wpResult = data?.wp_result?.result;
         if (wpResult?.synced) synced += Number(wpResult.synced) || 0;
         if (wpResult?.trashed) trashed += Number(wpResult.trashed) || 0;
         if (wpResult?.restored) restored += Number(wpResult.restored) || 0;
@@ -394,7 +401,7 @@ export default function Forms() {
       if (checked) parts.push(`${checked} form check(s) completed`);
 
       if (worstStatus === "blocked") {
-        toast.error("Sync blocked — Avada entry discovery failed. Update the plugin to v1.3.9+ and re-sync.");
+        toast.error(getBlockedSyncMessage(blockedRuntimeVersion));
       } else if (worstStatus === "partial") {
         toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
       } else {

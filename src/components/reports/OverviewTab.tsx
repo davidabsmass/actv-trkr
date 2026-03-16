@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
-import { subDays, subMonths, startOfMonth, endOfMonth, format, startOfWeek, endOfWeek, subWeeks } from "date-fns";
+import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
 import {
   Eye, TrendingUp, TrendingDown, Minus, Users, Activity, Sparkles, RefreshCw,
   Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon,

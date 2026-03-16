@@ -109,6 +109,107 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
   );
 }
 
+/* ─── Plugin Update Banner ─── */
+function PluginUpdateBanner({ orgId }: { orgId: string | null }) {
+  const [downloading, setDownloading] = useState(false);
+
+  const { data: siteVersions } = useQuery({
+    queryKey: ["site_plugin_versions", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("sites")
+        .select("id, domain, plugin_version")
+        .eq("org_id", orgId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const { data: latestVersion } = useQuery({
+    queryKey: ["latest_plugin_version"],
+    queryFn: async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=check&version=0.0.0`
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.version as string;
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const outdatedSites = siteVersions?.filter((s) => {
+    if (!s.plugin_version || !latestVersion) return false;
+    return compareVersions(latestVersion, s.plugin_version) > 0;
+  }) || [];
+
+  if (outdatedSites.length === 0) return null;
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
+      const response = await fetch(zipUrl, { cache: "no-store" });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const cd = response.headers.get("content-disposition") || "";
+      const match = /filename="?([^";]+)"?/i.exec(cd);
+      const fileName = match?.[1] || "actv-trkr.zip";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Plugin v${latestVersion} downloaded! Upload via WordPress → Plugins → Add New → Upload.`);
+    } catch {
+      toast.error("Failed to download plugin");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <ArrowUpCircle className="h-4 w-4 text-warning flex-shrink-0" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">Plugin update available — v{latestVersion}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {outdatedSites.map((s) => `${s.domain} (v${s.plugin_version})`).join(", ")} — Sync may be incomplete until updated
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 flex-shrink-0 border-warning/30 text-warning hover:bg-warning/10 hover:text-warning"
+        onClick={handleDownload}
+        disabled={downloading}
+      >
+        <Download className="h-3.5 w-3.5" />
+        {downloading ? "Downloading…" : "Download Update"}
+      </Button>
+    </div>
+  );
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0;
+    const nb = pb[i] || 0;
+    if (na > nb) return 1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
+
 export default function Forms() {
   const { orgId, orgName } = useOrg();
   const navigate = useNavigate();

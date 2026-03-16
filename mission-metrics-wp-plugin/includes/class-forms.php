@@ -391,28 +391,52 @@ class MM_Forms {
 				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
 
 			case 'avada':
-				// Avada stores submissions in fusion_form_submissions table.
-				// Some installs use an internal form_id that differs from fusion_form post ID,
-				// so we try form_id first, then fallback to URL matching inside submission payload.
+				// Avada stores submissions in fusion_form_submissions.
+				// Some installs use a different internal form_id than the fusion_form post ID,
+				// so we use layered matching:
+				// 1) form_id direct match
+				// 2) source page URL match in submission blob
+				// 3) global ID fallback (IDs are globally unique in the table)
 				$table = $wpdb->prefix . 'fusion_form_submissions';
 				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
 					return null; // Table doesn't exist
 				}
 
+				static $avada_global_rows = null;
+
 				$rows = $wpdb->get_results( $wpdb->prepare(
-					"SELECT id, date_time FROM {$table} WHERE form_id = %d AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
+					"SELECT id, date_time FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 5000",
 					intval( $form_id )
 				) );
 
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) ) {
+				$columns = null;
+				if ( ! is_array( $rows ) || empty( $rows ) ) {
 					$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
-					if ( is_array( $columns ) && in_array( 'submission', $columns, true ) ) {
-						$like = '%' . $wpdb->esc_like( esc_url_raw( $page_url ) ) . '%';
+				}
+
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) && is_array( $columns ) && in_array( 'submission', $columns, true ) ) {
+					$normalized = esc_url_raw( $page_url );
+					$candidates = array_values( array_unique( array_filter( array(
+						$normalized,
+						rtrim( $normalized, '/' ),
+						trailingslashit( $normalized ),
+					) ) ) );
+
+					foreach ( $candidates as $candidate ) {
+						$like = '%' . $wpdb->esc_like( $candidate ) . '%';
 						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, date_time FROM {$table} WHERE submission LIKE %s AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
+							"SELECT id, date_time FROM {$table} WHERE submission LIKE %s ORDER BY id DESC LIMIT 5000",
 							$like
 						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) break;
 					}
+				}
+
+				if ( ! is_array( $rows ) || empty( $rows ) ) {
+					if ( $avada_global_rows === null ) {
+						$avada_global_rows = $wpdb->get_results( "SELECT id, date_time FROM {$table} ORDER BY id DESC LIMIT 5000" );
+					}
+					$rows = $avada_global_rows;
 				}
 
 				if ( ! is_array( $rows ) || empty( $rows ) ) return array();

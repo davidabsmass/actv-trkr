@@ -119,7 +119,8 @@ export default function OverviewTab() {
     }
   };
 
-  const isLoading = nightlyLoading || (!nightlySummary && liveLoading);
+  const nightlyHasZeroMetrics = nightlySummary && nightlySummary.metrics_snapshot?.sessions?.current === 0 && nightlySummary.metrics_snapshot?.leads?.current === 0;
+  const isLoading = nightlyLoading || ((!nightlySummary || nightlyHasZeroMetrics) && liveLoading);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;

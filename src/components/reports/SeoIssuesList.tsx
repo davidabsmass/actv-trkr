@@ -33,6 +33,7 @@ export interface FixQueueItem {
   id: string;
   issue_id: string;
   status: string;
+  created_at?: string;
 }
 
 interface Props {

@@ -281,6 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.6");
 
     const { data: membership } = await supabase
       .from("org_users").select("role")
@@ -343,12 +344,22 @@ Deno.serve(async (req) => {
 
     const fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
 
+    // Check if WP result shows all Avada forms with 0 trashed (discovery failure)
+    const wpResult = (wpData as Record<string, unknown>)?.result as Record<string, unknown> | undefined;
+    const trashed = Number(wpResult?.trashed || 0);
+    const restored = Number(wpResult?.restored || 0);
+
+    let pluginWarning: string | null = null;
+    if (pluginOutdated) {
+      pluginWarning = `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`;
+    } else if (pluginNeedsAvadaFix && trashed === 0 && restored === 0) {
+      pluginWarning = `Plugin v${site.plugin_version || "unknown"} may have trouble reading Avada form entries. Please update to v1.3.6+ and re-sync.`;
+    }
+
     return new Response(JSON.stringify({
       ok: true,
       wp_result: wpData,
-      plugin_warning: pluginOutdated
-        ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`
-        : null,
+      plugin_warning: pluginWarning,
       ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

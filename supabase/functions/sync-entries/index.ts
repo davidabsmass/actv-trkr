@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
 
     const siteId = site.id;
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
+    const warnings: string[] = [];
     let totalTrashed = 0;
     let totalRestored = 0;
 
@@ -124,6 +125,7 @@ Deno.serve(async (req) => {
 
     if (allAvadaEmpty) {
       console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync (likely plugin discovery failure)`);
+      warnings.push(`Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.6+ and click "Sync Forms" in WordPress.`);
     }
 
     for (const f of forms) {
@@ -390,7 +392,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, trashed: totalTrashed, restored: totalRestored }),
+      JSON.stringify({ ok: true, trashed: totalTrashed, restored: totalRestored, warnings }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

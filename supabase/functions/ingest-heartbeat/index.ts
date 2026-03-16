@@ -44,8 +44,13 @@ Deno.serve(async (req) => {
       meta: body.meta || {},
     });
 
-    // Update last_heartbeat_at on site
-    await supabase.from("sites").update({ last_heartbeat_at: now, status: "UP" }).eq("id", site.id);
+    // Update last_heartbeat_at and plugin_version on site
+    const updateData: Record<string, unknown> = { last_heartbeat_at: now, status: "UP" };
+    const pluginVersion = body.plugin_version || body.pluginVersion;
+    if (pluginVersion && typeof pluginVersion === "string") {
+      updateData.plugin_version = pluginVersion;
+    }
+    await supabase.from("sites").update(updateData).eq("id", site.id);
 
     // If site was DOWN and we got a response, recover it
     if (site.status === "DOWN") {

@@ -12,6 +12,7 @@
     var body = JSON.stringify({
       domain: CFG.domain,
       source: 'js',
+      plugin_version: CFG.pluginVersion || null,
       meta: { user_agent: navigator.userAgent }
     });
 

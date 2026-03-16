@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const { data: site } = await supabase
-      .from("sites").select("id, domain, org_id, url")
+      .from("sites").select("id, domain, org_id, url, plugin_version")
       .eq("id", site_id).maybeSingle();
 
     if (!site) {

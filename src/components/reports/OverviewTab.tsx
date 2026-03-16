@@ -72,6 +72,12 @@ export default function OverviewTab() {
     queryKey: ["reports_overview_live", orgId],
     queryFn: async () => {
       if (!orgId) return null;
+
+      const dayStart7 = `${start}T00:00:00Z`;
+      const dayStart14 = `${prevStart}T00:00:00Z`;
+      const dayEnd7 = `${prevEnd}T00:00:00Z`;
+      const nowIso = new Date().toISOString();
+
       const [sessionsRes, prevSessionsRes, leadsRes, prevLeadsRes, brokenRes, incidentsRes] = await Promise.all([
         supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", start),
         supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStart).lt("date", prevEnd),
@@ -81,10 +87,25 @@ export default function OverviewTab() {
         supabase.from("incidents").select("id", { count: "exact", head: true }).eq("org_id", orgId).is("resolved_at", null),
       ]);
       const sum = (rows: any[] | null) => (rows || []).reduce((s, r) => s + Number(r.value || 0), 0);
-      const currentSessions = sum(sessionsRes.data);
-      const previousSessions = sum(prevSessionsRes.data);
-      const currentLeads = sum(leadsRes.data);
-      const previousLeads = sum(prevLeadsRes.data);
+      let currentSessions = sum(sessionsRes.data);
+      let previousSessions = sum(prevSessionsRes.data);
+      let currentLeads = sum(leadsRes.data);
+      let previousLeads = sum(prevLeadsRes.data);
+
+      // Fallback to raw counts if aggregated tables are empty/zero
+      if (currentSessions === 0 && currentLeads === 0) {
+        const [rawSess, rawPrevSess, rawLeads, rawPrevLeads] = await Promise.all([
+          supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart7).lte("started_at", nowIso),
+          supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart14).lt("started_at", dayEnd7),
+          supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart7).lte("submitted_at", nowIso),
+          supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart14).lt("submitted_at", dayEnd7),
+        ]);
+        currentSessions = rawSess.count || 0;
+        previousSessions = rawPrevSess.count || 0;
+        currentLeads = rawLeads.count || 0;
+        previousLeads = rawPrevLeads.count || 0;
+      }
+
       const currentCvr = currentSessions > 0 ? Math.round((currentLeads / currentSessions) * 10000) / 100 : 0;
       const previousCvr = previousSessions > 0 ? Math.round((previousLeads / previousSessions) * 10000) / 100 : 0;
       const inputs: InsightInputs = { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinksCount: brokenRes.count || 0, activeIncidents: incidentsRes.count || 0 };

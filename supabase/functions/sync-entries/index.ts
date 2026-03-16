@@ -134,12 +134,32 @@ Deno.serve(async (req) => {
       .eq("org_id", orgId)
       .eq("site_id", siteId)
       .eq("provider", "avada");
-...
+    const avadaFormIds = new Set((avadaFormsFromDb.data || []).map((f: any) => f.external_form_id));
+
+    const avadaInPayload = forms.filter((f: any) => avadaFormIds.has(String(f.form_id || "")));
+    const allAvadaEmpty = avadaInPayload.length > 0 &&
+      avadaInPayload.every((f: any) => (f.entry_ids || []).length === 0);
+
+    if (allAvadaEmpty) {
+      console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync`);
+      warnings.push(
+        pluginNeedsAvadaFix
+          ? `Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.10+ and click "Sync Forms" in WordPress.`
+          : `Avada entry discovery failed on ACTV TRKR v${detectedPluginVersion} — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Run "Sync Forms" in WordPress, then re-sync entries.`
+      );
+    }
+
+    // ── SAFETY GUARD 2: Duplicate active ID sets across Avada forms (global fallback bug) ──
+    const avadaPayloadForms = forms.filter((f: any) => avadaFormIds.has(String(f.form_id || "")));
+    const hasDuplicateAvadaSets = detectDuplicateAvadaSets(avadaPayloadForms);
+    if (hasDuplicateAvadaSets) {
+      console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — enabling safe mode (no Avada trashing)`);
       warnings.push(
         pluginNeedsAvadaFix
           ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v1.3.10+ and re-sync.`
           : `Avada returned identical active-entry lists across multiple forms on ACTV TRKR v${detectedPluginVersion}. To protect your data, Avada delete-sync is running in safe mode (no trashing) until per-form entry IDs are detected.`
       );
+    }
     }
 
     for (const f of forms) {

@@ -171,6 +171,25 @@ Deno.serve(async (req) => {
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
 
+      // Safety: outdated plugin versions can return empty Avada active IDs incorrectly.
+      // In that case, restore any previously trashed Avada leads and skip destructive sync.
+      if (provider === "avada" && pluginOutdated && activeEntryIds.length === 0) {
+        const { data: restoredRows, error: restoreLegacyError } = await supabase
+          .from("leads")
+          .update({ status: "new" })
+          .eq("org_id", orgId)
+          .eq("form_id", formId)
+          .eq("status", "trashed")
+          .select("id");
+
+        if (restoreLegacyError) throw restoreLegacyError;
+
+        const restoredNow = restoredRows?.length || 0;
+        totalRestored += restoredNow;
+        console.log(`sync-entries: form=${extFormId} provider=avada plugin_outdated=true active=0 -> restored_all=${restoredNow}`);
+        continue;
+      }
+
       // CRITICAL: If plugin reports ZERO active entries, hard-trash all leads for this form.
       // This avoids fragile timestamp matching when providers return empty active sets.
       if (activeEntryIds.length === 0) {

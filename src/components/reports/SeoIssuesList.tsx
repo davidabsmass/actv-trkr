@@ -94,11 +94,19 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         {/* Fix status badges */}
-                        {queueItem?.status === "pending" && (
-                          <Badge className="bg-warning/20 text-warning border-warning/30 text-[9px] gap-1">
-                            <Clock className="h-2.5 w-2.5" /> Pending
-                          </Badge>
-                        )}
+                        {queueItem?.status === "pending" && (() => {
+                          const isStale = queueItem.created_at && (Date.now() - new Date(queueItem.created_at).getTime()) > 60 * 60 * 1000;
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <Badge className={`${isStale ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-warning/20 text-warning border-warning/30"} text-[9px] gap-1`}>
+                                <Clock className="h-2.5 w-2.5" /> {isStale ? "Stale" : "Pending"}
+                              </Badge>
+                              {isStale && (
+                                <span className="text-[9px] text-destructive/80">Plugin may not be polling — deactivate &amp; reactivate in WP</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {queueItem?.status === "applied" && (
                           <>
                             <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-[9px] gap-1">

@@ -251,6 +251,12 @@ export default function Forms() {
         if (wpResult?.trashed) trashed += Number(wpResult.trashed) || 0;
         if (wpResult?.restored) restored += Number(wpResult.restored) || 0;
 
+        // Surface warnings from sync-entries backend (e.g. safety guards)
+        const syncWarnings = wpResult?.warnings as string[] | undefined;
+        if (syncWarnings && Array.isArray(syncWarnings)) {
+          warnings.push(...syncWarnings);
+        }
+
         if (data?.checked) checked += Number(data.checked) || 0;
       }
 

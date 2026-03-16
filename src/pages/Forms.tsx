@@ -273,11 +273,17 @@ export default function Forms() {
         toast.warning(`Some sites failed to sync (${errors.length})`);
       }
 
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
-      queryClient.invalidateQueries({ queryKey: ["total_submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["forms"] });
-      queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["leads"] }),
+        queryClient.invalidateQueries({ queryKey: ["leads_by_form"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] }),
+        queryClient.invalidateQueries({ queryKey: ["total_submissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["forms"] }),
+        queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] }),
+      ]);
+
+      await queryClient.refetchQueries({ queryKey: ["leads_by_form"], type: "active" });
     } catch (err: any) {
       toast.error(err.message || "Sync failed");
     } finally {
@@ -464,11 +470,16 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       if (data?.checked) parts.push(`${data.checked} form check(s) completed`);
 
       toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
-      queryClient.invalidateQueries({ queryKey: ["leads_by_form"] });
-      queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });
-      queryClient.invalidateQueries({ queryKey: ["total_submissions"] });
-      queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] });
-      queryClient.invalidateQueries({ queryKey: ["forms"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["leads_by_form"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] }),
+        queryClient.invalidateQueries({ queryKey: ["total_submissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] }),
+        queryClient.invalidateQueries({ queryKey: ["forms"] }),
+      ]);
+
+      await queryClient.refetchQueries({ queryKey: ["leads_by_form", orgId, form.id], type: "active" });
     } catch (err: any) {
       toast.error(err.message || "Sync failed");
     } finally {

@@ -607,6 +607,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
 
       const syncStatus = data?.sync_status as string | undefined;
       const result = data?.wp_result?.result;
+      const runtimePluginVersion = (data?.runtime_plugin_version || result?.plugin_version || null) as string | null;
       const parts: string[] = [];
       if (result?.synced) parts.push(`${result.synced} form(s) synced`);
       if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
@@ -619,7 +620,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       }
 
       if (syncStatus === "blocked") {
-        toast.error("Sync blocked — Avada entry discovery failed. Update the plugin to v1.3.9+ and re-sync.");
+        toast.error(getBlockedSyncMessage(runtimePluginVersion));
       } else if (syncStatus === "partial") {
         toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
       } else {

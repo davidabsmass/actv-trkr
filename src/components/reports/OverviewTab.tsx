@@ -125,9 +125,10 @@ export default function OverviewTab() {
     return <div className="flex items-center justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  // Use nightly summary if available, otherwise fall back to live data
-  const hasNightly = !!nightlySummary;
-  const metrics = hasNightly ? nightlySummary.metrics_snapshot : null;
+  // Use nightly summary only if it has non-zero metrics (zero means aggregation failed)
+  const nightlyHasData = !!nightlySummary && (nightlySummary.metrics_snapshot?.sessions?.current > 0 || nightlySummary.metrics_snapshot?.leads?.current > 0);
+  const hasNightly = nightlyHasData;
+  const metrics = hasNightly ? nightlySummary!.metrics_snapshot : null;
   const currentSessions = metrics?.sessions.current ?? liveData?.currentSessions ?? 0;
   const previousSessions = metrics?.sessions.previous ?? liveData?.previousSessions ?? 0;
   const currentLeads = metrics?.leads.current ?? liveData?.currentLeads ?? 0;

@@ -67,7 +67,7 @@ export function InsightCard({ finding }: { finding: Finding }) {
           {metricEntries.map(([key, val]) => (
             <span key={key} className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 rounded px-2 py-0.5">
               <span className="capitalize">{key.replace(/_/g, " ")}:</span>
-              <span className="text-foreground font-semibold">{typeof val === "number" ? val.toLocaleString() : val}</span>
+              <span className="text-foreground font-semibold">{typeof val === "number" ? `${val.toLocaleString()}${key.toLowerCase().includes("change") || key.toLowerCase().includes("pct") ? "%" : ""}` : val}</span>
             </span>
           ))}
         </div>

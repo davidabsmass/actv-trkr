@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
           .update({ status: "trashed" })
           .eq("org_id", orgId).eq("form_id", formId)
           .eq("submitted_at", entry.submitted_at)
-          .neq("status", "trashed");
+          .neq("status", "trashed")
+          .select("id", { count: "exact" });
         totalTrashed += (count || 0);
       }
 
@@ -145,7 +146,8 @@ Deno.serve(async (req) => {
           .update({ status: "new" })
           .eq("org_id", orgId).eq("form_id", formId)
           .eq("submitted_at", entry.submitted_at)
-          .eq("status", "trashed");
+          .eq("status", "trashed")
+          .select("id", { count: "exact" });
         totalRestored += (count || 0);
       }
 

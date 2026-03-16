@@ -8,6 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  */
 class MM_Forms {
 
+	/** @var string|null Last Avada discovery strategy used (for diagnostics). */
+	private static $last_avada_strategy = null;
+
 	public static function init() {
 		$opts = MM_Settings::get();
 

@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.3.7' );
+define( 'MM_PLUGIN_VERSION', '1.3.8' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 

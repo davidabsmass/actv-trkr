@@ -365,21 +365,21 @@ const Dashboard = () => {
           {/* Row 1 – 6 KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <KPICard
-              label="Sessions (7d)"
-              value={wowData.sessions.current.toLocaleString()}
-              trend={pctChange(wowData.sessions.current, wowData.sessions.previous)}
+              label={`Sessions (${days}d)`}
+              value={periodData.sessions.current.toLocaleString()}
+              trend={pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
             />
             <KPICard
-              label="Leads (7d)"
-              value={wowData.leads.current}
-              trend={pctChange(wowData.leads.current, wowData.leads.previous)}
+              label={`Leads (${days}d)`}
+              value={periodData.leads.current}
+              trend={pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <KPICard
               label="Conversion Rate"
-              value={`${(wowData.cvr.current * 100).toFixed(1)}%`}
-              trend={pctChange(wowData.cvr.current, wowData.cvr.previous)}
+              value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
+              trend={pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
             />
             <KPICard

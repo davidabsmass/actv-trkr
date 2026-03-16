@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       const extFormId = String(f.form_id || "");
       const activeEntryIds: string[] = (f.entry_ids || []).map(String);
 
-      if (!extFormId || activeEntryIds.length === 0) continue;
+      if (!extFormId) continue;
 
       // Find the internal form id
       const { data: formRow } = await supabase

@@ -590,15 +590,11 @@ export default function Reports() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="weekly">Weekly Summary</TabsTrigger>
-          <TabsTrigger value="monthly">Monthly Summary</TabsTrigger>
           <TabsTrigger value="activity">Activity Reports</TabsTrigger>
           <TabsTrigger value="archives">Archives</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>
-        <TabsContent value="weekly"><WeeklyTab /></TabsContent>
-        <TabsContent value="monthly"><MonthlyTab /></TabsContent>
         <TabsContent value="activity"><ActivityReportsTab /></TabsContent>
         <TabsContent value="archives"><ArchivesContent /></TabsContent>
       </Tabs>

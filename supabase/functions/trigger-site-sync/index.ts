@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.6");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.7");
 
     const { data: membership } = await supabase
       .from("org_users").select("role")
@@ -353,7 +353,7 @@ Deno.serve(async (req) => {
     if (pluginOutdated) {
       pluginWarning = `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`;
     } else if (pluginNeedsAvadaFix && trashed === 0 && restored === 0) {
-      pluginWarning = `Plugin v${site.plugin_version || "unknown"} may have trouble reading Avada form entries. Please update to v1.3.6+ and re-sync.`;
+      pluginWarning = `Plugin v${site.plugin_version || "unknown"} may have trouble reading Avada form entries. Please update to v1.3.7+ and re-sync.`;
     }
 
     return new Response(JSON.stringify({

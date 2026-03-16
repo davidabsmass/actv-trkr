@@ -4,12 +4,22 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.3.5
+Stable tag: 1.3.7
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.3.7 =
+* CRITICAL: Removed global Avada fallback that caused mass-trashing of all entries.
+* Each Avada form now only returns entries scoped to its own form_id.
+* Backend sync guards detect duplicate active-ID sets and full-trash patterns.
+* Prevents accidental data loss when Avada entry discovery fails.
+
+= 1.3.6 =
+* Hardened Avada entry discovery with multi-table lookup.
+* Added safety guard for all-empty Avada form payloads.
 
 = 1.3.5 =
 * Fixed Avada entry reconciliation when form IDs differ across installs.

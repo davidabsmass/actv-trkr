@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.3.4: Avada form discovery + stable DB-backed entry IDs for reconciliation
-const LATEST_VERSION = "1.3.5";
+const LATEST_VERSION = "1.3.7";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,16 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.7
+- CRITICAL: Removed global Avada fallback that caused mass-trashing of all entries
+- Each Avada form now only returns entries scoped to its own form_id
+- Backend sync guards detect duplicate active-ID sets and full-trash patterns
+- Prevents accidental data loss when Avada entry discovery fails
+
+## 1.3.6
+- Hardened Avada entry discovery with multi-table lookup
+- Added safety guard for all-empty Avada form payloads
+
 ## 1.3.5
 - Fixed Avada entry reconciliation when form IDs differ across installs
 - Improved Avada active-entry lookup with URL + global fallback matching

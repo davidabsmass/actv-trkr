@@ -466,13 +466,10 @@ class MM_Forms {
 					}
 				}
 
-				// Layer 3: global fallback (all rows in table)
-				if ( ! is_array( $rows ) || empty( $rows ) ) {
-					if ( $avada_global_rows === null ) {
-						$avada_global_rows = $wpdb->get_results( "SELECT id, {$ts_col} AS ts FROM {$table} ORDER BY id DESC LIMIT 5000" );
-					}
-					$rows = $avada_global_rows;
-				}
+			// Layer 3: REMOVED — global fallback caused all Avada forms to report
+			// identical entry sets, leading to mass-trash on sync. If neither form_id
+			// nor page_url matched, we return empty (safe failure) rather than returning
+			// every row in the table for every form.
 
 				if ( ! is_array( $rows ) || empty( $rows ) ) {
 					error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows found across all layers' );

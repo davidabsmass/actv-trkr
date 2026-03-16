@@ -10,7 +10,7 @@ import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
 import { FunnelWidget } from "@/components/dashboard/FunnelWidget";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
-import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
+import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import {
   BarChart3, Zap, AlertTriangle, Globe, Search,

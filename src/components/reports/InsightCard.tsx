@@ -2,11 +2,12 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { Finding } from "@/lib/insight-engine";
 
 export function SummaryCard({
-  label, value, change, summary,
+  label, value, change, changeLabel, summary,
 }: {
   label: string;
   value: string | number;
   change?: number | null;
+  changeLabel?: string;
   summary?: string;
 }) {
   return (
@@ -21,6 +22,9 @@ export function SummaryCard({
           </span>
         )}
       </div>
+      {changeLabel && change !== null && change !== undefined && (
+        <p className="text-[10px] text-muted-foreground/60 mb-1">{changeLabel}</p>
+      )}
       {summary && <p className="text-xs text-muted-foreground leading-relaxed">{summary}</p>}
     </div>
   );
@@ -42,6 +46,8 @@ const categoryColors: Record<string, string> = {
 };
 
 export function InsightCard({ finding }: { finding: Finding }) {
+  const metricEntries = finding.metric_values ? Object.entries(finding.metric_values) : [];
+
   return (
     <div className={`rounded-lg border p-4 ${severityColors[finding.severity]}`}>
       <div className="flex items-center gap-2 mb-1.5">
@@ -54,6 +60,19 @@ export function InsightCard({ finding }: { finding: Finding }) {
       </div>
       <h4 className="text-sm font-semibold text-foreground mb-1">{finding.title}</h4>
       <p className="text-xs text-foreground/80 leading-relaxed">{finding.explanation}</p>
+
+      {/* Surface actual metric values so recommendations are grounded in data */}
+      {metricEntries.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {metricEntries.map(([key, val]) => (
+            <span key={key} className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 rounded px-2 py-0.5">
+              <span className="capitalize">{key.replace(/_/g, " ")}:</span>
+              <span className="text-foreground font-semibold">{typeof val === "number" ? val.toLocaleString() : val}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
       {finding.recommended_action && (
         <div className="mt-2 pt-2 border-t border-border/50">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Suggested Action</p>

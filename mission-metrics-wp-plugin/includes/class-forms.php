@@ -246,6 +246,7 @@ class MM_Forms {
 		if ( ! $discovered ) $discovered = self::discover_forms_list();
 
 		$forms_with_entries = array();
+		$avada_diagnostics = array();
 
 		foreach ( $discovered as $form_info ) {
 			$provider = $form_info['provider'] ?? '';
@@ -254,6 +255,24 @@ class MM_Forms {
 
 			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null );
 			if ( $entry_ids === null ) continue;
+
+			// Collect Avada per-form diagnostics
+			if ( $provider === 'avada' ) {
+				$diag = array(
+					'form_id'   => $form_id,
+					'count'     => 0,
+					'strategy'  => 'none',
+				);
+
+				if ( is_array( $entry_ids ) && ! empty( $entry_ids ) && is_array( $entry_ids[0] ) ) {
+					$diag['count'] = count( $entry_ids );
+					$diag['strategy'] = self::$last_avada_strategy ?? 'unknown';
+				} elseif ( is_array( $entry_ids ) ) {
+					$diag['count'] = count( $entry_ids );
+					$diag['strategy'] = self::$last_avada_strategy ?? 'unknown';
+				}
+				$avada_diagnostics[] = $diag;
+			}
 
 			// Avada returns array of {id, ts} objects; others return plain string arrays
 			if ( $provider === 'avada' && ! empty( $entry_ids ) && is_array( $entry_ids[0] ) ) {
@@ -277,7 +296,7 @@ class MM_Forms {
 			}
 		}
 
-		if ( empty( $forms_with_entries ) ) return array( 'trashed' => 0, 'restored' => 0 );
+		if ( empty( $forms_with_entries ) ) return array( 'trashed' => 0, 'restored' => 0, 'warnings' => array(), 'avada_diagnostics' => $avada_diagnostics );
 
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-entries';
 
@@ -295,13 +314,15 @@ class MM_Forms {
 
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Entry sync error: ' . $response->get_error_message() );
-			return array( 'trashed' => 0, 'restored' => 0, 'error' => $response->get_error_message() );
+			return array( 'trashed' => 0, 'restored' => 0, 'error' => $response->get_error_message(), 'warnings' => array(), 'avada_diagnostics' => $avada_diagnostics );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		return array(
-			'trashed'  => $body['trashed'] ?? 0,
-			'restored' => $body['restored'] ?? 0,
+			'trashed'           => $body['trashed'] ?? 0,
+			'restored'          => $body['restored'] ?? 0,
+			'warnings'          => $body['warnings'] ?? array(),
+			'avada_diagnostics' => $avada_diagnostics,
 		);
 	}
 

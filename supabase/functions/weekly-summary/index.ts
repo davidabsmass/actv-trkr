@@ -152,6 +152,8 @@ serve(async (req) => {
       const sessionsChange = prevWeekSess > 0 ? ((thisWeekSess - prevWeekSess) / prevWeekSess) * 100 : 0;
       const leadsChange = prevWeekLeads > 0 ? ((thisWeekLeads - prevWeekLeads) / prevWeekLeads) * 100 : 0;
       const cvr = thisWeekSess > 0 ? (thisWeekLeads / thisWeekSess) * 100 : 0;
+      const prevCvr = prevWeekSess > 0 ? (prevWeekLeads / prevWeekSess) * 100 : 0;
+      const cvrChange = prevCvr > 0 ? ((cvr - prevCvr) / prevCvr) * 100 : 0;
 
       const { data: site } = await supabase
         .from("sites")

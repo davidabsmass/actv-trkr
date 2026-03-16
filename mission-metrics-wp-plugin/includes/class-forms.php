@@ -192,7 +192,7 @@ class MM_Forms {
 		}
 
 		if ( empty( $discovered ) ) {
-			return array( 'synced' => 0, 'discovered' => 0 );
+			return array( 'synced' => 0, 'discovered' => 0, 'plugin_version' => MM_PLUGIN_VERSION );
 		}
 
 		// Discover page URLs for each form by scanning post content
@@ -217,7 +217,7 @@ class MM_Forms {
 
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Form sync error: ' . $response->get_error_message() );
-			return array( 'synced' => 0, 'discovered' => count( $discovered ), 'error' => $response->get_error_message() );
+			return array( 'synced' => 0, 'discovered' => count( $discovered ), 'error' => $response->get_error_message(), 'plugin_version' => MM_PLUGIN_VERSION );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -226,10 +226,13 @@ class MM_Forms {
 		$entry_result = self::sync_entry_ids( $discovered, $domain, $opts );
 
 		return array(
-			'synced'     => $body['synced'] ?? 0,
-			'discovered' => count( $discovered ),
-			'trashed'    => $entry_result['trashed'] ?? 0,
-			'restored'   => $entry_result['restored'] ?? 0,
+			'synced'            => $body['synced'] ?? 0,
+			'discovered'        => count( $discovered ),
+			'trashed'           => $entry_result['trashed'] ?? 0,
+			'restored'          => $entry_result['restored'] ?? 0,
+			'warnings'          => $entry_result['warnings'] ?? array(),
+			'avada_diagnostics' => $entry_result['avada_diagnostics'] ?? array(),
+			'plugin_version'    => MM_PLUGIN_VERSION,
 		);
 	}
 

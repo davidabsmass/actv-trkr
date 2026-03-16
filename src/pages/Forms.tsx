@@ -501,17 +501,6 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5 relative" disabled={importing}>
-            <Upload className={`h-3.5 w-3.5 ${importing ? "animate-pulse" : ""}`} />
-            {importing ? "Importing…" : "Import Form Entries"}
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleCsvImport}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              disabled={importing}
-            />
-          </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSync} disabled={syncing}>
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Syncing…" : "Sync Entries"}

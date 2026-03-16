@@ -429,17 +429,15 @@ const Dashboard = () => {
           {/* Row 3 – Latest Summary */}
           <LatestSummary />
 
-          {/* Row 4 – Funnel + Three-column grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <FunnelWidget
-              totalSessions={realtimeData?.totalSessions || 0}
-              totalPageviews={realtimeData?.totalPageviews || 0}
-              totalLeads={realtimeData?.totalLeads || 0}
-              formStarts={formStartsCount || undefined}
-            />
-            <WhatsWorking />
-            <TopPagesAndSources />
-          </div>
+          {/* Row 4 – Key insights stacked */}
+          <FunnelWidget
+            totalSessions={realtimeData?.totalSessions || 0}
+            totalPageviews={realtimeData?.totalPageviews || 0}
+            totalLeads={realtimeData?.totalLeads || 0}
+            formStarts={formStartsCount || undefined}
+          />
+          <WhatsWorking />
+          <TopPagesAndSources />
         </div>
       )}
 

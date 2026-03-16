@@ -377,7 +377,19 @@ class MM_Forms {
 		global $wpdb;
 
 		switch ( $provider ) {
-...
+			case 'gravity_forms':
+				if ( ! class_exists( 'GFAPI' ) ) return null;
+				$search = array( 'status' => 'active' );
+				$entries = \GFAPI::get_entries( $form_id, $search, null, array( 'offset' => 0, 'page_size' => 5000 ) );
+				if ( ! is_array( $entries ) ) return array();
+				return array_map( function( $e ) { return (string) $e['id']; }, $entries );
+
+			case 'wpforms':
+				if ( ! function_exists( 'wpforms' ) || ! isset( wpforms()->entry ) ) return null;
+				$entries = wpforms()->entry->get_entries( array( 'form_id' => $form_id ) );
+				if ( ! is_array( $entries ) ) return array();
+				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
+
 			case 'avada':
 				// Avada stores submissions in fusion_form_submissions table.
 				// Some installs use an internal form_id that differs from fusion_form post ID,

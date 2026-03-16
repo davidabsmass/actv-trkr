@@ -280,15 +280,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!isVersionAtLeast(site.plugin_version, "1.3.3")) {
-      return new Response(JSON.stringify({
-        error: "Plugin update required",
-        details: `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer, then run Sync Entries again.`,
-      }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.3");
 
     const { data: membership } = await supabase
       .from("org_users").select("role")

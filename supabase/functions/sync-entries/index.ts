@@ -193,8 +193,14 @@ Deno.serve(async (req) => {
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
 
+      // Safety: if ALL Avada forms report 0 active entries, skip destructive sync
+      // (likely a plugin discovery failure, not genuine deletion of all entries).
+      if (provider === "avada" && allAvadaEmpty && activeEntryIds.length === 0) {
+        console.log(`sync-entries: form=${extFormId} provider=avada allAvadaEmpty=true active=0 -> skipping (discovery failure)`);
+        continue;
+      }
+
       // Safety: outdated plugin versions can return empty Avada active IDs incorrectly.
-      // In that case, restore any previously trashed Avada leads and skip destructive sync.
       if (provider === "avada" && pluginOutdated && activeEntryIds.length === 0) {
         const { data: restoredRows, error: restoreLegacyError } = await supabase
           .from("leads")

@@ -252,11 +252,26 @@ class MM_Forms {
 			$entry_ids = self::get_active_entry_ids( $provider, $form_id );
 			if ( $entry_ids === null ) continue;
 
-			$forms_with_entries[] = array(
-				'form_id'   => $form_id,
-				'provider'  => $provider,
-				'entry_ids' => $entry_ids,
-			);
+			// Avada returns array of {id, ts} objects; others return plain string arrays
+			if ( $provider === 'avada' && ! empty( $entry_ids ) && is_array( $entry_ids[0] ) ) {
+				$ids = array_map( function( $e ) { return $e['id']; }, $entry_ids );
+				$timestamps = array();
+				foreach ( $entry_ids as $e ) {
+					$timestamps[ $e['id'] ] = $e['ts'];
+				}
+				$forms_with_entries[] = array(
+					'form_id'          => $form_id,
+					'provider'         => $provider,
+					'entry_ids'        => $ids,
+					'entry_timestamps' => $timestamps,
+				);
+			} else {
+				$forms_with_entries[] = array(
+					'form_id'   => $form_id,
+					'provider'  => $provider,
+					'entry_ids' => $entry_ids,
+				);
+			}
 		}
 
 		if ( empty( $forms_with_entries ) ) return array( 'trashed' => 0, 'restored' => 0 );

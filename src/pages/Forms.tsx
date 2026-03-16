@@ -451,10 +451,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (data?.fallback) {
-        const warning = data?.plugin_warning || "Sync route unavailable on WordPress. Entry reconciliation did not run.";
-        throw new Error(warning);
-      }
+
       if (data?.plugin_warning) {
         toast.warning(data.plugin_warning);
       }
@@ -464,6 +461,8 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       if (result?.synced) parts.push(`${result.synced} form(s) synced`);
       if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
       if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
+      if (data?.checked) parts.push(`${data.checked} form check(s) completed`);
+
       toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
       queryClient.invalidateQueries({ queryKey: ["leads_by_form"] });
       queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] });

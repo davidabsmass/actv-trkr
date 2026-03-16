@@ -155,10 +155,10 @@ export default function WeeklyTab() {
         {/* Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Sessions", value: summary.sessions_current, change: Number(summary.sessions_change) },
-            { label: "Leads", value: summary.leads_current, change: Number(summary.leads_change) },
-            { label: "CVR", value: `${summary.cvr_current}%`, change: Number(summary.cvr_change) },
-            { label: "Top Source", value: summary.top_source || "—", change: null },
+            { label: "Sessions", value: sessionsCurrent, change: Number(summary.sessions_change) },
+            { label: "Leads", value: leadsCurrent, change: Number(summary.leads_change) },
+            { label: "CVR", value: `${cvrCurrent}%`, change: cvrChange },
+            { label: "Top Source", value: topSource, change: null },
           ].map((m) => (
             <div key={m.label} className="p-3 rounded-md bg-muted/50">
               <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>

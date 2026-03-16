@@ -11,19 +11,13 @@ async function hashKey(key: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-/**
- * Derive canonical Avada ID only when payload already includes a DB-backed entry_id.
- * Do not parse legacy "submission" field tokens here because format is installation-dependent.
- */
 function deriveAvadaCanonicalId(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const p = payload as Record<string, unknown>;
-
   const entry = p.entry as Record<string, unknown> | undefined;
   if (entry?.entry_id && typeof entry.entry_id === "string" && entry.entry_id.startsWith("avada_db_")) {
     return entry.entry_id;
   }
-
   return null;
 }
 
@@ -40,10 +34,36 @@ function parseVersion(version: string | null | undefined): [number, number, numb
 function isVersionAtLeast(version: string | null | undefined, minimum: string): boolean {
   const [major, minor, patch] = parseVersion(version);
   const [minMajor, minMinor, minPatch] = parseVersion(minimum);
-
   if (major !== minMajor) return major > minMajor;
   if (minor !== minMinor) return minor > minMinor;
   return patch >= minPatch;
+}
+
+/**
+ * Detect if multiple Avada forms in the payload share the same (or nearly identical)
+ * active entry ID sets — a clear sign of the global-fallback bug.
+ */
+function detectDuplicateAvadaSets(forms: any[]): boolean {
+  const avadaForms = forms.filter((f: any) => {
+    const extFormId = String(f.form_id || "");
+    return extFormId !== "" && (f.entry_ids || []).length > 0;
+  });
+
+  if (avadaForms.length < 2) return false;
+
+  // Compare entry ID sets pairwise — if any two are >80% identical, it's the bug
+  for (let i = 0; i < avadaForms.length; i++) {
+    for (let j = i + 1; j < avadaForms.length; j++) {
+      const setA = new Set(avadaForms[i].entry_ids as string[]);
+      const setB = new Set(avadaForms[j].entry_ids as string[]);
+      const intersection = [...setA].filter(id => setB.has(id)).length;
+      const smaller = Math.min(setA.size, setB.size);
+      if (smaller > 0 && intersection / smaller > 0.8) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 Deno.serve(async (req) => {
@@ -105,12 +125,7 @@ Deno.serve(async (req) => {
     let totalTrashed = 0;
     let totalRestored = 0;
 
-    // Safety check: if ALL Avada forms report 0 active entries, treat as plugin
-    // discovery failure and skip destructive sync entirely for Avada forms.
-    const avadaForms = forms.filter((f: any) => {
-      const extFormId = String(f.form_id || "");
-      return extFormId !== "";
-    });
+    // ── SAFETY GUARD 1: All Avada forms report 0 active entries ──
     const avadaFormsFromDb = await supabase
       .from("forms")
       .select("external_form_id, provider")
@@ -124,19 +139,25 @@ Deno.serve(async (req) => {
       avadaInPayload.every((f: any) => (f.entry_ids || []).length === 0);
 
     if (allAvadaEmpty) {
-      console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync (likely plugin discovery failure)`);
-      warnings.push(`Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.6+ and click "Sync Forms" in WordPress.`);
+      console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync`);
+      warnings.push(`Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.7+ and click "Sync Forms" in WordPress.`);
+    }
+
+    // ── SAFETY GUARD 2: Duplicate active ID sets across Avada forms (global fallback bug) ──
+    const avadaPayloadForms = forms.filter((f: any) => avadaFormIds.has(String(f.form_id || "")));
+    const hasDuplicateAvadaSets = detectDuplicateAvadaSets(avadaPayloadForms);
+    if (hasDuplicateAvadaSets) {
+      console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — skipping destructive sync for ALL Avada forms (global fallback bug detected)`);
+      warnings.push(`Avada entry sync skipped — multiple forms reported identical entry lists (plugin bug). Please update to v1.3.7+ and re-sync.`);
     }
 
     for (const f of forms) {
       const extFormId = String(f.form_id || "");
       const activeEntryIds: string[] = (f.entry_ids || []).map(String);
-      // Optional: timestamps keyed by entry_id for Avada legacy matching
       const entryTimestamps: Record<string, string> = f.entry_timestamps || {};
 
       if (!extFormId) continue;
 
-      // Find the internal form id
       const { data: formRow } = await supabase
         .from("forms").select("id, provider")
         .eq("org_id", orgId).eq("site_id", siteId).eq("external_form_id", extFormId)
@@ -146,7 +167,12 @@ Deno.serve(async (req) => {
       const formId = formRow.id;
       const provider = formRow.provider || "";
 
-      // Get all lead_events_raw for this form
+      // ── AVADA SAFETY: skip if any guard triggered ──
+      if (provider === "avada" && (allAvadaEmpty || hasDuplicateAvadaSets)) {
+        console.log(`sync-entries: form=${extFormId} provider=avada safety_guard_active=true -> skipping`);
+        continue;
+      }
+
       const { data: rawEvents } = await supabase
         .from("lead_events_raw")
         .select("external_entry_id, submitted_at, payload")
@@ -154,7 +180,6 @@ Deno.serve(async (req) => {
 
       if (!rawEvents || rawEvents.length === 0) continue;
 
-      // Load leads once and index by normalized timestamp so sync isn't fragile to timezone/precision drift.
       const { data: leadRows } = await supabase
         .from("leads")
         .select("id, submitted_at, status")
@@ -176,7 +201,6 @@ Deno.serve(async (req) => {
 
       const activeSet = new Set(activeEntryIds);
 
-      // Build a set of active timestamps for Avada legacy matching
       const activeTimestampSet = new Set<string>();
       for (const ts of Object.values(entryTimestamps)) {
         if (!ts) continue;
@@ -194,13 +218,6 @@ Deno.serve(async (req) => {
       console.log(
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
-
-      // Safety: if ALL Avada forms report 0 active entries, skip destructive sync
-      // (likely a plugin discovery failure, not genuine deletion of all entries).
-      if (provider === "avada" && allAvadaEmpty && activeEntryIds.length === 0) {
-        console.log(`sync-entries: form=${extFormId} provider=avada allAvadaEmpty=true active=0 -> skipping (discovery failure)`);
-        continue;
-      }
 
       // Safety: outdated plugin versions can return empty Avada active IDs incorrectly.
       if (provider === "avada" && pluginOutdated && activeEntryIds.length === 0) {
@@ -220,8 +237,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // CRITICAL: If plugin reports ZERO active entries, hard-trash all leads for this form.
-      // This avoids fragile timestamp matching when providers return empty active sets.
+      // If plugin reports ZERO active entries, trash all leads for this form.
       if (activeEntryIds.length === 0) {
         const { data: trashedRows, error: trashAllError } = await supabase
           .from("leads")
@@ -242,13 +258,12 @@ Deno.serve(async (req) => {
           const eid = rawEvent.external_entry_id;
           const submittedAt = rawEvent.submitted_at;
 
-          // Check if entry is active by exact ID match
           if (activeSet.has(eid)) {
             toRestoreEntries.push(rawEvent);
             continue;
           }
 
-          // Avada legacy reconciliation: try payload-derived canonical ID first
+          // Avada legacy reconciliation
           if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
             const canonicalId = deriveAvadaCanonicalId(rawEvent.payload);
 
@@ -261,7 +276,6 @@ Deno.serve(async (req) => {
               continue;
             }
 
-            // Timestamp fallback for older payloads / plugin responses
             if (submittedAt && activeTimestampSet.size > 0) {
               const submittedAtNorm = normalizeTimestampForCompare(submittedAt);
               if (activeTimestampSet.has(submittedAtNorm)) {
@@ -272,7 +286,6 @@ Deno.serve(async (req) => {
               continue;
             }
 
-            // If Avada provided a comparable active set and this ID/canonical ID is absent, trash it.
             if (hasComparableAvadaActiveIds && activeSet.size > 0) {
               toTrashEntries.push(rawEvent);
             }
@@ -287,6 +300,14 @@ Deno.serve(async (req) => {
             toTrashEntries.push(rawEvent);
           }
         }
+      }
+
+      // ── SAFETY GUARD 3: Full-trash pattern for Avada ──
+      // If we would trash ALL raw events with zero restores, something is wrong
+      if (provider === "avada" && toTrashEntries.length > 0 && toRestoreEntries.length === 0 && toTrashEntries.length === rawEvents.length) {
+        console.log(`sync-entries: form=${extFormId} provider=avada full_trash_pattern=true (${toTrashEntries.length}/${rawEvents.length}) -> skipping destructive sync`);
+        warnings.push(`Avada sync for form ${extFormId} skipped — all ${toTrashEntries.length} entries would be trashed with zero matches. Likely a discovery issue.`);
+        continue;
       }
 
       console.log(
@@ -340,8 +361,7 @@ Deno.serve(async (req) => {
         totalRestored += (restoredRows?.length || 0);
       }
 
-      // Update legacy external_entry_ids in lead_events_raw to stable canonical IDs where possible.
-      // This improves matching reliability on subsequent syncs.
+      // Remap legacy external_entry_ids to stable canonical IDs
       if (provider === "avada" && remapCandidates.length > 0) {
         for (const remap of remapCandidates) {
           const query = supabase
@@ -359,7 +379,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Keep positional remap fallback for providers where payload canonical derivation is unavailable.
+      // Positional remap fallback for ninja_forms / cf7
       if (provider === "ninja_forms" || provider === "cf7") {
         const legacyPrefix = provider === "ninja_forms" ? "ninja_" : "cf7_";
         const newPrefix = provider === "ninja_forms" ? "ninja_db_" : "cf7_db_";

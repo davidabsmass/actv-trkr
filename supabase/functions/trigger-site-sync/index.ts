@@ -397,6 +397,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       sync_status: syncStatus,
+      reason_codes: reasonCodes,
       wp_result: wpData,
       plugin_warning: pluginWarning,
       warnings: wpWarnings,

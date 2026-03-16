@@ -13,12 +13,23 @@ class MM_Updater {
 
 	const SLUG        = 'actv-trkr/actv-trkr.php';
 	const TRANSIENT   = 'mm_update_data';
-	const CHECK_HOURS = 12;
+	const CHECK_HOURS = 1;
 
 	public static function init() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 		add_filter( 'plugin_row_meta', array( __CLASS__, 'row_meta' ), 10, 2 );
+
+		// Force-clear update transient when viewing the plugins page
+		add_action( 'load-plugins.php', array( __CLASS__, 'force_check' ) );
+		add_action( 'load-options-general.php', array( __CLASS__, 'force_check' ) );
+	}
+
+	/**
+	 * Clear the cached update transient so the next check is fresh.
+	 */
+	public static function force_check() {
+		delete_transient( self::TRANSIENT );
 	}
 
 	/**

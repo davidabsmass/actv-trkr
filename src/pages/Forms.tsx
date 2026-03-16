@@ -399,6 +399,10 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (data?.fallback) {
+        throw new Error("Sync route unavailable on WordPress (404). Entry reconciliation did not run — ensure ACTV TRKR v1.3.2 is active.");
+      }
+
       const result = data?.wp_result?.result;
       const parts: string[] = [];
       if (result?.synced) parts.push(`${result.synced} form(s) synced`);

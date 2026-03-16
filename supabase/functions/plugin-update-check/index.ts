@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.5
+- Fixed Avada entry reconciliation when form IDs differ across installs
+- Improved Avada active-entry lookup with URL + global fallback matching
+- Resolves deleted Avada submissions persisting in Forms after sync
+
 ## 1.3.4
 - Avada/Fusion Forms now included in form discovery and entry sync
 - Avada entries use stable DB-backed IDs for reliable delete reconciliation

@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.3");
+    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
 
     const { data: membership } = await supabase
       .from("org_users").select("role")

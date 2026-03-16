@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
       ok: true,
       wp_result: wpData,
       plugin_warning: pluginOutdated
-        ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer for reliable entry reconciliation.`
+        ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`
         : null,
       ...fallback,
     }), {

@@ -153,11 +153,11 @@ Deno.serve(async (req) => {
     const avadaPayloadForms = forms.filter((f: any) => avadaFormIds.has(String(f.form_id || "")));
     const hasDuplicateAvadaSets = detectDuplicateAvadaSets(avadaPayloadForms);
     if (hasDuplicateAvadaSets) {
-      console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — skipping destructive sync for ALL Avada forms (global fallback bug detected)`);
+      console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — enabling safe mode (no Avada trashing)`);
       warnings.push(
         pluginNeedsAvadaFix
           ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v1.3.9+ and re-sync.`
-          : `Avada entry sync skipped on ACTV TRKR v${detectedPluginVersion} — multiple forms reported identical entry lists. Run "Sync Forms" in WordPress, then re-sync entries.`
+          : `Avada returned identical active-entry lists across multiple forms on ACTV TRKR v${detectedPluginVersion}. To protect your data, Avada delete-sync is running in safe mode (no trashing) until per-form entry IDs are detected.`
       );
     }
 

@@ -114,6 +114,26 @@ Deno.serve(async (req) => {
 
       if (!rawEvents || rawEvents.length === 0) continue;
 
+      // Load leads once and index by normalized timestamp so sync isn't fragile to timezone/precision drift.
+      const { data: leadRows } = await supabase
+        .from("leads")
+        .select("id, submitted_at, status")
+        .eq("org_id", orgId)
+        .eq("form_id", formId);
+
+      const leadBuckets = new Map<string, { active: string[]; trashed: string[] }>();
+      for (const lead of leadRows || []) {
+        if (!lead.submitted_at) continue;
+        const key = normalizeTimestampForCompare(lead.submitted_at);
+        const bucket = leadBuckets.get(key) || { active: [], trashed: [] };
+        if (lead.status === "trashed") {
+          bucket.trashed.push(lead.id);
+        } else {
+          bucket.active.push(lead.id);
+        }
+        leadBuckets.set(key, bucket);
+      }
+
       const activeSet = new Set(activeEntryIds);
 
       // Build a set of active timestamps for Avada legacy matching
@@ -189,27 +209,44 @@ Deno.serve(async (req) => {
         `sync-entries: form=${extFormId} to_trash=${toTrashEntries.length} to_restore=${toRestoreEntries.length} remap_candidates=${remapCandidates.length}`,
       );
 
-      // Trash entries that are confirmed deleted
+      const leadIdsToTrash = new Set<string>();
       for (const entry of toTrashEntries) {
         if (!entry.submitted_at) continue;
+        const key = normalizeTimestampForCompare(entry.submitted_at);
+        const bucket = leadBuckets.get(key);
+        if (!bucket) continue;
+        for (const leadId of bucket.active) leadIdsToTrash.add(leadId);
+      }
+
+      const leadIdsToRestore = new Set<string>();
+      for (const entry of toRestoreEntries) {
+        if (!entry.submitted_at) continue;
+        const key = normalizeTimestampForCompare(entry.submitted_at);
+        const bucket = leadBuckets.get(key);
+        if (!bucket) continue;
+        for (const leadId of bucket.trashed) leadIdsToRestore.add(leadId);
+      }
+
+      // Prefer restore when a timestamp collision appears in both buckets.
+      for (const id of leadIdsToRestore) {
+        leadIdsToTrash.delete(id);
+      }
+
+      if (leadIdsToTrash.size > 0) {
         const { count } = await supabase
           .from("leads")
           .update({ status: "trashed" })
-          .eq("org_id", orgId).eq("form_id", formId)
-          .eq("submitted_at", entry.submitted_at)
+          .in("id", Array.from(leadIdsToTrash))
           .neq("status", "trashed")
           .select("id", { count: "exact" });
         totalTrashed += (count || 0);
       }
 
-      // Restore entries that are active
-      for (const entry of toRestoreEntries) {
-        if (!entry.submitted_at) continue;
+      if (leadIdsToRestore.size > 0) {
         const { count } = await supabase
           .from("leads")
           .update({ status: "new" })
-          .eq("org_id", orgId).eq("form_id", formId)
-          .eq("submitted_at", entry.submitted_at)
+          .in("id", Array.from(leadIdsToRestore))
           .eq("status", "trashed")
           .select("id", { count: "exact" });
         totalRestored += (count || 0);

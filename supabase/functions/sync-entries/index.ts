@@ -11,6 +11,41 @@ async function hashKey(key: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Derive a canonical avada_db_<id> from a legacy Avada payload.
+ * The payload's 'submission' field often contains the DB entry ID.
+ */
+function deriveAvadaCanonicalId(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const p = payload as Record<string, unknown>;
+  
+  // Check entry.entry_id in payload (some formats store it there)
+  const entry = p.entry as Record<string, unknown> | undefined;
+  if (entry?.entry_id && typeof entry.entry_id === "string" && entry.entry_id.startsWith("avada_db_")) {
+    return entry.entry_id;
+  }
+
+  // Try to extract from 'submission' metadata string
+  // Format is typically: "form_id, some_data, ..., db_entry_id, ..."
+  const submission = (p.submission as string) || 
+    ((p.fields as Record<string, unknown>)?.submission as string) ||
+    ((p as any)?.data?.submission as string);
+  
+  if (submission && typeof submission === "string") {
+    // Look for a numeric token that could be the DB entry ID
+    const parts = submission.split(",").map((s: string) => s.trim());
+    // The entry ID is typically a standalone integer, often the last or near-last token
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const token = parts[i];
+      if (/^\d+$/.test(token) && parseInt(token, 10) > 100) {
+        return "avada_db_" + token;
+      }
+    }
+  }
+  
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {

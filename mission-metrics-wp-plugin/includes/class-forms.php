@@ -607,18 +607,32 @@ class MM_Forms {
 			}
 		}
 
-		// Also check Avada/Fusion — these use post meta or the Avada builder
+		// Also check Avada/Fusion — scan post content for builder form elements
 		foreach ( $discovered as $idx => &$form ) {
 			if ( ! empty( $form['page_url'] ) ) continue;
 			if ( $form['provider'] !== 'avada' ) continue;
 
-			// Avada stores forms in fusion_form post type
-			$fusion_post = get_posts( array(
-				'post_type' => 'fusion_form',
-				'p'         => intval( $form['form_id'] ),
-				'posts_per_page' => 1,
-			) );
-			// Avada forms are typically embedded via builder — harder to detect page URL
+			$fid = $form['form_id'];
+			// Avada builder embeds forms via [fusion_form form_post_id="ID"] or
+			// builder element attributes like form_post_id="ID"
+			foreach ( $posts as $post_id ) {
+				$content = get_post_field( 'post_content', $post_id );
+				if ( empty( $content ) ) continue;
+
+				$avada_needles = array(
+					'form_post_id="' . $fid . '"',
+					"form_post_id='" . $fid . "'",
+					'[fusion_form form_post_id="' . $fid . '"',
+					"[fusion_form form_post_id='" . $fid . "'",
+				);
+
+				foreach ( $avada_needles as $needle ) {
+					if ( stripos( $content, $needle ) !== false ) {
+						$discovered[ $idx ]['page_url'] = get_permalink( $post_id );
+						break 2;
+					}
+				}
+			}
 		}
 
 		return $discovered;

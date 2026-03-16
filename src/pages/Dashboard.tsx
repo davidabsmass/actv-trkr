@@ -425,9 +425,9 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Row 2 – Trends Mini Chart */}
-          {realtimeData?.dailyMap && (
-            <TrendsMiniChart dailyMap={realtimeData.dailyMap} />
+          {/* Row 2 – Trends Mini Chart (uses lightweight data) */}
+          {realtimeData && (
+            <TrendsMiniChart totalSessions={realtimeData.totalSessions} totalLeads={realtimeData.totalLeads} totalPageviews={realtimeData.totalPageviews} />
           )}
 
           {/* Row 3 – Latest Summary */}

@@ -121,6 +121,8 @@ Deno.serve(async (req) => {
 
     const siteId = site.id;
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.9");
+    const detectedPluginVersion = site.plugin_version || "unknown";
     const warnings: string[] = [];
     let totalTrashed = 0;
     let totalRestored = 0;

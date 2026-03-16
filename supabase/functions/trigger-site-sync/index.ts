@@ -280,8 +280,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.9");
+    const minimumPluginVersion = "1.3.4";
+    const minimumAvadaPluginVersion = "1.3.9";
+    const pluginOutdated = !isVersionAtLeast(site.plugin_version, minimumPluginVersion);
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, minimumAvadaPluginVersion);
 
     // Check if site has any Avada forms
     const { count: avadaFormCount } = await supabase

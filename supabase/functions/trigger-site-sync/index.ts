@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.8");
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.9");
 
     // Check if site has any Avada forms
     const { count: avadaFormCount } = await supabase
@@ -389,9 +389,9 @@ Deno.serve(async (req) => {
 
     let pluginWarning: string | null = null;
     if (pluginOutdated) {
-      pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v1.3.8 or newer for reliable entry reconciliation.`;
+      pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v1.3.9 or newer for reliable entry reconciliation.`;
     } else if (hasAvadaForms && pluginNeedsAvadaFix) {
-      pluginWarning = `Plugin v${runtimePluginVersion || "unknown"} cannot read Avada form entries correctly. Download v1.3.8 from Settings → Plugin and re-sync.`;
+      pluginWarning = `Plugin v${runtimePluginVersion || "unknown"} cannot read Avada form entries correctly. Download v1.3.9 from Settings → Plugin and re-sync.`;
     }
 
     return new Response(JSON.stringify({

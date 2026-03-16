@@ -478,6 +478,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
         toast.warning(data.plugin_warning);
       }
 
+      const syncStatus = data?.sync_status as string | undefined;
       const result = data?.wp_result?.result;
       const parts: string[] = [];
       if (result?.synced) parts.push(`${result.synced} form(s) synced`);
@@ -485,7 +486,19 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
       if (data?.checked) parts.push(`${data.checked} form check(s) completed`);
 
-      toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      const syncWarnings = (data?.warnings || result?.warnings) as string[] | undefined;
+      if (syncWarnings && Array.isArray(syncWarnings) && syncWarnings.length > 0) {
+        syncWarnings.forEach((w: string) => toast.warning(w));
+      }
+
+      if (syncStatus === "blocked") {
+        toast.error("Sync blocked — Avada entry discovery failed. Update the plugin to v1.3.8+ and re-sync.");
+      } else if (syncStatus === "partial") {
+        toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
+      } else {
+        toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      }
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["leads_by_form"] }),
         queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] }),

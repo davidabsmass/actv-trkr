@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
-import { subDays, subMonths, startOfMonth, endOfMonth, format, startOfWeek, endOfWeek, subWeeks } from "date-fns";
+import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
 import {
   Eye, TrendingUp, TrendingDown, Minus, Users, Activity, Sparkles, RefreshCw,
   Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon,
@@ -12,7 +12,7 @@ import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
 import { SummaryCard, InsightCard } from "./InsightCard";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 
-type Period = "7d" | "14d" | "30d" | "weekly" | "monthly" | "custom";
+type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 
 function pctChange(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
@@ -201,20 +201,6 @@ export default function OverviewTab() {
       };
     }
 
-    if (period === "weekly") {
-      const weekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-      const weekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-      const prevWeekEnd = endOfWeek(subWeeks(now, 2), { weekStartsOn: 1 });
-      const prevWeekStart = startOfWeek(subWeeks(now, 2), { weekStartsOn: 1 });
-      return {
-        startDate: format(weekStart, "yyyy-MM-dd"),
-        endDate: format(weekEnd, "yyyy-MM-dd"),
-        prevStartDate: format(prevWeekStart, "yyyy-MM-dd"),
-        prevEndDate: format(prevWeekEnd, "yyyy-MM-dd"),
-        periodLabel: "week",
-      };
-    }
-
     if (period === "monthly") {
       const monthStart = startOfMonth(subMonths(now, 1));
       const monthEnd = endOfMonth(subMonths(now, 1));
@@ -244,7 +230,7 @@ export default function OverviewTab() {
     { key: "7d", label: "7 Days" },
     { key: "14d", label: "14 Days" },
     { key: "30d", label: "30 Days" },
-    { key: "weekly", label: "Weekly" },
+    
     { key: "monthly", label: "Monthly" },
   ];
 

@@ -54,6 +54,10 @@ function deriveAvadaCanonicalId(payload: unknown): string | null {
   return null;
 }
 
+function normalizeTimestampForCompare(ts: string): string {
+  return ts.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "").trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {

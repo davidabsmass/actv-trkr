@@ -127,8 +127,8 @@ const Dashboard = () => {
   const prevEndDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
   const prevStartDate = format(subDays(startOfDay(new Date()), days * 2), "yyyy-MM-dd");
 
-  const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
-  const { data: prevPeriodData } = useRealtimeDashboard(orgId, prevStartDate, prevEndDate);
+  const { data: realtimeData } = useDashboardOverview(orgId, startDate, endDate);
+  const { data: prevPeriodData } = useDashboardOverview(orgId, prevStartDate, prevEndDate);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 

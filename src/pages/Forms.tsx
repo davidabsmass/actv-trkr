@@ -596,7 +596,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       }
 
       if (syncStatus === "blocked") {
-        toast.error("Sync blocked — Avada entry discovery failed. Update the plugin to v1.3.8+ and re-sync.");
+        toast.error("Sync blocked — Avada entry discovery failed. Update the plugin to v1.3.9+ and re-sync.");
       } else if (syncStatus === "partial") {
         toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
       } else {

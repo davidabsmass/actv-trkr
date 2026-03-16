@@ -249,7 +249,7 @@ class MM_Forms {
 			$form_id  = $form_info['form_id'] ?? '';
 			if ( ! $form_id ) continue;
 
-			$entry_ids = self::get_active_entry_ids( $provider, $form_id );
+			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null );
 			if ( $entry_ids === null ) continue;
 
 			// Avada returns array of {id, ts} objects; others return plain string arrays

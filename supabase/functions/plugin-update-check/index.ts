@@ -16,6 +16,12 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.9
+- Wildcard table discovery: finds Avada submission tables even with non-standard names
+- Small-table fallback: if table has ≤200 rows and no form_ref match, returns all entries
+- Enhanced diagnostics: logs table name, columns, and total row count for debugging
+- Additional candidate columns: form_ref, source_id, submission_data, form_fields, response, timestamp
+
 ## 1.3.8
 - Expanded Avada entry discovery with multi-column form-ref matching (form_id, fusion_form_id, post_id, parent_id)
 - Searches blob/payload columns (submission, data, fields, form_data) for form_id and URL markers

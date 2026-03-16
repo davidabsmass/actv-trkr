@@ -185,6 +185,47 @@ async function runDirectFormChecks(
   return { checked, updatedPageUrls, alertsCreated };
 }
 
+async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+  const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
+  const endpoints = [
+    `${normalizedSiteUrl}/wp-json/actv-trkr/v1/sync`,
+    `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/sync`,
+  ];
+
+  let lastResponse: Response | null = null;
+  let lastEndpoint = endpoints[0];
+
+  for (let i = 0; i < endpoints.length; i += 1) {
+    const endpoint = endpoints[i];
+    lastEndpoint = endpoint;
+    console.log(`Triggering sync on ${endpoint}`);
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ triggered_from: "dashboard", key_hash: keyHash }),
+    });
+
+    if (response.ok) {
+      return { response, endpoint };
+    }
+
+    lastResponse = response;
+    const bodyPreview = (await response.clone().text()).toLowerCase();
+    const isMissingRoute = response.status === 404 && bodyPreview.includes("rest_no_route");
+
+    console.error(`WP sync failed on ${endpoint}: ${response.status} ${bodyPreview}`);
+
+    if (!isMissingRoute || i === endpoints.length - 1) {
+      return { response, endpoint };
+    }
+  }
+
+  return { response: lastResponse!, endpoint: lastEndpoint };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

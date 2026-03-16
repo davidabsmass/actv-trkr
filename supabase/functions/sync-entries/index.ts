@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
 
     if (allAvadaEmpty) {
       console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync (likely plugin discovery failure)`);
+      warnings.push(`Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.6+ and click "Sync Forms" in WordPress.`);
     }
 
     for (const f of forms) {

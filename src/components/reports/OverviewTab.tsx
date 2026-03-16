@@ -249,7 +249,10 @@ export default function OverviewTab() {
             {presetOptions.map((o) => (
               <button
                 key={o.key}
-                onClick={() => { setPeriod(o.key); setCustomRange(null); }}
+                onClick={() => {
+                  setPeriod(o.key);
+                  setCustomRange(null);
+                }}
                 className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
                   period === o.key
                     ? "bg-primary text-primary-foreground shadow-sm"
@@ -259,25 +262,67 @@ export default function OverviewTab() {
                 {o.label}
               </button>
             ))}
+
+            <Popover
+              open={customOpen}
+              onOpenChange={(open) => {
+                setCustomOpen(open);
+                if (open) {
+                  setPendingRange(
+                    customRange
+                      ? { from: customRange.from, to: customRange.to }
+                      : { from: subDays(now, 30), to: now }
+                  );
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
+                <button
+                  className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors inline-flex items-center gap-1.5 ${
+                    period === "custom"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <CalendarIcon className="h-3 w-3" />
+                  {period === "custom" && customRange
+                    ? `${format(customRange.from, "MMM d")}–${format(customRange.to, "MMM d")}`
+                    : "Custom"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="end">
+                <Calendar
+                  mode="range"
+                  selected={pendingRange}
+                  onSelect={setPendingRange}
+                  numberOfMonths={2}
+                  defaultMonth={pendingRange?.from || customRange?.from || now}
+                  disabled={(date) => date > now}
+                  className="p-2 pointer-events-auto text-xs"
+                />
+                <div className="flex justify-end gap-2 mt-2 px-1">
+                  <button
+                    onClick={() => setCustomOpen(false)}
+                    className="px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!pendingRange?.from || !pendingRange?.to) return;
+                      setPeriod("custom");
+                      setCustomRange({ from: pendingRange.from, to: pendingRange.to });
+                      setCustomOpen(false);
+                    }}
+                    disabled={!pendingRange?.from || !pendingRange?.to}
+                    className="px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-40"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-          <DateRangeSelector
-            selectedDays={customDays}
-            onDaysChange={(d) => {
-              // Map preset days to our periods
-              if (d === 7) setPeriod("7d");
-              else if (d === 14) setPeriod("14d");
-              else if (d === 30) setPeriod("30d");
-              else if (d === 90) { setPeriod("custom"); setCustomRange({ from: subDays(now, 90), to: now }); }
-              setCustomDays(d);
-              setCustomRange(null);
-            }}
-            customRange={customRange}
-            onCustomRangeChange={(r) => {
-              setPeriod("custom");
-              setCustomRange(r);
-              setCustomDays(null);
-            }}
-          />
         </div>
       </div>
 

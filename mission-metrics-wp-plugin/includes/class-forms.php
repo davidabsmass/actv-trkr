@@ -564,20 +564,50 @@ class MM_Forms {
 
 	/**
 	 * Get the latest Avada submission DB ID for this form.
-	 * Falls back to timestamp-based ID if table doesn't exist.
+	 * Uses submission metadata first (date/url), then falls back to form_id query.
 	 */
-	private static function get_avada_db_entry_id( $form_post_id ) {
+	private static function get_avada_db_entry_id( $form_post_id, $avada_data = array() ) {
 		global $wpdb;
 		$table = $wpdb->prefix . 'fusion_form_submissions';
-		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) === $table ) {
-			$row = $wpdb->get_row( $wpdb->prepare(
-				"SELECT id FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 1",
-				intval( $form_post_id )
-			) );
-			if ( $row ) {
-				return 'avada_db_' . $row->id;
+		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+			return 'avada_' . time() . '_' . wp_rand();
+		}
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+
+		if ( is_array( $avada_data ) && ! empty( $avada_data['submission'] ) && is_string( $avada_data['submission'] ) ) {
+			$parts = array_map( 'trim', explode( ',', $avada_data['submission'] ) );
+			$submitted_at = $parts[1] ?? '';
+			$source_url   = $parts[2] ?? '';
+
+			if ( $submitted_at ) {
+				if ( is_array( $columns ) && in_array( 'source_url', $columns, true ) && $source_url ) {
+					$row = $wpdb->get_row( $wpdb->prepare(
+						"SELECT id FROM {$table} WHERE date_time = %s AND source_url = %s ORDER BY id DESC LIMIT 1",
+						$submitted_at,
+						$source_url
+					) );
+				} else {
+					$row = $wpdb->get_row( $wpdb->prepare(
+						"SELECT id FROM {$table} WHERE date_time = %s ORDER BY id DESC LIMIT 1",
+						$submitted_at
+					) );
+				}
+
+				if ( $row && isset( $row->id ) ) {
+					return 'avada_db_' . $row->id;
+				}
 			}
 		}
+
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT id FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 1",
+			intval( $form_post_id )
+		) );
+		if ( $row && isset( $row->id ) ) {
+			return 'avada_db_' . $row->id;
+		}
+
 		return 'avada_' . time() . '_' . wp_rand();
 	}
 

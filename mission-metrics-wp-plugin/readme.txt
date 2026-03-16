@@ -8,7 +8,40 @@ Stable tag: 1.3.2
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
-...
+
+== Description ==
+
+ACTV TRKR connects your WordPress site to your ACTV TRKR dashboard.
+
+**Features:**
+
+* Lightweight first-party pageview tracking (no third-party scripts)
+* Automatic Gravity Forms submission forwarding
+* Cookie-based visitor and session identification
+* UTM parameter capture and attribution
+* Automatic retry queue for failed transmissions
+* Zero impact on page load speed (async, non-blocking)
+
+== Installation ==
+
+1. Upload the `actv-trkr` folder to `/wp-content/plugins/`
+2. Activate the plugin through the Plugins menu
+3. Go to **Settings → ACTV TRKR**
+4. Paste your API key from the ACTV TRKR onboarding screen
+5. Enable tracking — pageviews start flowing immediately
+6. If you use Gravity Forms, enable the Gravity Forms toggle
+
+== Frequently Asked Questions ==
+
+= Does this slow down my site? =
+No. The tracking script is tiny (~3 KB) and sends data asynchronously.
+
+= What cookies does it set? =
+* `mm_vid` — Visitor ID (365 days)
+* `mm_sid` — Session ID (30-minute rolling window)
+* `mm_utm` — UTM parameters (30 days)
+* `mm_ts` — Last activity timestamp (session timeout enforcement)
+
 == Changelog ==
 
 = 1.3.2 =

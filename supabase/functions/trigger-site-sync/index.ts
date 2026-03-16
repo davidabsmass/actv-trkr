@@ -343,7 +343,14 @@ Deno.serve(async (req) => {
 
     const fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
 
-    return new Response(JSON.stringify({ ok: true, wp_result: wpData, ...fallback }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      wp_result: wpData,
+      plugin_warning: pluginOutdated
+        ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer for reliable entry reconciliation.`
+        : null,
+      ...fallback,
+    }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

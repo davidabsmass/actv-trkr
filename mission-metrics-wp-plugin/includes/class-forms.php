@@ -249,7 +249,7 @@ class MM_Forms {
 			$form_id  = $form_info['form_id'] ?? '';
 			if ( ! $form_id ) continue;
 
-			$entry_ids = self::get_active_entry_ids( $provider, $form_id );
+			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null );
 			if ( $entry_ids === null ) continue;
 
 			// Avada returns array of {id, ts} objects; others return plain string arrays
@@ -373,7 +373,7 @@ class MM_Forms {
 	 * Get active (non-trashed) entry IDs for a given form provider + form ID.
 	 * Returns null if the provider doesn't support entry listing.
 	 */
-	private static function get_active_entry_ids( $provider, $form_id ) {
+	private static function get_active_entry_ids( $provider, $form_id, $page_url = null ) {
 		global $wpdb;
 
 		switch ( $provider ) {
@@ -391,17 +391,32 @@ class MM_Forms {
 				return array_map( function( $e ) { return (string) $e->entry_id; }, $entries );
 
 			case 'avada':
-				// Avada stores submissions in fusion_form_submissions table
+				// Avada stores submissions in fusion_form_submissions table.
+				// Some installs use an internal form_id that differs from fusion_form post ID,
+				// so we try form_id first, then fallback to URL matching inside submission payload.
 				$table = $wpdb->prefix . 'fusion_form_submissions';
 				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
 					return null; // Table doesn't exist
 				}
+
 				$rows = $wpdb->get_results( $wpdb->prepare(
 					"SELECT id, date_time FROM {$table} WHERE form_id = %d AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
 					intval( $form_id )
 				) );
+
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) ) {
+					$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+					if ( is_array( $columns ) && in_array( 'submission', $columns, true ) ) {
+						$like = '%' . $wpdb->esc_like( esc_url_raw( $page_url ) ) . '%';
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, date_time FROM {$table} WHERE submission LIKE %s AND is_read >= 0 ORDER BY id DESC LIMIT 5000",
+							$like
+						) );
+					}
+				}
+
 				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
-				// Return both entry IDs and timestamps for legacy matching
+
 				$result = array();
 				foreach ( $rows as $row ) {
 					$result[] = array(
@@ -549,20 +564,50 @@ class MM_Forms {
 
 	/**
 	 * Get the latest Avada submission DB ID for this form.
-	 * Falls back to timestamp-based ID if table doesn't exist.
+	 * Uses submission metadata first (date/url), then falls back to form_id query.
 	 */
-	private static function get_avada_db_entry_id( $form_post_id ) {
+	private static function get_avada_db_entry_id( $form_post_id, $avada_data = array() ) {
 		global $wpdb;
 		$table = $wpdb->prefix . 'fusion_form_submissions';
-		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) === $table ) {
-			$row = $wpdb->get_row( $wpdb->prepare(
-				"SELECT id FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 1",
-				intval( $form_post_id )
-			) );
-			if ( $row ) {
-				return 'avada_db_' . $row->id;
+		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+			return 'avada_' . time() . '_' . wp_rand();
+		}
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+
+		if ( is_array( $avada_data ) && ! empty( $avada_data['submission'] ) && is_string( $avada_data['submission'] ) ) {
+			$parts = array_map( 'trim', explode( ',', $avada_data['submission'] ) );
+			$submitted_at = $parts[1] ?? '';
+			$source_url   = $parts[2] ?? '';
+
+			if ( $submitted_at ) {
+				if ( is_array( $columns ) && in_array( 'source_url', $columns, true ) && $source_url ) {
+					$row = $wpdb->get_row( $wpdb->prepare(
+						"SELECT id FROM {$table} WHERE date_time = %s AND source_url = %s ORDER BY id DESC LIMIT 1",
+						$submitted_at,
+						$source_url
+					) );
+				} else {
+					$row = $wpdb->get_row( $wpdb->prepare(
+						"SELECT id FROM {$table} WHERE date_time = %s ORDER BY id DESC LIMIT 1",
+						$submitted_at
+					) );
+				}
+
+				if ( $row && isset( $row->id ) ) {
+					return 'avada_db_' . $row->id;
+				}
 			}
 		}
+
+		$row = $wpdb->get_row( $wpdb->prepare(
+			"SELECT id FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 1",
+			intval( $form_post_id )
+		) );
+		if ( $row && isset( $row->id ) ) {
+			return 'avada_db_' . $row->id;
+		}
+
 		return 'avada_' . time() . '_' . wp_rand();
 	}
 
@@ -841,7 +886,7 @@ class MM_Forms {
 			'entry'    => array(
 				'form_id'      => $form_post_id,
 				'form_title'   => $form_title,
-				'entry_id'     => self::get_avada_db_entry_id( $form_post_id ),
+				'entry_id'     => self::get_avada_db_entry_id( $form_post_id, $data ),
 				'source_url'   => wp_get_referer() ?: home_url(),
 				'submitted_at' => current_time( 'c' ),
 			),

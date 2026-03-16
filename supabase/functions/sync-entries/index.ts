@@ -12,46 +12,23 @@ async function hashKey(key: string): Promise<string> {
 }
 
 /**
- * Derive a canonical avada_db_<id> from a legacy Avada payload.
- * The payload's 'submission' field (in the fields array) contains the DB entry ID.
- * Format: "form_id, datetime, url, DB_ENTRY_ID, ..."
+ * Derive canonical Avada ID only when payload already includes a DB-backed entry_id.
+ * Do not parse legacy "submission" field tokens here because format is installation-dependent.
  */
 function deriveAvadaCanonicalId(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const p = payload as Record<string, unknown>;
-  
-  // Check entry.entry_id in payload (already canonical)
+
   const entry = p.entry as Record<string, unknown> | undefined;
   if (entry?.entry_id && typeof entry.entry_id === "string" && entry.entry_id.startsWith("avada_db_")) {
     return entry.entry_id;
   }
 
-  // Look in the fields array for a field named "submission"
-  const fields = p.fields as Array<Record<string, unknown>> | undefined;
-  let submissionValue: string | null = null;
-  
-  if (Array.isArray(fields)) {
-    for (const field of fields) {
-      if (field.name === "submission" && typeof field.value === "string") {
-        submissionValue = field.value;
-        break;
-      }
-    }
-  }
-
-  if (submissionValue) {
-    // Format: "form_id, datetime, url, DB_ENTRY_ID, is_read, user_agent, ip, ..."
-    // The 4th token (index 3) is typically the DB entry ID
-    const parts = submissionValue.split(",").map((s: string) => s.trim());
-    if (parts.length >= 4) {
-      const candidate = parts[3];
-      if (/^\d+$/.test(candidate) && parseInt(candidate, 10) > 0) {
-        return "avada_db_" + candidate;
-      }
-    }
-  }
-  
   return null;
+}
+
+function normalizeTimestampForCompare(ts: string): string {
+  return ts.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "").trim();
 }
 
 Deno.serve(async (req) => {
@@ -132,58 +109,70 @@ Deno.serve(async (req) => {
       // Get all lead_events_raw for this form
       const { data: rawEvents } = await supabase
         .from("lead_events_raw")
-        .select("external_entry_id, submitted_at")
+        .select("external_entry_id, submitted_at, payload")
         .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
 
       if (!rawEvents || rawEvents.length === 0) continue;
 
       const activeSet = new Set(activeEntryIds);
-      
+
       // Build a set of active timestamps for Avada legacy matching
       const activeTimestampSet = new Set<string>();
       for (const ts of Object.values(entryTimestamps)) {
-        if (ts) {
-          // Normalize: "2026-03-10 10:10:31" → try multiple formats
-          activeTimestampSet.add(ts);
-          // Also add ISO format variant
-          if (!ts.includes("T")) {
-            activeTimestampSet.add(ts.replace(" ", "T") + "+00:00");
-          }
-        }
+        if (!ts) continue;
+        activeTimestampSet.add(normalizeTimestampForCompare(ts));
       }
+
+      const hasComparableAvadaActiveIds = activeEntryIds.some((id) =>
+        id.startsWith("avada_") || id.startsWith("avada_db_"),
+      );
 
       const toTrashEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
       const toRestoreEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
+      const remapCandidates: { legacyId: string; canonicalId: string; submittedAt: string | null }[] = [];
+
+      console.log(
+        `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
+      );
 
       for (const rawEvent of rawEvents) {
         const eid = rawEvent.external_entry_id;
         const submittedAt = rawEvent.submitted_at;
-        
-        // Check if entry is active by ID match
+
+        // Check if entry is active by exact ID match
         if (activeSet.has(eid)) {
           toRestoreEntries.push(rawEvent);
           continue;
         }
 
-        // For legacy Avada entries, check by timestamp match
-        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_") && submittedAt) {
-          // Check if this entry's submitted_at matches any active entry's timestamp
-          const submittedAtNorm = submittedAt.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "");
-          let foundMatch = false;
-          for (const activeTs of activeTimestampSet) {
-            const activeTsNorm = activeTs.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "");
-            if (submittedAtNorm === activeTsNorm) {
-              foundMatch = true;
-              break;
-            }
+        // Avada legacy reconciliation: try payload-derived canonical ID first
+        if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
+          const canonicalId = deriveAvadaCanonicalId(rawEvent.payload);
+
+          if (canonicalId && canonicalId !== eid) {
+            remapCandidates.push({ legacyId: eid, canonicalId, submittedAt });
           }
-          if (foundMatch) {
+
+          if (canonicalId && activeSet.has(canonicalId)) {
             toRestoreEntries.push(rawEvent);
-          } else if (activeTimestampSet.size > 0) {
-            // We have timestamps to compare against, so this entry is confirmed deleted
+            continue;
+          }
+
+          // Timestamp fallback for older payloads / plugin responses
+          if (submittedAt && activeTimestampSet.size > 0) {
+            const submittedAtNorm = normalizeTimestampForCompare(submittedAt);
+            if (activeTimestampSet.has(submittedAtNorm)) {
+              toRestoreEntries.push(rawEvent);
+            } else {
+              toTrashEntries.push(rawEvent);
+            }
+            continue;
+          }
+
+          // If Avada provided a comparable active set and this ID/canonical ID is absent, trash it.
+          if (hasComparableAvadaActiveIds && activeSet.size > 0) {
             toTrashEntries.push(rawEvent);
           }
-          // If no timestamps provided (old plugin), skip to avoid false trashing
           continue;
         }
 
@@ -195,6 +184,10 @@ Deno.serve(async (req) => {
           toTrashEntries.push(rawEvent);
         }
       }
+
+      console.log(
+        `sync-entries: form=${extFormId} to_trash=${toTrashEntries.length} to_restore=${toRestoreEntries.length} remap_candidates=${remapCandidates.length}`,
+      );
 
       // Trash entries that are confirmed deleted
       for (const entry of toTrashEntries) {
@@ -222,19 +215,34 @@ Deno.serve(async (req) => {
         totalRestored += (count || 0);
       }
 
-      // Also update legacy external_entry_ids in lead_events_raw to new format
-      // so future syncs can match them properly.
-      // Match legacy entries to active DB IDs by position (oldest first)
-      if (provider === "avada" || provider === "ninja_forms" || provider === "cf7") {
-        const legacyPrefix = provider === "avada" ? "avada_" : provider === "ninja_forms" ? "ninja_" : "cf7_";
-        const newPrefix = provider === "avada" ? "avada_db_" : provider === "ninja_forms" ? "ninja_db_" : "cf7_db_";
+      // Update legacy external_entry_ids in lead_events_raw to stable canonical IDs where possible.
+      // This improves matching reliability on subsequent syncs.
+      if (provider === "avada" && remapCandidates.length > 0) {
+        for (const remap of remapCandidates) {
+          const query = supabase
+            .from("lead_events_raw")
+            .update({ external_entry_id: remap.canonicalId })
+            .eq("org_id", orgId)
+            .eq("form_id", formId)
+            .eq("external_entry_id", remap.legacyId);
 
-        // Get legacy entries sorted by submitted_at
+          if (remap.submittedAt) {
+            await query.eq("submitted_at", remap.submittedAt);
+          } else {
+            await query;
+          }
+        }
+      }
+
+      // Keep positional remap fallback for providers where payload canonical derivation is unavailable.
+      if (provider === "ninja_forms" || provider === "cf7") {
+        const legacyPrefix = provider === "ninja_forms" ? "ninja_" : "cf7_";
+        const newPrefix = provider === "ninja_forms" ? "ninja_db_" : "cf7_db_";
+
         const legacyEntries = rawEvents
           .filter(e => e.external_entry_id.startsWith(legacyPrefix) && !e.external_entry_id.startsWith(newPrefix))
           .sort((a, b) => (a.submitted_at || "").localeCompare(b.submitted_at || ""));
 
-        // Get active DB IDs sorted numerically
         const activeDbIds = activeEntryIds
           .filter(id => id.startsWith(newPrefix))
           .sort((a, b) => {
@@ -243,7 +251,6 @@ Deno.serve(async (req) => {
             return numA - numB;
           });
 
-        // Match legacy to new by chronological order if counts align
         if (legacyEntries.length > 0 && activeDbIds.length > 0 && legacyEntries.length <= activeDbIds.length) {
           for (let i = 0; i < legacyEntries.length; i++) {
             if (i < activeDbIds.length) {

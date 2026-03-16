@@ -228,6 +228,10 @@ export default function Forms() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
+  const formSiteIds = useMemo(
+    () => [...new Set((forms || []).map((f) => f.site_id).filter(Boolean))] as string[],
+    [forms]
+  );
   const selectedFormId = searchParams.get("selected") || null;
   const setSelectedFormId = (id: string | null) => {
     if (id) {

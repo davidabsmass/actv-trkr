@@ -104,6 +104,28 @@ Deno.serve(async (req) => {
     let totalTrashed = 0;
     let totalRestored = 0;
 
+    // Safety check: if ALL Avada forms report 0 active entries, treat as plugin
+    // discovery failure and skip destructive sync entirely for Avada forms.
+    const avadaForms = forms.filter((f: any) => {
+      const extFormId = String(f.form_id || "");
+      return extFormId !== "";
+    });
+    const avadaFormsFromDb = await supabase
+      .from("forms")
+      .select("external_form_id, provider")
+      .eq("org_id", orgId)
+      .eq("site_id", siteId)
+      .eq("provider", "avada");
+    const avadaFormIds = new Set((avadaFormsFromDb.data || []).map((f: any) => f.external_form_id));
+
+    const avadaInPayload = forms.filter((f: any) => avadaFormIds.has(String(f.form_id || "")));
+    const allAvadaEmpty = avadaInPayload.length > 0 &&
+      avadaInPayload.every((f: any) => (f.entry_ids || []).length === 0);
+
+    if (allAvadaEmpty) {
+      console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync (likely plugin discovery failure)`);
+    }
+
     for (const f of forms) {
       const extFormId = String(f.form_id || "");
       const activeEntryIds: string[] = (f.entry_ids || []).map(String);
@@ -171,8 +193,14 @@ Deno.serve(async (req) => {
         `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
       );
 
+      // Safety: if ALL Avada forms report 0 active entries, skip destructive sync
+      // (likely a plugin discovery failure, not genuine deletion of all entries).
+      if (provider === "avada" && allAvadaEmpty && activeEntryIds.length === 0) {
+        console.log(`sync-entries: form=${extFormId} provider=avada allAvadaEmpty=true active=0 -> skipping (discovery failure)`);
+        continue;
+      }
+
       // Safety: outdated plugin versions can return empty Avada active IDs incorrectly.
-      // In that case, restore any previously trashed Avada leads and skip destructive sync.
       if (provider === "avada" && pluginOutdated && activeEntryIds.length === 0) {
         const { data: restoredRows, error: restoreLegacyError } = await supabase
           .from("leads")

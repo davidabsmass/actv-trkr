@@ -13,6 +13,21 @@ type FormRow = {
   page_url: string | null;
 };
 
+function parseVersion(version: string | null | undefined): [number, number, number] {
+  if (!version) return [0, 0, 0];
+  const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
+}
+
+function isVersionAtLeast(version: string | null | undefined, minimum: string): boolean {
+  const [major, minor, patch] = parseVersion(version);
+  const [minMajor, minMinor, minPatch] = parseVersion(minimum);
+
+  if (major !== minMajor) return major > minMajor;
+  if (minor !== minMinor) return minor > minMinor;
+  return patch >= minPatch;
+}
+
 function normalizePageUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;
 

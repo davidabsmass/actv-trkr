@@ -386,10 +386,13 @@ class MM_Forms {
 					intval( $form_id )
 				) );
 				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
-				// Return both the new DB-based ID format AND submitted_at timestamps for legacy matching
+				// Return both entry IDs and timestamps for legacy matching
 				$result = array();
 				foreach ( $rows as $row ) {
-					$result[] = 'avada_db_' . $row->id;
+					$result[] = array(
+						'id' => 'avada_db_' . $row->id,
+						'ts' => $row->date_time,
+					);
 				}
 				return $result;
 

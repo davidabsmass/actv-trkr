@@ -543,17 +543,50 @@ function ActivityReportsTab() {
 
 // ── Main Reports Page ──
 export default function Reports() {
-  const { orgName } = useOrg();
+  const { orgId, orgName } = useOrg();
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
+  const [exportDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [exportDateTo] = useState<Date>(new Date());
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });
   };
 
+  const generateQuickReport = useMutation({
+    mutationFn: async () => {
+      if (!orgId || !session?.user.id) throw new Error("Not authenticated");
+      const periodDays = differenceInDays(exportDateTo, exportDateFrom) || 30;
+      const params = { period_days: periodDays, start_date: format(exportDateFrom, "yyyy-MM-dd"), end_date: format(exportDateTo, "yyyy-MM-dd"), compare_mode: "none" };
+      const { data: inserted, error } = await supabase.from("report_runs").insert({ org_id: orgId, template_slug: "monthly_performance", created_by: session.user.id, params, status: "queued" }).select("id").single();
+      if (error) throw error;
+      supabase.functions.invoke("process-report", { body: { run_id: inserted.id } }).catch(() => {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["report_runs"] });
+      toast.success("Report generation started — check Activity Reports tab to download");
+      setSearchParams({ tab: "activity" }, { replace: true });
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to generate report"),
+  });
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Reports</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-bold text-foreground">Reports</h1>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => generateQuickReport.mutate()}
+          disabled={generateQuickReport.isPending}
+          className="gap-1.5"
+        >
+          <FileText className="h-4 w-4" />
+          {generateQuickReport.isPending ? "Generating…" : "Generate Report"}
+        </Button>
+      </div>
       <p className="text-sm text-muted-foreground mb-6">Insights and summaries for {orgName}</p>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>

@@ -4,7 +4,7 @@ import { useOrg } from "@/hooks/use-org";
 import { subDays, format } from "date-fns";
 import {
   Eye, TrendingUp, Users, Activity, Sparkles, RefreshCw,
-  Lightbulb, Clock, Search,
+  Lightbulb, Clock, Search, Database, Wifi,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +14,12 @@ import { SummaryCard, InsightCard } from "./InsightCard";
 function pctChange(current: number, previous: number): number {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Math.round(((current - previous) / previous) * 100);
+}
+
+function formatRange(start: string, end: string) {
+  const s = new Date(start);
+  const e = new Date(end);
+  return `${format(s, "MMM d")}–${format(e, "MMM d")}`;
 }
 
 interface NightlySummary {
@@ -44,7 +50,6 @@ export default function OverviewTab() {
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [loadingAi, setLoadingAi] = useState(false);
 
-  // Fetch latest nightly summary (cached)
   const { data: nightlySummary, isLoading: nightlyLoading } = useQuery({
     queryKey: ["nightly_summary", orgId],
     queryFn: async () => {
@@ -62,7 +67,6 @@ export default function OverviewTab() {
     enabled: !!orgId,
   });
 
-  // Fallback: compute live if no nightly summary exists
   const now = new Date();
   const start = format(subDays(now, 7), "yyyy-MM-dd");
   const prevStart = format(subDays(now, 14), "yyyy-MM-dd");
@@ -92,7 +96,6 @@ export default function OverviewTab() {
       let currentLeads = sum(leadsRes.data);
       let previousLeads = sum(prevLeadsRes.data);
 
-      // Fallback to raw counts if aggregated tables are empty/zero
       if (currentSessions === 0 && currentLeads === 0) {
         const [rawSess, rawPrevSess, rawLeads, rawPrevLeads] = await Promise.all([
           supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart7).lte("started_at", nowIso),
@@ -147,7 +150,6 @@ export default function OverviewTab() {
     return <div className="flex items-center justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  // Use nightly summary only if it has non-zero metrics (zero means aggregation failed)
   const nightlyHasData = !!nightlySummary && (nightlySummary.metrics_snapshot?.sessions?.current > 0 || nightlySummary.metrics_snapshot?.leads?.current > 0);
   const hasNightly = nightlyHasData;
   const metrics = hasNightly ? nightlySummary!.metrics_snapshot : null;
@@ -168,6 +170,15 @@ export default function OverviewTab() {
   const negativeFindings = findings.filter((f: any) => !f.positive).slice(0, 5);
   const positiveFindings = findings.filter((f: any) => f.positive).slice(0, 5);
 
+  // Date range labels
+  const currentRange = hasNightly
+    ? formatRange(nightlySummary.period_start, nightlySummary.period_end)
+    : formatRange(start, format(now, "yyyy-MM-dd"));
+  const previousRange = hasNightly
+    ? null // nightly doesn't expose prior period dates explicitly
+    : formatRange(prevStart, prevEnd);
+  const dataSource = hasNightly ? "Cached summary" : "Live";
+
   if (!hasNightly && !liveData) {
     return (
       <div className="rounded-lg border border-border bg-card p-12 text-center">
@@ -187,6 +198,7 @@ export default function OverviewTab() {
             <span className="text-[10px] text-muted-foreground ml-auto flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {format(new Date(nightlySummary.generated_at), "MMM d 'at' h:mm a")}
+              {" · "}Covering {formatRange(nightlySummary.period_start, nightlySummary.period_end)}
             </span>
           </div>
           <p className="text-sm text-foreground/80 leading-relaxed">{nightlySummary.summary_text}</p>
@@ -196,9 +208,18 @@ export default function OverviewTab() {
       {/* At a Glance */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Eye className="h-4 w-4 text-primary" /> At a Glance
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" /> At a Glance
+            </h3>
+            <span className="text-[10px] text-muted-foreground">
+              {currentRange}{previousRange ? ` vs ${previousRange}` : " (7d)"}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground/60 border border-border/50 rounded px-1.5 py-0.5">
+              {hasNightly ? <Database className="h-2.5 w-2.5" /> : <Wifi className="h-2.5 w-2.5" />}
+              {dataSource}
+            </span>
+          </div>
           {!hasNightly && (
             <button
               onClick={fetchAiSummaries}
@@ -211,11 +232,14 @@ export default function OverviewTab() {
           )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <SummaryCard label="Traffic" value={currentSessions.toLocaleString()} change={sessionsPct}
+          <SummaryCard label="Traffic (7d)" value={currentSessions.toLocaleString()} change={sessionsPct}
+            changeLabel="vs prior 7 days"
             summary={aiSummaries.traffic_up || aiSummaries.traffic_down} />
-          <SummaryCard label="Leads" value={currentLeads.toLocaleString()} change={leadsPct}
+          <SummaryCard label="Leads (7d)" value={currentLeads.toLocaleString()} change={leadsPct}
+            changeLabel="vs prior 7 days"
             summary={aiSummaries.lead_growth || aiSummaries.lead_drop} />
-          <SummaryCard label="Conversion" value={`${currentCvr}%`} change={cvrPct}
+          <SummaryCard label="CVR (7d)" value={`${currentCvr}%`} change={cvrPct}
+            changeLabel="vs prior 7 days"
             summary={aiSummaries.conversion_gain || aiSummaries.conversion_drop} />
           <SummaryCard label="Site Health"
             value={activeIncidents > 0 ? `${activeIncidents} issues` : "Healthy"}

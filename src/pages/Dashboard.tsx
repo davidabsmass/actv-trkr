@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { format, subDays, startOfDay, startOfWeek, subWeeks } from "date-fns";
+import { format, subDays, startOfDay, startOfWeek, subWeeks, differenceInCalendarDays, addDays } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { LatestSummary } from "@/components/dashboard/LatestSummary";

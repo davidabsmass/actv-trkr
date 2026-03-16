@@ -68,17 +68,27 @@ export default function WeeklyTab() {
     void hydrateWeeklySummary(true);
   }, [orgId, isLoading, summary, attemptedHydration, isHydrating]);
 
+  const metrics = (summary?.conversion_anomalies ?? {}) as Record<string, number | string | null | undefined>;
+  const sessionsCurrent = Number(metrics.sessions_current ?? 0);
+  const sessionsPrevious = Number(metrics.sessions_previous ?? 0);
+  const leadsCurrent = Number(metrics.leads_current ?? 0);
+  const leadsPrevious = Number(metrics.leads_previous ?? 0);
+  const cvrCurrent = Number(metrics.cvr_current ?? 0);
+  const cvrPrevious = Number(metrics.cvr_previous ?? 0);
+  const cvrChange = Number(metrics.cvr_change ?? 0);
+  const topSource = (metrics.top_source as string | undefined) || "—";
+
   const generateAiSummary = async () => {
     if (!summary) return;
     setLoadingAi(true);
     try {
       const inputs: InsightInputs = {
-        currentSessions: Number(summary.sessions_current || 0),
-        previousSessions: Number(summary.sessions_previous || 0),
-        currentLeads: Number(summary.leads_current || 0),
-        previousLeads: Number(summary.leads_previous || 0),
-        currentCvr: Number(summary.cvr_current || 0),
-        previousCvr: Number(summary.cvr_previous || 0),
+        currentSessions: sessionsCurrent,
+        previousSessions: sessionsPrevious,
+        currentLeads: leadsCurrent,
+        previousLeads: leadsPrevious,
+        currentCvr: cvrCurrent,
+        previousCvr: cvrPrevious,
       };
       const findings = generateFindings(inputs);
       const { data: result, error } = await supabase.functions.invoke("reports-ai-copy", {

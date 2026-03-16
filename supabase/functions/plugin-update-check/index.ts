@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.2: restored dashboard-triggered /sync REST route + sync-entries reconciliation
-const LATEST_VERSION = "1.3.2";
+// v1.3.4: Avada form discovery + stable DB-backed entry IDs for reconciliation
+const LATEST_VERSION = "1.3.4";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,15 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.4
+- Avada/Fusion Forms now included in form discovery and entry sync
+- Avada entries use stable DB-backed IDs for reliable delete reconciliation
+- All form providers (CF7, Ninja, Fluent, Avada) included in discover_forms_list
+
+## 1.3.3
+- Fix Avada handler method structure so the plugin loads correctly
+- Restores manual sync route availability for entry reconciliation
+
 ## 1.3.2
 - Fixed dashboard manual sync route (/wp-json/actv-trkr/v1/sync)
 - Restored deleted-entry reconciliation via sync-entries

@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.3");
+    const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
 
     const { data: membership } = await supabase
       .from("org_users").select("role")
@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
           wp_error: text,
           endpoint_attempted: wpEndpoint,
           plugin_warning: pluginOutdated
-            ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer for reliable entry reconciliation.`
+            ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`
             : null,
           ...fallback,
         }), {
@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
       ok: true,
       wp_result: wpData,
       plugin_warning: pluginOutdated
-        ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.3 or newer for reliable entry reconciliation.`
+        ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`
         : null,
       ...fallback,
     }), {

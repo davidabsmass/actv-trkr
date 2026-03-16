@@ -4,7 +4,7 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.3.3
+Stable tag: 1.3.4
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
@@ -43,6 +43,11 @@ No. The tracking script is tiny (~3 KB) and sends data asynchronously.
 * `mm_ts` — Last activity timestamp (session timeout enforcement)
 
 == Changelog ==
+
+= 1.3.4 =
+* Avada/Fusion Forms now included in form discovery and entry sync.
+* Avada entries use stable DB-backed IDs for reliable delete reconciliation.
+* All form providers included in discover_forms_list fallback.
 
 = 1.3.3 =
 * Fix Avada handler method structure so the plugin loads correctly and sync routes register.

@@ -173,6 +173,24 @@ class MM_Forms {
 			}
 		}
 
+		// Avada / Fusion Forms
+		$avada_forms = get_posts( array(
+			'post_type'      => 'fusion_form',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
+			foreach ( $avada_forms as $form_post_id ) {
+				$title = get_the_title( $form_post_id ) ?: 'Avada Form';
+				$discovered[] = array(
+					'form_id'    => (string) $form_post_id,
+					'form_title' => $title,
+					'provider'   => 'avada',
+				);
+			}
+		}
+
 		if ( empty( $discovered ) ) {
 			return array( 'synced' => 0, 'discovered' => 0 );
 		}
@@ -234,11 +252,26 @@ class MM_Forms {
 			$entry_ids = self::get_active_entry_ids( $provider, $form_id );
 			if ( $entry_ids === null ) continue;
 
-			$forms_with_entries[] = array(
-				'form_id'   => $form_id,
-				'provider'  => $provider,
-				'entry_ids' => $entry_ids,
-			);
+			// Avada returns array of {id, ts} objects; others return plain string arrays
+			if ( $provider === 'avada' && ! empty( $entry_ids ) && is_array( $entry_ids[0] ) ) {
+				$ids = array_map( function( $e ) { return $e['id']; }, $entry_ids );
+				$timestamps = array();
+				foreach ( $entry_ids as $e ) {
+					$timestamps[ $e['id'] ] = $e['ts'];
+				}
+				$forms_with_entries[] = array(
+					'form_id'          => $form_id,
+					'provider'         => $provider,
+					'entry_ids'        => $ids,
+					'entry_timestamps' => $timestamps,
+				);
+			} else {
+				$forms_with_entries[] = array(
+					'form_id'   => $form_id,
+					'provider'  => $provider,
+					'entry_ids' => $entry_ids,
+				);
+			}
 		}
 
 		if ( empty( $forms_with_entries ) ) return array( 'trashed' => 0, 'restored' => 0 );
@@ -290,6 +323,49 @@ class MM_Forms {
 				}
 			}
 		}
+		// Avada / Fusion Forms
+		$avada_forms = get_posts( array(
+			'post_type'      => 'fusion_form',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
+			foreach ( $avada_forms as $form_post_id ) {
+				$discovered[] = array( 'form_id' => (string) $form_post_id, 'provider' => 'avada' );
+			}
+		}
+		// Ninja Forms
+		if ( function_exists( 'Ninja_Forms' ) ) {
+			try {
+				$nf_forms = Ninja_Forms()->form()->get_forms();
+				if ( is_array( $nf_forms ) ) {
+					foreach ( $nf_forms as $form ) {
+						$discovered[] = array( 'form_id' => (string) $form->get_id(), 'provider' => 'ninja_forms' );
+					}
+				}
+			} catch ( \Exception $e ) {}
+		}
+		// Fluent Forms
+		if ( function_exists( 'wpFluent' ) ) {
+			try {
+				$ff_forms = wpFluent()->table( 'fluentform_forms' )->get();
+				if ( is_array( $ff_forms ) || $ff_forms instanceof \Traversable ) {
+					foreach ( $ff_forms as $form ) {
+						$discovered[] = array( 'form_id' => (string) ( $form->id ?? '' ), 'provider' => 'fluent_forms' );
+					}
+				}
+			} catch ( \Exception $e ) {}
+		}
+		// CF7
+		if ( class_exists( 'WPCF7_ContactForm' ) ) {
+			$cf7_forms = \WPCF7_ContactForm::find();
+			if ( is_array( $cf7_forms ) ) {
+				foreach ( $cf7_forms as $form ) {
+					$discovered[] = array( 'form_id' => (string) $form->id(), 'provider' => 'cf7' );
+				}
+			}
+		}
 		return $discovered;
 	}
 
@@ -325,10 +401,13 @@ class MM_Forms {
 					intval( $form_id )
 				) );
 				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
-				// Return both the new DB-based ID format AND submitted_at timestamps for legacy matching
+				// Return both entry IDs and timestamps for legacy matching
 				$result = array();
 				foreach ( $rows as $row ) {
-					$result[] = 'avada_db_' . $row->id;
+					$result[] = array(
+						'id' => 'avada_db_' . $row->id,
+						'ts' => $row->date_time,
+					);
 				}
 				return $result;
 

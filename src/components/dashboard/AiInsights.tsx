@@ -126,11 +126,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             ))}
           </div>
         </div>
-      ) : !insights ? (
-        <div className="p-4 rounded-md bg-muted/50 text-center">
-          <p className="text-xs text-muted-foreground">Click "Generate Insights" to get AI-powered analysis of your dashboard metrics.</p>
-        </div>
-      ) : (
+      ) : null}
         <>
           {/* Summary */}
           <div className="mb-5">

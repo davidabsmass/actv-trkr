@@ -436,7 +436,14 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, trashed: totalTrashed, restored: totalRestored, warnings }),
+      JSON.stringify({
+        ok: true,
+        trashed: totalTrashed,
+        restored: totalRestored,
+        warnings,
+        requires_avada_reset: requiresAvadaReset,
+        blocked_reason: requiresAvadaReset ? "legacy_id_deadlock" : null,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

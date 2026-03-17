@@ -48,9 +48,23 @@ export function LatestSummary() {
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Latest Summary</h3>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Insights will appear once enough data is collected. Check back soon.
+        <p className="text-sm text-foreground/80 leading-relaxed mb-3">
+          Your nightly summary is being prepared. Once ACTV TRKR has a full day of tracking data, this section will show a concise recap of sessions, leads, and conversion trends — along with actionable insights to guide your next steps.
         </p>
+        <ul className="space-y-1.5">
+          <li className="flex items-start gap-2 text-xs text-muted-foreground">
+            <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
+            <span>Ensure your tracking snippet is installed and receiving pageviews</span>
+          </li>
+          <li className="flex items-start gap-2 text-xs text-muted-foreground">
+            <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
+            <span>Summaries run nightly and will appear here automatically</span>
+          </li>
+          <li className="flex items-start gap-2 text-xs text-muted-foreground">
+            <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
+            <span>Visit Reports for deeper analysis once data is available</span>
+          </li>
+        </ul>
       </div>
     );
   }

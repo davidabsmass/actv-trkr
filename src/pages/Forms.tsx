@@ -475,6 +475,11 @@ export default function Forms() {
           worstStatus = "partial";
         }
 
+        // Detect legacy ID deadlock requiring reset
+        if (data?.requires_avada_reset) {
+          setAvadaSyncBlocked(true);
+        }
+
         if (data?.plugin_warning) {
           warnings.push(data.plugin_warning);
         }

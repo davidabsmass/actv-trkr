@@ -49,6 +49,8 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.process-report]
     verify_jwt = false
+  [functions.reset-avada-entries]
+    verify_jwt = false
   [functions.redeem-invite]
     verify_jwt = false
   [functions.reports-ai-copy]

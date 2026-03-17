@@ -1,25 +1,24 @@
 
 
-## SSL & Domain Renewal Reliability — Implemented
+## Stack All Findings in Two Half-Column Layout
 
-### What was done
+### Current Layout
+- **Row 1**: 2-column grid — "Key Insights" (left) | "Needs Attention" (right)
+- **Row 2**: Full-width — "What's Working"
 
-1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
-   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
-   - `check-uptime` runs **every 10 minutes**
-   - `check-renewals` runs daily at 06:00 UTC
+### New Layout
+One persistent 2-column grid (`md:grid-cols-2`). All findings are split across two columns:
+- **Left column**: All negative findings (Needs Attention) stacked vertically
+- **Right column**: All positive findings (What's Working) stacked vertically
 
-2. **Retry logic** added to `check-domain-ssl` edge function:
-   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
-   - 15-second timeout per request
-   - Detailed console logging for debugging
+If there are no negative findings, positive fills both. Vice versa.
 
-3. **False downtime prevention**:
-   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
-   - Cleaned up 11 false DOWNTIME incidents and related alerts
+### File Change
+**`src/components/reports/OverviewTab.tsx`** (lines 171–195)
 
-4. **"Check Now" button** on the Monitoring page triggers on-demand checks
+Replace the current two separate sections with a single `grid grid-cols-1 md:grid-cols-2 gap-6` containing:
+- Left: "Needs Attention" header + all negative findings
+- Right: "What's Working" header + all positive findings
 
-### Extensions enabled
-- `pg_cron` (scheduling)
-- `pg_net` (HTTP calls from SQL)
+Remove the separate "Key Insights" section (its findings overlap with negative/positive split). Keep the combined findings list for the left column if preferred, or merge "Key Insights" into the negative column since most key insights are already negative-severity items.
+

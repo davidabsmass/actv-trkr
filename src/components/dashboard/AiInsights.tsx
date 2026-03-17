@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Lightbulb, RefreshCw, Sparkles, AlertCircle } from "lucide-react";
+import { Brain, Lightbulb, RefreshCw, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface AiInsightsProps {
@@ -40,6 +40,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
+  const hasFired = useRef(false);
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -51,7 +52,6 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         { body: { metrics } }
       );
       if (fnError) {
-        // Check for rate limit in the error
         if (fnError.message?.includes("429") || fnError.message?.includes("RATE_LIMITED")) {
           setRateLimited(true);
           toast.error("Daily AI insight limit reached. Try again tomorrow.");
@@ -76,6 +76,14 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     }
   };
 
+  // Auto-generate on mount (once)
+  useEffect(() => {
+    if (!hasFired.current && metrics.sessionsThisWeek !== undefined) {
+      hasFired.current = true;
+      handleGenerate();
+    }
+  }, [metrics.sessionsThisWeek]);
+
   if (error && !rateLimited) {
     return (
       <div className="glass-card p-5 animate-slide-up">
@@ -89,7 +97,6 @@ export function AiInsights({ metrics }: AiInsightsProps) {
 
   return (
     <div className="glass-card p-5 animate-slide-up">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-primary" />
@@ -102,12 +109,10 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         >
           {isLoading ? (
             <RefreshCw className="h-3 w-3 animate-spin" />
-          ) : insights ? (
-            <RefreshCw className="h-3 w-3" />
           ) : (
-            <Sparkles className="h-3 w-3" />
+            <RefreshCw className="h-3 w-3" />
           )}
-          {isLoading ? "Generating…" : insights ? "Refresh" : "Generate Insights"}
+          {isLoading ? "Generating…" : "Refresh"}
         </button>
       </div>
 
@@ -125,18 +130,11 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             ))}
           </div>
         </div>
-      ) : !insights ? (
-        <div className="p-4 rounded-md bg-muted/50 text-center">
-          <p className="text-xs text-muted-foreground">Click "Generate Insights" to get AI-powered analysis of your dashboard metrics.</p>
-        </div>
-      ) : (
+      ) : insights ? (
         <>
-          {/* Summary */}
           <div className="mb-5">
             <p className="text-sm text-foreground/85 leading-relaxed">{insights.summary}</p>
           </div>
-
-          {/* Suggestions */}
           {insights.suggestions && insights.suggestions.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 mb-3">
@@ -167,7 +165,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             </div>
           )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

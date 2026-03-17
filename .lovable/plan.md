@@ -1,36 +1,25 @@
 
 
-## Plan: Revise AI Limits and Auto-Generate Dashboard Insights on Login
+## SSL & Domain Renewal Reliability — Implemented
 
-### Changes Summary
+### What was done
 
-**1. Update rate limits in 3 edge functions:**
+1. **Cron jobs** scheduled via `pg_cron` + `pg_net`:
+   - `check-domain-ssl` runs **twice daily** at 06:00 and 18:00 UTC
+   - `check-uptime` runs **every 10 minutes**
+   - `check-renewals` runs daily at 06:00 UTC
 
-| Function | Current | New |
-|----------|---------|-----|
-| `dashboard-ai-insights` | 10/day | 5/day |
-| `reports-ai-copy` | 20/day | 15/day |
-| `scan-site-seo` | 5/day | 10/day |
-| `seo-suggest-fix` | 15/day | 5/day (no change) |
+2. **Retry logic** added to `check-domain-ssl` edge function:
+   - Up to 3 attempts with exponential backoff for RDAP and crt.sh lookups
+   - 15-second timeout per request
+   - Detailed console logging for debugging
 
-**2. Auto-generate AI insights on dashboard load**
+3. **False downtime prevention**:
+   - `down_after_minutes` increased from 15 → 30 (with 5-min heartbeat interval)
+   - Cleaned up 11 false DOWNTIME incidents and related alerts
 
-- In `AiInsights.tsx`: add a `useEffect` that calls `handleGenerate()` on mount (once). The 4-hour server-side cache ensures repeated page loads don't burn AI calls.
-- Keep the "Refresh" button for manual re-generation.
-- Remove the empty "click to generate" placeholder state since it auto-fires.
+4. **"Check Now" button** on the Monitoring page triggers on-demand checks
 
-**3. Add AiInsights to Dashboard.tsx**
-
-- Import `AiInsights` component.
-- Render it after the KPI row (before LatestSummary), passing the metrics from `periodData`, `topSource`, forms count, and primary focus from `useSiteSettings`.
-
-### Files to Edit
-
-| File | Change |
-|------|--------|
-| `supabase/functions/dashboard-ai-insights/index.ts` | Line 10: `DAILY_LIMIT = 5` |
-| `supabase/functions/reports-ai-copy/index.ts` | Line 9: `DAILY_LIMIT = 15` |
-| `supabase/functions/scan-site-seo/index.ts` | Line 217: change `>= 5` to `>= 10`, update error message |
-| `src/components/dashboard/AiInsights.tsx` | Add `useEffect` to auto-generate on mount; remove empty-state placeholder |
-| `src/pages/Dashboard.tsx` | Import `AiInsights`, import `useSiteSettings` for `primaryFocus`, render component after KPI row with metrics props |
-
+### Extensions enabled
+- `pg_cron` (scheduling)
+- `pg_net` (HTTP calls from SQL)

@@ -4,6 +4,7 @@ import { format, subDays, startOfDay } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { LatestSummary } from "@/components/dashboard/LatestSummary";
+import { AiInsights } from "@/components/dashboard/AiInsights";
 import { WhatsWorking } from "@/components/dashboard/WhatsWorking";
 import { TopPagesAndSources } from "@/components/dashboard/TopPagesAndSources";
 import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
@@ -118,7 +119,8 @@ const Dashboard = () => {
   const [days, setDays] = useState(30);
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
-  const { needsOnboarding } = useSiteSettings();
+  const { needsOnboarding, settings } = useSiteSettings();
+  const { data: formsData } = useForms(orgId);
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
@@ -425,6 +427,21 @@ const Dashboard = () => {
             />
           </div>
 
+
+          {/* AI Insights – auto-generates on load */}
+          <AiInsights
+            metrics={{
+              sessionsThisWeek: periodData.sessions.current,
+              sessionsLastWeek: periodData.sessions.previous,
+              leadsThisWeek: periodData.leads.current,
+              leadsLastWeek: periodData.leads.previous,
+              cvrThisWeek: periodData.cvr.current,
+              cvrLastWeek: periodData.cvr.previous,
+              topSource: topSource?.source,
+              totalForms: formsData?.length || 0,
+              primaryFocus: settings?.primary_focus || "lead_volume",
+            }}
+          />
 
           {/* Row 3 – Latest Summary */}
           <LatestSummary />

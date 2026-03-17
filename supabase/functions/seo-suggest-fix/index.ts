@@ -47,7 +47,7 @@ serve(async (req) => {
         .eq("cached", false)
         .gte("created_at", dayAgo);
 
-      if ((count ?? 0) >= 15) {
+      if ((count ?? 0) >= 5) {
         return new Response(
           JSON.stringify({ error: "Daily SEO suggestion limit reached. Try again tomorrow.", code: "RATE_LIMITED" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }

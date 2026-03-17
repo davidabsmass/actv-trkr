@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Brain, Lightbulb, RefreshCw, Sparkles, AlertCircle } from "lucide-react";
 import { toast } from "sonner";

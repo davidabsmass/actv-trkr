@@ -386,6 +386,7 @@ Deno.serve(async (req) => {
     let avadaBackfillAttempted = false;
     let avadaBackfillEntries = 0;
     let avadaBackfillError: string | null = null;
+    let avadaBackfillRouteMissing = false;
 
     let avadaActiveLeadCount = 0;
     let avadaRawEventCount = 0;

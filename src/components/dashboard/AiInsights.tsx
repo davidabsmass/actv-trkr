@@ -75,7 +75,13 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  // Auto-generate on mount (once)
+  useEffect(() => {
+    if (!hasFired.current && metrics.sessionsThisWeek !== undefined) {
+      hasFired.current = true;
+      handleGenerate();
+    }
+  }, [metrics.sessionsThisWeek]);
 
   if (error && !rateLimited) {
     return (
@@ -90,7 +96,6 @@ export function AiInsights({ metrics }: AiInsightsProps) {
 
   return (
     <div className="glass-card p-5 animate-slide-up">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-primary" />
@@ -103,12 +108,10 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         >
           {isLoading ? (
             <RefreshCw className="h-3 w-3 animate-spin" />
-          ) : insights ? (
-            <RefreshCw className="h-3 w-3" />
           ) : (
-            <Sparkles className="h-3 w-3" />
+            <RefreshCw className="h-3 w-3" />
           )}
-          {isLoading ? "Generating…" : insights ? "Refresh" : "Generate Insights"}
+          {isLoading ? "Generating…" : "Refresh"}
         </button>
       </div>
 
@@ -126,14 +129,11 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             ))}
           </div>
         </div>
-      ) : null}
+      ) : insights ? (
         <>
-          {/* Summary */}
           <div className="mb-5">
             <p className="text-sm text-foreground/85 leading-relaxed">{insights.summary}</p>
           </div>
-
-          {/* Suggestions */}
           {insights.suggestions && insights.suggestions.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 mb-3">
@@ -164,7 +164,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             </div>
           )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

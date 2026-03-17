@@ -382,6 +382,61 @@ Deno.serve(async (req) => {
     const requiresAvadaReset = Boolean(wpResult?.requires_avada_reset);
     const blockedReason = (wpResult?.blocked_reason as string) || null;
 
+    // Auto-backfill Avada entries when the site has Avada forms but no synchronized data
+    let avadaBackfillAttempted = false;
+    let avadaBackfillEntries = 0;
+    let avadaBackfillError: string | null = null;
+
+    let avadaActiveLeadCount = 0;
+    let avadaRawEventCount = 0;
+
+    if (hasAvadaForms && avadaFormIds.length > 0) {
+      const [{ count: activeLeadCount }, { count: rawEventCount }] = await Promise.all([
+        supabase
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", site.org_id)
+          .eq("site_id", site.id)
+          .in("form_id", avadaFormIds)
+          .neq("status", "trashed"),
+        supabase
+          .from("lead_events_raw")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", site.org_id)
+          .eq("site_id", site.id)
+          .in("form_id", avadaFormIds),
+      ]);
+
+      avadaActiveLeadCount = activeLeadCount || 0;
+      avadaRawEventCount = rawEventCount || 0;
+    }
+
+    const shouldAutoBackfillAvada =
+      hasAvadaForms &&
+      avadaFormIds.length > 0 &&
+      (requiresAvadaReset || (avadaActiveLeadCount === 0 && avadaRawEventCount === 0));
+
+    if (shouldAutoBackfillAvada) {
+      avadaBackfillAttempted = true;
+      const { response: backfillRes, endpoint: backfillEndpoint } = await triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash);
+
+      if (!backfillRes.ok) {
+        const backfillBody = await backfillRes.text();
+        avadaBackfillError = `Avada backfill failed (${backfillRes.status})`;
+        wpWarnings.push(avadaBackfillError);
+        console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
+      } else {
+        const backfillRaw = await backfillRes.text();
+        let backfillData: Record<string, unknown> = { raw: backfillRaw };
+        try {
+          backfillData = JSON.parse(backfillRaw);
+        } catch {
+          // Keep raw string payload
+        }
+        avadaBackfillEntries = Number(backfillData.entries || 0);
+      }
+    }
+
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {
       await supabase.from("sites").update({ plugin_version: runtimePluginVersion }).eq("id", site.id);

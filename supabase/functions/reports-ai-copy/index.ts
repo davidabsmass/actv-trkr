@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const DAILY_LIMIT = 20;
+const FUNCTION_NAME = "reports-ai-copy";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -15,7 +18,8 @@ serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data, error: claimsErr } = await supabase.auth.getClaims(authHeader.replace("Bearer ", ""));
@@ -23,11 +27,42 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const userId = data.claims.sub as string;
+    const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Resolve org_id
+    const { data: orgRow } = await adminClient
+      .from("org_users")
+      .select("org_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+    const orgId = orgRow?.org_id;
+    if (!orgId) {
+      return new Response(JSON.stringify({ error: "No organization found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Rate limit check
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count } = await adminClient
+      .from("ai_usage_log")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .eq("function_name", FUNCTION_NAME)
+      .eq("cached", false)
+      .gte("created_at", dayAgo);
+
+    if ((count ?? 0) >= DAILY_LIMIT) {
+      return new Response(
+        JSON.stringify({ error: "Daily AI report summary limit reached. Try again tomorrow.", code: "RATE_LIMITED" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const { findings, report_type } = await req.json();
-    // report_type: "overview" | "weekly" | "monthly"
 
     if (!findings || !Array.isArray(findings) || findings.length === 0) {
       return new Response(
@@ -139,6 +174,11 @@ ${JSON.stringify(findings, null, 2)}`;
     }
 
     const result = JSON.parse(toolCall.function.arguments);
+
+    // Log usage
+    await adminClient.from("ai_usage_log").insert({
+      org_id: orgId, function_name: FUNCTION_NAME, cached: false,
+    });
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

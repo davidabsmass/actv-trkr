@@ -63,6 +63,9 @@ export default function MonthlyTab() {
 
   const pctChange = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : Math.round(((c - p) / p) * 100);
 
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+
   const generateAiSummary = async () => {
     if (!metrics) return;
     setLoadingAi(true);
@@ -71,8 +74,19 @@ export default function MonthlyTab() {
       const { data: result, error } = await supabase.functions.invoke("reports-ai-copy", {
         body: { findings, report_type: "monthly" },
       });
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes("429") || error.message?.includes("RATE_LIMITED")) {
+          toast.error("Daily AI report limit reached. Try again tomorrow.");
+          return;
+        }
+        throw error;
+      }
+      if (result?.code === "RATE_LIMITED") {
+        toast.error(result.error || "Daily limit reached.");
+        return;
+      }
       setAiResult(result);
+      setCooldownUntil(Date.now() + 30_000);
     } catch {
       toast.error("Failed to generate monthly summary");
     } finally {
@@ -109,10 +123,10 @@ export default function MonthlyTab() {
               {format(lastMonth, "MMMM yyyy")} in Review
             </h3>
           </div>
-          <button onClick={generateAiSummary} disabled={loadingAi}
+          <button onClick={generateAiSummary} disabled={loadingAi || cooldownRemaining > 0}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50">
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {loadingAi ? "Generating…" : "AI Summary"}
+            {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summary"}
           </button>
         </div>
 

@@ -200,11 +200,15 @@ async function runDirectFormChecks(
   return { checked, updatedPageUrls, alertsCreated };
 }
 
-async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+async function triggerWordPressRoute(
+  siteUrl: string,
+  keyHash: string,
+  route: "sync" | "backfill-avada",
+): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
   const endpoints = [
-    `${normalizedSiteUrl}/wp-json/actv-trkr/v1/sync`,
-    `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/sync`,
+    `${normalizedSiteUrl}/wp-json/actv-trkr/v1/${route}`,
+    `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/${route}`,
   ];
 
   let lastResponse: Response | null = null;
@@ -213,7 +217,7 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
   for (let i = 0; i < endpoints.length; i += 1) {
     const endpoint = endpoints[i];
     lastEndpoint = endpoint;
-    console.log(`Triggering sync on ${endpoint}`);
+    console.log(`Triggering ${route} on ${endpoint}`);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -231,7 +235,7 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
     const bodyPreview = (await response.clone().text()).toLowerCase();
     const isMissingRoute = response.status === 404 && bodyPreview.includes("rest_no_route");
 
-    console.error(`WP sync failed on ${endpoint}: ${response.status} ${bodyPreview}`);
+    console.error(`WP ${route} failed on ${endpoint}: ${response.status} ${bodyPreview}`);
 
     if (!isMissingRoute || i === endpoints.length - 1) {
       return { response, endpoint };
@@ -239,6 +243,14 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
   }
 
   return { response: lastResponse!, endpoint: lastEndpoint };
+}
+
+async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "sync");
+}
+
+async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada");
 }
 
 Deno.serve(async (req) => {
@@ -285,13 +297,14 @@ Deno.serve(async (req) => {
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, minimumPluginVersion);
 
     // Check if site has any Avada forms
-    const { count: avadaFormCount } = await supabase
+    const { data: avadaForms, count: avadaFormCount } = await supabase
       .from("forms")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact" })
       .eq("org_id", site.org_id)
       .eq("site_id", site.id)
       .eq("provider", "avada")
       .eq("archived", false);
+    const avadaFormIds = (avadaForms || []).map((form) => form.id);
     const hasAvadaForms = (avadaFormCount || 0) > 0;
 
     const { data: membership } = await supabase
@@ -369,6 +382,68 @@ Deno.serve(async (req) => {
     const requiresAvadaReset = Boolean(wpResult?.requires_avada_reset);
     const blockedReason = (wpResult?.blocked_reason as string) || null;
 
+    // Auto-backfill Avada entries when the site has Avada forms but no synchronized data
+    let avadaBackfillAttempted = false;
+    let avadaBackfillEntries = 0;
+    let avadaBackfillError: string | null = null;
+    let avadaBackfillRouteMissing = false;
+
+    let avadaActiveLeadCount = 0;
+    let avadaRawEventCount = 0;
+
+    if (hasAvadaForms && avadaFormIds.length > 0) {
+      const [{ count: activeLeadCount }, { count: rawEventCount }] = await Promise.all([
+        supabase
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", site.org_id)
+          .eq("site_id", site.id)
+          .in("form_id", avadaFormIds)
+          .neq("status", "trashed"),
+        supabase
+          .from("lead_events_raw")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", site.org_id)
+          .eq("site_id", site.id)
+          .in("form_id", avadaFormIds),
+      ]);
+
+      avadaActiveLeadCount = activeLeadCount || 0;
+      avadaRawEventCount = rawEventCount || 0;
+    }
+
+    const shouldAutoBackfillAvada =
+      hasAvadaForms &&
+      avadaFormIds.length > 0 &&
+      (requiresAvadaReset || (avadaActiveLeadCount === 0 && avadaRawEventCount === 0));
+
+    if (shouldAutoBackfillAvada) {
+      avadaBackfillAttempted = true;
+      const { response: backfillRes, endpoint: backfillEndpoint } = await triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash);
+
+      if (!backfillRes.ok) {
+        const backfillBody = await backfillRes.text();
+        avadaBackfillRouteMissing =
+          backfillRes.status === 404 && backfillBody.toLowerCase().includes("rest_no_route");
+
+        avadaBackfillError = avadaBackfillRouteMissing
+          ? "Avada reimport endpoint is missing in your WordPress plugin. Reinstall/update ACTV TRKR from this dashboard, then click Sync Entries again."
+          : `Avada backfill failed (${backfillRes.status})`;
+
+        wpWarnings.push(avadaBackfillError);
+        console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
+      } else {
+        const backfillRaw = await backfillRes.text();
+        let backfillData: Record<string, unknown> = { raw: backfillRaw };
+        try {
+          backfillData = JSON.parse(backfillRaw);
+        } catch {
+          // Keep raw string payload
+        }
+        avadaBackfillEntries = Number(backfillData.entries || 0);
+      }
+    }
+
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {
       await supabase.from("sites").update({ plugin_version: runtimePluginVersion }).eq("id", site.id);
@@ -408,6 +483,15 @@ Deno.serve(async (req) => {
       reasonCodes.push("plugin_outdated");
     }
 
+    if (avadaBackfillError) {
+      if (syncStatus === "ok") syncStatus = "partial";
+      reasonCodes.push(avadaBackfillRouteMissing ? "avada_backfill_route_missing" : "avada_backfill_failed");
+    }
+
+    if (avadaBackfillAttempted && avadaBackfillEntries > 0) {
+      reasonCodes.push("avada_backfill_reimported");
+    }
+
     let pluginWarning: string | null = null;
     if (runtimePluginOutdated) {
       pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v${minimumPluginVersion} or newer for reliable sync.`;
@@ -426,6 +510,9 @@ Deno.serve(async (req) => {
       warnings: wpWarnings,
       avada_diagnostics: avadaDiagnostics,
       runtime_plugin_version: runtimePluginVersion,
+      avada_backfill_attempted: avadaBackfillAttempted,
+      avada_backfill_entries: avadaBackfillEntries,
+      avada_backfill_error: avadaBackfillError,
       ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

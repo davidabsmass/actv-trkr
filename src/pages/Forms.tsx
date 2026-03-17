@@ -222,6 +222,95 @@ function getBlockedSyncMessage(runtimeVersion: string | null | undefined): strin
   return `Sync blocked — Avada entry discovery failed on v${runtimeVersion}. Run “Sync Forms” in WordPress, then sync entries again.`;
 }
 
+/* ─── Avada Reset Banner ─── */
+function AvadaResetBanner({ orgId, forms, queryClient }: { orgId: string | null; forms: any[]; queryClient: any }) {
+  const [resetting, setResetting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const avadaForms = forms.filter((f) => f.provider === "avada" && !f.archived);
+  if (avadaForms.length === 0) return null;
+
+  const siteIds = [...new Set(avadaForms.map((f) => f.site_id))] as string[];
+
+  const handleReset = async () => {
+    setShowConfirm(false);
+    setResetting(true);
+    try {
+      let totalDeleted = 0;
+      for (const siteId of siteIds) {
+        const { data, error } = await supabase.functions.invoke("reset-avada-entries", {
+          body: { org_id: orgId, site_id: siteId },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        totalDeleted += data?.deleted || 0;
+      }
+
+      toast.success(`Reset complete — ${totalDeleted} Avada entries removed. Run "Sync Entries" to reimport.`);
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["leads"] }),
+        queryClient.invalidateQueries({ queryKey: ["leads_by_form"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] }),
+        queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] }),
+        queryClient.invalidateQueries({ queryKey: ["total_submissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] }),
+      ]);
+    } catch (err: any) {
+      toast.error(err.message || "Reset failed");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">Avada sync deadlocked — ID format mismatch</p>
+            <p className="text-xs text-muted-foreground">
+              Legacy entries use old IDs that can't match the plugin's new format. Reset entries to allow a clean reimport.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 flex-shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => setShowConfirm(true)}
+          disabled={resetting}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          {resetting ? "Resetting…" : "Reset Avada Entries"}
+        </Button>
+      </div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-background border border-border rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Reset Avada Entries?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              This will permanently delete all existing Avada lead data ({avadaForms.length} form{avadaForms.length !== 1 ? "s" : ""}) and allow a clean reimport. This cannot be undone.
+            </p>
+            <p className="text-sm text-muted-foreground mb-6">
+              After resetting, click <strong>"Sync Entries"</strong> to reimport from WordPress with the correct ID format.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowConfirm(false)}>Cancel</Button>
+              <Button variant="destructive" size="sm" onClick={handleReset}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Delete &amp; Reset
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Forms() {
   const { orgId, orgName } = useOrg();
   const navigate = useNavigate();

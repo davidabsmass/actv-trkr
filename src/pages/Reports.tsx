@@ -574,16 +574,6 @@ export default function Reports() {
     <div>
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-2xl font-bold text-foreground">Reports</h1>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => generateQuickReport.mutate()}
-          disabled={generateQuickReport.isPending}
-          className="gap-1.5"
-        >
-          <FileText className="h-4 w-4" />
-          {generateQuickReport.isPending ? "Generating…" : "Generate Report"}
-        </Button>
       </div>
       <p className="text-sm text-muted-foreground mb-6">Insights and summaries for {orgName}</p>
 

@@ -81,13 +81,13 @@ export default function NotificationsSection() {
                 role="switch"
                 aria-checked={prefs[key]}
                 onClick={() => toggle(key)}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   prefs[key] ? "bg-primary" : "bg-muted"
                 }`}
               >
                 <span
-                  className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
-                    prefs[key] ? "translate-x-4" : "translate-x-0"
+                  className={`pointer-events-none block h-4 w-4 rounded-full shadow-lg ring-0 transition-transform ${
+                    prefs[key] ? "translate-x-4 bg-background" : "translate-x-0 bg-white"
                   }`}
                 />
               </button>

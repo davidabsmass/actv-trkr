@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.12: Avada resilient discovery for non-standard schemas and large submission tables
-const LATEST_VERSION = "1.3.12";
+// v1.3.13: Adds Avada historical backfill endpoint required for reset-and-reimport recovery
+const LATEST_VERSION = "1.3.13";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.13
+- Adds /backfill-avada REST route for historical Avada reimport after ID-format resets
+- Replays Avada submission rows using stable avada_db_* IDs to rebuild lead history cleanly
+
 ## 1.3.12
 - Expands Avada form-ref discovery across more schema variants (formid, source_form_id, fusion_form)
 - Adds URL-centric matching across additional columns (page_url, source_url, referer, request_uri, payload)

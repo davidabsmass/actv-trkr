@@ -484,6 +484,9 @@ export default function Forms() {
       {/* Plugin Update Banner */}
       <PluginUpdateBanner orgId={orgId} siteIds={formSiteIds} />
 
+      {/* Avada Reset Banner */}
+      <AvadaResetBanner orgId={orgId} forms={forms || []} queryClient={queryClient} />
+
       {/* Summary Row */}
       <FormsSummary orgId={orgId} days={days} />
 

@@ -54,6 +54,12 @@ class MM_Forms {
 			'callback'            => array( __CLASS__, 'handle_rest_sync' ),
 			'permission_callback' => '__return_true',
 		) );
+
+		register_rest_route( 'actv-trkr/v1', '/backfill-avada', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'handle_rest_backfill_avada' ),
+			'permission_callback' => '__return_true',
+		) );
 	}
 
 	/**
@@ -1336,4 +1342,170 @@ class MM_Forms {
 				return (bool) preg_match( '/<form[^>]*>/i', $html );
 		}
 	}
+
+	// ── Avada Backfill ─────────────────────────────────────────────
+
+	/**
+	 * REST endpoint to export all Avada form entries with stable avada_db_* IDs
+	 * so the dashboard can reimport historical data after a reset.
+	 */
+	public static function handle_rest_backfill_avada( $request ) {
+		$opts = MM_Settings::get();
+		if ( empty( $opts['api_key'] ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
+		}
+
+		$body     = $request->get_json_params();
+		$key_hash = $body['key_hash'] ?? '';
+
+		$stored_hash = hash( 'sha256', $opts['api_key'] );
+		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
+		}
+
+		global $wpdb;
+		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
+
+		// Find all Avada forms
+		$avada_forms = get_posts( array(
+			'post_type'      => 'fusion_form',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+
+		if ( empty( $avada_forms ) ) {
+			return new \WP_REST_Response( array( 'ok' => true, 'entries' => 0 ), 200 );
+		}
+
+		// Find the submissions table
+		$candidate_tables = array(
+			$wpdb->prefix . 'fusion_form_submissions',
+			$wpdb->prefix . 'fusionbuilder_form_submissions',
+			$wpdb->prefix . 'avada_form_submissions',
+		);
+
+		$table = null;
+		foreach ( $candidate_tables as $ct ) {
+			if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $ct ) ) === $ct ) {
+				$table = $ct;
+				break;
+			}
+		}
+
+		if ( ! $table ) {
+			return new \WP_REST_Response( array( 'ok' => true, 'entries' => 0, 'error' => 'No Avada submission table found' ), 200 );
+		}
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+		$ts_col = 'id';
+		$ts_candidates = array( 'date_time', 'created_at', 'submitted_at', 'date', 'created' );
+		foreach ( $ts_candidates as $tc ) {
+			if ( in_array( $tc, $columns, true ) ) {
+				$ts_col = $tc;
+				break;
+			}
+		}
+
+		$has_submission_col = in_array( 'submission', $columns, true );
+		$has_source_url     = in_array( 'source_url', $columns, true );
+		$form_ref_candidates = array( 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id' );
+
+		$all_entries = array();
+		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
+
+		foreach ( $avada_forms as $form_post_id ) {
+			$form_title = get_the_title( $form_post_id ) ?: 'Avada Form';
+
+			// Find entries using the same multi-strategy approach
+			$rows = array();
+			foreach ( $form_ref_candidates as $frc ) {
+				if ( ! in_array( $frc, $columns, true ) ) continue;
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT * FROM {$table} WHERE {$frc} = %d ORDER BY id ASC LIMIT 5000",
+					intval( $form_post_id )
+				) );
+				if ( ! empty( $rows ) ) break;
+
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT * FROM {$table} WHERE {$frc} = %s ORDER BY id ASC LIMIT 5000",
+					(string) $form_post_id
+				) );
+				if ( ! empty( $rows ) ) break;
+			}
+
+			if ( empty( $rows ) ) continue;
+
+			foreach ( $rows as $row ) {
+				$entry_id = 'avada_db_' . $row->id;
+				$submitted_at = isset( $row->$ts_col ) ? $row->$ts_col : null;
+				$source_url = $has_source_url && isset( $row->source_url ) ? $row->source_url : null;
+
+				// Parse submission blob for fields
+				$fields = array();
+				if ( $has_submission_col && ! empty( $row->submission ) ) {
+					$decoded = json_decode( $row->submission, true );
+					if ( is_array( $decoded ) ) {
+						$idx = 0;
+						foreach ( $decoded as $key => $value ) {
+							$fields[] = array(
+								'id'    => $idx,
+								'name'  => $key,
+								'label' => $key,
+								'type'  => 'text',
+								'value' => is_array( $value ) ? wp_json_encode( $value ) : (string) $value,
+							);
+							$idx++;
+						}
+					}
+				}
+
+				$payload = array(
+					'provider' => 'avada',
+					'entry'    => array(
+						'form_id'      => (string) $form_post_id,
+						'form_title'   => $form_title,
+						'entry_id'     => $entry_id,
+						'source_url'   => $source_url,
+						'submitted_at' => $submitted_at,
+					),
+					'context' => array(
+						'domain'         => $domain,
+						'referrer'       => null,
+						'visitor_id'     => null,
+						'session_id'     => null,
+						'utm'            => array(),
+						'plugin_version' => MM_PLUGIN_VERSION,
+						'backfill'       => true,
+					),
+					'fields' => $fields,
+				);
+
+				// Send each entry to the ingest endpoint
+				$response = wp_remote_post( $endpoint, array(
+					'timeout'  => 10,
+					'blocking' => true,
+					'headers'  => array(
+						'Content-Type'  => 'application/json',
+						'Authorization' => 'Bearer ' . $opts['api_key'],
+					),
+					'body' => wp_json_encode( $payload ),
+				) );
+
+				$all_entries[] = array(
+					'entry_id' => $entry_id,
+					'form_id'  => (string) $form_post_id,
+					'status'   => is_wp_error( $response ) ? 'error' : wp_remote_retrieve_response_code( $response ),
+				);
+			}
+		}
+
+		return new \WP_REST_Response( array(
+			'ok'      => true,
+			'entries' => count( $all_entries ),
+			'details' => $all_entries,
+			'plugin_version' => MM_PLUGIN_VERSION,
+		), 200 );
+	}
+
 }

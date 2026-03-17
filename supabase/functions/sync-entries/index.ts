@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
     const warnings: string[] = [];
     let totalTrashed = 0;
     let totalRestored = 0;
+    let requiresAvadaReset = false;
 
     // ── SAFETY GUARD 1: All Avada forms report 0 active entries ──
     const avadaFormsFromDb = await supabase
@@ -324,6 +325,7 @@ Deno.serve(async (req) => {
       if (provider === "avada" && !avadaDuplicateProtectionMode && toTrashEntries.length > 0 && toRestoreEntries.length === 0 && toTrashEntries.length === rawEvents.length) {
         console.log(`sync-entries: form=${extFormId} provider=avada full_trash_pattern=true (${toTrashEntries.length}/${rawEvents.length}) -> skipping destructive sync`);
         warnings.push(`Avada sync for form ${extFormId} skipped — all ${toTrashEntries.length} entries would be trashed with zero matches. Likely a discovery issue.`);
+        requiresAvadaReset = true;
         continue;
       }
 
@@ -434,7 +436,14 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, trashed: totalTrashed, restored: totalRestored, warnings }),
+      JSON.stringify({
+        ok: true,
+        trashed: totalTrashed,
+        restored: totalRestored,
+        warnings,
+        requires_avada_reset: requiresAvadaReset,
+        blocked_reason: requiresAvadaReset ? "legacy_id_deadlock" : null,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

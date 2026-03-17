@@ -223,12 +223,14 @@ function getBlockedSyncMessage(runtimeVersion: string | null | undefined): strin
 }
 
 /* ─── Avada Reset Banner ─── */
-function AvadaResetBanner({ orgId, forms, queryClient }: { orgId: string | null; forms: any[]; queryClient: any }) {
+function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: string | null; forms: any[]; queryClient: any; syncBlocked: boolean }) {
   const [resetting, setResetting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const avadaForms = forms.filter((f) => f.provider === "avada" && !f.archived);
-  if (avadaForms.length === 0) return null;
+
+  // Only show if there are Avada forms AND sync is blocked (deadlock detected)
+  if (avadaForms.length === 0 || !syncBlocked) return null;
 
   const siteIds = [...new Set(avadaForms.map((f) => f.site_id))] as string[];
 
@@ -236,17 +238,27 @@ function AvadaResetBanner({ orgId, forms, queryClient }: { orgId: string | null;
     setShowConfirm(false);
     setResetting(true);
     try {
-      let totalDeleted = 0;
+      let totalLeads = 0;
+      let totalRaw = 0;
+      let totalFlat = 0;
+      let totalForms = 0;
       for (const siteId of siteIds) {
         const { data, error } = await supabase.functions.invoke("reset-avada-entries", {
           body: { org_id: orgId, site_id: siteId },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        totalDeleted += data?.deleted || 0;
+        totalLeads += data?.deleted_leads || 0;
+        totalRaw += data?.deleted_raw_events || 0;
+        totalFlat += data?.deleted_flat_fields || 0;
+        totalForms += data?.forms_affected || 0;
       }
 
-      toast.success(`Reset complete — ${totalDeleted} Avada entries removed. Run "Sync Entries" to reimport.`);
+      const parts: string[] = [];
+      if (totalLeads) parts.push(`${totalLeads} leads`);
+      if (totalRaw) parts.push(`${totalRaw} raw events`);
+      if (totalFlat) parts.push(`${totalFlat} field records`);
+      toast.success(`Reset complete — removed ${parts.join(", ")} across ${totalForms} form(s). Click "Sync Entries" to reimport.`);
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["leads"] }),
@@ -255,6 +267,7 @@ function AvadaResetBanner({ orgId, forms, queryClient }: { orgId: string | null;
         queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] }),
         queryClient.invalidateQueries({ queryKey: ["total_submissions"] }),
         queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] }),
+        queryClient.invalidateQueries({ queryKey: ["forms"] }),
       ]);
     } catch (err: any) {
       toast.error(err.message || "Reset failed");
@@ -269,9 +282,9 @@ function AvadaResetBanner({ orgId, forms, queryClient }: { orgId: string | null;
         <div className="flex items-center gap-2.5 min-w-0">
           <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">Avada sync deadlocked — ID format mismatch</p>
+            <p className="text-sm font-medium text-foreground">Avada sync blocked — legacy ID mismatch</p>
             <p className="text-xs text-muted-foreground">
-              Legacy entries use old IDs that can't match the plugin's new format. Reset entries to allow a clean reimport.
+              Existing entries use old IDs that can't match the plugin's current format. Reset to allow a clean reimport.
             </p>
           </div>
         </div>
@@ -310,7 +323,6 @@ function AvadaResetBanner({ orgId, forms, queryClient }: { orgId: string | null;
     </>
   );
 }
-
 export default function Forms() {
   const { orgId, orgName } = useOrg();
   const navigate = useNavigate();
@@ -405,6 +417,7 @@ export default function Forms() {
   });
 
   const [syncing, setSyncing] = useState(false);
+  const [avadaSyncBlocked, setAvadaSyncBlocked] = useState(false);
 
   const handleSyncAll = async () => {
     if (!orgId || !forms || forms.length === 0) return;
@@ -460,6 +473,11 @@ export default function Forms() {
           if (!blockedRuntimeVersion && runtimePluginVersion) blockedRuntimeVersion = runtimePluginVersion;
         } else if (siteStatus === "partial" && worstStatus !== "blocked") {
           worstStatus = "partial";
+        }
+
+        // Detect legacy ID deadlock requiring reset
+        if (data?.requires_avada_reset) {
+          setAvadaSyncBlocked(true);
         }
 
         if (data?.plugin_warning) {
@@ -574,7 +592,7 @@ export default function Forms() {
       <PluginUpdateBanner orgId={orgId} siteIds={formSiteIds} />
 
       {/* Avada Reset Banner */}
-      <AvadaResetBanner orgId={orgId} forms={forms || []} queryClient={queryClient} />
+      <AvadaResetBanner orgId={orgId} forms={forms || []} queryClient={queryClient} syncBlocked={avadaSyncBlocked} />
 
       {/* Summary Row */}
       <FormsSummary orgId={orgId} days={days} />

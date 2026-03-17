@@ -365,6 +365,10 @@ Deno.serve(async (req) => {
     const runtimePluginOutdated = !isVersionAtLeast(runtimePluginVersion, minimumPluginVersion);
     const runtimeNeedsAvadaFix = hasAvadaForms && !isVersionAtLeast(runtimePluginVersion, minimumAvadaPluginVersion);
 
+    // Detect requires_avada_reset flag from sync-entries response
+    const requiresAvadaReset = Boolean(wpResult?.requires_avada_reset);
+    const blockedReason = (wpResult?.blocked_reason as string) || null;
+
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {
       await supabase.from("sites").update({ plugin_version: runtimePluginVersion }).eq("id", site.id);
@@ -373,6 +377,12 @@ Deno.serve(async (req) => {
     // Classify sync_status with reason codes
     let syncStatus: "ok" | "partial" | "blocked" = "ok";
     const reasonCodes: string[] = [];
+
+    // If sync-entries flagged a deadlock, force blocked
+    if (requiresAvadaReset) {
+      syncStatus = "blocked";
+      reasonCodes.push("legacy_id_deadlock");
+    }
 
     if (wpWarnings.length > 0) {
       const warningText = wpWarnings.map((w) => w.toLowerCase()).join("\n");
@@ -385,10 +395,10 @@ Deno.serve(async (req) => {
         syncStatus = "blocked";
         reasonCodes.push("avada_discovery_empty");
       } else if (hasAllAvadaWarnings && hasDuplicateSetWarning) {
-        syncStatus = "partial";
+        if (syncStatus !== "blocked") syncStatus = "partial";
         reasonCodes.push("avada_duplicate_sets_safe_mode");
       } else {
-        syncStatus = "partial";
+        if (syncStatus !== "blocked") syncStatus = "partial";
       }
     }
 
@@ -409,6 +419,8 @@ Deno.serve(async (req) => {
       ok: true,
       sync_status: syncStatus,
       reason_codes: reasonCodes,
+      requires_avada_reset: requiresAvadaReset,
+      blocked_reason: blockedReason,
       wp_result: wpData,
       plugin_warning: pluginWarning,
       warnings: wpWarnings,

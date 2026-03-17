@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
     const warnings: string[] = [];
     let totalTrashed = 0;
     let totalRestored = 0;
+    let requiresAvadaReset = false;
 
     // ── SAFETY GUARD 1: All Avada forms report 0 active entries ──
     const avadaFormsFromDb = await supabase

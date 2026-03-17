@@ -168,29 +168,20 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         </div>
       </div>
 
-      {(findings.length > 0 || negativeFindings.length > 0) && (
+      {(negativeFindings.length > 0 || positiveFindings.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {findings.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" /> Key Insights</h3>
-              <div className="space-y-2">
-                {findings.slice(0, 4).map((f: any, i: number) => (<InsightCard key={i} finding={f} />))}
-              </div>
-            </div>
-          )}
           {negativeFindings.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Activity className="h-4 w-4 text-destructive" /> Needs Attention</h3>
               <div className="space-y-2">{negativeFindings.map((f: any, i: number) => (<InsightCard key={i} finding={f} />))}</div>
             </div>
           )}
-        </div>
-      )}
-
-      {positiveFindings.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-success" /> What's Working</h3>
-          <div className="space-y-2">{positiveFindings.map((f: any, i: number) => (<InsightCard key={i} finding={f} />))}</div>
+          {positiveFindings.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-success" /> What's Working</h3>
+              <div className="space-y-2">{positiveFindings.map((f: any, i: number) => (<InsightCard key={i} finding={f} />))}</div>
+            </div>
+          )}
         </div>
       )}
     </div>

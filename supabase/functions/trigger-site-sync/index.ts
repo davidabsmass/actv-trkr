@@ -297,13 +297,14 @@ Deno.serve(async (req) => {
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, minimumPluginVersion);
 
     // Check if site has any Avada forms
-    const { count: avadaFormCount } = await supabase
+    const { data: avadaForms, count: avadaFormCount } = await supabase
       .from("forms")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact" })
       .eq("org_id", site.org_id)
       .eq("site_id", site.id)
       .eq("provider", "avada")
       .eq("archived", false);
+    const avadaFormIds = (avadaForms || []).map((form) => form.id);
     const hasAvadaForms = (avadaFormCount || 0) > 0;
 
     const { data: membership } = await supabase

@@ -84,6 +84,9 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     enabled: !!orgId,
   });
 
+  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
+  const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+
   const fetchAiSummaries = async () => {
     const findings = liveData?.findings;
     if (!findings?.length) return;
@@ -92,13 +95,24 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       const { data: result, error } = await supabase.functions.invoke("reports-ai-copy", {
         body: { findings, report_type: "overview" },
       });
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes("429") || error.message?.includes("RATE_LIMITED")) {
+          toast.error("Daily AI report limit reached. Try again tomorrow.");
+          return;
+        }
+        throw error;
+      }
+      if (result?.code === "RATE_LIMITED") {
+        toast.error(result.error || "Daily AI report limit reached.");
+        return;
+      }
       const summaries: Record<string, string> = {};
       if (result?.card_summaries) {
         for (const cs of result.card_summaries) summaries[cs.type] = cs.summary;
       }
       if (result?.summary_paragraph) summaries._paragraph = result.summary_paragraph;
       setAiSummaries(summaries);
+      setCooldownUntil(Date.now() + 30_000);
     } catch {
       toast.error("Failed to generate AI summaries");
     } finally {

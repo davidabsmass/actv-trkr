@@ -423,7 +423,13 @@ Deno.serve(async (req) => {
 
       if (!backfillRes.ok) {
         const backfillBody = await backfillRes.text();
-        avadaBackfillError = `Avada backfill failed (${backfillRes.status})`;
+        avadaBackfillRouteMissing =
+          backfillRes.status === 404 && backfillBody.toLowerCase().includes("rest_no_route");
+
+        avadaBackfillError = avadaBackfillRouteMissing
+          ? "Avada reimport endpoint is missing in your WordPress plugin. Reinstall/update ACTV TRKR from this dashboard, then click Sync Entries again."
+          : `Avada backfill failed (${backfillRes.status})`;
+
         wpWarnings.push(avadaBackfillError);
         console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
       } else {

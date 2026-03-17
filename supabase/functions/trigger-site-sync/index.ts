@@ -200,11 +200,15 @@ async function runDirectFormChecks(
   return { checked, updatedPageUrls, alertsCreated };
 }
 
-async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+async function triggerWordPressRoute(
+  siteUrl: string,
+  keyHash: string,
+  route: "sync" | "backfill-avada",
+): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
   const endpoints = [
-    `${normalizedSiteUrl}/wp-json/actv-trkr/v1/sync`,
-    `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/sync`,
+    `${normalizedSiteUrl}/wp-json/actv-trkr/v1/${route}`,
+    `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/${route}`,
   ];
 
   let lastResponse: Response | null = null;
@@ -213,7 +217,7 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
   for (let i = 0; i < endpoints.length; i += 1) {
     const endpoint = endpoints[i];
     lastEndpoint = endpoint;
-    console.log(`Triggering sync on ${endpoint}`);
+    console.log(`Triggering ${route} on ${endpoint}`);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -231,7 +235,7 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
     const bodyPreview = (await response.clone().text()).toLowerCase();
     const isMissingRoute = response.status === 404 && bodyPreview.includes("rest_no_route");
 
-    console.error(`WP sync failed on ${endpoint}: ${response.status} ${bodyPreview}`);
+    console.error(`WP ${route} failed on ${endpoint}: ${response.status} ${bodyPreview}`);
 
     if (!isMissingRoute || i === endpoints.length - 1) {
       return { response, endpoint };
@@ -239,6 +243,14 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
   }
 
   return { response: lastResponse!, endpoint: lastEndpoint };
+}
+
+async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "sync");
+}
+
+async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada");
 }
 
 Deno.serve(async (req) => {

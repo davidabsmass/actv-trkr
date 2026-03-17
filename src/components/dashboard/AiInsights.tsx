@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Lightbulb, RefreshCw, Sparkles, AlertCircle } from "lucide-react";
+import { Brain, Lightbulb, RefreshCw, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface AiInsightsProps {
@@ -52,7 +52,6 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         { body: { metrics } }
       );
       if (fnError) {
-        // Check for rate limit in the error
         if (fnError.message?.includes("429") || fnError.message?.includes("RATE_LIMITED")) {
           setRateLimited(true);
           toast.error("Daily AI insight limit reached. Try again tomorrow.");
@@ -75,6 +74,8 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
   // Auto-generate on mount (once)
   useEffect(() => {
     if (!hasFired.current && metrics.sessionsThisWeek !== undefined) {

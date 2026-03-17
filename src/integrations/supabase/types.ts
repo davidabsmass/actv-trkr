@@ -59,6 +59,36 @@ export type Database = {
           },
         ]
       }
+      ai_usage_log: {
+        Row: {
+          cached: boolean
+          created_at: string
+          function_name: string
+          id: string
+          metrics_hash: string | null
+          org_id: string
+          response_cache: Json | null
+        }
+        Insert: {
+          cached?: boolean
+          created_at?: string
+          function_name: string
+          id?: string
+          metrics_hash?: string | null
+          org_id: string
+          response_cache?: Json | null
+        }
+        Update: {
+          cached?: boolean
+          created_at?: string
+          function_name?: string
+          id?: string
+          metrics_hash?: string | null
+          org_id?: string
+          response_cache?: Json | null
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           created_at: string

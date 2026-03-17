@@ -154,10 +154,10 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
           <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground/60 border border-border/50 rounded px-1.5 py-0.5">
             <Wifi className="h-2.5 w-2.5" /> Live
           </span>
-          <button onClick={fetchAiSummaries} disabled={loadingAi}
+          <button onClick={fetchAiSummaries} disabled={loadingAi || cooldownRemaining > 0}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50 ml-auto">
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {loadingAi ? "Generating…" : "AI Summaries"}
+            {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summaries"}
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

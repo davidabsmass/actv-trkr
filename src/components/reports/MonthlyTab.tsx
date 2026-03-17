@@ -123,10 +123,10 @@ export default function MonthlyTab() {
               {format(lastMonth, "MMMM yyyy")} in Review
             </h3>
           </div>
-          <button onClick={generateAiSummary} disabled={loadingAi}
+          <button onClick={generateAiSummary} disabled={loadingAi || cooldownRemaining > 0}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50">
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {loadingAi ? "Generating…" : "AI Summary"}
+            {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summary"}
           </button>
         </div>
 

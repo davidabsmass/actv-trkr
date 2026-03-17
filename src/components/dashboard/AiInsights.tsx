@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Brain, Lightbulb, RefreshCw, Sparkles, ArrowRight, AlertCircle } from "lucide-react";
+import { Brain, Lightbulb, RefreshCw, Sparkles, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface AiInsightsProps {
@@ -37,41 +36,47 @@ const priorityConfig = {
 };
 
 export function AiInsights({ metrics }: AiInsightsProps) {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [insights, setInsights] = useState<InsightsData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
 
-  // Stable key from metrics to avoid refetching on every render
-  const metricsKey = useMemo(
-    () =>
-      `${metrics.sessionsThisWeek}-${metrics.leadsThisWeek}-${metrics.cvrThisWeek.toFixed(4)}-${refreshKey}`,
-    [metrics.sessionsThisWeek, metrics.leadsThisWeek, metrics.cvrThisWeek, refreshKey]
-  );
-
-  const {
-    data: insights,
-    isLoading,
-    error,
-    isFetching,
-  } = useQuery<InsightsData>({
-    queryKey: ["ai_dashboard_insights", metricsKey],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke(
+  const handleGenerate = async () => {
+    setIsLoading(true);
+    setError(null);
+    setRateLimited(false);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
         "dashboard-ai-insights",
         { body: { metrics } }
       );
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data as InsightsData;
-    },
-    staleTime: 5 * 60 * 1000, // cache 5 min
-    retry: 1,
-  });
-
-  const handleRefresh = () => {
-    setRefreshKey((k) => k + 1);
-    toast.info("Refreshing AI insights…");
+      if (fnError) {
+        // Check for rate limit in the error
+        if (fnError.message?.includes("429") || fnError.message?.includes("RATE_LIMITED")) {
+          setRateLimited(true);
+          toast.error("Daily AI insight limit reached. Try again tomorrow.");
+          return;
+        }
+        throw fnError;
+      }
+      if (data?.error) {
+        if (data.code === "RATE_LIMITED") {
+          setRateLimited(true);
+          toast.error(data.error);
+          return;
+        }
+        throw new Error(data.error);
+      }
+      setInsights(data as InsightsData);
+    } catch (e: any) {
+      setError(e?.message || "Failed to generate insights");
+      toast.error("Failed to generate AI insights");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  if (error) {
+  if (error && !rateLimited) {
     return (
       <div className="glass-card p-5 animate-slide-up">
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -89,21 +94,28 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         <div className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">AI Performance Insights</h3>
-          <span className="text-[9px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-            Live
-          </span>
         </div>
         <button
-          onClick={handleRefresh}
-          disabled={isFetching}
-          className="p-1.5 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
-          title="Refresh insights"
+          onClick={handleGenerate}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${isFetching ? "animate-spin" : ""}`} />
+          {isLoading ? (
+            <RefreshCw className="h-3 w-3 animate-spin" />
+          ) : insights ? (
+            <RefreshCw className="h-3 w-3" />
+          ) : (
+            <Sparkles className="h-3 w-3" />
+          )}
+          {isLoading ? "Generating…" : insights ? "Refresh" : "Generate Insights"}
         </button>
       </div>
 
-      {isLoading || !insights ? (
+      {rateLimited ? (
+        <div className="p-4 rounded-md bg-warning/5 border border-warning/20">
+          <p className="text-xs text-muted-foreground">Daily AI insight limit reached. Insights will be available again tomorrow.</p>
+        </div>
+      ) : isLoading ? (
         <div className="space-y-3">
           <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
           <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
@@ -112,6 +124,10 @@ export function AiInsights({ metrics }: AiInsightsProps) {
               <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
+        </div>
+      ) : !insights ? (
+        <div className="p-4 rounded-md bg-muted/50 text-center">
+          <p className="text-xs text-muted-foreground">Click "Generate Insights" to get AI-powered analysis of your dashboard metrics.</p>
         </div>
       ) : (
         <>

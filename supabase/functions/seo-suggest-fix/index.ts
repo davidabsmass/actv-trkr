@@ -195,6 +195,13 @@ The title should be under 60 characters and the description under 155 characters
       }
     }
 
+    // Log AI usage
+    if (orgId) {
+      await adminClient.from("ai_usage_log").insert({
+        org_id: orgId, function_name: "seo-suggest-fix", cached: false,
+      });
+    }
+
     return new Response(
       JSON.stringify({ suggested_value: suggested }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

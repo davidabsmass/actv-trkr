@@ -429,6 +429,11 @@ HTML: ${analyzableHtml}`,
       platform,
     });
 
+    // Log AI usage
+    await adminClient.from("ai_usage_log").insert({
+      org_id, function_name: "scan-site-seo", cached: false,
+    });
+
     return new Response(JSON.stringify({ score, issues: finalIssues, platform, url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

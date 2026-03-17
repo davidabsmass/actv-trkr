@@ -72,51 +72,105 @@ Deno.serve(async (req) => {
     if (formsErr) throw formsErr;
     if (!avadaForms || avadaForms.length === 0) {
       return new Response(
-        JSON.stringify({ ok: true, deleted: 0, message: "No Avada forms found" }),
+        JSON.stringify({ ok: true, deleted_leads: 0, deleted_raw_events: 0, deleted_flat_fields: 0, forms_affected: 0, message: "No Avada forms found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const formIds = avadaForms.map((f) => f.id);
-    let totalDeleted = 0;
+    let totalDeletedLeads = 0;
+    let totalDeletedRawEvents = 0;
+    let totalDeletedFlatFields = 0;
+    const errors: string[] = [];
 
-    // 1. Get all lead IDs for these forms
-    const { data: leads } = await admin
-      .from("leads")
-      .select("id")
-      .eq("org_id", org_id)
-      .in("form_id", formIds);
+    // 1. Get all lead IDs for these forms — paginate to avoid 1000-row limit
+    const allLeadIds: string[] = [];
+    const pageSize = 1000;
+    for (const formId of formIds) {
+      let offset = 0;
+      while (true) {
+        const { data: leads, error: leadsErr } = await admin
+          .from("leads")
+          .select("id")
+          .eq("org_id", org_id)
+          .eq("form_id", formId)
+          .range(offset, offset + pageSize - 1);
 
-    const leadIds = (leads || []).map((l) => l.id);
+        if (leadsErr) {
+          errors.push(`Failed to query leads for form ${formId}: ${leadsErr.message}`);
+          break;
+        }
+        if (!leads || leads.length === 0) break;
+        allLeadIds.push(...leads.map((l) => l.id));
+        if (leads.length < pageSize) break;
+        offset += pageSize;
+      }
+    }
 
     // 2. Delete lead_fields_flat in batches
-    if (leadIds.length > 0) {
+    if (allLeadIds.length > 0) {
       const batchSize = 200;
-      for (let i = 0; i < leadIds.length; i += batchSize) {
-        const batch = leadIds.slice(i, i + batchSize);
-        await admin.from("lead_fields_flat").delete().eq("org_id", org_id).in("lead_id", batch);
+      for (let i = 0; i < allLeadIds.length; i += batchSize) {
+        const batch = allLeadIds.slice(i, i + batchSize);
+        const { error: flatErr, count } = await admin
+          .from("lead_fields_flat")
+          .delete({ count: "exact" })
+          .eq("org_id", org_id)
+          .in("lead_id", batch);
+
+        if (flatErr) {
+          errors.push(`Failed to delete lead_fields_flat batch at offset ${i}: ${flatErr.message}`);
+        } else {
+          totalDeletedFlatFields += count || 0;
+        }
       }
     }
 
     // 3. Delete lead_events_raw for these forms
     for (const formId of formIds) {
-      await admin.from("lead_events_raw").delete().eq("org_id", org_id).eq("form_id", formId);
+      const { error: rawErr, count } = await admin
+        .from("lead_events_raw")
+        .delete({ count: "exact" })
+        .eq("org_id", org_id)
+        .eq("form_id", formId);
+
+      if (rawErr) {
+        errors.push(`Failed to delete lead_events_raw for form ${formId}: ${rawErr.message}`);
+      } else {
+        totalDeletedRawEvents += count || 0;
+      }
     }
 
     // 4. Delete leads for these forms
     for (const formId of formIds) {
-      const { count } = await admin
+      const { error: leadErr, count } = await admin
         .from("leads")
         .delete({ count: "exact" })
         .eq("org_id", org_id)
         .eq("form_id", formId);
-      totalDeleted += count || 0;
+
+      if (leadErr) {
+        errors.push(`Failed to delete leads for form ${formId}: ${leadErr.message}`);
+      } else {
+        totalDeletedLeads += count || 0;
+      }
     }
 
-    console.log(`[reset-avada-entries] Deleted ${totalDeleted} leads across ${formIds.length} Avada forms for org=${org_id} site=${site_id}`);
+    if (errors.length > 0) {
+      console.error(`[reset-avada-entries] Partial failures: ${errors.join("; ")}`);
+    }
+
+    console.log(`[reset-avada-entries] Deleted ${totalDeletedLeads} leads, ${totalDeletedRawEvents} raw events, ${totalDeletedFlatFields} flat fields across ${formIds.length} Avada forms for org=${org_id} site=${site_id}`);
 
     return new Response(
-      JSON.stringify({ ok: true, deleted: totalDeleted, forms_affected: formIds.length }),
+      JSON.stringify({
+        ok: errors.length === 0,
+        deleted_leads: totalDeletedLeads,
+        deleted_raw_events: totalDeletedRawEvents,
+        deleted_flat_fields: totalDeletedFlatFields,
+        forms_affected: formIds.length,
+        errors: errors.length > 0 ? errors : undefined,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {

@@ -23,6 +23,38 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const userId = data.claims.sub as string;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Resolve org_id
+    const { data: orgRow } = await adminClient
+      .from("org_users")
+      .select("org_id")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle();
+    const orgId = orgRow?.org_id;
+
+    // Rate limit check (only if org found)
+    if (orgId) {
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count } = await adminClient
+        .from("ai_usage_log")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .eq("function_name", "seo-suggest-fix")
+        .eq("cached", false)
+        .gte("created_at", dayAgo);
+
+      if ((count ?? 0) >= 15) {
+        return new Response(
+          JSON.stringify({ error: "Daily SEO suggestion limit reached. Try again tomorrow.", code: "RATE_LIMITED" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const { page_url, fix_type } = await req.json();
 
     if (!page_url || !fix_type) {

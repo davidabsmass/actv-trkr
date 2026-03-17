@@ -476,6 +476,15 @@ Deno.serve(async (req) => {
       reasonCodes.push("plugin_outdated");
     }
 
+    if (avadaBackfillError && syncStatus === "ok") {
+      syncStatus = "partial";
+      reasonCodes.push("avada_backfill_failed");
+    }
+
+    if (avadaBackfillAttempted && avadaBackfillEntries > 0) {
+      reasonCodes.push("avada_backfill_reimported");
+    }
+
     let pluginWarning: string | null = null;
     if (runtimePluginOutdated) {
       pluginWarning = `Detected ACTV TRKR ${runtimePluginVersion || "unknown"}. Please install v${minimumPluginVersion} or newer for reliable sync.`;

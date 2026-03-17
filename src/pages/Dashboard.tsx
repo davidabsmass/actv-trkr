@@ -4,6 +4,7 @@ import { format, subDays, startOfDay } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { LatestSummary } from "@/components/dashboard/LatestSummary";
+import { AiInsights } from "@/components/dashboard/AiInsights";
 import { WhatsWorking } from "@/components/dashboard/WhatsWorking";
 import { TopPagesAndSources } from "@/components/dashboard/TopPagesAndSources";
 import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";

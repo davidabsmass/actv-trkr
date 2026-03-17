@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.13: Adds Avada historical backfill endpoint required for reset-and-reimport recovery
-const LATEST_VERSION = "1.3.13";
+// v1.3.14: Fixes Avada backfill for installs that only match entries via URL/blob strategies
+const LATEST_VERSION = "1.3.14";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.14
+- Fixes Avada historical backfill when submissions are discoverable only through URL/blob matching
+- Reuses the same multi-strategy Avada discovery used by sync diagnostics before ingesting entries
+
 ## 1.3.13
 - Adds /backfill-avada REST route for historical Avada reimport after ID-format resets
 - Replays Avada submission rows using stable avada_db_* IDs to rebuild lead history cleanly

@@ -1,5 +1,5 @@
 === ACTV TRKR ===
-Contributors: mshnctrl
+Contributors: absolutelymassive
 Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7

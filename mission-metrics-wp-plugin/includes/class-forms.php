@@ -54,6 +54,12 @@ class MM_Forms {
 			'callback'            => array( __CLASS__, 'handle_rest_sync' ),
 			'permission_callback' => '__return_true',
 		) );
+
+		register_rest_route( 'actv-trkr/v1', '/backfill-avada', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'handle_rest_backfill_avada' ),
+			'permission_callback' => '__return_true',
+		) );
 	}
 
 	/**

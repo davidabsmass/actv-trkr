@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.10: Avada small-table filtering bugfix + safer per-form reconciliation
-const LATEST_VERSION = "1.3.10";
+// v1.3.11: Avada page-url-aware discovery fix for sites where table rows omit form_id markers
+const LATEST_VERSION = "1.3.11";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.11
+- Fixes Avada discovery on sites where submission rows do not store form_id markers
+- Adds per-form page URL detection during Sync Forms and uses it for entry scoping
+- Resolves blocked syncs showing strategy "none" with 0 active entries on every Avada form
+
 ## 1.3.10
 - Fixes Avada small-table fallback returning identical entry sets for every form
 - Filters fallback rows by per-form markers (form_id, fusion_form_id, form_post_id, post_id)

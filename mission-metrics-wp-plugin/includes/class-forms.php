@@ -1366,7 +1366,6 @@ class MM_Forms {
 		global $wpdb;
 		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
 
-		// Find all Avada forms
 		$avada_forms = get_posts( array(
 			'post_type'      => 'fusion_form',
 			'post_status'    => 'publish',
@@ -1378,7 +1377,6 @@ class MM_Forms {
 			return new \WP_REST_Response( array( 'ok' => true, 'entries' => 0 ), 200 );
 		}
 
-		// Find the submissions table
 		$candidate_tables = array(
 			$wpdb->prefix . 'fusion_form_submissions',
 			$wpdb->prefix . 'fusionbuilder_form_submissions',
@@ -1399,8 +1397,7 @@ class MM_Forms {
 
 		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
 		$ts_col = 'id';
-		$ts_candidates = array( 'date_time', 'created_at', 'submitted_at', 'date', 'created' );
-		foreach ( $ts_candidates as $tc ) {
+		foreach ( array( 'date_time', 'created_at', 'submitted_at', 'date', 'created' ) as $tc ) {
 			if ( in_array( $tc, $columns, true ) ) {
 				$ts_col = $tc;
 				break;
@@ -1409,41 +1406,74 @@ class MM_Forms {
 
 		$has_submission_col = in_array( 'submission', $columns, true );
 		$has_source_url     = in_array( 'source_url', $columns, true );
-		$form_ref_candidates = array( 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id' );
-
-		$all_entries = array();
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
 
+		$discovered = array();
 		foreach ( $avada_forms as $form_post_id ) {
-			$form_title = get_the_title( $form_post_id ) ?: 'Avada Form';
+			$discovered[] = array(
+				'form_id'  => (string) $form_post_id,
+				'provider' => 'avada',
+			);
+		}
+		$discovered = self::enrich_with_page_urls( $discovered );
 
-			// Find entries using the same multi-strategy approach
-			$rows = array();
-			foreach ( $form_ref_candidates as $frc ) {
-				if ( ! in_array( $frc, $columns, true ) ) continue;
-				$rows = $wpdb->get_results( $wpdb->prepare(
-					"SELECT * FROM {$table} WHERE {$frc} = %d ORDER BY id ASC LIMIT 5000",
-					intval( $form_post_id )
-				) );
-				if ( ! empty( $rows ) ) break;
+		$sent = 0;
 
-				$rows = $wpdb->get_results( $wpdb->prepare(
-					"SELECT * FROM {$table} WHERE {$frc} = %s ORDER BY id ASC LIMIT 5000",
-					(string) $form_post_id
-				) );
-				if ( ! empty( $rows ) ) break;
+		foreach ( $discovered as $form_info ) {
+			$form_post_id = (string) ( $form_info['form_id'] ?? '' );
+			if ( ! $form_post_id ) continue;
+
+			$form_title = get_the_title( intval( $form_post_id ) ) ?: 'Avada Form';
+			$page_url   = $form_info['page_url'] ?? null;
+
+			$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url );
+			if ( ! is_array( $entry_refs ) || empty( $entry_refs ) ) continue;
+
+			$numeric_ids = array();
+			foreach ( $entry_refs as $entry_ref ) {
+				if ( is_array( $entry_ref ) && ! empty( $entry_ref['id'] ) ) {
+					$rid = intval( str_replace( 'avada_db_', '', (string) $entry_ref['id'] ) );
+					if ( $rid > 0 ) $numeric_ids[] = $rid;
+				} elseif ( is_string( $entry_ref ) ) {
+					$rid = intval( str_replace( 'avada_db_', '', $entry_ref ) );
+					if ( $rid > 0 ) $numeric_ids[] = $rid;
+				}
+			}
+			$numeric_ids = array_values( array_unique( $numeric_ids ) );
+
+			$rows_by_id = array();
+			if ( ! empty( $numeric_ids ) ) {
+				$placeholders = implode( ',', array_fill( 0, count( $numeric_ids ), '%d' ) );
+				$query = $wpdb->prepare( "SELECT * FROM {$table} WHERE id IN ({$placeholders}) ORDER BY id ASC", $numeric_ids );
+				$rows = $wpdb->get_results( $query );
+				if ( is_array( $rows ) ) {
+					foreach ( $rows as $row ) {
+						$rows_by_id[ (string) $row->id ] = $row;
+					}
+				}
 			}
 
-			if ( empty( $rows ) ) continue;
+			foreach ( $entry_refs as $entry_ref ) {
+				$entry_id = null;
+				$submitted_at = null;
 
-			foreach ( $rows as $row ) {
-				$entry_id = 'avada_db_' . $row->id;
-				$submitted_at = isset( $row->$ts_col ) ? $row->$ts_col : null;
-				$source_url = $has_source_url && isset( $row->source_url ) ? $row->source_url : null;
+				if ( is_array( $entry_ref ) && ! empty( $entry_ref['id'] ) ) {
+					$entry_id = (string) $entry_ref['id'];
+					$submitted_at = $entry_ref['ts'] ?? null;
+				} elseif ( is_string( $entry_ref ) ) {
+					$entry_id = (string) $entry_ref;
+				}
 
-				// Parse submission blob for fields
+				if ( ! $entry_id ) continue;
+
+				$rid = intval( str_replace( 'avada_db_', '', $entry_id ) );
+				$row = ( $rid > 0 && isset( $rows_by_id[ (string) $rid ] ) ) ? $rows_by_id[ (string) $rid ] : null;
+				if ( ! $submitted_at && $row && isset( $row->$ts_col ) ) {
+					$submitted_at = $row->$ts_col;
+				}
+
 				$fields = array();
-				if ( $has_submission_col && ! empty( $row->submission ) ) {
+				if ( $row && $has_submission_col && ! empty( $row->submission ) ) {
 					$decoded = json_decode( $row->submission, true );
 					if ( is_array( $decoded ) ) {
 						$idx = 0;
@@ -1460,10 +1490,14 @@ class MM_Forms {
 					}
 				}
 
+				$source_url = ( $row && $has_source_url && ! empty( $row->source_url ) )
+					? $row->source_url
+					: $page_url;
+
 				$payload = array(
 					'provider' => 'avada',
 					'entry'    => array(
-						'form_id'      => (string) $form_post_id,
+						'form_id'      => $form_post_id,
 						'form_title'   => $form_title,
 						'entry_id'     => $entry_id,
 						'source_url'   => $source_url,
@@ -1481,7 +1515,6 @@ class MM_Forms {
 					'fields' => $fields,
 				);
 
-				// Send each entry to the ingest endpoint
 				$response = wp_remote_post( $endpoint, array(
 					'timeout'  => 10,
 					'blocking' => true,
@@ -1492,18 +1525,15 @@ class MM_Forms {
 					'body' => wp_json_encode( $payload ),
 				) );
 
-				$all_entries[] = array(
-					'entry_id' => $entry_id,
-					'form_id'  => (string) $form_post_id,
-					'status'   => is_wp_error( $response ) ? 'error' : wp_remote_retrieve_response_code( $response ),
-				);
+				if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) < 400 ) {
+					$sent++;
+				}
 			}
 		}
 
 		return new \WP_REST_Response( array(
-			'ok'      => true,
-			'entries' => count( $all_entries ),
-			'details' => $all_entries,
+			'ok'             => true,
+			'entries'        => $sent,
 			'plugin_version' => MM_PLUGIN_VERSION,
 		), 200 );
 	}

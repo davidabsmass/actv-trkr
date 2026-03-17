@@ -417,6 +417,7 @@ export default function Forms() {
   });
 
   const [syncing, setSyncing] = useState(false);
+  const [avadaSyncBlocked, setAvadaSyncBlocked] = useState(false);
 
   const handleSyncAll = async () => {
     if (!orgId || !forms || forms.length === 0) return;

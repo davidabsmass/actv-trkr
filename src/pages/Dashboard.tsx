@@ -119,7 +119,8 @@ const Dashboard = () => {
   const [days, setDays] = useState(30);
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
-  const { needsOnboarding } = useSiteSettings();
+  const { needsOnboarding, settings } = useSiteSettings();
+  const { data: formsData } = useForms(orgId);
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");

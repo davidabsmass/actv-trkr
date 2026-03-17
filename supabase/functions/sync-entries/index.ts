@@ -121,7 +121,8 @@ Deno.serve(async (req) => {
 
     const siteId = site.id;
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, "1.3.4");
-    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, "1.3.11");
+    const minimumAvadaVersion = "1.3.12";
+    const pluginNeedsAvadaFix = !isVersionAtLeast(site.plugin_version, minimumAvadaVersion);
     const detectedPluginVersion = site.plugin_version || "unknown";
     const warnings: string[] = [];
     let totalTrashed = 0;
@@ -144,7 +145,7 @@ Deno.serve(async (req) => {
       console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync`);
       warnings.push(
         pluginNeedsAvadaFix
-          ? `Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v1.3.11+ and click "Sync Forms" in WordPress.`
+          ? `Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v${minimumAvadaVersion}+ and click "Sync Forms" in WordPress.`
           : `Avada entry discovery failed on ACTV TRKR v${detectedPluginVersion} — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Run "Sync Forms" in WordPress, then re-sync entries.`
       );
     }

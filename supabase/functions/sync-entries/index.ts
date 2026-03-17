@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
       console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — enabling safe mode (no Avada trashing)`);
       warnings.push(
         pluginNeedsAvadaFix
-          ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v1.3.11+ and re-sync.`
+          ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v${minimumAvadaVersion}+ and re-sync.`
           : `Avada returned identical active-entry lists across multiple forms on ACTV TRKR v${detectedPluginVersion}. To protect your data, Avada delete-sync is running in safe mode (no trashing) until per-form entry IDs are detected.`
       );
     }

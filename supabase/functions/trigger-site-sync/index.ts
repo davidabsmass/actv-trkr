@@ -503,6 +503,9 @@ Deno.serve(async (req) => {
       warnings: wpWarnings,
       avada_diagnostics: avadaDiagnostics,
       runtime_plugin_version: runtimePluginVersion,
+      avada_backfill_attempted: avadaBackfillAttempted,
+      avada_backfill_entries: avadaBackfillEntries,
+      avada_backfill_error: avadaBackfillError,
       ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

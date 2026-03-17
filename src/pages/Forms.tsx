@@ -215,7 +215,7 @@ function compareVersions(a: string, b: string): number {
 }
 
 function getBlockedSyncMessage(runtimeVersion: string | null | undefined): string {
-  const minimumVersion = "1.3.11";
+  const minimumVersion = "1.3.12";
   if (!runtimeVersion || compareVersions(runtimeVersion, minimumVersion) < 0) {
     return `Sync blocked — Avada entry discovery failed. Update the plugin to v${minimumVersion}+ and re-sync.`;
   }

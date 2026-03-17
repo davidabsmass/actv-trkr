@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.11: Avada page-url-aware discovery fix for sites where table rows omit form_id markers
-const LATEST_VERSION = "1.3.11";
+// v1.3.12: Avada resilient discovery for non-standard schemas and large submission tables
+const LATEST_VERSION = "1.3.12";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.12
+- Expands Avada form-ref discovery across more schema variants (formid, source_form_id, fusion_form)
+- Adds URL-centric matching across additional columns (page_url, source_url, referer, request_uri, payload)
+- Enables filtered recent-row scanning when direct index lookups fail, improving recovery from strategy "none"
+
 ## 1.3.11
 - Fixes Avada discovery on sites where submission rows do not store form_id markers
 - Adds per-form page URL detection during Sync Forms and uses it for entry scoping

@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const minimumPluginVersion = "1.3.4";
-    const minimumAvadaPluginVersion = "1.3.11";
+    const minimumAvadaPluginVersion = "1.3.12";
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, minimumPluginVersion);
 
     // Check if site has any Avada forms

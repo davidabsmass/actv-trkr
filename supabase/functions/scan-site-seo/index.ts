@@ -204,6 +204,23 @@ serve(async (req) => {
       });
     }
 
+    // Rate limit check
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: usageCount } = await adminClient
+      .from("ai_usage_log")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", org_id)
+      .eq("function_name", "scan-site-seo")
+      .eq("cached", false)
+      .gte("created_at", dayAgo);
+
+    if ((usageCount ?? 0) >= 5) {
+      return new Response(
+        JSON.stringify({ error: "Daily SEO scan limit reached (5/day). Try again tomorrow.", code: "RATE_LIMITED" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log(`Scanning: ${url} for org ${org_id}`);
 
     // Fetch HTML

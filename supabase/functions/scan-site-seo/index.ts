@@ -214,9 +214,9 @@ serve(async (req) => {
       .eq("cached", false)
       .gte("created_at", dayAgo);
 
-    if ((usageCount ?? 0) >= 5) {
+    if ((usageCount ?? 0) >= 10) {
       return new Response(
-        JSON.stringify({ error: "Daily SEO scan limit reached (5/day). Try again tomorrow.", code: "RATE_LIMITED" }),
+        JSON.stringify({ error: "Daily SEO scan limit reached (10/day). Try again tomorrow.", code: "RATE_LIMITED" }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

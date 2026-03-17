@@ -40,6 +40,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
+  const hasFired = useRef(false);
 
   const handleGenerate = async () => {
     setIsLoading(true);

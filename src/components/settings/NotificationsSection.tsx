@@ -14,10 +14,10 @@ interface NotificationPrefs {
 
 const DEFAULT_PREFS: NotificationPrefs = {
   weekly_summary: true,
-  daily_digest: false,
-  lead_realtime_email: false,
-  lead_email_digest: false,
-  lead_browser_push: false,
+  daily_digest: true,
+  lead_realtime_email: true,
+  lead_email_digest: true,
+  lead_browser_push: true,
 };
 
 const NOTIFICATION_OPTIONS: { key: keyof NotificationPrefs; label: string; description: string }[] = [

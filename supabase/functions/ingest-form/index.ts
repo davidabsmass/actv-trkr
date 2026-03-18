@@ -64,6 +64,37 @@ Deno.serve(async (req) => {
 
     const providerName = provider || "unknown";
 
+    const normalizeSubmittedAt = (value: unknown): string => {
+      if (value === null || value === undefined || value === "") return new Date().toISOString();
+
+      if (typeof value === "number" && Number.isFinite(value)) {
+        if (value > 1_000_000_000_000) return new Date(value).toISOString();
+        if (value > 1_000_000_000) return new Date(value * 1000).toISOString();
+        return new Date().toISOString();
+      }
+
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return new Date().toISOString();
+
+        if (/^\d+$/.test(trimmed)) {
+          const n = Number(trimmed);
+          if (Number.isFinite(n)) {
+            if (n > 1_000_000_000_000) return new Date(n).toISOString();
+            if (n > 1_000_000_000) return new Date(n * 1000).toISOString();
+          }
+          return new Date().toISOString();
+        }
+
+        const parsed = new Date(trimmed);
+        if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+      }
+
+      return new Date().toISOString();
+    };
+
+    const submittedAtIso = normalizeSubmittedAt(entry.submitted_at);
+
     // Resolve site
     const domain = context?.domain;
     if (!domain) return new Response(JSON.stringify({ error: "Missing domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -114,7 +145,7 @@ Deno.serve(async (req) => {
     await supabase.from("lead_events_raw").upsert({
       org_id: orgId, site_id: siteId, form_id: formId,
       external_entry_id: extEntryId,
-      submitted_at: entry.submitted_at || new Date().toISOString(),
+      submitted_at: submittedAtIso,
       payload: body, context: context || {},
       visitor_id: context?.visitor_id, session_id: context?.session_id,
     }, { onConflict: "org_id,site_id,form_id,external_entry_id", ignoreDuplicates: true });
@@ -139,7 +170,7 @@ Deno.serve(async (req) => {
 
     const { data: lead, error: leadErr } = await supabase.from("leads").insert({
       org_id: orgId, site_id: siteId, form_id: formId,
-      submitted_at: entry.submitted_at || new Date().toISOString(),
+      submitted_at: submittedAtIso,
       page_url: pageUrl || null, page_path: pagePath,
       referrer: context?.referrer, referrer_domain: referrerDomain,
       utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign,

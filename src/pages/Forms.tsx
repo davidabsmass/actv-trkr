@@ -703,61 +703,7 @@ function parseCsvText(text: string): Record<string, string>[] {
 
 function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: string | null; leadCount: number; onBack: () => void }) {
   const queryClient = useQueryClient();
-  const [syncing, setSyncing] = useState(false);
   const [importing, setImporting] = useState(false);
-
-  const handleSync = async () => {
-    if (!orgId || !form.site_id) return;
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
-        body: { site_id: form.site_id },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      if (data?.plugin_warning) {
-        toast.warning(data.plugin_warning);
-      }
-
-      const syncStatus = data?.sync_status as string | undefined;
-      const result = data?.wp_result?.result;
-      const runtimePluginVersion = (data?.runtime_plugin_version || result?.plugin_version || null) as string | null;
-      const parts: string[] = [];
-      if (result?.synced) parts.push(`${result.synced} form(s) synced`);
-      if (result?.trashed) parts.push(`${result.trashed} entry/entries trashed`);
-      if (result?.restored) parts.push(`${result.restored} entry/entries restored`);
-      if (data?.checked) parts.push(`${data.checked} form check(s) completed`);
-
-      const syncWarnings = (data?.warnings || result?.warnings) as string[] | undefined;
-      if (syncWarnings && Array.isArray(syncWarnings) && syncWarnings.length > 0) {
-        syncWarnings.forEach((w: string) => toast.warning(w));
-      }
-
-      if (syncStatus === "blocked") {
-        toast.error(getBlockedSyncMessage(runtimePluginVersion));
-      } else if (syncStatus === "partial") {
-        toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
-      } else {
-        toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
-      }
-
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["leads_by_form"] }),
-        queryClient.invalidateQueries({ queryKey: ["lead_fields_flat"] }),
-        queryClient.invalidateQueries({ queryKey: ["lead_counts_by_form_entries"] }),
-        queryClient.invalidateQueries({ queryKey: ["total_submissions"] }),
-        queryClient.invalidateQueries({ queryKey: ["leads_for_forms_page"] }),
-        queryClient.invalidateQueries({ queryKey: ["forms"] }),
-      ]);
-
-      await queryClient.refetchQueries({ queryKey: ["leads_by_form", orgId, form.id], type: "active" });
-    } catch (err: any) {
-      toast.error(err.message || "Sync failed");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

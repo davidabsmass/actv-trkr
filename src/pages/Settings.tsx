@@ -33,6 +33,7 @@ export default function SettingsPage() {
         <TabsList className="mb-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="setup">Website Setup</TabsTrigger>
+          <TabsTrigger value="guide">Get Started</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">

@@ -831,10 +831,6 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSync} disabled={syncing}>
-            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing…" : "Sync Entries"}
-          </Button>
         </div>
       </div>
       <p className="text-sm text-muted-foreground mb-6">

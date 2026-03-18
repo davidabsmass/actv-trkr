@@ -555,51 +555,71 @@ class MM_Forms {
 
 				// Layer 4: Search by form title/name in form-ref columns and blob columns
 				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $form_title ) ) {
-					$form_title_clean = trim( $form_title );
+					$form_title_clean = trim( wp_strip_all_tags( (string) $form_title ) );
+					$normalized_title = trim( preg_replace( '/\s+/', ' ', str_replace( array( '-', '_' ), ' ', strtolower( $form_title_clean ) ) ) );
+					$title_slug       = sanitize_title( $form_title_clean );
+					$title_variants   = array_values( array_unique( array_filter( array(
+						$form_title_clean,
+						$normalized_title,
+						$title_slug,
+						str_replace( ' ', '', $normalized_title ),
+					) ) ) );
 
-					// 4a: Try form-ref columns with title string match
+					// 4a: Try form-ref columns with strict and loose title matching
 					foreach ( $form_ref_candidates as $frc ) {
 						if ( ! in_array( $frc, $columns, true ) ) continue;
+						foreach ( $title_variants as $variant ) {
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
+								$variant
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'form_title_ref:' . $frc;
+								break 2;
+							}
+						}
 						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
-							$form_title_clean
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} LIKE %s ORDER BY id DESC LIMIT 5000",
+							'%' . $wpdb->esc_like( $form_title_clean ) . '%'
 						) );
 						if ( is_array( $rows ) && ! empty( $rows ) ) {
-							$strategy_used = 'form_title_ref:' . $frc;
+							$strategy_used = 'form_title_ref_like:' . $frc;
 							break;
 						}
 					}
 
-					// 4b: Search blob columns for form title
+					// 4b: Search blob columns by title variants
 					if ( ! is_array( $rows ) || empty( $rows ) ) {
 						foreach ( $blob_candidates as $bc ) {
 							if ( ! in_array( $bc, $columns, true ) ) continue;
-							$like_title = '%' . $wpdb->esc_like( $form_title_clean ) . '%';
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-								$like_title
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'blob_form_title:' . $bc;
-								break;
+							foreach ( $title_variants as $variant ) {
+								$rows = $wpdb->get_results( $wpdb->prepare(
+									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+									'%' . $wpdb->esc_like( $variant ) . '%'
+								) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'blob_form_title:' . $bc;
+									break 2;
+								}
 							}
 						}
 					}
 
-					// 4c: Also check if there's a 'form_name' or 'name' column
+					// 4c: Check name-ish columns with exact + LIKE matching
 					$name_candidates = array( 'form_name', 'name', 'title', 'form_title' );
 					if ( ! is_array( $rows ) || empty( $rows ) ) {
 						foreach ( $name_candidates as $nc ) {
 							if ( ! in_array( $nc, $columns, true ) ) continue;
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} = %s ORDER BY id DESC LIMIT 5000",
-								$form_title_clean
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'name_col:' . $nc;
-								break;
+							foreach ( $title_variants as $variant ) {
+								$rows = $wpdb->get_results( $wpdb->prepare(
+									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} = %s ORDER BY id DESC LIMIT 5000",
+									$variant
+								) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'name_col:' . $nc;
+									break 2;
+								}
 							}
-							// Also try LIKE match for partial name matches (renamed forms)
 							$rows = $wpdb->get_results( $wpdb->prepare(
 								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} LIKE %s ORDER BY id DESC LIMIT 5000",
 								'%' . $wpdb->esc_like( $form_title_clean ) . '%'
@@ -610,45 +630,90 @@ class MM_Forms {
 							}
 						}
 					}
-				}
 
-			// Layer 5: If form_id is a numeric post ID, query ALL submissions and check
-			// if the serialized data or any column references this form post ID
-			if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
-				// Try a broad LIKE search on all blob columns for the form post ID
-				foreach ( $blob_candidates as $bc ) {
-					if ( ! in_array( $bc, $columns, true ) ) continue;
-					$like_pid = '%' . $wpdb->esc_like( (string) $form_id ) . '%';
-					$rows = $wpdb->get_results( $wpdb->prepare(
-						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-						$like_pid
-					) );
-					if ( is_array( $rows ) && ! empty( $rows ) ) {
-						$strategy_used = 'blob_post_id_broad:' . $bc;
-						break;
-					}
-				}
-			}
-
-			// Layer 6: If there's a 'form_id' column that stores a string/slug instead of numeric,
-			// try all rows and check if form post content references this submission
-			if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
-				// Last resort: query by form_id stored as the post name/slug
-				$form_post = get_post( intval( $form_id ) );
-				if ( $form_post && $form_post->post_name ) {
-					foreach ( $form_ref_candidates as $frc ) {
-						if ( ! in_array( $frc, $columns, true ) ) continue;
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
-							$form_post->post_name
-						) );
-						if ( is_array( $rows ) && ! empty( $rows ) ) {
-							$strategy_used = 'form_post_slug:' . $frc;
-							break;
+					// 4d: Token-based matching for renamed forms (hyphen/space variants)
+					if ( ! is_array( $rows ) || empty( $rows ) ) {
+						$title_tokens = array_values( array_filter( preg_split( '/\s+/', $normalized_title ), function( $token ) {
+							return strlen( $token ) >= 3;
+						} ) );
+						if ( ! empty( $title_tokens ) ) {
+							$title_tokens = array_slice( $title_tokens, 0, 4 );
+							foreach ( $blob_candidates as $bc ) {
+								if ( ! in_array( $bc, $columns, true ) ) continue;
+								$where_parts = array();
+								$params = array();
+								foreach ( $title_tokens as $token ) {
+									$where_parts[] = "{$bc} LIKE %s";
+									$params[] = '%' . $wpdb->esc_like( $token ) . '%';
+								}
+								$sql = "SELECT id, {$ts_col} AS ts FROM {$table} WHERE " . implode( ' AND ', $where_parts ) . " ORDER BY id DESC LIMIT 5000";
+								$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'blob_title_tokens:' . $bc;
+									break;
+								}
+							}
 						}
 					}
 				}
-			}
+
+				// Layer 5: If form_id is numeric, scan blob columns for serialized/JSON markers
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
+					$markers = array(
+						'"form_id":"' . (string) $form_id . '"',
+						'"form_post_id":"' . (string) $form_id . '"',
+						'form_id";i:' . (string) $form_id,
+						'form_post_id";i:' . (string) $form_id,
+						'form_post_id=' . (string) $form_id,
+						'fusion_form_' . (string) $form_id,
+						(string) $form_id,
+					);
+					foreach ( $blob_candidates as $bc ) {
+						if ( ! in_array( $bc, $columns, true ) ) continue;
+						foreach ( $markers as $marker ) {
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								'%' . $wpdb->esc_like( $marker ) . '%'
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'blob_post_id_marker:' . $bc;
+								break 2;
+							}
+						}
+					}
+				}
+
+				// Layer 6: If there's a form post slug, try matching refs and blobs
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
+					$form_post = get_post( intval( $form_id ) );
+					if ( $form_post && $form_post->post_name ) {
+						foreach ( $form_ref_candidates as $frc ) {
+							if ( ! in_array( $frc, $columns, true ) ) continue;
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s OR {$frc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								$form_post->post_name,
+								'%' . $wpdb->esc_like( $form_post->post_name ) . '%'
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'form_post_slug:' . $frc;
+								break;
+							}
+						}
+						if ( ! is_array( $rows ) || empty( $rows ) ) {
+							foreach ( $blob_candidates as $bc ) {
+								if ( ! in_array( $bc, $columns, true ) ) continue;
+								$rows = $wpdb->get_results( $wpdb->prepare(
+									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+									'%' . $wpdb->esc_like( $form_post->post_name ) . '%'
+								) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'blob_form_slug:' . $bc;
+									break;
+								}
+							}
+						}
+					}
+				}
 
 			// No global fallback — safe failure
 			self::$last_avada_strategy = $strategy_used;

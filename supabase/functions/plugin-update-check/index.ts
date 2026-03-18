@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.18
+- CRITICAL: Fixes PHP syntax error (unexpected 'foreach') in class-forms.php that crashed the WordPress sync endpoint
+- Fixes malformed conditional blocks in Avada entry discovery that prevented all entry ingestion
+- Adds duplicate-entry guard in ingest-form to prevent repeated backfill from creating duplicate leads
+
 ## 1.3.17
 - Improves Avada discovery for form_post_id/fusion_form_id markers stored in submission blobs
 - Improves title fallback matching for renamed forms (hyphen/underscore/punctuation variations)

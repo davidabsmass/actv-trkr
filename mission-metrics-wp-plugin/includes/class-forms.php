@@ -262,7 +262,7 @@ class MM_Forms {
 			$form_id  = $form_info['form_id'] ?? '';
 			if ( ! $form_id ) continue;
 
-			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null );
+			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null, $form_info['form_title'] ?? null );
 			if ( $entry_ids === null ) continue;
 
 			// Collect Avada per-form diagnostics
@@ -365,7 +365,8 @@ class MM_Forms {
 		) );
 		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
 			foreach ( $avada_forms as $form_post_id ) {
-				$discovered[] = array( 'form_id' => (string) $form_post_id, 'provider' => 'avada' );
+				$title = get_the_title( $form_post_id ) ?: 'Avada Form';
+				$discovered[] = array( 'form_id' => (string) $form_post_id, 'provider' => 'avada', 'form_title' => $title );
 			}
 		}
 		// Ninja Forms
@@ -406,7 +407,7 @@ class MM_Forms {
 	 * Get active (non-trashed) entry IDs for a given form provider + form ID.
 	 * Returns null if the provider doesn't support entry listing.
 	 */
-	private static function get_active_entry_ids( $provider, $form_id, $page_url = null ) {
+	private static function get_active_entry_ids( $provider, $form_id, $page_url = null, $form_title = null ) {
 		global $wpdb;
 
 		switch ( $provider ) {
@@ -547,6 +548,65 @@ class MM_Forms {
 							if ( is_array( $rows ) && ! empty( $rows ) ) {
 								$strategy_used = 'blob_url:' . $bc;
 								break 2;
+							}
+						}
+					}
+				}
+
+				// Layer 4: Search by form title/name in form-ref columns and blob columns
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $form_title ) ) {
+					$form_title_clean = trim( $form_title );
+
+					// 4a: Try form-ref columns with title string match
+					foreach ( $form_ref_candidates as $frc ) {
+						if ( ! in_array( $frc, $columns, true ) ) continue;
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
+							$form_title_clean
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'form_title_ref:' . $frc;
+							break;
+						}
+					}
+
+					// 4b: Search blob columns for form title
+					if ( ! is_array( $rows ) || empty( $rows ) ) {
+						foreach ( $blob_candidates as $bc ) {
+							if ( ! in_array( $bc, $columns, true ) ) continue;
+							$like_title = '%' . $wpdb->esc_like( $form_title_clean ) . '%';
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								$like_title
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'blob_form_title:' . $bc;
+								break;
+							}
+						}
+					}
+
+					// 4c: Also check if there's a 'form_name' or 'name' column
+					$name_candidates = array( 'form_name', 'name', 'title', 'form_title' );
+					if ( ! is_array( $rows ) || empty( $rows ) ) {
+						foreach ( $name_candidates as $nc ) {
+							if ( ! in_array( $nc, $columns, true ) ) continue;
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} = %s ORDER BY id DESC LIMIT 5000",
+								$form_title_clean
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'name_col:' . $nc;
+								break;
+							}
+							// Also try LIKE match for partial name matches (renamed forms)
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								'%' . $wpdb->esc_like( $form_title_clean ) . '%'
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'name_col_like:' . $nc;
+								break;
 							}
 						}
 					}
@@ -1426,7 +1486,7 @@ class MM_Forms {
 			$form_title = get_the_title( intval( $form_post_id ) ) ?: 'Avada Form';
 			$page_url   = $form_info['page_url'] ?? null;
 
-			$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url );
+			$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url, $form_title );
 			if ( ! is_array( $entry_refs ) || empty( $entry_refs ) ) continue;
 
 			$numeric_ids = array();

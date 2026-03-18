@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { GetStartedBanner } from "@/components/dashboard/GetStartedBanner";
 import { useNavigate, Link } from "react-router-dom";
 import { format, subDays, startOfDay } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";

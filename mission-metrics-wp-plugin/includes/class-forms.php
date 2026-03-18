@@ -1532,22 +1532,9 @@ class MM_Forms {
 					$submitted_at = $row->$ts_col;
 				}
 
-				$fields = array();
-				if ( $row && $has_submission_col && ! empty( $row->submission ) ) {
-					$decoded = json_decode( $row->submission, true );
-					if ( is_array( $decoded ) ) {
-						$idx = 0;
-						foreach ( $decoded as $key => $value ) {
-							$fields[] = array(
-								'id'    => $idx,
-								'name'  => $key,
-								'label' => $key,
-								'type'  => 'text',
-								'value' => is_array( $value ) ? wp_json_encode( $value ) : (string) $value,
-							);
-							$idx++;
-						}
-					}
+			$fields = array();
+				if ( $row ) {
+					$fields = self::extract_avada_backfill_fields( $row, $columns, $has_submission_col );
 				}
 
 				$source_url = ( $row && $has_source_url && ! empty( $row->source_url ) )

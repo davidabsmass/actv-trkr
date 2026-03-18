@@ -365,7 +365,8 @@ class MM_Forms {
 		) );
 		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
 			foreach ( $avada_forms as $form_post_id ) {
-				$discovered[] = array( 'form_id' => (string) $form_post_id, 'provider' => 'avada' );
+				$title = get_the_title( $form_post_id ) ?: 'Avada Form';
+				$discovered[] = array( 'form_id' => (string) $form_post_id, 'provider' => 'avada', 'form_title' => $title );
 			}
 		}
 		// Ninja Forms

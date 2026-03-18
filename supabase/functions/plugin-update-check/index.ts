@@ -16,6 +16,13 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.22
+- Fixed Avada backfill parser: now correctly handles CSV format (data/field_types/field_labels columns)
+- Fixed real-time Avada handler to parse CSV fields instead of dumping raw metadata keys
+- Added avada-debug diagnostic endpoint for troubleshooting field extraction
+- Lead enrichment: existing leads with empty fields get populated on re-sync
+- Skips metadata keys (submission, field_labels, field_types, etc.) in field output
+
 ## 1.3.19
 - EMERGENCY: Fixes malformed Avada conditional blocks in class-forms.php that could crash WordPress immediately after plugin update
 - Adds packaging safety guard to block publishing a ZIP if malformed PHP tokens are detected

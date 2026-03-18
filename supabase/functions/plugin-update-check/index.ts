@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.18: Fixes PHP syntax error in generated class-forms.php that crashed WordPress sync endpoint
-const LATEST_VERSION = "1.3.18";
+// v1.3.19: Emergency hotfix for malformed class-forms.php conditionals in distributed ZIP
+const LATEST_VERSION = "1.3.19";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.19
+- EMERGENCY: Fixes malformed Avada conditional blocks in class-forms.php that could crash WordPress immediately after plugin update
+- Adds packaging safety guard to block publishing a ZIP if malformed PHP tokens are detected
+
 ## 1.3.18
 - CRITICAL: Fixes PHP syntax error (unexpected 'foreach') in class-forms.php that crashed the WordPress sync endpoint
 - Fixes malformed conditional blocks in Avada entry discovery that prevented all entry ingestion

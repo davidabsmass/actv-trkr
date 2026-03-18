@@ -178,6 +178,45 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingLead) {
+      // If existing lead has no field data but incoming payload has fields, enrich it
+      if (fields && Array.isArray(fields) && fields.length > 0) {
+        const { count: existingFieldCount } = await supabase
+          .from("lead_fields_flat")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", existingLead.id)
+          .eq("org_id", orgId);
+
+        if ((existingFieldCount || 0) === 0) {
+          console.log(`Enriching existing lead ${existingLead.id} with ${fields.length} fields`);
+          // Fall through to field insertion logic below instead of returning
+          // We'll use a flag to skip lead creation but still insert fields
+          const SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
+          const SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+          const flatRows = fields
+            .filter((f: any) => {
+              if (f.value === undefined || f.value === null || f.value === "") return false;
+              const key = f.name || f.id?.toString() || f.label || "unknown";
+              if (SKIP_KEYS.has(key)) return false;
+              if (SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
+              return true;
+            })
+            .map((f: any) => ({
+              org_id: orgId, lead_id: existingLead.id,
+              field_key: f.name || f.id?.toString() || f.label || "unknown",
+              field_label: f.label || f.name || f.id?.toString(),
+              field_type: f.type || "text",
+              value_text: f.value?.toString() || null,
+            }));
+          if (flatRows.length > 0) {
+            await supabase.from("lead_fields_flat").insert(flatRows);
+            console.log(`Enriched lead ${existingLead.id} with ${flatRows.length} fields`);
+          }
+          return new Response(JSON.stringify({ status: "enriched", lead_id: existingLead.id, fields_added: flatRows.length, provider: providerName }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: existingLead.id, provider: providerName }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -60,6 +60,12 @@ class MM_Forms {
 			'callback'            => array( __CLASS__, 'handle_rest_backfill_avada' ),
 			'permission_callback' => '__return_true',
 		) );
+
+		register_rest_route( 'actv-trkr/v1', '/avada-debug', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'handle_rest_avada_debug' ),
+			'permission_callback' => '__return_true',
+		) );
 	}
 
 	/**
@@ -1941,7 +1947,90 @@ class MM_Forms {
 				'type'  => $real_types[ $fi ]['type'],
 				'value' => $val,
 			);
+	// ── Avada Debug Endpoint ───────────────────────────────────────
+
+	/**
+	 * REST endpoint that returns raw sample rows from the Avada submissions table.
+	 * Used to diagnose field extraction failures.
+	 */
+	public static function handle_rest_avada_debug( $request ) {
+		$opts = MM_Settings::get();
+		if ( empty( $opts['api_key'] ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
 		}
+
+		$body     = $request->get_json_params();
+		$key_hash = $body['key_hash'] ?? '';
+
+		$stored_hash = hash( 'sha256', $opts['api_key'] );
+		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
+		}
+
+		global $wpdb;
+
+		$candidate_tables = array(
+			$wpdb->prefix . 'fusion_form_submissions',
+			$wpdb->prefix . 'fusionbuilder_form_submissions',
+			$wpdb->prefix . 'avada_form_submissions',
+		);
+
+		$table = null;
+		foreach ( $candidate_tables as $ct ) {
+			if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $ct ) ) === $ct ) {
+				$table = $ct;
+				break;
+			}
+		}
+
+		if ( ! $table ) {
+			return new \WP_REST_Response( array(
+				'ok'    => false,
+				'error' => 'No Avada submission table found',
+				'tried' => $candidate_tables,
+			), 200 );
+		}
+
+		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+		$total   = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+
+		// Get 3 sample rows with ALL columns
+		$sample_rows = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id DESC LIMIT 3" );
+
+		// Convert to arrays and truncate very long values for readability
+		$samples = array();
+		if ( is_array( $sample_rows ) ) {
+			foreach ( $sample_rows as $row ) {
+				$row_data = array();
+				foreach ( (array) $row as $col => $val ) {
+					if ( is_string( $val ) && strlen( $val ) > 500 ) {
+						$row_data[ $col ] = substr( $val, 0, 500 ) . '... [truncated, total ' . strlen( $val ) . ' chars]';
+					} else {
+						$row_data[ $col ] = $val;
+					}
+				}
+				$samples[] = $row_data;
+			}
+		}
+
+		// Also test our parser on the first row
+		$parser_result = array();
+		if ( ! empty( $sample_rows ) ) {
+			$has_submission_col = in_array( 'submission', $columns, true );
+			$parser_result = self::extract_avada_backfill_fields( $sample_rows[0], $columns, $has_submission_col );
+		}
+
+		return new \WP_REST_Response( array(
+			'ok'            => true,
+			'table'         => $table,
+			'columns'       => $columns,
+			'total_rows'    => $total,
+			'sample_rows'   => $samples,
+			'parser_output' => $parser_result,
+		), 200 );
+	}
+
+}
 
 		return $fields;
 	}

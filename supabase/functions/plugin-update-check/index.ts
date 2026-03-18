@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.14: Fixes Avada backfill for installs that only match entries via URL/blob strategies
-const LATEST_VERSION = "1.3.14";
+// v1.3.16: Fixes renamed Avada form discovery in distributed plugin package (title/name fallback)
+const LATEST_VERSION = "1.3.16";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.16
+- Adds Avada title/name fallback discovery in the downloadable plugin package
+- Fixes renamed forms (e.g. "Book In-Office") not returning historical entries during sync/backfill
+
 ## 1.3.14
 - Fixes Avada historical backfill when submissions are discoverable only through URL/blob matching
 - Reuses the same multi-strategy Avada discovery used by sync diagnostics before ingesting entries

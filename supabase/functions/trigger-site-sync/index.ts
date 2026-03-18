@@ -378,9 +378,20 @@ Deno.serve(async (req) => {
     const runtimePluginOutdated = !isVersionAtLeast(runtimePluginVersion, minimumPluginVersion);
     const runtimeNeedsAvadaFix = hasAvadaForms && !isVersionAtLeast(runtimePluginVersion, minimumAvadaPluginVersion);
 
-    // Detect requires_avada_reset flag from sync-entries response
-    const requiresAvadaReset = Boolean(wpResult?.requires_avada_reset);
-    const blockedReason = (wpResult?.blocked_reason as string) || null;
+    // Detect requires_avada_reset flag from sync-entries response.
+    // Backward compatibility: older WP plugin payloads only surfaced warning text.
+    const warningImpliesAvadaReset = wpWarnings.some((warning) => {
+      const lower = warning.toLowerCase();
+      return (
+        lower.includes("entries would be trashed with zero matches") ||
+        lower.includes("likely a discovery issue")
+      );
+    });
+
+    const requiresAvadaReset = Boolean(wpResult?.requires_avada_reset) || warningImpliesAvadaReset;
+    const blockedReason =
+      (wpResult?.blocked_reason as string | null) ||
+      (warningImpliesAvadaReset ? "legacy_id_deadlock" : null);
 
     // Auto-backfill Avada entries when the site has Avada forms but no synchronized data
     let avadaBackfillAttempted = false;

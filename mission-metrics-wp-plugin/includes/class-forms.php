@@ -612,13 +612,51 @@ class MM_Forms {
 					}
 				}
 
-				// No global fallback — safe failure
-				self::$last_avada_strategy = $strategy_used;
-
-				if ( ! is_array( $rows ) || empty( $rows ) ) {
-					error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
-					return array();
+			// Layer 5: If form_id is a numeric post ID, query ALL submissions and check
+			// if the serialized data or any column references this form post ID
+			if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
+				// Try a broad LIKE search on all blob columns for the form post ID
+				foreach ( $blob_candidates as $bc ) {
+					if ( ! in_array( $bc, $columns, true ) ) continue;
+					$like_pid = '%' . $wpdb->esc_like( (string) $form_id ) . '%';
+					$rows = $wpdb->get_results( $wpdb->prepare(
+						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+						$like_pid
+					) );
+					if ( is_array( $rows ) && ! empty( $rows ) ) {
+						$strategy_used = 'blob_post_id_broad:' . $bc;
+						break;
+					}
 				}
+			}
+
+			// Layer 6: If there's a 'form_id' column that stores a string/slug instead of numeric,
+			// try all rows and check if form post content references this submission
+			if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
+				// Last resort: query by form_id stored as the post name/slug
+				$form_post = get_post( intval( $form_id ) );
+				if ( $form_post && $form_post->post_name ) {
+					foreach ( $form_ref_candidates as $frc ) {
+						if ( ! in_array( $frc, $columns, true ) ) continue;
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
+							$form_post->post_name
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'form_post_slug:' . $frc;
+							break;
+						}
+					}
+				}
+			}
+
+			// No global fallback — safe failure
+			self::$last_avada_strategy = $strategy_used;
+
+			if ( ! is_array( $rows ) || empty( $rows ) ) {
+				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
+				return array();
+			}
 
 				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
 

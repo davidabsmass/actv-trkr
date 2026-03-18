@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.19: Emergency hotfix for malformed class-forms.php conditionals in distributed ZIP
-const LATEST_VERSION = "1.3.19";
+// v1.3.22: Fixed Avada backfill parser to handle CSV format (data/field_types/field_labels) + lead enrichment
+const LATEST_VERSION = "1.3.22";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

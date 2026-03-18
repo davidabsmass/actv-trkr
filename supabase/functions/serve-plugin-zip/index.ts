@@ -6,7 +6,39 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PLUGIN_VERSION = "1.3.18";
+const PLUGIN_VERSION = "1.3.19";
+
+function patchClassFormsPhp(content: string): string {
+  return content
+    .replaceAll(
+      "if(!is_array($rows)||empty($rows))&&!empty($page_url)){",
+      "if((!is_array($rows)||empty($rows))&&!empty($page_url)){",
+    )
+    .replaceAll(
+      "if(!is_array($rows)||empty($rows))&&!empty($resolved_title)){",
+      "if((!is_array($rows)||empty($rows))&&!empty($resolved_title)){",
+    )
+    .replaceAll(
+      "if(!is_array($rows)||empty($rows))){",
+      "if(!is_array($rows)||empty($rows)){",
+    );
+}
+
+function assertPluginFileSafety(files: Record<string, string>): void {
+  const classForms = files["actv-trkr/includes/class-forms.php"] || "";
+  const knownBadTokens = [
+    "if(!is_array($rows)||empty($rows))&&!empty($page_url)){",
+    "if(!is_array($rows)||empty($rows))&&!empty($resolved_title)){",
+    "if(!is_array($rows)||empty($rows))){",
+  ];
+
+  for (const token of knownBadTokens) {
+    if (classForms.includes(token)) {
+      throw new Error(`Refusing to build plugin ZIP: malformed class-forms.php token found: ${token}`);
+    }
+  }
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,7 +72,7 @@ Deno.serve(async (req) => {
 });
 
 function buildFiles(endpointBase: string): Record<string, string> {
-  return {
+  const files: Record<string, string> = {
     "actv-trkr/actv-trkr.php": `<?php
 /**
  * Plugin Name: ACTV TRKR
@@ -291,4 +323,12 @@ Supports all form plugins: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion 
 = 1.0.0 =
 * Initial release`,
   };
+
+  files["actv-trkr/includes/class-forms.php"] = patchClassFormsPhp(
+    files["actv-trkr/includes/class-forms.php"],
+  );
+  assertPluginFileSafety(files);
+
+  return files;
 }
+

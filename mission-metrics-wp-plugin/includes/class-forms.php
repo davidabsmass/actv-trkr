@@ -1621,6 +1621,159 @@ class MM_Forms {
 			'entries'        => $sent,
 			'plugin_version' => MM_PLUGIN_VERSION,
 		), 200 );
+	/**
+	 * Extract field data from an Avada submission DB row.
+	 * Handles: JSON, PHP serialized, and comma-separated Avada formats.
+	 */
+	private static function extract_avada_backfill_fields( $row, $columns, $has_submission_col ) {
+		$fields = array();
+		$skip_keys = array( 'submission', 'hidden_field_names', 'fields_holding_privacy_data', 'field_labels', 'field_types', 'field_keys' );
+
+		if ( ! $has_submission_col || empty( $row->submission ) ) {
+			return $fields;
+		}
+
+		$raw = $row->submission;
+
+		// Strategy 1: Try JSON decode
+		$decoded = json_decode( $raw, true );
+		if ( is_array( $decoded ) && ! empty( $decoded ) ) {
+			// Check if this is the Avada comma-separated format stored as JSON
+			if ( isset( $decoded['data'] ) && isset( $decoded['field_types'] ) ) {
+				return self::parse_avada_csv_format( $decoded );
+			}
+
+			// Standard JSON key-value pairs
+			$idx = 0;
+			foreach ( $decoded as $key => $value ) {
+				if ( in_array( $key, $skip_keys, true ) ) continue;
+				$fields[] = array(
+					'id'    => $idx,
+					'name'  => $key,
+					'label' => $key,
+					'type'  => 'text',
+					'value' => is_array( $value ) ? wp_json_encode( $value ) : (string) $value,
+				);
+				$idx++;
+			}
+			if ( ! empty( $fields ) ) return $fields;
+		}
+
+		// Strategy 2: Try PHP unserialize
+		$unserialized = @unserialize( $raw );
+		if ( is_array( $unserialized ) && ! empty( $unserialized ) ) {
+			// Check for Avada comma-separated format
+			if ( isset( $unserialized['data'] ) && isset( $unserialized['field_types'] ) ) {
+				return self::parse_avada_csv_format( $unserialized );
+			}
+
+			$idx = 0;
+			foreach ( $unserialized as $key => $value ) {
+				if ( in_array( $key, $skip_keys, true ) ) continue;
+				$fields[] = array(
+					'id'    => $idx,
+					'name'  => $key,
+					'label' => $key,
+					'type'  => is_string( $value ) ? 'text' : 'unknown',
+					'value' => is_array( $value ) ? wp_json_encode( $value ) : (string) $value,
+				);
+				$idx++;
+			}
+			if ( ! empty( $fields ) ) return $fields;
+		}
+
+		// Strategy 3: The raw string IS the comma-separated data field
+		// Check other columns for field_types and field_labels
+		$field_types_raw  = isset( $row->field_types ) ? $row->field_types : null;
+		$field_labels_raw = isset( $row->field_labels ) ? $row->field_labels : null;
+
+		if ( $field_types_raw ) {
+			$avada_data = array(
+				'data'         => $raw,
+				'field_types'  => $field_types_raw,
+				'field_labels' => $field_labels_raw ?: '',
+			);
+			return self::parse_avada_csv_format( $avada_data );
+		}
+
+		// Strategy 4: Treat as plain text (single-field form)
+		if ( strlen( $raw ) > 0 && strlen( $raw ) < 10000 ) {
+			$fields[] = array(
+				'id'    => 0,
+				'name'  => 'submission',
+				'label' => 'Submission',
+				'type'  => 'text',
+				'value' => $raw,
+			);
+		}
+
+		return $fields;
+	}
+
+	/**
+	 * Parse Avada's comma-separated format: data, field_types, field_labels.
+	 */
+	private static function parse_avada_csv_format( $data ) {
+		$fields = array();
+		$skip_types = array( 'submit', 'notice', 'html', 'hidden', 'captcha', 'honeypot', 'section', 'page', 'checkbox' );
+
+		$data_str   = is_array( $data['data'] ?? null ) ? implode( ', ', $data['data'] ) : (string) ( $data['data'] ?? '' );
+		$types_str  = is_array( $data['field_types'] ?? null ) ? implode( ', ', $data['field_types'] ) : (string) ( $data['field_types'] ?? '' );
+		$labels_str = is_array( $data['field_labels'] ?? null ) ? implode( ', ', $data['field_labels'] ) : (string) ( $data['field_labels'] ?? '' );
+
+		$types  = array_map( 'trim', explode( ', ', $types_str ) );
+		$labels = array_map( 'trim', explode( ', ', $labels_str ) );
+
+		// Identify real (non-skip) field types and their indices
+		$real_types = array();
+		for ( $i = 0; $i < count( $types ); $i++ ) {
+			if ( ! in_array( strtolower( $types[ $i ] ), $skip_types, true ) ) {
+				$real_types[] = array( 'type' => $types[ $i ], 'index' => $i );
+			}
+		}
+
+		// Smart split: split from front, last field gets all remaining text
+		$remaining = $data_str;
+		$field_values = array();
+		for ( $fi = 0; $fi < count( $real_types ); $fi++ ) {
+			if ( $fi === count( $real_types ) - 1 ) {
+				$field_values[] = trim( $remaining );
+			} else {
+				$comma_pos = strpos( $remaining, ', ' );
+				if ( $comma_pos === false ) {
+					$field_values[] = trim( $remaining );
+					$remaining = '';
+				} else {
+					$field_values[] = trim( substr( $remaining, 0, $comma_pos ) );
+					$remaining = substr( $remaining, $comma_pos + 2 );
+				}
+			}
+		}
+
+		$all_labels_empty = ( count( array_filter( $labels ) ) === 0 );
+
+		for ( $fi = 0; $fi < count( $real_types ); $fi++ ) {
+			$type  = strtolower( $real_types[ $fi ]['type'] );
+			$val   = $field_values[ $fi ] ?? '';
+			if ( ! $val || $val === 'Array' ) continue;
+
+			$raw_label = $labels[ $real_types[ $fi ]['index'] ] ?? '';
+			if ( $raw_label && ! $all_labels_empty ) {
+				$label = $raw_label;
+			} else {
+				$label = self::infer_avada_field_name( $type, $val, $fi + 1 );
+			}
+
+			$fields[] = array(
+				'id'    => $fi,
+				'name'  => $label,
+				'label' => $label,
+				'type'  => $real_types[ $fi ]['type'],
+				'value' => $val,
+			);
+		}
+
+		return $fields;
 	}
 
 }

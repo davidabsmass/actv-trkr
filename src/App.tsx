@@ -24,6 +24,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Monitoring from "./pages/Monitoring";
 import Notifications from "./pages/Notifications";
 import Account from "./pages/Account";
+import GetStarted from "./pages/GetStarted";
 
 import Index from "./pages/Index";
 
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="notifications" element={<Notifications />} />
             <Route path="admin-setup" element={<AdminSetup />} />
             <Route path="account" element={<Account />} />
+            <Route path="get-started" element={<GetStarted />} />
             <Route path="website-setup" element={<Navigate to="/settings?tab=setup" replace />} />
           </Route>
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />

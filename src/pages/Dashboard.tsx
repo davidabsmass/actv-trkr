@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { GetStartedBanner } from "@/components/dashboard/GetStartedBanner";
 import { useNavigate, Link } from "react-router-dom";
 import { format, subDays, startOfDay } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
@@ -307,6 +308,7 @@ const Dashboard = () => {
   return (
     <div>
       {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
+      <GetStartedBanner hasSites={!!(sitesData && sitesData.length > 0)} />
 
       <div className="flex items-center justify-between mb-5">
         <div>

@@ -7,6 +7,7 @@ import PluginSection from "@/components/settings/PluginSection";
 import FormsSection from "@/components/settings/FormsSection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
+import GetStartedGuide from "@/components/onboarding/GetStartedGuide";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function SettingsPage() {
@@ -32,6 +33,7 @@ export default function SettingsPage() {
         <TabsList className="mb-6">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="setup">Website Setup</TabsTrigger>
+          <TabsTrigger value="guide">Get Started</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -46,6 +48,10 @@ export default function SettingsPage() {
 
         <TabsContent value="setup">
           <WebsiteSetup />
+        </TabsContent>
+
+        <TabsContent value="guide">
+          <GetStartedGuide compact />
         </TabsContent>
       </Tabs>
     </div>

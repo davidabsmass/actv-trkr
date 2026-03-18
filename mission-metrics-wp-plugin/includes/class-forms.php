@@ -1485,7 +1485,7 @@ class MM_Forms {
 			$form_title = get_the_title( intval( $form_post_id ) ) ?: 'Avada Form';
 			$page_url   = $form_info['page_url'] ?? null;
 
-			$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url );
+			$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url, $form_title );
 			if ( ! is_array( $entry_refs ) || empty( $entry_refs ) ) continue;
 
 			$numeric_ids = array();

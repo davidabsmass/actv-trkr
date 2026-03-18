@@ -552,6 +552,65 @@ class MM_Forms {
 					}
 				}
 
+				// Layer 4: Search by form title/name in form-ref columns and blob columns
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $form_title ) ) {
+					$form_title_clean = trim( $form_title );
+
+					// 4a: Try form-ref columns with title string match
+					foreach ( $form_ref_candidates as $frc ) {
+						if ( ! in_array( $frc, $columns, true ) ) continue;
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
+							$form_title_clean
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'form_title_ref:' . $frc;
+							break;
+						}
+					}
+
+					// 4b: Search blob columns for form title
+					if ( ! is_array( $rows ) || empty( $rows ) ) {
+						foreach ( $blob_candidates as $bc ) {
+							if ( ! in_array( $bc, $columns, true ) ) continue;
+							$like_title = '%' . $wpdb->esc_like( $form_title_clean ) . '%';
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								$like_title
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'blob_form_title:' . $bc;
+								break;
+							}
+						}
+					}
+
+					// 4c: Also check if there's a 'form_name' or 'name' column
+					$name_candidates = array( 'form_name', 'name', 'title', 'form_title' );
+					if ( ! is_array( $rows ) || empty( $rows ) ) {
+						foreach ( $name_candidates as $nc ) {
+							if ( ! in_array( $nc, $columns, true ) ) continue;
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} = %s ORDER BY id DESC LIMIT 5000",
+								$form_title_clean
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'name_col:' . $nc;
+								break;
+							}
+							// Also try LIKE match for partial name matches (renamed forms)
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								'%' . $wpdb->esc_like( $form_title_clean ) . '%'
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'name_col_like:' . $nc;
+								break;
+							}
+						}
+					}
+				}
+
 				// No global fallback — safe failure
 				self::$last_avada_strategy = $strategy_used;
 

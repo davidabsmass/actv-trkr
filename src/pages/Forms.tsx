@@ -465,6 +465,15 @@ export default function Forms() {
           errors.push(data.error);
           continue;
         }
+        // Detect WP plugin crash (fallback mode with wp_error)
+        if (data?.fallback && data?.wp_error) {
+          const wpErrorText = typeof data.wp_error === 'string' ? data.wp_error : JSON.stringify(data.wp_error);
+          const isFatal = wpErrorText.includes('syntax error') || wpErrorText.includes('Fatal error') || wpErrorText.includes('500');
+          if (isFatal) {
+            errors.push("WordPress plugin crashed — please update the plugin to the latest version from Settings → Plugin.");
+            continue;
+          }
+        }
 
         successCount += 1;
 

@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.16: Fixes renamed Avada form discovery in distributed plugin package (title/name fallback)
-const LATEST_VERSION = "1.3.17";
+// v1.3.18: Fixes PHP syntax error in generated class-forms.php that crashed WordPress sync endpoint
+const LATEST_VERSION = "1.3.18";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.18
+- CRITICAL: Fixes PHP syntax error (unexpected 'foreach') in class-forms.php that crashed the WordPress sync endpoint
+- Fixes malformed conditional blocks in Avada entry discovery that prevented all entry ingestion
+- Adds duplicate-entry guard in ingest-form to prevent repeated backfill from creating duplicate leads
+
 ## 1.3.17
 - Improves Avada discovery for form_post_id/fusion_form_id markers stored in submission blobs
 - Improves title fallback matching for renamed forms (hyphen/underscore/punctuation variations)

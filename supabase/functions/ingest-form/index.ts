@@ -168,6 +168,21 @@ Deno.serve(async (req) => {
     const source = utmSource || (isSelfReferral ? "direct" : referrerDomain) || "direct";
     const medium = utmMedium || (referrerDomain && !isSelfReferral ? "referral" : "direct");
 
+    // Check for existing lead with same external_entry_id to prevent duplicates on re-backfill
+    const { data: existingLead } = await supabase.from("leads")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("site_id", siteId)
+      .eq("form_id", formId)
+      .eq("data->>external_entry_id", extEntryId)
+      .maybeSingle();
+
+    if (existingLead) {
+      return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: existingLead.id, provider: providerName }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: lead, error: leadErr } = await supabase.from("leads").insert({
       org_id: orgId, site_id: siteId, form_id: formId,
       submitted_at: submittedAtIso,
@@ -177,7 +192,7 @@ Deno.serve(async (req) => {
       utm_term: context?.utm?.utm_term, utm_content: context?.utm?.utm_content,
       source, medium, campaign: utmCampaign,
       visitor_id: context?.visitor_id, session_id: context?.session_id,
-      data: fields || {},
+      data: { ...(fields ? { fields } : {}), external_entry_id: extEntryId },
       lead_type: providerName,
     }).select("id").single();
 

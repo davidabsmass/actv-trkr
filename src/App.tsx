@@ -24,6 +24,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Monitoring from "./pages/Monitoring";
 import Notifications from "./pages/Notifications";
 import Account from "./pages/Account";
+import GetStarted from "./pages/GetStarted";
 
 import Index from "./pages/Index";
 

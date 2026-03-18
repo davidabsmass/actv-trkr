@@ -7,6 +7,7 @@ import PluginSection from "@/components/settings/PluginSection";
 import FormsSection from "@/components/settings/FormsSection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
+import GetStartedGuide from "@/components/onboarding/GetStartedGuide";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function SettingsPage() {

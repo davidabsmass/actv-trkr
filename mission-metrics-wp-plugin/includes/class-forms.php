@@ -406,7 +406,7 @@ class MM_Forms {
 	 * Get active (non-trashed) entry IDs for a given form provider + form ID.
 	 * Returns null if the provider doesn't support entry listing.
 	 */
-	private static function get_active_entry_ids( $provider, $form_id, $page_url = null ) {
+	private static function get_active_entry_ids( $provider, $form_id, $page_url = null, $form_title = null ) {
 		global $wpdb;
 
 		switch ( $provider ) {

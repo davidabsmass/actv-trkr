@@ -401,6 +401,7 @@ Deno.serve(async (req) => {
 
     let avadaActiveLeadCount = 0;
     let avadaRawEventCount = 0;
+    let avadaLeadsWithEmptyFields = 0;
 
     if (hasAvadaForms && avadaFormIds.length > 0) {
       const [{ count: activeLeadCount }, { count: rawEventCount }] = await Promise.all([
@@ -421,12 +422,46 @@ Deno.serve(async (req) => {
 
       avadaActiveLeadCount = activeLeadCount || 0;
       avadaRawEventCount = rawEventCount || 0;
+
+      // Count Avada leads that have zero lead_fields_flat rows (empty field data)
+      if (avadaActiveLeadCount > 0) {
+        const { data: leadsWithFields } = await supabase
+          .from("lead_fields_flat")
+          .select("lead_id")
+          .eq("org_id", site.org_id)
+          .in("lead_id", (await supabase
+            .from("leads")
+            .select("id")
+            .eq("org_id", site.org_id)
+            .eq("site_id", site.id)
+            .in("form_id", avadaFormIds)
+            .neq("status", "trashed")
+            .limit(500)
+          ).data?.map((l: { id: string }) => l.id) || []);
+
+        const leadsWithFieldIds = new Set((leadsWithFields || []).map((r: { lead_id: string }) => r.lead_id));
+
+        const { data: allAvadaLeads } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("org_id", site.org_id)
+          .eq("site_id", site.id)
+          .in("form_id", avadaFormIds)
+          .neq("status", "trashed")
+          .limit(500);
+
+        avadaLeadsWithEmptyFields = (allAvadaLeads || []).filter(
+          (l: { id: string }) => !leadsWithFieldIds.has(l.id)
+        ).length;
+
+        console.log(`Avada leads with empty fields: ${avadaLeadsWithEmptyFields}/${avadaActiveLeadCount}`);
+      }
     }
 
     const shouldAutoBackfillAvada =
       hasAvadaForms &&
       avadaFormIds.length > 0 &&
-      (requiresAvadaReset || (avadaActiveLeadCount === 0 && avadaRawEventCount === 0));
+      (requiresAvadaReset || (avadaActiveLeadCount === 0 && avadaRawEventCount === 0) || avadaLeadsWithEmptyFields > 0);
 
     if (shouldAutoBackfillAvada) {
       avadaBackfillAttempted = true;

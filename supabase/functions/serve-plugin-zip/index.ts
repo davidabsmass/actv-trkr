@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PLUGIN_VERSION = "1.3.20";
+const PLUGIN_VERSION = "1.3.21";
 
 function patchClassFormsPhp(content: string): string {
   return content
@@ -21,6 +21,10 @@ function patchClassFormsPhp(content: string): string {
     .replaceAll(
       "if(!is_array($rows)||empty($rows))){",
       "if(!is_array($rows)||empty($rows)){",
+    )
+    .replaceAll(
+      "foreach(array('submission','data','fields','form_data','payload','entry_data') as $pc){if(isset($row->$pc)&&is_string($row->$pc)&&$row->$pc!==''){$raw_payload=$row->$pc;break;}}",
+      "foreach(array('submission','data','fields','form_data','payload','entry_data','serialized_data','content','meta') as $pc){if(isset($row->$pc)&&$row->$pc!==null&&$row->$pc!==''){$raw_payload=is_scalar($row->$pc)?(string)$row->$pc:wp_json_encode($row->$pc);if($raw_payload!=='')break;}}if($raw_payload===''){foreach($columns as $pc){if(in_array($pc,array('id','form_id','fusion_form_id','post_id','parent_id','form_post_id','source_url','created_at','updated_at','date_time','submitted_at','date'),true))continue;if(!isset($row->$pc)||$row->$pc===null||$row->$pc==='')continue;$candidate=is_scalar($row->$pc)?(string)$row->$pc:wp_json_encode($row->$pc);if($candidate!==''){$raw_payload=$candidate;break;}}}",
     );
 }
 

@@ -555,51 +555,71 @@ class MM_Forms {
 
 				// Layer 4: Search by form title/name in form-ref columns and blob columns
 				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $form_title ) ) {
-					$form_title_clean = trim( $form_title );
+					$form_title_clean = trim( wp_strip_all_tags( (string) $form_title ) );
+					$normalized_title = trim( preg_replace( '/\s+/', ' ', str_replace( array( '-', '_' ), ' ', strtolower( $form_title_clean ) ) ) );
+					$title_slug       = sanitize_title( $form_title_clean );
+					$title_variants   = array_values( array_unique( array_filter( array(
+						$form_title_clean,
+						$normalized_title,
+						$title_slug,
+						str_replace( ' ', '', $normalized_title ),
+					) ) ) );
 
-					// 4a: Try form-ref columns with title string match
+					// 4a: Try form-ref columns with strict and loose title matching
 					foreach ( $form_ref_candidates as $frc ) {
 						if ( ! in_array( $frc, $columns, true ) ) continue;
+						foreach ( $title_variants as $variant ) {
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
+								$variant
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'form_title_ref:' . $frc;
+								break 2;
+							}
+						}
 						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
-							$form_title_clean
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} LIKE %s ORDER BY id DESC LIMIT 5000",
+							'%' . $wpdb->esc_like( $form_title_clean ) . '%'
 						) );
 						if ( is_array( $rows ) && ! empty( $rows ) ) {
-							$strategy_used = 'form_title_ref:' . $frc;
+							$strategy_used = 'form_title_ref_like:' . $frc;
 							break;
 						}
 					}
 
-					// 4b: Search blob columns for form title
+					// 4b: Search blob columns by title variants
 					if ( ! is_array( $rows ) || empty( $rows ) ) {
 						foreach ( $blob_candidates as $bc ) {
 							if ( ! in_array( $bc, $columns, true ) ) continue;
-							$like_title = '%' . $wpdb->esc_like( $form_title_clean ) . '%';
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-								$like_title
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'blob_form_title:' . $bc;
-								break;
+							foreach ( $title_variants as $variant ) {
+								$rows = $wpdb->get_results( $wpdb->prepare(
+									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+									'%' . $wpdb->esc_like( $variant ) . '%'
+								) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'blob_form_title:' . $bc;
+									break 2;
+								}
 							}
 						}
 					}
 
-					// 4c: Also check if there's a 'form_name' or 'name' column
+					// 4c: Check name-ish columns with exact + LIKE matching
 					$name_candidates = array( 'form_name', 'name', 'title', 'form_title' );
 					if ( ! is_array( $rows ) || empty( $rows ) ) {
 						foreach ( $name_candidates as $nc ) {
 							if ( ! in_array( $nc, $columns, true ) ) continue;
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} = %s ORDER BY id DESC LIMIT 5000",
-								$form_title_clean
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'name_col:' . $nc;
-								break;
+							foreach ( $title_variants as $variant ) {
+								$rows = $wpdb->get_results( $wpdb->prepare(
+									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} = %s ORDER BY id DESC LIMIT 5000",
+									$variant
+								) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'name_col:' . $nc;
+									break 2;
+								}
 							}
-							// Also try LIKE match for partial name matches (renamed forms)
 							$rows = $wpdb->get_results( $wpdb->prepare(
 								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} LIKE %s ORDER BY id DESC LIMIT 5000",
 								'%' . $wpdb->esc_like( $form_title_clean ) . '%'
@@ -610,45 +630,90 @@ class MM_Forms {
 							}
 						}
 					}
-				}
 
-			// Layer 5: If form_id is a numeric post ID, query ALL submissions and check
-			// if the serialized data or any column references this form post ID
-			if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
-				// Try a broad LIKE search on all blob columns for the form post ID
-				foreach ( $blob_candidates as $bc ) {
-					if ( ! in_array( $bc, $columns, true ) ) continue;
-					$like_pid = '%' . $wpdb->esc_like( (string) $form_id ) . '%';
-					$rows = $wpdb->get_results( $wpdb->prepare(
-						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-						$like_pid
-					) );
-					if ( is_array( $rows ) && ! empty( $rows ) ) {
-						$strategy_used = 'blob_post_id_broad:' . $bc;
-						break;
-					}
-				}
-			}
-
-			// Layer 6: If there's a 'form_id' column that stores a string/slug instead of numeric,
-			// try all rows and check if form post content references this submission
-			if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
-				// Last resort: query by form_id stored as the post name/slug
-				$form_post = get_post( intval( $form_id ) );
-				if ( $form_post && $form_post->post_name ) {
-					foreach ( $form_ref_candidates as $frc ) {
-						if ( ! in_array( $frc, $columns, true ) ) continue;
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
-							$form_post->post_name
-						) );
-						if ( is_array( $rows ) && ! empty( $rows ) ) {
-							$strategy_used = 'form_post_slug:' . $frc;
-							break;
+					// 4d: Token-based matching for renamed forms (hyphen/space variants)
+					if ( ! is_array( $rows ) || empty( $rows ) ) {
+						$title_tokens = array_values( array_filter( preg_split( '/\s+/', $normalized_title ), function( $token ) {
+							return strlen( $token ) >= 3;
+						} ) );
+						if ( ! empty( $title_tokens ) ) {
+							$title_tokens = array_slice( $title_tokens, 0, 4 );
+							foreach ( $blob_candidates as $bc ) {
+								if ( ! in_array( $bc, $columns, true ) ) continue;
+								$where_parts = array();
+								$params = array();
+								foreach ( $title_tokens as $token ) {
+									$where_parts[] = "{$bc} LIKE %s";
+									$params[] = '%' . $wpdb->esc_like( $token ) . '%';
+								}
+								$sql = "SELECT id, {$ts_col} AS ts FROM {$table} WHERE " . implode( ' AND ', $where_parts ) . " ORDER BY id DESC LIMIT 5000";
+								$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'blob_title_tokens:' . $bc;
+									break;
+								}
+							}
 						}
 					}
 				}
-			}
+
+				// Layer 5: If form_id is numeric, scan blob columns for serialized/JSON markers
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
+					$markers = array(
+						'"form_id":"' . (string) $form_id . '"',
+						'"form_post_id":"' . (string) $form_id . '"',
+						'form_id";i:' . (string) $form_id,
+						'form_post_id";i:' . (string) $form_id,
+						'form_post_id=' . (string) $form_id,
+						'fusion_form_' . (string) $form_id,
+						(string) $form_id,
+					);
+					foreach ( $blob_candidates as $bc ) {
+						if ( ! in_array( $bc, $columns, true ) ) continue;
+						foreach ( $markers as $marker ) {
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								'%' . $wpdb->esc_like( $marker ) . '%'
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'blob_post_id_marker:' . $bc;
+								break 2;
+							}
+						}
+					}
+				}
+
+				// Layer 6: If there's a form post slug, try matching refs and blobs
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
+					$form_post = get_post( intval( $form_id ) );
+					if ( $form_post && $form_post->post_name ) {
+						foreach ( $form_ref_candidates as $frc ) {
+							if ( ! in_array( $frc, $columns, true ) ) continue;
+							$rows = $wpdb->get_results( $wpdb->prepare(
+								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s OR {$frc} LIKE %s ORDER BY id DESC LIMIT 5000",
+								$form_post->post_name,
+								'%' . $wpdb->esc_like( $form_post->post_name ) . '%'
+							) );
+							if ( is_array( $rows ) && ! empty( $rows ) ) {
+								$strategy_used = 'form_post_slug:' . $frc;
+								break;
+							}
+						}
+						if ( ! is_array( $rows ) || empty( $rows ) ) {
+							foreach ( $blob_candidates as $bc ) {
+								if ( ! in_array( $bc, $columns, true ) ) continue;
+								$rows = $wpdb->get_results( $wpdb->prepare(
+									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
+									'%' . $wpdb->esc_like( $form_post->post_name ) . '%'
+								) );
+								if ( is_array( $rows ) && ! empty( $rows ) ) {
+									$strategy_used = 'blob_form_slug:' . $bc;
+									break;
+								}
+							}
+						}
+					}
+				}
 
 			// No global fallback — safe failure
 			self::$last_avada_strategy = $strategy_used;
@@ -1621,93 +1686,203 @@ class MM_Forms {
 			'entries'        => $sent,
 			'plugin_version' => MM_PLUGIN_VERSION,
 		), 200 );
+	}
+
 	/**
 	 * Extract field data from an Avada submission DB row.
-	 * Handles: JSON, PHP serialized, and comma-separated Avada formats.
+	 * Handles JSON, PHP serialized data, URL-encoded strings, and Avada CSV payloads.
 	 */
 	private static function extract_avada_backfill_fields( $row, $columns, $has_submission_col ) {
-		$fields = array();
-		$skip_keys = array( 'submission', 'hidden_field_names', 'fields_holding_privacy_data', 'field_labels', 'field_types', 'field_keys' );
+		$payload_columns = array( 'submission', 'data', 'fields', 'form_data', 'payload', 'entry_data', 'serialized_data', 'content', 'meta' );
+		$tested_columns  = array();
 
-		if ( ! $has_submission_col || empty( $row->submission ) ) {
-			return $fields;
+		foreach ( $payload_columns as $col ) {
+			if ( ! in_array( $col, $columns, true ) ) continue;
+			$tested_columns[] = $col;
+			if ( ! isset( $row->$col ) || $row->$col === null || $row->$col === '' ) continue;
+
+			$parsed = self::parse_avada_payload_to_fields( $row->$col, $row, $columns );
+			if ( ! empty( $parsed ) ) return $parsed;
 		}
 
-		$raw = $row->submission;
+		// Fallback: inspect any remaining scalar columns for serialized/JSON payloads.
+		foreach ( $columns as $col ) {
+			if ( in_array( $col, $tested_columns, true ) ) continue;
+			if ( in_array( $col, array( 'id', 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id', 'source_url', 'created_at', 'updated_at', 'date_time', 'submitted_at', 'date', 'created', 'ip_address', 'user_id' ), true ) ) continue;
+			if ( ! isset( $row->$col ) || $row->$col === null || $row->$col === '' ) continue;
 
-		// Strategy 1: Try JSON decode
-		$decoded = json_decode( $raw, true );
-		if ( is_array( $decoded ) && ! empty( $decoded ) ) {
-			// Check if this is the Avada comma-separated format stored as JSON
+			$parsed = self::parse_avada_payload_to_fields( $row->$col, $row, $columns );
+			if ( ! empty( $parsed ) ) return $parsed;
+		}
+
+		// Final fallback for Avada's split-column CSV format.
+		if ( isset( $row->field_types ) && $row->field_types !== '' ) {
+			$data_source = '';
+			foreach ( array( 'data', 'submission', 'fields', 'form_data' ) as $dc ) {
+				if ( isset( $row->$dc ) && $row->$dc !== null && $row->$dc !== '' ) {
+					$data_source = is_scalar( $row->$dc ) ? (string) $row->$dc : wp_json_encode( $row->$dc );
+					if ( $data_source !== '' ) break;
+				}
+			}
+
+			$parsed = self::parse_avada_csv_format( array(
+				'data'         => $data_source,
+				'field_types'  => is_scalar( $row->field_types ) ? (string) $row->field_types : wp_json_encode( $row->field_types ),
+				'field_labels' => isset( $row->field_labels ) ? ( is_scalar( $row->field_labels ) ? (string) $row->field_labels : wp_json_encode( $row->field_labels ) ) : '',
+			) );
+			if ( ! empty( $parsed ) ) return $parsed;
+		}
+
+		return array();
+	}
+
+	/**
+	 * Parse a possible Avada payload into normalized field rows.
+	 */
+	private static function parse_avada_payload_to_fields( $raw_payload, $row = null, $columns = array() ) {
+		$skip_keys = array( 'submission', 'hidden_field_names', 'fields_holding_privacy_data', 'field_labels', 'field_types', 'field_keys', 'form_id', 'form_post_id', 'entry_id' );
+		$fields    = array();
+		$decoded   = null;
+		$raw       = '';
+
+		if ( is_array( $raw_payload ) ) {
+			$decoded = $raw_payload;
+		} elseif ( is_object( $raw_payload ) ) {
+			$decoded = (array) $raw_payload;
+		} else {
+			$raw = trim( is_scalar( $raw_payload ) ? (string) $raw_payload : wp_json_encode( $raw_payload ) );
+			if ( $raw === '' ) return array();
+		}
+
+		if ( $decoded === null && $raw !== '' ) {
+			$json = json_decode( $raw, true );
+			if ( is_array( $json ) ) {
+				$decoded = $json;
+			}
+		}
+
+		if ( $decoded === null && $raw !== '' ) {
+			$maybe = @maybe_unserialize( $raw );
+			if ( is_array( $maybe ) ) {
+				$decoded = $maybe;
+			}
+		}
+
+		if ( is_array( $decoded ) ) {
+			if ( isset( $decoded['fields'] ) && is_array( $decoded['fields'] ) ) {
+				$idx = 0;
+				foreach ( $decoded['fields'] as $field ) {
+					if ( ! is_array( $field ) ) continue;
+					$value = $field['value'] ?? ( $field['val'] ?? null );
+					if ( is_array( $value ) || is_object( $value ) ) {
+						$value = wp_json_encode( $value );
+					} else {
+						$value = trim( (string) $value );
+					}
+					if ( $value === '' || strtolower( $value ) === 'array' || strtolower( $value ) === 'null' ) continue;
+
+					$label = (string) ( $field['label'] ?? ( $field['name'] ?? ( $field['id'] ?? ( 'Field ' . ( $idx + 1 ) ) ) ) );
+					$type  = (string) ( $field['type'] ?? 'text' );
+
+					$fields[] = array(
+						'id'    => $idx,
+						'name'  => $label,
+						'label' => $label,
+						'type'  => $type,
+						'value' => $value,
+					);
+					$idx++;
+				}
+				if ( ! empty( $fields ) ) return $fields;
+			}
+
 			if ( isset( $decoded['data'] ) && isset( $decoded['field_types'] ) ) {
-				return self::parse_avada_csv_format( $decoded );
+				$csv_fields = self::parse_avada_csv_format( $decoded );
+				if ( ! empty( $csv_fields ) ) return $csv_fields;
 			}
 
-			// Standard JSON key-value pairs
+			$field_pool = $decoded;
+			if ( isset( $decoded['data'] ) && is_array( $decoded['data'] ) && ! empty( $decoded['data'] ) ) {
+				$field_pool = $decoded['data'];
+			}
+
 			$idx = 0;
-			foreach ( $decoded as $key => $value ) {
-				if ( in_array( $key, $skip_keys, true ) ) continue;
+			foreach ( $field_pool as $key => $value ) {
+				$key_string = (string) $key;
+				if ( in_array( $key_string, $skip_keys, true ) ) continue;
+
+				if ( is_array( $value ) && isset( $value['value'] ) ) {
+					$value = $value['value'];
+				}
+
+				if ( is_array( $value ) || is_object( $value ) ) {
+					if ( empty( $value ) ) continue;
+					$value_string = wp_json_encode( $value );
+				} else {
+					$value_string = trim( (string) $value );
+				}
+
+				if ( $value_string === '' || strtolower( $value_string ) === 'array' || strtolower( $value_string ) === 'null' ) continue;
+
+				$label = $key_string !== '' ? $key_string : ( 'Field ' . ( $idx + 1 ) );
+
 				$fields[] = array(
 					'id'    => $idx,
-					'name'  => $key,
-					'label' => $key,
+					'name'  => $label,
+					'label' => $label,
 					'type'  => 'text',
-					'value' => is_array( $value ) ? wp_json_encode( $value ) : (string) $value,
+					'value' => $value_string,
 				);
 				$idx++;
 			}
 			if ( ! empty( $fields ) ) return $fields;
 		}
 
-		// Strategy 2: Try PHP unserialize
-		$unserialized = @unserialize( $raw );
-		if ( is_array( $unserialized ) && ! empty( $unserialized ) ) {
-			// Check for Avada comma-separated format
-			if ( isset( $unserialized['data'] ) && isset( $unserialized['field_types'] ) ) {
-				return self::parse_avada_csv_format( $unserialized );
+		// URL-encoded fallback (e.g., field1=value1&field2=value2)
+		if ( $raw !== '' && strpos( $raw, '=' ) !== false ) {
+			$qs = array();
+			parse_str( $raw, $qs );
+			if ( is_array( $qs ) && ! empty( $qs ) ) {
+				$idx = 0;
+				foreach ( $qs as $key => $value ) {
+					if ( in_array( (string) $key, $skip_keys, true ) ) continue;
+					$value_string = is_array( $value ) ? wp_json_encode( $value ) : trim( (string) $value );
+					if ( $value_string === '' ) continue;
+
+					$label = (string) $key;
+					$fields[] = array(
+						'id'    => $idx,
+						'name'  => $label,
+						'label' => $label,
+						'type'  => 'text',
+						'value' => $value_string,
+					);
+					$idx++;
+				}
+				if ( ! empty( $fields ) ) return $fields;
 			}
-
-			$idx = 0;
-			foreach ( $unserialized as $key => $value ) {
-				if ( in_array( $key, $skip_keys, true ) ) continue;
-				$fields[] = array(
-					'id'    => $idx,
-					'name'  => $key,
-					'label' => $key,
-					'type'  => is_string( $value ) ? 'text' : 'unknown',
-					'value' => is_array( $value ) ? wp_json_encode( $value ) : (string) $value,
-				);
-				$idx++;
-			}
-			if ( ! empty( $fields ) ) return $fields;
 		}
 
-		// Strategy 3: The raw string IS the comma-separated data field
-		// Check other columns for field_types and field_labels
-		$field_types_raw  = isset( $row->field_types ) ? $row->field_types : null;
-		$field_labels_raw = isset( $row->field_labels ) ? $row->field_labels : null;
+		return array();
+	}
 
-		if ( $field_types_raw ) {
-			$avada_data = array(
-				'data'         => $raw,
-				'field_types'  => $field_types_raw,
-				'field_labels' => $field_labels_raw ?: '',
-			);
-			return self::parse_avada_csv_format( $avada_data );
+	/**
+	 * Split CSV-like strings while handling quoted values and variable spacing.
+	 */
+	private static function split_avada_csv_values( $raw ) {
+		$raw = is_scalar( $raw ) ? trim( (string) $raw ) : '';
+		if ( $raw === '' ) return array();
+
+		$values = str_getcsv( $raw );
+		if ( ! is_array( $values ) ) $values = array();
+
+		if ( count( $values ) <= 1 && strpos( $raw, ',' ) !== false ) {
+			$values = preg_split( '/\s*,\s*/', $raw );
 		}
 
-		// Strategy 4: Treat as plain text (single-field form)
-		if ( strlen( $raw ) > 0 && strlen( $raw ) < 10000 ) {
-			$fields[] = array(
-				'id'    => 0,
-				'name'  => 'submission',
-				'label' => 'Submission',
-				'type'  => 'text',
-				'value' => $raw,
-			);
-		}
-
-		return $fields;
+		return array_map( function( $v ) {
+			return trim( (string) $v );
+		}, is_array( $values ) ? $values : array() );
 	}
 
 	/**
@@ -1715,16 +1890,17 @@ class MM_Forms {
 	 */
 	private static function parse_avada_csv_format( $data ) {
 		$fields = array();
-		$skip_types = array( 'submit', 'notice', 'html', 'hidden', 'captcha', 'honeypot', 'section', 'page', 'checkbox' );
+		$skip_types = array( 'submit', 'notice', 'html', 'hidden', 'captcha', 'honeypot', 'section', 'page' );
 
 		$data_str   = is_array( $data['data'] ?? null ) ? implode( ', ', $data['data'] ) : (string) ( $data['data'] ?? '' );
 		$types_str  = is_array( $data['field_types'] ?? null ) ? implode( ', ', $data['field_types'] ) : (string) ( $data['field_types'] ?? '' );
 		$labels_str = is_array( $data['field_labels'] ?? null ) ? implode( ', ', $data['field_labels'] ) : (string) ( $data['field_labels'] ?? '' );
 
-		$types  = array_map( 'trim', explode( ', ', $types_str ) );
-		$labels = array_map( 'trim', explode( ', ', $labels_str ) );
+		$types  = self::split_avada_csv_values( $types_str );
+		$labels = self::split_avada_csv_values( $labels_str );
+		$values = self::split_avada_csv_values( $data_str );
 
-		// Identify real (non-skip) field types and their indices
+		// Identify real (non-skip) field types and their indices.
 		$real_types = array();
 		for ( $i = 0; $i < count( $types ); $i++ ) {
 			if ( ! in_array( strtolower( $types[ $i ] ), $skip_types, true ) ) {
@@ -1732,37 +1908,31 @@ class MM_Forms {
 			}
 		}
 
-		// Smart split: split from front, last field gets all remaining text
-		$remaining = $data_str;
-		$field_values = array();
-		for ( $fi = 0; $fi < count( $real_types ); $fi++ ) {
-			if ( $fi === count( $real_types ) - 1 ) {
-				$field_values[] = trim( $remaining );
-			} else {
-				$comma_pos = strpos( $remaining, ', ' );
-				if ( $comma_pos === false ) {
-					$field_values[] = trim( $remaining );
-					$remaining = '';
-				} else {
-					$field_values[] = trim( substr( $remaining, 0, $comma_pos ) );
-					$remaining = substr( $remaining, $comma_pos + 2 );
-				}
+		// If no explicit types were parseable, fall back to generic fields from values.
+		if ( empty( $real_types ) ) {
+			foreach ( $values as $vi => $val ) {
+				if ( $val === '' || strtolower( $val ) === 'array' ) continue;
+				$raw_label = $labels[ $vi ] ?? '';
+				$label = $raw_label ?: self::infer_avada_field_name( 'text', $val, $vi + 1 );
+				$fields[] = array(
+					'id'    => $vi,
+					'name'  => $label,
+					'label' => $label,
+					'type'  => 'text',
+					'value' => $val,
+				);
 			}
+			return $fields;
 		}
 
-		$all_labels_empty = ( count( array_filter( $labels ) ) === 0 );
-
 		for ( $fi = 0; $fi < count( $real_types ); $fi++ ) {
-			$type  = strtolower( $real_types[ $fi ]['type'] );
-			$val   = $field_values[ $fi ] ?? '';
-			if ( ! $val || $val === 'Array' ) continue;
+			$type = strtolower( $real_types[ $fi ]['type'] );
+			$val  = $values[ $fi ] ?? '';
+			$val  = trim( (string) $val );
+			if ( $val === '' || strtolower( $val ) === 'array' ) continue;
 
 			$raw_label = $labels[ $real_types[ $fi ]['index'] ] ?? '';
-			if ( $raw_label && ! $all_labels_empty ) {
-				$label = $raw_label;
-			} else {
-				$label = self::infer_avada_field_name( $type, $val, $fi + 1 );
-			}
+			$label = $raw_label ?: self::infer_avada_field_name( $type, $val, $fi + 1 );
 
 			$fields[] = array(
 				'id'    => $fi,

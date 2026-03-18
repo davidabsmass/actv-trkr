@@ -49,6 +49,10 @@ export default function SettingsPage() {
         <TabsContent value="setup">
           <WebsiteSetup />
         </TabsContent>
+
+        <TabsContent value="guide">
+          <GetStartedGuide compact />
+        </TabsContent>
       </Tabs>
     </div>
   );

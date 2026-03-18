@@ -89,6 +89,7 @@ const App = () => (
             <Route path="notifications" element={<Notifications />} />
             <Route path="admin-setup" element={<AdminSetup />} />
             <Route path="account" element={<Account />} />
+            <Route path="get-started" element={<GetStarted />} />
             <Route path="website-setup" element={<Navigate to="/settings?tab=setup" replace />} />
           </Route>
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />

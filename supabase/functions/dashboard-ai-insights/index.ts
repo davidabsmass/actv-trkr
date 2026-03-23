@@ -86,8 +86,12 @@ serve(async (req) => {
 
     if ((count ?? 0) >= DAILY_LIMIT) {
       return new Response(
-        JSON.stringify({ error: "Daily AI insight limit reached. Try again tomorrow.", code: "RATE_LIMITED" }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "Daily AI insight limit reached. Try again tomorrow.",
+          code: "RATE_LIMITED",
+          rate_limited: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -185,8 +189,12 @@ Primary Focus: ${metrics.primaryFocus || "lead_volume"}`;
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            error: "AI service is temporarily rate limited. Please try again shortly.",
+            code: "RATE_LIMITED",
+            rate_limited: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {

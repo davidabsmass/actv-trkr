@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.24: Fixed Avada field extraction — queries separate wp_fusion_form_submission_data table
-const LATEST_VERSION = "1.3.24";
+// v1.3.25: Fixed PHP syntax error caused by JS template literal escaping of regex patterns
+const LATEST_VERSION = "1.3.25";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.25
+- EMERGENCY: Fixes PHP syntax error (unexpected ']') that crashed WordPress sites after updating to 1.3.24
+- Root cause: JavaScript template literal was consuming PHP regex escape sequences (\\s, \\d, \\')
+- All preg_match patterns now use hex escapes (\\x27) to avoid JS/PHP escaping conflicts
+
 ## 1.3.24
 - Fixed Avada field extraction: queries separate wp_fusion_form_submission_data table for actual field values
 - The main submissions table stores metadata only (data column is NULL) — fields are in a linked data table

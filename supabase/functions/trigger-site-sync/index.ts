@@ -215,6 +215,7 @@ async function triggerWordPressRoute(
   siteUrl: string,
   keyHash: string,
   route: "sync" | "backfill-avada",
+  timeoutMs = 8000,
 ): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
   const endpoints = [
@@ -231,7 +232,7 @@ async function triggerWordPressRoute(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
-      }, 8000);
+      }, timeoutMs);
       return { response, endpoint };
     })
   );
@@ -266,7 +267,7 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
 }
 
 async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
-  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada");
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 25000);
 }
 
 Deno.serve(async (req) => {

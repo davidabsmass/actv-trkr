@@ -200,6 +200,17 @@ async function runDirectFormChecks(
   return { checked, updatedPageUrls, alertsCreated };
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 8000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function triggerWordPressRoute(
   siteUrl: string,
   keyHash: string,
@@ -211,38 +222,43 @@ async function triggerWordPressRoute(
     `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/${route}`,
   ];
 
-  let lastResponse: Response | null = null;
-  let lastEndpoint = endpoints[0];
-
-  for (let i = 0; i < endpoints.length; i += 1) {
-    const endpoint = endpoints[i];
-    lastEndpoint = endpoint;
-    console.log(`Triggering ${route} on ${endpoint}`);
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ triggered_from: "dashboard", key_hash: keyHash }),
-    });
-
-    if (response.ok) {
+  // Try both endpoints in parallel, use first success
+  const body = JSON.stringify({ triggered_from: "dashboard", key_hash: keyHash });
+  const results = await Promise.allSettled(
+    endpoints.map(async (endpoint) => {
+      console.log(`Triggering ${route} on ${endpoint}`);
+      const response = await fetchWithTimeout(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      }, 8000);
       return { response, endpoint };
-    }
+    })
+  );
 
-    lastResponse = response;
-    const bodyPreview = (await response.clone().text()).toLowerCase();
-    const isMissingRoute = response.status === 404 && bodyPreview.includes("rest_no_route");
-
-    console.error(`WP ${route} failed on ${endpoint}: ${response.status} ${bodyPreview}`);
-
-    if (!isMissingRoute || i === endpoints.length - 1) {
-      return { response, endpoint };
+  // Return first successful response
+  for (const result of results) {
+    if (result.status === "fulfilled" && result.value.response.ok) {
+      return result.value;
     }
   }
 
-  return { response: lastResponse!, endpoint: lastEndpoint };
+  // Return first non-aborted failure
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const bodyPreview = await result.value.response.clone().text();
+      console.error(`WP ${route} failed on ${result.value.endpoint}: ${result.value.response.status} ${bodyPreview}`);
+      return result.value;
+    }
+  }
+
+  // All aborted/rejected
+  const firstRejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+  console.error(`WP ${route} all endpoints failed: ${firstRejected?.reason}`);
+  return {
+    response: new Response("All endpoints timed out", { status: 504 }),
+    endpoint: endpoints[0],
+  };
 }
 
 async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {

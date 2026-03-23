@@ -95,6 +95,20 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     );
   }
 
+  if (rateLimited && !insights) {
+    return (
+      <div className="glass-card p-5 animate-slide-up">
+        <div className="flex items-center gap-2 mb-2">
+          <Brain className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">AI Performance Insights</h3>
+        </div>
+        <div className="p-4 rounded-md bg-warning/5 border border-warning/20">
+          <p className="text-xs text-muted-foreground">Daily AI insight limit reached. Insights will be available again tomorrow.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex items-center justify-between mb-4">

@@ -168,29 +168,70 @@ Deno.serve(async (req) => {
     const source = utmSource || (isSelfReferral ? "direct" : referrerDomain) || "direct";
     const medium = utmMedium || (referrerDomain && !isSelfReferral ? "referral" : "direct");
 
-    // Check for existing lead with same external_entry_id to prevent duplicates on re-backfill
-    const { data: existingLeadRows } = await supabase.from("leads")
-      .select("id, submitted_at")
+    // Check for existing lead with same external_entry_id to prevent duplicates on re-backfill.
+    // Use JSONB contains for reliable matching across providers.
+    const { data: existingLeadRows, error: existingLeadError } = await supabase
+      .from("leads")
+      .select("id, submitted_at, status, created_at")
       .eq("org_id", orgId)
       .eq("site_id", siteId)
       .eq("form_id", formId)
-      .eq("data->>external_entry_id", extEntryId)
+      .contains("data", { external_entry_id: extEntryId })
       .order("submitted_at", { ascending: false })
-      .limit(1);
+      .order("created_at", { ascending: false })
+      .limit(25);
 
-    const existingLead = existingLeadRows?.[0] || null;
+    if (existingLeadError) {
+      console.error("Existing lead dedupe lookup failed:", existingLeadError);
+      return new Response(JSON.stringify({ error: "Failed to check existing lead" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (existingLead) {
+    const activeLeadRows = (existingLeadRows || []).filter((row: any) => row.status !== "trashed");
+    let canonicalLead = (activeLeadRows[0] || existingLeadRows?.[0] || null) as any;
+    const duplicateActiveLeadIds = activeLeadRows.slice(1).map((row: any) => row.id);
+
+    if (duplicateActiveLeadIds.length > 0) {
+      const { error: dedupeCleanupError } = await supabase
+        .from("leads")
+        .update({ status: "trashed" })
+        .in("id", duplicateActiveLeadIds)
+        .neq("status", "trashed");
+
+      if (dedupeCleanupError) {
+        console.error("Duplicate lead cleanup failed:", dedupeCleanupError);
+      } else {
+        console.log(`Auto-trashed ${duplicateActiveLeadIds.length} duplicate lead(s) for ${extEntryId}`);
+      }
+    }
+
+    if (canonicalLead?.status === "trashed") {
+      const { error: restoreCanonicalError } = await supabase
+        .from("leads")
+        .update({ status: "new" })
+        .eq("id", canonicalLead.id)
+        .eq("status", "trashed");
+
+      if (restoreCanonicalError) {
+        console.error("Canonical lead restore failed:", restoreCanonicalError);
+      } else {
+        canonicalLead = { ...canonicalLead, status: "new" };
+      }
+    }
+
+    if (canonicalLead) {
       // If existing lead has no field data but incoming payload has fields, enrich it
       if (fields && Array.isArray(fields) && fields.length > 0) {
         const { count: existingFieldCount } = await supabase
           .from("lead_fields_flat")
           .select("id", { count: "exact", head: true })
-          .eq("lead_id", existingLead.id)
+          .eq("lead_id", canonicalLead.id)
           .eq("org_id", orgId);
 
         if ((existingFieldCount || 0) === 0) {
-          console.log(`Enriching existing lead ${existingLead.id} with ${fields.length} fields`);
+          console.log(`Enriching existing lead ${canonicalLead.id} with ${fields.length} fields`);
           // Fall through to field insertion logic below instead of returning
           // We'll use a flag to skip lead creation but still insert fields
           const SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
@@ -204,7 +245,7 @@ Deno.serve(async (req) => {
               return true;
             })
             .map((f: any) => ({
-              org_id: orgId, lead_id: existingLead.id,
+              org_id: orgId, lead_id: canonicalLead.id,
               field_key: f.name || f.id?.toString() || f.label || "unknown",
               field_label: f.label || f.name || f.id?.toString(),
               field_type: f.type || "text",
@@ -212,15 +253,15 @@ Deno.serve(async (req) => {
             }));
           if (flatRows.length > 0) {
             await supabase.from("lead_fields_flat").insert(flatRows);
-            console.log(`Enriched lead ${existingLead.id} with ${flatRows.length} fields`);
+            console.log(`Enriched lead ${canonicalLead.id} with ${flatRows.length} fields`);
           }
-          return new Response(JSON.stringify({ status: "enriched", lead_id: existingLead.id, fields_added: flatRows.length, provider: providerName }), {
+          return new Response(JSON.stringify({ status: "enriched", lead_id: canonicalLead.id, fields_added: flatRows.length, provider: providerName, duplicates_trashed: duplicateActiveLeadIds.length }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
       }
 
-      return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: existingLead.id, provider: providerName }), {
+      return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: canonicalLead.id, provider: providerName, duplicates_trashed: duplicateActiveLeadIds.length }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

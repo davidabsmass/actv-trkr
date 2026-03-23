@@ -579,12 +579,45 @@ export default function Forms() {
     queryFn: async () => {
       if (!orgId || !forms) return {};
       const counts: Record<string, number> = {};
+
       for (const form of forms) {
-        const { count, error } = await supabase
-          .from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId).eq("form_id", form.id).neq("status", "trashed");
-        if (!error) counts[form.id] = count || 0;
+        let from = 0;
+        const pageSize = 1000;
+        const externalIds = new Set<string>();
+        let noExternalIdCount = 0;
+
+        while (true) {
+          const { data, error } = await supabase
+            .from("leads")
+            .select("id, data")
+            .eq("org_id", orgId)
+            .eq("form_id", form.id)
+            .neq("status", "trashed")
+            .range(from, from + pageSize - 1);
+
+          if (error) break;
+          if (!data || data.length === 0) break;
+
+          for (const lead of data) {
+            const extId =
+              lead.data && typeof lead.data === "object" && !Array.isArray(lead.data)
+                ? (lead.data as Record<string, unknown>).external_entry_id
+                : null;
+
+            if (typeof extId === "string" && extId.trim() !== "") {
+              externalIds.add(extId);
+            } else {
+              noExternalIdCount += 1;
+            }
+          }
+
+          if (data.length < pageSize) break;
+          from += pageSize;
+        }
+
+        counts[form.id] = externalIds.size + noExternalIdCount;
       }
+
       return counts;
     },
     enabled: !!orgId && !!forms && forms.length > 0,

@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.3.25: Fixed PHP syntax error caused by JS template literal escaping of regex patterns
-const LATEST_VERSION = "1.3.25";
+const LATEST_VERSION = "1.3.28";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,12 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.28
+- CRITICAL: Fixes missing Avada field data by adding wp_fusion_form_entries as a secondary data source
+- Backfill now discovers and queries entries tables (fusion_form_entries, fusionbuilder_form_entries, avada_form_entries)
+- extract_backfill_fields tries multiple secondary tables in sequence until fields are found
+- Fixes leads arriving with empty fields arrays despite data existing in WordPress
+
 ## 1.3.25
 - EMERGENCY: Fixes PHP syntax error (unexpected ']') that crashed WordPress sites after updating to 1.3.24
 - Root cause: JavaScript template literal was consuming PHP regex escape sequences (\\s, \\d, \\')

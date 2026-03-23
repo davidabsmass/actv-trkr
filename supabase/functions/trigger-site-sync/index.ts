@@ -222,40 +222,33 @@ async function triggerWordPressRoute(
     `${normalizedSiteUrl}/wp-json/actv-trkr/v1/${route}`,
     `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/${route}`,
   ];
-
-  // Try both endpoints in parallel, use first success
   const body = JSON.stringify({ triggered_from: "dashboard", key_hash: keyHash });
-  const results = await Promise.allSettled(
-    endpoints.map(async (endpoint) => {
+
+  let lastFailure: { response: Response; endpoint: string } | null = null;
+  for (const endpoint of endpoints) {
+    try {
       console.log(`Triggering ${route} on ${endpoint}`);
       const response = await fetchWithTimeout(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
       }, timeoutMs);
-      return { response, endpoint };
-    })
-  );
 
-  // Return first successful response
-  for (const result of results) {
-    if (result.status === "fulfilled" && result.value.response.ok) {
-      return result.value;
+      if (response.ok) {
+        return { response, endpoint };
+      }
+
+      const bodyPreview = await response.clone().text();
+      console.error(`WP ${route} failed on ${endpoint}: ${response.status} ${bodyPreview}`);
+      lastFailure = { response, endpoint };
+    } catch (err) {
+      console.error(`WP ${route} request failed on ${endpoint}:`, err);
     }
   }
 
-  // Return first non-aborted failure
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      const bodyPreview = await result.value.response.clone().text();
-      console.error(`WP ${route} failed on ${result.value.endpoint}: ${result.value.response.status} ${bodyPreview}`);
-      return result.value;
-    }
-  }
+  if (lastFailure) return lastFailure;
 
-  // All aborted/rejected
-  const firstRejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
-  console.error(`WP ${route} all endpoints failed: ${firstRejected?.reason}`);
+  console.error(`WP ${route} all endpoints failed`);
   return {
     response: new Response("All endpoints timed out", { status: 504 }),
     endpoint: endpoints[0],
@@ -267,7 +260,7 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
 }
 
 async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
-  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 25000);
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 60000);
 }
 
 Deno.serve(async (req) => {

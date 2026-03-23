@@ -37,7 +37,7 @@ const telemetryItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-  const { orgName, orgs, orgId, setOrgId } = useOrg();
+  const { orgName, orgs, orgId, setOrgId, loading: orgLoading } = useOrg();
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);

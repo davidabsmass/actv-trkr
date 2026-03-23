@@ -1128,11 +1128,20 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       });
       if (fnError) throw new Error("Export processing failed");
 
-      const { data: completedJob } = await supabase
-        .from("export_jobs")
-        .select("file_path, status, row_count")
-        .eq("id", inserted.id)
-        .single();
+      // Poll for completion (edge function may finish after response)
+      let completedJob = null;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const { data: job } = await supabase
+          .from("export_jobs")
+          .select("file_path, status, row_count")
+          .eq("id", inserted.id)
+          .single();
+        if (job?.status === "succeeded" || job?.status === "failed") {
+          completedJob = job;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
 
       return completedJob;
     },

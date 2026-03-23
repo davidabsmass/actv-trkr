@@ -1092,7 +1092,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     }
 
     if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
-    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count).slice(0, 6);
+    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count);
     return { fieldColumns: cols, leadFieldMap: map };
   }, [fieldsRaw, leads]);
 

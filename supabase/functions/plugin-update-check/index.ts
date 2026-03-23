@@ -16,6 +16,13 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.3.24
+- Fixed Avada field extraction: queries separate wp_fusion_form_submission_data table for actual field values
+- The main submissions table stores metadata only (data column is NULL) — fields are in a linked data table
+- Enhanced debug endpoint: discovers and reports data table structure and sample rows
+- Fixed timestamp column detection: adds 'time' as first candidate for Avada submissions
+- Improved data table foreign key detection (submission_id, entry_id, parent_id variants)
+
 ## 1.3.22
 - Fixed Avada backfill parser: now correctly handles CSV format (data/field_types/field_labels columns)
 - Fixed real-time Avada handler to parse CSV fields instead of dumping raw metadata keys

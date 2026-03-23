@@ -1141,8 +1141,17 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       setShowExport(false);
       if (job?.file_path) {
         toast.success(`Export ready — ${job.row_count ?? 0} rows. Downloading…`);
-        const { data, error } = await supabase.storage.from("exports").createSignedUrl(job.file_path, 60);
-        if (!error && data?.signedUrl) window.open(data.signedUrl, "_blank");
+        const { data, error } = await supabase.storage.from("exports").createSignedUrl(job.file_path, 120);
+        if (!error && data?.signedUrl) {
+          const a = document.createElement("a");
+          a.href = data.signedUrl;
+          a.download = `export.${exportFormat}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } else {
+          toast.error("Could not generate download link.");
+        }
       } else if (job?.status === "succeeded") {
         toast.info("No leads found for the selected filters.");
       }

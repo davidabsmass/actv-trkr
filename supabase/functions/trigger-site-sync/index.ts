@@ -141,12 +141,12 @@ async function runDirectFormChecks(
     let rendered = false;
 
     try {
-      const response = await fetch(form.page_url, {
+      const response = await fetchWithTimeout(form.page_url, {
         method: "GET",
         headers: {
           "User-Agent": "ACTV-TRKR-FormCheck/1.3.2",
         },
-      });
+      }, 6000);
 
       if (response.ok) {
         const html = await response.text();

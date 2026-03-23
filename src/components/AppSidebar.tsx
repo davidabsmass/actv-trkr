@@ -40,7 +40,7 @@ export function AppSidebar() {
   const { orgName, orgs, orgId, setOrgId } = useOrg();
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
-  const { orgRole } = useOrgRole(orgId);
+  const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
 
   return (
     <Sidebar className="border-r-0 [&>[data-sidebar=sidebar]]:bg-transparent" style={{ background: "var(--sidebar-gradient)" }}>
@@ -85,7 +85,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {telemetryItems.map((item) => {
-                const isSeoLocked = item.url === "/seo" && !isAdmin && orgRole !== "admin";
+                const isSeoLocked = item.url === "/seo" && !isAdmin && orgRole !== "admin" && !orgRoleLoading;
                 if (isSeoLocked) {
                   return (
                     <SidebarMenuItem key={item.title}>

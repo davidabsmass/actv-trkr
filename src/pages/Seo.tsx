@@ -7,11 +7,19 @@ import { Navigate } from "react-router-dom";
 
 export default function Seo() {
   const { orgName, orgId, loading: orgLoading } = useOrg();
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin } = useUserRole();
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
 
-  if (roleLoading || orgRoleLoading || orgLoading || !orgId) {
-    return null;
+  if (orgLoading || orgRoleLoading) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!orgId) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Allow global admins and org-level admins

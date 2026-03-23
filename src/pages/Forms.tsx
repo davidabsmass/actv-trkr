@@ -564,6 +564,7 @@ export default function Forms() {
     } catch (err: any) {
       toast.error(err.message || "Sync failed");
     } finally {
+      clearTimeout(timeoutId);
       setSyncing(false);
     }
   };

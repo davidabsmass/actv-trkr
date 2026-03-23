@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PLUGIN_VERSION = "1.3.24";
+const PLUGIN_VERSION = "1.3.25";
 
 function patchClassFormsPhp(content: string): string {
   return content

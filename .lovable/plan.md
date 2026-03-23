@@ -1,72 +1,67 @@
 
+You’re right to be frustrated. Here’s the exact plan and why this kept missing.
 
-## Speed Optimization Plan
+## What actually went wrong (root cause)
+1. **We were fixing the wrong plugin source.**
+   - Recent fixes were made in `mission-metrics-wp-plugin/*` (MM_* code).
+   - But users download/install from `supabase/functions/serve-plugin-zip/index.ts`, which ships a **different inlined AT_* plugin**.
+   - So fixes didn’t consistently reach your live WordPress plugin.
 
-Two targets: faster AI chat replies and faster Sync Entries UX.
+2. **Your Avada DB shape is not being handled by the distributed plugin.**
+   - Live debug confirms:
+     - Avada submissions table rows have `data = null`
+     - Actual field values are in `wp_fusion_form_entries` (`value` column)
+     - `avada-debug` returned `parser_output: []` (no extracted fields)
+   - So ingestion receives `fields: []`, and UI can only show Date/Source.
 
----
-
-### Problem 1: Sync Entries is Slow
-
-The `trigger-site-sync` edge function is doing too much sequentially:
-
-1. Tries WordPress sync endpoint (wp-json path), waits for timeout/404
-2. Falls back to ?rest_route= path, waits again
-3. Runs `runDirectFormChecks` which fetches each form's page URL over HTTP (sequential)
-4. Runs 3-4 sequential Supabase queries for Avada lead counting
-5. Optionally calls WordPress backfill endpoint (another HTTP roundtrip)
-
-Right now the WordPress site is returning 404 on both sync routes (plugin crashed or inactive from the v1.3.24 issue), so every sync attempt burns ~20-30 seconds on failed HTTP calls before falling back.
-
-### Problem 2: UI Gives No Feedback During Sync
-
-The "Sync Entries" button shows a spinner but no progress. User has no idea if it's working or stuck.
+3. **This is why first attempts looked better, then worse.**
+   - Older events had partial legacy payloads.
+   - New sync/backfills are writing canonical Avada IDs but with empty fields, so usable field data never populates.
 
 ---
 
-### Fix 1: Add Timeouts and Parallelize Backend (trigger-site-sync)
+## Execution plan (in order)
 
-**File**: `supabase/functions/trigger-site-sync/index.ts`
+### Phase 1 — Immediate hotfix to stop the bleed
+1. Patch `serve-plugin-zip` plugin payload (the actual shipped plugin), not just `mission-metrics-wp-plugin`.
+2. In shipped Avada backfill logic:
+   - Add/keep `fusion_form_entries` as a first-class secondary source.
+   - Parse `value` + JSON `data` fallback per row.
+   - Map labels/types safely when labels are absent.
+3. Bump distributed plugin version (new release), and bump `plugin-update-check` latest version/changelog so WordPress update flow serves the fix.
+4. Validate with `avada-debug-proxy`:
+   - `parser_output` must be non-empty on your current sample rows.
 
-- Reduce WordPress HTTP timeout from default to 8 seconds (currently no explicit timeout on fetch calls)
-- Run WordPress sync call and Avada lead counting queries in parallel (they don't depend on each other for the initial check)
-- Skip `runDirectFormChecks` when WordPress sync succeeds (it currently always runs)
-- Add `AbortController` with 8s timeout on WordPress fetch calls
+### Phase 2 — Recover all missing fields already in your app
+5. Run one full Sync Entries after plugin update.
+6. Ensure ingestion enriches existing leads with empty `lead_fields_flat` rows (same external IDs, field data added in place).
+7. Add a one-time recovery pass (if needed) to rehydrate Avada leads still missing fields after sync.
 
-### Fix 2: Add Progress Feedback to Sync Button
-
-**File**: `src/pages/Forms.tsx`
-
-- Show elapsed time on the sync button ("Syncing… 5s")
-- Add a 30-second client-side timeout with a warning toast if exceeded
-- Show per-site results as they complete (not wait for all)
-
-### Fix 3: Fix the Actual Blocker — Plugin Not Responding
-
-**File**: `supabase/functions/serve-plugin-zip/index.ts`
-
-The edge function logs show the WordPress site returns `rest_no_route` for both sync endpoints. This means the plugin is either:
-- Not installed (user needs to reinstall after the v1.3.24 crash)
-- Installed but the REST route registration crashed
-
-The `class-forms.php` in the distributed ZIP has a syntax error at line 1950 — the `parse_avada_csv_format` method is missing its closing brace and `return` statement before the debug endpoint method starts. This is causing a PHP fatal error that prevents the REST routes from registering.
-
-Fix the PHP structure in the generated `class-forms.php` so the method properly closes before the debug endpoint begins.
-
-### Fix 4: Reduce WordPress Fallback Penalty
-
-**File**: `supabase/functions/trigger-site-sync/index.ts`
-
-When WordPress returns 404 on the first endpoint, immediately try the fallback. If both fail within 5 seconds total (not 10+ sequential), return the fallback result faster.
+### Phase 3 — Prevent this from happening again
+8. Remove source-of-truth drift:
+   - Make plugin ZIP generation use one canonical plugin source (or hard fail build if shipped AT_* code diverges from MM_* fixes).
+9. Add release guardrails:
+   - Build assertions for Avada extraction markers (`fusion_form_entries` support, parser function presence, backfill route integrity).
+10. Add post-sync telemetry:
+   - Log “Avada leads enriched / still empty” counts so regressions are visible immediately.
 
 ---
 
-### Summary
+## Acceptance checks (must pass)
+- **Count integrity:** “Book In-Office” remains at 11 active entries.
+- **Field integrity:** Avada leads show populated columns beyond Date/Source in Entries view.
+- **Data integrity:** `lead_fields_flat` coverage for active Avada leads rises from ~0% to expected high coverage.
+- **Debug integrity:** `avada-debug` shows non-empty parser output from current rows.
+- **Export integrity:** CSV/XLSX exports include recovered Avada fields.
 
-| Step | File | What | Impact |
-|------|------|------|--------|
-| 1 | `trigger-site-sync/index.ts` | 8s timeout + parallel queries | Cuts worst-case from 30s to ~10s |
-| 2 | `Forms.tsx` | Elapsed timer + 30s client timeout | User knows what's happening |
-| 3 | `serve-plugin-zip/index.ts` | Fix PHP syntax in distributed plugin | Fixes root cause (404s) |
-| 4 | `trigger-site-sync/index.ts` | Parallel WordPress endpoint attempts | Cuts fallback time in half |
+---
 
+## Technical details
+- Primary files to update:
+  - `supabase/functions/serve-plugin-zip/index.ts`
+  - `supabase/functions/plugin-update-check/index.ts`
+  - (if needed for recovery visibility) `supabase/functions/ingest-form/index.ts`
+- Runtime evidence already verified:
+  - Avada forms currently have correct counts but missing field rows.
+  - Recent backfill payloads contain `fields: []`.
+  - Live WordPress debug exposes `wp_fusion_form_entries` values while parser returns empty.

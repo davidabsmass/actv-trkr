@@ -22,8 +22,8 @@ export default function Seo() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Allow global admins and all org members
-  if (!isAdmin && !orgRole) {
+  // Allow global admins and org-level admins only
+  if (!isAdmin && orgRole !== "admin") {
     return <Navigate to="/dashboard" replace />;
   }
 

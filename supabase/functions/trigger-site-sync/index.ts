@@ -382,7 +382,8 @@ Deno.serve(async (req) => {
       // Keep raw string
     }
 
-    const fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
+    // Skip direct form checks when WP sync succeeded — it already did the work
+    const fallback = { checked: 0, updatedPageUrls: 0, alertsCreated: 0 };
 
     // Extract structured data from WP result
     const wpResult = (wpData as Record<string, unknown>)?.result as Record<string, unknown> | undefined;

@@ -611,7 +611,7 @@ export default function Forms() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSyncAll} disabled={syncing || !forms || forms.length === 0}>
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing…" : "Sync Entries"}
+            {syncing ? `Syncing… ${syncElapsed}s` : "Sync Entries"}
           </Button>
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
         </div>

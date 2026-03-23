@@ -169,13 +169,16 @@ Deno.serve(async (req) => {
     const medium = utmMedium || (referrerDomain && !isSelfReferral ? "referral" : "direct");
 
     // Check for existing lead with same external_entry_id to prevent duplicates on re-backfill
-    const { data: existingLead } = await supabase.from("leads")
-      .select("id")
+    const { data: existingLeadRows } = await supabase.from("leads")
+      .select("id, submitted_at")
       .eq("org_id", orgId)
       .eq("site_id", siteId)
       .eq("form_id", formId)
       .eq("data->>external_entry_id", extEntryId)
-      .maybeSingle();
+      .order("submitted_at", { ascending: false })
+      .limit(1);
+
+    const existingLead = existingLeadRows?.[0] || null;
 
     if (existingLead) {
       // If existing lead has no field data but incoming payload has fields, enrich it

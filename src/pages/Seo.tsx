@@ -6,11 +6,11 @@ import SeoTab from "@/components/reports/SeoTab";
 import { Navigate } from "react-router-dom";
 
 export default function Seo() {
-  const { orgName, orgId } = useOrg();
+  const { orgName, orgId, loading: orgLoading } = useOrg();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
 
-  if (roleLoading || orgRoleLoading) {
+  if (roleLoading || orgRoleLoading || orgLoading || !orgId) {
     return null;
   }
 

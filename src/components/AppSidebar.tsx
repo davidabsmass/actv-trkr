@@ -37,7 +37,7 @@ const telemetryItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-  const { orgName, orgs, orgId, setOrgId } = useOrg();
+  const { orgName, orgs, orgId, setOrgId, loading: orgLoading } = useOrg();
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
@@ -85,7 +85,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {telemetryItems.map((item) => {
-                const isSeoLocked = item.url === "/seo" && !isAdmin && orgRole !== "admin" && !orgRoleLoading;
+                const isSeoLocked = item.url === "/seo" && !isAdmin && orgRole !== "admin" && !orgRoleLoading && !orgLoading;
                 if (isSeoLocked) {
                   return (
                     <SidebarMenuItem key={item.title}>

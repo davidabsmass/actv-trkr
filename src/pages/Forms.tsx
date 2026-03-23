@@ -422,7 +422,16 @@ export default function Forms() {
   });
 
   const [syncing, setSyncing] = useState(false);
+  const [syncElapsed, setSyncElapsed] = useState(0);
   const [avadaSyncBlocked, setAvadaSyncBlocked] = useState(false);
+
+  // Elapsed timer for sync
+  useEffect(() => {
+    if (!syncing) { setSyncElapsed(0); return; }
+    const start = Date.now();
+    const interval = setInterval(() => setSyncElapsed(Math.round((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(interval);
+  }, [syncing]);
 
   const handleSyncAll = async () => {
     if (!orgId || !forms || forms.length === 0) return;
@@ -431,6 +440,11 @@ export default function Forms() {
     if (siteIds.length === 0) return;
 
     setSyncing(true);
+
+    // 30s client-side timeout
+    const timeoutId = setTimeout(() => {
+      toast.warning("Sync is taking longer than expected. The operation will continue in the background.");
+    }, 30000);
     try {
       const results = await Promise.allSettled(
         siteIds.map((siteId) =>

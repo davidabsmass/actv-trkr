@@ -2,28 +2,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get("Authorization") || "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const { site_id } = await req.json();
     if (!site_id) {
@@ -41,16 +28,6 @@ Deno.serve(async (req) => {
     if (!site) {
       return new Response(JSON.stringify({ error: "Site not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: membership } = await supabase
-      .from("org_users").select("role")
-      .eq("org_id", site.org_id).eq("user_id", user.id).maybeSingle();
-
-    if (!membership) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -91,7 +68,7 @@ Deno.serve(async (req) => {
       
       if (res.status === 404 && text.toLowerCase().includes("rest_no_route")) continue;
       
-      return new Response(JSON.stringify({ error: `WP returned ${res.status}`, details: text }), {
+      return new Response(JSON.stringify({ error: `WP returned ${res.status}`, details: text, endpoint }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

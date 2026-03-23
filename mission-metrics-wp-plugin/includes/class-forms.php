@@ -1646,6 +1646,36 @@ class MM_Forms {
 					$fields = self::extract_avada_backfill_fields( $row, $columns, $has_submission_col );
 				}
 
+				// Fallback: query Avada's secondary data table if primary extraction returned empty
+				if ( empty( $fields ) && $rid > 0 ) {
+					$secondary_table = $wpdb->prefix . 'fusion_form_submission_data';
+					if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $secondary_table ) ) === $secondary_table ) {
+						$sub_rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT field_id, field_label, field_value, field_type FROM {$secondary_table} WHERE submission_id = %d ORDER BY field_id ASC",
+							$rid
+						) );
+						if ( is_array( $sub_rows ) && ! empty( $sub_rows ) ) {
+							$skip_types = array( 'submit', 'notice', 'html', 'hidden', 'captcha', 'honeypot', 'section', 'page' );
+							$idx = 0;
+							foreach ( $sub_rows as $sr ) {
+								$val = isset( $sr->field_value ) ? trim( (string) $sr->field_value ) : '';
+								if ( $val === '' || strtolower( $val ) === 'array' ) continue;
+								$type = isset( $sr->field_type ) ? strtolower( trim( (string) $sr->field_type ) ) : 'text';
+								if ( in_array( $type, $skip_types, true ) ) continue;
+								$label = ! empty( $sr->field_label ) ? (string) $sr->field_label : ( 'Field ' . ( $idx + 1 ) );
+								$fields[] = array(
+									'id'    => $idx,
+									'name'  => $label,
+									'label' => $label,
+									'type'  => $type,
+									'value' => $val,
+								);
+								$idx++;
+							}
+						}
+					}
+				}
+
 				$source_url = ( $row && $has_source_url && ! empty( $row->source_url ) )
 					? $row->source_url
 					: $page_url;

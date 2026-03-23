@@ -1092,7 +1092,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     }
 
     if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
-    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count).slice(0, 6);
+    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count);
     return { fieldColumns: cols, leadFieldMap: map };
   }, [fieldsRaw, leads]);
 
@@ -1128,11 +1128,20 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       });
       if (fnError) throw new Error("Export processing failed");
 
-      const { data: completedJob } = await supabase
-        .from("export_jobs")
-        .select("file_path, status, row_count")
-        .eq("id", inserted.id)
-        .single();
+      // Poll for completion (edge function may finish after response)
+      let completedJob = null;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const { data: job } = await supabase
+          .from("export_jobs")
+          .select("file_path, status, row_count")
+          .eq("id", inserted.id)
+          .single();
+        if (job?.status === "succeeded" || job?.status === "failed") {
+          completedJob = job;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
 
       return completedJob;
     },
@@ -1141,8 +1150,17 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       setShowExport(false);
       if (job?.file_path) {
         toast.success(`Export ready — ${job.row_count ?? 0} rows. Downloading…`);
-        const { data, error } = await supabase.storage.from("exports").createSignedUrl(job.file_path, 60);
-        if (!error && data?.signedUrl) window.open(data.signedUrl, "_blank");
+        const { data, error } = await supabase.storage.from("exports").createSignedUrl(job.file_path, 120);
+        if (!error && data?.signedUrl) {
+          const a = document.createElement("a");
+          a.href = data.signedUrl;
+          a.download = `export.${exportFormat}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } else {
+          toast.error("Could not generate download link.");
+        }
       } else if (job?.status === "succeeded") {
         toast.info("No leads found for the selected filters.");
       }
@@ -1161,6 +1179,17 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search entries..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
+        {statuses.length > 1 && (
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[130px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              {statuses.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowExport(!showExport)}>
           <Download className="h-3.5 w-3.5" /> Export
         </Button>

@@ -980,8 +980,34 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!orgId,
   });
 
+  const dedupedLeads = useMemo(() => {
+    if (!leads || leads.length === 0) return [];
+    const byExternalId = new Map<string, any>();
+    const withoutExternalId: any[] = [];
+
+    for (const lead of leads) {
+      const extId =
+        lead.data && typeof lead.data === "object" && !Array.isArray(lead.data)
+          ? (lead.data as Record<string, any>).external_entry_id
+          : null;
+
+      if (typeof extId === "string" && extId.trim() !== "") {
+        const existing = byExternalId.get(extId);
+        if (!existing || new Date(lead.submitted_at).getTime() > new Date(existing.submitted_at).getTime()) {
+          byExternalId.set(extId, lead);
+        }
+      } else {
+        withoutExternalId.push(lead);
+      }
+    }
+
+    return [...byExternalId.values(), ...withoutExternalId].sort(
+      (a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
+    );
+  }, [leads]);
+
   // Get site domain to detect self-referral sources
-  const siteId = leads?.[0]?.site_id;
+  const siteId = dedupedLeads?.[0]?.site_id;
   const { data: siteData } = useQuery({
     queryKey: ["site_domain", siteId],
     queryFn: async () => {
@@ -992,7 +1018,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!siteId,
   });
 
-  const leadIds = (leads || []).map((l) => l.id);
+  const leadIds = dedupedLeads.map((l) => l.id);
   const SKIP_FIELD_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
   const SKIP_FIELD_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
 
@@ -1039,14 +1065,20 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       }
     }
 
-    if (leads) {
-      for (const lead of leads) {
+    if (dedupedLeads) {
+      for (const lead of dedupedLeads) {
         if (leadsWithFlatFields.has(lead.id)) continue;
-        if (!lead.data || !Array.isArray(lead.data)) continue;
+        const rawData = lead.data as any;
+        const payloadFields = Array.isArray(rawData?.fields)
+          ? rawData.fields
+          : Array.isArray(rawData)
+            ? rawData
+            : [];
+        if (!Array.isArray(payloadFields) || payloadFields.length === 0) continue;
 
-        const dataEntry = (lead.data as any[]).find((d: any) => d.name === "data" || d.label === "data");
-        const typesEntry = (lead.data as any[]).find((d: any) => d.name === "field_types" || d.label === "field_types");
-        const labelsEntry = (lead.data as any[]).find((d: any) => d.name === "field_labels" || d.label === "field_labels");
+        const dataEntry = payloadFields.find((d: any) => d.name === "data" || d.label === "data");
+        const typesEntry = payloadFields.find((d: any) => d.name === "field_types" || d.label === "field_types");
+        const labelsEntry = payloadFields.find((d: any) => d.name === "field_labels" || d.label === "field_labels");
 
         if (dataEntry?.value && typesEntry?.value) {
           const values = dataEntry.value.split(", ").map((v: string) => v.trim());
@@ -1071,9 +1103,20 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             columnOrder.get(key)!.count++;
           }
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
+        } else if (dataEntry?.value && typeof dataEntry.value === "string") {
+          const values = dataEntry.value.split(",").map((v: string) => v.trim()).filter(Boolean);
+          const fields: Record<string, string> = {};
+          values.forEach((val: string, idx: number) => {
+            const key = `field_${idx + 1}`;
+            const label = `Field ${idx + 1}`;
+            fields[key] = val;
+            if (!columnOrder.has(key)) columnOrder.set(key, { key, label, count: 0 });
+            columnOrder.get(key)!.count++;
+          });
+          if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else {
           const fields: Record<string, string> = {};
-          for (const d of lead.data as any[]) {
+          for (const d of payloadFields as any[]) {
             if (!d.value || (typeof d.value === "string" && d.value.trim() === "")) continue;
             const name = d.name || d.label || "unknown";
             if (SKIP_KEYS_SET.has(name)) continue;
@@ -1094,9 +1137,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
     const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count);
     return { fieldColumns: cols, leadFieldMap: map };
-  }, [fieldsRaw, leads]);
+  }, [fieldsRaw, dedupedLeads]);
 
-  const filtered = (leads || []).filter((lead) => {
+  const filtered = dedupedLeads.filter((lead) => {
     if (statusFilter !== "all" && lead.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -1107,7 +1150,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     return true;
   });
 
-  const statuses = [...new Set((leads || []).map((l) => l.status))].sort();
+  const statuses = [...new Set(dedupedLeads.map((l) => l.status))].sort();
 
   const createExport = useMutation({
     mutationFn: async () => {
@@ -1245,7 +1288,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           <div className="p-12 text-center text-muted-foreground text-sm">Loading entries…</div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">
-            {(leads || []).length === 0 ? "No leads for this form yet." : "No entries match your filters."}
+            {dedupedLeads.length === 0 ? "No leads for this form yet." : "No entries match your filters."}
           </div>
         ) : (
           <div className="overflow-x-auto">

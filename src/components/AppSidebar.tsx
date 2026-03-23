@@ -85,7 +85,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {telemetryItems.map((item) => {
-                const isSeoLocked = item.url === "/seo" && !isAdmin && orgRole !== "admin" && !orgRoleLoading;
+                const isSeoLocked = item.url === "/seo" && !isAdmin && orgRole !== "admin" && !orgRoleLoading && !orgLoading;
                 if (isSeoLocked) {
                   return (
                     <SidebarMenuItem key={item.title}>

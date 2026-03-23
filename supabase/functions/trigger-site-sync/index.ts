@@ -266,7 +266,7 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{
 }
 
 async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
-  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada");
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 25000);
 }
 
 Deno.serve(async (req) => {

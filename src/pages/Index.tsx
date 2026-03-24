@@ -344,10 +344,10 @@ const Index = () => {
                 Catch Problems Before They Cost You
               </h3>
               <p className="text-muted-foreground max-w-xl mb-6">
-                ACTV TRKR does more than track traffic. It helps you monitor the health of your website so you can catch broken forms, broken links, SSL issues, and domain-related problems before they impact leads and performance.
+                ACTV TRKR does more than track traffic. It helps you monitor the health of your website so you can catch broken forms, broken links, SSL issues, uptime problems, and domain-related risks before they affect leads and performance.
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl">
-                {["Site health alerts", "Broken form checks", "Broken link detection", "SSL expiry alerts", "Domain expiry alerts"].map((item) => (
+                {["Site health alerts", "Broken form checks", "Broken link detection", "SSL expiry alerts", "Domain expiry alerts", "Uptime monitoring"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
                     {item}

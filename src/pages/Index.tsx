@@ -210,8 +210,8 @@ const Index = () => {
               <p className="text-lg text-muted-foreground mb-6">
                 Track trends over time, spot performance shifts earlier, and catch issues before they start costing you leads.
               </p>
-              <a href="/signup" className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-foreground text-background font-medium hover:opacity-90 transition-opacity">
-                Get Started
+              <a href="/signup" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
+                Get Started <ArrowRight className="h-4 w-4" />
               </a>
             </div>
             <div className="relative flex items-center justify-center lg:col-span-3 lg:-ml-16">

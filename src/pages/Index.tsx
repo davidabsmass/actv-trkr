@@ -274,13 +274,16 @@ const Index = () => {
                 Smart Insights
               </div>
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Built-In Suggestions, Without the Noise
+                Automated Insights, Without the Busywork
               </h3>
+              <p className="text-muted-foreground max-w-xl mb-3">
+                ACTV TRKR turns your traffic, lead, SEO, and site health data into clear weekly and monthly summaries, complete with AI-powered recommendations to help you spot trends, issues, and next steps faster.
+              </p>
               <p className="text-muted-foreground max-w-xl mb-6">
-                ACTV TRKR includes automated suggestions based on your activity, lead trends, and site health signals. It is designed to help you spot opportunities and issues quickly — without turning your dashboard into an overcomplicated AI tool.
+                It is built to give you useful direction — not overwhelm you with unnecessary noise.
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl">
-                {["AI-powered suggestions", "Weekly insights", "Monthly summaries", "Recommended actions", "Clear performance signals"].map((item) => (
+                {["Client request submissions", "Version-based creative workflow", "Internal, edits needed & sent to client statuses", "Visual creative viewer with comments", "Centralized project brief & history"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
                     {item}

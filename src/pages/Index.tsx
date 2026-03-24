@@ -321,10 +321,10 @@ const Index = () => {
                 Track the Performance of Every Form
               </h3>
               <p className="text-white/90 max-w-xl mb-4">
-                Your forms are often the most important part of your website — and one of the easiest places for problems to go unnoticed.
+                Your forms are one of the most important parts of your website — and one of the easiest places for problems to slip by unnoticed.
               </p>
               <p className="text-white/70 max-w-xl">
-                ACTV TRKR monitors WordPress forms for submissions, drop-offs, failures, and trends over time. See which forms are performing, which ones are underdelivering, and when something breaks so you can respond fast.
+                ACTV TRKR monitors submissions, failures, trends, and activity across your WordPress forms, helping you see what is converting, what is underperforming, and when something needs attention. With universal form capture, it works across Gravity Forms, Avada/Fusion Forms, and more without a complicated setup.
               </p>
             </div>
           </div>

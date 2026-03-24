@@ -1,67 +1,24 @@
 
-You’re right to be frustrated. Here’s the exact plan and why this kept missing.
+You’re right — if the button isn’t visible, use these fallback paths.
 
-## What actually went wrong (root cause)
-1. **We were fixing the wrong plugin source.**
-   - Recent fixes were made in `mission-metrics-wp-plugin/*` (MM_* code).
-   - But users download/install from `supabase/functions/serve-plugin-zip/index.ts`, which ships a **different inlined AT_* plugin**.
-   - So fixes didn’t consistently reach your live WordPress plugin.
+## Desktop
+1. In the editor, click your **project name/logo (top-left)**.
+2. Look for **New chat** in that dropdown/menu.
+3. If you still don’t see it:
+   - Open your project from the dashboard again (re-enter editor), then check the same top-left project menu.
+   - Make sure you’re in the **chat panel** (not only code/preview focus).
 
-2. **Your Avada DB shape is not being handled by the distributed plugin.**
-   - Live debug confirms:
-     - Avada submissions table rows have `data = null`
-     - Actual field values are in `wp_fusion_form_entries` (`value` column)
-     - `avada-debug` returned `parser_output: []` (no extracted fields)
-   - So ingestion receives `fields: []`, and UI can only show Date/Source.
+## Mobile
+1. Switch to **Chat mode** first (you can only read/respond there).
+2. Tap the **… (bottom-right)** menu.
+3. Look for conversation/chat controls there, or use the **project name at the top** menu.
+4. If hidden, go back to project list and reopen the project to start a fresh thread from the editor entry screen.
 
-3. **This is why first attempts looked better, then worse.**
-   - Older events had partial legacy payloads.
-   - New sync/backfills are writing canonical Avada IDs but with empty fields, so usable field data never populates.
+## Why this happens
+- UI layout differs by screen size/view mode, so the dedicated “New chat” button may not appear in every layout.
+- On some layouts, it’s moved under the **project name menu** or **… menu**.
 
----
-
-## Execution plan (in order)
-
-### Phase 1 — Immediate hotfix to stop the bleed
-1. Patch `serve-plugin-zip` plugin payload (the actual shipped plugin), not just `mission-metrics-wp-plugin`.
-2. In shipped Avada backfill logic:
-   - Add/keep `fusion_form_entries` as a first-class secondary source.
-   - Parse `value` + JSON `data` fallback per row.
-   - Map labels/types safely when labels are absent.
-3. Bump distributed plugin version (new release), and bump `plugin-update-check` latest version/changelog so WordPress update flow serves the fix.
-4. Validate with `avada-debug-proxy`:
-   - `parser_output` must be non-empty on your current sample rows.
-
-### Phase 2 — Recover all missing fields already in your app
-5. Run one full Sync Entries after plugin update.
-6. Ensure ingestion enriches existing leads with empty `lead_fields_flat` rows (same external IDs, field data added in place).
-7. Add a one-time recovery pass (if needed) to rehydrate Avada leads still missing fields after sync.
-
-### Phase 3 — Prevent this from happening again
-8. Remove source-of-truth drift:
-   - Make plugin ZIP generation use one canonical plugin source (or hard fail build if shipped AT_* code diverges from MM_* fixes).
-9. Add release guardrails:
-   - Build assertions for Avada extraction markers (`fusion_form_entries` support, parser function presence, backfill route integrity).
-10. Add post-sync telemetry:
-   - Log “Avada leads enriched / still empty” counts so regressions are visible immediately.
-
----
-
-## Acceptance checks (must pass)
-- **Count integrity:** “Book In-Office” remains at 11 active entries.
-- **Field integrity:** Avada leads show populated columns beyond Date/Source in Entries view.
-- **Data integrity:** `lead_fields_flat` coverage for active Avada leads rises from ~0% to expected high coverage.
-- **Debug integrity:** `avada-debug` shows non-empty parser output from current rows.
-- **Export integrity:** CSV/XLSX exports include recovered Avada fields.
-
----
-
-## Technical details
-- Primary files to update:
-  - `supabase/functions/serve-plugin-zip/index.ts`
-  - `supabase/functions/plugin-update-check/index.ts`
-  - (if needed for recovery visibility) `supabase/functions/ingest-form/index.ts`
-- Runtime evidence already verified:
-  - Avada forms currently have correct counts but missing field rows.
-  - Recent backfill payloads contain `fields: []`.
-  - Live WordPress debug exposes `wp_fusion_form_entries` values while parser returns empty.
+## Immediate workaround (fastest)
+If starting a fresh thread is blocked right now, send one short message in this thread:
+“Continue with only this task: [single task]”
+That still keeps responses much faster than multi-topic prompts.

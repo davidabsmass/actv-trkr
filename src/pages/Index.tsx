@@ -205,11 +205,14 @@ const Index = () => {
                 See What Needs Attention
               </h2>
               <p className="text-lg text-muted-foreground mb-4">
-                ACTV TRKR brings your most important website metrics into one clear dashboard, so you can quickly see traffic, leads, conversions, visitor activity, and site health.
+                ACTV TRKR brings your most important website metrics into one streamlined dashboard, so you can quickly monitor traffic, leads, visitor activity, SEO performance, and site health in one place.
               </p>
-              <p className="text-lg text-muted-foreground">
-                Track week-over-week changes, spot performance shifts early, and catch issues before they cost you opportunities.
+              <p className="text-lg text-muted-foreground mb-6">
+                Track trends over time, spot performance shifts earlier, and catch issues before they start costing you leads.
               </p>
+              <a href="/signup" className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-foreground text-background font-medium hover:opacity-90 transition-opacity">
+                Get Started
+              </a>
             </div>
             <div className="relative flex items-center justify-center lg:col-span-3 lg:-ml-16">
               <img 

@@ -286,7 +286,7 @@ const Index = () => {
                 It is built to give you useful direction — not overwhelm you with unnecessary noise.
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl">
-                {["Client request submissions", "Version-based creative workflow", "Internal, edits needed & sent to client statuses", "Visual creative viewer with comments", "Centralized project brief & history"].map((item) => (
+                {["AI-powered suggestions", "Weekly insights", "Monthly summaries", "Recommended actions", "Clear performance signals"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
                     {item}

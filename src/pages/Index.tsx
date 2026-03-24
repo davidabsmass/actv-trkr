@@ -247,7 +247,7 @@ const Index = () => {
                 See Where Your Leads Come From
               </h3>
               <p className="text-white/90 max-w-xl mb-6">
-                Track form submissions, review lead activity, and connect conversions back to the pages, campaigns, and sources driving them. ACTV TRKR gives you clearer visibility into form performance without making you dig through multiple tools.
+                Track form submissions, review lead activity, and connect conversions back to the campaigns, traffic sources, and pages driving them. ACTV TRKR gives you a clearer view of marketing performance without making you piece data together across multiple tools.
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-white/70 text-sm max-w-xl">
                 {["Form activity logs", "Lead attribution", "Entries by form", "Source breakdowns", "Exportable lead data"].map((item) => (

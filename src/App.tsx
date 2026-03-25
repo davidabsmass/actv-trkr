@@ -87,6 +87,7 @@ const App = () => (
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="monitoring" element={<Monitoring />} />
+            <Route path="security" element={<Security />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="admin-setup" element={<AdminSetup />} />
             <Route path="account" element={<Account />} />

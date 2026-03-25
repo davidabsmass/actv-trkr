@@ -69,6 +69,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
           .select("page_path")
           .eq("org_id", orgId)
           .gte("occurred_at", startTs)
+          .lte("occurred_at", endTs)
           .not("page_path", "is", null)
           .order("occurred_at", { ascending: true })
           .range(from, to)
@@ -91,6 +92,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
           .select("utm_source, landing_referrer_domain")
           .eq("org_id", orgId)
           .gte("started_at", startTs)
+          .lte("started_at", endTs)
           .order("started_at", { ascending: true })
           .range(from, to)
       );

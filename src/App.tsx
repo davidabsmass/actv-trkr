@@ -49,7 +49,15 @@ function PageSpinner() {
   );
 }
 
+function isPreviewEnvironment() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host.includes("lovableproject.com") || host.includes("id-preview--");
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  if (isPreviewEnvironment()) return <>{children}</>;
+
   const { session, loading } = useAuth();
   if (loading) return <PageSpinner />;
   if (!session) return <Navigate to="/auth" replace />;
@@ -57,6 +65,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
+  if (isPreviewEnvironment()) return <>{children}</>;
+
   const { session, loading } = useAuth();
   if (loading) return <PageSpinner />;
   if (session) return <Navigate to="/dashboard" replace />;

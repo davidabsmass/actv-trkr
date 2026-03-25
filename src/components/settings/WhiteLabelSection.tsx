@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Palette, Upload, Type, EyeOff, Save, Loader2, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function WhiteLabelSection() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
 

@@ -99,20 +99,30 @@ require_once AT_PLUGIN_DIR.'includes/class-retry-queue.php';
 require_once AT_PLUGIN_DIR.'includes/class-updater.php';
 require_once AT_PLUGIN_DIR.'includes/class-heartbeat.php';
 require_once AT_PLUGIN_DIR.'includes/class-broken-links.php';
+require_once AT_PLUGIN_DIR.'includes/class-seo-fixes.php';
+require_once AT_PLUGIN_DIR.'includes/class-security.php';
 function at_activate(){
   AT_Retry_Queue::create_table();
   if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
   if(!wp_next_scheduled('at_heartbeat_cron')){wp_schedule_event(time(),'at_every_5_min','at_heartbeat_cron');}
   if(!wp_next_scheduled('at_form_probe_cron')){wp_schedule_event(time(),'hourly','at_form_probe_cron');}
+  if(!wp_next_scheduled('at_seo_fix_cron')){wp_schedule_event(time(),'at_every_5_min','at_seo_fix_cron');}
 }
 register_activation_hook(__FILE__,'at_activate');
-function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');wp_clear_scheduled_hook('at_form_probe_cron');}
+function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');wp_clear_scheduled_hook('at_form_probe_cron');wp_clear_scheduled_hook('at_seo_fix_cron');}
 register_deactivation_hook(__FILE__,'at_deactivate');
 add_filter('cron_schedules',function($s){$s['at_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return $s;});
-AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();AT_Broken_Links::init();
+AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();AT_Broken_Links::init();AT_SEO_Fixes::init();
+$at_security=new AT_Security();$at_security->init();
 add_action('at_retry_cron',array('AT_Retry_Queue','process'));
 add_action('at_heartbeat_cron',array('AT_Heartbeat','send_cron_heartbeat'));
 add_action('at_form_probe_cron',array('AT_Forms','probe_form_pages'));
+add_action('at_seo_fix_cron',array('AT_SEO_Fixes','poll_fixes'));
+add_action('init',function(){
+  if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
+  if(!wp_next_scheduled('at_form_probe_cron')){wp_schedule_event(time(),'hourly','at_form_probe_cron');}
+  if(!wp_next_scheduled('at_seo_fix_cron')){wp_schedule_event(time(),'at_every_5_min','at_seo_fix_cron');}
+},20);
 `,
 
     "actv-trkr/includes/class-settings.php": `<?php

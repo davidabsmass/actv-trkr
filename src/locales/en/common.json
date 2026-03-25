@@ -151,7 +151,22 @@
     "attentionNeeded": "Attention needed",
     "welcomeBanner": "Welcome! Let's get your site connected",
     "welcomeBannerDesc": "Follow our 3-step guide to install the plugin, connect your API key, and start seeing real-time data.",
-    "form": "Form"
+    "form": "Form",
+    "shareableSnapshot": "Shareable Snapshot",
+    "creatingSnapshot": "Creating snapshot…",
+    "trendsMini": "Trends",
+    "weekOverWeek": "This Week vs Last",
+    "bestPage": "Best Page",
+    "performanceStable": "Performance stable. No material movement detected.",
+    "engagementScore": "Engagement Score",
+    "highlyEngaged": "Highly engaged",
+    "moderatelyEngaged": "Moderately engaged",
+    "lowEngagement": "Low engagement",
+    "totalRevenue": "Total Revenue",
+    "topProducts": "Top Products",
+    "dailyAvg": "Daily Avg",
+    "leadsPerDay": "leads/day",
+    "user": "User"
   },
   "dateRange": {
     "last7": "Last 7 days",
@@ -308,7 +323,10 @@
     "generateAReport": "Generate a Report",
     "generatingReport": "Generating…",
     "weeklyFreq": "Weekly",
-    "monthlyFreq": "Monthly"
+    "monthlyFreq": "Monthly",
+    "templateName": "Template Name",
+    "toggleMetrics": "Toggle individual metrics within this section:",
+    "customize": "Customize"
   },
   "forms": {
     "title": "Forms & Leads",
@@ -325,7 +343,15 @@
     "showArchived": "Show Archived",
     "hideArchived": "Hide Archived",
     "noFormsYet": "No forms synced yet.",
-    "installPlugin": "Install the WordPress plugin and sync your forms to start tracking leads."
+    "installPlugin": "Install the WordPress plugin and sync your forms to start tracking leads.",
+    "leadCategory": "Lead (Contact, Quote, etc.)",
+    "newsletterCategory": "Newsletter Signup",
+    "surveyCategory": "Survey / Feedback",
+    "otherCategory": "Other",
+    "excluded": "Excluded",
+    "fullLead": "Full lead",
+    "allStatuses": "All statuses",
+    "source": "Source"
   },
   "seo": {
     "title": "SEO Insights",
@@ -372,7 +398,14 @@
     "unknown": "Unknown",
     "noBrokenLinks": "No broken links detected. Run a scan to check.",
     "noDomainData": "No domain data yet. Click \"Check Now\" above.",
-    "never": "Never"
+    "never": "Never",
+    "pluginUpdates": "Plugin & WordPress",
+    "checksPluginsDaily": "Checks all active plugins daily",
+    "emailAlertsUpdates": "Email alerts for available updates",
+    "checksVulnerabilities": "Checks against WPScan vulnerability data",
+    "criticalAlertsSent": "Critical alerts sent immediately",
+    "tracksWpVersion": "Tracks current WP version",
+    "securityReleasesFlagged": "Security releases flagged as critical"
   },
   "security": {
     "title": "Security",
@@ -392,7 +425,15 @@
     "alertsAfterFailed": "Alerts trigger after 5+ failed login attempts within 10 minutes",
     "newIpFlagged": "Successful logins from new IPs are flagged for review",
     "scansDaily": "Scans core files, active theme, and plugin directories daily",
-    "alertsOnChanges": "Alerts on new, modified, or deleted files outside normal update cycles"
+    "alertsOnChanges": "Alerts on new, modified, or deleted files outside normal update cycles",
+    "bruteForceTitle": "Brute Force Detected — Recommended Actions",
+    "bruteForceInstallPlugin": "Install a rate-limiting or login-lockout plugin (e.g. Limit Login Attempts Reloaded or Wordfence)",
+    "bruteForceEnable2fa": "Enable two-factor authentication (2FA) for all admin accounts",
+    "bruteForceChangeUrl": "Change the default /wp-admin login URL using a plugin like WPS Hide Login",
+    "bruteForceStrongPasswords": "Ensure all admin passwords are 16+ characters with mixed case, numbers, and symbols",
+    "bruteForceBlockIp": "Block the attacking IP addresses at your hosting firewall or via .htaccess",
+    "bruteForceWaf": "Consider enabling Cloudflare or a WAF to filter malicious traffic upstream",
+    "userLabel": "User"
   },
   "account": {
     "title": "Account",
@@ -459,7 +500,15 @@
     "add": "Add",
     "added": "Added",
     "goToDashboard": "Go to Dashboard",
-    "siteRegistered": "Site registered"
+    "siteRegistered": "Site registered",
+    "focusTitle": "What do you want to focus on?",
+    "focusDesc": "This simply adjusts how your dashboard is prioritized. You can change it anytime",
+    "confirmForms": "Confirm Your Lead Forms",
+    "confirmFormsDesc": "Toggle which forms count as leads and set values.",
+    "noFormsDetected": "No forms detected yet.",
+    "formsWillAppear": "Forms will appear once your tracking plugin sends data.",
+    "notificationPrefs": "Notification Preferences",
+    "notificationPrefsDesc": "Choose how you want to stay informed."
   },
   "settings": {
     "title": "Settings",
@@ -467,7 +516,25 @@
     "general": "General",
     "whiteLabel": "White Label",
     "websiteSetup": "Website Setup",
-    "getStarted": "Get Started"
+    "getStarted": "Get Started",
+    "apiKeys": "API Keys",
+    "loadingKeys": "Loading keys…",
+    "noApiKeys": "No API keys yet. Generate one to get started.",
+    "discoveredForms": "Discovered Forms",
+    "notifications": "Notifications",
+    "wordpressPlugin": "WordPress Plugin",
+    "connectedSites": "Connected Sites",
+    "noSitesConnected": "No sites connected yet",
+    "pdfReportExports": "PDF report exports",
+    "clientOrgName": "Client / Organization Name",
+    "appearsInHeaders": "Appears in report headers and exports",
+    "clientLogo": "Client Logo",
+    "logoFormats": "PNG, JPG, SVG, or WebP. Max 2MB.",
+    "primary": "Primary",
+    "secondary": "Secondary",
+    "accent": "Accent",
+    "preview": "Preview",
+    "removeBranding": "Remove ACTV TRKR branding from reports"
   },
   "clients": {
     "title": "Users",
@@ -525,7 +592,18 @@
     "focus": "Focus",
     "onboarded": "Onboarded",
     "lastChange": "Last Change",
-    "noEventsYet": "No events logged yet."
+    "noEventsYet": "No events logged yet.",
+    "leadVolume": "Lead Volume",
+    "marketingImpact": "Marketing Impact",
+    "conversionPerformance": "Conversion Performance",
+    "paidOptimization": "Paid Optimization",
+    "viewArrow": "View →",
+    "noOrgsFound": "No organizations found.",
+    "dateTime": "Date/Time",
+    "eventType": "Event Type",
+    "details": "Details",
+    "prev": "Prev",
+    "next": "Next"
   },
   "notFound": {
     "title": "404",

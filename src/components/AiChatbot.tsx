@@ -169,7 +169,7 @@ export function AiChatbot() {
             ))}
             {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
               <div className="flex gap-2">
-                <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0" />
+                <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0 rounded-full object-cover" />
                 <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2 flex items-center gap-1.5">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   {t("chatbot.thinking")}

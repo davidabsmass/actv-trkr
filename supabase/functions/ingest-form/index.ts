@@ -375,9 +375,12 @@ Deno.serve(async (req) => {
 
     // ── Send real-time lead notification email + in-app ──
     try {
-      const formName = existingForm?.name || entry.form_title || entry.form_name || "Form";
-      const leadSource = source || "direct";
-      const leadPage = pagePath || pageUrl || "Unknown page";
+      const escapeHtml = (s: string): string =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+
+      const formName = escapeHtml(existingForm?.name || entry.form_title || entry.form_name || "Form");
+      const leadSource = escapeHtml(source || "direct");
+      const leadPage = escapeHtml(pagePath || pageUrl || "Unknown page");
       const submittedAt = new Date(entry.submitted_at || Date.now()).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 
       // In-app notifications for all org members

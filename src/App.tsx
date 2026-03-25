@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import SnapshotView from "./pages/SnapshotView";
 import ResetPassword from "./pages/ResetPassword";
 import Monitoring from "./pages/Monitoring";
+import Security from "./pages/Security";
 import Notifications from "./pages/Notifications";
 import Account from "./pages/Account";
 import GetStarted from "./pages/GetStarted";
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="clients" element={<Clients />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="monitoring" element={<Monitoring />} />
+            <Route path="security" element={<Security />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="admin-setup" element={<AdminSetup />} />
             <Route path="account" element={<Account />} />

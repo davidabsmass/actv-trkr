@@ -326,7 +326,19 @@
     "monthlyFreq": "Monthly",
     "templateName": "Template Name",
     "toggleMetrics": "Toggle individual metrics within this section:",
-    "customize": "Customize"
+    "customize": "Customize",
+    "weightedLeads": "가중 리드",
+    "goalProgress": "목표 진행률",
+    "insightCards": "인사이트 카드",
+    "uptimePercent": "가동률 %",
+    "downtimeMinutes": "다운타임(분)",
+    "sslDomain": "SSL 및 도메인",
+    "leadsByFormTable": "양식별 리드 테이블",
+    "recommendations": "권장 사항",
+    "contentOpportunities": "콘텐츠 기회",
+    "firstDayOfMonth": "매월 첫째 날",
+    "lastDayOfMonth": "매월 마지막 날",
+    "thisDayEachMonth": "매월 이 날 ({{day}})"
   },
   "forms": {
     "title": "양식 및 리드",
@@ -786,5 +798,20 @@
     "target": "대상",
     "pagePath": "페이지",
     "session": "세션"
+  },
+  "formHealth": {
+    "noSubmissions30d": "30일 동안 제출 없음",
+    "submissionsThisWeek": "이번 주 {{count}}건 제출",
+    "errorsThisWeek": "이번 주 {{count}}건 오류",
+    "vsExpected": "{{actual}} vs 이번 주 예상 {{expected}}",
+    "notDetected": "{{date}} 이후 페이지에서 감지되지 않음"
+  },
+  "whatsWorking": {
+    "trafficGrowing": "트래픽이 증가하고 있습니다",
+    "trafficGrowingDesc": "세션이 전주 대비 {{pct}}% 증가 ({{current}} vs {{previous}}).",
+    "leadVolumeUp": "리드 수가 증가했습니다",
+    "leadVolumeUpDesc": "리드가 전주 대비 {{pct}}% 증가 ({{current}} vs {{previous}}).",
+    "cvrImproved": "전환율이 개선되었습니다",
+    "cvrImprovedDesc": "CVR이 지난주 대비 {{pct}}% 개선."
   }
 }

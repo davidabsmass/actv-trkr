@@ -326,7 +326,19 @@
     "monthlyFreq": "Monthly",
     "templateName": "Template Name",
     "toggleMetrics": "Toggle individual metrics within this section:",
-    "customize": "Customize"
+    "customize": "Customize",
+    "weightedLeads": "Weighted Leads",
+    "goalProgress": "Goal Progress",
+    "insightCards": "Insight Cards",
+    "uptimePercent": "Uptime %",
+    "downtimeMinutes": "Downtime Minutes",
+    "sslDomain": "SSL & Domain",
+    "leadsByFormTable": "Leads by Form Table",
+    "recommendations": "Recommendations",
+    "contentOpportunities": "Content Opportunities",
+    "firstDayOfMonth": "First day of month",
+    "lastDayOfMonth": "Last day of month",
+    "thisDayEachMonth": "This day ({{day}}) each month"
   },
   "forms": {
     "title": "Forms & Leads",
@@ -793,5 +805,20 @@
     "thinking": "Thinking...",
     "error": "Something went wrong. Please try again.",
     "greeting": "Hi! I can help you understand your website metrics, leads, traffic, and more. What would you like to know?"
+  },
+  "formHealth": {
+    "noSubmissions30d": "No submissions in 30 days",
+    "submissionsThisWeek": "{{count}} submissions this week",
+    "errorsThisWeek": "{{count}} error(s) this week",
+    "vsExpected": "{{actual}} vs {{expected}} expected this week",
+    "notDetected": "Not detected on page since {{date}}"
+  },
+  "whatsWorking": {
+    "trafficGrowing": "Traffic is growing",
+    "trafficGrowingDesc": "Sessions up {{pct}}% vs previous week ({{current}} vs {{previous}}).",
+    "leadVolumeUp": "Lead volume is up",
+    "leadVolumeUpDesc": "Leads increased {{pct}}% vs previous week ({{current}} vs {{previous}}).",
+    "cvrImproved": "Conversion rate improved",
+    "cvrImprovedDesc": "CVR improved {{pct}}% compared to last week."
   }
 }

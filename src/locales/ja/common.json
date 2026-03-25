@@ -326,7 +326,19 @@
     "monthlyFreq": "Monthly",
     "templateName": "Template Name",
     "toggleMetrics": "Toggle individual metrics within this section:",
-    "customize": "Customize"
+    "customize": "Customize",
+    "weightedLeads": "加重リード",
+    "goalProgress": "目標進捗",
+    "insightCards": "インサイトカード",
+    "uptimePercent": "稼働率 %",
+    "downtimeMinutes": "ダウンタイム（分）",
+    "sslDomain": "SSL とドメイン",
+    "leadsByFormTable": "フォーム別リード表",
+    "recommendations": "推奨事項",
+    "contentOpportunities": "コンテンツの機会",
+    "firstDayOfMonth": "月初日",
+    "lastDayOfMonth": "月末日",
+    "thisDayEachMonth": "毎月この日 ({{day}})"
   },
   "forms": {
     "title": "フォームとリード",
@@ -786,5 +798,20 @@
     "target": "ターゲット",
     "pagePath": "ページ",
     "session": "セッション"
+  },
+  "formHealth": {
+    "noSubmissions30d": "30日間送信なし",
+    "submissionsThisWeek": "今週{{count}}件の送信",
+    "errorsThisWeek": "今週{{count}}件のエラー",
+    "vsExpected": "{{actual}} vs 今週の予想{{expected}}",
+    "notDetected": "{{date}}以降ページで検出されていません"
+  },
+  "whatsWorking": {
+    "trafficGrowing": "トラフィックが増加中",
+    "trafficGrowingDesc": "セッションが前週比{{pct}}%増加（{{current}} vs {{previous}}）。",
+    "leadVolumeUp": "リード数が増加",
+    "leadVolumeUpDesc": "リードが前週比{{pct}}%増加（{{current}} vs {{previous}}）。",
+    "cvrImproved": "コンバージョン率が改善",
+    "cvrImprovedDesc": "CVRが先週比{{pct}}%改善。"
   }
 }

@@ -214,7 +214,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
           <button
             onClick={handleManualRefresh}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
           >
             {isLoading ? (
               <RefreshCw className="h-3 w-3 animate-spin" />
@@ -226,7 +226,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         )}
 
         {phase === "exhausted" && insights && (
-          <span className="text-[10px] text-muted-foreground/60 font-medium">
+          <span className="text-xs text-muted-foreground/60 font-medium">
             Refreshes again tomorrow
           </span>
         )}

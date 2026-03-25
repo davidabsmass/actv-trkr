@@ -33,7 +33,7 @@ export function useSiteSettings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["site_settings", orgId],
     queryFn: async () => {
-      if (!orgId) return null;
+      if (!orgId || isPreviewOrg(orgId)) return null;
       const { data, error } = await supabase
         .from("site_settings")
         .select("*")
@@ -42,10 +42,11 @@ export function useSiteSettings() {
       if (error) throw error;
       return data as unknown as SiteSettings | null;
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !isPreviewOrg(orgId),
   });
 
-  return { settings, isLoading, needsOnboarding: !isLoading && orgId && !settings?.onboarding_completed };
+  const previewBypass = isPreviewOrg(orgId);
+  return { settings, isLoading: previewBypass ? false : isLoading, needsOnboarding: previewBypass ? false : (!isLoading && !!orgId && !settings?.onboarding_completed) };
 }
 
 export function useUpdateSiteSettings() {

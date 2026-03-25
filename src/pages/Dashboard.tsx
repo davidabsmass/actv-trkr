@@ -11,6 +11,7 @@ import { WhatsWorking } from "@/components/dashboard/WhatsWorking";
 import { TopPagesAndSources } from "@/components/dashboard/TopPagesAndSources";
 import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
 import { FunnelWidget } from "@/components/dashboard/FunnelWidget";
+import { RevenueWidget } from "@/components/dashboard/RevenueWidget";
 import { useOrg } from "@/hooks/use-org";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
@@ -538,6 +539,7 @@ const Dashboard = () => {
             totalLeads={realtimeData?.totalLeads || 0}
             formStarts={formStartsCount || undefined}
           />
+          <RevenueWidget orgId={orgId} startDate={startDate} endDate={endDate} />
           <WhatsWorking />
           <TopPagesAndSources startDate={startDate} endDate={endDate} />
         </div>

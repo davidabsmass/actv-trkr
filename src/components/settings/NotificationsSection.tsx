@@ -57,7 +57,7 @@ export default function NotificationsSection() {
       const opt = NOTIFICATION_OPTIONS.find(o => o.key === key);
       toast({ title: updated[key] ? t("settings.enabled") : t("settings.disabled"), description: opt ? t(opt.labelKey) : "" });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err?.message || "Failed to update" });
+      toast({ variant: "destructive", title: t("settings.error"), description: err?.message || t("settings.failedToUpdate") });
     }
   };
 
@@ -87,7 +87,7 @@ export default function NotificationsSection() {
               >
                 <span
                   className={`pointer-events-none block h-4 w-4 rounded-full shadow-lg ring-0 transition-transform ${
-                    prefs[key] ? "translate-x-4 bg-background" : "translate-x-0 bg-white"
+                    prefs[key] ? "translate-x-4 bg-background" : "translate-x-0 bg-background"
                   }`}
                 />
               </button>

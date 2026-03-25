@@ -48,7 +48,7 @@ export default function ApiKeysSection() {
         .map((b) => b.toString(16).padStart(2, "0")).join("");
       const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
       const keyHash = Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-      const { error } = await supabase.from("api_keys").insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
+      const { error } = await supabase.from("api_keys").insert({ org_id: orgId, key_hash: keyHash, label: t("settings.defaultKeyLabel") });
       if (error) throw error;
       setNewKey(rawKey);
       queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });

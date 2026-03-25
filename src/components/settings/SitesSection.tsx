@@ -82,7 +82,7 @@ export default function SitesSection() {
         <div className="flex gap-2 mb-4">
           <input
             type="text"
-            placeholder="e.g. www.example.com"
+            placeholder={t("settings.exampleDomainPlaceholder")}
             value={siteUrl}
             onChange={(e) => setSiteUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddSite()}

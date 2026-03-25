@@ -181,7 +181,7 @@
     "last14": "Letzte 14 Tage",
     "last30": "Letzte 30 Tage",
     "last90": "Letzte 90 Tage",
-    "customRange": "Custom range…",
+    "customRange": "Benutzerdefinierter Zeitraum…",
     "7days": "7 Tage",
     "14days": "14 Tage",
     "30days": "30 Tage",
@@ -887,5 +887,69 @@
     "leadVolumeUpDesc": "Leads um {{pct}}% gestiegen vs. Vorwoche ({{current}} vs {{previous}}).",
     "cvrImproved": "Conversion-Rate verbessert",
     "cvrImprovedDesc": "CVR um {{pct}}% verbessert im Vergleich zur Vorwoche."
+  },
+  "getStarted": {
+    "title": "Erste Schritte in 3 einfachen Schritten",
+    "subtitle": "Richten Sie das Tracking auf Ihrer WordPress-Seite in unter 5 Minuten ein.",
+    "step1Title": "Plugin herunterladen & installieren",
+    "step1Desc": "Melden Sie sich bei Ihrem ACTV TRKR-Konto an und laden Sie das WordPress-Plugin herunter.",
+    "step1Detail1": "In Ihrem WordPress-Dashboard:",
+    "step1Detail2": "Gehen Sie zu Plugins → Installieren → Plugin hochladen",
+    "step1Detail3": "Laden Sie die ACTV TRKR-Datei hoch und klicken Sie auf Aktivieren",
+    "step1Note": "Kein Code, kein kompliziertes Setup.",
+    "step2Title": "Ihre Website verbinden",
+    "step2Desc": "Nach der Aktivierung des Plugins sehen Sie das ACTV TRKR-Einstellungsfeld.",
+    "step2Detail1": "Kopieren Sie Ihren API-Schlüssel aus Ihrem ACTV TRKR-Dashboard",
+    "step2Detail2": "Fügen Sie ihn in die Plugin-Einstellungen ein",
+    "step2Detail3": "Klicken Sie auf Verbinden",
+    "step2Note": "Ihre Website ist jetzt verknüpft und bereit für das Tracking.",
+    "step3Title": "Sehen Sie Ihre Daten zum Leben erwachen",
+    "step3Desc": "Innerhalb von Minuten beginnt ACTV TRKR mit der Erfassung von:",
+    "step3Detail1": "Besucheraktivität",
+    "step3Detail2": "Formulareinreichungen",
+    "step3Detail3": "Traffic-Trends",
+    "step3Detail4": "Lead-Einblicke",
+    "step3Note": "Kehren Sie jederzeit zu Ihrem Dashboard zurück, um zu sehen, was passiert und was Aufmerksamkeit erfordert.",
+    "downloadPlugin": "Plugin herunterladen",
+    "downloading": "Wird heruntergeladen…",
+    "downloadSuccess": "Plugin heruntergeladen! Laden Sie es unter WordPress → Plugins → Installieren → Plugin hochladen hoch.",
+    "downloadFailed": "Plugin-Download fehlgeschlagen",
+    "goToSetup": "Zum Website-Setup"
+  },
+  "timeline": {
+    "clickedCta": "CTA angeklickt",
+    "downloadedFile": "Datei heruntergeladen",
+    "visitedExternal": "Externen Link besucht",
+    "clickedPhone": "Telefonnummer angeklickt",
+    "clickedEmail": "E-Mail-Link angeklickt",
+    "startedForm": "Formular gestartet",
+    "visitedPage": "Seite besucht",
+    "submittedForm": "Formular eingereicht",
+    "timeOnPage": "Verweildauer: {{duration}}",
+    "noSessionData": "Keine Sitzungsdaten für diesen Lead verfügbar.",
+    "noActivityData": "Keine Aktivitätsdaten für diese Sitzung aufgezeichnet."
+  },
+  "snapshot": {
+    "share": "Teilen",
+    "readOnlyLink": "Nur-Lesen-Link • {{start}} → {{end}} • Läuft in 7 Tagen ab",
+    "snapshotCreated": "Snapshot erstellt",
+    "linkExpires": "Link läuft in 7 Tagen ab.",
+    "error": "Fehler",
+    "close": "Schließen"
+  },
+  "anomaly": {
+    "leadsDown": "Leads um {{pct}}% gesunken (Woche über Woche). Konversion untersuchen.",
+    "sessionsDropped": "Sitzungen um {{pct}}% gesunken (WoW). Traffic-Quellen prüfen."
+  },
+  "common": {
+    "sessions": "Sitzungen",
+    "ofSessionsConverted": "{{leads}} von {{sessions}} Sitzungen konvertiert"
+  },
+  "chatbot": {
+    "title": "ACTV TRKR Assistent",
+    "placeholder": "Fragen Sie mich zu Ihren Kennzahlen...",
+    "thinking": "Denke nach...",
+    "error": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "greeting": "Hallo! Ich kann Ihnen helfen, Ihre Website-Kennzahlen, Leads, Traffic und mehr zu verstehen. Was möchten Sie wissen?"
   }
 }

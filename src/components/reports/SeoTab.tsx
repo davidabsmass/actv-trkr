@@ -297,6 +297,20 @@ export default function SeoTab() {
     }
   };
 
+  const handleRetryStale = async (fixQueueId: string) => {
+    // Reset created_at to now so the fix is no longer stale and gets picked up on next poll
+    const { error } = await supabase
+      .from("seo_fix_queue")
+      .update({ created_at: new Date().toISOString() } as any)
+      .eq("id", fixQueueId);
+    if (error) {
+      toast.error("Failed to retry fix");
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["seo_fix_queue", orgId] });
+    toast.success("Fix re-queued — your plugin will pick it up on the next poll cycle");
+  };
+
   const getPathFromUrl = (url: string) => {
     try {
       const parsed = new URL(url);
@@ -364,6 +378,7 @@ export default function SeoTab() {
           onFixClick={handleFixClick}
           onMarkFixed={handleMarkFixed}
           onVerify={handleVerify}
+          onRetryStale={handleRetryStale}
         />
       )}
 

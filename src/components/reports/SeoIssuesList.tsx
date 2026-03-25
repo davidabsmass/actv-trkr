@@ -43,9 +43,10 @@ interface Props {
   onFixClick?: (issueId: string, fixType: string) => void;
   onMarkFixed?: (issueId: string) => void;
   onVerify?: () => void;
+  onRetryStale?: (fixQueueId: string) => void;
 }
 
-export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new Set(), onFixClick, onMarkFixed, onVerify }: Props) {
+export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new Set(), onFixClick, onMarkFixed, onVerify, onRetryStale }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const getFixStatus = (issueId: string): FixQueueItem | undefined =>
@@ -101,7 +102,17 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                               <Badge className={`${isStale ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-warning/20 text-warning border-warning/30"} text-[9px] gap-1`}>
                                 <Clock className="h-2.5 w-2.5" /> {isStale ? "Stale" : "Pending"}
                               </Badge>
-                              {isStale && (
+                              {isStale && onRetryStale && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => { e.stopPropagation(); onRetryStale(queueItem.id); }}
+                                >
+                                  <RefreshCw className="h-2.5 w-2.5" /> Retry
+                                </Button>
+                              )}
+                              {isStale && !onRetryStale && (
                                 <span className="text-[9px] text-destructive/80">Plugin may not be polling — deactivate &amp; reactivate in WP</span>
                               )}
                             </div>

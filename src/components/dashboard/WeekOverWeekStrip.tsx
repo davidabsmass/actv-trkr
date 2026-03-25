@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface WoWData {
   sessions: { current: number; previous: number };
@@ -38,6 +39,7 @@ function ChangeChip({ label, current, previous, isCvr }: { label: string; curren
 }
 
 export function WeekOverWeekStrip({ data }: { data: WoWData }) {
+  const { t } = useTranslation();
   const hasAnomaly = useMemo(() => {
     const leadsChange = pctChange(data.leads.current, data.leads.previous);
     const sessionsChange = pctChange(data.sessions.current, data.sessions.previous);
@@ -61,13 +63,13 @@ export function WeekOverWeekStrip({ data }: { data: WoWData }) {
   return (
     <div className="glass-card p-4 animate-slide-up">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <span className="text-xs uppercase tracking-wider font-semibold text-primary">This Week vs Last</span>
-        <ChangeChip label="Sessions" current={data.sessions.current} previous={data.sessions.previous} />
-        <ChangeChip label="Leads" current={data.leads.current} previous={data.leads.previous} />
-        <ChangeChip label="CVR" current={data.cvr.current} previous={data.cvr.previous} isCvr />
+        <span className="text-xs uppercase tracking-wider font-semibold text-primary">{t("dashboard.weekOverWeek")}</span>
+        <ChangeChip label={t("dashboard.sessions")} current={data.sessions.current} previous={data.sessions.previous} />
+        <ChangeChip label={t("dashboard.leads")} current={data.leads.current} previous={data.leads.previous} />
+        <ChangeChip label={t("dashboard.conversionRate")} current={data.cvr.current} previous={data.cvr.previous} isCvr />
         {data.bestPage && (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Best Page</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{t("dashboard.bestPage")}</span>
             <span className="text-xs font-medium text-foreground truncate max-w-[150px]">{data.bestPage}</span>
           </div>
         )}
@@ -79,7 +81,7 @@ export function WeekOverWeekStrip({ data }: { data: WoWData }) {
         </div>
       )}
       {isStable && !hasAnomaly && (
-        <p className="text-xs text-muted-foreground mt-2">Performance stable. No material movement detected.</p>
+        <p className="text-xs text-muted-foreground mt-2">{t("dashboard.performanceStable")}</p>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, ShoppingCart, TrendingUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface RevenueData {
   totalRevenue: number;
@@ -11,6 +12,7 @@ interface RevenueData {
 }
 
 export function RevenueWidget({ orgId, startDate, endDate }: { orgId: string | null; startDate: string; endDate: string }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ["revenue_widget", orgId, startDate, endDate],
     queryFn: async (): Promise<RevenueData | null> => {
@@ -82,7 +84,7 @@ export function RevenueWidget({ orgId, startDate, endDate }: { orgId: string | n
 
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div>
-          <p className="text-xs text-muted-foreground">Total Revenue</p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.totalRevenue")}</p>
           <p className="text-lg font-bold text-foreground font-mono-data">{fmt(data.totalRevenue)}</p>
         </div>
         <div>
@@ -101,7 +103,7 @@ export function RevenueWidget({ orgId, startDate, endDate }: { orgId: string | n
 
       {data.topProducts.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-muted-foreground mb-2">Top Products</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.topProducts")}</p>
           <div className="space-y-1.5">
             {data.topProducts.map((p, i) => (
               <div key={i} className="flex items-center justify-between">

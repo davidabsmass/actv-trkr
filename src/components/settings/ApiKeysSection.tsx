@@ -6,8 +6,10 @@ import { Key, Plus, Copy, Check, Ban, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { downloadPlugin } from "@/lib/plugin-download";
+import { useTranslation } from "react-i18next";
 
 export default function ApiKeysSection() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
   const [newKey, setNewKey] = useState<string | null>(null);
@@ -103,7 +105,7 @@ export default function ApiKeysSection() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Key className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">API Keys</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("settings.apiKeys")}</h3>
         </div>
         <button
           onClick={generateKey}
@@ -146,9 +148,9 @@ export default function ApiKeysSection() {
       )}
 
       {isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading keys…</p>
+        <p className="text-xs text-muted-foreground">{t("settings.loadingKeys")}</p>
       ) : !keys?.length ? (
-        <p className="text-xs text-muted-foreground">No API keys yet. Generate one to get started.</p>
+        <p className="text-xs text-muted-foreground">{t("settings.noApiKeys")}</p>
       ) : (
         <ScrollArea className="h-[220px]">
           <div className="space-y-2 pr-2">

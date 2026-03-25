@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import {
   Eye, MousePointerClick, Download, Phone, Mail, ExternalLink,
@@ -44,6 +45,7 @@ function formatDuration(seconds: number): string {
 }
 
 export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string | null; orgId: string | null }) {
+  const { t } = useTranslation();
   const { data: timeline, isLoading } = useQuery({
     queryKey: ["lead_activity_timeline", sessionId, orgId],
     queryFn: async () => {
@@ -149,9 +151,9 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
             </span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Engagement Score</p>
+            <p className="text-sm font-semibold text-foreground">{t("dashboard.engagementScore")}</p>
             <p className="text-xs text-muted-foreground">
-              {engagementScore >= 70 ? "Highly engaged" : engagementScore >= 40 ? "Moderately engaged" : "Low engagement"}
+              {engagementScore >= 70 ? t("dashboard.highlyEngaged") : engagementScore >= 40 ? t("dashboard.moderatelyEngaged") : t("dashboard.lowEngagement")}
             </p>
           </div>
         </div>

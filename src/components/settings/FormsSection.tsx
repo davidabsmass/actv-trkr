@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Archive, ArchiveRestore, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 function useFormFields(orgId: string | null) {
   return useQuery({
@@ -49,6 +50,7 @@ function useFormFields(orgId: string | null) {
 }
 
 export default function FormsSection() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const { data: forms, isLoading } = useForms(orgId);
   const queryClient = useQueryClient();
@@ -92,7 +94,7 @@ export default function FormsSection() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Discovered Forms</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("settings.discoveredForms")}</h3>
         </div>
         {archivedForms.length > 0 && (
           <button

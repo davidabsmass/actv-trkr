@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Palette, Upload, Type, EyeOff, Save, Loader2, RotateCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function WhiteLabelSection() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
 
@@ -147,7 +149,7 @@ export default function WhiteLabelSection() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-        These settings only affect <span className="font-medium text-foreground">PDF report exports</span>. Your in-app dashboard and navigation are not changed.
+        {t("settings.pdfReportExportsNote", "These settings only affect")} <span className="font-medium text-foreground">{t("settings.pdfReportExports")}</span>. {t("settings.dashboardNotChanged", "Your in-app dashboard and navigation are not changed.")}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -156,12 +158,12 @@ export default function WhiteLabelSection() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Type className="h-4 w-4 text-primary" />
-              Client Identity
+              {t("settings.clientIdentity", "Client Identity")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="client-name" className="text-xs">Client / Organization Name</Label>
+              <Label htmlFor="client-name" className="text-xs">{t("settings.clientOrgName")}</Label>
               <Input
                 id="client-name"
                 value={clientName}
@@ -169,11 +171,11 @@ export default function WhiteLabelSection() {
                 placeholder="e.g. Acme Health Group"
                 className="mt-1"
               />
-              <p className="text-xs text-muted-foreground mt-1">Appears in report headers and exports</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("settings.appearsInHeaders")}</p>
             </div>
 
             <div>
-              <Label className="text-xs">Client Logo</Label>
+              <Label className="text-xs">{t("settings.clientLogo")}</Label>
               <div className="mt-1 flex items-center gap-3">
                 {logoUrl ? (
                   <div className="h-12 w-12 rounded-md border border-border bg-background flex items-center justify-center overflow-hidden">
@@ -197,7 +199,7 @@ export default function WhiteLabelSection() {
                       disabled={uploading}
                     />
                   </label>
-                  <p className="text-xs text-muted-foreground">PNG, JPG, SVG, or WebP. Max 2MB.</p>
+                  <p className="text-xs text-muted-foreground">{t("settings.logoFormats")}</p>
                 </div>
               </div>
             </div>
@@ -209,13 +211,13 @@ export default function WhiteLabelSection() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Palette className="h-4 w-4 text-primary" />
-              Report Color Scheme
+              {t("settings.reportColorScheme", "Report Color Scheme")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="primary-color" className="text-xs">Primary</Label>
+                <Label htmlFor="primary-color" className="text-xs">{t("settings.primary")}</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <input
                     type="color"
@@ -232,7 +234,7 @@ export default function WhiteLabelSection() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="secondary-color" className="text-xs">Secondary</Label>
+                <Label htmlFor="secondary-color" className="text-xs">{t("settings.secondary")}</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <input
                     type="color"
@@ -249,7 +251,7 @@ export default function WhiteLabelSection() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="accent-color" className="text-xs">Accent</Label>
+                <Label htmlFor="accent-color" className="text-xs">{t("settings.accent")}</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <input
                     type="color"
@@ -269,7 +271,7 @@ export default function WhiteLabelSection() {
 
             {/* Preview strip */}
             <div>
-              <Label className="text-xs">Preview</Label>
+              <Label className="text-xs">{t("settings.preview")}</Label>
               <div className="mt-1 flex gap-0 rounded-md overflow-hidden h-6">
                 <div className="flex-1" style={{ backgroundColor: primaryColor }} />
                 <div className="flex-1" style={{ backgroundColor: secondaryColor }} />
@@ -291,7 +293,7 @@ export default function WhiteLabelSection() {
             <div className="flex items-center gap-3">
               <EyeOff className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium text-foreground">Remove ACTV TRKR branding from reports</p>
+                <p className="text-sm font-medium text-foreground">{t("settings.removeBranding")}</p>
                 <p className="text-xs text-muted-foreground">
                   When enabled, your client logo and name replace ACTV TRKR branding on PDF report exports.
                 </p>

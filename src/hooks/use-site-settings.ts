@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 
+const PREVIEW_ORG_ID = "00000000-0000-0000-0000-000000000000";
+function isPreviewOrg(orgId: string | null) {
+  return orgId === PREVIEW_ORG_ID;
+}
+
 export type PrimaryFocus = "lead_volume" | "marketing_impact" | "conversion_performance" | "paid_optimization";
 
 // Keep old type for backward compat
@@ -28,7 +33,7 @@ export function useSiteSettings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["site_settings", orgId],
     queryFn: async () => {
-      if (!orgId) return null;
+      if (!orgId || isPreviewOrg(orgId)) return null;
       const { data, error } = await supabase
         .from("site_settings")
         .select("*")
@@ -37,10 +42,11 @@ export function useSiteSettings() {
       if (error) throw error;
       return data as unknown as SiteSettings | null;
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !isPreviewOrg(orgId),
   });
 
-  return { settings, isLoading, needsOnboarding: !isLoading && orgId && !settings?.onboarding_completed };
+  const previewBypass = isPreviewOrg(orgId);
+  return { settings, isLoading: previewBypass ? false : isLoading, needsOnboarding: previewBypass ? false : (!isLoading && !!orgId && !settings?.onboarding_completed) };
 }
 
 export function useUpdateSiteSettings() {
@@ -49,7 +55,7 @@ export function useUpdateSiteSettings() {
 
   return useMutation({
     mutationFn: async (updates: Partial<Omit<SiteSettings, "id" | "org_id">>) => {
-      if (!orgId) throw new Error("No org");
+      if (!orgId || isPreviewOrg(orgId)) throw new Error("No org");
       
       const { data, error } = await supabase
         .from("site_settings")

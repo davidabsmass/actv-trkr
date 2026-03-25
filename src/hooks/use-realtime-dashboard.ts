@@ -2,36 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, format as fnsFormat, parseISO } from "date-fns";
 
-const PAGE_SIZE = 1000;
-
 /**
- * Fetch all rows from a query by paginating through results.
- * Supabase limits each request to 1000 rows by default.
+ * Real-time dashboard data — optimised for speed.
+ *
+ * Strategy:
+ *  • Head-only COUNT queries for KPI totals (zero row transfer).
+ *  • kpi_daily aggregate table for the daily trend chart.
+ *  • Capped SELECT queries (top 200) for source / campaign / page breakdowns.
+ *  • traffic_daily for country data (already aggregated).
+ *
+ * Previous approach fetched ALL raw rows via pagination loops — tens of
+ * thousands of rows downloaded and processed client-side on every load.
  */
-async function fetchAllRows<T>(
-  buildQuery: (from: number, to: number) => any
-): Promise<T[]> {
-  const allRows: T[] = [];
-  let offset = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
-    if (error) throw error;
-    const rows = (data || []) as T[];
-    allRows.push(...rows);
-    hasMore = rows.length === PAGE_SIZE;
-    offset += PAGE_SIZE;
-  }
-
-  return allRows;
-}
-
-/**
- * Real-time dashboard data — queries raw tables directly for live metrics.
- * No dependency on nightly aggregation.
- */
-export function useRealtimeDashboard(orgId: string | null, startDate: string, endDate: string) {
+export function useRealtimeDashboard(
+  orgId: string | null,
+  startDate: string,
+  endDate: string
+) {
   return useQuery({
     queryKey: ["realtime_dashboard", orgId, startDate, endDate],
     queryFn: async () => {
@@ -40,128 +27,215 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
-      // Fetch site domains for self-referral filtering
-      const { data: sitesData } = await supabase
-        .from("sites")
-        .select("domain")
-        .eq("org_id", orgId);
-      const ownDomains = new Set(
-        (sitesData || []).map((s: any) => (s.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase())
-      );
+      // ── 1. Parallel lightweight queries ──────────────────────────────
+      const [
+        pvRes,
+        sessRes,
+        leadRes,
+        kpiRes,
+        countryRes,
+        sitesRes,
+        sessionsBreakdown,
+        leadsBreakdown,
+        pageviewBreakdown,
+      ] = await Promise.all([
+        // Head-only counts
+        supabase
+          .from("pageviews")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .gte("occurred_at", dayStart)
+          .lte("occurred_at", dayEnd),
 
-      // Exact counts (head-only, no row limit issue)
-      const [pvRes, sessRes, leadRes, pvCountry] = await Promise.all([
-        supabase.from("pageviews").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd),
+        supabase
+          .from("sessions")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .gte("started_at", dayStart)
+          .lte("started_at", dayEnd),
 
-        supabase.from("sessions").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd),
+        supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .neq("status", "trashed")
+          .gte("submitted_at", dayStart)
+          .lte("submitted_at", dayEnd),
 
-        supabase.from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
+        // Daily aggregates for trend chart
+        supabase
+          .from("kpi_daily")
+          .select("date, metric, value")
+          .eq("org_id", orgId)
+          .gte("date", startDate)
+          .lte("date", endDate)
+          .in("metric", ["sessions", "leads", "pageviews"])
+          .order("date"),
 
-        supabase.from("traffic_daily")
+        // Country data (already aggregated)
+        supabase
+          .from("traffic_daily")
           .select("dimension, value")
-          .eq("org_id", orgId).eq("metric", "sessions_by_country")
-          .gte("date", startDate).lte("date", endDate)
+          .eq("org_id", orgId)
+          .eq("metric", "sessions_by_country")
+          .gte("date", startDate)
+          .lte("date", endDate)
           .not("dimension", "is", null),
-      ]);
 
-      // Paginated detail fetches (bypass 1000-row limit)
-      const [sessions, leads, pageviewDetails] = await Promise.all([
-        fetchAllRows<any>((from, to) =>
-          supabase.from("sessions")
-            .select("session_id, started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain")
-            .eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd)
-            .order("started_at", { ascending: true })
-            .range(from, to)
-        ),
-        fetchAllRows<any>((from, to) =>
-          supabase.from("leads")
-            .select("submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id")
-            .eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd)
-            .order("submitted_at", { ascending: true })
-            .range(from, to)
-        ),
-        fetchAllRows<any>((from, to) =>
-          supabase.from("pageviews")
-            .select("page_path, active_seconds")
-            .eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd)
-            .order("occurred_at", { ascending: true })
-            .range(from, to)
-        ),
+        // Site domains for self-referral filtering
+        supabase.from("sites").select("domain").eq("org_id", orgId),
+
+        // Capped breakdowns — top 500 sessions for source/campaign/page
+        supabase
+          .from("sessions")
+          .select(
+            "session_id, started_at, utm_source, utm_campaign, landing_page_path, landing_referrer_domain"
+          )
+          .eq("org_id", orgId)
+          .gte("started_at", dayStart)
+          .lte("started_at", dayEnd)
+          .order("started_at", { ascending: false })
+          .limit(500),
+
+        // Capped leads for attribution
+        supabase
+          .from("leads")
+          .select(
+            "submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id"
+          )
+          .eq("org_id", orgId)
+          .neq("status", "trashed")
+          .gte("submitted_at", dayStart)
+          .lte("submitted_at", dayEnd)
+          .order("submitted_at", { ascending: false })
+          .limit(500),
+
+        // Capped pageviews for avg active seconds per page
+        supabase
+          .from("pageviews")
+          .select("page_path, active_seconds")
+          .eq("org_id", orgId)
+          .gte("occurred_at", dayStart)
+          .lte("occurred_at", dayEnd)
+          .order("occurred_at", { ascending: false })
+          .limit(500),
       ]);
 
       const totalPageviews = pvRes.count || 0;
       const totalSessions = sessRes.count || 0;
       const totalLeads = leadRes.count || 0;
-      const countryAggData = pvCountry.data || [];
 
-      // Pre-populate dailyMap with all dates in range to prevent chart shifting
-      const dailyMap: Record<string, { sessions: number; leads: number; pageviews: number }> = {};
+      // ── 2. Build daily trend map from kpi_daily ──────────────────────
+      const dailyMap: Record<
+        string,
+        { sessions: number; leads: number; pageviews: number }
+      > = {};
+
+      // Pre-populate all dates
       let cursor = parseISO(startDate);
       const rangeEnd = parseISO(endDate);
       while (cursor <= rangeEnd) {
-        dailyMap[fnsFormat(cursor, "yyyy-MM-dd")] = { sessions: 0, leads: 0, pageviews: 0 };
+        dailyMap[fnsFormat(cursor, "yyyy-MM-dd")] = {
+          sessions: 0,
+          leads: 0,
+          pageviews: 0,
+        };
         cursor = addDays(cursor, 1);
       }
 
-      sessions.forEach((s: any) => {
-        const d = s.started_at?.split("T")[0];
-        if (!d) return;
-        if (!dailyMap[d]) dailyMap[d] = { sessions: 0, leads: 0, pageviews: 0 };
-        dailyMap[d].sessions++;
+      // Fill from aggregated kpi_daily rows
+      const kpiRows = kpiRes.data || [];
+      let hasAggData = kpiRows.length > 0;
+      kpiRows.forEach((row: any) => {
+        const d = row.date;
+        if (!dailyMap[d])
+          dailyMap[d] = { sessions: 0, leads: 0, pageviews: 0 };
+        if (row.metric === "sessions") dailyMap[d].sessions += Number(row.value);
+        if (row.metric === "leads") dailyMap[d].leads += Number(row.value);
+        if (row.metric === "pageviews")
+          dailyMap[d].pageviews += Number(row.value);
       });
 
-      leads.forEach((l: any) => {
-        const d = l.submitted_at?.split("T")[0];
-        if (!d) return;
-        if (!dailyMap[d]) dailyMap[d] = { sessions: 0, leads: 0, pageviews: 0 };
-        dailyMap[d].leads++;
-      });
+      // Fallback: if no aggregated data, build from the capped session/lead rows
+      if (!hasAggData) {
+        const sessions = sessionsBreakdown.data || [];
+        const leads = leadsBreakdown.data || [];
+        sessions.forEach((s: any) => {
+          const d = s.started_at?.split("T")[0];
+          if (d && dailyMap[d]) dailyMap[d].sessions++;
+        });
+        leads.forEach((l: any) => {
+          const d = l.submitted_at?.split("T")[0];
+          if (d && dailyMap[d]) dailyMap[d].leads++;
+        });
+      }
 
-      // Build session_id → source lookup for lead attribution
-      // Helper: reclassify self-referrals as "direct"
-      const resolveSource = (raw: string) => ownDomains.has(raw.toLowerCase()) ? "direct" : raw;
+      // ── 3. Self-referral filtering ───────────────────────────────────
+      const ownDomains = new Set(
+        (sitesRes.data || []).map((s: any) =>
+          (s.domain || "")
+            .replace(/^https?:\/\//, "")
+            .replace(/\/.*$/, "")
+            .toLowerCase()
+        )
+      );
+      const resolveSource = (raw: string) =>
+        ownDomains.has(raw.toLowerCase()) ? "direct" : raw;
 
+      const sessions = sessionsBreakdown.data || [];
+      const leads = leadsBreakdown.data || [];
+
+      // ── 4. Source / campaign / page breakdowns ───────────────────────
       const sessionSourceLookup: Record<string, string> = {};
       sessions.forEach((s: any) => {
         if (s.session_id) {
-          sessionSourceLookup[s.session_id] = resolveSource(s.utm_source || s.landing_referrer_domain || "direct");
+          sessionSourceLookup[s.session_id] = resolveSource(
+            s.utm_source || s.landing_referrer_domain || "direct"
+          );
         }
       });
 
       // Source breakdown
       const sourceMap: Record<string, { sessions: number; leads: number }> = {};
       sessions.forEach((s: any) => {
-        const src = resolveSource(s.utm_source || s.landing_referrer_domain || "direct");
+        const src = resolveSource(
+          s.utm_source || s.landing_referrer_domain || "direct"
+        );
         if (!sourceMap[src]) sourceMap[src] = { sessions: 0, leads: 0 };
         sourceMap[src].sessions++;
       });
       leads.forEach((l: any) => {
-        const raw = (l.session_id && sessionSourceLookup[l.session_id])
-          ? sessionSourceLookup[l.session_id]
-          : resolveSource(l.source || l.utm_source || l.referrer_domain || "direct");
+        const raw =
+          l.session_id && sessionSourceLookup[l.session_id]
+            ? sessionSourceLookup[l.session_id]
+            : resolveSource(
+                l.source || l.utm_source || l.referrer_domain || "direct"
+              );
         if (!sourceMap[raw]) sourceMap[raw] = { sessions: 0, leads: 0 };
         sourceMap[raw].leads++;
       });
 
       // Campaign breakdown
-      const campaignMap: Record<string, { sessions: number; leads: number }> = {};
+      const campaignMap: Record<
+        string,
+        { sessions: number; leads: number }
+      > = {};
       sessions.forEach((s: any) => {
         if (s.utm_campaign) {
-          if (!campaignMap[s.utm_campaign]) campaignMap[s.utm_campaign] = { sessions: 0, leads: 0 };
+          if (!campaignMap[s.utm_campaign])
+            campaignMap[s.utm_campaign] = { sessions: 0, leads: 0 };
           campaignMap[s.utm_campaign].sessions++;
         }
       });
       leads.forEach((l: any) => {
         if (l.utm_campaign) {
-          if (!campaignMap[l.utm_campaign]) campaignMap[l.utm_campaign] = { sessions: 0, leads: 0 };
+          if (!campaignMap[l.utm_campaign])
+            campaignMap[l.utm_campaign] = { sessions: 0, leads: 0 };
           campaignMap[l.utm_campaign].leads++;
         }
       });
 
-      // Page breakdown (sessions + leads)
+      // Page breakdown
       const pageMap: Record<string, { sessions: number; leads: number }> = {};
       sessions.forEach((s: any) => {
         const p = s.landing_page_path || "(unknown)";
@@ -174,9 +248,9 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         pageMap[p].leads++;
       });
 
-      // Avg active seconds per page path
+      // Avg active seconds per page
       const pageTimeMap: Record<string, { total: number; count: number }> = {};
-      pageviewDetails.forEach((pv: any) => {
+      (pageviewBreakdown.data || []).forEach((pv: any) => {
         const p = pv.page_path || "(unknown)";
         if (pv.active_seconds != null && pv.active_seconds > 0) {
           if (!pageTimeMap[p]) pageTimeMap[p] = { total: 0, count: 0 };
@@ -185,29 +259,46 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
         }
       });
 
-      // Country breakdown from aggregated data
+      // ── 5. Country breakdown ─────────────────────────────────────────
       const countryTotals: Record<string, number> = {};
-      countryAggData.forEach((row: any) => {
+      (countryRes.data || []).forEach((row: any) => {
         const cc = row.dimension || "XX";
-        countryTotals[cc] = (countryTotals[cc] || 0) + Number(row.value || 0);
+        countryTotals[cc] =
+          (countryTotals[cc] || 0) + Number(row.value || 0);
       });
 
+      // ── 6. Return ────────────────────────────────────────────────────
       return {
         totalPageviews,
         totalSessions,
         totalLeads,
         dailyMap,
         sources: Object.entries(sourceMap)
-          .map(([source, v]) => ({ source, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
+          .map(([source, v]) => ({
+            source,
+            ...v,
+            cvr: v.sessions > 0 ? v.leads / v.sessions : 0,
+          }))
           .sort((a, b) => b.sessions - a.sessions),
         campaigns: Object.entries(campaignMap)
-          .map(([campaign, v]) => ({ campaign, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0 }))
+          .map(([campaign, v]) => ({
+            campaign,
+            ...v,
+            cvr: v.sessions > 0 ? v.leads / v.sessions : 0,
+          }))
           .sort((a, b) => b.sessions - a.sessions),
         pages: Object.entries(pageMap)
           .map(([path, v]) => {
             const timeData = pageTimeMap[path];
-            const avgActiveSeconds = timeData ? Math.round(timeData.total / timeData.count) : null;
-            return { path, ...v, cvr: v.sessions > 0 ? v.leads / v.sessions : 0, avgActiveSeconds };
+            const avgActiveSeconds = timeData
+              ? Math.round(timeData.total / timeData.count)
+              : null;
+            return {
+              path,
+              ...v,
+              cvr: v.sessions > 0 ? v.leads / v.sessions : 0,
+              avgActiveSeconds,
+            };
           })
           .sort((a, b) => b.sessions - a.sessions),
         countries: Object.entries(countryTotals)

@@ -3,12 +3,19 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Globe } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const languages = [
   { code: "en", label: "English", flag: "🇺🇸" },
   { code: "es", label: "Español", flag: "🇪🇸" },
   { code: "fr", label: "Français", flag: "🇫🇷" },
   { code: "pt", label: "Português", flag: "🇧🇷" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "it", label: "Italiano", flag: "🇮🇹" },
+  { code: "zh", label: "中文", flag: "🇨🇳" },
+  { code: "ja", label: "日本語", flag: "🇯🇵" },
+  { code: "ko", label: "한국어", flag: "🇰🇷" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
 ];
 
 export function LanguageSwitcher({ variant = "sidebar" }: { variant?: "sidebar" | "default" }) {
@@ -24,17 +31,19 @@ export function LanguageSwitcher({ variant = "sidebar" }: { variant?: "sidebar" 
             <span>{current.flag} {current.code.toUpperCase()}</span>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-40">
-          {languages.map((lang) => (
-            <DropdownMenuItem
-              key={lang.code}
-              onClick={() => i18n.changeLanguage(lang.code)}
-              className={lang.code === i18n.language ? "font-medium" : ""}
-            >
-              <span className="mr-2">{lang.flag}</span>
-              {lang.label}
-            </DropdownMenuItem>
-          ))}
+        <DropdownMenuContent align="start" className="w-44">
+          <ScrollArea className="h-[280px]">
+            {languages.map((lang) => (
+              <DropdownMenuItem
+                key={lang.code}
+                onClick={() => i18n.changeLanguage(lang.code)}
+                className={lang.code === i18n.language ? "font-medium bg-accent" : ""}
+              >
+                <span className="mr-2">{lang.flag}</span>
+                {lang.label}
+              </DropdownMenuItem>
+            ))}
+          </ScrollArea>
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -48,17 +57,19 @@ export function LanguageSwitcher({ variant = "sidebar" }: { variant?: "sidebar" 
           {current.code.toUpperCase()}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        {languages.map((lang) => (
-          <DropdownMenuItem
-            key={lang.code}
-            onClick={() => i18n.changeLanguage(lang.code)}
-            className={lang.code === i18n.language ? "font-medium" : ""}
-          >
-            <span className="mr-2">{lang.flag}</span>
-            {lang.label}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="end" className="w-44">
+        <ScrollArea className="h-[280px]">
+          {languages.map((lang) => (
+            <DropdownMenuItem
+              key={lang.code}
+              onClick={() => i18n.changeLanguage(lang.code)}
+              className={lang.code === i18n.language ? "font-medium bg-accent" : ""}
+            >
+              <span className="mr-2">{lang.flag}</span>
+              {lang.label}
+            </DropdownMenuItem>
+          ))}
+        </ScrollArea>
       </DropdownMenuContent>
     </DropdownMenu>
   );

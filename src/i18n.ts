@@ -6,6 +6,12 @@ import en from "./locales/en/common.json";
 import es from "./locales/es/common.json";
 import fr from "./locales/fr/common.json";
 import pt from "./locales/pt/common.json";
+import de from "./locales/de/common.json";
+import it from "./locales/it/common.json";
+import zh from "./locales/zh/common.json";
+import ja from "./locales/ja/common.json";
+import ko from "./locales/ko/common.json";
+import ar from "./locales/ar/common.json";
 
 i18n
   .use(LanguageDetector)
@@ -16,6 +22,12 @@ i18n
       es: { translation: es },
       fr: { translation: fr },
       pt: { translation: pt },
+      de: { translation: de },
+      it: { translation: it },
+      zh: { translation: zh },
+      ja: { translation: ja },
+      ko: { translation: ko },
+      ar: { translation: ar },
     },
     fallbackLng: "en",
     interpolation: { escapeValue: false },

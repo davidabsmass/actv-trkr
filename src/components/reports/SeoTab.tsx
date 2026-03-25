@@ -10,7 +10,7 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { getScoreGrade, getScoreStatus, calculateScore, calculateSeverityMultiplier } from "@/lib/seo-scoring";
 import type { SeoIssue } from "@/lib/seo-scoring";
 import SeoScanHistory from "./SeoScanHistory";
@@ -23,7 +23,6 @@ import SeoFixModal from "./SeoFixModal";
 export default function SeoTab() {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
-  const [scanUrl, setScanUrl] = useState("");
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
 
   const { data: sites } = useQuery({
@@ -38,9 +37,7 @@ export default function SeoTab() {
 
   const siteDomain = sites?.[0]?.domain || "";
 
-  // Initialize scanUrl with homepage when sites load
-  const defaultUrl = siteDomain ? `https://${siteDomain}` : "";
-  const effectiveUrl = scanUrl || defaultUrl;
+  const homepageUrl = siteDomain ? `https://${siteDomain}` : "";
 
   // Fetch scan history (last 20 scans)
   const { data: scanHistory, isLoading: historyLoading } = useQuery({
@@ -173,7 +170,7 @@ export default function SeoTab() {
   const runScan = useMutation({
     mutationFn: async () => {
       if (!sites?.length || !orgId) throw new Error("No sites configured");
-      const urlToScan = effectiveUrl.trim().replace(/\/+$/, "");
+      const urlToScan = homepageUrl.trim().replace(/\/+$/, "");
       if (!validateUrl(urlToScan)) throw new Error(`URL must belong to ${siteDomain}`);
       const site = sites[0];
       const { data, error } = await supabase.functions.invoke("scan-site-seo", {
@@ -296,7 +293,6 @@ export default function SeoTab() {
 
   const handleVerify = () => {
     if (activeScan?.url) {
-      setScanUrl(activeScan.url);
       runScan.mutate();
     }
   };
@@ -323,21 +319,18 @@ export default function SeoTab() {
         </div>
 
         {sites && sites.length > 0 ? (
-          <div className="flex gap-2">
-            <Input
-              value={effectiveUrl}
-              onChange={(e) => setScanUrl(e.target.value)}
-              placeholder={`https://${siteDomain}/page`}
-              className="flex-1 text-sm bg-background"
-            />
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted-foreground flex-1">
+              Scanning: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
+            </p>
             <Button
               size="sm"
               onClick={() => runScan.mutate()}
-              disabled={runScan.isPending || !effectiveUrl.trim()}
+              disabled={runScan.isPending || !homepageUrl}
               className="gap-1.5 shrink-0"
             >
               {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {runScan.isPending ? "Scanning…" : "Scan Now"}
+              {runScan.isPending ? "Scanning…" : "Scan Homepage"}
             </Button>
           </div>
         ) : (

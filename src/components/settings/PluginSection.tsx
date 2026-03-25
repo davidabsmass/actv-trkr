@@ -66,14 +66,17 @@ export default function PluginSection() {
           <img src={pluginThumb} alt="ACTV TRKR Plugin" className="h-10 w-10 rounded-lg object-cover" />
           <h3 className="text-sm font-semibold text-foreground">WordPress Plugin</h3>
         </div>
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-        >
-          {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-          {downloading ? "Downloading…" : "Download Plugin"}
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground font-mono">v1.3.28</span>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {downloading ? "Downloading…" : "Download Plugin"}
+          </button>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-5">
         Download the plugin, upload it to WordPress, then paste your API key in Settings → ACTV TRKR.

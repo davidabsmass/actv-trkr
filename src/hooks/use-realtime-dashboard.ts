@@ -216,6 +216,6 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       };
     },
     enabled: !!orgId,
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
   });
 }

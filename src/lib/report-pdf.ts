@@ -99,9 +99,10 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
   let html = `
 <div style="font-family:'BR Omega','Segoe UI',system-ui,sans-serif;color:#00264d;width:680px;padding:0;background:#fff">
   <!-- Header -->
-  <div style="background:linear-gradient(135deg,#6d5dd4,#9449e0);padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
+  <div style="background:linear-gradient(135deg,${brandGradientStart},${brandSecondary});padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      <span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">ACTV TRKR</span>
+      ${wl?.logo_url ? `<img src="${wl.logo_url}" style="height:20px;max-width:120px;object-fit:contain" />` : ''}
+      ${brandName ? `<span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">${brandName}</span>` : ''}
       <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
       <span style="font-size:10px;color:rgba(255,255,255,0.8)">Activity Report</span>
     </div>

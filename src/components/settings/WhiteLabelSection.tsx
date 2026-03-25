@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Palette, Upload, Type, EyeOff, Save, Loader2 } from "lucide-react";
+import { Palette, Upload, Type, EyeOff, Save, Loader2, RotateCcw } from "lucide-react";
 
 export default function WhiteLabelSection() {
   const { orgId } = useOrg();
@@ -120,8 +120,36 @@ export default function WhiteLabelSection() {
     );
   }
 
+  const revertMutation = useMutation({
+    mutationFn: async () => {
+      if (!orgId) throw new Error("No org");
+      if (settings?.id) {
+        const { error } = await supabase
+          .from("white_label_settings")
+          .delete()
+          .eq("id", settings.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      setClientName("");
+      setPrimaryColor("#6366f1");
+      setSecondaryColor("#8b5cf6");
+      setAccentColor("#f59e0b");
+      setHideBranding(false);
+      setLogoUrl("");
+      queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
+      toast.success("White-label settings reverted to defaults");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to revert"),
+  });
+
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+        These settings only affect <span className="font-medium text-foreground">PDF report exports</span>. Your in-app dashboard and navigation are not changed.
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Client Identity */}
         <Card>
@@ -250,7 +278,7 @@ export default function WhiteLabelSection() {
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              These colors are applied to PDF report headers, charts, and accent elements.
+              Applied to PDF report headers, charts, and accent elements only.
             </p>
           </CardContent>
         </Card>
@@ -265,7 +293,7 @@ export default function WhiteLabelSection() {
               <div>
                 <p className="text-sm font-medium text-foreground">Remove ACTV TRKR branding from reports</p>
                 <p className="text-[11px] text-muted-foreground">
-                  When enabled, your client logo and name replace ACTV TRKR branding on all report exports.
+                  When enabled, your client logo and name replace ACTV TRKR branding on PDF report exports.
                 </p>
               </div>
             </div>
@@ -274,7 +302,17 @@ export default function WhiteLabelSection() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => revertMutation.mutate()}
+          disabled={revertMutation.isPending || !settings?.id}
+          className="gap-2 text-destructive hover:text-destructive"
+        >
+          {revertMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+          Revert to Defaults
+        </Button>
         <Button
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending}

@@ -1010,5 +1010,62 @@
     "leadVolumeUpDesc": "Leads increased {{pct}}% vs previous week ({{current}} vs {{previous}}).",
     "cvrImproved": "Conversion rate improved",
     "cvrImprovedDesc": "CVR improved {{pct}}% compared to last week."
+  },
+  "getStarted": {
+    "title": "Get Started in 3 Simple Steps",
+    "subtitle": "Set up tracking on your WordPress site in under 5 minutes.",
+    "step1Title": "Download & Install the Plugin",
+    "step1Desc": "Log into your ACTV TRKR account and download the WordPress plugin.",
+    "step1Detail1": "In your WordPress dashboard:",
+    "step1Detail2": "Go to Plugins → Add New → Upload Plugin",
+    "step1Detail3": "Upload the ACTV TRKR file and click Activate",
+    "step1Note": "No code, no complicated setup.",
+    "step2Title": "Connect Your Website",
+    "step2Desc": "After activating the plugin, you'll see the ACTV TRKR settings panel.",
+    "step2Detail1": "Copy your API Key from your ACTV TRKR dashboard",
+    "step2Detail2": "Paste it into the plugin settings",
+    "step2Detail3": "Click Connect",
+    "step2Note": "Your site is now linked and ready to start tracking.",
+    "step3Title": "Watch Your Data Come to Life",
+    "step3Desc": "Within minutes, ACTV TRKR begins collecting:",
+    "step3Detail1": "Visitor activity",
+    "step3Detail2": "Form submissions",
+    "step3Detail3": "Traffic trends",
+    "step3Detail4": "Lead insights",
+    "step3Note": "Return to your dashboard anytime to see what's happening and what needs attention.",
+    "downloadPlugin": "Download Plugin",
+    "downloading": "Downloading…",
+    "downloadSuccess": "Plugin downloaded! Upload it to WordPress → Plugins → Add New → Upload.",
+    "downloadFailed": "Failed to download plugin",
+    "goToSetup": "Go to Website Setup"
+  },
+  "timeline": {
+    "clickedCta": "Clicked CTA",
+    "downloadedFile": "Downloaded File",
+    "visitedExternal": "Visited External Link",
+    "clickedPhone": "Clicked Phone Number",
+    "clickedEmail": "Clicked Email Link",
+    "startedForm": "Started Form",
+    "visitedPage": "Visited Page",
+    "submittedForm": "Submitted Form",
+    "timeOnPage": "Time on page: {{duration}}",
+    "noSessionData": "No session data available for this lead.",
+    "noActivityData": "No activity data recorded for this session."
+  },
+  "snapshot": {
+    "share": "Share",
+    "readOnlyLink": "Read-only link • {{start}} → {{end}} • Expires in 7 days",
+    "snapshotCreated": "Snapshot created",
+    "linkExpires": "Link expires in 7 days.",
+    "error": "Error",
+    "close": "Close"
+  },
+  "anomaly": {
+    "leadsDown": "Leads down {{pct}}% week-over-week. Investigate conversion.",
+    "sessionsDropped": "Sessions dropped {{pct}}% WoW. Check traffic sources."
+  },
+  "common": {
+    "sessions": "sessions",
+    "ofSessionsConverted": "{{leads}} of {{sessions}} sessions converted"
   }
 }

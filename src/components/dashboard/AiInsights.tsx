@@ -198,7 +198,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <img src={robotAvatar} alt="AI" className="h-5 w-5" />
+          <img src={robotAvatar} alt="AI" className="h-10 w-10 rounded-full object-cover" />
           <h3 className="text-sm font-semibold text-foreground">{t("dashboard.aiInsights")}</h3>
         </div>
         

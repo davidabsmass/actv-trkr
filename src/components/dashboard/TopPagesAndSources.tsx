@@ -119,6 +119,18 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
   const maxViews = pages[0]?.views || 1;
   const maxSessions = sources[0]?.sessions || 1;
 
+  // Build a human-readable range label
+  const rangeLabel = (() => {
+    const s = new Date(resolvedStart);
+    const e = new Date(resolvedEnd);
+    const diffDays = Math.round((e.getTime() - s.getTime()) / 86400000);
+    if (diffDays <= 7) return "7d";
+    if (diffDays <= 14) return "14d";
+    if (diffDays <= 30) return "30d";
+    if (diffDays <= 90) return "90d";
+    return `${format(s, "MMM d")}–${format(e, "MMM d")}`;
+  })();
+
   return (
     <div ref={ref} className="glass-card p-5 animate-slide-up h-full">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -128,7 +140,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
 
       {/* Top Pages */}
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Pages (7d)</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Pages ({rangeLabel})</p>
         {pages.length > 0 ? (
           <div className="space-y-1.5">
             {pages.map((p) => (

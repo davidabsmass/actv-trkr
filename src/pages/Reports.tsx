@@ -471,7 +471,7 @@ function ActivityReportsTab() {
               <div className="space-y-4 pt-2">
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.frequency")}</label>
-                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v, ...(v === "monthly_today" ? { runDayOfMonth: new Date().getDate() } : {}) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem><SelectItem value="monthly_today">{`This day (${dayLabel(new Date().getDate())}) each month`}</SelectItem></SelectContent></Select>
+                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v, ...(v === "monthly_today" ? { runDayOfMonth: new Date().getDate() } : {}) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem><SelectItem value="monthly_today">{t("reports.thisDayEachMonth", { day: dayLabel(new Date().getDate()) })}</SelectItem></SelectContent></Select>
                 </div>
                 {(newSchedule.frequency === "monthly") && (
                   <div>

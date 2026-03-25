@@ -424,7 +424,7 @@ function ActivityReportsTab() {
   };
 
   const dayLabel = (d: number) => d === 0 ? "First day" : d === -1 ? "Last day" : d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`;
-  const dayOptions = [{ value: "0", label: "First day of month" }, { value: "-1", label: "Last day of month" }, ...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: dayLabel(i + 1) }))];
+  const dayOptions = [{ value: "0", label: t("reports.firstDayOfMonth") }, { value: "-1", label: t("reports.lastDayOfMonth") }, ...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: dayLabel(i + 1) }))];
 
   if (viewingReport) return <ReportViewer report={viewingReport} onBack={() => setViewingReport(null)} />;
 
@@ -601,7 +601,7 @@ export default function Reports() {
         <TabsList className="mb-6">
           <TabsTrigger value="overview">{t("reports.overview")}</TabsTrigger>
           <TabsTrigger value="activity">{t("reports.activityReports")}</TabsTrigger>
-          <TabsTrigger value="customize">Customize</TabsTrigger>
+          <TabsTrigger value="customize">{t("reports.customize")}</TabsTrigger>
           <TabsTrigger value="archives">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 

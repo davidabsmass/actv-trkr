@@ -55,7 +55,7 @@ export function useUpdateSiteSettings() {
 
   return useMutation({
     mutationFn: async (updates: Partial<Omit<SiteSettings, "id" | "org_id">>) => {
-      if (!orgId) throw new Error("No org");
+      if (!orgId || isPreviewOrg(orgId)) throw new Error("No org");
       
       const { data, error } = await supabase
         .from("site_settings")

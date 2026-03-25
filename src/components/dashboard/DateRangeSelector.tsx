@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import { ar, de, enUS, es, fr, it, ja, ko, ptBR, zhCN } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -15,12 +16,26 @@ interface DateRangeSelectorProps {
 }
 
 export function DateRangeSelector({ selectedDays, onDaysChange, customRange, onCustomRangeChange }: DateRangeSelectorProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(
     customRange ? { from: customRange.from, to: customRange.to } : undefined
   );
+
+  const localeMap = {
+    en: enUS,
+    es,
+    fr,
+    pt: ptBR,
+    de,
+    it,
+    zh: zhCN,
+    ja,
+    ko,
+    ar,
+  };
+  const dateLocale = localeMap[i18n.language.split("-")[0] as keyof typeof localeMap] ?? enUS;
 
   const presets = [
     { label: t("dateRange.last7"), days: 7 },
@@ -31,7 +46,7 @@ export function DateRangeSelector({ selectedDays, onDaysChange, customRange, onC
 
   const isCustom = selectedDays === null && customRange;
   const currentLabel = isCustom
-    ? `${format(customRange!.from, "MMM d")} – ${format(customRange!.to, "MMM d")}`
+    ? `${format(customRange!.from, "MMM d", { locale: dateLocale })} – ${format(customRange!.to, "MMM d", { locale: dateLocale })}`
     : (presets.find((p) => p.days === selectedDays) || presets[2]).label;
 
   const handleApplyCustom = () => {

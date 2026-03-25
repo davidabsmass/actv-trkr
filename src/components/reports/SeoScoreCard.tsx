@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { getScoreGrade, getScoreStatus } from "@/lib/seo-scoring";
 import type { SeoIssue } from "@/lib/seo-scoring";
 import { Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   score: number;
@@ -20,6 +21,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function SeoScoreCard({ score, issues, platform, url, scannedAt, getPathFromUrl }: Props) {
+  const { t } = useTranslation();
   const grade = getScoreGrade(score);
   const status = getScoreStatus(score);
 
@@ -41,11 +43,11 @@ export default function SeoScoreCard({ score, issues, platform, url, scannedAt, 
       <div className="flex items-center gap-6">
         <div className="flex flex-col items-center">
           <div className={`text-5xl font-bold ${statusColors[status]}`}>{score}</div>
-          <div className="text-xs text-muted-foreground mt-1">SEO Score</div>
+          <div className="text-xs text-muted-foreground mt-1">{t("dashboard.seoScore")}</div>
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <span className={`text-lg font-bold ${statusColors[status]}`}>Grade: {grade}</span>
+            <span className={`text-lg font-bold ${statusColors[status]}`}>{t("reports.grade")}: {grade}</span>
             {platform && (
               <Badge variant="outline" className="text-xs uppercase">{platform}</Badge>
             )}

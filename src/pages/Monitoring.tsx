@@ -126,8 +126,8 @@ export default function MonitoringPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Site Monitoring</h1>
-      <p className="text-sm text-muted-foreground mb-6">Uptime, health, and alerts across all sites.</p>
+      <h1 className="text-2xl font-bold text-foreground mb-1">{t("monitoring.title")}</h1>
+      <p className="text-sm text-muted-foreground mb-6">{t("monitoring.subtitle")}</p>
 
       {/* Sites overview grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -152,19 +152,19 @@ export default function MonitoringPage() {
 
               <div className="space-y-2 text-xs text-muted-foreground">
                 <div className="flex justify-between">
-                  <span>Last confirmation</span>
+                  <span>{t("monitoring.lastConfirmation")}</span>
                   <span className="text-foreground">
-                    {site.last_heartbeat_at ? format(new Date(site.last_heartbeat_at), "MMM d, HH:mm") : "Never"}
+                    {site.last_heartbeat_at ? format(new Date(site.last_heartbeat_at), "MMM d, HH:mm") : t("monitoring.never")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Domain expiry</span>
+                  <span>{t("monitoring.domainExpiry")}</span>
                   <span className={domain?.days_to_domain_expiry && domain.days_to_domain_expiry <= 30 ? "text-warning" : "text-foreground"}>
                     {domain?.days_to_domain_expiry != null ? `${domain.days_to_domain_expiry}d` : "—"}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>SSL expiry</span>
+                  <span>{t("monitoring.sslExpiry")}</span>
                   <span className={ssl?.days_to_ssl_expiry && ssl.days_to_ssl_expiry <= 30 ? "text-warning" : "text-foreground"}>
                     {ssl?.days_to_ssl_expiry != null ? `${ssl.days_to_ssl_expiry}d` : "—"}
                   </span>
@@ -172,7 +172,7 @@ export default function MonitoringPage() {
                 {activeIncidents.length > 0 && (
                   <div className="flex items-center gap-1 pt-1">
                     <AlertTriangle className="h-3 w-3 text-destructive" />
-                    <span className="text-destructive font-medium">{activeIncidents.length} active incident{activeIncidents.length > 1 ? "s" : ""}</span>
+                    <span className="text-destructive font-medium">{t("monitoring.activeIncident", { count: activeIncidents.length })}</span>
                   </div>
                 )}
               </div>
@@ -183,7 +183,7 @@ export default function MonitoringPage() {
         {(!sites || sites.length === 0) && (
           <div className="col-span-full glass-card p-8 text-center">
             <Globe className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No sites connected yet. Add a site in Settings.</p>
+            <p className="text-sm text-muted-foreground">{t("monitoring.noSites")}</p>
           </div>
         )}
       </div>
@@ -210,6 +210,7 @@ interface SiteDetailProps {
 
 function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialTab }: SiteDetailProps) {
   const { orgId } = useOrg();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data: brokenLinks } = useQuery({
@@ -266,7 +267,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
   return (
     <div>
       <button onClick={onBack} className="text-sm text-primary hover:underline mb-4 flex items-center gap-1">
-        ← All Sites
+        ← {t("monitoring.allSites")}
       </button>
 
       <div className="flex items-center gap-3 mb-6">
@@ -279,12 +280,12 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
 
       <Tabs defaultValue={initialTab || "overview"} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="form-checks">Form Checks</TabsTrigger>
-          <TabsTrigger value="broken-links">Broken Links</TabsTrigger>
-          <TabsTrigger value="domain-ssl">Domain & SSL</TabsTrigger>
-          <TabsTrigger value="plugin-wp">Plugin & WordPress</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="overview">{t("monitoring.overview")}</TabsTrigger>
+          <TabsTrigger value="form-checks">{t("monitoring.formChecks")}</TabsTrigger>
+          <TabsTrigger value="broken-links">{t("monitoring.brokenLinks")}</TabsTrigger>
+          <TabsTrigger value="domain-ssl">{t("monitoring.domainSsl")}</TabsTrigger>
+          <TabsTrigger value="plugin-wp">{t("monitoring.pluginWp")}</TabsTrigger>
+          <TabsTrigger value="notifications">{t("monitoring.notifications")}</TabsTrigger>
         </TabsList>
 
         {/* Overview */}

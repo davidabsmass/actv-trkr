@@ -77,9 +77,9 @@ export function RevenueWidget({ orgId, startDate, endDate }: { orgId: string | n
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <DollarSign className="h-4 w-4 text-primary" />
-          Revenue
+          {t("dashboard.revenueTitle")}
         </h3>
-        <span className="text-xs font-mono-data text-muted-foreground">{data.orderCount} orders</span>
+        <span className="text-xs font-mono-data text-muted-foreground">{t("dashboard.ordersCount", { count: data.orderCount })}</span>
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-4">
@@ -89,13 +89,13 @@ export function RevenueWidget({ orgId, startDate, endDate }: { orgId: string | n
         </div>
         <div>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ShoppingCart className="h-3 w-3" /> Orders
+            <ShoppingCart className="h-3 w-3" /> {t("dashboard.orders")}
           </p>
           <p className="text-lg font-bold text-foreground font-mono-data">{data.orderCount}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <TrendingUp className="h-3 w-3" /> AOV
+            <TrendingUp className="h-3 w-3" /> {t("dashboard.aov")}
           </p>
           <p className="text-lg font-bold text-foreground font-mono-data">{fmt(data.avgOrderValue)}</p>
         </div>
@@ -109,7 +109,7 @@ export function RevenueWidget({ orgId, startDate, endDate }: { orgId: string | n
               <div key={i} className="flex items-center justify-between">
                 <span className="text-xs text-foreground truncate max-w-[60%]">{p.name}</span>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">{p.qty} sold</span>
+                  <span className="text-xs text-muted-foreground">{t("dashboard.soldCount", { count: p.qty })}</span>
                   <span className="text-xs font-mono-data font-medium text-foreground">{fmt(p.revenue)}</span>
                 </div>
               </div>

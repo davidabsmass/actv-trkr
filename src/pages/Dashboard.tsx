@@ -333,10 +333,10 @@ const Dashboard = () => {
     if (activeIncidents && activeIncidents.length > 0) {
       items.push({
         severity: "critical",
-        label: `${activeIncidents.length} active incident${activeIncidents.length > 1 ? "s" : ""}`,
+        label: t("dashboard.activeIncidents", { count: activeIncidents.length }),
         detail: activeIncidents.map((i) => i.type).join(", "),
         link: "/monitoring",
-        linkLabel: "View",
+        linkLabel: t("dashboard.view"),
       });
     }
     // Security threats
@@ -344,10 +344,10 @@ const Dashboard = () => {
       const critCount = recentSecurityEvents.filter((e) => e.severity === "critical").length;
       items.push({
         severity: critCount > 0 ? "critical" : "warning",
-        label: `${recentSecurityEvents.length} security event${recentSecurityEvents.length > 1 ? "s" : ""} (24h)`,
-        detail: recentSecurityEvents[0]?.title || "Potential threat detected",
+        label: t("dashboard.securityEvents", { count: recentSecurityEvents.length }),
+        detail: recentSecurityEvents[0]?.title || t("dashboard.potentialThreat"),
         link: "/security",
-        linkLabel: "Review",
+        linkLabel: t("dashboard.review"),
       });
     }
     // Conversion drops
@@ -355,42 +355,42 @@ const Dashboard = () => {
       (a) => a.severity === "warning" && a.title?.toLowerCase().includes("conversion")
     );
     if (convDrops.length > 0) {
-      items.push({ severity: "warning", label: "Conversion rate dropped", detail: convDrops[0].title, link: "/performance", linkLabel: "Investigate" });
+      items.push({ severity: "warning", label: t("dashboard.conversionDropped"), detail: convDrops[0].title, link: "/performance", linkLabel: t("dashboard.investigate") });
     }
     // Broken links
     if (brokenLinksCount && brokenLinksCount > 0) {
-      items.push({ severity: "warning", label: `${brokenLinksCount} broken link${brokenLinksCount > 1 ? "s" : ""}`, detail: "May affect UX and SEO", link: "/monitoring?tab=broken-links", linkLabel: "View" });
+      items.push({ severity: "warning", label: t("dashboard.brokenLinks", { count: brokenLinksCount }), detail: t("dashboard.mayAffectUxSeo"), link: "/monitoring?tab=broken-links", linkLabel: t("dashboard.view") });
     }
     // Domain expiry
     if (expiringDomains && expiringDomains.length > 0) {
       const minDays = Math.min(...expiringDomains.map((d) => d.days_to_domain_expiry || 999));
-      items.push({ severity: minDays <= 5 ? "critical" : "warning", label: "Domain expiring soon", detail: expiringDomains.map((d) => `${d.domain} (${d.days_to_domain_expiry}d)`).join(", "), link: "/monitoring", linkLabel: "View" });
+      items.push({ severity: minDays <= 5 ? "critical" : "warning", label: t("dashboard.domainExpiring"), detail: expiringDomains.map((d) => `${d.domain} (${d.days_to_domain_expiry}d)`).join(", "), link: "/monitoring", linkLabel: t("dashboard.view") });
     }
     // SSL expiry
     if (expiringSSL && expiringSSL.length > 0) {
       const minDays = Math.min(...expiringSSL.map((s) => s.days_to_ssl_expiry || 999));
-      items.push({ severity: minDays <= 5 ? "critical" : "warning", label: `SSL expiring soon`, detail: `${expiringSSL.length} certificate${expiringSSL.length > 1 ? "s" : ""} expiring within 30 days`, link: "/monitoring", linkLabel: "View" });
+      items.push({ severity: minDays <= 5 ? "critical" : "warning", label: t("dashboard.sslExpiring"), detail: t("dashboard.sslCertsExpiring", { count: expiringSSL.length }), link: "/monitoring", linkLabel: t("dashboard.view") });
     }
     // Unhealthy forms
     if (unhealthyForms && unhealthyForms.length > 0) {
-      items.push({ severity: "warning", label: `${unhealthyForms.length} form${unhealthyForms.length > 1 ? "s" : ""} not rendering`, detail: "Forms may be broken or missing from pages", link: "/settings?tab=forms", linkLabel: "Check" });
+      items.push({ severity: "warning", label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }), detail: t("dashboard.formsBrokenMissing"), link: "/settings?tab=forms", linkLabel: t("dashboard.check") });
     }
     // SEO score issues
     if (lowSeoScore) {
-      items.push({ severity: "warning", label: `SEO score is low (${seoMovement?.score})`, detail: "Review SEO issues to improve visibility", link: "/seo", linkLabel: "Fix" });
+      items.push({ severity: "warning", label: t("dashboard.seoScoreLow", { score: seoMovement?.score }), detail: t("dashboard.reviewSeoIssues"), link: "/seo", linkLabel: t("dashboard.fix") });
     } else if (seoScoreDrop) {
-      items.push({ severity: "warning", label: `SEO score dropped ${Math.abs(seoMovement!.change)} pts`, detail: "Recent scan found new issues", link: "/seo", linkLabel: "Review" });
+      items.push({ severity: "warning", label: t("dashboard.seoScoreDropped", { points: Math.abs(seoMovement!.change) }), detail: t("dashboard.recentScanIssues"), link: "/seo", linkLabel: t("dashboard.review") });
     }
     // Stale SEO fixes
     if (staleSeoFixes && staleSeoFixes > 0) {
-      items.push({ severity: "warning", label: `${staleSeoFixes} stale SEO fix${staleSeoFixes > 1 ? "es" : ""}`, detail: "Plugin may not be polling — check WP cron", link: "/seo", linkLabel: "View" });
+      items.push({ severity: "warning", label: t("dashboard.staleSeoFixes", { count: staleSeoFixes }), detail: t("dashboard.pluginCronStuck"), link: "/seo", linkLabel: t("dashboard.view") });
     }
     // Pending monitoring alerts
     if (pendingAlerts && pendingAlerts > 0) {
-      items.push({ severity: "info", label: `${pendingAlerts} pending alert${pendingAlerts > 1 ? "s" : ""}`, detail: "Monitoring alerts awaiting delivery", link: "/monitoring", linkLabel: "View" });
+      items.push({ severity: "info", label: t("dashboard.pendingAlerts", { count: pendingAlerts }), detail: t("dashboard.alertsAwaitingDelivery"), link: "/monitoring", linkLabel: t("dashboard.view") });
     }
     return items;
-  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts]);
+  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, t]);
 
   return (
     <div>
@@ -406,7 +406,7 @@ const Dashboard = () => {
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-            <span className="text-xs font-medium text-success">Live</span>
+            <span className="text-xs font-medium text-success">{t("dashboard.live")}</span>
           </div>
         </div>
       </div>

@@ -43,6 +43,7 @@ interface TopPagesAndSourcesProps {
 export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSourcesProps>(function TopPagesAndSources({ startDate: propStart, endDate: propEnd }, ref) {
   const { orgId } = useOrg();
   const { t } = useTranslation();
+  const directLabel = t("dashboard.direct");
 
   const fallbackStart = format(subDays(new Date(), 7), "yyyy-MM-dd");
   const resolvedStart = propStart || fallbackStart;
@@ -101,9 +102,9 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
 
       const srcMap: Record<string, number> = {};
       for (const r of sessRows) {
-        let src = r.utm_source || r.landing_referrer_domain || "Direct";
+        let src = r.utm_source || r.landing_referrer_domain || directLabel;
         // Reclassify self-referrals as Direct
-        if (ownDomains.has(src.toLowerCase())) src = "Direct";
+        if (ownDomains.has(src.toLowerCase())) src = directLabel;
         srcMap[src] = (srcMap[src] || 0) + 1;
       }
       const sources: SourceRow[] = Object.entries(srcMap)

@@ -74,7 +74,8 @@
     "title": "Prestazioni",
     "deeperAnalytics": "Analisi approfondite",
     "analytics": "Analisi",
-    "reports": "Report"
+    "reports": "Report",
+    "subtitle": "Analisi approfondita"
   },
   "reports": {
     "title": "Report",
@@ -580,5 +581,41 @@
       "explanation": "{{count}} problemi rilevati sul tuo sito.",
       "action": "Controlla la pagina Monitoring."
     }
+  },
+  "content": {
+    "topPages": "Pagine principali",
+    "opportunities": "Opportunità",
+    "highTrafficLowCvr": "Alto traffico / Bassa CVR",
+    "noOpportunities": "Nessuna opportunità significativa rilevata.",
+    "page": "Pagina",
+    "sessions": "Sessioni",
+    "leads": "Lead",
+    "cvr": "CVR",
+    "avgTime": "Tempo med."
+  },
+  "funnel": {
+    "title": "Imbuto di conversione",
+    "landingPageViews": "Visualizzazioni pagina di destinazione",
+    "formPageViews": "Visualizzazioni pagina form",
+    "formSubmissions": "Invii form"
+  },
+  "visitorMap": {
+    "title": "Posizioni dei visitatori",
+    "low": "Basso",
+    "high": "Alto",
+    "noData": "Nessun dato geografico ancora. Appariranno automaticamente.",
+    "showAll": "Mostra tutti i {{count}} paesi",
+    "country": "Paese",
+    "sessions": "Sessioni",
+    "share": "Quota"
+  },
+  "clickDrill": {
+    "eventLog": "Registro eventi",
+    "eventsFrom": "Eventi di clic dal {{start}} al {{end}}",
+    "noEvents": "Nessun evento trovato.",
+    "timestamp": "Data e ora",
+    "target": "Obiettivo",
+    "pagePath": "Pagina",
+    "session": "Sessione"
   }
 }

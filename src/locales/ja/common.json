@@ -74,7 +74,8 @@
     "title": "パフォーマンス",
     "deeperAnalytics": "詳細な分析",
     "analytics": "アナリティクス",
-    "reports": "レポート"
+    "reports": "レポート",
+    "subtitle": "詳細分析"
   },
   "reports": {
     "title": "レポート",
@@ -580,5 +581,41 @@
       "explanation": "{{count}}件の問題が検出されました。",
       "action": "モニタリングページで詳細を確認してください。"
     }
+  },
+  "content": {
+    "topPages": "上位ページ",
+    "opportunities": "改善機会",
+    "highTrafficLowCvr": "高トラフィック / 低CVR",
+    "noOpportunities": "重要な改善機会は検出されませんでした。",
+    "page": "ページ",
+    "sessions": "セッション",
+    "leads": "リード",
+    "cvr": "CVR",
+    "avgTime": "平均時間"
+  },
+  "funnel": {
+    "title": "コンバージョンファネル",
+    "landingPageViews": "ランディングページ閲覧数",
+    "formPageViews": "フォームページ閲覧数",
+    "formSubmissions": "フォーム送信数"
+  },
+  "visitorMap": {
+    "title": "訪問者の位置",
+    "low": "低",
+    "high": "高",
+    "noData": "地理データはまだありません。新しいページビューが届くと自動的に表示されます。",
+    "showAll": "{{count}}か国すべてを表示",
+    "country": "国",
+    "sessions": "セッション",
+    "share": "シェア"
+  },
+  "clickDrill": {
+    "eventLog": "イベントログ",
+    "eventsFrom": "{{start}}から{{end}}のクリックイベント",
+    "noEvents": "イベントが見つかりません。",
+    "timestamp": "タイムスタンプ",
+    "target": "ターゲット",
+    "pagePath": "ページ",
+    "session": "セッション"
   }
 }

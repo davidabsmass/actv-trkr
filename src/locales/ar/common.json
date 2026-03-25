@@ -74,7 +74,8 @@
     "title": "الأداء",
     "deeperAnalytics": "تحليلات أعمق",
     "analytics": "التحليلات",
-    "reports": "التقارير"
+    "reports": "التقارير",
+    "subtitle": "تحليلات أعمق"
   },
   "reports": {
     "title": "التقارير",
@@ -580,5 +581,41 @@
       "explanation": "تم اكتشاف {{count}} مشكلة في موقعك.",
       "action": "تحقق من صفحة المراقبة للتفاصيل."
     }
+  },
+  "content": {
+    "topPages": "الصفحات الرئيسية",
+    "opportunities": "الفرص",
+    "highTrafficLowCvr": "حركة مرور عالية / معدل تحويل منخفض",
+    "noOpportunities": "لم يتم اكتشاف فرص مهمة.",
+    "page": "الصفحة",
+    "sessions": "الجلسات",
+    "leads": "العملاء المحتملون",
+    "cvr": "CVR",
+    "avgTime": "متوسط الوقت"
+  },
+  "funnel": {
+    "title": "قمع التحويل",
+    "landingPageViews": "مشاهدات صفحة الهبوط",
+    "formPageViews": "مشاهدات صفحة النموذج",
+    "formSubmissions": "إرسالات النموذج"
+  },
+  "visitorMap": {
+    "title": "مواقع الزوار",
+    "low": "منخفض",
+    "high": "مرتفع",
+    "noData": "لا توجد بيانات جغرافية بعد. ستظهر تلقائياً مع وصول زيارات جديدة.",
+    "showAll": "عرض جميع البلدان {{count}}",
+    "country": "البلد",
+    "sessions": "الجلسات",
+    "share": "الحصة"
+  },
+  "clickDrill": {
+    "eventLog": "سجل الأحداث",
+    "eventsFrom": "أحداث النقر من {{start}} إلى {{end}}",
+    "noEvents": "لم يتم العثور على أحداث.",
+    "timestamp": "الطابع الزمني",
+    "target": "الهدف",
+    "pagePath": "الصفحة",
+    "session": "الجلسة"
   }
 }

@@ -73,8 +73,9 @@
   "performance": {
     "title": "Performance",
     "deeperAnalytics": "Analyses approfondies",
-    "analytics": "Analyses",
-    "reports": "Rapports"
+    "analytics": "Analytique",
+    "reports": "Rapports",
+    "subtitle": "Analytique approfondie"
   },
   "reports": {
     "title": "Rapports",
@@ -580,5 +581,41 @@
       "explanation": "{{count}} problèmes détectés sur votre site.",
       "action": "Consultez la page Monitoring."
     }
+  },
+  "content": {
+    "topPages": "Pages principales",
+    "opportunities": "Opportunités",
+    "highTrafficLowCvr": "Trafic élevé / CVR faible",
+    "noOpportunities": "Aucune opportunité significative détectée.",
+    "page": "Page",
+    "sessions": "Sessions",
+    "leads": "Leads",
+    "cvr": "CVR",
+    "avgTime": "Temps moy."
+  },
+  "funnel": {
+    "title": "Entonnoir de conversion",
+    "landingPageViews": "Vues de page d'atterrissage",
+    "formPageViews": "Vues de page de formulaire",
+    "formSubmissions": "Soumissions de formulaire"
+  },
+  "visitorMap": {
+    "title": "Emplacements des visiteurs",
+    "low": "Faible",
+    "high": "Élevé",
+    "noData": "Pas encore de données géographiques. Elles apparaîtront automatiquement.",
+    "showAll": "Afficher les {{count}} pays",
+    "country": "Pays",
+    "sessions": "Sessions",
+    "share": "Part"
+  },
+  "clickDrill": {
+    "eventLog": "Journal des événements",
+    "eventsFrom": "Événements de clic du {{start}} au {{end}}",
+    "noEvents": "Aucun événement trouvé.",
+    "timestamp": "Horodatage",
+    "target": "Cible",
+    "pagePath": "Page",
+    "session": "Session"
   }
 }

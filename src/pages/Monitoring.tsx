@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import {
   Activity, Globe, Shield, Link2, RefreshCw, AlertTriangle, CheckCircle2,
   XCircle, Plus, Trash2, Bell, ChevronRight, ExternalLink, FileSearch, EyeOff,
+  Package, Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -280,6 +281,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           <TabsTrigger value="form-checks">Form Checks</TabsTrigger>
           <TabsTrigger value="broken-links">Broken Links</TabsTrigger>
           <TabsTrigger value="domain-ssl">Domain & SSL</TabsTrigger>
+          <TabsTrigger value="plugin-wp">Plugin & WordPress</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
 

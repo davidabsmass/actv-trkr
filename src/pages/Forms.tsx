@@ -55,6 +55,7 @@ const weightLabels: Record<string, string> = {
 
 /* ─── Summary Row ─── */
 function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
+  const { t } = useTranslation();
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
 
@@ -92,19 +93,19 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
   return (
     <div className="grid grid-cols-2 gap-3 mb-4">
       <div className="glass-card p-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">Total Submissions</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">{t("forms.totalSubmissions")}</p>
         <p className="text-2xl font-bold font-mono-data text-foreground">{totalSubmissions ?? "—"}</p>
-        <p className="text-xs text-muted-foreground">Last {days} days</p>
+        <p className="text-xs text-muted-foreground">{t("forms.lastDays", { days })}</p>
       </div>
       <div className="glass-card p-4">
         <div className="flex items-center gap-1.5 mb-1">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Failures</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{t("forms.failures")}</p>
           {(failureCount ?? 0) > 0 && <AlertCircle className="h-3 w-3 text-destructive" />}
         </div>
         <p className={`text-2xl font-bold font-mono-data ${(failureCount ?? 0) > 0 ? "text-destructive" : "text-foreground"}`}>
           {failureCount ?? "—"}
         </p>
-        <p className="text-xs text-muted-foreground">Last {days} days</p>
+        <p className="text-xs text-muted-foreground">{t("forms.lastDays", { days })}</p>
       </div>
     </div>
   );
@@ -112,6 +113,7 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
 
 /* ─── Plugin Update Banner ─── */
 function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds: string[] }) {
+  const { t } = useTranslation();
   const [downloading, setDownloading] = useState(false);
   const relevantSiteIds = useMemo(() => new Set(siteIds), [siteIds]);
 
@@ -188,9 +190,9 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
       <div className="flex items-center gap-2.5 min-w-0">
         <ArrowUpCircle className="h-4 w-4 text-warning flex-shrink-0" />
         <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">Plugin update available — v{latestVersion}</p>
+            <p className="text-sm font-medium text-foreground">{t("forms.pluginUpdateAvailable", { version: latestVersion })}</p>
           <p className="text-xs text-muted-foreground truncate">
-            {outdatedSites.map((s) => `${s.domain} (v${s.plugin_version})`).join(", ")} — Sync may be incomplete until updated
+              {outdatedSites.map((s) => `${s.domain} (v${s.plugin_version})`).join(", ")} — {t("forms.syncMayBeIncomplete")}
           </p>
         </div>
       </div>
@@ -202,7 +204,7 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
         disabled={downloading}
       >
         <Download className="h-3.5 w-3.5" />
-        {downloading ? "Downloading…" : "Download Update"}
+        {downloading ? t("forms.downloading") : t("forms.downloadUpdate")}
       </Button>
     </div>
   );
@@ -640,13 +642,13 @@ export default function Forms() {
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Forms</h1>
-          <p className="text-sm text-muted-foreground">Lead submissions for {orgName}</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("forms.formsTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("forms.leadSubmissions", { orgName })}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSyncAll} disabled={syncing || !forms || forms.length === 0}>
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? `Syncing… ${syncElapsed}s` : "Sync Entries"}
+            {syncing ? t("forms.syncingElapsed", { elapsed: syncElapsed }) : t("forms.syncEntries")}
           </Button>
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
         </div>
@@ -664,16 +666,16 @@ export default function Forms() {
       {/* Form List */}
       <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Forms</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("forms.formsTitle")}</h3>
           {archivedForms.length > 0 && (
             <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setShowArchived(!showArchived)}>
               <Archive className="h-3.5 w-3.5" />
-              {showArchived ? "Show Active" : `Archived (${archivedForms.length})`}
+              {showArchived ? t("forms.showActive") : `${t("forms.archived")} (${archivedForms.length})`}
             </Button>
           )}
         </div>
         {formsLoading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
+          <div className="p-8 text-center text-muted-foreground text-sm">{t("forms.loadingForms")}</div>
         ) : displayedForms.length === 0 ? (
            <div className="p-8 text-center text-muted-foreground text-sm">
             {showArchived

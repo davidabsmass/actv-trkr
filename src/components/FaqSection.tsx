@@ -8,7 +8,7 @@ import {
 const faqs = [
   {
     q: "How is ACTV TRKR different from Google Analytics?",
-    a: "Google Analytics is a powerful, broad analytics platform — but it requires setup, training, and time to pull useful insights. ACTV TRKR is purpose-built for WordPress sites and focuses on the metrics that matter most to site owners and agencies: form submissions, lead attribution, conversion tracking, and site health. Instead of digging through dashboards, you get clear summaries, alerts, and actionable recommendations automatically.",
+    a: "Google Analytics is a fantastic tool for understanding audience demographics, acquisition channels, and user behaviour across large-scale web properties. ACTV TRKR doesn't try to replace it — it solves a different problem. Where GA gives you broad traffic data, ACTV TRKR is purpose-built for WordPress and focused specifically on lead tracking, form health, site uptime, and actionable alerts. You get clear summaries, automatic SEO monitoring, and real-time notifications without needing to configure goals, filters, or custom reports. Many teams use both side by side: GA for the big picture, ACTV TRKR for the operational detail.",
   },
   {
     q: "How is this different from PageSpeed Insights?",
@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     q: "What form plugins are supported?",
-    a: "ACTV TRKR works with Gravity Forms, Avada/Fusion Forms, and any form that triggers a standard WordPress submission event. Our universal form capture system detects submissions automatically, so most form setups work without extra configuration.",
+    a: "ACTV TRKR supports a wide range of WordPress form builders out of the box: Gravity Forms, Avada / Fusion Forms, Contact Form 7, WPForms, Ninja Forms, Formidable Forms, Elementor Forms, Fluent Forms, HappyForms, and WS Form. On top of that, our universal form capture engine listens for any standard HTML form submission event — so even custom-built forms or lesser-known plugins are typically detected automatically with no extra configuration.",
   },
   {
     q: "Can I use ACTV TRKR on multiple websites?",

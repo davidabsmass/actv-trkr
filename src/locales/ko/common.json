@@ -426,14 +426,14 @@
     "newIpFlagged": "새 IP에서의 성공적인 로그인은 검토를 위해 플래그 표시됩니다",
     "scansDaily": "매일 코어 파일, 활성 테마 및 플러그인 디렉토리를 스캔",
     "alertsOnChanges": "정상 업데이트 주기 외 새로 생성, 수정 또는 삭제된 파일에 대한 알림",
-    "bruteForceTitle": "Brute Force Detected — Recommended Actions",
-    "bruteForceInstallPlugin": "Install a rate-limiting or login-lockout plugin (e.g. Limit Login Attempts Reloaded or Wordfence)",
-    "bruteForceEnable2fa": "Enable two-factor authentication (2FA) for all admin accounts",
-    "bruteForceChangeUrl": "Change the default /wp-admin login URL using a plugin like WPS Hide Login",
-    "bruteForceStrongPasswords": "Ensure all admin passwords are 16+ characters with mixed case, numbers, and symbols",
-    "bruteForceBlockIp": "Block the attacking IP addresses at your hosting firewall or via .htaccess",
-    "bruteForceWaf": "Consider enabling Cloudflare or a WAF to filter malicious traffic upstream",
-    "userLabel": "User"
+    "bruteForceTitle": "무차별 대입 공격 감지 — 권장 조치",
+    "bruteForceInstallPlugin": "속도 제한 또는 로그인 잠금 플러그인 설치 (예: Limit Login Attempts Reloaded 또는 Wordfence)",
+    "bruteForceEnable2fa": "모든 관리자 계정에 이중 인증(2FA) 활성화",
+    "bruteForceChangeUrl": "WPS Hide Login 같은 플러그인으로 기본 /wp-admin 로그인 URL 변경",
+    "bruteForceStrongPasswords": "모든 관리자 비밀번호가 대소문자, 숫자, 기호를 포함한 16자 이상인지 확인",
+    "bruteForceBlockIp": "호스팅 방화벽 또는 .htaccess에서 공격 IP 주소 차단",
+    "bruteForceWaf": "악성 트래픽을 상류에서 필터링하기 위해 Cloudflare 또는 WAF 활성화 고려",
+    "userLabel": "사용자"
   },
   "account": {
     "title": "계정",

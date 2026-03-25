@@ -426,14 +426,14 @@
     "newIpFlagged": "Los inicios de sesión desde nuevas IPs se marcan para revisión",
     "scansDaily": "Escanea archivos del núcleo, tema activo y plugins diariamente",
     "alertsOnChanges": "Alerta sobre archivos nuevos, modificados o eliminados fuera de ciclos de actualización",
-    "bruteForceTitle": "Brute Force Detected — Recommended Actions",
-    "bruteForceInstallPlugin": "Install a rate-limiting or login-lockout plugin (e.g. Limit Login Attempts Reloaded or Wordfence)",
-    "bruteForceEnable2fa": "Enable two-factor authentication (2FA) for all admin accounts",
-    "bruteForceChangeUrl": "Change the default /wp-admin login URL using a plugin like WPS Hide Login",
-    "bruteForceStrongPasswords": "Ensure all admin passwords are 16+ characters with mixed case, numbers, and symbols",
-    "bruteForceBlockIp": "Block the attacking IP addresses at your hosting firewall or via .htaccess",
-    "bruteForceWaf": "Consider enabling Cloudflare or a WAF to filter malicious traffic upstream",
-    "userLabel": "User"
+    "bruteForceTitle": "Fuerza bruta detectada — Acciones recomendadas",
+    "bruteForceInstallPlugin": "Instalar un plugin de limitación de intentos (ej. Limit Login Attempts Reloaded o Wordfence)",
+    "bruteForceEnable2fa": "Habilitar la autenticación de dos factores (2FA) para todas las cuentas de administrador",
+    "bruteForceChangeUrl": "Cambiar la URL de inicio de sesión predeterminada /wp-admin usando un plugin como WPS Hide Login",
+    "bruteForceStrongPasswords": "Asegurar que todas las contraseñas de admin tengan 16+ caracteres con mayúsculas, números y símbolos",
+    "bruteForceBlockIp": "Bloquear las direcciones IP atacantes en el firewall del hosting o vía .htaccess",
+    "bruteForceWaf": "Considerar habilitar Cloudflare o un WAF para filtrar tráfico malicioso",
+    "userLabel": "Usuario"
   },
   "account": {
     "title": "Cuenta",

@@ -407,8 +407,11 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
   };
 
   // ── Form submission health ──
-  const totalSubmissions = (formSubmissionLogs || []).length;
-  const totalFailures = (formSubmissionLogs || []).filter((l: any) => l.status !== "success").length;
+  // Use leads count as the primary submission metric; form_submission_logs
+  // failures are additive (they represent attempts that never became leads).
+  const logFailures = (formSubmissionLogs || []).filter((l: any) => l.status !== "success").length;
+  const totalSubmissions = currentLeads.length + logFailures;
+  const totalFailures = logFailures;
   const overallFailureRate = totalSubmissions > 0 ? Math.round((totalFailures / totalSubmissions) * 10000) / 100 : 0;
 
   const formHealth = {

@@ -485,5 +485,100 @@
     "somethingWentWrong": "Algo deu errado",
     "tryAgain": "Tentar novamente",
     "pageError": "Esta página encontrou um erro. Clique em tentar novamente ou navegue para outra página."
+  },
+  "findings": {
+    "category": {
+      "Traffic": "Tráfego",
+      "Conversion": "Conversão",
+      "Engagement": "Engajamento",
+      "SEO": "SEO",
+      "SiteHealth": "Saúde do site",
+      "LeadTracking": "Rastreamento de leads"
+    },
+    "severity": {
+      "high": "alta",
+      "medium": "média",
+      "low": "baixa"
+    },
+    "metricCurrent": "atual",
+    "metricPrevious": "anterior",
+    "metricChange": "variação",
+    "metricViews": "visualizações",
+    "metricLeads": "leads",
+    "metricCvr": "CVR",
+    "metricExits": "saídas",
+    "metricExitRate": "taxa de saída",
+    "metricDesktopCvr": "CVR desktop",
+    "metricMobileCvr": "CVR mobile",
+    "metricStarts": "inícios",
+    "metricSubmissions": "envios",
+    "metricAbandonRate": "taxa de abandono",
+    "metricCount": "quantidade",
+    "traffic_up": {
+      "title": "O tráfego está crescendo",
+      "explanation": "As sessões aumentaram {{change}}% em relação ao período anterior."
+    },
+    "traffic_down": {
+      "title": "O tráfego diminuiu",
+      "explanation": "As sessões caíram {{change}}% em relação ao período anterior.",
+      "action": "Revise as páginas principais e fontes de tráfego."
+    },
+    "lead_growth": {
+      "title": "O volume de leads aumentou",
+      "explanation": "Os leads aumentaram {{change}}% em relação ao período anterior."
+    },
+    "lead_drop": {
+      "title": "Os leads diminuíram",
+      "explanation": "Os leads caíram {{change}}% em relação ao período anterior.",
+      "action": "Verifique a saúde dos formulários e as fontes principais."
+    },
+    "conversion_gain": {
+      "title": "A taxa de conversão melhorou",
+      "explanation": "A taxa de conversão melhorou {{change}}% em relação ao período anterior."
+    },
+    "conversion_drop": {
+      "title": "A taxa de conversão caiu",
+      "explanation": "A taxa de conversão diminuiu {{change}}% em relação ao período anterior.",
+      "action": "Revise as páginas de destino e a experiência do formulário."
+    },
+    "high_exit_rate": {
+      "title": "Alta taxa de saída",
+      "explanation": "{{page}} tem uma taxa de saída de {{exitRate}}.",
+      "action": "Revise o conteúdo da página e os calls to action."
+    },
+    "mobile_dropoff": {
+      "title": "Usuários mobile convertem menos",
+      "explanation": "A taxa de conversão mobile é significativamente menor que a do desktop.",
+      "action": "Revise a experiência mobile nas páginas principais."
+    },
+    "form_abandonment": {
+      "title": "Alto abandono de formulário",
+      "explanation": "\"{{name}}\" tem uma taxa de abandono de {{abandonRate}}.",
+      "action": "Simplifique os campos ou verifique erros."
+    },
+    "seo_visibility_gain": {
+      "title": "A pontuação SEO melhorou",
+      "explanation": "A pontuação SEO passou de {{previous}} para {{current}}."
+    },
+    "seo_visibility_loss": {
+      "title": "A pontuação SEO caiu",
+      "explanation": "A pontuação SEO caiu de {{previous}} para {{current}}.",
+      "action": "Execute um scan SEO para identificar novos problemas."
+    },
+    "high_intent_low_performance": {
+      "title": "Alto tráfego, baixas conversões",
+      "explanation": "{{page}} recebe muito tráfego mas converte abaixo da média.",
+      "action": "Revise o posicionamento do CTA e a clareza da página."
+    },
+    "strong_engagement_low_visibility": {
+      "title": "Alto engajamento, baixa visibilidade",
+      "explanation": "{{page}} tem alto engajamento mas pouco tráfego.",
+      "action": "Considere promover esta página."
+    },
+    "site_health_issue": {
+      "title": "Problema de saúde do site",
+      "explanation": "{{count}} problemas detectados no seu site.",
+      "action": "Verifique a página de Monitoramento."
+    }
   }
 }

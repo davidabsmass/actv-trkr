@@ -485,5 +485,100 @@
     "somethingWentWrong": "Quelque chose s'est mal passé",
     "tryAgain": "Réessayer",
     "pageError": "Cette page a rencontré une erreur. Cliquez sur réessayer ou naviguez vers une autre page."
+  },
+  "findings": {
+    "category": {
+      "Traffic": "Trafic",
+      "Conversion": "Conversion",
+      "Engagement": "Engagement",
+      "SEO": "SEO",
+      "SiteHealth": "Santé du site",
+      "LeadTracking": "Suivi des leads"
+    },
+    "severity": {
+      "high": "élevée",
+      "medium": "moyenne",
+      "low": "faible"
+    },
+    "metricCurrent": "actuel",
+    "metricPrevious": "précédent",
+    "metricChange": "variation",
+    "metricViews": "vues",
+    "metricLeads": "leads",
+    "metricCvr": "CVR",
+    "metricExits": "sorties",
+    "metricExitRate": "taux de sortie",
+    "metricDesktopCvr": "CVR bureau",
+    "metricMobileCvr": "CVR mobile",
+    "metricStarts": "démarrages",
+    "metricSubmissions": "soumissions",
+    "metricAbandonRate": "taux d'abandon",
+    "metricCount": "nombre",
+    "traffic_up": {
+      "title": "Le trafic augmente",
+      "explanation": "Les sessions ont augmenté de {{change}}% par rapport à la période précédente."
+    },
+    "traffic_down": {
+      "title": "Le trafic a diminué",
+      "explanation": "Les sessions ont chuté de {{change}}% par rapport à la période précédente.",
+      "action": "Vérifiez les pages principales et les sources de trafic."
+    },
+    "lead_growth": {
+      "title": "Le volume de leads augmente",
+      "explanation": "Les leads ont augmenté de {{change}}% par rapport à la période précédente."
+    },
+    "lead_drop": {
+      "title": "Les leads ont diminué",
+      "explanation": "Les leads ont chuté de {{change}}% par rapport à la période précédente.",
+      "action": "Vérifiez la santé des formulaires et les sources principales."
+    },
+    "conversion_gain": {
+      "title": "Le taux de conversion s'est amélioré",
+      "explanation": "Le taux de conversion s'est amélioré de {{change}}% par rapport à la période précédente."
+    },
+    "conversion_drop": {
+      "title": "Le taux de conversion a chuté",
+      "explanation": "Le taux de conversion a diminué de {{change}}% par rapport à la période précédente.",
+      "action": "Vérifiez les pages de destination et l'expérience du formulaire."
+    },
+    "high_exit_rate": {
+      "title": "Taux de sortie élevé",
+      "explanation": "{{page}} a un taux de sortie de {{exitRate}}.",
+      "action": "Revoyez le contenu et les appels à l'action."
+    },
+    "mobile_dropoff": {
+      "title": "Les utilisateurs mobiles convertissent moins",
+      "explanation": "Le taux de conversion mobile est nettement inférieur à celui du bureau.",
+      "action": "Vérifiez l'expérience mobile sur les pages clés."
+    },
+    "form_abandonment": {
+      "title": "Abandon de formulaire élevé",
+      "explanation": "\"{{name}}\" a un taux d'abandon de {{abandonRate}}.",
+      "action": "Simplifiez les champs ou vérifiez les erreurs."
+    },
+    "seo_visibility_gain": {
+      "title": "Le score SEO s'est amélioré",
+      "explanation": "Le score SEO est passé de {{previous}} à {{current}}."
+    },
+    "seo_visibility_loss": {
+      "title": "Le score SEO a chuté",
+      "explanation": "Le score SEO est passé de {{previous}} à {{current}}.",
+      "action": "Lancez un scan SEO pour identifier les nouveaux problèmes."
+    },
+    "high_intent_low_performance": {
+      "title": "Trafic élevé, faibles conversions",
+      "explanation": "{{page}} reçoit beaucoup de trafic mais convertit en dessous de la moyenne.",
+      "action": "Revoyez le placement des CTA et la clarté de la page."
+    },
+    "strong_engagement_low_visibility": {
+      "title": "Fort engagement, faible visibilité",
+      "explanation": "{{page}} a un fort engagement mais peu de trafic.",
+      "action": "Envisagez de promouvoir cette page."
+    },
+    "site_health_issue": {
+      "title": "Problème de santé du site",
+      "explanation": "{{count}} problèmes détectés sur votre site.",
+      "action": "Consultez la page Monitoring."
+    }
   }
 }

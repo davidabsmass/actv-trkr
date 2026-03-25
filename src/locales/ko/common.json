@@ -485,5 +485,100 @@
     "somethingWentWrong": "문제가 발생했습니다",
     "tryAgain": "재시도",
     "pageError": "이 페이지에서 오류가 발생했습니다. 재시도를 클릭하거나 다른 페이지로 이동하세요."
+  },
+  "findings": {
+    "category": {
+      "Traffic": "트래픽",
+      "Conversion": "전환",
+      "Engagement": "참여",
+      "SEO": "SEO",
+      "SiteHealth": "사이트 건강",
+      "LeadTracking": "리드 추적"
+    },
+    "severity": {
+      "high": "높음",
+      "medium": "보통",
+      "low": "낮음"
+    },
+    "metricCurrent": "현재",
+    "metricPrevious": "이전",
+    "metricChange": "변화",
+    "metricViews": "조회수",
+    "metricLeads": "리드",
+    "metricCvr": "CVR",
+    "metricExits": "이탈수",
+    "metricExitRate": "이탈률",
+    "metricDesktopCvr": "데스크톱 CVR",
+    "metricMobileCvr": "모바일 CVR",
+    "metricStarts": "시작수",
+    "metricSubmissions": "제출수",
+    "metricAbandonRate": "포기율",
+    "metricCount": "건수",
+    "traffic_up": {
+      "title": "트래픽 증가 중",
+      "explanation": "세션이 이전 기간 대비 {{change}}% 증가했습니다."
+    },
+    "traffic_down": {
+      "title": "트래픽 감소",
+      "explanation": "세션이 이전 기간 대비 {{change}}% 감소했습니다.",
+      "action": "주요 랜딩 페이지와 트래픽 소스를 확인하세요."
+    },
+    "lead_growth": {
+      "title": "리드 수 증가",
+      "explanation": "리드가 이전 기간 대비 {{change}}% 증가했습니다."
+    },
+    "lead_drop": {
+      "title": "리드 감소",
+      "explanation": "리드가 이전 기간 대비 {{change}}% 감소했습니다.",
+      "action": "폼 건강 상태와 주요 소스를 확인하세요."
+    },
+    "conversion_gain": {
+      "title": "전환율 개선",
+      "explanation": "전환율이 이전 기간 대비 {{change}}% 개선되었습니다."
+    },
+    "conversion_drop": {
+      "title": "전환율 하락",
+      "explanation": "전환율이 이전 기간 대비 {{change}}% 하락했습니다.",
+      "action": "랜딩 페이지와 폼 경험을 확인하세요."
+    },
+    "high_exit_rate": {
+      "title": "높은 이탈률",
+      "explanation": "{{page}}의 이탈률은 {{exitRate}}입니다.",
+      "action": "페이지 콘텐츠와 CTA를 검토하세요."
+    },
+    "mobile_dropoff": {
+      "title": "모바일 사용자 전환율 낮음",
+      "explanation": "모바일 전환율이 데스크톱보다 현저히 낮습니다.",
+      "action": "주요 페이지의 모바일 경험을 검토하세요."
+    },
+    "form_abandonment": {
+      "title": "높은 폼 포기율",
+      "explanation": "\"{{name}}\"의 포기율은 {{abandonRate}}입니다.",
+      "action": "필드를 단순화하거나 오류를 확인하세요."
+    },
+    "seo_visibility_gain": {
+      "title": "SEO 점수 개선",
+      "explanation": "SEO 점수가 {{previous}}에서 {{current}}로 개선되었습니다."
+    },
+    "seo_visibility_loss": {
+      "title": "SEO 점수 하락",
+      "explanation": "SEO 점수가 {{previous}}에서 {{current}}로 하락했습니다.",
+      "action": "SEO 스캔을 실행하여 새로운 문제를 파악하세요."
+    },
+    "high_intent_low_performance": {
+      "title": "높은 트래픽, 낮은 전환",
+      "explanation": "{{page}}은 많은 트래픽을 받지만 평균 이하로 전환됩니다.",
+      "action": "CTA 배치와 페이지 명확성을 검토하세요."
+    },
+    "strong_engagement_low_visibility": {
+      "title": "높은 참여, 낮은 노출",
+      "explanation": "{{page}}은 참여도가 높지만 트래픽이 적습니다.",
+      "action": "이 페이지 홍보를 고려하세요."
+    },
+    "site_health_issue": {
+      "title": "사이트 건강 문제",
+      "explanation": "{{count}}개의 문제가 감지되었습니다.",
+      "action": "모니터링 페이지에서 자세한 내용을 확인하세요."
+    }
   }
 }

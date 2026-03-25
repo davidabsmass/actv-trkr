@@ -485,5 +485,100 @@
     "somethingWentWrong": "حدث خطأ ما",
     "tryAgain": "إعادة المحاولة",
     "pageError": "واجهت هذه الصفحة خطأ. انقر إعادة المحاولة أو انتقل إلى صفحة أخرى."
+  },
+  "findings": {
+    "category": {
+      "Traffic": "حركة المرور",
+      "Conversion": "التحويل",
+      "Engagement": "التفاعل",
+      "SEO": "SEO",
+      "SiteHealth": "صحة الموقع",
+      "LeadTracking": "تتبع العملاء المحتملين"
+    },
+    "severity": {
+      "high": "عالية",
+      "medium": "متوسطة",
+      "low": "منخفضة"
+    },
+    "metricCurrent": "حالي",
+    "metricPrevious": "سابق",
+    "metricChange": "التغيير",
+    "metricViews": "المشاهدات",
+    "metricLeads": "العملاء المحتملون",
+    "metricCvr": "معدل التحويل",
+    "metricExits": "المغادرات",
+    "metricExitRate": "معدل المغادرة",
+    "metricDesktopCvr": "معدل تحويل سطح المكتب",
+    "metricMobileCvr": "معدل تحويل الجوال",
+    "metricStarts": "البدايات",
+    "metricSubmissions": "الإرسالات",
+    "metricAbandonRate": "معدل التخلي",
+    "metricCount": "العدد",
+    "traffic_up": {
+      "title": "حركة المرور في ازدياد",
+      "explanation": "زادت الجلسات بنسبة {{change}}% مقارنة بالفترة السابقة."
+    },
+    "traffic_down": {
+      "title": "انخفضت حركة المرور",
+      "explanation": "انخفضت الجلسات بنسبة {{change}}% مقارنة بالفترة السابقة.",
+      "action": "راجع الصفحات الرئيسية ومصادر حركة المرور."
+    },
+    "lead_growth": {
+      "title": "زيادة عدد العملاء المحتملين",
+      "explanation": "زاد العملاء المحتملون بنسبة {{change}}% مقارنة بالفترة السابقة."
+    },
+    "lead_drop": {
+      "title": "انخفاض العملاء المحتملين",
+      "explanation": "انخفض العملاء المحتملون بنسبة {{change}}% مقارنة بالفترة السابقة.",
+      "action": "تحقق من صحة النماذج والمصادر الرئيسية."
+    },
+    "conversion_gain": {
+      "title": "تحسن معدل التحويل",
+      "explanation": "تحسن معدل التحويل بنسبة {{change}}% مقارنة بالفترة السابقة."
+    },
+    "conversion_drop": {
+      "title": "انخفاض معدل التحويل",
+      "explanation": "انخفض معدل التحويل بنسبة {{change}}% مقارنة بالفترة السابقة.",
+      "action": "راجع صفحات الهبوط وتجربة النماذج."
+    },
+    "high_exit_rate": {
+      "title": "معدل مغادرة مرتفع",
+      "explanation": "{{page}} لديها معدل مغادرة {{exitRate}}.",
+      "action": "راجع محتوى الصفحة ودعوات العمل."
+    },
+    "mobile_dropoff": {
+      "title": "مستخدمو الجوال يحولون أقل",
+      "explanation": "معدل تحويل الجوال أقل بكثير من سطح المكتب.",
+      "action": "راجع تجربة الجوال في الصفحات الرئيسية."
+    },
+    "form_abandonment": {
+      "title": "معدل تخلي مرتفع عن النموذج",
+      "explanation": "\"{{name}}\" لديه معدل تخلي {{abandonRate}}.",
+      "action": "بسّط حقول النموذج أو تحقق من الأخطاء."
+    },
+    "seo_visibility_gain": {
+      "title": "تحسن نقاط SEO",
+      "explanation": "ارتفعت نقاط SEO من {{previous}} إلى {{current}}."
+    },
+    "seo_visibility_loss": {
+      "title": "انخفاض نقاط SEO",
+      "explanation": "انخفضت نقاط SEO من {{previous}} إلى {{current}}.",
+      "action": "قم بتشغيل فحص SEO لتحديد المشاكل الجديدة."
+    },
+    "high_intent_low_performance": {
+      "title": "حركة مرور عالية، تحويلات منخفضة",
+      "explanation": "{{page}} تحصل على حركة مرور كبيرة لكن التحويل أقل من المتوسط.",
+      "action": "راجع موضع CTA ووضوح الصفحة."
+    },
+    "strong_engagement_low_visibility": {
+      "title": "تفاعل عالي، ظهور منخفض",
+      "explanation": "{{page}} لديها تفاعل عالي لكن حركة مرور قليلة.",
+      "action": "فكر في الترويج لهذه الصفحة."
+    },
+    "site_health_issue": {
+      "title": "مشكلة في صحة الموقع",
+      "explanation": "تم اكتشاف {{count}} مشكلة في موقعك.",
+      "action": "تحقق من صفحة المراقبة للتفاصيل."
+    }
   }
 }

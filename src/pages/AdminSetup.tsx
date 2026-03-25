@@ -5,19 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { format } from "date-fns";
 import { Shield, ChevronLeft, Download, Search, Filter, Eye } from "lucide-react";
-
-const focusLabels: Record<string, string> = {
-  lead_volume: "📈 Grow Lead Volume",
-  marketing_impact: "💰 Marketing Impact",
-  conversion_performance: "🎯 Conversion Performance",
-  paid_optimization: "✂️ Paid Optimization",
-  get_more_leads: "📈 Get More Leads",
-  prove_roi: "💰 Prove ROI",
-  improve_conversion: "🎯 Improve Conversion",
-  reduce_ad_waste: "✂️ Reduce Ad Waste",
-};
+import { useTranslation } from "react-i18next";
 
 export default function AdminSetup() {
+  const { t } = useTranslation();
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
@@ -27,6 +18,17 @@ export default function AdminSetup() {
   const [logPage, setLogPage] = useState(0);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const LOG_PAGE_SIZE = 20;
+
+  const focusLabels: Record<string, string> = {
+    lead_volume: t("admin.growLeadVolume"),
+    marketing_impact: t("admin.marketingImpactLabel"),
+    conversion_performance: t("admin.conversionPerformanceLabel"),
+    paid_optimization: t("admin.paidOptimizationLabel"),
+    get_more_leads: t("admin.getMoreLeads"),
+    prove_roi: t("admin.proveRoi"),
+    improve_conversion: t("admin.improveConversion"),
+    reduce_ad_waste: t("admin.reduceAdWaste"),
+  };
 
   // Fetch all orgs + settings + sites
   const { data: orgsData } = useQuery({
@@ -69,7 +71,6 @@ export default function AdminSetup() {
     },
   });
 
-  // Selected org detail data
   const { data: onboardingResponse } = useQuery({
     queryKey: ["admin_onboarding", selectedOrg],
     queryFn: async () => {
@@ -103,7 +104,6 @@ export default function AdminSetup() {
     enabled: !!selectedOrg,
   });
 
-  // Build enriched org list
   const enrichedOrgs = useMemo(() => {
     if (!orgsData) return [];
     const settingsMap: Record<string, any> = {};
@@ -151,7 +151,6 @@ export default function AdminSetup() {
 
   const [activeTab, setActiveTab] = useState<"answers" | "log" | "exports">("answers");
 
-  // Admin guard (after all hooks)
   if (!isAdmin) {
     navigate("/dashboard");
     return null;
@@ -162,12 +161,11 @@ export default function AdminSetup() {
     return (
       <div>
         <button onClick={() => setSelectedOrg(null)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-          <ChevronLeft className="h-4 w-4" /> Back to Sites
+          <ChevronLeft className="h-4 w-4" /> {t("admin.backToSites")}
         </button>
         <h1 className="text-xl font-bold text-foreground mb-1">{selectedOrgName}</h1>
-        <p className="text-sm text-muted-foreground mb-6">Setup & input audit trail</p>
+        <p className="text-sm text-muted-foreground mb-6">{t("admin.auditTrail")}</p>
 
-        {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-border">
           {(["answers", "log", "exports"] as const).map((tab) => (
             <button
@@ -175,7 +173,7 @@ export default function AdminSetup() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
-              {tab === "answers" ? "Onboarding Answers" : tab === "log" ? "Change Log" : "Exports"}
+              {tab === "answers" ? t("admin.onboardingAnswers") : tab === "log" ? t("admin.changeLog") : t("admin.exports")}
             </button>
           ))}
         </div>
@@ -185,43 +183,43 @@ export default function AdminSetup() {
             <div className="glass-card p-5 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Primary Focus</p>
-                  <p className="text-sm font-medium text-foreground">{focusLabels[selectedSettings?.primary_focus || selectedSettings?.primary_goal] || "Not set"}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("admin.primaryFocus")}</p>
+                  <p className="text-sm font-medium text-foreground">{focusLabels[selectedSettings?.primary_focus || selectedSettings?.primary_goal] || t("admin.notSet")}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Onboarding</p>
-                  <p className="text-sm font-medium text-foreground">{selectedSettings?.onboarding_completed ? "✅ Complete" : "⏳ Incomplete"}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("admin.onboarding")}</p>
+                  <p className="text-sm font-medium text-foreground">{selectedSettings?.onboarding_completed ? `✅ ${t("admin.complete")}` : `⏳ ${t("admin.incomplete")}`}</p>
                 </div>
               </div>
               {onboardingResponse && (
                 <>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Completed At</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("admin.completedAt")}</p>
                     <p className="text-sm text-foreground">{format(new Date(onboardingResponse.completed_at), "PPp")}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Lead Forms</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("admin.leadForms")}</p>
                     <div className="space-y-1">
                       {(onboardingResponse.selected_forms_json as any[])?.map((f: any, i: number) => (
                         <p key={i} className="text-xs text-foreground">
-                          Form {f.form_id?.slice(0, 8)}… — {f.counts_as_lead ? "✅ Lead" : "❌ Not lead"} — ${f.estimated_value || 0}
+                          Form {f.form_id?.slice(0, 8)}… — {f.counts_as_lead ? `✅ ${t("admin.lead")}` : `❌ ${t("admin.notLead")}`} — ${f.estimated_value || 0}
                         </p>
-                      )) || <p className="text-xs text-muted-foreground">No form data</p>}
+                      )) || <p className="text-xs text-muted-foreground">{t("admin.noFormData")}</p>}
                     </div>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Notification Prefs</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{t("admin.notificationPrefs")}</p>
                     <p className="text-xs text-foreground">{JSON.stringify(onboardingResponse.notification_prefs_json)}</p>
                   </div>
                   <button
                     onClick={() => exportJSON(onboardingResponse, `onboarding-${selectedOrg}.json`)}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
                   >
-                    <Download className="h-3 w-3" /> Export JSON
+                    <Download className="h-3 w-3" /> {t("admin.exportJson")}
                   </button>
                 </>
               )}
-              {!onboardingResponse && <p className="text-sm text-muted-foreground">No onboarding data recorded yet.</p>}
+              {!onboardingResponse && <p className="text-sm text-muted-foreground">{t("admin.noOnboardingData")}</p>}
             </div>
           </div>
         )}
@@ -232,9 +230,9 @@ export default function AdminSetup() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-2 text-xs font-medium text-muted-foreground">Date/Time</th>
-                    <th className="text-left py-2 text-xs font-medium text-muted-foreground">Event Type</th>
-                    <th className="text-left py-2 text-xs font-medium text-muted-foreground">Details</th>
+                    <th className="text-left py-2 text-xs font-medium text-muted-foreground">{t("admin.dateTime")}</th>
+                    <th className="text-left py-2 text-xs font-medium text-muted-foreground">{t("admin.eventType")}</th>
+                    <th className="text-left py-2 text-xs font-medium text-muted-foreground">{t("admin.details")}</th>
                     <th className="text-right py-2 text-xs font-medium text-muted-foreground"></th>
                   </tr>
                 </thead>
@@ -265,36 +263,36 @@ export default function AdminSetup() {
                     </>
                   ))}
                   {(!orgEvents || orgEvents.length === 0) && (
-                    <tr><td colSpan={4} className="py-4 text-center text-sm text-muted-foreground">No events logged yet.</td></tr>
+                    <tr><td colSpan={4} className="py-4 text-center text-sm text-muted-foreground">{t("admin.noEventsYet")}</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
             <div className="flex items-center gap-2">
-              <button disabled={logPage === 0} onClick={() => setLogPage((p) => p - 1)} className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground rounded disabled:opacity-50">Prev</button>
-              <span className="text-xs text-muted-foreground">Page {logPage + 1}</span>
-              <button onClick={() => setLogPage((p) => p + 1)} className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground rounded disabled:opacity-50" disabled={!orgEvents || orgEvents.length < LOG_PAGE_SIZE}>Next</button>
+              <button disabled={logPage === 0} onClick={() => setLogPage((p) => p - 1)} className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground rounded disabled:opacity-50">{t("admin.prev")}</button>
+              <span className="text-xs text-muted-foreground">{t("admin.page", { page: logPage + 1 })}</span>
+              <button onClick={() => setLogPage((p) => p + 1)} className="px-3 py-1 text-xs font-medium bg-secondary text-secondary-foreground rounded disabled:opacity-50" disabled={!orgEvents || orgEvents.length < LOG_PAGE_SIZE}>{t("admin.next")}</button>
             </div>
           </div>
         )}
 
         {activeTab === "exports" && (
           <div className="glass-card p-5 space-y-3">
-            <p className="text-sm text-muted-foreground">Download audit data for this organization.</p>
+            <p className="text-sm text-muted-foreground">{t("admin.downloadAuditData")}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => onboardingResponse && exportCSV([onboardingResponse], `onboarding-${selectedOrg}.csv`)}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
                 disabled={!onboardingResponse}
               >
-                <Download className="h-3 w-3" /> Onboarding CSV
+                <Download className="h-3 w-3" /> {t("admin.onboardingCsv")}
               </button>
               <button
                 onClick={() => orgEvents && exportCSV(orgEvents, `events-${selectedOrg}.csv`)}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
                 disabled={!orgEvents || orgEvents.length === 0}
               >
-                <Download className="h-3 w-3" /> Events CSV
+                <Download className="h-3 w-3" /> {t("admin.eventsCsv")}
               </button>
             </div>
           </div>
@@ -308,18 +306,17 @@ export default function AdminSetup() {
     <div>
       <div className="flex items-center gap-2 mb-1">
         <Shield className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold text-foreground">Setup & Inputs</h1>
+        <h1 className="text-xl font-bold text-foreground">{t("admin.setupInputs")}</h1>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Admin overview of all onboarding answers and user input events.</p>
+      <p className="text-sm text-muted-foreground mb-6">{t("admin.setupInputsDesc")}</p>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search organizations…"
+            placeholder={t("admin.searchOrganizations")}
             className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
@@ -328,33 +325,32 @@ export default function AdminSetup() {
           onChange={(e) => setFilterFocus(e.target.value)}
           className="px-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground"
         >
-          <option value="">All Focus Types</option>
-          <option value="lead_volume">Lead Volume</option>
-          <option value="marketing_impact">Marketing Impact</option>
-          <option value="conversion_performance">Conversion Performance</option>
-          <option value="paid_optimization">Paid Optimization</option>
+          <option value="">{t("admin.allFocusTypes")}</option>
+          <option value="lead_volume">{t("admin.leadVolume")}</option>
+          <option value="marketing_impact">{t("admin.marketingImpact")}</option>
+          <option value="conversion_performance">{t("admin.conversionPerformance")}</option>
+          <option value="paid_optimization">{t("admin.paidOptimization")}</option>
         </select>
         <select
           value={filterOnboarding}
           onChange={(e) => setFilterOnboarding(e.target.value)}
           className="px-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground"
         >
-          <option value="">All Onboarding</option>
-          <option value="complete">Complete</option>
-          <option value="incomplete">Incomplete</option>
+          <option value="">{t("admin.allOnboarding")}</option>
+          <option value="complete">{t("admin.complete")}</option>
+          <option value="incomplete">{t("admin.incomplete")}</option>
         </select>
       </div>
 
-      {/* Table */}
       <div className="glass-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Organization</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Domain</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Focus</th>
-              <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">Onboarded</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">Last Change</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.organization")}</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">{t("admin.domain")}</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.focus")}</th>
+              <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.onboarded")}</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">{t("admin.lastChange")}</th>
               <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground"></th>
             </tr>
           </thead>
@@ -377,12 +373,12 @@ export default function AdminSetup() {
                   {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="text-xs text-primary">View →</span>
+                  <span className="text-xs text-primary">{t("admin.view")}</span>
                 </td>
               </tr>
             ))}
             {enrichedOrgs.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No organizations found.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("admin.noOrgsFound")}</td></tr>
             )}
           </tbody>
         </table>

@@ -36,7 +36,21 @@ function changeHtml(change: number | null): string {
 
 // ── Build the HTML string that mirrors MonthlyPerformanceViewer ──
 
-function buildReportHtml(report: any): string {
+interface WhiteLabelConfig {
+  primary_color?: string;
+  secondary_color?: string;
+  accent_color?: string;
+  client_name?: string;
+  logo_url?: string;
+  hide_actv_branding?: boolean;
+}
+
+function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
+  const brandPrimary = wl?.primary_color || "#635bff";
+  const brandSecondary = wl?.secondary_color || "#9449e0";
+  const brandGradientStart = wl?.primary_color || "#6d5dd4";
+  const brandName = wl?.hide_actv_branding ? (wl?.client_name || "") : "ACTV TRKR";
+  const brandAccent = wl?.accent_color || brandPrimary;
   const es = report.executiveSummary;
   const ge = report.growthEngine;
   const ci = report.conversionIntelligence;

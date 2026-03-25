@@ -357,16 +357,18 @@ function ActivityReportsTab() {
   const downloadReport = async (run: any) => {
     if (!run.file_path) return;
     try {
-      // Fetch report JSON and white-label settings in parallel
       const { data, error } = await supabase.storage.from("reports").createSignedUrl(run.file_path, 60);
       if (error) throw error;
-      const [resp, wlResult] = await Promise.all([
+      const userId = session?.user?.id;
+      const [resp, wlResult, tplResult] = await Promise.all([
         fetch(data.signedUrl),
         orgId ? supabase.from("white_label_settings").select("*").eq("org_id", orgId).maybeSingle() : Promise.resolve({ data: null }),
+        orgId && userId ? supabase.from("report_custom_templates" as any).select("sections_config").eq("user_id", userId).eq("org_id", orgId).order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       const report = await resp.json();
+      const tplConfig = (tplResult.data as any)?.sections_config || null;
       const { buildReportPdf } = await import("@/lib/report-pdf");
-      const doc = await buildReportPdf(report, run, wlResult.data);
+      const doc = await buildReportPdf(report, run, wlResult.data, tplConfig);
       doc.save(`report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF downloaded");
     } catch { toast.error("Failed to download"); }

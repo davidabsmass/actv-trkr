@@ -78,7 +78,7 @@ export default function Security() {
           <CardContent className="py-12 text-center">
             <ShieldAlert className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
-              Connect a site in Settings to enable security monitoring.
+              {t("security.connectSite")}
             </p>
           </CardContent>
         </Card>
@@ -88,15 +88,15 @@ export default function Security() {
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="rounded-lg border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{events?.length ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Total Events</p>
+              <p className="text-xs text-muted-foreground">{t("security.totalEvents")}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4 text-center">
               <p className={`text-2xl font-bold ${criticalCount > 0 ? "text-destructive" : "text-foreground"}`}>{criticalCount}</p>
-              <p className="text-xs text-muted-foreground">Critical</p>
+              <p className="text-xs text-muted-foreground">{t("security.critical")}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4 text-center">
               <p className={`text-2xl font-bold ${warningCount > 0 ? "text-warning" : "text-foreground"}`}>{warningCount}</p>
-              <p className="text-xs text-muted-foreground">Warnings</p>
+              <p className="text-xs text-muted-foreground">{t("security.warnings")}</p>
             </div>
           </div>
 
@@ -106,12 +106,12 @@ export default function Security() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Lock className="h-4 w-4 text-primary" />
-                  Login Attempt Alerts
+                  {t("security.loginAlerts")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Failed login attempts, brute force activity, and new IP logins.
+                  {t("security.loginAlertsDesc")}
                 </p>
 
                 {isLoading ? (
@@ -119,9 +119,9 @@ export default function Security() {
                 ) : loginEvents.length === 0 ? (
                   <div className="rounded-lg border border-border bg-muted/30 p-6 text-center">
                     <CheckCircle className="h-6 w-6 text-success mx-auto mb-2" />
-                    <p className="text-sm font-medium text-foreground mb-1">No login alerts</p>
+                    <p className="text-sm font-medium text-foreground mb-1">{t("security.noLoginAlerts")}</p>
                     <p className="text-xs text-muted-foreground">
-                      No suspicious login activity detected. The plugin monitors failed attempts automatically.
+                      {t("security.noSuspiciousActivity")}
                     </p>
                   </div>
                 ) : (
@@ -151,11 +151,11 @@ export default function Security() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>Alerts trigger after 5+ failed login attempts within 10 minutes</span>
+                    <span>{t("security.alertsAfterFailed")}</span>
                   </div>
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>Successful logins from new IPs are flagged for review</span>
+                    <span>{t("security.newIpFlagged")}</span>
                   </div>
                 </div>
               </CardContent>
@@ -166,12 +166,12 @@ export default function Security() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileWarning className="h-4 w-4 text-primary" />
-                  File Change Detection
+                  {t("security.fileChangeDetection")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Unexpected file modifications in WordPress core, theme, and plugin files.
+                  {t("security.fileChangeDesc")}
                 </p>
 
                 {isLoading ? (
@@ -179,9 +179,9 @@ export default function Security() {
                 ) : fileEvents.length === 0 ? (
                   <div className="rounded-lg border border-border bg-muted/30 p-6 text-center">
                     <CheckCircle className="h-6 w-6 text-success mx-auto mb-2" />
-                    <p className="text-sm font-medium text-foreground mb-1">No file changes detected</p>
+                    <p className="text-sm font-medium text-foreground mb-1">{t("security.noFileChanges")}</p>
                     <p className="text-xs text-muted-foreground">
-                      File integrity scans run daily. No unexpected modifications found.
+                      {t("security.fileIntegrityDesc")}
                     </p>
                   </div>
                 ) : (
@@ -210,11 +210,11 @@ export default function Security() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>Scans core files, active theme, and plugin directories daily</span>
+                    <span>{t("security.scansDaily")}</span>
                   </div>
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>Alerts on new, modified, or deleted files outside normal update cycles</span>
+                    <span>{t("security.alertsOnChanges")}</span>
                   </div>
                 </div>
               </CardContent>

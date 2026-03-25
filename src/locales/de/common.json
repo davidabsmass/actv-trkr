@@ -620,7 +620,7 @@
     "siteRemoved": "Seite entfernt",
     "siteRemovedDesc": "{{domain}} wurde entfernt.",
     "removeSiteConfirm": "{{domain}} entfernen? Historische Daten werden nicht gelöscht.",
-    "noSitesInstallPlugin": "Klicken Sie oben auf „Seite hinzufügen" oder installieren Sie das WordPress-Plugin. Die Seite erscheint hier nach der Registrierung.",
+    "noSitesInstallPlugin": "Klicken Sie oben auf „Seite hinzufügen“ oder installieren Sie das WordPress-Plugin. Die Seite erscheint hier nach der Registrierung.",
     "versionUnknown": "Version unbekannt",
     "connected": "verbunden",
     "generating": "Wird generiert…",

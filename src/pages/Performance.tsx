@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { format, subDays, startOfDay } from "date-fns";
+import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
 import { useSearchParams } from "react-router-dom";
 import { TrendsChart } from "@/components/dashboard/TrendsChart";
 import { AttributionSection } from "@/components/dashboard/AttributionSection";
@@ -35,6 +36,8 @@ const Performance = () => {
     : format(subDays(startOfDay(new Date()), days ?? 30), "yyyy-MM-dd");
 
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
+  // Use the same overview hook as Dashboard for consistent top-level KPIs
+  const { data: overviewData } = useDashboardOverview(orgId, startDate, endDate);
 
   const isLoading = !realtimeData;
 
@@ -51,7 +54,11 @@ const Performance = () => {
       };
     }
 
-    const { totalPageviews, totalSessions, totalLeads, dailyMap, sources, campaigns, pages } = realtimeData;
+    // Use overview counts for top-level KPIs (same source as Dashboard)
+    const totalSessions = overviewData?.totalSessions ?? realtimeData.totalSessions;
+    const totalLeads = overviewData?.totalLeads ?? realtimeData.totalLeads;
+    const totalPageviews = overviewData?.totalPageviews ?? realtimeData.totalPageviews;
+    const { dailyMap, sources, campaigns, pages } = realtimeData;
     const cvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
 
     const dailyData = Object.entries(dailyMap)
@@ -77,7 +84,7 @@ const Performance = () => {
       },
       dailyData, sources, campaigns, pages, opportunities,
     };
-  }, [isLoading, realtimeData]);
+  }, [isLoading, realtimeData, overviewData]);
 
   // Focus-aware section ordering
   const renderSections = () => {

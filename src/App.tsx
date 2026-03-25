@@ -29,7 +29,16 @@ import GetStarted from "./pages/GetStarted";
 
 import Index from "./pages/Index";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,   // data stays fresh for 2 minutes
+      gcTime: 10 * 60 * 1000,     // cache kept for 10 minutes
+      refetchOnWindowFocus: false, // don't refetch just because tab regained focus
+      retry: 1,
+    },
+  },
+});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();

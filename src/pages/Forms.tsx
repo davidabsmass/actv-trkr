@@ -331,6 +331,7 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
 }
 export default function Forms() {
   const { orgId, orgName } = useOrg();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();

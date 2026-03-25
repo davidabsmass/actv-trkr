@@ -27,6 +27,7 @@ type ExportFormat = "csv" | "xlsx";
 
 export default function Exports() {
   const { orgId, orgName } = useOrg();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { session } = useAuth();
   const queryClient = useQueryClient();

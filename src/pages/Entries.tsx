@@ -52,6 +52,7 @@ const weightLabels: Record<string, string> = {
 
 export default function Entries() {
   const { orgId, orgName } = useOrg();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);

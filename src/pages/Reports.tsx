@@ -293,6 +293,7 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
 
 // ── Activity Reports Sub-Tab (moved from old Reports page) ──
 function ActivityReportsTab() {
+  const { t } = useTranslation();
   const { orgId, orgName } = useOrg();
   const { session } = useAuth();
   const queryClient = useQueryClient();

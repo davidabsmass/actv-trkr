@@ -561,12 +561,14 @@ export default function Reports() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "overview";
+  const activeTab = searchParams.get("reportTab") || "overview";
   const [exportDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [exportDateTo] = useState<Date>(new Date());
 
   const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value }, { replace: true });
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("reportTab", value);
+    setSearchParams(newParams, { replace: true });
   };
 
   const generateQuickReport = useMutation({
@@ -581,7 +583,9 @@ export default function Reports() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report_runs"] });
       toast.success(t("reports.reportGenStarted"));
-      setSearchParams({ tab: "activity" }, { replace: true });
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set("reportTab", "activity");
+      setSearchParams(newParams, { replace: true });
     },
     onError: (err: any) => toast.error(err.message || "Failed to generate report"),
   });

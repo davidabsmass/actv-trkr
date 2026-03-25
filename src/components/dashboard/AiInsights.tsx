@@ -214,7 +214,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
           <button
             onClick={handleManualRefresh}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
           >
             {isLoading ? (
               <RefreshCw className="h-3 w-3 animate-spin" />
@@ -226,7 +226,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         )}
 
         {phase === "exhausted" && insights && (
-          <span className="text-[10px] text-muted-foreground/60 font-medium">
+          <span className="text-xs text-muted-foreground/60 font-medium">
             Refreshes again tomorrow
           </span>
         )}
@@ -238,7 +238,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             <Sparkles className="h-3.5 w-3.5 text-primary/60" />
             <span className="text-xs font-medium text-foreground">All caught up!</span>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             You've used all your AI insights for today. Fresh insights will be ready for you tomorrow morning. ☕
           </p>
         </div>
@@ -255,9 +255,9 @@ export function AiInsights({ metrics }: AiInsightsProps) {
       ) : insights ? (
         <>
           {isLoading && (
-            <div className="mb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-              <RefreshCw className="h-3 w-3 animate-spin" />
-              Refreshing insights…
+             <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+               <RefreshCw className="h-3 w-3 animate-spin" />
+               Refreshing insights…
             </div>
           )}
           <div className="mb-5">
@@ -267,23 +267,23 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             <div>
               <div className="flex items-center gap-1.5 mb-3">
                 <Lightbulb className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                   Recommended Actions
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {insights.suggestions.map((s, i) => {
                   const config = priorityConfig[s.priority];
                   return (
                     <div
                       key={i}
-                      className={`rounded-lg border p-3 ${config.bg} ${config.border} transition-colors`}
+                      className={`rounded-lg border p-4 ${config.bg} ${config.border} transition-colors`}
                     >
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-                        <span className="text-xs font-semibold text-foreground">{s.title}</span>
+                        <span className="text-sm font-semibold text-foreground">{s.title}</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
                         {s.description}
                       </p>
                     </div>

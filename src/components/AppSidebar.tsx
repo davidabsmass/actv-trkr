@@ -9,7 +9,9 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import { NotificationBell } from "@/components/NotificationBell";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
+import { useTranslation } from "react-i18next";
 
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -22,19 +24,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 interface NavItem {
-  title: string;
+  titleKey: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 const telemetryItems: NavItem[] = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Performance", url: "/performance", icon: TrendingUp },
-  { title: "Reports", url: "/reports", icon: FileText },
-  { title: "Forms", url: "/forms", icon: TableProperties },
-  { title: "SEO", url: "/seo", icon: Search },
-  { title: "Monitoring", url: "/monitoring", icon: Activity },
-  { title: "Security", url: "/security", icon: ShieldAlert },
+  { titleKey: "sidebar.dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { titleKey: "sidebar.performance", url: "/performance", icon: TrendingUp },
+  { titleKey: "sidebar.reports", url: "/reports", icon: FileText },
+  { titleKey: "sidebar.forms", url: "/forms", icon: TableProperties },
+  { titleKey: "sidebar.seo", url: "/seo", icon: Search },
+  { titleKey: "sidebar.monitoring", url: "/monitoring", icon: Activity },
+  { titleKey: "sidebar.security", url: "/security", icon: ShieldAlert },
 ];
 
 export function AppSidebar() {
@@ -42,6 +44,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
+  const { t } = useTranslation();
 
   return (
     <Sidebar className="border-r-0 [&>[data-sidebar=sidebar]]:bg-transparent" style={{ background: "var(--sidebar-gradient)" }}>
@@ -49,13 +52,13 @@ export function AppSidebar() {
         <div className="mb-1">
           <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto" />
         </div>
-        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-4">Beta</span>
+        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-4">{t("sidebar.beta")}</span>
 
         {orgs.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-white/15 rounded-md text-white hover:bg-white/25 transition-colors">
-                <span className="truncate">{orgName ?? "Select org"}</span>
+                <span className="truncate">{orgName ?? t("sidebar.selectOrg")}</span>
                 <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 text-white/60" />
               </button>
             </DropdownMenuTrigger>
@@ -81,13 +84,13 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-wider text-white/50 px-4">
-            Dashboard
+            {t("sidebar.dashboard")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {telemetryItems.map((item) => {
                 return (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.titleKey}>
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={item.url}
@@ -95,7 +98,7 @@ export function AppSidebar() {
                         activeClassName="bg-white/20 text-white font-medium"
                       >
                         <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
+                        <span>{t(item.titleKey)}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -109,7 +112,7 @@ export function AppSidebar() {
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs uppercase tracking-wider text-white/50 px-4">
-              Admin
+              {t("sidebar.admin")}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -121,7 +124,7 @@ export function AppSidebar() {
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Users className="h-4 w-4" />
-                      <span>Users</span>
+                      <span>{t("sidebar.users")}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -133,7 +136,7 @@ export function AppSidebar() {
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <ClipboardList className="h-4 w-4" />
-                      <span>Clients</span>
+                      <span>{t("sidebar.clients")}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -155,7 +158,7 @@ export function AppSidebar() {
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Settings className="h-4 w-4" />
-                      <span>Settings</span>
+                      <span>{t("sidebar.settings")}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -181,17 +184,18 @@ export function AppSidebar() {
                 activeClassName="bg-white/20 text-white font-medium"
               >
                 <UserCircle className="h-4 w-4" />
-                <span>Account</span>
+                <span>{t("sidebar.account")}</span>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <LanguageSwitcher variant="sidebar" />
         <button
           onClick={signOut}
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />
-          <span>Sign Out</span>
+          <span>{t("sidebar.signOut")}</span>
         </button>
       </SidebarFooter>
     </Sidebar>

@@ -125,27 +125,47 @@ export default function Security() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {loginEvents.slice(0, 20).map(evt => {
-                      const Icon = severityIcons[evt.severity] || Eye;
-                      const details = (evt.details || {}) as Record<string, any>;
-                      return (
-                        <div key={evt.id} className={`rounded-md border p-3 ${severityStyles[evt.severity] || severityStyles.info}`}>
-                          <div className="flex items-start gap-2">
-                            <Icon className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium">{evt.title}</p>
-                              <div className="flex items-center gap-3 mt-1 text-xs opacity-80">
-                                <span>{format(new Date(evt.occurred_at), "MMM d, h:mm a")}</span>
-                                {details.ip && <span>IP: {details.ip}</span>}
-                                {details.username && <span>User: {details.username}</span>}
+                  <>
+                    {loginEvents.some(e => e.event_type === "brute_force") && (
+                      <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 mb-3">
+                        <div className="flex items-start gap-2">
+                          <ShieldAlert className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-foreground mb-1.5">Brute Force Detected — Recommended Actions</p>
+                            <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
+                              <li>Install a rate-limiting or login-lockout plugin (e.g. <span className="font-medium text-foreground">Limit Login Attempts Reloaded</span> or <span className="font-medium text-foreground">Wordfence</span>)</li>
+                              <li>Enable <span className="font-medium text-foreground">two-factor authentication</span> (2FA) for all admin accounts</li>
+                              <li>Change the default <code className="text-xs bg-muted px-1 rounded">/wp-admin</code> login URL using a plugin like <span className="font-medium text-foreground">WPS Hide Login</span></li>
+                              <li>Ensure all admin passwords are <span className="font-medium text-foreground">16+ characters</span> with mixed case, numbers, and symbols</li>
+                              <li>Block the attacking IP addresses at your hosting firewall or via <code className="text-xs bg-muted px-1 rounded">.htaccess</code></li>
+                              <li>Consider enabling <span className="font-medium text-foreground">Cloudflare</span> or a WAF to filter malicious traffic upstream</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {loginEvents.slice(0, 20).map(evt => {
+                        const Icon = severityIcons[evt.severity] || Eye;
+                        const details = (evt.details || {}) as Record<string, any>;
+                        return (
+                          <div key={evt.id} className={`rounded-md border p-3 ${severityStyles[evt.severity] || severityStyles.info}`}>
+                            <div className="flex items-start gap-2">
+                              <Icon className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium">{evt.title}</p>
+                                <div className="flex items-center gap-3 mt-1 text-xs opacity-80">
+                                  <span>{format(new Date(evt.occurred_at), "MMM d, h:mm a")}</span>
+                                  {details.ip && <span>IP: {details.ip}</span>}
+                                  {details.username && <span>User: {details.username}</span>}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
 
                 <div className="mt-4 space-y-2">

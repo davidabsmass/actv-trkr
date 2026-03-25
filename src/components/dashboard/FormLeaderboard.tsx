@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { FileText, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 
 interface DeviceData {
   [formId: string]: { desktop: number; mobile: number; tablet: number };
@@ -32,6 +33,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLeaderboardProps) {
+  const { t } = useTranslation();
   const [sortKey, setSortKey] = useState<SortKey>("submissions");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -105,34 +107,32 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
     <div className="glass-card p-6">
       <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
         <FileText className="h-4 w-4 text-primary" />
-        Form Performance Leaderboard
+        {t("dashboard.formLeaderboard")}
       </h3>
-      <p className="text-xs text-muted-foreground mb-4">Based on tracked submissions</p>
+      <p className="text-xs text-muted-foreground mb-4">{t("dashboard.formLeaderboardSub")}</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left py-2 text-xs font-medium text-muted-foreground">Form</th>
+              <th className="text-left py-2 text-xs font-medium text-muted-foreground">{t("dashboard.form")}</th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("submissions")}>
-                <span className="inline-flex items-center gap-1 justify-end">Submissions <SortIcon active={sortKey === "submissions"} dir={sortDir} /></span>
+                <span className="inline-flex items-center gap-1 justify-end">{t("dashboard.submissions")} <SortIcon active={sortKey === "submissions"} dir={sortDir} /></span>
               </th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("cvr")}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex items-center gap-1 cursor-help justify-end">
-                      Site CVR <Info className="h-3 w-3" /> <SortIcon active={sortKey === "cvr"} dir={sortDir} />
+                      {t("dashboard.siteCvr")} <Info className="h-3 w-3" /> <SortIcon active={sortKey === "cvr"} dir={sortDir} />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px] text-xs">
-                    Submissions as a percentage of total site sessions — not form-specific page views
-                  </TooltipContent>
+                  <TooltipContent side="top" className="max-w-[220px] text-xs">{t("dashboard.siteCvrTooltip")}</TooltipContent>
                 </Tooltip>
               </th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("desktop")}>
-                <span className="inline-flex items-center gap-1 justify-end">Desktop <SortIcon active={sortKey === "desktop"} dir={sortDir} /></span>
+                <span className="inline-flex items-center gap-1 justify-end">{t("dashboard.desktop")} <SortIcon active={sortKey === "desktop"} dir={sortDir} /></span>
               </th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("mobile")}>
-                <span className="inline-flex items-center gap-1 justify-end">Mobile <SortIcon active={sortKey === "mobile"} dir={sortDir} /></span>
+                <span className="inline-flex items-center gap-1 justify-end">{t("dashboard.mobile")} <SortIcon active={sortKey === "mobile"} dir={sortDir} /></span>
               </th>
             </tr>
           </thead>

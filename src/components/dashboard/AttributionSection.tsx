@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from "react-i18next";
 
 interface AttributionProps {
   sources: Array<{ source: string; sessions: number; leads: number; cvr: number }>;
@@ -28,6 +29,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 export function AttributionSection({ sources, campaigns }: AttributionProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"source" | "campaign">("source");
   const [sortKey, setSortKey] = useState<SortKey>("sessions");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -55,7 +57,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
   return (
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-foreground">Attribution</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t("dashboard.attribution")}</h3>
         <div className="flex gap-1 bg-muted rounded-md p-0.5">
           <button
             onClick={() => setTab("source")}
@@ -63,7 +65,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
               tab === "source" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Source
+            {t("dashboard.source")}
           </button>
           <button
             onClick={() => setTab("campaign")}
@@ -71,7 +73,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
               tab === "campaign" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Campaign
+            {t("dashboard.campaign")}
           </button>
         </div>
       </div>
@@ -109,8 +111,8 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: "12px" }} iconType="circle" iconSize={8} />
-              <Bar dataKey="sessions" fill="hsl(var(--chart-1))" name="Sessions" radius={[0, 3, 3, 0]} barSize={12} />
-              <Bar dataKey="leads" fill="hsl(var(--chart-2))" name="Leads" radius={[0, 3, 3, 0]} barSize={12} />
+              <Bar dataKey="sessions" fill="hsl(var(--chart-1))" name={t("dashboard.sessions")} radius={[0, 3, 3, 0]} barSize={12} />
+              <Bar dataKey="leads" fill="hsl(var(--chart-2))" name={t("dashboard.leads")} radius={[0, 3, 3, 0]} barSize={12} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -123,13 +125,13 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-2 px-2 text-muted-foreground font-medium tracking-wider sticky top-0 bg-card text-xs">
-                  {tab === "source" ? "Source" : "Campaign"}
+                  {tab === "source" ? t("dashboard.source") : t("dashboard.campaign")}
                 </th>
                 <th className={thClass} onClick={() => handleSort("sessions")}>
-                  <span className="inline-flex items-center gap-1 justify-end">Sessions <SortIcon active={sortKey === "sessions"} dir={sortDir} /></span>
+                  <span className="inline-flex items-center gap-1 justify-end">{t("dashboard.sessions")} <SortIcon active={sortKey === "sessions"} dir={sortDir} /></span>
                 </th>
                 <th className={thClass} onClick={() => handleSort("leads")}>
-                  <span className="inline-flex items-center gap-1 justify-end">Leads <SortIcon active={sortKey === "leads"} dir={sortDir} /></span>
+                  <span className="inline-flex items-center gap-1 justify-end">{t("dashboard.leads")} <SortIcon active={sortKey === "leads"} dir={sortDir} /></span>
                 </th>
                 <th className={thClass} onClick={() => handleSort("cvr")}>
                   <span className="inline-flex items-center gap-1 justify-end">CVR <SortIcon active={sortKey === "cvr"} dir={sortDir} /></span>

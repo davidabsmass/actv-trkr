@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, Layers, Timer, BarChart3 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface EngagementMetrics {
   avgTimeOnPage: number;
@@ -18,30 +19,20 @@ function formatDuration(seconds: number): string {
 }
 
 export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string | null; startDate: string; endDate: string }) {
+  const { t } = useTranslation();
+
   const { data, isLoading } = useQuery({
     queryKey: ["visitor_engagement", orgId, startDate, endDate],
     queryFn: async (): Promise<EngagementMetrics | null> => {
       if (!orgId) return null;
-
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
-
-      // Get pageviews with active_seconds
-      const { data: pvData } = await supabase
-        .from("pageviews")
-        .select("session_id, active_seconds, page_path")
-        .eq("org_id", orgId)
-        .gte("occurred_at", dayStart).lte("occurred_at", dayEnd)
-        .not("active_seconds", "is", null)
-        .limit(1000);
-
+      const { data: pvData } = await supabase.from("pageviews").select("session_id, active_seconds, page_path").eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd).not("active_seconds", "is", null).limit(1000);
       if (!pvData || pvData.length === 0) return null;
 
-      // Avg time on page
       const totalTime = pvData.reduce((sum, pv) => sum + (pv.active_seconds || 0), 0);
       const avgTimeOnPage = totalTime / pvData.length;
 
-      // Group by session for session-level metrics
       const sessionMap: Record<string, { totalTime: number; pages: number }> = {};
       pvData.forEach(pv => {
         if (!pv.session_id) return;
@@ -51,27 +42,15 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
       });
 
       const sessionEntries = Object.values(sessionMap);
-      const avgSessionDuration = sessionEntries.length > 0
-        ? sessionEntries.reduce((s, e) => s + e.totalTime, 0) / sessionEntries.length
-        : 0;
-      const pagesPerSession = sessionEntries.length > 0
-        ? sessionEntries.reduce((s, e) => s + e.pages, 0) / sessionEntries.length
-        : 0;
+      const avgSessionDuration = sessionEntries.length > 0 ? sessionEntries.reduce((s, e) => s + e.totalTime, 0) / sessionEntries.length : 0;
+      const pagesPerSession = sessionEntries.length > 0 ? sessionEntries.reduce((s, e) => s + e.pages, 0) / sessionEntries.length : 0;
 
-      // Get engagement score distribution from leads
-      const { data: leadsWithScore } = await supabase
-        .from("leads")
-        .select("engagement_score")
-        .eq("org_id", orgId)
-        .gte("submitted_at", dayStart).lte("submitted_at", dayEnd)
-        .not("engagement_score", "is", null);
+      const { data: leadsWithScore } = await supabase.from("leads").select("engagement_score").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd).not("engagement_score", "is", null);
 
       const dist = { low: 0, medium: 0, high: 0 };
       (leadsWithScore || []).forEach(l => {
         const s = l.engagement_score || 0;
-        if (s >= 70) dist.high++;
-        else if (s >= 40) dist.medium++;
-        else dist.low++;
+        if (s >= 70) dist.high++; else if (s >= 40) dist.medium++; else dist.low++;
       });
 
       return { avgTimeOnPage, avgSessionDuration, pagesPerSession, scoreDistribution: dist };
@@ -80,29 +59,22 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
   });
 
   if (isLoading) {
-    return (
-      <div className="glass-card p-6 animate-pulse">
-        <div className="h-4 bg-muted rounded w-1/3 mb-4" />
-        <div className="h-20 bg-muted rounded" />
-      </div>
-    );
+    return (<div className="glass-card p-6 animate-pulse"><div className="h-4 bg-muted rounded w-1/3 mb-4" /><div className="h-20 bg-muted rounded" /></div>);
   }
 
   if (!data) {
     return (
       <div className="glass-card p-6">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Visitor Engagement</h3>
-        <p className="text-xs text-muted-foreground text-center py-6">
-          Engagement data will appear once time-on-page tracking is active.
-        </p>
+        <h3 className="text-sm font-semibold text-foreground mb-3">{t("dashboard.visitorEngagement")}</h3>
+        <p className="text-xs text-muted-foreground text-center py-6">{t("dashboard.engagementDataPending")}</p>
       </div>
     );
   }
 
   const metrics = [
-    { label: "Avg Time on Page", value: formatDuration(data.avgTimeOnPage), icon: Clock },
-    { label: "Avg Session Duration", value: formatDuration(data.avgSessionDuration), icon: Timer },
-    { label: "Pages / Session", value: data.pagesPerSession.toFixed(1), icon: Layers },
+    { label: t("dashboard.avgTimeOnPage"), value: formatDuration(data.avgTimeOnPage), icon: Clock },
+    { label: t("dashboard.avgSessionDuration"), value: formatDuration(data.avgSessionDuration), icon: Timer },
+    { label: t("dashboard.pagesPerSession"), value: data.pagesPerSession.toFixed(1), icon: Layers },
   ];
 
   const totalScored = data.scoreDistribution.low + data.scoreDistribution.medium + data.scoreDistribution.high;
@@ -111,7 +83,7 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
     <div className="glass-card p-6 animate-slide-up">
       <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
         <BarChart3 className="h-4 w-4 text-primary" />
-        Visitor Engagement
+        {t("dashboard.visitorEngagement")}
       </h3>
       <div className="grid grid-cols-3 gap-4 mb-4">
         {metrics.map((m) => (
@@ -125,22 +97,16 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
 
       {totalScored > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-2">Engagement Score Distribution</p>
+          <p className="text-xs text-muted-foreground mb-2">{t("dashboard.engagementScoreDist")}</p>
           <div className="flex h-2 rounded-full overflow-hidden bg-muted">
-            {data.scoreDistribution.high > 0 && (
-              <div className="bg-success" style={{ width: `${(data.scoreDistribution.high / totalScored) * 100}%` }} />
-            )}
-            {data.scoreDistribution.medium > 0 && (
-              <div className="bg-warning" style={{ width: `${(data.scoreDistribution.medium / totalScored) * 100}%` }} />
-            )}
-            {data.scoreDistribution.low > 0 && (
-              <div className="bg-muted-foreground/30" style={{ width: `${(data.scoreDistribution.low / totalScored) * 100}%` }} />
-            )}
+            {data.scoreDistribution.high > 0 && <div className="bg-success" style={{ width: `${(data.scoreDistribution.high / totalScored) * 100}%` }} />}
+            {data.scoreDistribution.medium > 0 && <div className="bg-warning" style={{ width: `${(data.scoreDistribution.medium / totalScored) * 100}%` }} />}
+            {data.scoreDistribution.low > 0 && <div className="bg-muted-foreground/30" style={{ width: `${(data.scoreDistribution.low / totalScored) * 100}%` }} />}
           </div>
           <div className="flex justify-between mt-1.5 text-xs text-muted-foreground">
-            <span>Low ({data.scoreDistribution.low})</span>
-            <span>Medium ({data.scoreDistribution.medium})</span>
-            <span>High ({data.scoreDistribution.high})</span>
+            <span>{t("dashboard.low")} ({data.scoreDistribution.low})</span>
+            <span>{t("dashboard.medium")} ({data.scoreDistribution.medium})</span>
+            <span>{t("dashboard.high")} ({data.scoreDistribution.high})</span>
           </div>
         </div>
       )}

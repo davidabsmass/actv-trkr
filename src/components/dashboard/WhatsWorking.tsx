@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { CheckCircle2, TrendingUp } from "lucide-react";
 import { subDays, format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 interface PositiveFinding {
   title: string;
@@ -12,13 +13,13 @@ interface PositiveFinding {
 
 export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorking(_props, ref) {
   const { orgId } = useOrg();
+  const { t } = useTranslation();
 
   const { data: findings } = useQuery({
     queryKey: ["dashboard_positive_findings", orgId],
     queryFn: async () => {
       if (!orgId) return [];
 
-      // Try nightly summaries first
       const { data } = await supabase
         .from("nightly_summaries")
         .select("top_findings")
@@ -31,7 +32,6 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
       const positiveFromSummary = all.filter((f: any) => f.positive).slice(0, 4);
       if (positiveFromSummary.length > 0) return positiveFromSummary;
 
-      // Fallback: compute positive signals from raw data
       const now = new Date();
       const curStart = format(subDays(now, 7), "yyyy-MM-dd") + "T00:00:00Z";
       const prevStart = format(subDays(now, 14), "yyyy-MM-dd") + "T00:00:00Z";
@@ -99,7 +99,7 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
     <div ref={ref} className="glass-card p-5 animate-slide-up h-full">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-success" />
-        What's Working
+        {t("dashboard.whatsWorking")}
       </h3>
       {findings && findings.length > 0 ? (
         <div className="space-y-2.5">
@@ -116,7 +116,7 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
           ))}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">Positive signals will appear here as data is collected.</p>
+        <p className="text-xs text-muted-foreground">{t("dashboard.positiveSignals")}</p>
       )}
     </div>
   );

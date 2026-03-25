@@ -1,5 +1,6 @@
 import { TrendingDown, TrendingUp, AlertTriangle, Lightbulb, ShieldAlert, Sparkles } from "lucide-react";
 import { PrimaryFocus } from "@/hooks/use-site-settings";
+import { useTranslation } from "react-i18next";
 
 export interface SmartInsight {
   id: string;
@@ -9,7 +10,6 @@ export interface SmartInsight {
   confidence: "High" | "Medium" | "Low";
   actionLabel?: string;
   actionPath?: string;
-  /** Internal weight for focus-aware sorting */
   _weight?: number;
 }
 
@@ -32,6 +32,7 @@ interface SmartUpdatesProps {
 }
 
 export function SmartUpdates({ insights, onAction }: SmartUpdatesProps) {
+  const { t } = useTranslation();
   const visible = insights.slice(0, 5);
   if (visible.length === 0) return null;
 
@@ -39,7 +40,7 @@ export function SmartUpdates({ insights, onAction }: SmartUpdatesProps) {
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Smart Updates</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t("dashboard.smartUpdates")}</h3>
       </div>
       <div className="space-y-2">
         {visible.map((insight) => {
@@ -96,68 +97,26 @@ export function generateInsights(
   const cvrChange = data.cvr.previous > 0 ? ((data.cvr.current - data.cvr.previous) / data.cvr.previous) * 100 : 0;
 
   if (leadsChange <= -25) {
-    insights.push({
-      id: "leads_drop", type: "alert",
-      headline: `Leads dropped ${Math.abs(leadsChange).toFixed(0)}% week-over-week`,
-      impact: `From ${data.leads.previous} to ${data.leads.current} leads`,
-      confidence: "High", actionLabel: "View Sources", actionPath: "#section-sources",
-      _weight: weights.leads_drop || 5,
-    });
+    insights.push({ id: "leads_drop", type: "alert", headline: `Leads dropped ${Math.abs(leadsChange).toFixed(0)}% week-over-week`, impact: `From ${data.leads.previous} to ${data.leads.current} leads`, confidence: "High", actionLabel: "View Sources", actionPath: "#section-sources", _weight: weights.leads_drop || 5 });
   }
-
   if (cvrChange <= -20) {
-    insights.push({
-      id: "cvr_drop", type: "warning",
-      headline: `Conversion rate dropped ${Math.abs(cvrChange).toFixed(0)}%`,
-      impact: `Now at ${(data.cvr.current * 100).toFixed(1)}%`,
-      confidence: "High", actionLabel: "View Pages", actionPath: "#section-pages",
-      _weight: weights.cvr_drop || 5,
-    });
+    insights.push({ id: "cvr_drop", type: "warning", headline: `Conversion rate dropped ${Math.abs(cvrChange).toFixed(0)}%`, impact: `Now at ${(data.cvr.current * 100).toFixed(1)}%`, confidence: "High", actionLabel: "View Pages", actionPath: "#section-pages", _weight: weights.cvr_drop || 5 });
   }
-
   if (sessionsChange >= 30) {
-    insights.push({
-      id: "traffic_spike", type: "success",
-      headline: `Traffic surged ${sessionsChange.toFixed(0)}% this week`,
-      impact: `${data.sessions.current.toLocaleString()} sessions`,
-      confidence: "High", actionLabel: "View Sources", actionPath: "#section-sources",
-      _weight: weights.traffic_spike || 5,
-    });
+    insights.push({ id: "traffic_spike", type: "success", headline: `Traffic surged ${sessionsChange.toFixed(0)}% this week`, impact: `${data.sessions.current.toLocaleString()} sessions`, confidence: "High", actionLabel: "View Sources", actionPath: "#section-sources", _weight: weights.traffic_spike || 5 });
   }
-
   if (sessionsChange <= -30) {
-    insights.push({
-      id: "sessions_drop", type: "alert",
-      headline: `Traffic dropped ${Math.abs(sessionsChange).toFixed(0)}% WoW`,
-      impact: "Check for tracking issues or campaign changes",
-      confidence: "Medium", actionLabel: "Check Settings", actionPath: "/settings",
-      _weight: weights.sessions_drop || 5,
-    });
+    insights.push({ id: "sessions_drop", type: "alert", headline: `Traffic dropped ${Math.abs(sessionsChange).toFixed(0)}% WoW`, impact: "Check for tracking issues or campaign changes", confidence: "Medium", actionLabel: "Check Settings", actionPath: "/settings", _weight: weights.sessions_drop || 5 });
   }
-
   if (leadsChange >= 20 && data.leads.current >= 3) {
-    insights.push({
-      id: "leads_growth", type: "success",
-      headline: `Leads up ${leadsChange.toFixed(0)}% — nice momentum`,
-      impact: `${data.leads.current} leads this week`,
-      confidence: "High",
-      _weight: weights.leads_growth || 5,
-    });
+    insights.push({ id: "leads_growth", type: "success", headline: `Leads up ${leadsChange.toFixed(0)}% — nice momentum`, impact: `${data.leads.current} leads this week`, confidence: "High", _weight: weights.leads_growth || 5 });
   }
-
   if (data.pages && data.pages.length > 0) {
     const topPage = data.pages.sort((a, b) => b.leads - a.leads)[0];
     if (topPage && topPage.leads >= 2) {
-      insights.push({
-        id: "top_page", type: "idea",
-        headline: `${topPage.page_path} is your top converting page`,
-        impact: `${topPage.leads} leads from ${topPage.sessions} sessions`,
-        confidence: "Medium", actionLabel: "View Pages", actionPath: "#section-pages",
-        _weight: weights.top_page || 5,
-      });
+      insights.push({ id: "top_page", type: "idea", headline: `${topPage.page_path} is your top converting page`, impact: `${topPage.leads} leads from ${topPage.sessions} sessions`, confidence: "Medium", actionLabel: "View Pages", actionPath: "#section-pages", _weight: weights.top_page || 5 });
     }
   }
 
-  // Sort by focus-aware weight (descending), then by severity
   return insights.sort((a, b) => (b._weight || 0) - (a._weight || 0));
 }

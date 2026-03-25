@@ -45,7 +45,28 @@ interface WhiteLabelConfig {
   hide_actv_branding?: boolean;
 }
 
-function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
+export interface ReportTemplateSection {
+  key: string;
+  enabled: boolean;
+  metrics: Array<{ key: string; enabled: boolean }>;
+}
+
+function isSectionEnabled(tpl: ReportTemplateSection[] | null | undefined, key: string): boolean {
+  if (!tpl || tpl.length === 0) return true;
+  const s = tpl.find((t) => t.key === key);
+  return s ? s.enabled : true;
+}
+
+function isMetricEnabled(tpl: ReportTemplateSection[] | null | undefined, sectionKey: string, metricKey: string): boolean {
+  if (!tpl || tpl.length === 0) return true;
+  const s = tpl.find((t) => t.key === sectionKey);
+  if (!s) return true;
+  if (!s.enabled) return false;
+  const m = s.metrics.find((mt) => mt.key === metricKey);
+  return m ? m.enabled : true;
+}
+
+function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: ReportTemplateSection[] | null): string {
   const brandPrimary = wl?.primary_color || "#635bff";
   const brandSecondary = wl?.secondary_color || "#9449e0";
   const brandGradientStart = wl?.primary_color || "#6d5dd4";

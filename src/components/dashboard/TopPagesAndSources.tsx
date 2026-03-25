@@ -34,15 +34,24 @@ interface SourceRow {
   sessions: number;
 }
 
-export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopPagesAndSources(_props, ref) {
+interface TopPagesAndSourcesProps {
+  startDate?: string;
+  endDate?: string;
+}
+
+export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSourcesProps>(function TopPagesAndSources({ startDate: propStart, endDate: propEnd }, ref) {
   const { orgId } = useOrg();
 
+  const fallbackStart = format(subDays(new Date(), 7), "yyyy-MM-dd");
+  const resolvedStart = propStart || fallbackStart;
+  const resolvedEnd = propEnd || format(new Date(), "yyyy-MM-dd");
+
   const { data } = useQuery({
-    queryKey: ["dashboard_top_pages_sources", orgId],
+    queryKey: ["dashboard_top_pages_sources", orgId, resolvedStart, resolvedEnd],
     queryFn: async () => {
       if (!orgId) return { pages: [], sources: [] };
-      const start = format(subDays(new Date(), 7), "yyyy-MM-dd");
-      const startTs = `${start}T00:00:00Z`;
+      const startTs = `${resolvedStart}T00:00:00Z`;
+      const endTs = `${resolvedEnd}T23:59:59.999Z`;
 
       // Fetch site domains for self-referral filtering
       const { data: sites } = await supabase
@@ -60,6 +69,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
           .select("page_path")
           .eq("org_id", orgId)
           .gte("occurred_at", startTs)
+          .lte("occurred_at", endTs)
           .not("page_path", "is", null)
           .order("occurred_at", { ascending: true })
           .range(from, to)
@@ -82,6 +92,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
           .select("utm_source, landing_referrer_domain")
           .eq("org_id", orgId)
           .gte("started_at", startTs)
+          .lte("started_at", endTs)
           .order("started_at", { ascending: true })
           .range(from, to)
       );
@@ -108,6 +119,18 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
   const maxViews = pages[0]?.views || 1;
   const maxSessions = sources[0]?.sessions || 1;
 
+  // Build a human-readable range label
+  const rangeLabel = (() => {
+    const s = new Date(resolvedStart);
+    const e = new Date(resolvedEnd);
+    const diffDays = Math.round((e.getTime() - s.getTime()) / 86400000);
+    if (diffDays <= 7) return "7d";
+    if (diffDays <= 14) return "14d";
+    if (diffDays <= 30) return "30d";
+    if (diffDays <= 90) return "90d";
+    return `${format(s, "MMM d")}–${format(e, "MMM d")}`;
+  })();
+
   return (
     <div ref={ref} className="glass-card p-5 animate-slide-up h-full">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -117,7 +140,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
 
       {/* Top Pages */}
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Pages (7d)</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Pages ({rangeLabel})</p>
         {pages.length > 0 ? (
           <div className="space-y-1.5">
             {pages.map((p) => (
@@ -146,7 +169,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
 
       {/* Top Sources */}
       <div>
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Sources (7d)</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Sources ({rangeLabel})</p>
         {sources.length > 0 ? (
           <div className="space-y-1.5">
             {sources.map((s) => (

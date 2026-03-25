@@ -324,11 +324,12 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
   };
 
   // ── Form Performance (enhanced) ──
+  // Use leads as the authoritative submission count; form_submission_logs is only
+  // used for failure diagnostics (it may be empty if the site doesn't emit logs).
   const leadsByForm = formList.map((f: any) => {
     const fl = currentLeads.filter((l: any) => l.form_id === f.id);
     const pfl = previousLeads.filter((l: any) => l.form_id === f.id);
     const logs = (formSubmissionLogs || []).filter((log: any) => log.form_id === f.id);
-    const successLogs = logs.filter((l: any) => l.status === "success");
     const failedLogs = logs.filter((l: any) => l.status !== "success");
     // CVR per form: leads from this form / sessions on pages where this form exists
     const formPages = new Set(fl.map((l: any) => l.page_path || l.page_url || ""));
@@ -344,9 +345,9 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
       weight: f.lead_weight,
       estimatedValue: f.estimated_value || 0,
       totalValue: fl.length * (f.estimated_value || 0),
-      submissions: successLogs.length,
+      submissions: fl.length,
       failures: failedLogs.length,
-      failureRate: logs.length > 0 ? Math.round((failedLogs.length / logs.length) * 10000) / 100 : 0,
+      failureRate: (fl.length + failedLogs.length) > 0 ? Math.round((failedLogs.length / (fl.length + failedLogs.length)) * 10000) / 100 : 0,
       cvr: formCvr,
       isPrimaryLead: f.is_primary_lead,
     };

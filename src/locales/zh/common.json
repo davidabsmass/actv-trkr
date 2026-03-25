@@ -485,5 +485,100 @@
     "somethingWentWrong": "出了点问题",
     "tryAgain": "重试",
     "pageError": "此页面遇到错误。点击重试或导航到其他页面。"
+  },
+  "findings": {
+    "category": {
+      "Traffic": "流量",
+      "Conversion": "转化",
+      "Engagement": "互动",
+      "SEO": "SEO",
+      "SiteHealth": "网站健康",
+      "LeadTracking": "线索跟踪"
+    },
+    "severity": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "metricCurrent": "当前",
+    "metricPrevious": "上期",
+    "metricChange": "变化",
+    "metricViews": "浏览量",
+    "metricLeads": "线索",
+    "metricCvr": "转化率",
+    "metricExits": "退出数",
+    "metricExitRate": "退出率",
+    "metricDesktopCvr": "桌面转化率",
+    "metricMobileCvr": "移动转化率",
+    "metricStarts": "开始数",
+    "metricSubmissions": "提交数",
+    "metricAbandonRate": "放弃率",
+    "metricCount": "数量",
+    "traffic_up": {
+      "title": "流量正在增长",
+      "explanation": "会话较上期增长了{{change}}%。"
+    },
+    "traffic_down": {
+      "title": "流量下降",
+      "explanation": "会话较上期下降了{{change}}%。",
+      "action": "检查主要着陆页和流量来源。"
+    },
+    "lead_growth": {
+      "title": "线索量增长",
+      "explanation": "线索较上期增长了{{change}}%。"
+    },
+    "lead_drop": {
+      "title": "线索下降",
+      "explanation": "线索较上期下降了{{change}}%。",
+      "action": "检查表单健康状况和主要来源。"
+    },
+    "conversion_gain": {
+      "title": "转化率提升",
+      "explanation": "转化率较上期提升了{{change}}%。"
+    },
+    "conversion_drop": {
+      "title": "转化率下降",
+      "explanation": "转化率较上期下降了{{change}}%。",
+      "action": "检查着陆页和表单体验。"
+    },
+    "high_exit_rate": {
+      "title": "高退出率",
+      "explanation": "{{page}}的退出率为{{exitRate}}。",
+      "action": "检查页面内容和行动号召。"
+    },
+    "mobile_dropoff": {
+      "title": "移动用户转化率较低",
+      "explanation": "移动端转化率明显低于桌面端。",
+      "action": "检查关键着陆页的移动端体验。"
+    },
+    "form_abandonment": {
+      "title": "表单放弃率高",
+      "explanation": "\"{{name}}\"的放弃率为{{abandonRate}}。",
+      "action": "简化表单字段或检查错误。"
+    },
+    "seo_visibility_gain": {
+      "title": "SEO评分提升",
+      "explanation": "SEO评分从{{previous}}提升至{{current}}。"
+    },
+    "seo_visibility_loss": {
+      "title": "SEO评分下降",
+      "explanation": "SEO评分从{{previous}}下降至{{current}}。",
+      "action": "运行SEO扫描以识别新问题。"
+    },
+    "high_intent_low_performance": {
+      "title": "高流量低转化",
+      "explanation": "{{page}}获得大量流量但转化率低于平均水平。",
+      "action": "检查CTA位置和页面清晰度。"
+    },
+    "strong_engagement_low_visibility": {
+      "title": "高互动低曝光",
+      "explanation": "{{page}}互动率高但流量低。",
+      "action": "考虑推广此页面。"
+    },
+    "site_health_issue": {
+      "title": "网站健康问题",
+      "explanation": "检测到{{count}}个问题。",
+      "action": "查看监控页面了解详情。"
+    }
   }
 }

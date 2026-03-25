@@ -576,5 +576,100 @@
     "somethingWentWrong": "Something went wrong",
     "tryAgain": "Try again",
     "pageError": "This page encountered an error. Click retry or navigate to another page."
+  },
+  "findings": {
+    "category": {
+      "Traffic": "Traffic",
+      "Conversion": "Conversion",
+      "Engagement": "Engagement",
+      "SEO": "SEO",
+      "SiteHealth": "Site Health",
+      "LeadTracking": "Lead Tracking"
+    },
+    "severity": {
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "metricCurrent": "current",
+    "metricPrevious": "previous",
+    "metricChange": "change",
+    "metricViews": "views",
+    "metricLeads": "leads",
+    "metricCvr": "CVR",
+    "metricExits": "exits",
+    "metricExitRate": "exit rate",
+    "metricDesktopCvr": "desktop CVR",
+    "metricMobileCvr": "mobile CVR",
+    "metricStarts": "starts",
+    "metricSubmissions": "submissions",
+    "metricAbandonRate": "abandon rate",
+    "metricCount": "count",
+    "traffic_up": {
+      "title": "Traffic is growing",
+      "explanation": "Sessions increased {{change}}% compared to the previous period."
+    },
+    "traffic_down": {
+      "title": "Traffic declined",
+      "explanation": "Sessions dropped {{change}}% compared to the previous period.",
+      "action": "Review top landing pages and traffic sources for changes."
+    },
+    "lead_growth": {
+      "title": "Lead volume is up",
+      "explanation": "Leads increased {{change}}% compared to the previous period."
+    },
+    "lead_drop": {
+      "title": "Leads declined",
+      "explanation": "Leads dropped {{change}}% compared to the previous period.",
+      "action": "Check form health and top lead sources for anomalies."
+    },
+    "conversion_gain": {
+      "title": "Conversion rate improved",
+      "explanation": "Conversion rate improved {{change}}% compared to the previous period."
+    },
+    "conversion_drop": {
+      "title": "Conversion rate dropped",
+      "explanation": "Conversion rate declined {{change}}% compared to the previous period.",
+      "action": "Review landing pages and form experience for friction."
+    },
+    "high_exit_rate": {
+      "title": "High exit rate",
+      "explanation": "{{page}} has a {{exitRate}} exit rate.",
+      "action": "Review page content and calls to action."
+    },
+    "mobile_dropoff": {
+      "title": "Mobile users convert less",
+      "explanation": "Mobile conversion rate is significantly lower than desktop.",
+      "action": "Review the mobile experience on key landing pages."
+    },
+    "form_abandonment": {
+      "title": "Form abandonment is high",
+      "explanation": "\"{{name}}\" has a {{abandonRate}} abandonment rate.",
+      "action": "Simplify form fields or check for errors."
+    },
+    "seo_visibility_gain": {
+      "title": "SEO score improved",
+      "explanation": "SEO score went from {{previous}} to {{current}}."
+    },
+    "seo_visibility_loss": {
+      "title": "SEO score declined",
+      "explanation": "SEO score dropped from {{previous}} to {{current}}.",
+      "action": "Run an SEO scan to identify new issues."
+    },
+    "high_intent_low_performance": {
+      "title": "High traffic, low conversions",
+      "explanation": "{{page}} gets significant traffic but converts below average.",
+      "action": "Review CTA placement and page clarity."
+    },
+    "strong_engagement_low_visibility": {
+      "title": "Strong engagement, low visibility",
+      "explanation": "{{page}} has high engagement but low traffic.",
+      "action": "Consider promoting this page to drive more traffic."
+    },
+    "site_health_issue": {
+      "title": "Site health issue",
+      "explanation": "{{count}} issues detected on your site.",
+      "action": "Check the Monitoring page for details."
+    }
   }
 }

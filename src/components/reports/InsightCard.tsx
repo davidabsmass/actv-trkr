@@ -37,48 +37,94 @@ const severityColors = {
   low: "border-success/30 bg-success/5",
 };
 
-const categoryColors: Record<string, string> = {
-  Traffic: "bg-primary/10 text-primary",
-  Conversion: "bg-warning/10 text-warning",
-  Engagement: "bg-info/10 text-info",
-  SEO: "bg-accent/10 text-accent-foreground",
-  "Site Health": "bg-destructive/10 text-destructive",
-  "Lead Tracking": "bg-success/10 text-success",
+// Metric key translations
+const metricKeyMap: Record<string, string> = {
+  current: "findings.metricCurrent",
+  previous: "findings.metricPrevious",
+  change: "findings.metricChange",
+  views: "findings.metricViews",
+  leads: "findings.metricLeads",
+  cvr: "findings.metricCvr",
+  exits: "findings.metricExits",
+  exitRate: "findings.metricExitRate",
+  desktopCvr: "findings.metricDesktopCvr",
+  mobileCvr: "findings.metricMobileCvr",
+  starts: "findings.metricStarts",
+  submissions: "findings.metricSubmissions",
+  abandonRate: "findings.metricAbandonRate",
+  count: "findings.metricCount",
 };
 
 export function InsightCard({ finding }: { finding: Finding }) {
   const { t } = useTranslation();
-  const metricEntries = finding.metric_values ? Object.entries(finding.metric_values) : [];
+
+  // Translate category, severity, title, explanation, and action via finding.type key
+  const categoryKey = `findings.category.${finding.category.replace(/\s+/g, "")}`;
+  const translatedCategory = t(categoryKey, { defaultValue: finding.category });
+  const translatedSeverity = t(`findings.severity.${finding.severity}`, { defaultValue: finding.severity });
+  const translatedTitle = t(`findings.${finding.type}.title`, { defaultValue: finding.title });
+
+  // Build interpolation values from metric_values for explanation
+  const metricVals = finding.metric_values || {};
+  // Provide absolute change value for "dropped X%" translations
+  const changeVal = typeof metricVals.change === "number" ? metricVals.change : 0;
+  const translatedExplanation = t(`findings.${finding.type}.explanation`, {
+    defaultValue: finding.explanation,
+    ...metricVals,
+    change: Math.abs(changeVal),
+    page: finding.page || "",
+  });
+  const translatedAction = finding.recommended_action
+    ? t(`findings.${finding.type}.action`, { defaultValue: finding.recommended_action })
+    : undefined;
+
+  const categoryColors: Record<string, string> = {
+    Traffic: "bg-primary/10 text-primary",
+    Conversion: "bg-warning/10 text-warning",
+    Engagement: "bg-info/10 text-info",
+    SEO: "bg-accent/10 text-accent-foreground",
+    "Site Health": "bg-destructive/10 text-destructive",
+    "Lead Tracking": "bg-success/10 text-success",
+  };
+
+  const metricEntries = metricVals ? Object.entries(metricVals) : [];
 
   return (
     <div className={`rounded-lg border p-4 ${severityColors[finding.severity]}`}>
       <div className="flex items-center gap-2 mb-1.5">
         <span className={`text-xs uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${categoryColors[finding.category] || "bg-muted text-muted-foreground"}`}>
-          {finding.category}
+          {translatedCategory}
         </span>
         <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-          {finding.severity} {t("reports.priority")}
+          {translatedSeverity} {t("reports.priority")}
         </span>
       </div>
-      <h4 className="text-sm font-semibold text-foreground mb-1">{finding.title}</h4>
-      <p className="text-xs text-foreground/80 leading-relaxed">{finding.explanation}</p>
+      <h4 className="text-sm font-semibold text-foreground mb-1">{translatedTitle}</h4>
+      <p className="text-xs text-foreground/80 leading-relaxed">{translatedExplanation}</p>
 
-      {/* Surface actual metric values so recommendations are grounded in data */}
       {metricEntries.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {metricEntries.map(([key, val]) => (
-            <span key={key} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/50 rounded px-2 py-0.5">
-              <span className="capitalize">{key.replace(/_/g, " ")}:</span>
-              <span className="text-foreground font-semibold">{typeof val === "number" ? `${val.toLocaleString()}${key.toLowerCase().includes("change") || key.toLowerCase().includes("pct") ? "%" : ""}` : val}</span>
-            </span>
-          ))}
+          {metricEntries.map(([key, val]) => {
+            const labelKey = metricKeyMap[key];
+            const translatedLabel = labelKey ? t(labelKey) : key.replace(/_/g, " ");
+            return (
+              <span key={key} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/50 rounded px-2 py-0.5">
+                <span className="capitalize">{translatedLabel}:</span>
+                <span className="text-foreground font-semibold">
+                  {typeof val === "number"
+                    ? `${val.toLocaleString()}${key.toLowerCase().includes("change") || key.toLowerCase().includes("pct") ? "%" : ""}`
+                    : val}
+                </span>
+              </span>
+            );
+          })}
         </div>
       )}
 
-      {finding.recommended_action && (
+      {translatedAction && (
         <div className="mt-2 pt-2 border-t border-border/50">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-0.5">{t("reports.suggestedAction")}</p>
-          <p className="text-xs text-foreground">{finding.recommended_action}</p>
+          <p className="text-xs text-foreground">{translatedAction}</p>
         </div>
       )}
     </div>

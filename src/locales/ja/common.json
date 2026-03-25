@@ -485,5 +485,100 @@
     "somethingWentWrong": "問題が発生しました",
     "tryAgain": "再試行",
     "pageError": "このページでエラーが発生しました。再試行をクリックするか、別のページに移動してください。"
+  },
+  "findings": {
+    "category": {
+      "Traffic": "トラフィック",
+      "Conversion": "コンバージョン",
+      "Engagement": "エンゲージメント",
+      "SEO": "SEO",
+      "SiteHealth": "サイト健全性",
+      "LeadTracking": "リード追跡"
+    },
+    "severity": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "metricCurrent": "現在",
+    "metricPrevious": "前期",
+    "metricChange": "変化",
+    "metricViews": "閲覧数",
+    "metricLeads": "リード",
+    "metricCvr": "CVR",
+    "metricExits": "離脱数",
+    "metricExitRate": "離脱率",
+    "metricDesktopCvr": "デスクトップCVR",
+    "metricMobileCvr": "モバイルCVR",
+    "metricStarts": "開始数",
+    "metricSubmissions": "送信数",
+    "metricAbandonRate": "放棄率",
+    "metricCount": "件数",
+    "traffic_up": {
+      "title": "トラフィックが増加中",
+      "explanation": "セッションが前期比{{change}}%増加しました。"
+    },
+    "traffic_down": {
+      "title": "トラフィックが減少",
+      "explanation": "セッションが前期比{{change}}%減少しました。",
+      "action": "主要なランディングページとトラフィックソースを確認してください。"
+    },
+    "lead_growth": {
+      "title": "リード数が増加",
+      "explanation": "リードが前期比{{change}}%増加しました。"
+    },
+    "lead_drop": {
+      "title": "リードが減少",
+      "explanation": "リードが前期比{{change}}%減少しました。",
+      "action": "フォームの健全性と主要ソースを確認してください。"
+    },
+    "conversion_gain": {
+      "title": "コンバージョン率が改善",
+      "explanation": "コンバージョン率が前期比{{change}}%改善しました。"
+    },
+    "conversion_drop": {
+      "title": "コンバージョン率が低下",
+      "explanation": "コンバージョン率が前期比{{change}}%低下しました。",
+      "action": "ランディングページとフォーム体験を確認してください。"
+    },
+    "high_exit_rate": {
+      "title": "高い離脱率",
+      "explanation": "{{page}}の離脱率は{{exitRate}}です。",
+      "action": "ページコンテンツとCTAを見直してください。"
+    },
+    "mobile_dropoff": {
+      "title": "モバイルユーザーの転換率が低い",
+      "explanation": "モバイルのコンバージョン率がデスクトップより大幅に低いです。",
+      "action": "主要ページのモバイル体験を確認してください。"
+    },
+    "form_abandonment": {
+      "title": "フォーム放棄率が高い",
+      "explanation": "「{{name}}」の放棄率は{{abandonRate}}です。",
+      "action": "フィールドを簡素化するかエラーを確認してください。"
+    },
+    "seo_visibility_gain": {
+      "title": "SEOスコアが改善",
+      "explanation": "SEOスコアが{{previous}}から{{current}}に改善しました。"
+    },
+    "seo_visibility_loss": {
+      "title": "SEOスコアが低下",
+      "explanation": "SEOスコアが{{previous}}から{{current}}に低下しました。",
+      "action": "SEOスキャンを実行して新しい問題を特定してください。"
+    },
+    "high_intent_low_performance": {
+      "title": "高トラフィック・低コンバージョン",
+      "explanation": "{{page}}は多くのトラフィックを集めていますが、平均以下のコンバージョンです。",
+      "action": "CTAの配置とページの明確さを確認してください。"
+    },
+    "strong_engagement_low_visibility": {
+      "title": "高エンゲージメント・低露出",
+      "explanation": "{{page}}はエンゲージメントは高いがトラフィックが少ないです。",
+      "action": "このページのプロモーションを検討してください。"
+    },
+    "site_health_issue": {
+      "title": "サイト健全性の問題",
+      "explanation": "{{count}}件の問題が検出されました。",
+      "action": "モニタリングページで詳細を確認してください。"
+    }
   }
 }

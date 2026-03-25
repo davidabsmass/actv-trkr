@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
@@ -330,6 +331,7 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
 }
 export default function Forms() {
   const { orgId, orgName } = useOrg();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -673,12 +675,12 @@ export default function Forms() {
         {formsLoading ? (
           <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
         ) : displayedForms.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">
+           <div className="p-8 text-center text-muted-foreground text-sm">
             {showArchived
-              ? "No archived forms."
+              ? t("forms.noArchivedForms")
               : !forms || forms.length === 0
-                ? "No forms synced yet. Forms are discovered automatically from your WordPress plugin, or you can trigger a manual sync from the ACTV TRKR settings page in WordPress."
-                : "All forms are archived. Click \"Archived\" above to view them."}
+                ? `${t("forms.noFormsYet")} ${t("forms.noFormsSyncedDesc")}`
+                : t("forms.allFormsArchived")}
           </div>
         ) : (
           <div className="divide-y divide-border">

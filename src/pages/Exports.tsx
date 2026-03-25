@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,6 +27,7 @@ type ExportFormat = "csv" | "xlsx";
 
 export default function Exports() {
   const { orgId, orgName } = useOrg();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -268,7 +270,7 @@ export default function Exports() {
           <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
         ) : !forms || forms.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground text-sm">
-            No forms synced yet. Forms are discovered automatically from your WordPress plugin, or you can trigger a manual sync from the ACTV TRKR settings page in WordPress.
+            {`${t("forms.noFormsYet")} ${t("forms.noFormsSyncedDesc")}`}
           </div>
         ) : (
           <div className="divide-y divide-border">

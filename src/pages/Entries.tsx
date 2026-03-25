@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,6 +52,7 @@ const weightLabels: Record<string, string> = {
 
 export default function Entries() {
   const { orgId, orgName } = useOrg();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
@@ -149,12 +151,12 @@ export default function Entries() {
         {formsLoading ? (
           <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
         ) : displayedForms.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">
+           <div className="p-8 text-center text-muted-foreground text-sm">
             {showArchived
-              ? "No archived forms."
+              ? t("forms.noArchivedForms")
               : !forms || forms.length === 0
-                ? "No forms synced yet. Forms are discovered automatically from your WordPress plugin, or you can trigger a manual sync from the ACTV TRKR settings page in WordPress."
-                : "All forms are archived. Click \"Archived\" above to view them."}
+                ? `${t("forms.noFormsYet")} ${t("forms.noFormsSyncedDesc")}`
+                : t("forms.allFormsArchived")}
           </div>
         ) : (
           <div className="divide-y divide-border">

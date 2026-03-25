@@ -5,6 +5,25 @@ import { useOrg } from "@/hooks/use-org";
 import { BarChart3 } from "lucide-react";
 import { subDays, format } from "date-fns";
 
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  buildQuery: (from: number, to: number) => any
+): Promise<T[]> {
+  const allRows: T[] = [];
+  let offset = 0;
+  let hasMore = true;
+  while (hasMore) {
+    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data || []) as T[];
+    allRows.push(...rows);
+    hasMore = rows.length === PAGE_SIZE;
+    offset += PAGE_SIZE;
+  }
+  return allRows;
+}
+
 interface PageRow {
   path: string;
   views: number;
@@ -25,17 +44,29 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
       const start = format(subDays(new Date(), 7), "yyyy-MM-dd");
       const startTs = `${start}T00:00:00Z`;
 
-      // Query raw pageviews for top pages
-      const { data: pvData } = await supabase
-        .from("pageviews")
-        .select("page_path")
-        .eq("org_id", orgId)
-        .gte("occurred_at", startTs)
-        .not("page_path", "is", null);
+      // Fetch site domains for self-referral filtering
+      const { data: sites } = await supabase
+        .from("sites")
+        .select("domain")
+        .eq("org_id", orgId);
+      const ownDomains = new Set(
+        (sites || []).map((s: any) => (s.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase())
+      );
 
-      // Aggregate pages client-side
+      // Paginated pageview fetch
+      const pvRows = await fetchAllRows<{ page_path: string | null }>((from, to) =>
+        supabase
+          .from("pageviews")
+          .select("page_path")
+          .eq("org_id", orgId)
+          .gte("occurred_at", startTs)
+          .not("page_path", "is", null)
+          .order("occurred_at", { ascending: true })
+          .range(from, to)
+      );
+
       const pageMap: Record<string, number> = {};
-      for (const r of pvData || []) {
+      for (const r of pvRows) {
         if (!r.page_path) continue;
         pageMap[r.page_path] = (pageMap[r.page_path] || 0) + 1;
       }
@@ -44,17 +75,22 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
         .sort((a, b) => b.views - a.views)
         .slice(0, 5);
 
-      // Query raw sessions for top sources
-      const { data: sessData } = await supabase
-        .from("sessions")
-        .select("utm_source, landing_referrer_domain")
-        .eq("org_id", orgId)
-        .gte("started_at", startTs);
+      // Paginated session fetch
+      const sessRows = await fetchAllRows<{ utm_source: string | null; landing_referrer_domain: string | null }>((from, to) =>
+        supabase
+          .from("sessions")
+          .select("utm_source, landing_referrer_domain")
+          .eq("org_id", orgId)
+          .gte("started_at", startTs)
+          .order("started_at", { ascending: true })
+          .range(from, to)
+      );
 
       const srcMap: Record<string, number> = {};
-      for (const r of sessData || []) {
-        const src = r.utm_source || r.landing_referrer_domain || "Direct";
-        if (!src) continue;
+      for (const r of sessRows) {
+        let src = r.utm_source || r.landing_referrer_domain || "Direct";
+        // Reclassify self-referrals as Direct
+        if (ownDomains.has(src.toLowerCase())) src = "Direct";
         srcMap[src] = (srcMap[src] || 0) + 1;
       }
       const sources: SourceRow[] = Object.entries(srcMap)

@@ -80,6 +80,38 @@ export default function WhiteLabelSection() {
     onError: (err: any) => toast.error(err.message || "Failed to save"),
   });
 
+  const revertMutation = useMutation({
+    mutationFn: async () => {
+      if (!orgId) throw new Error("No org");
+      if (settings?.id) {
+        const { error } = await supabase
+          .from("white_label_settings")
+          .delete()
+          .eq("id", settings.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      setClientName("");
+      setPrimaryColor("#6366f1");
+      setSecondaryColor("#8b5cf6");
+      setAccentColor("#f59e0b");
+      setHideBranding(false);
+      setLogoUrl("");
+      queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
+      toast.success("White-label settings reverted to defaults");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to revert"),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !orgId) return;
@@ -111,38 +143,6 @@ export default function WhiteLabelSection() {
       setUploading(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const revertMutation = useMutation({
-    mutationFn: async () => {
-      if (!orgId) throw new Error("No org");
-      if (settings?.id) {
-        const { error } = await supabase
-          .from("white_label_settings")
-          .delete()
-          .eq("id", settings.id);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      setClientName("");
-      setPrimaryColor("#6366f1");
-      setSecondaryColor("#8b5cf6");
-      setAccentColor("#f59e0b");
-      setHideBranding(false);
-      setLogoUrl("");
-      queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
-      toast.success("White-label settings reverted to defaults");
-    },
-    onError: (err: any) => toast.error(err.message || "Failed to revert"),
-  });
 
   return (
     <div className="space-y-4">

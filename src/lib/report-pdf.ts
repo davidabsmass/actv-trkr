@@ -265,8 +265,8 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
     const low = Math.round(ap.forecast.projectedNextMonth * 0.9);
     const high = Math.round(ap.forecast.projectedNextMonth * 1.1);
     html += `
-    <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:6px;background:rgba(99,91,255,0.05);border:1px solid rgba(99,91,255,0.1);margin-bottom:14px">
-      <span style="color:#635bff;font-size:12px;margin-top:1px">↗</span>
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:6px;background:${brandPrimary}0d;border:1px solid ${brandPrimary}1a;margin-bottom:14px">
+      <span style="color:${brandPrimary};font-size:12px;margin-top:1px">↗</span>
       <div>
         <div style="font-size:11px;font-weight:600;color:#00264d">Lead Forecast</div>
         <div style="font-size:11px;color:#6b6f80">Avg. ${ap.forecast.avgDailyLeads} leads/day · Projected next month: ${fmtNum(low)}–${fmtNum(high)}</div>
@@ -276,7 +276,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
   if (ap.recommendations?.length > 0) {
     ap.recommendations.forEach((a: string, i: number) => {
       html += `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
-        <span style="font-size:11px;font-weight:700;color:#635bff;flex-shrink:0">${i + 1}.</span>
+        <span style="font-size:11px;font-weight:700;color:${brandPrimary};flex-shrink:0">${i + 1}.</span>
         <span style="font-size:12px;color:#00264d">${safe(a)}</span>
       </div>`;
     });
@@ -290,7 +290,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
 
   // Footer watermark
   html += `<div style="text-align:center;padding:12px 0;font-size:10px;color:#6b6f80">
-    ACTV TRKR · Generated ${fmtDate(report.generatedAt)}
+    ${brandName ? brandName + ' · ' : ''}Generated ${fmtDate(report.generatedAt)}
   </div>`;
 
   html += `</div>`;

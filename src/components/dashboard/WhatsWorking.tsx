@@ -53,12 +53,12 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
 
       if (ps > 0 && cs > ps * 1.1) {
         const pct = Math.round(((cs - ps) / ps) * 100);
-        results.push({ title: "Traffic is growing", explanation: `Sessions up ${pct}% vs previous week (${cs} vs ${ps}).` });
+        results.push({ title: t("whatsWorking.trafficGrowing"), explanation: t("whatsWorking.trafficGrowingDesc", { pct, current: cs, previous: ps }) });
       }
 
       if (pl > 0 && cl > pl * 1.1) {
         const pct = Math.round(((cl - pl) / pl) * 100);
-        results.push({ title: "Lead volume is up", explanation: `Leads increased ${pct}% vs previous week (${cl} vs ${pl}).` });
+        results.push({ title: t("whatsWorking.leadVolumeUp"), explanation: t("whatsWorking.leadVolumeUpDesc", { pct, current: cl, previous: pl }) });
       }
 
       if (cs > 0 && ps > 0) {
@@ -66,7 +66,7 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
         const prevCvr = pl / ps;
         if (prevCvr > 0 && curCvr > prevCvr * 1.1) {
           const pct = Math.round(((curCvr - prevCvr) / prevCvr) * 100);
-          results.push({ title: "Conversion rate improved", explanation: `CVR improved ${pct}% compared to last week.` });
+          results.push({ title: t("whatsWorking.cvrImproved"), explanation: t("whatsWorking.cvrImprovedDesc", { pct }) });
         }
       }
 

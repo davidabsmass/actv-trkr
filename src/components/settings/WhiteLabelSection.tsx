@@ -20,11 +20,7 @@ export default function WhiteLabelSection() {
     queryKey: ["white_label", orgId],
     queryFn: async () => {
       if (!orgId) return null;
-      const { data } = await supabase
-        .from("white_label_settings")
-        .select("*")
-        .eq("org_id", orgId)
-        .maybeSingle();
+      const { data } = await supabase.from("white_label_settings").select("*").eq("org_id", orgId).maybeSingle();
       return data;
     },
     enabled: !!orgId,
@@ -53,31 +49,21 @@ export default function WhiteLabelSection() {
     mutationFn: async () => {
       if (!orgId) throw new Error("No org");
       const payload = {
-        org_id: orgId,
-        client_name: clientName,
-        primary_color: primaryColor,
-        secondary_color: secondaryColor,
-        accent_color: accentColor,
-        hide_actv_branding: hideBranding,
-        logo_url: logoUrl,
+        org_id: orgId, client_name: clientName, primary_color: primaryColor,
+        secondary_color: secondaryColor, accent_color: accentColor,
+        hide_actv_branding: hideBranding, logo_url: logoUrl,
       };
-
       if (settings?.id) {
-        const { error } = await supabase
-          .from("white_label_settings")
-          .update(payload)
-          .eq("id", settings.id);
+        const { error } = await supabase.from("white_label_settings").update(payload).eq("id", settings.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("white_label_settings")
-          .insert(payload);
+        const { error } = await supabase.from("white_label_settings").insert(payload);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
-      toast.success("White-label settings saved");
+      toast.success(t("settings.whiteLabelSaved"));
     },
     onError: (err: any) => toast.error(err.message || "Failed to save"),
   });
@@ -86,59 +72,36 @@ export default function WhiteLabelSection() {
     mutationFn: async () => {
       if (!orgId) throw new Error("No org");
       if (settings?.id) {
-        const { error } = await supabase
-          .from("white_label_settings")
-          .delete()
-          .eq("id", settings.id);
+        const { error } = await supabase.from("white_label_settings").delete().eq("id", settings.id);
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      setClientName("");
-      setPrimaryColor("#6366f1");
-      setSecondaryColor("#8b5cf6");
-      setAccentColor("#f59e0b");
-      setHideBranding(false);
-      setLogoUrl("");
+      setClientName(""); setPrimaryColor("#6366f1"); setSecondaryColor("#8b5cf6");
+      setAccentColor("#f59e0b"); setHideBranding(false); setLogoUrl("");
       queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
-      toast.success("White-label settings reverted to defaults");
+      toast.success(t("settings.whiteLabelReverted"));
     },
     onError: (err: any) => toast.error(err.message || "Failed to revert"),
   });
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !orgId) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Logo must be under 2MB");
-      return;
-    }
-
+    if (file.size > 2 * 1024 * 1024) { toast.error(t("settings.logoTooLarge")); return; }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
       const path = `${orgId}/logo.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("client-logos")
-        .upload(path, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage.from("client-logos").upload(path, file, { upsert: true });
       if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("client-logos")
-        .getPublicUrl(path);
-
+      const { data: urlData } = supabase.storage.from("client-logos").getPublicUrl(path);
       setLogoUrl(urlData.publicUrl);
-      toast.success("Logo uploaded");
+      toast.success(t("settings.logoUploaded"));
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
     } finally {
@@ -149,31 +112,23 @@ export default function WhiteLabelSection() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-        {t("settings.pdfReportExportsNote", "These settings only affect")} <span className="font-medium text-foreground">{t("settings.pdfReportExports")}</span>. {t("settings.dashboardNotChanged", "Your in-app dashboard and navigation are not changed.")}
+        {t("settings.pdfReportExportsNote")} <span className="font-medium text-foreground">{t("settings.pdfReportExports")}</span>. {t("settings.dashboardNotChanged")}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Client Identity */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Type className="h-4 w-4 text-primary" />
-              {t("settings.clientIdentity", "Client Identity")}
+              {t("settings.clientIdentity")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="client-name" className="text-xs">{t("settings.clientOrgName")}</Label>
-              <Input
-                id="client-name"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder="e.g. Acme Health Group"
-                className="mt-1"
-              />
+              <Input id="client-name" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g. Acme Health Group" className="mt-1" />
               <p className="text-xs text-muted-foreground mt-1">{t("settings.appearsInHeaders")}</p>
             </div>
-
             <div>
               <Label className="text-xs">{t("settings.clientLogo")}</Label>
               <div className="mt-1 flex items-center gap-3">
@@ -189,15 +144,9 @@ export default function WhiteLabelSection() {
                 <div>
                   <label className="cursor-pointer">
                     <span className="text-xs text-primary hover:underline">
-                      {uploading ? "Uploading…" : logoUrl ? "Replace logo" : "Upload logo"}
+                      {uploading ? t("settings.uploading") : logoUrl ? t("settings.replaceLogo") : t("settings.uploadLogo")}
                     </span>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                      className="hidden"
-                      onChange={handleLogoUpload}
-                      disabled={uploading}
-                    />
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={handleLogoUpload} disabled={uploading} />
                   </label>
                   <p className="text-xs text-muted-foreground">{t("settings.logoFormats")}</p>
                 </div>
@@ -206,12 +155,11 @@ export default function WhiteLabelSection() {
           </CardContent>
         </Card>
 
-        {/* Color Scheme */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Palette className="h-4 w-4 text-primary" />
-              {t("settings.reportColorScheme", "Report Color Scheme")}
+              {t("settings.reportColorScheme")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -219,57 +167,25 @@ export default function WhiteLabelSection() {
               <div>
                 <Label htmlFor="primary-color" className="text-xs">{t("settings.primary")}</Label>
                 <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="color"
-                    id="primary-color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="h-8 w-8 rounded border border-border cursor-pointer"
-                  />
-                  <Input
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="font-mono text-xs h-8"
-                  />
+                  <input type="color" id="primary-color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-8 w-8 rounded border border-border cursor-pointer" />
+                  <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="font-mono text-xs h-8" />
                 </div>
               </div>
               <div>
                 <Label htmlFor="secondary-color" className="text-xs">{t("settings.secondary")}</Label>
                 <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="color"
-                    id="secondary-color"
-                    value={secondaryColor}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
-                    className="h-8 w-8 rounded border border-border cursor-pointer"
-                  />
-                  <Input
-                    value={secondaryColor}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
-                    className="font-mono text-xs h-8"
-                  />
+                  <input type="color" id="secondary-color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="h-8 w-8 rounded border border-border cursor-pointer" />
+                  <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="font-mono text-xs h-8" />
                 </div>
               </div>
               <div>
                 <Label htmlFor="accent-color" className="text-xs">{t("settings.accent")}</Label>
                 <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="color"
-                    id="accent-color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="h-8 w-8 rounded border border-border cursor-pointer"
-                  />
-                  <Input
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="font-mono text-xs h-8"
-                  />
+                  <input type="color" id="accent-color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="h-8 w-8 rounded border border-border cursor-pointer" />
+                  <Input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="font-mono text-xs h-8" />
                 </div>
               </div>
             </div>
-
-            {/* Preview strip */}
             <div>
               <Label className="text-xs">{t("settings.preview")}</Label>
               <div className="mt-1 flex gap-0 rounded-md overflow-hidden h-6">
@@ -278,15 +194,11 @@ export default function WhiteLabelSection() {
                 <div className="flex-1" style={{ backgroundColor: accentColor }} />
               </div>
             </div>
-
-            <p className="text-xs text-muted-foreground">
-              Applied to PDF report headers, charts, and accent elements only.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("settings.colorAppliedNote")}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Branding toggle */}
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
@@ -294,9 +206,7 @@ export default function WhiteLabelSection() {
               <EyeOff className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium text-foreground">{t("settings.removeBranding")}</p>
-                <p className="text-xs text-muted-foreground">
-                  When enabled, your client logo and name replace ACTV TRKR branding on PDF report exports.
-                </p>
+                <p className="text-xs text-muted-foreground">{t("settings.removeBrandingDesc")}</p>
               </div>
             </div>
             <Switch checked={hideBranding} onCheckedChange={setHideBranding} />
@@ -305,23 +215,13 @@ export default function WhiteLabelSection() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => revertMutation.mutate()}
-          disabled={revertMutation.isPending || !settings?.id}
-          className="gap-2 text-destructive hover:text-destructive"
-        >
+        <Button variant="outline" size="sm" onClick={() => revertMutation.mutate()} disabled={revertMutation.isPending || !settings?.id} className="gap-2 text-destructive hover:text-destructive">
           {revertMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-          Revert to Defaults
+          {t("settings.revertToDefaults")}
         </Button>
-        <Button
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-          className="gap-2"
-        >
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="gap-2">
           {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          Save White-Label Settings
+          {t("settings.saveWhiteLabel")}
         </Button>
       </div>
     </div>

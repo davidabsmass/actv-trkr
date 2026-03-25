@@ -41,35 +41,20 @@ export default function ApiKeysSection() {
     if (!orgId) return;
     setGenerating(true);
     try {
-      // Revoke any existing active keys first
       for (const k of activeKeys) {
-        await supabase
-          .from("api_keys")
-          .update({ revoked_at: new Date().toISOString() })
-          .eq("id", k.id);
+        await supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", k.id);
       }
-
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      const hashBuffer = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(rawKey)
-      );
-      const keyHash = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-
-      const { error } = await supabase
-        .from("api_keys")
-        .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
+      const keyHash = Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const { error } = await supabase.from("api_keys").insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
       if (error) throw error;
-
       setNewKey(rawKey);
       queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });
-      toast({ title: "API key generated", description: "Copy it now — it won't be shown again." });
+      toast({ title: t("settings.apiKeyGenerated"), description: t("settings.apiKeyGeneratedDesc") });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error generating key", description: err?.message });
+      toast({ variant: "destructive", title: t("settings.errorGeneratingKey"), description: err?.message });
     } finally {
       setGenerating(false);
     }
@@ -78,15 +63,12 @@ export default function ApiKeysSection() {
   const revokeKey = async (id: string) => {
     setRevokingId(id);
     try {
-      const { error } = await supabase
-        .from("api_keys")
-        .update({ revoked_at: new Date().toISOString() })
-        .eq("id", id);
+      const { error } = await supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });
-      toast({ title: "Key revoked" });
+      toast({ title: t("settings.keyRevoked") });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error revoking key", description: err?.message });
+      toast({ variant: "destructive", title: t("settings.errorRevokingKey"), description: err?.message });
     } finally {
       setRevokingId(null);
     }
@@ -113,28 +95,19 @@ export default function ApiKeysSection() {
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           <Plus className="h-3 w-3" />
-          {generating ? "Generating…" : hasActiveKey ? "Replace Key" : "New Key"}
+          {generating ? t("settings.generating") : hasActiveKey ? t("settings.replaceKey") : t("settings.newKey")}
         </button>
       </div>
 
       {newKey && (
         <div className="mb-4 rounded-lg bg-secondary p-3 space-y-2">
           <p className="text-xs text-secondary-foreground/70 font-medium">
-            New API key — copy it now, it won't be shown again:
+            {t("settings.newApiKeyNotice")}
           </p>
           <div className="flex items-center gap-2">
-            <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">
-              {newKey}
-            </code>
-            <button
-              onClick={copyKey}
-              className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors"
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-primary" />
-              ) : (
-                <Copy className="h-4 w-4 text-muted-foreground" />
-              )}
+            <code className="text-xs font-mono text-secondary-foreground flex-1 break-all">{newKey}</code>
+            <button onClick={copyKey} className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors">
+              {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
             </button>
           </div>
           <button
@@ -142,7 +115,7 @@ export default function ApiKeysSection() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground border border-border rounded-lg hover:bg-accent transition-colors"
           >
             <Download className="h-3 w-3" />
-            Download Plugin with this key
+            {t("settings.downloadPluginWithKey")}
           </button>
         </div>
       )}
@@ -155,17 +128,14 @@ export default function ApiKeysSection() {
         <ScrollArea className="h-[220px]">
           <div className="space-y-2 pr-2">
             {keys.map((k) => (
-              <div
-                key={k.id}
-                className="flex items-center justify-between rounded-lg border border-border p-3"
-              >
+              <div key={k.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">{k.label}</p>
                   <p className="text-xs text-muted-foreground">
-                    Created {new Date(k.created_at).toLocaleDateString()}
+                    {t("settings.created")} {new Date(k.created_at).toLocaleDateString()}
                     {k.revoked_at && (
                       <span className="ml-2 text-destructive">
-                        · Revoked {new Date(k.revoked_at).toLocaleDateString()}
+                        · {t("settings.revoked")} {new Date(k.revoked_at).toLocaleDateString()}
                       </span>
                     )}
                   </p>
@@ -177,7 +147,7 @@ export default function ApiKeysSection() {
                     className="flex items-center gap-1 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 rounded transition-colors disabled:opacity-50"
                   >
                     <Ban className="h-3 w-3" />
-                    {revokingId === k.id ? "Revoking…" : "Revoke"}
+                    {revokingId === k.id ? t("settings.revoking") : t("settings.revoke")}
                   </button>
                 )}
               </div>

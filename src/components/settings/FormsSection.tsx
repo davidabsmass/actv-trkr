@@ -12,25 +12,17 @@ function useFormFields(orgId: string | null) {
     queryKey: ["form_fields_summary", orgId],
     queryFn: async () => {
       if (!orgId) return {};
-      // Get distinct field labels per form, excluding internal/meta fields
       const { data, error } = await supabase
         .from("lead_fields_flat")
         .select("field_key, field_label, lead_id")
         .eq("org_id", orgId);
       if (error) throw error;
-
-      // Get lead -> form_id mapping
       const leadIds = [...new Set(data?.map((d) => d.lead_id) ?? [])];
       if (leadIds.length === 0) return {};
-
       const { data: leads } = await supabase
-        .from("leads")
-        .select("id, form_id")
-        .in("id", leadIds.slice(0, 500));
-
+        .from("leads").select("id, form_id").in("id", leadIds.slice(0, 500));
       const leadFormMap: Record<string, string> = {};
       leads?.forEach((l) => { leadFormMap[l.id] = l.form_id; });
-
       const skipKeys = new Set(["data", "submission", "field_labels", "field_types"]);
       const formFields: Record<string, string[]> = {};
       data?.forEach((row) => {
@@ -39,9 +31,7 @@ function useFormFields(orgId: string | null) {
         if (!formId) return;
         if (!formFields[formId]) formFields[formId] = [];
         const label = row.field_label || row.field_key;
-        if (!formFields[formId].includes(label)) {
-          formFields[formId].push(label);
-        }
+        if (!formFields[formId].includes(label)) formFields[formId].push(label);
       });
       return formFields;
     },
@@ -56,7 +46,6 @@ export default function FormsSection() {
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-
   const { data: formFields } = useFormFields(orgId);
 
   const activeForms = forms?.filter((f) => !f.archived) ?? [];
@@ -66,24 +55,15 @@ export default function FormsSection() {
   const toggleArchive = async (formId: string, currentlyArchived: boolean) => {
     setTogglingId(formId);
     try {
-      const { error } = await supabase
-        .from("forms")
-        .update({ archived: !currentlyArchived })
-        .eq("id", formId);
+      const { error } = await supabase.from("forms").update({ archived: !currentlyArchived }).eq("id", formId);
       if (error) throw error;
       toast({
-        title: currentlyArchived ? "Form restored" : "Form archived",
-        description: currentlyArchived
-          ? "The form is now visible in your dashboard."
-          : "The form has been hidden from your dashboard.",
+        title: currentlyArchived ? t("settings.formRestored") : t("settings.formArchived"),
+        description: currentlyArchived ? t("settings.formRestoredDesc") : t("settings.formArchivedDesc"),
       });
       queryClient.invalidateQueries({ queryKey: ["forms", orgId] });
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err?.message || "Something went wrong",
-      });
+      toast({ variant: "destructive", title: "Error", description: err?.message });
     } finally {
       setTogglingId(null);
     }
@@ -102,32 +82,21 @@ export default function FormsSection() {
             className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             {showArchived ? (
-              <>
-                <Eye className="h-3.5 w-3.5" />
-                Show Active ({activeForms.length})
-              </>
+              <><Eye className="h-3.5 w-3.5" /> {t("settings.showActive", { count: activeForms.length })}</>
             ) : (
-              <>
-                <EyeOff className="h-3.5 w-3.5" />
-                Show Archived ({archivedForms.length})
-              </>
+              <><EyeOff className="h-3.5 w-3.5" /> {t("settings.showArchived", { count: archivedForms.length })}</>
             )}
           </button>
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground mb-3">
-        Forms are automatically discovered by the plugin. Use "Sync Forms" in your WordPress plugin settings to rescan.
-        Archive forms you no longer want to track.
-      </p>
+      <p className="text-xs text-muted-foreground mb-3">{t("settings.formsAutoDesc")}</p>
 
       {isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <p className="text-xs text-muted-foreground">{t("settings.loadingKeys")}</p>
       ) : displayedForms.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          {showArchived
-            ? "No archived forms."
-            : "No active forms discovered yet. Install the plugin and click 'Sync Forms' in WordPress."}
+          {showArchived ? t("settings.noArchivedFormsSettings") : t("settings.noActiveFormsSettings")}
         </p>
       ) : (
         <div className="space-y-3">
@@ -135,29 +104,20 @@ export default function FormsSection() {
             <div key={form.id} className="flex items-start gap-3 group">
               <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">
-                  {form.name}
-                </p>
+                <p className="text-sm font-medium text-foreground">{form.name}</p>
                 <p className="text-xs text-muted-foreground truncate">
                   {formFields?.[form.id]?.length
                     ? formFields[form.id].slice(0, 5).join(" · ") +
-                      (formFields[form.id].length > 5
-                        ? ` +${formFields[form.id].length - 5} more`
-                        : "")
-                    : "No entries yet"}
+                      (formFields[form.id].length > 5 ? ` ${t("settings.moreFields", { count: formFields[form.id].length - 5 })}` : "")
+                    : t("settings.noEntriesYet")}
                 </p>
               </div>
               <button
                 onClick={() => toggleArchive(form.id, form.archived)}
                 disabled={togglingId === form.id}
                 className="flex items-center gap-1 p-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
-                title={form.archived ? "Restore form" : "Archive form"}
               >
-                {form.archived ? (
-                  <ArchiveRestore className="h-3.5 w-3.5" />
-                ) : (
-                  <Archive className="h-3.5 w-3.5" />
-                )}
+                {form.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
               </button>
             </div>
           ))}

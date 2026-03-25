@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AiChatbot } from "@/components/AiChatbot";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();
@@ -58,7 +59,9 @@ function LayoutInner() {
         <main className="flex-1 flex flex-col min-w-0">
           <header className="h-12 flex items-center justify-between border-b border-border px-4 shrink-0">
             <div className="flex items-center gap-3">
-              <SidebarTrigger />
+              <IconTooltip label="Toggle sidebar">
+                <SidebarTrigger />
+              </IconTooltip>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />

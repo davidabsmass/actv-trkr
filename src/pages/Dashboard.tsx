@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { GetStartedBanner } from "@/components/dashboard/GetStartedBanner";
 import { useNavigate, Link } from "react-router-dom";
 import { format, subDays, startOfDay } from "date-fns";
@@ -39,7 +40,9 @@ function KPICard({ label, value, sub, trend, icon, accent }: KPICardProps) {
     <div className="glass-card p-4 animate-slide-up">
       <div className="flex items-start justify-between mb-2">
         <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
-        <span className={accent || "text-primary"}>{icon}</span>
+        <IconTooltip label={label}>
+          <span className={accent || "text-primary"}>{icon}</span>
+        </IconTooltip>
       </div>
       <p className="text-xl font-bold font-mono-data text-foreground leading-tight">{value}</p>
       <div className="flex items-center gap-1.5 mt-1">

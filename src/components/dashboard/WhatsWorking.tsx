@@ -1,3 +1,4 @@
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
@@ -95,7 +96,7 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
   });
 
   return (
-    <div className="glass-card p-5 animate-slide-up h-full">
+    <div ref={ref} className="glass-card p-5 animate-slide-up h-full">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-success" />
         What's Working
@@ -119,4 +120,4 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
       )}
     </div>
   );
-}
+});

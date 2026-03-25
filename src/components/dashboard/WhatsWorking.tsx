@@ -81,12 +81,15 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
       if (sessData && sessData.length > 0) {
         const srcMap: Record<string, number> = {};
         for (const r of sessData) {
-          const src = r.utm_source || r.landing_referrer_domain || "Direct";
+          const src = r.utm_source || r.landing_referrer_domain || t("dashboard.direct");
           srcMap[src] = (srcMap[src] || 0) + 1;
         }
         const topSrc = Object.entries(srcMap).sort((a, b) => b[1] - a[1])[0];
         if (topSrc && topSrc[1] > 5) {
-          results.push({ title: `Top source: ${topSrc[0]}`, explanation: `${topSrc[1]} sessions from ${topSrc[0]} this week.` });
+          results.push({
+            title: t("dashboard.topSourceLabel", { source: topSrc[0] }),
+            explanation: t("dashboard.sessionsFromSource", { count: topSrc[1], source: topSrc[0] }),
+          });
         }
       }
 

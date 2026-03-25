@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import SnapshotView from "./pages/SnapshotView";
 import ResetPassword from "./pages/ResetPassword";
 import Monitoring from "./pages/Monitoring";
+import Security from "./pages/Security";
 import Notifications from "./pages/Notifications";
 import Account from "./pages/Account";
 import GetStarted from "./pages/GetStarted";

@@ -1,7 +1,7 @@
 import {
   TableProperties, Settings, LogOut, UserCircle,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
-  LayoutDashboard, TrendingUp, Users, Search, FileText,
+  LayoutDashboard, TrendingUp, Users, Search, FileText, ShieldAlert,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";

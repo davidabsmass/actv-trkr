@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.3.27
+ * Version:     1.3.28
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -25,6 +25,7 @@ require_once MM_PLUGIN_DIR . 'includes/class-updater.php';
 require_once MM_PLUGIN_DIR . 'includes/class-heartbeat.php';
 require_once MM_PLUGIN_DIR . 'includes/class-broken-links.php';
 require_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';
+require_once MM_PLUGIN_DIR . 'includes/class-security.php';
 
 /**
  * Activation: create retry-queue table and schedule cron.
@@ -72,6 +73,8 @@ MM_Updater::init();
 MM_Heartbeat::init();
 MM_Broken_Links::init();
 MM_SEO_Fixes::init();
+$mm_security = new Mission_Metrics_Security();
+$mm_security->init();
 
 // Ensure crons are scheduled even after updates (activation hook only fires on first install).
 add_action( 'init', function () {

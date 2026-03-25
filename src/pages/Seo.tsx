@@ -1,16 +1,13 @@
 import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useOrg } from "@/hooks/use-org";
-import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import SeoTab from "@/components/reports/SeoTab";
 import { Navigate } from "react-router-dom";
 
 export default function Seo() {
   const { orgName, orgId, loading: orgLoading } = useOrg();
-  const { isAdmin } = useUserRole();
-  const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
 
-  if (orgLoading || orgRoleLoading) {
+  if (orgLoading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -19,11 +16,6 @@ export default function Seo() {
   }
 
   if (!orgId) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // Allow global admins and org-level admins only
-  if (!isAdmin && orgRole !== "admin") {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -39,3 +31,4 @@ export default function Seo() {
     </div>
   );
 }
+

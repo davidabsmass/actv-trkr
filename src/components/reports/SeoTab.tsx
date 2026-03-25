@@ -293,7 +293,6 @@ export default function SeoTab() {
 
   const handleVerify = () => {
     if (activeScan?.url) {
-      setScanUrl(activeScan.url);
       runScan.mutate();
     }
   };

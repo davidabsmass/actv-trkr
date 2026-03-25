@@ -319,7 +319,7 @@ const Index = () => {
                 Form Monitoring
               </div>
               <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Track the Performance of Every Form
+                Track Performance on Every Form
               </h3>
               <p className="text-white/90 max-w-xl mb-4">
                 Your forms are one of the most important parts of your website — and one of the easiest places for problems to slip by unnoticed.

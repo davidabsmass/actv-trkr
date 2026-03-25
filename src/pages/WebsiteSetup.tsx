@@ -104,8 +104,8 @@ export default function WebsiteSetup() {
   const completedSteps = steps.filter(s => s.done).length;
   const progressPct = Math.round((completedSteps / steps.length) * 100);
 
-  // Allowed websites (1 per core, could expand later)
-  const allowedWebsites = activeTier === "growth" ? 10 : activeTier === "performance" ? 5 : 1;
+  // All plans allow up to 10 websites (Multi-Site Plan)
+  const allowedWebsites = 10;
   const limitReached = allSites.length >= allowedWebsites;
 
   const handleDownload = async () => {

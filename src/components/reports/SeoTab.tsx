@@ -10,6 +10,7 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 import { getScoreGrade, getScoreStatus, calculateScore, calculateSeverityMultiplier } from "@/lib/seo-scoring";
 import type { SeoIssue } from "@/lib/seo-scoring";
@@ -21,6 +22,7 @@ import SeoBlendedInsights from "./SeoBlendedInsights";
 import SeoFixModal from "./SeoFixModal";
 
 export default function SeoTab() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
@@ -169,9 +171,11 @@ export default function SeoTab() {
 
   const runScan = useMutation({
     mutationFn: async () => {
-      if (!sites?.length || !orgId) throw new Error("No sites configured");
+      if (!sites?.length || !orgId) throw new Error(t("seo.noSitesConfigured", { defaultValue: "No sites configured" }));
       const urlToScan = homepageUrl.trim().replace(/\/+$/, "");
-      if (!validateUrl(urlToScan)) throw new Error(`URL must belong to ${siteDomain}`);
+      if (!validateUrl(urlToScan)) {
+        throw new Error(t("seo.urlMustBelong", { domain: siteDomain, defaultValue: `URL must belong to ${siteDomain}` }));
+      }
       const site = sites[0];
       const { data, error } = await supabase.functions.invoke("scan-site-seo", {
         body: { url: urlToScan, site_id: site.id, org_id: orgId },
@@ -183,9 +187,9 @@ export default function SeoTab() {
       queryClient.invalidateQueries({ queryKey: ["seo_scan_history", orgId] });
       queryClient.invalidateQueries({ queryKey: ["seo_blended", orgId] });
       setSelectedScanId(null); // will auto-select latest
-      toast.success("SEO scan completed");
+      toast.success(t("dashboard.seoScanCompleted"));
     },
-    onError: (err: any) => toast.error(err.message || "Scan failed"),
+    onError: (err: any) => toast.error(err.message || t("monitoring.scanFailed")),
   });
 
   const issues = (activeScan?.issues_json as unknown as SeoIssue[] | null) || [];
@@ -256,7 +260,7 @@ export default function SeoTab() {
     });
     setLocalMarkedFixed(prev => new Set(prev).add(issueId));
     queryClient.invalidateQueries({ queryKey: ["seo_fix_history", orgId, activeScan.url] });
-    toast.success("Issue marked as fixed — it won't appear on future scans for this page");
+    toast.success(t("reports.issueMarkedFixed"));
   };
 
   const [fixModal, setFixModal] = useState<{ issueId: string; fixType: string; title: string } | null>(null);
@@ -281,9 +285,9 @@ export default function SeoTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["seo_fix_queue", orgId] });
       setFixModal(null);
-      toast.success("Fix queued — your site plugin will apply it shortly");
+      toast.success(t("reports.fixQueued"));
     },
-    onError: (err: any) => toast.error(err.message || "Failed to queue fix"),
+    onError: (err: any) => toast.error(err.message || t("seo.failedToQueueFix", { defaultValue: "Failed to queue fix" })),
   });
 
   const handleFixClick = (issueId: string, fixType: string) => {
@@ -304,11 +308,11 @@ export default function SeoTab() {
       .update({ created_at: new Date().toISOString() } as any)
       .eq("id", fixQueueId);
     if (error) {
-      toast.error("Failed to retry fix");
+      toast.error(t("seo.failedToRetryFix", { defaultValue: "Failed to retry fix" }));
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["seo_fix_queue", orgId] });
-    toast.success("Fix re-queued — your plugin will pick it up on the next poll cycle");
+    toast.success(t("reports.fixReQueued"));
   };
 
   const getPathFromUrl = (url: string) => {
@@ -327,15 +331,15 @@ export default function SeoTab() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">SEO Scanner</h3>
-            <Badge variant="outline" className="text-xs uppercase tracking-wider text-primary border-primary/30">Beta</Badge>
+            <h3 className="text-sm font-semibold text-foreground">{t("dashboard.seoScanner")}</h3>
+            <Badge variant="outline" className="text-xs uppercase tracking-wider text-primary border-primary/30">{t("sidebar.beta")}</Badge>
           </div>
         </div>
 
         {sites && sites.length > 0 ? (
           <div className="flex items-center gap-3">
             <p className="text-xs text-muted-foreground flex-1">
-              Scanning: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
+              {t("dashboard.scanning")}: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
             </p>
             <Button
               size="sm"
@@ -344,11 +348,11 @@ export default function SeoTab() {
               className="gap-1.5 shrink-0"
             >
               {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {runScan.isPending ? "Scanning…" : "Scan Homepage"}
+              {runScan.isPending ? t("dashboard.scanningDots") : t("dashboard.scanHomepage")}
             </Button>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Add a site in Settings to enable SEO scanning.</p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.addSiteForSeo")}</p>
         )}
       </div>
 
@@ -401,8 +405,8 @@ export default function SeoTab() {
       {(!scanHistory || scanHistory.length === 0) && !historyLoading && (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <Search className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">SEO insights will appear once you run your first scan.</p>
-          <p className="text-xs text-muted-foreground mt-1">Click "Scan Now" above to get started.</p>
+          <p className="text-sm text-muted-foreground">{t("dashboard.seoInsightsEmpty")}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("dashboard.scanNowHint")}</p>
         </div>
       )}
 

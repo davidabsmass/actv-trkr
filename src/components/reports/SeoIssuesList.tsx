@@ -3,6 +3,7 @@ import { AlertCircle, AlertTriangle, Info, CheckCircle2, Shield, Wand2, Check, C
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SeoIssue } from "@/lib/seo-scoring";
+import { useTranslation } from "react-i18next";
 
 const impactColors: Record<string, string> = {
   Critical: "bg-destructive/10 text-destructive border-destructive/20",
@@ -47,6 +48,7 @@ interface Props {
 }
 
 export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new Set(), onFixClick, onMarkFixed, onVerify, onRetryStale }: Props) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const getFixStatus = (issueId: string): FixQueueItem | undefined =>
@@ -100,7 +102,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                           return (
                             <div className="flex items-center gap-1.5">
                               <Badge className={`${isStale ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-warning/20 text-warning border-warning/30"} text-xs gap-1`}>
-                                <Clock className="h-2.5 w-2.5" /> {isStale ? "Stale" : "Pending"}
+                                <Clock className="h-2.5 w-2.5" /> {isStale ? t("reports.stale") : t("reports.pending")}
                               </Badge>
                               {isStale && onRetryStale && (
                                 <Button
@@ -109,11 +111,11 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                                   className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
                                   onClick={(e) => { e.stopPropagation(); onRetryStale(queueItem.id); }}
                                 >
-                                  <RefreshCw className="h-2.5 w-2.5" /> Retry
+                                  <RefreshCw className="h-2.5 w-2.5" /> {t("reports.retryFix")}
                                 </Button>
                               )}
                               {isStale && !onRetryStale && (
-                                <span className="text-xs text-destructive/80">Plugin may not be polling — deactivate &amp; reactivate in WP</span>
+                                <span className="text-xs text-destructive/80">{t("reports.pluginNotPolling")}</span>
                               )}
                             </div>
                           );
@@ -121,21 +123,21 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                         {queueItem?.status === "applied" && (
                           <>
                             <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
-                              <Check className="h-2.5 w-2.5" /> Applied
+                              <Check className="h-2.5 w-2.5" /> {t("reports.applied")}
                             </Badge>
                             {onVerify && (
                               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onVerify(); }}>
-                                <RefreshCw className="h-2.5 w-2.5 mr-1" /> Verify
+                                <RefreshCw className="h-2.5 w-2.5 mr-1" /> {t("reports.verify")}
                               </Button>
                             )}
                           </>
                         )}
                         {queueItem?.status === "skipped" && (
-                          <Badge variant="outline" className="text-xs">Skipped</Badge>
+                          <Badge variant="outline" className="text-xs">{t("reports.skipped")}</Badge>
                         )}
                         {isMarkedFixed && !queueItem && (
                           <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
-                            <Check className="h-2.5 w-2.5" /> Marked Fixed
+                            <Check className="h-2.5 w-2.5" /> {t("reports.markedFixed")}
                           </Badge>
                         )}
 
@@ -147,7 +149,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                             className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
                             onClick={(e) => { e.stopPropagation(); onFixClick(issue.id, fixType); }}
                           >
-                            <Wand2 className="h-2.5 w-2.5" /> Fix This
+                            <Wand2 className="h-2.5 w-2.5" /> {t("reports.fixThis")}
                           </Button>
                         )}
                         {!queueItem && !isMarkedFixed && !fixType && onMarkFixed && (
@@ -157,7 +159,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                             className="h-6 px-2 text-xs text-muted-foreground"
                             onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
                           >
-                            Mark Fixed
+                            {t("reports.markFixed")}
                           </Button>
                         )}
                         {!queueItem && !isMarkedFixed && fixType && onMarkFixed && (
@@ -167,7 +169,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                             className="h-6 px-2 text-xs text-muted-foreground"
                             onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
                           >
-                            Mark Fixed
+                            {t("reports.markFixed")}
                           </Button>
                         )}
 

@@ -1,4 +1,5 @@
 import { Eye, TrendingDown, Zap, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface BlendedInsight {
   page: string;
@@ -19,10 +20,12 @@ interface Props {
 }
 
 export default function SeoBlendedInsights({ insights }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div>
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-primary" /> SEO + Engagement Insights
+        <Sparkles className="h-4 w-4 text-primary" /> {t("seo.blendedInsightsTitle")}
       </h3>
       <div className="space-y-2">
         {insights.map((insight, i) => (
@@ -33,7 +36,7 @@ export default function SeoBlendedInsights({ insights }: Props) {
             </div>
             <p className="text-xs text-foreground/80 leading-relaxed mb-1">{insight.explanation}</p>
             <p className="text-xs text-muted-foreground">
-              Page: <span className="font-medium text-foreground">{insight.page}</span>
+              {t("seo.pageLabel")}: <span className="font-medium text-foreground">{insight.page}</span>
               {Object.entries(insight.metrics).map(([k, v]) => (
                 <span key={k}> · {k}: <span className="font-medium text-foreground">{v}</span></span>
               ))}

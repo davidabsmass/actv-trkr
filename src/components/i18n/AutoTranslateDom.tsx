@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const TEXT_TAGS = "h1,h2,h3,h4,h5,h6,p,span,button,a,label,th,td,option,small,strong,em,li";
 const ATTRS = ["placeholder", "title", "aria-label"] as const;
+const originalNodeText = new WeakMap<Text, string>();
 
 const shouldTranslate = (value: string) => {
   const text = value.trim();
@@ -43,12 +44,25 @@ export default function AutoTranslateDom() {
     if (!root) return;
 
     const elements = Array.from(root.querySelectorAll<HTMLElement>(TEXT_TAGS));
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+      if (currentNode instanceof Text) {
+        textNodes.push(currentNode);
+      }
+      currentNode = walker.nextNode();
+    }
 
     const restoreEnglish = () => {
-      elements.forEach((el) => {
-        if (el.dataset.atOrigText) {
-          el.textContent = el.dataset.atOrigText;
+      textNodes.forEach((node) => {
+        const original = originalNodeText.get(node);
+        if (original !== undefined) {
+          node.textContent = original;
         }
+      });
+
+      elements.forEach((el) => {
         ATTRS.forEach((attr) => {
           const key = `atOrig${attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase()).replace(/^./, (c) => c.toUpperCase())}`;
           const original = (el.dataset as Record<string, string | undefined>)[key];
@@ -62,19 +76,25 @@ export default function AutoTranslateDom() {
       return;
     }
 
-    const items: Array<{ el: HTMLElement; type: "text" | "attr"; value: string; attr?: (typeof ATTRS)[number] }> = [];
+    const items: Array<
+      | { node: Text; type: "text"; value: string }
+      | { el: HTMLElement; type: "attr"; value: string; attr: (typeof ATTRS)[number] }
+    > = [];
+
+    textNodes.forEach((node) => {
+      const parent = node.parentElement;
+      if (!parent || parent.closest("[data-no-auto-translate='true']")) return;
+      if (["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "CODE", "PRE"].includes(parent.tagName)) return;
+
+      const original = originalNodeText.get(node) ?? (node.textContent || "").trim();
+      if (shouldTranslate(original)) {
+        if (!originalNodeText.has(node)) originalNodeText.set(node, original);
+        items.push({ node, type: "text", value: original });
+      }
+    });
 
     elements.forEach((el) => {
       if (el.closest("[data-no-auto-translate='true']")) return;
-
-      const isLeaf = el.childElementCount === 0 || (el.tagName === "BUTTON" && el.textContent?.trim());
-      if (isLeaf) {
-        const original = el.dataset.atOrigText || el.textContent?.trim() || "";
-        if (shouldTranslate(original)) {
-          if (!el.dataset.atOrigText) el.dataset.atOrigText = original;
-          items.push({ el, type: "text", value: original });
-        }
-      }
 
       ATTRS.forEach((attr) => {
         const datasetKey = `atOrig${attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase()).replace(/^./, (c) => c.toUpperCase())}`;
@@ -91,12 +111,13 @@ export default function AutoTranslateDom() {
     if (items.length === 0) return;
 
     const applyTranslations = (cache: Record<string, string>) => {
-      items.forEach(({ el, type, value, attr }) => {
+      items.forEach((item) => {
+        const value = item.value;
         const translated = cache[value] || value;
-        if (type === "text") {
-          el.textContent = translated;
-        } else if (attr) {
-          el.setAttribute(attr, translated);
+        if (item.type === "text") {
+          item.node.textContent = translated;
+        } else {
+          item.el.setAttribute(item.attr, translated);
         }
       });
     };
@@ -120,7 +141,7 @@ export default function AutoTranslateDom() {
     run().catch(() => {
       // silently fail to avoid impacting navigation
     });
-  }, [targetLanguage, location.pathname]);
+  }, [targetLanguage, location.pathname, location.search]);
 
   return null;
 }

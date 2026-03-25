@@ -238,7 +238,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             <Sparkles className="h-3.5 w-3.5 text-primary/60" />
             <span className="text-xs font-medium text-foreground">All caught up!</span>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-xs text-muted-foreground leading-relaxed">
             You've used all your AI insights for today. Fresh insights will be ready for you tomorrow morning. ☕
           </p>
         </div>
@@ -255,9 +255,9 @@ export function AiInsights({ metrics }: AiInsightsProps) {
       ) : insights ? (
         <>
           {isLoading && (
-            <div className="mb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-              <RefreshCw className="h-3 w-3 animate-spin" />
-              Refreshing insights…
+             <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+               <RefreshCw className="h-3 w-3 animate-spin" />
+               Refreshing insights…
             </div>
           )}
           <div className="mb-5">
@@ -267,7 +267,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             <div>
               <div className="flex items-center gap-1.5 mb-3">
                 <Lightbulb className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                   Recommended Actions
                 </span>
               </div>

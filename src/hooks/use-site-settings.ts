@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 
+const PREVIEW_ORG_ID = "00000000-0000-0000-0000-000000000000";
+function isPreviewOrg(orgId: string | null) {
+  return orgId === PREVIEW_ORG_ID;
+}
+
 export type PrimaryFocus = "lead_volume" | "marketing_impact" | "conversion_performance" | "paid_optimization";
 
 // Keep old type for backward compat

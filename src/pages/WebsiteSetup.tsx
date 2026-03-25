@@ -202,7 +202,7 @@ export default function WebsiteSetup() {
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
             <Download className="h-5 w-5 text-primary" />
           </div>
-          <h3 className="text-sm font-semibold text-foreground mb-1">Download the Plugin</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-1">{t("websiteSetup.downloadPlugin")}</h3>
           <p className="text-xs text-muted-foreground mb-4 flex-1">
             {t("websiteSetup.downloadPluginDesc")}
           </p>
@@ -388,11 +388,6 @@ export default function WebsiteSetup() {
               const hasHeartbeat = !!site.last_heartbeat_at;
               const isRecent = hasHeartbeat && (Date.now() - new Date(site.last_heartbeat_at!).getTime() < 30 * 60 * 1000);
               const siteStatus: "connected" | "pending" | "disconnected" = isRecent ? "connected" : hasHeartbeat ? "pending" : "disconnected";
-              const statusColors = {
-                connected: "text-success",
-                pending: "text-warning",
-                disconnected: "text-destructive",
-              };
               const statusLabels = {
                 connected: t("websiteSetup.statusConnected"),
                 pending: t("websiteSetup.statusPending"),

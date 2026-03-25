@@ -74,12 +74,12 @@ export function ShareableSnapshot({ snapshotData, startDate, endDate }: Snapshot
           <div className="glass-card p-6 w-full max-w-sm animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-4">
               <Share2 className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Shareable Snapshot</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("dashboard.shareableSnapshot")}</h3>
             </div>
             {creating ? (
               <div className="flex items-center gap-2 py-4">
                 <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-muted-foreground">Creating snapshot…</p>
+                <p className="text-sm text-muted-foreground">{t("dashboard.creatingSnapshot")}</p>
               </div>
             ) : link ? (
               <>

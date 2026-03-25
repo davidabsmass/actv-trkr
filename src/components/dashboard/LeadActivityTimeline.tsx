@@ -150,9 +150,9 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
             </span>
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Engagement Score</p>
+            <p className="text-sm font-semibold text-foreground">{t("dashboard.engagementScore")}</p>
             <p className="text-xs text-muted-foreground">
-              {engagementScore >= 70 ? "Highly engaged" : engagementScore >= 40 ? "Moderately engaged" : "Low engagement"}
+              {engagementScore >= 70 ? t("dashboard.highlyEngaged") : engagementScore >= 40 ? t("dashboard.moderatelyEngaged") : t("dashboard.lowEngagement")}
             </p>
           </div>
         </div>

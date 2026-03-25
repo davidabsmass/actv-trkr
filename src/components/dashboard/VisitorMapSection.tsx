@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Globe } from "lucide-react";
@@ -16,18 +17,10 @@ const COUNTRY_NAMES: Record<string, string> = {
   CN: "China", XX: "Unknown",
 };
 
-interface CountryRow {
-  countryCode: string;
-  sessions: number;
-}
+interface CountryRow { countryCode: string; sessions: number; }
+interface VisitorMapSectionProps { data: CountryRow[]; }
 
-interface VisitorMapSectionProps {
-  data: CountryRow[];
-}
-
-function getCountryName(code: string): string {
-  return COUNTRY_NAMES[code] || code;
-}
+function getCountryName(code: string): string { return COUNTRY_NAMES[code] || code; }
 
 function getFlagEmoji(code: string): string {
   if (code === "XX" || code.length !== 2) return "🌐";
@@ -36,18 +29,14 @@ function getFlagEmoji(code: string): string {
 }
 
 const HEAT_COLORS = [
-  { stop: 0, color: "#E5E7EB" },
-  { stop: 0.25, color: "#9CA3AF" },
-  { stop: 0.5, color: "#6B7280" },
-  { stop: 0.75, color: "#4B5563" },
-  { stop: 1, color: "#1F2937" },
+  { stop: 0, color: "#E5E7EB" }, { stop: 0.25, color: "#9CA3AF" },
+  { stop: 0.5, color: "#6B7280" }, { stop: 0.75, color: "#4B5563" }, { stop: 1, color: "#1F2937" },
 ];
 
 function getHeatColor(intensity: number): string {
   const t = Math.max(0, Math.min(1, intensity));
   for (let i = 0; i < HEAT_COLORS.length - 1; i++) {
-    const lo = HEAT_COLORS[i];
-    const hi = HEAT_COLORS[i + 1];
+    const lo = HEAT_COLORS[i], hi = HEAT_COLORS[i + 1];
     if (t >= lo.stop && t <= hi.stop) {
       const localT = (t - lo.stop) / (hi.stop - lo.stop);
       return interpolateHex(lo.color, hi.color, localT);
@@ -59,13 +48,12 @@ function getHeatColor(intensity: number): string {
 function interpolateHex(c1: string, c2: string, t: number): string {
   const r1 = parseInt(c1.slice(1, 3), 16), g1 = parseInt(c1.slice(3, 5), 16), b1 = parseInt(c1.slice(5, 7), 16);
   const r2 = parseInt(c2.slice(1, 3), 16), g2 = parseInt(c2.slice(3, 5), 16), b2 = parseInt(c2.slice(5, 7), 16);
-  const r = Math.round(r1 + (r2 - r1) * t);
-  const g = Math.round(g1 + (g2 - g1) * t);
-  const b = Math.round(b1 + (b2 - b1) * t);
+  const r = Math.round(r1 + (r2 - r1) * t), g = Math.round(g1 + (g2 - g1) * t), b = Math.round(b1 + (b2 - b1) * t);
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
 export function VisitorMapSection({ data }: VisitorMapSectionProps) {
+  const { t } = useTranslation();
   const maxSessions = data?.[0]?.sessions || 1;
   const totalSessions = data?.reduce((s, d) => s + d.sessions, 0) || 0;
   const hasData = data && data.length > 0;
@@ -75,23 +63,16 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Globe className="h-4 w-4 text-primary" />
-          Visitor Locations
+          {t("visitorMap.title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Heat map legend */}
         <div className="flex items-center gap-2 mb-4 px-1">
-          <span className="text-xs text-muted-foreground">Low</span>
-          <div
-            className="flex-1 h-2 rounded-full"
-            style={{
-              background: `linear-gradient(to right, ${HEAT_COLORS.map(c => c.color).join(", ")})`,
-            }}
-          />
-          <span className="text-xs text-muted-foreground">High</span>
+          <span className="text-xs text-muted-foreground">{t("visitorMap.low")}</span>
+          <div className="flex-1 h-2 rounded-full" style={{ background: `linear-gradient(to right, ${HEAT_COLORS.map(c => c.color).join(", ")})` }} />
+          <span className="text-xs text-muted-foreground">{t("visitorMap.high")}</span>
         </div>
 
-        {/* Country bars */}
         {hasData ? (
           <div className="space-y-2 mb-4">
             {data.slice(0, 10).map((row) => {
@@ -102,14 +83,9 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
               return (
                 <div key={row.countryCode} className="flex items-center gap-3">
                   <span className="text-base w-7 text-center flex-shrink-0">{getFlagEmoji(row.countryCode)}</span>
-                  <span className="text-sm font-medium text-foreground w-28 truncate flex-shrink-0">
-                    {getCountryName(row.countryCode)}
-                  </span>
+                  <span className="text-sm font-medium text-foreground w-28 truncate flex-shrink-0">{getCountryName(row.countryCode)}</span>
                   <div className="flex-1 h-5 bg-muted/50 rounded-sm overflow-hidden">
-                    <div
-                      className="h-full rounded-sm transition-all duration-500"
-                      style={{ width: `${pct}%`, backgroundColor: barColor }}
-                    />
+                    <div className="h-full rounded-sm transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
                   </div>
                   <span className="text-xs text-muted-foreground w-16 text-right flex-shrink-0">
                     {row.sessions.toLocaleString()} ({sharePct}%)
@@ -119,31 +95,26 @@ export function VisitorMapSection({ data }: VisitorMapSectionProps) {
             })}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No geographic data yet. Country data will appear automatically as new pageviews arrive with location info.
-          </p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t("visitorMap.noData")}</p>
         )}
 
-        {/* Full table for all countries */}
         {hasData && data.length > 10 && (
           <details className="mt-3">
             <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-              Show all {data.length} countries
+              {t("visitorMap.showAll", { count: data.length })}
             </summary>
             <Table className="mt-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Country</TableHead>
-                  <TableHead className="text-xs text-right">Sessions</TableHead>
-                  <TableHead className="text-xs text-right">Share</TableHead>
+                  <TableHead className="text-xs">{t("visitorMap.country")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("visitorMap.sessions")}</TableHead>
+                  <TableHead className="text-xs text-right">{t("visitorMap.share")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.map((row) => (
                   <TableRow key={row.countryCode}>
-                    <TableCell className="text-sm">
-                      {getFlagEmoji(row.countryCode)} {getCountryName(row.countryCode)}
-                    </TableCell>
+                    <TableCell className="text-sm">{getFlagEmoji(row.countryCode)} {getCountryName(row.countryCode)}</TableCell>
                     <TableCell className="text-sm text-right">{row.sessions.toLocaleString()}</TableCell>
                     <TableCell className="text-sm text-right text-muted-foreground">
                       {totalSessions > 0 ? ((row.sessions / totalSessions) * 100).toFixed(1) : "0"}%

@@ -254,7 +254,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notif_rules", site.id] }),
   });
 
-  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING"];
+  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING", "PLUGIN_UPDATE", "PLUGIN_VULNERABILITY", "WP_CORE_UPDATE"];
   const channels = ["in_app", "email"];
 
   const getRuleEnabled = (alertType: string, channel: string) => {

@@ -326,7 +326,26 @@
     "monthlyFreq": "Monthly",
     "templateName": "Template Name",
     "toggleMetrics": "Toggle individual metrics within this section:",
-    "customize": "Customize"
+    "customize": "Customize",
+    "weightedLeads": "عملاء محتملون مرجحون",
+    "goalProgress": "تقدم الهدف",
+    "insightCards": "بطاقات الرؤى",
+    "uptimePercent": "% وقت التشغيل",
+    "downtimeMinutes": "دقائق التوقف",
+    "sslDomain": "SSL والنطاق",
+    "leadsByFormTable": "جدول العملاء حسب النموذج",
+    "recommendations": "التوصيات",
+    "contentOpportunities": "فرص المحتوى",
+    "firstDayOfMonth": "أول يوم في الشهر",
+    "lastDayOfMonth": "آخر يوم في الشهر",
+    "thisDayEachMonth": "هذا اليوم ({{day}}) كل شهر",
+    "reportTemplate": "قالب التقرير",
+    "customizeDesc": "خصص الأقسام والمقاييس التي تظهر في تقارير PDF الخاصة بك. اسحب لإعادة الترتيب.",
+    "resetDefaults": "إعادة تعيين",
+    "saveTemplate": "حفظ القالب",
+    "sectionsEnabled": "{{enabled}} من {{total}} أقسام مفعلة",
+    "changesApply": "التغييرات تنطبق على التقارير الجديدة التي تنشئها. التقارير السابقة لا تتأثر.",
+    "templateSaved": "تم حفظ القالب"
   },
   "forms": {
     "title": "النماذج والعملاء المحتملون",
@@ -786,5 +805,20 @@
     "target": "الهدف",
     "pagePath": "الصفحة",
     "session": "الجلسة"
+  },
+  "formHealth": {
+    "noSubmissions30d": "لا توجد إرسالات خلال 30 يومًا",
+    "submissionsThisWeek": "{{count}} إرسال هذا الأسبوع",
+    "errorsThisWeek": "{{count}} خطأ هذا الأسبوع",
+    "vsExpected": "{{actual}} مقابل {{expected}} متوقع هذا الأسبوع",
+    "notDetected": "لم يتم اكتشافه في الصفحة منذ {{date}}"
+  },
+  "whatsWorking": {
+    "trafficGrowing": "حركة المرور في ازدياد",
+    "trafficGrowingDesc": "الجلسات ارتفعت {{pct}}% مقارنة بالأسبوع السابق ({{current}} مقابل {{previous}}).",
+    "leadVolumeUp": "حجم العملاء المحتملين يزداد",
+    "leadVolumeUpDesc": "العملاء المحتملون ارتفعوا {{pct}}% مقارنة بالأسبوع السابق ({{current}} مقابل {{previous}}).",
+    "cvrImproved": "تحسن معدل التحويل",
+    "cvrImprovedDesc": "تحسن CVR بنسبة {{pct}}% مقارنة بالأسبوع الماضي."
   }
 }

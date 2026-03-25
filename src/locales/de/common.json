@@ -326,7 +326,26 @@
     "monthlyFreq": "Monthly",
     "templateName": "Template Name",
     "toggleMetrics": "Toggle individual metrics within this section:",
-    "customize": "Customize"
+    "customize": "Customize",
+    "weightedLeads": "Gewichtete Leads",
+    "goalProgress": "Zielfortschritt",
+    "insightCards": "Insight-Karten",
+    "uptimePercent": "Uptime %",
+    "downtimeMinutes": "Ausfallminuten",
+    "sslDomain": "SSL & Domain",
+    "leadsByFormTable": "Leads nach Formular-Tabelle",
+    "recommendations": "Empfehlungen",
+    "contentOpportunities": "Content-Chancen",
+    "firstDayOfMonth": "Erster Tag des Monats",
+    "lastDayOfMonth": "Letzter Tag des Monats",
+    "thisDayEachMonth": "Dieser Tag ({{day}}) jeden Monat",
+    "reportTemplate": "Berichtsvorlage",
+    "customizeDesc": "Passen Sie an, welche Abschnitte und Metriken in Ihren PDF-Berichten erscheinen. Ziehen zum Neuordnen.",
+    "resetDefaults": "Zurücksetzen",
+    "saveTemplate": "Vorlage speichern",
+    "sectionsEnabled": "{{enabled}} von {{total}} Abschnitten aktiviert",
+    "changesApply": "Änderungen gelten für neue Berichte. Bereits erstellte Berichte sind nicht betroffen.",
+    "templateSaved": "Vorlage gespeichert"
   },
   "forms": {
     "title": "Formulare & Leads",
@@ -786,5 +805,20 @@
     "target": "Ziel",
     "pagePath": "Seite",
     "session": "Sitzung"
+  },
+  "formHealth": {
+    "noSubmissions30d": "Keine Einreichungen in 30 Tagen",
+    "submissionsThisWeek": "{{count}} Einreichungen diese Woche",
+    "errorsThisWeek": "{{count}} Fehler diese Woche",
+    "vsExpected": "{{actual}} vs {{expected}} erwartet diese Woche",
+    "notDetected": "Seit {{date}} nicht auf der Seite erkannt"
+  },
+  "whatsWorking": {
+    "trafficGrowing": "Traffic wächst",
+    "trafficGrowingDesc": "Sitzungen um {{pct}}% gestiegen vs. Vorwoche ({{current}} vs {{previous}}).",
+    "leadVolumeUp": "Lead-Volumen steigt",
+    "leadVolumeUpDesc": "Leads um {{pct}}% gestiegen vs. Vorwoche ({{current}} vs {{previous}}).",
+    "cvrImproved": "Conversion-Rate verbessert",
+    "cvrImprovedDesc": "CVR um {{pct}}% verbessert im Vergleich zur Vorwoche."
   }
 }

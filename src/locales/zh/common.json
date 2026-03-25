@@ -326,7 +326,26 @@
     "monthlyFreq": "Monthly",
     "templateName": "Template Name",
     "toggleMetrics": "Toggle individual metrics within this section:",
-    "customize": "Customize"
+    "customize": "Customize",
+    "weightedLeads": "加权线索",
+    "goalProgress": "目标进度",
+    "insightCards": "洞察卡片",
+    "uptimePercent": "在线率 %",
+    "downtimeMinutes": "停机分钟数",
+    "sslDomain": "SSL 和域名",
+    "leadsByFormTable": "按表单的线索表格",
+    "recommendations": "建议",
+    "contentOpportunities": "内容机会",
+    "firstDayOfMonth": "每月第一天",
+    "lastDayOfMonth": "每月最后一天",
+    "thisDayEachMonth": "每月这天 ({{day}})",
+    "reportTemplate": "报告模板",
+    "customizeDesc": "自定义PDF报告中显示的部分和指标。拖拽以重新排序。",
+    "resetDefaults": "重置默认",
+    "saveTemplate": "保存模板",
+    "sectionsEnabled": "已启用 {{enabled}}/{{total}} 个部分",
+    "changesApply": "更改适用于您生成的新报告。之前生成的报告不受影响。",
+    "templateSaved": "模板已保存"
   },
   "forms": {
     "title": "表单和线索",
@@ -786,5 +805,20 @@
     "target": "目标",
     "pagePath": "页面",
     "session": "会话"
+  },
+  "formHealth": {
+    "noSubmissions30d": "30天内无提交",
+    "submissionsThisWeek": "本周{{count}}次提交",
+    "errorsThisWeek": "本周{{count}}个错误",
+    "vsExpected": "{{actual}} vs 预期{{expected}}本周",
+    "notDetected": "自{{date}}以来未在页面上检测到"
+  },
+  "whatsWorking": {
+    "trafficGrowing": "流量正在增长",
+    "trafficGrowingDesc": "会话量较上周增长{{pct}}%（{{current}} vs {{previous}}）。",
+    "leadVolumeUp": "线索量增加",
+    "leadVolumeUpDesc": "线索较上周增长{{pct}}%（{{current}} vs {{previous}}）。",
+    "cvrImproved": "转化率提升",
+    "cvrImprovedDesc": "CVR 较上周提升{{pct}}%。"
   }
 }

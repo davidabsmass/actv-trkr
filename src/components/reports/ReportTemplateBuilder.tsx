@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -111,8 +112,52 @@ const ICON_MAP: Record<string, React.ElementType> = {
 export default function ReportTemplateBuilder() {
   const { orgId } = useOrg();
   const { session } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const userId = session?.user?.id;
+
+  // Translation lookup for section/metric labels
+  const labelMap: Record<string, string> = useMemo(() => ({
+    "aiInsights": t("reports.aiInsights"),
+    "insights_list": t("reports.insightCards"),
+    "executiveSummary": t("reports.executiveSummary"),
+    "leads": t("reports.leads"),
+    "sessions": t("reports.sessions"),
+    "pageviews": t("dashboard.pageviews"),
+    "cvr": t("reports.cvr"),
+    "weightedLeads": t("reports.weightedLeads"),
+    "goal": t("reports.goalProgress"),
+    "keyWin": t("reports.keyWin"),
+    "keyRisk": t("reports.keyRisk"),
+    "siteHealth": t("reports.siteHealth"),
+    "uptime": t("reports.uptimePercent"),
+    "downtime": t("reports.downtimeMinutes"),
+    "incidents": t("reports.incidents"),
+    "brokenLinks": t("reports.brokenLinks"),
+    "ssl": t("reports.sslDomain"),
+    "formHealth": t("reports.formHealth"),
+    "totalSubmissions": t("reports.totalSubmissions"),
+    "failures": t("reports.failures"),
+    "failureRate": t("reports.failureRate"),
+    "growthEngine": t("reports.growthEngine"),
+    "trafficBySource": t("reports.trafficBySource"),
+    "topLandingPages": t("reports.topLandingPages"),
+    "conversionIntelligence": t("reports.conversionIntelligence"),
+    "leadsByForm": t("reports.leadsByFormTable"),
+    "topConvertingPages": t("reports.topConvertingPages"),
+    "leadSources": t("reports.leadSources"),
+    "userExperience": t("reports.userExperience"),
+    "deviceBreakdown": t("reports.deviceBreakdown"),
+    "geoBreakdown": t("reports.geography"),
+    "topPages": t("reports.topPages"),
+    "referrerBreakdown": t("reports.referrers"),
+    "actionPlan": t("reports.actionPlan"),
+    "forecast": t("reports.leadForecast"),
+    "recommendations": t("reports.recommendations"),
+    "contentOpportunities": t("reports.contentOpportunities"),
+  }), [t]);
+
+  const getLabel = (key: string, fallback: string) => labelMap[key] || fallback;
 
   const { data: saved, isLoading } = useQuery({
     queryKey: ["report_custom_template", orgId, userId],
@@ -183,7 +228,7 @@ export default function ReportTemplateBuilder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report_custom_template"] });
-      toast.success("Template saved");
+      toast.success(t("reports.templateSaved"));
       setHasChanges(false);
     },
     onError: (err: any) => toast.error(err.message || "Failed to save"),
@@ -243,32 +288,32 @@ export default function ReportTemplateBuilder() {
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
-              Report Template
+              {t("reports.reportTemplate")}
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Customize which sections and metrics appear in your PDF reports. Drag to reorder.
+              {t("reports.customizeDesc")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={resetToDefaults} className="gap-1.5">
-              <RotateCcw className="h-3.5 w-3.5" /> Reset Defaults
+              <RotateCcw className="h-3.5 w-3.5" /> {t("reports.resetDefaults")}
             </Button>
             <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !hasChanges} className="gap-1.5">
               {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              Save Template
+              {t("reports.saveTemplate")}
             </Button>
           </div>
         </div>
 
         <div className="flex items-center gap-3 mb-4">
-          <label className="text-xs font-medium text-muted-foreground">Template Name</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("reports.templateName")}</label>
           <Input
             value={templateName}
             onChange={(e) => { setTemplateName(e.target.value); setHasChanges(true); }}
             className="max-w-xs h-8 text-sm"
           />
           <Badge variant="secondary" className="text-xs ml-auto">
-            {enabledCount} of {sections.length} sections enabled
+            {t("reports.sectionsEnabled", { enabled: enabledCount, total: sections.length })}
           </Badge>
         </div>
       </div>
@@ -302,7 +347,7 @@ export default function ReportTemplateBuilder() {
                   className="data-[state=checked]:bg-primary"
                 />
                 <IconComp className="h-4 w-4 text-primary flex-shrink-0" />
-                <span className="text-sm font-medium text-foreground flex-1">{section.label}</span>
+                <span className="text-sm font-medium text-foreground flex-1">{getLabel(section.key, section.label)}</span>
                 <Badge variant="outline" className="text-xs">
                   {enabledMetrics}/{section.metrics.length}
                 </Badge>
@@ -317,7 +362,7 @@ export default function ReportTemplateBuilder() {
               {/* Metrics */}
               {isExpanded && (
                 <div className="border-t border-border px-4 py-3 bg-secondary/30">
-                  <p className="text-xs text-muted-foreground mb-3">Toggle individual metrics within this section:</p>
+                  <p className="text-xs text-muted-foreground mb-3">{t("reports.toggleMetrics")}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {section.metrics.map((metric) => (
                       <label
@@ -334,7 +379,7 @@ export default function ReportTemplateBuilder() {
                           disabled={!section.enabled}
                           className="data-[state=checked]:bg-primary scale-90"
                         />
-                        <span className="text-sm text-foreground">{metric.label}</span>
+                        <span className="text-sm text-foreground">{getLabel(metric.key, metric.label)}</span>
                         {metric.enabled && section.enabled && (
                           <Check className="h-3.5 w-3.5 text-primary ml-auto" />
                         )}
@@ -350,7 +395,7 @@ export default function ReportTemplateBuilder() {
 
       {/* Hint */}
       <p className="text-xs text-muted-foreground text-center">
-        Changes apply to new reports you generate. Previously generated reports are not affected.
+        {t("reports.changesApply")}
       </p>
     </div>
   );

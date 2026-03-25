@@ -112,11 +112,11 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
       <Section icon={Target} title={t("reports.executiveSummary")}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           {[
-            { label: "Leads", value: es.leads.current, change: es.leads.change },
-            { label: "Sessions", value: es.sessions.current, change: es.sessions.change },
-            { label: "Pageviews", value: es.pageviews.current, change: es.pageviews.change },
-            { label: "CVR", value: `${es.cvr.current}%`, change: es.cvr.change },
-            { label: "Weighted Leads", value: es.weightedLeads, change: null },
+            { label: t("reports.leads"), value: es.leads.current, change: es.leads.change },
+            { label: t("reports.sessions"), value: es.sessions.current, change: es.sessions.change },
+            { label: t("dashboard.pageviews"), value: es.pageviews.current, change: es.pageviews.change },
+            { label: t("reports.cvr"), value: `${es.cvr.current}%`, change: es.cvr.change },
+            { label: t("reports.weightedLeads"), value: es.weightedLeads, change: null },
           ].map((kpi) => (
             <div key={kpi.label} className="p-3 rounded-md bg-muted/50">
               <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{kpi.label}</p>
@@ -150,10 +150,10 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         <Section icon={Activity} title={t("reports.siteHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {[
-              { label: "Uptime", value: `${sh.uptimePercent}%`, cls: sh.uptimePercent >= 99.5 ? "text-success" : sh.uptimePercent >= 95 ? "text-warning" : "text-destructive" },
-              { label: "Downtime", value: `${sh.totalDowntimeMinutes}m` },
-              { label: "Incidents", value: sh.downtimeIncidents?.length || 0 },
-              { label: "Broken Links", value: sh.brokenLinksCount || 0 },
+              { label: t("reports.uptime"), value: `${sh.uptimePercent}%`, cls: sh.uptimePercent >= 99.5 ? "text-success" : sh.uptimePercent >= 95 ? "text-warning" : "text-destructive" },
+              { label: t("reports.downtime"), value: `${sh.totalDowntimeMinutes}m` },
+              { label: t("reports.incidents"), value: sh.downtimeIncidents?.length || 0 },
+              { label: t("reports.brokenLinks"), value: sh.brokenLinksCount || 0 },
             ].map((m) => (
               <div key={m.label} className="p-3 rounded-md bg-muted/50">
                 <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>
@@ -168,15 +168,15 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         <Section icon={FormInput} title={t("reports.formHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Total Submissions</p>
+             <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.totalSubmissions")}</p>
               <p className="text-lg font-bold text-foreground">{fh.totalSubmissions}</p>
             </div>
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Failures</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.failures")}</p>
               <p className={`text-lg font-bold ${fh.totalFailures > 0 ? "text-destructive" : "text-foreground"}`}>{fh.totalFailures}</p>
             </div>
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Failure Rate</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.failureRate")}</p>
               <p className={`text-lg font-bold ${fh.overallFailureRate > 5 ? "text-destructive" : "text-foreground"}`}>{fh.overallFailureRate}%</p>
             </div>
           </div>
@@ -204,13 +204,13 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="py-2 pr-4 text-xs font-medium text-muted-foreground">Form</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground">Category</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Weight</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Leads</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">CVR</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Failures</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Value</th>
+                    <th className="py-2 pr-4 text-xs font-medium text-muted-foreground">{t("reports.form")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground">{t("reports.category")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.weight")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.leads")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.cvr")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.failures")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.value")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -424,7 +424,7 @@ function ActivityReportsTab() {
   };
 
   const dayLabel = (d: number) => d === 0 ? "First day" : d === -1 ? "Last day" : d === 1 ? "1st" : d === 2 ? "2nd" : d === 3 ? "3rd" : `${d}th`;
-  const dayOptions = [{ value: "0", label: "First day of month" }, { value: "-1", label: "Last day of month" }, ...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: dayLabel(i + 1) }))];
+  const dayOptions = [{ value: "0", label: t("reports.firstDayOfMonth") }, { value: "-1", label: t("reports.lastDayOfMonth") }, ...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: dayLabel(i + 1) }))];
 
   if (viewingReport) return <ReportViewer report={viewingReport} onBack={() => setViewingReport(null)} />;
 
@@ -471,7 +471,7 @@ function ActivityReportsTab() {
               <div className="space-y-4 pt-2">
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.frequency")}</label>
-                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v, ...(v === "monthly_today" ? { runDayOfMonth: new Date().getDate() } : {}) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem><SelectItem value="monthly_today">{`This day (${dayLabel(new Date().getDate())}) each month`}</SelectItem></SelectContent></Select>
+                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v, ...(v === "monthly_today" ? { runDayOfMonth: new Date().getDate() } : {}) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem><SelectItem value="monthly_today">{t("reports.thisDayEachMonth", { day: dayLabel(new Date().getDate()) })}</SelectItem></SelectContent></Select>
                 </div>
                 {(newSchedule.frequency === "monthly") && (
                   <div>
@@ -601,7 +601,7 @@ export default function Reports() {
         <TabsList className="mb-6">
           <TabsTrigger value="overview">{t("reports.overview")}</TabsTrigger>
           <TabsTrigger value="activity">{t("reports.activityReports")}</TabsTrigger>
-          <TabsTrigger value="customize">Customize</TabsTrigger>
+          <TabsTrigger value="customize">{t("reports.customize")}</TabsTrigger>
           <TabsTrigger value="archives">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 

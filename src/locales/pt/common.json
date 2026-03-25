@@ -326,7 +326,26 @@
     "monthlyFreq": "Monthly",
     "templateName": "Template Name",
     "toggleMetrics": "Toggle individual metrics within this section:",
-    "customize": "Customize"
+    "customize": "Customize",
+    "weightedLeads": "Leads ponderados",
+    "goalProgress": "Progresso da meta",
+    "insightCards": "Cartões de insights",
+    "uptimePercent": "Uptime %",
+    "downtimeMinutes": "Minutos de inatividade",
+    "sslDomain": "SSL e domínio",
+    "leadsByFormTable": "Tabela de leads por formulário",
+    "recommendations": "Recomendações",
+    "contentOpportunities": "Oportunidades de conteúdo",
+    "firstDayOfMonth": "Primeiro dia do mês",
+    "lastDayOfMonth": "Último dia do mês",
+    "thisDayEachMonth": "Este dia ({{day}}) a cada mês",
+    "reportTemplate": "Modelo de relatório",
+    "customizeDesc": "Personalize quais seções e métricas aparecem nos seus relatórios PDF. Arraste para reordenar.",
+    "resetDefaults": "Redefinir",
+    "saveTemplate": "Salvar modelo",
+    "sectionsEnabled": "{{enabled}} de {{total}} seções habilitadas",
+    "changesApply": "As alterações se aplicam a novos relatórios gerados. Relatórios anteriores não são afetados.",
+    "templateSaved": "Modelo salvo"
   },
   "forms": {
     "title": "Formulários e leads",
@@ -786,5 +805,20 @@
     "target": "Alvo",
     "pagePath": "Página",
     "session": "Sessão"
+  },
+  "formHealth": {
+    "noSubmissions30d": "Sem envios em 30 dias",
+    "submissionsThisWeek": "{{count}} envios esta semana",
+    "errorsThisWeek": "{{count}} erro(s) esta semana",
+    "vsExpected": "{{actual}} vs {{expected}} esperados esta semana",
+    "notDetected": "Não detectado na página desde {{date}}"
+  },
+  "whatsWorking": {
+    "trafficGrowing": "O tráfego está crescendo",
+    "trafficGrowingDesc": "Sessões aumentaram {{pct}}% vs semana anterior ({{current}} vs {{previous}}).",
+    "leadVolumeUp": "O volume de leads aumentou",
+    "leadVolumeUpDesc": "Leads aumentaram {{pct}}% vs semana anterior ({{current}} vs {{previous}}).",
+    "cvrImproved": "A taxa de conversão melhorou",
+    "cvrImprovedDesc": "CVR melhorou {{pct}}% comparado à semana passada."
   }
 }

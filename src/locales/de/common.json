@@ -426,14 +426,14 @@
     "newIpFlagged": "Erfolgreiche Logins von neuen IPs werden zur Überprüfung markiert",
     "scansDaily": "Scannt täglich Core-Dateien, aktives Theme und Plugin-Verzeichnisse",
     "alertsOnChanges": "Alarme bei neuen, geänderten oder gelöschten Dateien außerhalb normaler Update-Zyklen",
-    "bruteForceTitle": "Brute Force Detected — Recommended Actions",
-    "bruteForceInstallPlugin": "Install a rate-limiting or login-lockout plugin (e.g. Limit Login Attempts Reloaded or Wordfence)",
-    "bruteForceEnable2fa": "Enable two-factor authentication (2FA) for all admin accounts",
-    "bruteForceChangeUrl": "Change the default /wp-admin login URL using a plugin like WPS Hide Login",
-    "bruteForceStrongPasswords": "Ensure all admin passwords are 16+ characters with mixed case, numbers, and symbols",
-    "bruteForceBlockIp": "Block the attacking IP addresses at your hosting firewall or via .htaccess",
-    "bruteForceWaf": "Consider enabling Cloudflare or a WAF to filter malicious traffic upstream",
-    "userLabel": "User"
+    "bruteForceTitle": "Brute-Force erkannt — Empfohlene Maßnahmen",
+    "bruteForceInstallPlugin": "Ein Rate-Limiting- oder Login-Lockout-Plugin installieren (z.B. Limit Login Attempts Reloaded oder Wordfence)",
+    "bruteForceEnable2fa": "Zwei-Faktor-Authentifizierung (2FA) für alle Admin-Konten aktivieren",
+    "bruteForceChangeUrl": "Die Standard-Login-URL /wp-admin mit einem Plugin wie WPS Hide Login ändern",
+    "bruteForceStrongPasswords": "Sicherstellen, dass alle Admin-Passwörter 16+ Zeichen mit Groß-/Kleinbuchstaben, Zahlen und Symbolen haben",
+    "bruteForceBlockIp": "Angreifende IP-Adressen in der Hosting-Firewall oder via .htaccess blockieren",
+    "bruteForceWaf": "Cloudflare oder eine WAF zur vorgelagerten Filterung von bösartigem Traffic in Betracht ziehen",
+    "userLabel": "Benutzer"
   },
   "account": {
     "title": "Konto",

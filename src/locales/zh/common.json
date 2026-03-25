@@ -426,14 +426,14 @@
     "newIpFlagged": "来自新 IP 的成功登录将标记以供审查",
     "scansDaily": "每天扫描核心文件、活跃主题和插件目录",
     "alertsOnChanges": "在正常更新周期外对新建、修改或删除的文件发出警报",
-    "bruteForceTitle": "Brute Force Detected — Recommended Actions",
-    "bruteForceInstallPlugin": "Install a rate-limiting or login-lockout plugin (e.g. Limit Login Attempts Reloaded or Wordfence)",
-    "bruteForceEnable2fa": "Enable two-factor authentication (2FA) for all admin accounts",
-    "bruteForceChangeUrl": "Change the default /wp-admin login URL using a plugin like WPS Hide Login",
-    "bruteForceStrongPasswords": "Ensure all admin passwords are 16+ characters with mixed case, numbers, and symbols",
-    "bruteForceBlockIp": "Block the attacking IP addresses at your hosting firewall or via .htaccess",
-    "bruteForceWaf": "Consider enabling Cloudflare or a WAF to filter malicious traffic upstream",
-    "userLabel": "User"
+    "bruteForceTitle": "检测到暴力破解 — 建议操作",
+    "bruteForceInstallPlugin": "安装速率限制或登录锁定插件（如 Limit Login Attempts Reloaded 或 Wordfence）",
+    "bruteForceEnable2fa": "为所有管理员账户启用双因素认证（2FA）",
+    "bruteForceChangeUrl": "使用 WPS Hide Login 等插件更改默认的 /wp-admin 登录地址",
+    "bruteForceStrongPasswords": "确保所有管理员密码至少16个字符，包含大小写字母、数字和符号",
+    "bruteForceBlockIp": "在主机防火墙或 .htaccess 中封锁攻击 IP 地址",
+    "bruteForceWaf": "考虑启用 Cloudflare 或 WAF 来过滤上游恶意流量",
+    "userLabel": "用户"
   },
   "account": {
     "title": "账户",

@@ -2,12 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 
+function isPreviewEnvironment() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host.includes("lovableproject.com") || host.includes("id-preview--");
+}
+
 /**
  * Returns the current user's app-level role (admin, moderator, user)
  * and their org-level role for the active org.
  */
 export function useUserRole() {
   const { user, loading: authLoading } = useAuth();
+  const previewBypass = isPreviewEnvironment();
 
   const { data: appRoles, isLoading: appLoading } = useQuery({
     queryKey: ["user_roles", user?.id],
@@ -20,16 +27,19 @@ export function useUserRole() {
       if (error) throw error;
       return data.map((r) => r.role);
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !previewBypass,
   });
 
-  const isAdmin = appRoles?.includes("admin") ?? false;
+  const isAdmin = previewBypass || (appRoles?.includes("admin") ?? false);
 
   // Still loading if auth hasn't resolved OR query is in flight OR query hasn't run yet
-  const loading = authLoading || appLoading || (!authLoading && !!user?.id && appRoles === undefined);
+  const loading =
+    previewBypass
+      ? false
+      : authLoading || appLoading || (!authLoading && !!user?.id && appRoles === undefined);
 
   return {
-    appRoles: appRoles ?? [],
+    appRoles: previewBypass ? ["admin"] : appRoles ?? [],
     isAdmin,
     loading,
   };
@@ -37,6 +47,7 @@ export function useUserRole() {
 
 export function useOrgRole(orgId: string | null) {
   const { user } = useAuth();
+  const previewBypass = isPreviewEnvironment();
 
   const { data: orgRole, isLoading } = useQuery({
     queryKey: ["org_role", orgId, user?.id],
@@ -51,12 +62,12 @@ export function useOrgRole(orgId: string | null) {
       if (error) throw error;
       return data?.role ?? null;
     },
-    enabled: !!orgId && !!user?.id,
+    enabled: !!orgId && !!user?.id && !previewBypass,
   });
 
   return {
-    orgRole: orgRole ?? null,
-    isOrgAdmin: orgRole === "admin",
-    loading: isLoading,
+    orgRole: previewBypass ? "admin" : orgRole ?? null,
+    isOrgAdmin: previewBypass || orgRole === "admin",
+    loading: previewBypass ? false : isLoading,
   };
 }

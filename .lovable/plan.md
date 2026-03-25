@@ -1,20 +1,20 @@
+## Operator Brief
 
-Goal: start a fresh conversation immediately.
+### Done
+- Landing page sections (copy + design)
+- Multi-Site Plan pricing ($49/mo, up to 10 sites)
+- Stripe connector linked (restricted key)
+- All edge functions, auth, org context, dashboard queries
 
-1) Desktop path
-- Click the project name at the top-left.
-- Select **New conversation** (or **New chat**) in that menu.
+### Pending
+1. **Dashboard white-screen fix** — forwardRef on card components, ErrorBoundary, per-query error fallbacks
+2. **Stripe product creation** — needs key upgrade or manual product/price IDs
+3. **Wire checkout** — connect Multi-Site price ID to `create-checkout` edge function
 
-2) Mobile path
-- Switch to **Chat mode**.
-- Tap the **…** menu (bottom-right).
-- Choose **New conversation/New chat**.
+### Next Task
+Fix dashboard resilience: `WhatsWorking.tsx`, `TopPagesAndSources.tsx` → forwardRef; new `ErrorBoundary.tsx`; wrap Outlet; add isError fallbacks in `Dashboard.tsx`.
 
-3) If you still don’t see it
-- Go to the Lovable dashboard (`lovable.dev`), open your project again from the project list.
-- That starts a fresh thread and keeps your project/code intact.
-
-4) Immediate speed workaround (while stuck in this thread)
-- Send one short message only:  
-  **“Continue with only this task: [single task]”**
-- This keeps replies much faster even without a new thread.
+### Acceptance Criteria
+- [ ] No "Function components cannot be given refs" console warnings
+- [ ] Dashboard renders even if one query fails
+- [ ] White screen replaced by retry UI on render crash

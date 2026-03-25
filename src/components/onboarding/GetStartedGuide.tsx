@@ -1,48 +1,9 @@
 import { useState } from "react";
 import { Download, Key, BarChart3, ChevronRight, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { downloadPlugin } from "@/lib/plugin-download";
 import { toast } from "sonner";
-
-const steps = [
-  {
-    number: 1,
-    title: "Download & Install the Plugin",
-    icon: Download,
-    description: "Log into your ACTV TRKR account and download the WordPress plugin.",
-    details: [
-      "In your WordPress dashboard:",
-      "Go to Plugins → Add New → Upload Plugin",
-      "Upload the ACTV TRKR file and click Activate",
-    ],
-    note: "No code, no complicated setup.",
-  },
-  {
-    number: 2,
-    title: "Connect Your Website",
-    icon: Key,
-    description: "After activating the plugin, you'll see the ACTV TRKR settings panel.",
-    details: [
-      "Copy your API Key from your ACTV TRKR dashboard",
-      "Paste it into the plugin settings",
-      "Click Connect",
-    ],
-    note: "Your site is now linked and ready to start tracking.",
-  },
-  {
-    number: 3,
-    title: "Watch Your Data Come to Life",
-    icon: BarChart3,
-    description: "Within minutes, ACTV TRKR begins collecting:",
-    details: [
-      "Visitor activity",
-      "Form submissions",
-      "Traffic trends",
-      "Lead insights",
-    ],
-    note: "Return to your dashboard anytime to see what's happening and what needs attention.",
-  },
-];
 
 interface GetStartedGuideProps {
   compact?: boolean;
@@ -50,15 +11,56 @@ interface GetStartedGuideProps {
 
 export default function GetStartedGuide({ compact = false }: GetStartedGuideProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [downloading, setDownloading] = useState(false);
+
+  const steps = [
+    {
+      number: 1,
+      title: t("getStarted.step1Title"),
+      icon: Download,
+      description: t("getStarted.step1Desc"),
+      details: [
+        t("getStarted.step1Detail1"),
+        t("getStarted.step1Detail2"),
+        t("getStarted.step1Detail3"),
+      ],
+      note: t("getStarted.step1Note"),
+    },
+    {
+      number: 2,
+      title: t("getStarted.step2Title"),
+      icon: Key,
+      description: t("getStarted.step2Desc"),
+      details: [
+        t("getStarted.step2Detail1"),
+        t("getStarted.step2Detail2"),
+        t("getStarted.step2Detail3"),
+      ],
+      note: t("getStarted.step2Note"),
+    },
+    {
+      number: 3,
+      title: t("getStarted.step3Title"),
+      icon: BarChart3,
+      description: t("getStarted.step3Desc"),
+      details: [
+        t("getStarted.step3Detail1"),
+        t("getStarted.step3Detail2"),
+        t("getStarted.step3Detail3"),
+        t("getStarted.step3Detail4"),
+      ],
+      note: t("getStarted.step3Note"),
+    },
+  ];
 
   const handleDownload = async () => {
     setDownloading(true);
     try {
       await downloadPlugin();
-      toast.success("Plugin downloaded! Upload it to WordPress → Plugins → Add New → Upload.");
+      toast.success(t("getStarted.downloadSuccess"));
     } catch {
-      toast.error("Failed to download plugin");
+      toast.error(t("getStarted.downloadFailed"));
     } finally {
       setDownloading(false);
     }
@@ -68,10 +70,10 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
     <div className={compact ? "" : "max-w-3xl mx-auto"}>
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground">
-          Get Started in 3 Simple Steps
+          {t("getStarted.title")}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Set up tracking on your WordPress site in under 5 minutes.
+          {t("getStarted.subtitle")}
         </p>
       </div>
 
@@ -119,14 +121,14 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
-          {downloading ? "Downloading…" : "Download Plugin"}
+          {downloading ? t("getStarted.downloading") : t("getStarted.downloadPlugin")}
         </button>
         <button
           onClick={() => navigate("/settings?tab=setup")}
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border text-foreground hover:bg-accent transition-colors"
         >
           <ExternalLink className="h-4 w-4" />
-          Go to Website Setup
+          {t("getStarted.goToSetup")}
         </button>
       </div>
     </div>

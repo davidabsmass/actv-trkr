@@ -26,16 +26,18 @@ const eventIcons: Record<string, React.ReactNode> = {
   form_submit: <Zap className="h-3.5 w-3.5 text-success" />,
 };
 
-const eventLabels: Record<string, string> = {
-  cta_click: "Clicked CTA",
-  download_click: "Downloaded File",
-  outbound_click: "Visited External Link",
-  tel_click: "Clicked Phone Number",
-  mailto_click: "Clicked Email Link",
-  form_start: "Started Form",
-  pageview: "Visited Page",
-  form_submit: "Submitted Form",
-};
+function getEventLabels(t: (key: string) => string): Record<string, string> {
+  return {
+    cta_click: t("timeline.clickedCta"),
+    download_click: t("timeline.downloadedFile"),
+    outbound_click: t("timeline.visitedExternal"),
+    tel_click: t("timeline.clickedPhone"),
+    mailto_click: t("timeline.clickedEmail"),
+    form_start: t("timeline.startedForm"),
+    pageview: t("timeline.visitedPage"),
+    form_submit: t("timeline.submittedForm"),
+  };
+}
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -46,7 +48,7 @@ function formatDuration(seconds: number): string {
 
 export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string | null; orgId: string | null }) {
   const { t } = useTranslation();
-  const { data: timeline, isLoading } = useQuery({
+  const eventLabels = getEventLabels(t);
     queryKey: ["lead_activity_timeline", sessionId, orgId],
     queryFn: async () => {
       if (!sessionId || !orgId) return [];

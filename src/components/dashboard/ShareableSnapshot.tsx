@@ -13,6 +13,7 @@ interface SnapshotProps {
 }
 
 export function ShareableSnapshot({ snapshotData, startDate, endDate }: SnapshotProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

@@ -12,6 +12,7 @@ interface RevenueData {
 }
 
 export function RevenueWidget({ orgId, startDate, endDate }: { orgId: string | null; startDate: string; endDate: string }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ["revenue_widget", orgId, startDate, endDate],
     queryFn: async (): Promise<RevenueData | null> => {

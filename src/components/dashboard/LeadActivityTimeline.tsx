@@ -45,6 +45,7 @@ function formatDuration(seconds: number): string {
 }
 
 export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string | null; orgId: string | null }) {
+  const { t } = useTranslation();
   const { data: timeline, isLoading } = useQuery({
     queryKey: ["lead_activity_timeline", sessionId, orgId],
     queryFn: async () => {

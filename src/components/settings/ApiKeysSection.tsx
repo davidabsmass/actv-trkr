@@ -30,10 +30,21 @@ export default function ApiKeysSection() {
     enabled: !!orgId,
   });
 
+  const activeKeys = keys?.filter(k => !k.revoked_at) || [];
+  const hasActiveKey = activeKeys.length > 0;
+
   const generateKey = async () => {
     if (!orgId) return;
     setGenerating(true);
     try {
+      // Revoke any existing active keys first
+      for (const k of activeKeys) {
+        await supabase
+          .from("api_keys")
+          .update({ revoked_at: new Date().toISOString() })
+          .eq("id", k.id);
+      }
+
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");

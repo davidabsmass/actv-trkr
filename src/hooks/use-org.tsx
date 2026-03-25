@@ -36,12 +36,13 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
   const [orgId, setOrgId] = useState<string | null>(null);
   const previewBypass = isPreviewEnvironment();
 
-  const effectiveOrgs = previewBypass && (!orgs || orgs.length === 0)
+  // Only use preview fallback if user is not authenticated AND no orgs loaded
+  const effectiveOrgs = previewBypass && !user && (!orgs || orgs.length === 0)
     ? [PREVIEW_FALLBACK_ORG]
     : (orgs ?? []);
 
-  // In editor preview, bypass auth/org query gating to avoid infinite loading loops.
-  const isReady = previewBypass
+  // In editor preview without auth, bypass gating. With auth, wait for orgs query.
+  const isReady = previewBypass && !user
     ? !authLoading
     : (!authLoading && !!user && status === "success");
 

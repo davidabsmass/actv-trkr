@@ -448,16 +448,22 @@ export async function buildReportPdf(report: any, _run: any, whiteLabel?: WhiteL
       // Footer
       doc.setFillColor(245, 246, 250);
       doc.rect(0, pageH - footerH - margin + 2, pageW, footerH + margin, "F");
-      doc.setDrawColor(109, 93, 212);
+      // Use brand color for footer line and badge
+      const footerBrandHex = whiteLabel?.primary_color || "#6d5dd4";
+      const fbR = parseInt(footerBrandHex.slice(1,3), 16);
+      const fbG = parseInt(footerBrandHex.slice(3,5), 16);
+      const fbB = parseInt(footerBrandHex.slice(5,7), 16);
+      doc.setDrawColor(fbR, fbG, fbB);
       doc.setLineWidth(0.3);
       doc.line(0, pageH - footerH - margin + 2, pageW, pageH - footerH - margin + 2);
 
+      const footerBrand = whiteLabel?.hide_actv_branding ? (whiteLabel?.client_name || "") : "ACTV TRKR";
       doc.setFontSize(7);
       doc.setTextColor(107, 111, 128);
-      doc.text(`ACTV TRKR  |  Generated ${fmtDate(report.generatedAt)}`, margin, pageH - margin + 1);
+      doc.text(`${footerBrand}${footerBrand ? "  |  " : ""}Generated ${fmtDate(report.generatedAt)}`, margin, pageH - margin + 1);
 
       // Page badge
-      doc.setFillColor(109, 93, 212);
+      doc.setFillColor(fbR, fbG, fbB);
       const pageText = `${page + 1} / ${totalPages}`;
       const ptw = doc.getTextWidth(pageText) + 4;
       doc.roundedRect(pageW - margin - ptw, pageH - margin - 1, ptw, 5, 1, 1, "F");

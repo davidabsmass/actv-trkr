@@ -36,7 +36,21 @@ function changeHtml(change: number | null): string {
 
 // ── Build the HTML string that mirrors MonthlyPerformanceViewer ──
 
-function buildReportHtml(report: any): string {
+interface WhiteLabelConfig {
+  primary_color?: string;
+  secondary_color?: string;
+  accent_color?: string;
+  client_name?: string;
+  logo_url?: string;
+  hide_actv_branding?: boolean;
+}
+
+function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
+  const brandPrimary = wl?.primary_color || "#635bff";
+  const brandSecondary = wl?.secondary_color || "#9449e0";
+  const brandGradientStart = wl?.primary_color || "#6d5dd4";
+  const brandName = wl?.hide_actv_branding ? (wl?.client_name || "") : "ACTV TRKR";
+  const brandAccent = wl?.accent_color || brandPrimary;
   const es = report.executiveSummary;
   const ge = report.growthEngine;
   const ci = report.conversionIntelligence;
@@ -58,7 +72,7 @@ function buildReportHtml(report: any): string {
   const sectionStart = (icon: string, title: string) => `
     <div style="border:1px solid #e4e6ed;border-radius:8px;background:#fff;padding:20px;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid">
       <div style="font-size:13px;font-weight:600;color:#00264d;margin-bottom:14px;display:flex;align-items:center;gap:6px">
-        <span style="color:#635bff">${icon}</span> ${safe(title)}
+        <span style="color:${brandPrimary}">${icon}</span> ${safe(title)}
       </div>`;
   const sectionEnd = `</div>`;
 
@@ -66,16 +80,16 @@ function buildReportHtml(report: any): string {
     const top = (items || []).slice(0, max);
     const maxCount = top[0]?.count || 1;
     return top.map((item, i) => `
-      <div style="display:block;margin-bottom:12px">
+      <div style="display:block;margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0">${i + 1}</span>
           <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px">
-              <span style="font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.4">${safe(item.label)}</span>
-              <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.4">${fmtNum(item.count)}</span>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px">
+              <span style="font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.6">${safe(item.label)}</span>
+              <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.6">${fmtNum(item.count)}</span>
             </div>
-            <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden;margin-top:0">
-              <div style="height:100%;background:rgba(99,91,255,0.5);border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
+            <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden">
+              <div style="height:100%;background:${brandPrimary}80;border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
             </div>
           </div>
         </div>
@@ -85,9 +99,10 @@ function buildReportHtml(report: any): string {
   let html = `
 <div style="font-family:'BR Omega','Segoe UI',system-ui,sans-serif;color:#00264d;width:680px;padding:0;background:#fff">
   <!-- Header -->
-  <div style="background:linear-gradient(135deg,#6d5dd4,#9449e0);padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
+  <div style="background:linear-gradient(135deg,${brandGradientStart},${brandSecondary});padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      <span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">ACTV TRKR</span>
+      ${wl?.logo_url ? `<img src="${wl.logo_url}" style="height:20px;max-width:120px;object-fit:contain" />` : ''}
+      ${brandName ? `<span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">${brandName}</span>` : ''}
       <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
       <span style="font-size:10px;color:rgba(255,255,255,0.8)">Activity Report</span>
     </div>
@@ -100,8 +115,8 @@ function buildReportHtml(report: any): string {
     html += sectionStart("✦", "AI Insights");
     aiInsights.forEach((ins: any, i: number) => {
       html += `
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;background:rgba(99,91,255,0.05);border:1px solid rgba(99,91,255,0.1);margin-bottom:8px">
-        <span style="font-size:11px;font-weight:700;color:#635bff;flex-shrink:0">${i + 1}.</span>
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;background:${brandPrimary}0d;border:1px solid ${brandPrimary}1a;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;color:${brandPrimary};flex-shrink:0">${i + 1}.</span>
         <div>
           <div style="font-size:12px;font-weight:600;color:#00264d">${safe(ins.title)}</div>
           <div style="font-size:11px;color:#6b6f80;margin-top:2px">${safe(ins.body)}</div>
@@ -250,8 +265,8 @@ function buildReportHtml(report: any): string {
     const low = Math.round(ap.forecast.projectedNextMonth * 0.9);
     const high = Math.round(ap.forecast.projectedNextMonth * 1.1);
     html += `
-    <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:6px;background:rgba(99,91,255,0.05);border:1px solid rgba(99,91,255,0.1);margin-bottom:14px">
-      <span style="color:#635bff;font-size:12px;margin-top:1px">↗</span>
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:6px;background:${brandPrimary}0d;border:1px solid ${brandPrimary}1a;margin-bottom:14px">
+      <span style="color:${brandPrimary};font-size:12px;margin-top:1px">↗</span>
       <div>
         <div style="font-size:11px;font-weight:600;color:#00264d">Lead Forecast</div>
         <div style="font-size:11px;color:#6b6f80">Avg. ${ap.forecast.avgDailyLeads} leads/day · Projected next month: ${fmtNum(low)}–${fmtNum(high)}</div>
@@ -261,7 +276,7 @@ function buildReportHtml(report: any): string {
   if (ap.recommendations?.length > 0) {
     ap.recommendations.forEach((a: string, i: number) => {
       html += `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
-        <span style="font-size:11px;font-weight:700;color:#635bff;flex-shrink:0">${i + 1}.</span>
+        <span style="font-size:11px;font-weight:700;color:${brandPrimary};flex-shrink:0">${i + 1}.</span>
         <span style="font-size:12px;color:#00264d">${safe(a)}</span>
       </div>`;
     });
@@ -275,7 +290,7 @@ function buildReportHtml(report: any): string {
 
   // Footer watermark
   html += `<div style="text-align:center;padding:12px 0;font-size:10px;color:#6b6f80">
-    ACTV TRKR · Generated ${fmtDate(report.generatedAt)}
+    ${brandName ? brandName + ' · ' : ''}Generated ${fmtDate(report.generatedAt)}
   </div>`;
 
   html += `</div>`;
@@ -284,7 +299,7 @@ function buildReportHtml(report: any): string {
 
 // ── Main export: render HTML → canvas → PDF ──
 
-export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
+export async function buildReportPdf(report: any, _run: any, whiteLabel?: WhiteLabelConfig | null): Promise<jsPDF> {
   // Create off-screen container
   const container = document.createElement("div");
   container.style.position = "fixed";
@@ -293,7 +308,7 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
   container.style.width = "680px";
   container.style.background = "#ffffff";
   container.style.zIndex = "-1";
-  container.innerHTML = buildReportHtml(report);
+  container.innerHTML = buildReportHtml(report, whiteLabel);
   document.body.appendChild(container);
 
   // Wait for rendering
@@ -433,16 +448,22 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
       // Footer
       doc.setFillColor(245, 246, 250);
       doc.rect(0, pageH - footerH - margin + 2, pageW, footerH + margin, "F");
-      doc.setDrawColor(109, 93, 212);
+      // Use brand color for footer line and badge
+      const footerBrandHex = whiteLabel?.primary_color || "#6d5dd4";
+      const fbR = parseInt(footerBrandHex.slice(1,3), 16);
+      const fbG = parseInt(footerBrandHex.slice(3,5), 16);
+      const fbB = parseInt(footerBrandHex.slice(5,7), 16);
+      doc.setDrawColor(fbR, fbG, fbB);
       doc.setLineWidth(0.3);
       doc.line(0, pageH - footerH - margin + 2, pageW, pageH - footerH - margin + 2);
 
+      const footerBrand = whiteLabel?.hide_actv_branding ? (whiteLabel?.client_name || "") : "ACTV TRKR";
       doc.setFontSize(7);
       doc.setTextColor(107, 111, 128);
-      doc.text(`ACTV TRKR  |  Generated ${fmtDate(report.generatedAt)}`, margin, pageH - margin + 1);
+      doc.text(`${footerBrand}${footerBrand ? "  |  " : ""}Generated ${fmtDate(report.generatedAt)}`, margin, pageH - margin + 1);
 
       // Page badge
-      doc.setFillColor(109, 93, 212);
+      doc.setFillColor(fbR, fbG, fbB);
       const pageText = `${page + 1} / ${totalPages}`;
       const ptw = doc.getTextWidth(pageText) + 4;
       doc.roundedRect(pageW - margin - ptw, pageH - margin - 1, ptw, 5, 1, 1, "F");

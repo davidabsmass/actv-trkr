@@ -36,24 +36,15 @@ export default function PluginSection() {
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-
-      // Extract versioned filename from Content-Disposition header
       const contentDisposition = response.headers.get("content-disposition") || "";
       const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
       const fileName = match?.[1] || "actv-trkr.zip";
-
-      // Extract version from filename for toast
       const versionMatch = /actv-trkr-(\d+\.\d+\.\d+)\.zip/.exec(fileName);
       const version = versionMatch?.[1] || "";
-
       const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      toast.success(`Plugin v${version || "latest"} downloaded! Upload via WordPress → Plugins → Add New → Upload.`);
+      toast.success(`Plugin v${version || "latest"} downloaded!`);
     } catch (e: any) {
       toast.error(e.message || "Failed to download plugin");
     } finally {
@@ -76,32 +67,32 @@ export default function PluginSection() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            {downloading ? "Downloading…" : "Download Plugin"}
+            {downloading ? t("settings.downloadingPlugin") : t("settings.downloadPlugin")}
           </button>
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-5">
-        Download the plugin, upload it to WordPress, then paste your API key in Settings → ACTV TRKR.
+        {t("settings.pluginDownloadDesc")}
       </p>
 
       <div>
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          API Key Status
+          {t("settings.apiKeyStatus")}
         </label>
         <div className="mt-1">
           {activeKey ? (
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
                 <Check className="h-3 w-3" />
-                Active
+                {t("settings.active")}
               </span>
               <span className="text-xs text-muted-foreground">
-                {activeKey.label} · created {new Date(activeKey.created_at).toLocaleDateString()}
+                {activeKey.label} · {t("settings.created").toLowerCase()} {new Date(activeKey.created_at).toLocaleDateString()}
               </span>
             </div>
           ) : (
             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-destructive/10 text-destructive border border-destructive/20">
-              No active key
+              {t("settings.noActiveKey")}
             </span>
           )}
         </div>

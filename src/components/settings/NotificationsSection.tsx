@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react";
-import { useOrg } from "@/hooks/use-org";
 import { useSiteSettings, useUpdateSiteSettings } from "@/hooks/use-site-settings";
 import { Bell } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -21,18 +19,18 @@ const DEFAULT_PREFS: NotificationPrefs = {
   lead_browser_push: true,
 };
 
-const NOTIFICATION_OPTIONS: { key: keyof NotificationPrefs; label: string; description: string }[] = [
-  { key: "lead_realtime_email", label: "Real-time lead emails", description: "Get an email instantly when a new form submission arrives" },
-  { key: "lead_email_digest", label: "Lead email digest", description: "Receive a periodic summary of new leads" },
-  { key: "lead_browser_push", label: "Browser push notifications", description: "Desktop notifications for new leads (requires permission)" },
-  { key: "weekly_summary", label: "Weekly summary", description: "Weekly performance recap email" },
-  { key: "daily_digest", label: "Daily digest", description: "Daily summary of activity" },
-];
-
 export default function NotificationsSection() {
   const { t } = useTranslation();
   const { settings, isLoading } = useSiteSettings();
   const updateSettings = useUpdateSiteSettings();
+
+  const NOTIFICATION_OPTIONS: { key: keyof NotificationPrefs; labelKey: string; descKey: string }[] = [
+    { key: "lead_realtime_email", labelKey: "settings.realtimeLeadEmails", descKey: "settings.realtimeLeadEmailsDesc" },
+    { key: "lead_email_digest", labelKey: "settings.leadEmailDigest", descKey: "settings.leadEmailDigestDesc" },
+    { key: "lead_browser_push", labelKey: "settings.browserPush", descKey: "settings.browserPushDesc" },
+    { key: "weekly_summary", labelKey: "settings.weeklySummary", descKey: "settings.weeklySummaryDesc" },
+    { key: "daily_digest", labelKey: "settings.dailyDigest", descKey: "settings.dailyDigestDesc" },
+  ];
 
   const prefs: NotificationPrefs = {
     ...DEFAULT_PREFS,
@@ -42,22 +40,22 @@ export default function NotificationsSection() {
   const toggle = async (key: keyof NotificationPrefs) => {
     const updated = { ...prefs, [key]: !prefs[key] };
 
-    // Handle browser push permission request
     if (key === "lead_browser_push" && !prefs[key]) {
       if (!("Notification" in window)) {
-        toast({ variant: "destructive", title: "Not supported", description: "Your browser doesn't support push notifications." });
+        toast({ variant: "destructive", title: t("settings.notSupported"), description: t("settings.browserNotSupported") });
         return;
       }
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        toast({ variant: "destructive", title: "Permission denied", description: "Enable notifications in your browser settings." });
+        toast({ variant: "destructive", title: t("settings.permissionDenied"), description: t("settings.enableInBrowser") });
         return;
       }
     }
 
     try {
       await updateSettings.mutateAsync({ notification_preferences: updated });
-      toast({ title: updated[key] ? "Enabled" : "Disabled", description: NOTIFICATION_OPTIONS.find(o => o.key === key)?.label });
+      const opt = NOTIFICATION_OPTIONS.find(o => o.key === key);
+      toast({ title: updated[key] ? t("settings.enabled") : t("settings.disabled"), description: opt ? t(opt.labelKey) : "" });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error", description: err?.message || "Failed to update" });
     }
@@ -72,10 +70,10 @@ export default function NotificationsSection() {
         <h3 className="text-sm font-semibold text-foreground">{t("settings.notifications")}</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Choose how you want to be notified about new leads and activity.
+        {t("settings.notificationsDesc")}
       </p>
       <div className="space-y-3">
-        {NOTIFICATION_OPTIONS.map(({ key, label, description }) => (
+        {NOTIFICATION_OPTIONS.map(({ key, labelKey, descKey }) => (
           <label key={key} className="flex items-start gap-3 cursor-pointer group">
             <div className="pt-0.5">
               <button
@@ -83,7 +81,7 @@ export default function NotificationsSection() {
                 role="switch"
                 aria-checked={prefs[key]}
                 onClick={() => toggle(key)}
-                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   prefs[key] ? "bg-primary" : "bg-muted"
                 }`}
               >
@@ -95,8 +93,8 @@ export default function NotificationsSection() {
               </button>
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">{label}</p>
-              <p className="text-xs text-muted-foreground">{description}</p>
+              <p className="text-sm font-medium text-foreground">{t(labelKey)}</p>
+              <p className="text-xs text-muted-foreground">{t(descKey)}</p>
             </div>
           </label>
         ))}

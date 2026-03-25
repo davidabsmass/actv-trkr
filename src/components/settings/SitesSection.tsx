@@ -30,27 +30,27 @@ export default function SitesSection() {
       }
       const { error } = await supabase.from("sites").insert({ org_id: orgId, domain });
       if (error) throw error;
-      toast({ title: "Site added", description: `${domain} has been registered.` });
+      toast({ title: t("settings.siteAdded"), description: t("settings.siteAddedDesc", { domain }) });
       setSiteUrl("");
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error adding site", description: err?.message || "Something went wrong" });
+      toast({ variant: "destructive", title: t("settings.errorAddingSite"), description: err?.message });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (siteId: string, domain: string) => {
-    if (!confirm(`Remove ${domain}? This won't delete historical data.`)) return;
+    if (!confirm(t("settings.removeSiteConfirm", { domain }))) return;
     setDeletingId(siteId);
     try {
       const { error } = await supabase.from("sites").delete().eq("id", siteId);
       if (error) throw error;
-      toast({ title: "Site removed", description: `${domain} has been removed.` });
+      toast({ title: t("settings.siteRemoved"), description: t("settings.siteRemovedDesc", { domain }) });
       queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error removing site", description: err?.message || "Something went wrong" });
+      toast({ variant: "destructive", title: t("settings.errorRemovingSite"), description: err?.message });
     } finally {
       setDeletingId(null);
     }
@@ -69,13 +69,13 @@ export default function SitesSection() {
             className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add Site
+            {t("settings.addSite")}
           </button>
         )}
       </div>
 
       <p className="text-xs text-muted-foreground mb-4">
-        Sites connected via the WordPress plugin will appear here automatically.
+        {t("settings.sitesAutoAppear")}
       </p>
 
       {showForm && (
@@ -93,7 +93,7 @@ export default function SitesSection() {
             disabled={!siteUrl || saving}
             className="px-3 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {saving ? "Adding…" : "Add"}
+            {saving ? t("settings.adding") : t("settings.addButton")}
           </button>
           <button
             onClick={() => { setShowForm(false); setSiteUrl(""); }}
@@ -105,14 +105,14 @@ export default function SitesSection() {
       )}
 
       {isLoading ? (
-        <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
+        <p className="text-xs text-muted-foreground">{t("settings.loadingKeys")}</p>
       ) : !sites || sites.length === 0 ? (
         <div className="flex items-start gap-2 p-3 rounded-md bg-warning/10 border border-warning/20">
           <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-xs font-medium text-foreground mb-1">{t("settings.noSitesConnected")}</p>
             <p className="text-xs text-muted-foreground">
-              Click "Add Site" above or install the WordPress plugin. The site will appear here once registered.
+              {t("settings.noSitesInstallPlugin")}
             </p>
           </div>
         </div>
@@ -124,14 +124,13 @@ export default function SitesSection() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{site.domain}</p>
                 <p className="text-xs text-muted-foreground">
-                  {site.type} · {site.plugin_version ? `v${site.plugin_version}` : "version unknown"} · connected {format(new Date(site.created_at), "MMM d, yyyy")}
+                  {site.type} · {site.plugin_version ? `v${site.plugin_version}` : t("settings.versionUnknown")} · {t("settings.connected")} {format(new Date(site.created_at), "MMM d, yyyy")}
                 </p>
               </div>
               <button
                 onClick={() => handleDelete(site.id, site.domain)}
                 disabled={deletingId === site.id}
                 className="p-1.5 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
-                title="Remove site"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

@@ -378,6 +378,7 @@ export default function SeoTab() {
           onFixClick={handleFixClick}
           onMarkFixed={handleMarkFixed}
           onVerify={handleVerify}
+          onRetryStale={handleRetryStale}
         />
       )}
 

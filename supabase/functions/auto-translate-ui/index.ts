@@ -12,14 +12,14 @@ const sanitize = (value: unknown): string | null => {
   return text;
 };
 
-async function translateBatch(texts: string[], target: string) {
+async function translateText(text: string, target: string) {
   const params = new URLSearchParams({
     client: "gtx",
     sl: "en",
     tl: target,
     dt: "t",
+    q: text,
   });
-  texts.forEach((text) => params.append("q", text));
 
   const response = await fetch(`https://translate.googleapis.com/translate_a/single?${params.toString()}`, {
     method: "GET",
@@ -28,17 +28,8 @@ async function translateBatch(texts: string[], target: string) {
   });
 
   if (!response.ok) throw new Error("Translation upstream failed");
-
   const payload = await response.json();
-  const results: string[] = [];
-  if (Array.isArray(payload?.[0])) {
-    for (const row of payload[0]) {
-      if (Array.isArray(row) && typeof row[0] === "string") {
-        results.push(row[0]);
-      }
-    }
-  }
-  return results;
+  return typeof payload?.[0]?.[0]?.[0] === "string" ? payload[0][0][0] : text;
 }
 
 Deno.serve(async (req) => {
@@ -70,9 +61,9 @@ Deno.serve(async (req) => {
 
     const translations: Record<string, string> = {};
 
-    for (let i = 0; i < texts.length; i += 40) {
-      const chunk = texts.slice(i, i + 40);
-      const translatedChunk = await translateBatch(chunk, target);
+    for (let i = 0; i < texts.length; i += 10) {
+      const chunk = texts.slice(i, i + 10);
+      const translatedChunk = await Promise.all(chunk.map((text) => translateText(text, target).catch(() => text)));
       chunk.forEach((original, idx) => {
         translations[original] = translatedChunk[idx] || original;
       });

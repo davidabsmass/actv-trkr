@@ -112,8 +112,52 @@ const ICON_MAP: Record<string, React.ElementType> = {
 export default function ReportTemplateBuilder() {
   const { orgId } = useOrg();
   const { session } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const userId = session?.user?.id;
+
+  // Translation lookup for section/metric labels
+  const labelMap: Record<string, string> = useMemo(() => ({
+    "aiInsights": t("reports.aiInsights"),
+    "insights_list": t("reports.insightCards"),
+    "executiveSummary": t("reports.executiveSummary"),
+    "leads": t("reports.leads"),
+    "sessions": t("reports.sessions"),
+    "pageviews": t("dashboard.pageviews"),
+    "cvr": t("reports.cvr"),
+    "weightedLeads": t("reports.weightedLeads"),
+    "goal": t("reports.goalProgress"),
+    "keyWin": t("reports.keyWin"),
+    "keyRisk": t("reports.keyRisk"),
+    "siteHealth": t("reports.siteHealth"),
+    "uptime": t("reports.uptimePercent"),
+    "downtime": t("reports.downtimeMinutes"),
+    "incidents": t("reports.incidents"),
+    "brokenLinks": t("reports.brokenLinks"),
+    "ssl": t("reports.sslDomain"),
+    "formHealth": t("reports.formHealth"),
+    "totalSubmissions": t("reports.totalSubmissions"),
+    "failures": t("reports.failures"),
+    "failureRate": t("reports.failureRate"),
+    "growthEngine": t("reports.growthEngine"),
+    "trafficBySource": t("reports.trafficBySource"),
+    "topLandingPages": t("reports.topLandingPages"),
+    "conversionIntelligence": t("reports.conversionIntelligence"),
+    "leadsByForm": t("reports.leadsByFormTable"),
+    "topConvertingPages": t("reports.topConvertingPages"),
+    "leadSources": t("reports.leadSources"),
+    "userExperience": t("reports.userExperience"),
+    "deviceBreakdown": t("reports.deviceBreakdown"),
+    "geoBreakdown": t("reports.geography"),
+    "topPages": t("reports.topPages"),
+    "referrerBreakdown": t("reports.referrers"),
+    "actionPlan": t("reports.actionPlan"),
+    "forecast": t("reports.leadForecast"),
+    "recommendations": t("reports.recommendations"),
+    "contentOpportunities": t("reports.contentOpportunities"),
+  }), [t]);
+
+  const getLabel = (key: string, fallback: string) => labelMap[key] || fallback;
 
   const { data: saved, isLoading } = useQuery({
     queryKey: ["report_custom_template", orgId, userId],

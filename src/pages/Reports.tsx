@@ -204,13 +204,13 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="py-2 pr-4 text-xs font-medium text-muted-foreground">Form</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground">Category</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Weight</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Leads</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">CVR</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Failures</th>
-                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">Value</th>
+                    <th className="py-2 pr-4 text-xs font-medium text-muted-foreground">{t("reports.form")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground">{t("reports.category")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.weight")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.leads")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.cvr")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.failures")}</th>
+                    <th className="py-2 px-3 text-xs font-medium text-muted-foreground text-right">{t("reports.value")}</th>
                   </tr>
                 </thead>
                 <tbody>

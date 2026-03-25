@@ -131,9 +131,11 @@ export function AiChatbot() {
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-foreground">{t("chatbot.title")}</h3>
             </div>
-            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-              <X className="h-4 w-4" />
-            </button>
+            <IconTooltip label={t("chatbot.close", "Close chat")}>
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </IconTooltip>
           </div>
 
           {/* Messages */}
@@ -192,13 +194,15 @@ export function AiChatbot() {
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
               disabled={isLoading}
             />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="text-primary hover:text-primary/80 disabled:opacity-30 transition-colors"
-            >
-              <Send className="h-4 w-4" />
-            </button>
+            <IconTooltip label={t("chatbot.send", "Send message")} side="top">
+              <button
+                type="submit"
+                disabled={!input.trim() || isLoading}
+                className="text-primary hover:text-primary/80 disabled:opacity-30 transition-colors"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </IconTooltip>
           </form>
         </div>
       )}

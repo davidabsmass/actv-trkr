@@ -46,7 +46,7 @@ export default function PluginSection() {
       URL.revokeObjectURL(url);
       toast.success(`Plugin v${version || "latest"} downloaded!`);
     } catch (e: any) {
-      toast.error(e.message || "Failed to download plugin");
+      toast.error(e.message || t("settings.downloadFailed"));
     } finally {
       setDownloading(false);
     }

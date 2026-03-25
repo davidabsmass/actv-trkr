@@ -47,7 +47,7 @@ export default function WhiteLabelSection() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!orgId) throw new Error("No org");
+      if (!orgId) throw new Error(t("settings.noOrg"));
       const payload = {
         org_id: orgId, client_name: clientName, primary_color: primaryColor,
         secondary_color: secondaryColor, accent_color: accentColor,
@@ -65,12 +65,12 @@ export default function WhiteLabelSection() {
       queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
       toast.success(t("settings.whiteLabelSaved"));
     },
-    onError: (err: any) => toast.error(err.message || "Failed to save"),
+    onError: (err: any) => toast.error(err.message || t("settings.failedToSave")),
   });
 
   const revertMutation = useMutation({
     mutationFn: async () => {
-      if (!orgId) throw new Error("No org");
+      if (!orgId) throw new Error(t("settings.noOrg"));
       if (settings?.id) {
         const { error } = await supabase.from("white_label_settings").delete().eq("id", settings.id);
         if (error) throw error;
@@ -82,7 +82,7 @@ export default function WhiteLabelSection() {
       queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
       toast.success(t("settings.whiteLabelReverted"));
     },
-    onError: (err: any) => toast.error(err.message || "Failed to revert"),
+    onError: (err: any) => toast.error(err.message || t("settings.failedToRevert")),
   });
 
   if (isLoading) {
@@ -103,7 +103,7 @@ export default function WhiteLabelSection() {
       setLogoUrl(urlData.publicUrl);
       toast.success(t("settings.logoUploaded"));
     } catch (err: any) {
-      toast.error(err.message || "Upload failed");
+      toast.error(err.message || t("settings.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -126,7 +126,7 @@ export default function WhiteLabelSection() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="client-name" className="text-xs">{t("settings.clientOrgName")}</Label>
-              <Input id="client-name" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g. Acme Health Group" className="mt-1" />
+              <Input id="client-name" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder={t("settings.exampleClientName")} className="mt-1" />
               <p className="text-xs text-muted-foreground mt-1">{t("settings.appearsInHeaders")}</p>
             </div>
             <div>
@@ -134,7 +134,7 @@ export default function WhiteLabelSection() {
               <div className="mt-1 flex items-center gap-3">
                 {logoUrl ? (
                   <div className="h-12 w-12 rounded-md border border-border bg-background flex items-center justify-center overflow-hidden">
-                    <img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+                    <img src={logoUrl} alt={t("settings.logoAlt")} className="max-h-full max-w-full object-contain" />
                   </div>
                 ) : (
                   <div className="h-12 w-12 rounded-md border border-dashed border-border bg-muted/30 flex items-center justify-center">

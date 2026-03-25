@@ -63,7 +63,7 @@ export default function FormsSection() {
       });
       queryClient.invalidateQueries({ queryKey: ["forms", orgId] });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err?.message });
+      toast({ variant: "destructive", title: t("settings.error"), description: err?.message });
     } finally {
       setTogglingId(null);
     }

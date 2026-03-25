@@ -54,7 +54,9 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     if (effectiveOrgs.length > 0 && !orgId) {
       const saved = localStorage.getItem("mm_active_org");
       const match = effectiveOrgs.find((o) => o.id === saved);
-      setOrgId(match ? match.id : effectiveOrgs[0].id);
+      // Default to APYX if no saved selection, otherwise first org
+      const apyx = findApyxOrg(effectiveOrgs);
+      setOrgId(match ? match.id : apyx ? apyx.id : effectiveOrgs[0].id);
     }
   }, [effectiveOrgs, orgId]);
 

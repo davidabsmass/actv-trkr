@@ -41,6 +41,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     ? [PREVIEW_FALLBACK_ORG]
     : (orgs ?? []);
 
+  // Helper: find an org whose name contains "APYX" (case-insensitive)
+  const findApyxOrg = (list: typeof effectiveOrgs) =>
+    list.find((o) => o.name.toLowerCase().includes("apyx"));
+
   // In editor preview without auth, bypass gating. With auth, wait for orgs query.
   const isReady = previewBypass && !user
     ? !authLoading
@@ -50,7 +54,9 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     if (effectiveOrgs.length > 0 && !orgId) {
       const saved = localStorage.getItem("mm_active_org");
       const match = effectiveOrgs.find((o) => o.id === saved);
-      setOrgId(match ? match.id : effectiveOrgs[0].id);
+      // Default to APYX if no saved selection, otherwise first org
+      const apyx = findApyxOrg(effectiveOrgs);
+      setOrgId(match ? match.id : apyx ? apyx.id : effectiveOrgs[0].id);
     }
   }, [effectiveOrgs, orgId]);
 

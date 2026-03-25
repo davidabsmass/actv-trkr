@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Outlet, Navigate, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -69,7 +70,9 @@ function LayoutInner() {
             </div>
           </header>
           <div className="flex-1 overflow-auto p-6">
-            <Outlet />
+            <ErrorBoundary fallbackMessage="This page encountered an error. Click retry or navigate to another page.">
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PLUGIN_VERSION = "1.3.28";
+const PLUGIN_VERSION = "1.4.1";
 
 function patchClassFormsPhp(content: string): string {
   return content
@@ -99,20 +99,30 @@ require_once AT_PLUGIN_DIR.'includes/class-retry-queue.php';
 require_once AT_PLUGIN_DIR.'includes/class-updater.php';
 require_once AT_PLUGIN_DIR.'includes/class-heartbeat.php';
 require_once AT_PLUGIN_DIR.'includes/class-broken-links.php';
+require_once AT_PLUGIN_DIR.'includes/class-seo-fixes.php';
+require_once AT_PLUGIN_DIR.'includes/class-security.php';
 function at_activate(){
   AT_Retry_Queue::create_table();
   if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
   if(!wp_next_scheduled('at_heartbeat_cron')){wp_schedule_event(time(),'at_every_5_min','at_heartbeat_cron');}
   if(!wp_next_scheduled('at_form_probe_cron')){wp_schedule_event(time(),'hourly','at_form_probe_cron');}
+  if(!wp_next_scheduled('at_seo_fix_cron')){wp_schedule_event(time(),'at_every_5_min','at_seo_fix_cron');}
 }
 register_activation_hook(__FILE__,'at_activate');
-function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');wp_clear_scheduled_hook('at_form_probe_cron');}
+function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');wp_clear_scheduled_hook('at_form_probe_cron');wp_clear_scheduled_hook('at_seo_fix_cron');}
 register_deactivation_hook(__FILE__,'at_deactivate');
 add_filter('cron_schedules',function($s){$s['at_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return $s;});
-AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();AT_Broken_Links::init();
+AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();AT_Broken_Links::init();AT_SEO_Fixes::init();
+$at_security=new AT_Security();$at_security->init();
 add_action('at_retry_cron',array('AT_Retry_Queue','process'));
 add_action('at_heartbeat_cron',array('AT_Heartbeat','send_cron_heartbeat'));
 add_action('at_form_probe_cron',array('AT_Forms','probe_form_pages'));
+add_action('at_seo_fix_cron',array('AT_SEO_Fixes','poll_fixes'));
+add_action('init',function(){
+  if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
+  if(!wp_next_scheduled('at_form_probe_cron')){wp_schedule_event(time(),'hourly','at_form_probe_cron');}
+  if(!wp_next_scheduled('at_seo_fix_cron')){wp_schedule_event(time(),'at_every_5_min','at_seo_fix_cron');}
+},20);
 `,
 
     "actv-trkr/includes/class-settings.php": `<?php
@@ -285,6 +295,40 @@ private static function get_pages_from_db(){$posts=get_posts(array('post_type'=>
 private static function extract_links($html,$page_url){$host=wp_parse_url(home_url(),PHP_URL_HOST);preg_match_all('/href=["\\x27]([^"\\x27]+)["\\x27]/',$html,$matches);$links=array();foreach($matches[1] as $href){if(strpos($href,'#')===0||strpos($href,'mailto:')===0||strpos($href,'tel:')===0)continue;if(strpos($href,'javascript:')===0)continue;if(strpos($href,'/')===0){$href=home_url($href);}$link_host=wp_parse_url($href,PHP_URL_HOST);if($link_host&&$link_host!==$host)continue;$links[]=$href;}return array_unique(array_slice($links,0,50));}
 }`,
 
+    "actv-trkr/includes/class-seo-fixes.php": `<?php
+if(!defined('ABSPATH'))exit;
+class AT_SEO_Fixes{
+const META_TITLE='_at_seo_title';const META_DESC='_at_seo_description';const META_CANONICAL='_at_seo_canonical';const META_OG='_at_seo_og';
+private static $seo_plugins=array('wordpress-seo/wp-seo.php','seo-by-rank-math/rank-math.php','all-in-one-seo-pack/all_in_one_seo_pack.php');
+public static function init(){add_action('at_seo_fix_cron',array(__CLASS__,'poll_fixes'));add_action('wp_head',array(__CLASS__,'output_meta'),1);add_filter('pre_get_document_title',array(__CLASS__,'filter_title'),999);add_filter('document_title_parts',array(__CLASS__,'filter_title_parts'),999);add_action('wp',array(__CLASS__,'maybe_remove_canonical'));add_action('shutdown',array(__CLASS__,'maybe_fallback_poll'));}
+public static function maybe_fallback_poll(){if(get_transient('at_seo_last_poll'))return;$next=wp_next_scheduled('at_seo_fix_cron');if($next&&$next>time())return;self::poll_fixes();}
+public static function poll_fixes(){set_transient('at_seo_last_poll',time(),5*MINUTE_IN_SECONDS);$opts=AT_Settings::get();if(empty($opts['api_key'])||empty($opts['endpoint_url']))return;$domain=wp_parse_url(home_url(),PHP_URL_HOST);$domain=preg_replace('/^www\\\\./','',$domain);$endpoint=rtrim($opts['endpoint_url'],'/');$base=preg_replace('#/functions/v1$#','',$endpoint);$response=wp_remote_post($base.'/functions/v1/seo-fix-poll',array('headers'=>array('Content-Type'=>'application/json','x-api-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain)),'timeout'=>15));if(is_wp_error($response))return;$body=json_decode(wp_remote_retrieve_body($response),true);if(empty($body['fixes'])||!is_array($body['fixes']))return;foreach($body['fixes'] as $fix){self::apply_fix($fix,$opts['api_key'],$base);}}
+private static function apply_fix($fix,$api_key,$api_url){$fix_id=$fix['id']??'';$page_url=$fix['page_url']??'';$type=$fix['fix_type']??'';$value=$fix['fix_value']??'';if(!$fix_id||!$page_url||!$type)return;if(self::has_seo_plugin()&&in_array($type,array('set_title','set_meta_desc','add_canonical','add_og_tags'),true)){self::confirm($fix_id,'skipped','Another SEO plugin is active',$api_key,$api_url);return;}$post_id=url_to_postid($page_url);if(!$post_id){$path=wp_parse_url($page_url,PHP_URL_PATH);if(empty($path)||$path==='/'){$post_id=(int)get_option('page_on_front',0);}}if(!$post_id){self::confirm($fix_id,'failed','Could not resolve post',$api_key,$api_url);return;}$status='applied';switch($type){case 'set_title':update_post_meta($post_id,self::META_TITLE,sanitize_text_field($value));break;case 'set_meta_desc':update_post_meta($post_id,self::META_DESC,sanitize_text_field($value));break;case 'add_canonical':update_post_meta($post_id,self::META_CANONICAL,esc_url_raw($value));break;case 'add_og_tags':update_post_meta($post_id,self::META_OG,sanitize_text_field($value));break;default:$status='skipped';break;}self::confirm($fix_id,$status,'',$api_key,$api_url);}
+private static function confirm($fix_id,$status,$note,$api_key,$api_url){wp_remote_post($api_url.'/functions/v1/seo-fix-confirm',array('headers'=>array('Content-Type'=>'application/json','x-api-key'=>$api_key),'body'=>wp_json_encode(array('fix_id'=>$fix_id,'status'=>$status,'note'=>$note)),'timeout'=>10));}
+private static function has_seo_plugin(){if(!function_exists('is_plugin_active')){include_once ABSPATH.'wp-admin/includes/plugin.php';}foreach(self::$seo_plugins as $plugin){if(is_plugin_active($plugin))return true;}return false;}
+public static function filter_title($title){if(!is_singular()&&!is_front_page())return $title;$post_id=self::get_current_post_id();$override=$post_id?get_post_meta($post_id,self::META_TITLE,true):'';return $override?$override:$title;}
+public static function filter_title_parts($parts){$post_id=self::get_current_post_id();$override=$post_id?get_post_meta($post_id,self::META_TITLE,true):'';if($override){$parts['title']=$override;}return $parts;}
+public static function output_meta(){$post_id=self::get_current_post_id();if(!$post_id)return;$desc=get_post_meta($post_id,self::META_DESC,true);if($desc){echo '<meta name="description" content="'.esc_attr($desc).'">'."\n";}$canonical=get_post_meta($post_id,self::META_CANONICAL,true);if($canonical){echo '<link rel="canonical" href="'.esc_url($canonical).'">'."\n";}$og_json=get_post_meta($post_id,self::META_OG,true);if($og_json){$og=json_decode($og_json,true);if(is_array($og)){if(!empty($og['title'])){echo '<meta property="og:title" content="'.esc_attr($og['title']).'">'."\n";}if(!empty($og['description'])){echo '<meta property="og:description" content="'.esc_attr($og['description']).'">'."\n";}if(!empty($og['url'])){echo '<meta property="og:url" content="'.esc_url($og['url']).'">'."\n";}if(!empty($og['image'])){echo '<meta property="og:image" content="'.esc_url($og['image']).'">'."\n";}}}}
+public static function maybe_remove_canonical(){$post_id=self::get_current_post_id();if($post_id&&get_post_meta($post_id,self::META_CANONICAL,true)){remove_action('wp_head','rel_canonical');}}
+private static function get_current_post_id(){if(is_front_page()&&get_option('page_on_front'))return(int)get_option('page_on_front');if(is_singular())return get_the_ID();return 0;}
+}`,
+
+    "actv-trkr/includes/class-security.php": `<?php
+if(!defined('ABSPATH'))exit;
+class AT_Security{
+private $api_url;private $api_key;private $site_domain;
+public function __construct(){$opts=AT_Settings::get();$this->api_key=$opts['api_key']??'';$endpoint=$opts['endpoint_url']??'';$this->api_url=preg_replace('#/functions/v1$#','',$endpoint);$this->site_domain=wp_parse_url(home_url(),PHP_URL_HOST);}
+public function init(){add_action('wp_login_failed',array($this,'on_login_failed'),10,2);add_action('wp_login',array($this,'on_login_success'),10,2);if(!wp_next_scheduled('at_file_integrity_scan')){wp_schedule_event(time(),'daily','at_file_integrity_scan');}add_action('at_file_integrity_scan',array($this,'run_file_integrity_scan'));add_action('wp_login_failed',array($this,'check_brute_force'),20,2);}
+public function on_login_failed($username,$error=null){$this->send_event(array('event_type'=>'failed_login','severity'=>'warning','title'=>"Failed login attempt for '".$username."'",'details'=>array('username'=>$username,'ip'=>$this->get_client_ip(),'user_agent'=>isset($_SERVER['HTTP_USER_AGENT'])?sanitize_text_field($_SERVER['HTTP_USER_AGENT']):'')));}
+public function check_brute_force($username,$error=null){$ip=$this->get_client_ip();$transient_key='at_failed_login_'.md5($ip);$attempts=get_transient($transient_key);if($attempts===false)$attempts=0;$attempts++;set_transient($transient_key,$attempts,10*MINUTE_IN_SECONDS);if($attempts>=5){$this->send_event(array('event_type'=>'brute_force','severity'=>'critical','title'=>"Brute force detected: ".$attempts." failed attempts from ".$ip,'details'=>array('ip'=>$ip,'attempts'=>$attempts,'username'=>$username)));delete_transient($transient_key);}}
+public function on_login_success($user_login,$user){$ip=$this->get_client_ip();$known_ips=get_user_meta($user->ID,'_at_known_ips',true);if(!is_array($known_ips))$known_ips=array();if(!in_array($ip,$known_ips,true)){$this->send_event(array('event_type'=>'new_ip_login','severity'=>'info','title'=>"Login from new IP for '".$user_login."'",'details'=>array('username'=>$user_login,'ip'=>$ip,'user_agent'=>isset($_SERVER['HTTP_USER_AGENT'])?sanitize_text_field($_SERVER['HTTP_USER_AGENT']):'')));$known_ips[]=$ip;$known_ips=array_slice($known_ips,-50);update_user_meta($user->ID,'_at_known_ips',$known_ips);}}
+public function run_file_integrity_scan(){$baseline_key='_at_file_baseline';$baseline=get_option($baseline_key,array());$current=$this->build_file_snapshot();$events=array();if(empty($baseline)){update_option($baseline_key,$current);return;}foreach($baseline as $path=>$hash){if(!isset($current[$path])){$events[]=array('event_type'=>'file_deleted','severity'=>'critical','title'=>'File deleted: '.$path,'details'=>array('path'=>$path));}elseif($current[$path]!==$hash){$events[]=array('event_type'=>'file_changed','severity'=>'warning','title'=>'File modified: '.$path,'details'=>array('path'=>$path));}}foreach($current as $path=>$hash){if(!isset($baseline[$path])){$events[]=array('event_type'=>'file_added','severity'=>'info','title'=>'New file detected: '.$path,'details'=>array('path'=>$path));}}if(!empty($events)){$this->send_events_batch($events);}update_option($baseline_key,$current);}
+private function build_file_snapshot(){$snapshot=array();foreach(array('wp-includes','wp-admin') as $dir){$full=ABSPATH.$dir;if(!is_dir($full))continue;$files=glob($full.'/*.php');if($files){foreach($files as $f){$rel=str_replace(ABSPATH,'',$f);$snapshot[$rel]=md5_file($f);}}}$root_files=glob(ABSPATH.'*.php');if($root_files){foreach($root_files as $f){$rel=basename($f);$snapshot[$rel]=md5_file($f);}}$theme_dir=get_stylesheet_directory();$theme_files=glob($theme_dir.'/*.php');if($theme_files){foreach($theme_files as $f){$rel='theme/'.basename($f);$snapshot[$rel]=md5_file($f);}}return $snapshot;}
+private function send_event($event){$this->send_events_batch(array($event));}
+private function send_events_batch($events){if(empty($this->api_url)||empty($this->api_key))return;foreach($events as &$e){if(!isset($e['occurred_at']))$e['occurred_at']=gmdate('c');}$url=rtrim($this->api_url,'/').'/functions/v1/ingest-security';wp_remote_post($url,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','x-api-key'=>$this->api_key),'body'=>wp_json_encode(array('site_domain'=>$this->site_domain,'events'=>$events))));}
+private function get_client_ip(){$headers=array('HTTP_CF_CONNECTING_IP','HTTP_X_FORWARDED_FOR','HTTP_X_REAL_IP','REMOTE_ADDR');foreach($headers as $h){if(!empty($_SERVER[$h])){$ip=explode(',',$_SERVER[$h]);return sanitize_text_field(trim($ip[0]));}}return '0.0.0.0';}
+}`,
+
     "actv-trkr/assets/heartbeat.js": `(function(){'use strict';if(typeof window==='undefined'||!window.atHeartbeat)return;var CFG=window.atHeartbeat;var sent=false;function sendHeartbeat(){if(sent)return;sent=true;var body=JSON.stringify({domain:CFG.domain,source:'js',meta:{user_agent:navigator.userAgent}});fetch(CFG.endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-actvtrkr-key':CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(CFG.endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}setTimeout(sendHeartbeat,2000);})();`,
 
     "actv-trkr/readme.txt": `=== ACTV TRKR ===
@@ -311,6 +355,15 @@ Supports all form plugins: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion 
 4. That's it! Tracking starts automatically.
 
 == Changelog ==
+= 1.4.1 =
+* SEO fix queue with automatic polling and fallback for stuck WP-Cron
+* Security monitoring: failed logins, brute force detection, file integrity scans
+* Retry button for stale SEO fixes in dashboard
+
+= 1.4.0 =
+* SEO meta overrides (title, description, canonical, OG tags)
+* File integrity monitoring for core WordPress files
+
 = 1.3.0 =
 * Active time-on-page tracking with focus-aware heartbeats
 * Intent-based click tracking (CTAs, downloads, outbound links)

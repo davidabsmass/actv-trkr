@@ -583,7 +583,9 @@ export default function Reports() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report_runs"] });
       toast.success(t("reports.reportGenStarted"));
-      setSearchParams({ tab: "activity" }, { replace: true });
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set("reportTab", "activity");
+      setSearchParams(newParams, { replace: true });
     },
     onError: (err: any) => toast.error(err.message || "Failed to generate report"),
   });

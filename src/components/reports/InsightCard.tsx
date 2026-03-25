@@ -47,6 +47,7 @@ const categoryColors: Record<string, string> = {
 };
 
 export function InsightCard({ finding }: { finding: Finding }) {
+  const { t } = useTranslation();
   const metricEntries = finding.metric_values ? Object.entries(finding.metric_values) : [];
 
   return (
@@ -56,7 +57,7 @@ export function InsightCard({ finding }: { finding: Finding }) {
           {finding.category}
         </span>
         <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-          {finding.severity} priority
+          {finding.severity} {t("reports.priority")}
         </span>
       </div>
       <h4 className="text-sm font-semibold text-foreground mb-1">{finding.title}</h4>
@@ -76,7 +77,7 @@ export function InsightCard({ finding }: { finding: Finding }) {
 
       {finding.recommended_action && (
         <div className="mt-2 pt-2 border-t border-border/50">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Suggested Action</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-0.5">{t("reports.suggestedAction")}</p>
           <p className="text-xs text-foreground">{finding.recommended_action}</p>
         </div>
       )}

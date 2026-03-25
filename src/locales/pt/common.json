@@ -683,40 +683,36 @@
     "returnHome": "Voltar ao início"
   },
   "getStarted": {
-    "title": "Começar",
-    "welcomeBanner": "Bem-vindo! Vamos conectar seu site",
-    "bannerDesc": "Siga nosso guia de 3 passos para instalar o plugin, conectar sua chave API e começar a ver dados em tempo real.",
-    "startSetup": "Iniciar configuração"
+    "title": "Comece em 3 passos simples",
+    "subtitle": "Configure o rastreamento no seu site WordPress em menos de 5 minutos.",
+    "step1Title": "Baixe e instale o plugin",
+    "step1Desc": "Faça login na sua conta ACTV TRKR e baixe o plugin WordPress.",
+    "step1Detail1": "No painel do WordPress:",
+    "step1Detail2": "Vá para Plugins → Adicionar novo → Enviar plugin",
+    "step1Detail3": "Envie o arquivo ACTV TRKR e clique em Ativar",
+    "step1Note": "Sem código, sem configuração complicada.",
+    "step2Title": "Conecte seu site",
+    "step2Desc": "Após ativar o plugin, você verá o painel de configurações do ACTV TRKR.",
+    "step2Detail1": "Copie sua chave API do painel ACTV TRKR",
+    "step2Detail2": "Cole nas configurações do plugin",
+    "step2Detail3": "Clique em Conectar",
+    "step2Note": "Seu site está agora vinculado e pronto para rastreamento.",
+    "step3Title": "Veja seus dados ganharem vida",
+    "step3Desc": "Em minutos, o ACTV TRKR começa a coletar:",
+    "step3Detail1": "Atividade de visitantes",
+    "step3Detail2": "Envios de formulários",
+    "step3Detail3": "Tendências de tráfego",
+    "step3Detail4": "Insights de leads",
+    "step3Note": "Volte ao painel a qualquer momento para ver o que está acontecendo.",
+    "downloadPlugin": "Baixar plugin",
+    "downloading": "Baixando…",
+    "downloadSuccess": "Plugin baixado! Envie para WordPress → Plugins → Adicionar novo → Enviar.",
+    "downloadFailed": "Falha ao baixar o plugin",
+    "goToSetup": "Ir para configuração do site"
   },
   "common": {
-    "loading": "Carregando…",
-    "save": "Salvar",
-    "cancel": "Cancelar",
-    "delete": "Excluir",
-    "edit": "Editar",
-    "confirm": "Confirmar",
-    "search": "Buscar",
-    "filter": "Filtrar",
-    "export": "Exportar",
-    "download": "Baixar",
-    "close": "Fechar",
-    "next": "Próximo",
-    "prev": "Anterior",
-    "page": "Página",
-    "yes": "Sim",
-    "no": "Não",
-    "or": "ou",
-    "and": "e",
-    "all": "Todos",
-    "none": "Nenhum",
-    "days": "dias",
-    "noData": "Nenhum dado disponível",
-    "error": "Erro",
-    "success": "Sucesso",
-    "retry": "Tentar novamente",
-    "viewAll": "Ver tudo",
-    "learnMore": "Saiba mais",
-    "sessions": "sessions"
+    "sessions": "sessões",
+    "ofSessionsConverted": "{{leads}} de {{sessions}} sessões convertidas"
   },
   "notifications": {
     "title": "Notificações",
@@ -873,5 +869,37 @@
     "leadVolumeUpDesc": "Leads aumentaram {{pct}}% vs semana anterior ({{current}} vs {{previous}}).",
     "cvrImproved": "A taxa de conversão melhorou",
     "cvrImprovedDesc": "CVR melhorou {{pct}}% comparado à semana passada."
+  },
+  "timeline": {
+    "clickedCta": "Clicou no CTA",
+    "downloadedFile": "Arquivo baixado",
+    "visitedExternal": "Link externo visitado",
+    "clickedPhone": "Clicou no telefone",
+    "clickedEmail": "Clicou no email",
+    "startedForm": "Formulário iniciado",
+    "visitedPage": "Página visitada",
+    "submittedForm": "Formulário enviado",
+    "timeOnPage": "Tempo na página: {{duration}}",
+    "noSessionData": "Sem dados de sessão disponíveis para este lead.",
+    "noActivityData": "Sem dados de atividade registrados para esta sessão."
+  },
+  "snapshot": {
+    "share": "Compartilhar",
+    "readOnlyLink": "Link somente leitura • {{start}} → {{end}} • Expira em 7 dias",
+    "snapshotCreated": "Snapshot criado",
+    "linkExpires": "O link expira em 7 dias.",
+    "error": "Erro",
+    "close": "Fechar"
+  },
+  "anomaly": {
+    "leadsDown": "Leads caíram {{pct}}% semana a semana. Investigar conversão.",
+    "sessionsDropped": "Sessões caíram {{pct}}% WoW. Verificar fontes de tráfego."
+  },
+  "chatbot": {
+    "title": "Assistente ACTV TRKR",
+    "placeholder": "Pergunte sobre suas métricas...",
+    "thinking": "Pensando...",
+    "error": "Algo deu errado. Tente novamente.",
+    "greeting": "Olá! Posso ajudá-lo a entender suas métricas web, leads, tráfego e mais. O que gostaria de saber?"
   }
 }

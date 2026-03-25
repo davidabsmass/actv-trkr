@@ -683,40 +683,36 @@
     "returnHome": "ホームに戻る"
   },
   "getStarted": {
-    "title": "はじめに",
-    "welcomeBanner": "ようこそ！サイトを接続しましょう",
-    "bannerDesc": "3ステップガイドに従って、プラグインのインストール、APIキーの接続、リアルタイムデータの確認を行いましょう。",
-    "startSetup": "セットアップを開始"
+    "title": "3つの簡単なステップで始めよう",
+    "subtitle": "5分以内にWordPressサイトのトラッキングを設定。",
+    "step1Title": "プラグインをダウンロード＆インストール",
+    "step1Desc": "ACTV TRKRアカウントにログインし、WordPressプラグインをダウンロード。",
+    "step1Detail1": "WordPressダッシュボードで：",
+    "step1Detail2": "プラグイン → 新規追加 → プラグインのアップロード へ",
+    "step1Detail3": "ACTV TRKRファイルをアップロードし「有効化」をクリック",
+    "step1Note": "コード不要、複雑な設定不要。",
+    "step2Title": "ウェブサイトを接続",
+    "step2Desc": "プラグインを有効化すると、ACTV TRKR設定パネルが表示されます。",
+    "step2Detail1": "ACTV TRKRダッシュボードからAPIキーをコピー",
+    "step2Detail2": "プラグイン設定に貼り付け",
+    "step2Detail3": "「接続」をクリック",
+    "step2Note": "サイトがリンクされ、トラッキングの準備が整いました。",
+    "step3Title": "データが動き出すのを見よう",
+    "step3Desc": "数分以内にACTV TRKRが収集を開始：",
+    "step3Detail1": "訪問者アクティビティ",
+    "step3Detail2": "フォーム送信",
+    "step3Detail3": "トラフィックトレンド",
+    "step3Detail4": "リードインサイト",
+    "step3Note": "いつでもダッシュボードに戻って状況を確認できます。",
+    "downloadPlugin": "プラグインをダウンロード",
+    "downloading": "ダウンロード中…",
+    "downloadSuccess": "プラグインをダウンロードしました！WordPress → プラグイン → 新規追加 → アップロード。",
+    "downloadFailed": "プラグインのダウンロードに失敗",
+    "goToSetup": "サイト設定へ"
   },
   "common": {
-    "loading": "読み込み中…",
-    "save": "保存",
-    "cancel": "キャンセル",
-    "delete": "削除",
-    "edit": "編集",
-    "confirm": "確認",
-    "search": "検索",
-    "filter": "フィルター",
-    "export": "エクスポート",
-    "download": "ダウンロード",
-    "close": "閉じる",
-    "next": "次へ",
-    "prev": "前へ",
-    "page": "ページ",
-    "yes": "はい",
-    "no": "いいえ",
-    "or": "または",
-    "and": "および",
-    "all": "すべて",
-    "none": "なし",
-    "days": "日",
-    "noData": "データがありません",
-    "error": "エラー",
-    "success": "成功",
-    "retry": "再試行",
-    "viewAll": "すべて表示",
-    "learnMore": "詳細を見る",
-    "sessions": "sessions"
+    "sessions": "セッション",
+    "ofSessionsConverted": "{{sessions}}セッション中{{leads}}がコンバージョン"
   },
   "notifications": {
     "title": "通知",
@@ -873,5 +869,37 @@
     "leadVolumeUpDesc": "リードが前週比{{pct}}%増加（{{current}} vs {{previous}}）。",
     "cvrImproved": "コンバージョン率が改善",
     "cvrImprovedDesc": "CVRが先週比{{pct}}%改善。"
+  },
+  "timeline": {
+    "clickedCta": "CTAをクリック",
+    "downloadedFile": "ファイルをダウンロード",
+    "visitedExternal": "外部リンクを訪問",
+    "clickedPhone": "電話番号をクリック",
+    "clickedEmail": "メールリンクをクリック",
+    "startedForm": "フォームを開始",
+    "visitedPage": "ページを訪問",
+    "submittedForm": "フォームを送信",
+    "timeOnPage": "ページ滞在時間：{{duration}}",
+    "noSessionData": "このリードのセッションデータはありません。",
+    "noActivityData": "このセッションのアクティビティデータは記録されていません。"
+  },
+  "snapshot": {
+    "share": "共有",
+    "readOnlyLink": "読み取り専用リンク • {{start}} → {{end}} • 7日後に期限切れ",
+    "snapshotCreated": "スナップショット作成完了",
+    "linkExpires": "リンクは7日後に期限切れになります。",
+    "error": "エラー",
+    "close": "閉じる"
+  },
+  "anomaly": {
+    "leadsDown": "リードが{{pct}}%減少。コンバージョンを調査してください。",
+    "sessionsDropped": "セッションが{{pct}}%減少。トラフィックソースを確認。"
+  },
+  "chatbot": {
+    "title": "ACTV TRKR アシスタント",
+    "placeholder": "指標について質問してください...",
+    "thinking": "考え中...",
+    "error": "問題が発生しました。もう一度お試しください。",
+    "greeting": "こんにちは！ウェブサイトの指標について何でもお聞きください。"
   }
 }

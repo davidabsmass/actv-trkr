@@ -683,40 +683,36 @@
     "returnHome": "العودة إلى الصفحة الرئيسية"
   },
   "getStarted": {
-    "title": "البدء",
-    "welcomeBanner": "مرحباً! لنقم بتوصيل موقعك",
-    "bannerDesc": "اتبع دليلنا المكون من 3 خطوات لتثبيت الإضافة وتوصيل مفتاح API والبدء في رؤية البيانات الفورية.",
-    "startSetup": "بدء الإعداد"
+    "title": "ابدأ في 3 خطوات بسيطة",
+    "subtitle": "قم بإعداد التتبع على موقع WordPress الخاص بك في أقل من 5 دقائق.",
+    "step1Title": "قم بتنزيل وتثبيت الإضافة",
+    "step1Desc": "سجّل الدخول إلى حسابك في ACTV TRKR وقم بتنزيل إضافة WordPress.",
+    "step1Detail1": "في لوحة تحكم WordPress:",
+    "step1Detail2": "انتقل إلى الإضافات → أضف جديد → رفع إضافة",
+    "step1Detail3": "قم برفع ملف ACTV TRKR واضغط على تفعيل",
+    "step1Note": "بدون كود، بدون إعداد معقد.",
+    "step2Title": "قم بربط موقعك",
+    "step2Desc": "بعد تفعيل الإضافة، ستظهر لوحة إعدادات ACTV TRKR.",
+    "step2Detail1": "انسخ مفتاح API من لوحة ACTV TRKR",
+    "step2Detail2": "الصقه في إعدادات الإضافة",
+    "step2Detail3": "اضغط على اتصال",
+    "step2Note": "موقعك الآن مرتبط وجاهز للتتبع.",
+    "step3Title": "شاهد بياناتك تنبض بالحياة",
+    "step3Desc": "في غضون دقائق، يبدأ ACTV TRKR في جمع:",
+    "step3Detail1": "نشاط الزوار",
+    "step3Detail2": "إرسال النماذج",
+    "step3Detail3": "اتجاهات الزيارات",
+    "step3Detail4": "رؤى العملاء المحتملين",
+    "step3Note": "عد إلى لوحة التحكم في أي وقت لمعرفة ما يحدث.",
+    "downloadPlugin": "تنزيل الإضافة",
+    "downloading": "جارٍ التنزيل…",
+    "downloadSuccess": "تم تنزيل الإضافة! قم برفعها في WordPress → الإضافات → أضف جديد → رفع.",
+    "downloadFailed": "فشل تنزيل الإضافة",
+    "goToSetup": "الذهاب إلى إعداد الموقع"
   },
   "common": {
-    "loading": "جارٍ التحميل…",
-    "save": "حفظ",
-    "cancel": "إلغاء",
-    "delete": "حذف",
-    "edit": "تعديل",
-    "confirm": "تأكيد",
-    "search": "بحث",
-    "filter": "تصفية",
-    "export": "تصدير",
-    "download": "تنزيل",
-    "close": "إغلاق",
-    "next": "التالي",
-    "prev": "السابق",
-    "page": "صفحة",
-    "yes": "نعم",
-    "no": "لا",
-    "or": "أو",
-    "and": "و",
-    "all": "الكل",
-    "none": "لا شيء",
-    "days": "أيام",
-    "noData": "لا توجد بيانات متاحة",
-    "error": "خطأ",
-    "success": "نجاح",
-    "retry": "إعادة المحاولة",
-    "viewAll": "عرض الكل",
-    "learnMore": "اعرف المزيد",
-    "sessions": "sessions"
+    "sessions": "جلسات",
+    "ofSessionsConverted": "{{leads}} من {{sessions}} جلسة تم تحويلها"
   },
   "notifications": {
     "title": "الإشعارات",
@@ -873,5 +869,37 @@
     "leadVolumeUpDesc": "العملاء المحتملون ارتفعوا {{pct}}% مقارنة بالأسبوع السابق ({{current}} مقابل {{previous}}).",
     "cvrImproved": "تحسن معدل التحويل",
     "cvrImprovedDesc": "تحسن CVR بنسبة {{pct}}% مقارنة بالأسبوع الماضي."
+  },
+  "timeline": {
+    "clickedCta": "نقر على CTA",
+    "downloadedFile": "تم تنزيل ملف",
+    "visitedExternal": "زار رابطاً خارجياً",
+    "clickedPhone": "نقر على رقم الهاتف",
+    "clickedEmail": "نقر على رابط البريد",
+    "startedForm": "بدأ نموذجاً",
+    "visitedPage": "زار صفحة",
+    "submittedForm": "أرسل نموذجاً",
+    "timeOnPage": "الوقت في الصفحة: {{duration}}",
+    "noSessionData": "لا توجد بيانات جلسة متاحة لهذا العميل المحتمل.",
+    "noActivityData": "لم يتم تسجيل بيانات نشاط لهذه الجلسة."
+  },
+  "snapshot": {
+    "share": "مشاركة",
+    "readOnlyLink": "رابط للقراءة فقط • {{start}} → {{end}} • ينتهي خلال 7 أيام",
+    "snapshotCreated": "تم إنشاء اللقطة",
+    "linkExpires": "ينتهي الرابط خلال 7 أيام.",
+    "error": "خطأ",
+    "close": "إغلاق"
+  },
+  "anomaly": {
+    "leadsDown": "انخفض العملاء المحتملون بنسبة {{pct}}%. تحقق من التحويل.",
+    "sessionsDropped": "انخفضت الجلسات بنسبة {{pct}}%. تحقق من مصادر الزيارات."
+  },
+  "chatbot": {
+    "title": "مساعد ACTV TRKR",
+    "placeholder": "اسألني عن مقاييسك...",
+    "thinking": "جارٍ التفكير...",
+    "error": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "greeting": "مرحباً! يمكنني مساعدتك في فهم مقاييس موقعك. ماذا تريد أن تعرف؟"
   }
 }

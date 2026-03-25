@@ -683,40 +683,36 @@
     "returnHome": "홈으로 돌아가기"
   },
   "getStarted": {
-    "title": "시작하기",
-    "welcomeBanner": "환영합니다! 사이트를 연결해 보겠습니다",
-    "bannerDesc": "3단계 가이드를 따라 플러그인을 설치하고, API 키를 연결하고, 실시간 데이터를 확인하세요.",
-    "startSetup": "설정 시작"
+    "title": "3단계로 시작하기",
+    "subtitle": "5분 이내에 WordPress 사이트 추적을 설정하세요.",
+    "step1Title": "플러그인 다운로드 및 설치",
+    "step1Desc": "ACTV TRKR 계정에 로그인하고 WordPress 플러그인을 다운로드하세요.",
+    "step1Detail1": "WordPress 대시보드에서:",
+    "step1Detail2": "플러그인 → 새로 추가 → 플러그인 업로드로 이동",
+    "step1Detail3": "ACTV TRKR 파일을 업로드하고 활성화를 클릭",
+    "step1Note": "코드 없이, 복잡한 설정 없이.",
+    "step2Title": "웹사이트 연결",
+    "step2Desc": "플러그인 활성화 후 ACTV TRKR 설정 패널이 표시됩니다.",
+    "step2Detail1": "ACTV TRKR 대시보드에서 API 키 복사",
+    "step2Detail2": "플러그인 설정에 붙여넣기",
+    "step2Detail3": "연결 클릭",
+    "step2Note": "사이트가 연결되어 추적 준비가 완료되었습니다.",
+    "step3Title": "데이터가 살아나는 것을 확인하세요",
+    "step3Desc": "몇 분 내에 ACTV TRKR이 수집을 시작합니다:",
+    "step3Detail1": "방문자 활동",
+    "step3Detail2": "양식 제출",
+    "step3Detail3": "트래픽 트렌드",
+    "step3Detail4": "리드 인사이트",
+    "step3Note": "언제든지 대시보드로 돌아와 상황을 확인하세요.",
+    "downloadPlugin": "플러그인 다운로드",
+    "downloading": "다운로드 중…",
+    "downloadSuccess": "플러그인이 다운로드되었습니다! WordPress → 플러그인 → 새로 추가 → 업로드로 이동하세요.",
+    "downloadFailed": "플러그인 다운로드 실패",
+    "goToSetup": "웹사이트 설정으로 이동"
   },
   "common": {
-    "loading": "로딩 중…",
-    "save": "저장",
-    "cancel": "취소",
-    "delete": "삭제",
-    "edit": "편집",
-    "confirm": "확인",
-    "search": "검색",
-    "filter": "필터",
-    "export": "내보내기",
-    "download": "다운로드",
-    "close": "닫기",
-    "next": "다음",
-    "prev": "이전",
-    "page": "페이지",
-    "yes": "예",
-    "no": "아니오",
-    "or": "또는",
-    "and": "그리고",
-    "all": "전체",
-    "none": "없음",
-    "days": "일",
-    "noData": "사용 가능한 데이터가 없습니다",
-    "error": "오류",
-    "success": "성공",
-    "retry": "재시도",
-    "viewAll": "모두 보기",
-    "learnMore": "자세히 보기",
-    "sessions": "sessions"
+    "sessions": "세션",
+    "ofSessionsConverted": "{{sessions}}개 세션 중 {{leads}}개 전환"
   },
   "notifications": {
     "title": "알림",
@@ -873,5 +869,37 @@
     "leadVolumeUpDesc": "리드가 전주 대비 {{pct}}% 증가 ({{current}} vs {{previous}}).",
     "cvrImproved": "전환율이 개선되었습니다",
     "cvrImprovedDesc": "CVR이 지난주 대비 {{pct}}% 개선."
+  },
+  "timeline": {
+    "clickedCta": "CTA 클릭",
+    "downloadedFile": "파일 다운로드",
+    "visitedExternal": "외부 링크 방문",
+    "clickedPhone": "전화번호 클릭",
+    "clickedEmail": "이메일 링크 클릭",
+    "startedForm": "양식 시작",
+    "visitedPage": "페이지 방문",
+    "submittedForm": "양식 제출",
+    "timeOnPage": "페이지 체류 시간: {{duration}}",
+    "noSessionData": "이 리드의 세션 데이터가 없습니다.",
+    "noActivityData": "이 세션에 대한 활동 데이터가 기록되지 않았습니다."
+  },
+  "snapshot": {
+    "share": "공유",
+    "readOnlyLink": "읽기 전용 링크 • {{start}} → {{end}} • 7일 후 만료",
+    "snapshotCreated": "스냅샷 생성됨",
+    "linkExpires": "링크는 7일 후 만료됩니다.",
+    "error": "오류",
+    "close": "닫기"
+  },
+  "anomaly": {
+    "leadsDown": "리드가 {{pct}}% 감소했습니다. 전환율을 조사하세요.",
+    "sessionsDropped": "세션이 {{pct}}% 감소했습니다. 트래픽 소스를 확인하세요."
+  },
+  "chatbot": {
+    "title": "ACTV TRKR 어시스턴트",
+    "placeholder": "지표에 대해 물어보세요...",
+    "thinking": "생각 중...",
+    "error": "문제가 발생했습니다. 다시 시도해 주세요.",
+    "greeting": "안녕하세요! 웹사이트 지표, 리드, 트래픽 등에 대해 도움을 드릴 수 있습니다."
   }
 }

@@ -683,40 +683,36 @@
     "returnHome": "Retour à l'accueil"
   },
   "getStarted": {
-    "title": "Commencer",
-    "welcomeBanner": "Bienvenue ! Connectons votre site",
-    "bannerDesc": "Suivez notre guide en 3 étapes pour installer le plugin, connecter votre clé API et commencer à voir les données en temps réel.",
-    "startSetup": "Lancer la configuration"
+    "title": "Commencez en 3 étapes simples",
+    "subtitle": "Configurez le suivi sur votre site WordPress en moins de 5 minutes.",
+    "step1Title": "Téléchargez et installez le plugin",
+    "step1Desc": "Connectez-vous à votre compte ACTV TRKR et téléchargez le plugin WordPress.",
+    "step1Detail1": "Dans votre tableau de bord WordPress :",
+    "step1Detail2": "Allez à Extensions → Ajouter → Téléverser",
+    "step1Detail3": "Téléversez le fichier ACTV TRKR et cliquez sur Activer",
+    "step1Note": "Pas de code, pas de configuration compliquée.",
+    "step2Title": "Connectez votre site web",
+    "step2Desc": "Après l'activation du plugin, vous verrez le panneau de configuration ACTV TRKR.",
+    "step2Detail1": "Copiez votre clé API depuis votre tableau ACTV TRKR",
+    "step2Detail2": "Collez-la dans les paramètres du plugin",
+    "step2Detail3": "Cliquez sur Connecter",
+    "step2Note": "Votre site est maintenant lié et prêt pour le suivi.",
+    "step3Title": "Regardez vos données prendre vie",
+    "step3Desc": "En quelques minutes, ACTV TRKR commence à collecter :",
+    "step3Detail1": "Activité des visiteurs",
+    "step3Detail2": "Soumissions de formulaires",
+    "step3Detail3": "Tendances de trafic",
+    "step3Detail4": "Informations sur les leads",
+    "step3Note": "Revenez à votre tableau de bord à tout moment pour voir ce qui se passe.",
+    "downloadPlugin": "Télécharger le plugin",
+    "downloading": "Téléchargement…",
+    "downloadSuccess": "Plugin téléchargé ! Téléversez-le dans WordPress → Extensions → Ajouter → Téléverser.",
+    "downloadFailed": "Échec du téléchargement",
+    "goToSetup": "Aller à la configuration du site"
   },
   "common": {
-    "loading": "Chargement…",
-    "save": "Enregistrer",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "edit": "Modifier",
-    "confirm": "Confirmer",
-    "search": "Rechercher",
-    "filter": "Filtrer",
-    "export": "Exporter",
-    "download": "Télécharger",
-    "close": "Fermer",
-    "next": "Suivant",
-    "prev": "Précédent",
-    "page": "Page",
-    "yes": "Oui",
-    "no": "Non",
-    "or": "ou",
-    "and": "et",
-    "all": "Tous",
-    "none": "Aucun",
-    "days": "jours",
-    "noData": "Aucune donnée disponible",
-    "error": "Erreur",
-    "success": "Succès",
-    "retry": "Réessayer",
-    "viewAll": "Voir tout",
-    "learnMore": "En savoir plus",
-    "sessions": "sessions"
+    "sessions": "sessions",
+    "ofSessionsConverted": "{{leads}} sur {{sessions}} sessions converties"
   },
   "notifications": {
     "title": "Notifications",
@@ -873,5 +869,37 @@
     "leadVolumeUpDesc": "Leads en hausse de {{pct}}% vs semaine précédente ({{current}} vs {{previous}}).",
     "cvrImproved": "Le taux de conversion s'est amélioré",
     "cvrImprovedDesc": "CVR amélioré de {{pct}}% par rapport à la semaine dernière."
+  },
+  "timeline": {
+    "clickedCta": "Clic sur CTA",
+    "downloadedFile": "Fichier téléchargé",
+    "visitedExternal": "Lien externe visité",
+    "clickedPhone": "Clic sur téléphone",
+    "clickedEmail": "Clic sur email",
+    "startedForm": "Formulaire commencé",
+    "visitedPage": "Page visitée",
+    "submittedForm": "Formulaire soumis",
+    "timeOnPage": "Temps sur la page : {{duration}}",
+    "noSessionData": "Aucune donnée de session disponible pour ce lead.",
+    "noActivityData": "Aucune activité enregistrée pour cette session."
+  },
+  "snapshot": {
+    "share": "Partager",
+    "readOnlyLink": "Lien en lecture seule • {{start}} → {{end}} • Expire dans 7 jours",
+    "snapshotCreated": "Snapshot créé",
+    "linkExpires": "Le lien expire dans 7 jours.",
+    "error": "Erreur",
+    "close": "Fermer"
+  },
+  "anomaly": {
+    "leadsDown": "Leads en baisse de {{pct}}% semaine après semaine. Investiguer la conversion.",
+    "sessionsDropped": "Sessions en baisse de {{pct}}% WoW. Vérifier les sources de trafic."
+  },
+  "chatbot": {
+    "title": "Assistant ACTV TRKR",
+    "placeholder": "Posez-moi des questions sur vos métriques...",
+    "thinking": "Réflexion...",
+    "error": "Quelque chose s'est mal passé. Veuillez réessayer.",
+    "greeting": "Bonjour ! Je peux vous aider à comprendre vos métriques web. Que souhaitez-vous savoir ?"
   }
 }

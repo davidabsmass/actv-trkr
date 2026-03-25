@@ -56,6 +56,9 @@ class MM_SEO_Fixes {
 	/* ─── Polling ─── */
 
 	public static function poll_fixes() {
+		// Mark that we polled so the shutdown fallback won't double-run.
+		set_transient( 'mm_seo_last_poll', time(), 5 * MINUTE_IN_SECONDS );
+
 		$api_key = get_option( 'mm_api_key', '' );
 		$api_url = get_option( 'mm_api_url', '' );
 		if ( empty( $api_key ) || empty( $api_url ) ) {

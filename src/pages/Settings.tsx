@@ -1,6 +1,7 @@
 import { useOrg } from "@/hooks/use-org";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const showAdminSections = isAdmin || isOrgAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "general";
+  const { t } = useTranslation();
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });
@@ -25,17 +27,17 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Settings</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-1">{t("settings.title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Configuration for {orgName}
+        {t("settings.configFor", { orgName })}
       </p>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
-          <TabsTrigger value="general">General</TabsTrigger>
-          {showAdminSections && <TabsTrigger value="white-label">White Label</TabsTrigger>}
-          <TabsTrigger value="setup">Website Setup</TabsTrigger>
-          <TabsTrigger value="guide">Get Started</TabsTrigger>
+          <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
+          {showAdminSections && <TabsTrigger value="white-label">{t("settings.whiteLabel")}</TabsTrigger>}
+          <TabsTrigger value="setup">{t("settings.websiteSetup")}</TabsTrigger>
+          <TabsTrigger value="guide">{t("settings.getStarted")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">

@@ -544,6 +544,7 @@ function ActivityReportsTab() {
 
 // ── Main Reports Page ──
 export default function Reports() {
+  const { t } = useTranslation();
   const { orgId, orgName } = useOrg();
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -567,7 +568,7 @@ export default function Reports() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report_runs"] });
-      toast.success("Report generation started — check Activity Reports tab to download");
+      toast.success(t("reports.reportGenStarted"));
       setSearchParams({ tab: "activity" }, { replace: true });
     },
     onError: (err: any) => toast.error(err.message || "Failed to generate report"),
@@ -576,15 +577,15 @@ export default function Reports() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold text-foreground">Reports</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Insights and summaries for {orgName}</p>
+      <p className="text-sm text-muted-foreground mb-6">{t("reports.insightsFor", { orgName })}</p>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="activity">Activity Reports</TabsTrigger>
-          <TabsTrigger value="archives">Archives</TabsTrigger>
+          <TabsTrigger value="overview">{t("reports.overview")}</TabsTrigger>
+          <TabsTrigger value="activity">{t("reports.activityReports")}</TabsTrigger>
+          <TabsTrigger value="archives">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>

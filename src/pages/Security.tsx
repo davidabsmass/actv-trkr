@@ -131,14 +131,14 @@ export default function Security() {
                         <div className="flex items-start gap-2">
                           <ShieldAlert className="h-4 w-4 text-warning mt-0.5 shrink-0" />
                           <div>
-                            <p className="text-sm font-semibold text-foreground mb-1.5">Brute Force Detected — Recommended Actions</p>
+                            <p className="text-sm font-semibold text-foreground mb-1.5">{t("security.bruteForceTitle")}</p>
                             <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
-                              <li>Install a rate-limiting or login-lockout plugin (e.g. <span className="font-medium text-foreground">Limit Login Attempts Reloaded</span> or <span className="font-medium text-foreground">Wordfence</span>)</li>
-                              <li>Enable <span className="font-medium text-foreground">two-factor authentication</span> (2FA) for all admin accounts</li>
-                              <li>Change the default <code className="text-xs bg-muted px-1 rounded">/wp-admin</code> login URL using a plugin like <span className="font-medium text-foreground">WPS Hide Login</span></li>
-                              <li>Ensure all admin passwords are <span className="font-medium text-foreground">16+ characters</span> with mixed case, numbers, and symbols</li>
-                              <li>Block the attacking IP addresses at your hosting firewall or via <code className="text-xs bg-muted px-1 rounded">.htaccess</code></li>
-                              <li>Consider enabling <span className="font-medium text-foreground">Cloudflare</span> or a WAF to filter malicious traffic upstream</li>
+                              <li>{t("security.bruteForceInstallPlugin")}</li>
+                              <li>{t("security.bruteForceEnable2fa")}</li>
+                              <li>{t("security.bruteForceChangeUrl")}</li>
+                              <li>{t("security.bruteForceStrongPasswords")}</li>
+                              <li>{t("security.bruteForceBlockIp")}</li>
+                              <li>{t("security.bruteForceWaf")}</li>
                             </ul>
                           </div>
                         </div>
@@ -157,7 +157,7 @@ export default function Security() {
                                 <div className="flex items-center gap-3 mt-1 text-xs opacity-80">
                                   <span>{format(new Date(evt.occurred_at), "MMM d, h:mm a")}</span>
                                   {details.ip && <span>IP: {details.ip}</span>}
-                                  {details.username && <span>User: {details.username}</span>}
+                                  {details.username && <span>{t("security.userLabel")}: {details.username}</span>}
                                 </div>
                               </div>
                             </div>

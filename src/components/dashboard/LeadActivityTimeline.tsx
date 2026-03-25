@@ -68,7 +68,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
       const items: TimelineItem[] = [];
 
       (pageviewsRes.data || []).forEach((pv) => {
-        const detail = pv.active_seconds ? `Time on page: ${formatDuration(pv.active_seconds)}` : undefined;
+        const detail = pv.active_seconds ? t("timeline.timeOnPage", { duration: formatDuration(pv.active_seconds) }) : undefined;
         items.push({
           time: pv.occurred_at,
           type: "pageview",
@@ -112,7 +112,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
   if (!sessionId) {
     return (
       <div className="p-4 text-center text-muted-foreground text-xs">
-        No session data available for this lead.
+        {t("timeline.noSessionData")}
       </div>
     );
   }
@@ -165,7 +165,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
       {/* Timeline */}
       {(!timeline || timeline.length === 0) ? (
         <div className="p-4 text-center text-muted-foreground text-xs">
-          No activity data recorded for this session.
+          {t("timeline.noActivityData")}
         </div>
       ) : (
         <div className="relative pl-6">

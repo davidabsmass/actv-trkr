@@ -786,5 +786,12 @@
     "target": "Target",
     "pagePath": "Page",
     "session": "Session"
+  },
+  "chatbot": {
+    "title": "ACTV TRKR Assistant",
+    "placeholder": "Ask me about your metrics...",
+    "thinking": "Thinking...",
+    "error": "Something went wrong. Please try again.",
+    "greeting": "Hi! I can help you understand your website metrics, leads, traffic, and more. What would you like to know?"
   }
 }

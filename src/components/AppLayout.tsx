@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Shield } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { AiChatbot } from "@/components/AiChatbot";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();
@@ -74,6 +75,7 @@ function LayoutInner() {
               <Outlet />
             </ErrorBoundary>
           </div>
+          <AiChatbot />
         </main>
       </div>
     </SidebarProvider>

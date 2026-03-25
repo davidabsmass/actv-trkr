@@ -27,6 +27,12 @@ require_once MM_PLUGIN_DIR . 'includes/class-broken-links.php';
 require_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';
 require_once MM_PLUGIN_DIR . 'includes/class-security.php';
 
+// WooCommerce integration (only load if WooCommerce is active)
+if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
+	require_once MM_PLUGIN_DIR . 'includes/class-woocommerce.php';
+	new MM_WooCommerce();
+}
+
 /**
  * Activation: create retry-queue table and schedule cron.
  */

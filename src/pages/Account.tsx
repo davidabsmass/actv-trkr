@@ -103,16 +103,16 @@ export default function Account() {
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Mail className="h-3 w-3" /> Email
+                <Mail className="h-3 w-3" /> {t("account.email")}
               </Label>
               <Input value={user?.email || ""} disabled className="bg-muted" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Full Name</Label>
+              <Label className="text-xs">{t("account.fullName")}</Label>
               <Input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Your name"
+                placeholder={t("account.yourName")}
                 disabled={isLoading}
               />
             </div>
@@ -121,7 +121,7 @@ export default function Account() {
               onClick={() => updateProfile.mutate(fullName)}
               disabled={updateProfile.isPending || isLoading}
             >
-              {updateProfile.isPending ? "Saving…" : "Save Changes"}
+              {updateProfile.isPending ? t("account.saving") : t("account.saveChanges")}
             </Button>
           </CardContent>
         </Card>
@@ -130,19 +130,19 @@ export default function Account() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Lock className="h-4 w-4" /> Change Password
+              <Lock className="h-4 w-4" /> {t("account.changePassword")}
             </CardTitle>
-            <CardDescription>Update your login password</CardDescription>
+            <CardDescription>{t("account.changePasswordDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">New Password</Label>
+              <Label className="text-xs">{t("account.newPassword")}</Label>
               <div className="relative">
                 <Input
                   type={showNew ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 8 characters"
+                  placeholder={t("account.minCharacters")}
                   className="pr-9"
                 />
                 <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
@@ -151,7 +151,7 @@ export default function Account() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Confirm New Password</Label>
+              <Label className="text-xs">{t("account.confirmPassword")}</Label>
               <div className="relative">
                 <Input
                   type={showConfirm ? "text" : "password"}
@@ -170,7 +170,7 @@ export default function Account() {
               onClick={handlePasswordChange}
               disabled={changingPassword || !newPassword}
             >
-              {changingPassword ? "Updating…" : "Update Password"}
+              {changingPassword ? t("account.updating") : t("account.updatePassword")}
             </Button>
           </CardContent>
         </Card>

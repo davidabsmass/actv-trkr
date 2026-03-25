@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Calendar, TrendingUp, TrendingDown, Minus, Sparkles, Lightbulb, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
 
 function TrendBadge({ change }: { change: number | null }) {
@@ -20,6 +21,7 @@ function TrendBadge({ change }: { change: number | null }) {
 
 export default function WeeklyTab() {
   const { orgId } = useOrg();
+  const { t } = useTranslation();
   const [aiParagraph, setAiParagraph] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [isHydrating, setIsHydrating] = useState(false);
@@ -55,7 +57,7 @@ export default function WeeklyTab() {
     } catch (error) {
       console.error("Failed to hydrate weekly summary", error);
       if (!silent) {
-        toast.error("Could not generate weekly summary yet. Please try again in a minute.");
+        toast.error(t("reports.couldNotGenerate"));
       }
     } finally {
       setIsHydrating(false);
@@ -99,19 +101,19 @@ export default function WeeklyTab() {
       });
       if (error) {
         if (error.message?.includes("429") || error.message?.includes("RATE_LIMITED")) {
-          toast.error("Daily AI report limit reached. Try again tomorrow.");
+          toast.error(t("reports.dailyLimitReached"));
           return;
         }
         throw error;
       }
       if (result?.code === "RATE_LIMITED") {
-        toast.error(result.error || "Daily limit reached.");
+        toast.error(result.error || t("reports.dailyLimitReached"));
         return;
       }
       setAiParagraph(result?.summary_paragraph || null);
       setCooldownUntil(Date.now() + 30_000);
     } catch {
-      toast.error("Failed to generate weekly summary");
+      toast.error(t("reports.failedWeekly"));
     } finally {
       setLoadingAi(false);
     }
@@ -120,7 +122,7 @@ export default function WeeklyTab() {
   if (isLoading || isHydrating) {
     return (
       <div className="rounded-lg border border-border bg-card p-12 text-center">
-        <p className="text-sm text-muted-foreground">Building your weekly summary from live tracking data…</p>
+        <p className="text-sm text-muted-foreground">{t("reports.buildingWeekly")}</p>
       </div>
     );
   }
@@ -128,15 +130,15 @@ export default function WeeklyTab() {
   if (!summary) {
     return (
       <div className="rounded-lg border border-border bg-card p-12 text-center">
-        <p className="text-sm text-muted-foreground">No weekly summary record was found yet for this workspace.</p>
-        <p className="text-xs text-muted-foreground mt-1">Click below to generate it now from your tracked sessions and leads.</p>
+        <p className="text-sm text-muted-foreground">{t("reports.noWeeklySummary")}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t("reports.clickToGenerate")}</p>
         <button
           onClick={() => void hydrateWeeklySummary(false)}
           disabled={isHydrating}
           className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`h-3 w-3 ${isHydrating ? "animate-spin" : ""}`} />
-          Generate Weekly Summary
+          {t("reports.generateWeeklySummary")}
         </button>
       </div>
     );
@@ -149,7 +151,7 @@ export default function WeeklyTab() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Week of {format(new Date(summary.week_start), "MMM d, yyyy")}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("reports.weekOf")} {format(new Date(summary.week_start), "MMM d, yyyy")}</h3>
           </div>
           <button
             onClick={generateAiSummary}
@@ -157,22 +159,22 @@ export default function WeeklyTab() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
           >
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summary"}
+            {loadingAi ? t("reports.generatingAi") : cooldownRemaining > 0 ? t("reports.waitSeconds", { seconds: cooldownRemaining }) : t("reports.aiSummary")}
           </button>
         </div>
 
         {/* AI or stored summary */}
         <div className="p-4 rounded-md bg-primary/5 border border-primary/10 mb-4">
-          <p className="text-sm text-foreground/80 leading-relaxed">{aiParagraph || summary.summary_text || "Generate an AI summary to see a plain-English recap of this week."}</p>
+          <p className="text-sm text-foreground/80 leading-relaxed">{aiParagraph || summary.summary_text || t("reports.generateAiSummary")}</p>
         </div>
 
         {/* Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Sessions", value: sessionsCurrent, change: Number(summary.sessions_change) },
-            { label: "Leads", value: leadsCurrent, change: Number(summary.leads_change) },
-            { label: "CVR", value: `${cvrCurrent}%`, change: cvrChange },
-            { label: "Top Source", value: topSource, change: null },
+            { label: t("reports.sessions"), value: sessionsCurrent, change: Number(summary.sessions_change) },
+            { label: t("reports.leads"), value: leadsCurrent, change: Number(summary.leads_change) },
+            { label: t("reports.cvr"), value: `${cvrCurrent}%`, change: cvrChange },
+            { label: t("reports.topSource"), value: topSource, change: null },
           ].map((m) => (
             <div key={m.label} className="p-3 rounded-md bg-muted/50">
               <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>
@@ -187,13 +189,13 @@ export default function WeeklyTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {summary.risk_alert && (
           <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-            <p className="text-xs uppercase tracking-wider text-destructive font-medium mb-1">⚠️ Risk Alert</p>
+            <p className="text-xs uppercase tracking-wider text-destructive font-medium mb-1">⚠️ {t("reports.riskAlert")}</p>
             <p className="text-sm text-foreground">{summary.risk_alert}</p>
           </div>
         )}
         {summary.top_opportunity && (
           <div className="rounded-lg border border-success/20 bg-success/5 p-4">
-            <p className="text-xs uppercase tracking-wider text-success font-medium mb-1">🟢 Top Opportunity</p>
+            <p className="text-xs uppercase tracking-wider text-success font-medium mb-1">🟢 {t("reports.topOpportunity")}</p>
             <p className="text-sm text-foreground">{summary.top_opportunity}</p>
           </div>
         )}
@@ -202,24 +204,24 @@ export default function WeeklyTab() {
       {/* Recommended Next Steps */}
       <div className="rounded-lg border border-border bg-card p-5">
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <Lightbulb className="h-4 w-4 text-primary" /> Recommended Next Steps
+          <Lightbulb className="h-4 w-4 text-primary" /> {t("reports.recommendedNextSteps")}
         </h3>
         <div className="space-y-2">
           {Number(summary.leads_change) < -10 && (
             <div className="flex items-start gap-2 text-sm">
               <span className="text-xs font-bold text-primary mt-0.5">1.</span>
-              <p className="text-foreground">Review top lead sources for any declines or attribution changes.</p>
+              <p className="text-foreground">{t("reports.reviewLeadSources")}</p>
             </div>
           )}
           {Number(summary.sessions_change) > 10 && Number(summary.leads_change) < 5 && (
             <div className="flex items-start gap-2 text-sm">
               <span className="text-xs font-bold text-primary mt-0.5">2.</span>
-              <p className="text-foreground">Traffic grew but leads didn't keep pace — check conversion paths on top landing pages.</p>
+              <p className="text-foreground">{t("reports.trafficGrowNoLeads")}</p>
             </div>
           )}
           <div className="flex items-start gap-2 text-sm">
             <span className="text-xs font-bold text-primary mt-0.5">•</span>
-            <p className="text-foreground">Review the Overview tab for detailed insights and suggested actions.</p>
+            <p className="text-foreground">{t("reports.reviewOverviewTab")}</p>
           </div>
         </div>
       </div>

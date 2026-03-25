@@ -5,10 +5,12 @@ import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { Calendar, Sparkles, RefreshCw, Lightbulb, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
 
 export default function MonthlyTab() {
   const { orgId } = useOrg();
+  const { t } = useTranslation();
   const [aiResult, setAiResult] = useState<{ summary_paragraph?: string; focus_items?: string[] } | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
 
@@ -76,19 +78,19 @@ export default function MonthlyTab() {
       });
       if (error) {
         if (error.message?.includes("429") || error.message?.includes("RATE_LIMITED")) {
-          toast.error("Daily AI report limit reached. Try again tomorrow.");
+          toast.error(t("reports.dailyLimitReached"));
           return;
         }
         throw error;
       }
       if (result?.code === "RATE_LIMITED") {
-        toast.error(result.error || "Daily limit reached.");
+        toast.error(result.error || t("reports.dailyLimitReached"));
         return;
       }
       setAiResult(result);
       setCooldownUntil(Date.now() + 30_000);
     } catch {
-      toast.error("Failed to generate monthly summary");
+      toast.error(t("reports.failedMonthly"));
     } finally {
       setLoadingAi(false);
     }
@@ -104,7 +106,7 @@ export default function MonthlyTab() {
   if (!metrics) {
     return (
       <div className="rounded-lg border border-border bg-card p-12 text-center">
-        <p className="text-sm text-muted-foreground">Not enough data yet to generate a monthly summary.</p>
+        <p className="text-sm text-muted-foreground">{t("reports.noMonthlyData")}</p>
       </div>
     );
   }
@@ -120,13 +122,13 @@ export default function MonthlyTab() {
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">
-              {format(lastMonth, "MMMM yyyy")} in Review
+              {format(lastMonth, "MMMM yyyy")} {t("reports.inReview")}
             </h3>
           </div>
           <button onClick={generateAiSummary} disabled={loadingAi || cooldownRemaining > 0}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50">
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summary"}
+            {loadingAi ? t("reports.generatingAi") : cooldownRemaining > 0 ? t("reports.waitSeconds", { seconds: cooldownRemaining }) : t("reports.aiSummary")}
           </button>
         </div>
 
@@ -136,24 +138,24 @@ export default function MonthlyTab() {
           </div>
         ) : (
           <div className="p-4 rounded-md bg-muted/50 mb-4">
-            <p className="text-sm text-muted-foreground">Click "AI Summary" to generate an executive summary for this month.</p>
+            <p className="text-sm text-muted-foreground">{t("reports.clickAiSummary")}</p>
           </div>
         )}
 
         {/* Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="p-3 rounded-md bg-muted/50">
-            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Sessions</p>
+            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.sessions")}</p>
             <p className="text-lg font-bold text-foreground">{metrics.currentSessions.toLocaleString()}</p>
             <TrendBadge change={pctChange(metrics.currentSessions, metrics.previousSessions)} />
           </div>
           <div className="p-3 rounded-md bg-muted/50">
-            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Leads</p>
+            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.leads")}</p>
             <p className="text-lg font-bold text-foreground">{metrics.currentLeads.toLocaleString()}</p>
             <TrendBadge change={pctChange(metrics.currentLeads, metrics.previousLeads)} />
           </div>
           <div className="p-3 rounded-md bg-muted/50">
-            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">CVR</p>
+            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.cvr")}</p>
             <p className="text-lg font-bold text-foreground">{metrics.currentCvr}%</p>
             <TrendBadge change={pctChange(metrics.currentCvr, metrics.previousCvr)} />
           </div>
@@ -164,7 +166,7 @@ export default function MonthlyTab() {
       {focusItems && focusItems.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-5">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Lightbulb className="h-4 w-4 text-primary" /> Recommended Focus This Month
+            <Lightbulb className="h-4 w-4 text-primary" /> {t("reports.recommendedFocus")}
           </h3>
           <div className="space-y-2">
             {focusItems.slice(0, 3).map((item, i) => (

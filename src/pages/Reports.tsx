@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -78,20 +79,21 @@ const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count
 
 // ── Monthly Performance Viewer (existing report viewer) ──
 function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () => void }) {
+  const { t } = useTranslation();
   const { executiveSummary: es, growthEngine: ge, conversionIntelligence: ci, userExperience: ux, actionPlan: ap, siteHealth: sh, formHealth: fh, aiInsights } = report;
 
   return (
     <div>
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Reports
+        <ArrowLeft className="h-4 w-4" /> {t("reports.backToReports")}
       </button>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Performance Report</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-1">{t("reports.performanceReport")}</h1>
       <p className="text-xs text-muted-foreground mb-6">
         {format(new Date(report.periodStart), "MMM d")} – {format(new Date(report.periodEnd), "MMM d, yyyy")} · {report.periodDays}-day period
       </p>
 
       {aiInsights && aiInsights.length > 0 && (
-        <Section icon={Sparkles} title="AI Insights">
+        <Section icon={Sparkles} title={t("reports.aiInsights")}>
           <div className="space-y-3">
             {aiInsights.map((insight: any, i: number) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-md bg-primary/5 border border-primary/10">
@@ -106,7 +108,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         </Section>
       )}
 
-      <Section icon={Target} title="Executive Summary">
+      <Section icon={Target} title={t("reports.executiveSummary")}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           {[
             { label: "Leads", value: es.leads.current, change: es.leads.change },
@@ -129,14 +131,14 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
           <div className="flex items-start gap-2 p-3 rounded-md bg-success/10 border border-success/20">
             <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Key Win</p>
+              <p className="text-xs font-medium text-foreground">{t("reports.keyWin")}</p>
               <p className="text-xs text-muted-foreground">{es.keyWin}</p>
             </div>
           </div>
           <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20">
             <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Key Risk</p>
+              <p className="text-xs font-medium text-foreground">{t("reports.keyRisk")}</p>
               <p className="text-xs text-muted-foreground">{es.keyRisk}</p>
             </div>
           </div>
@@ -144,7 +146,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
       </Section>
 
       {sh && (
-        <Section icon={Activity} title="Site Health & Uptime">
+        <Section icon={Activity} title={t("reports.siteHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {[
               { label: "Uptime", value: `${sh.uptimePercent}%`, cls: sh.uptimePercent >= 99.5 ? "text-success" : sh.uptimePercent >= 95 ? "text-warning" : "text-destructive" },
@@ -162,7 +164,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
       )}
 
       {fh && (
-        <Section icon={FormInput} title="Form Health">
+        <Section icon={FormInput} title={t("reports.formHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="p-3 rounded-md bg-muted/50">
               <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Total Submissions</p>
@@ -180,23 +182,23 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         </Section>
       )}
 
-      <Section icon={Globe} title="Growth Engine">
+      <Section icon={Globe} title={t("reports.growthEngine")}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Traffic by Source</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.trafficBySource")}</p>
             <RankList items={ge.trafficBySource} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Top Landing Pages</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.topLandingPages")}</p>
             <RankList items={ge.topLandingPages} />
           </div>
         </div>
       </Section>
 
-      <Section icon={BarChart3} title="Conversion Intelligence">
+      <Section icon={BarChart3} title={t("reports.conversionIntelligence")}>
         {ci.leadsByForm?.length > 0 && (
           <div className="mb-4">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Leads by Form</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("reports.leadsByForm")}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -229,43 +231,43 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Top Converting Pages</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.topConvertingPages")}</p>
             <RankList items={ci.topConvertingPages} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Lead Sources</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.leadSources")}</p>
             <RankList items={ci.leadSources} />
           </div>
         </div>
       </Section>
 
-      <Section icon={Users} title="User Experience Signals">
+      <Section icon={Users} title={t("reports.userExperience")}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Device Breakdown</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.deviceBreakdown")}</p>
             <RankList items={ux.deviceBreakdown} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Geography</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.geography")}</p>
             <RankList items={ux.geoBreakdown} maxItems={10} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Top Pages</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.topPages")}</p>
             <RankList items={(ux.topPages || []).slice(0, 10)} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Referrers</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.referrers")}</p>
             <RankList items={ux.referrerBreakdown} />
           </div>
         </div>
       </Section>
 
-      <Section icon={Lightbulb} title="Action Plan & Forecast">
+      <Section icon={Lightbulb} title={t("reports.actionPlan")}>
         {ap.forecast?.projectedNextMonth > 0 && (
           <div className="flex items-start gap-2 p-3 rounded-md bg-primary/5 border border-primary/10 mb-4">
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Lead Forecast</p>
+              <p className="text-xs font-medium text-foreground">{t("reports.leadForecast")}</p>
               <p className="text-xs text-muted-foreground">
                 Avg. {ap.forecast.avgDailyLeads} leads/day · Projected next month: {Math.round(ap.forecast.projectedNextMonth * 0.9)}–{Math.round(ap.forecast.projectedNextMonth * 1.1)}
               </p>
@@ -291,6 +293,7 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
 
 // ── Activity Reports Sub-Tab (moved from old Reports page) ──
 function ActivityReportsTab() {
+  const { t } = useTranslation();
   const { orgId, orgName } = useOrg();
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -420,15 +423,15 @@ function ActivityReportsTab() {
     <div className="space-y-6">
       {/* Generate */}
       <div className="rounded-lg border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Generate a Report</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> {t("reports.generateAReport")}</h3>
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-muted-foreground">Date Range:</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("reports.dateRange")}:</label>
             <div className="flex items-center gap-1">
               {(["monthly", "custom"] as const).map((mode) => (
                 <Button key={mode} variant={dateRangeMode === mode ? "default" : "outline"} size="sm" className="text-xs h-7 px-3 capitalize"
                   onClick={() => { setDateRangeMode(mode); if (mode === "monthly") { setDateFrom(subDays(new Date(), 30)); setDateTo(new Date()); } }}>
-                  {mode === "monthly" ? "Last 30 Days" : "Custom Range"}
+                  {mode === "monthly" ? t("reports.last30Days") : t("reports.customRange")}
                 </Button>
               ))}
             </div>
@@ -443,7 +446,7 @@ function ActivityReportsTab() {
             <p className="text-xs text-muted-foreground">{format(dateFrom, "MMM d")} – {format(dateTo, "MMM d, yyyy")}</p>
           )}
           <Button className="sm:ml-auto" onClick={() => generateReport.mutate()} disabled={generateReport.isPending}>
-            {generateReport.isPending ? "Generating…" : "Generate Report"}
+            {generateReport.isPending ? t("reports.generatingReport") : t("reports.generateReport")}
           </Button>
         </div>
       </div>
@@ -451,29 +454,29 @@ function ActivityReportsTab() {
       {/* Schedules */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><CalendarClock className="h-4 w-4 text-primary" /> Scheduled Reports</h3>
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><CalendarClock className="h-4 w-4 text-primary" /> {t("reports.scheduledReports")}</h3>
           <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-            <DialogTrigger asChild><Button variant="outline" size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Schedule</Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> {t("reports.addSchedule")}</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>New Report Schedule</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t("reports.newReportSchedule")}</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Frequency</label>
-                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem></SelectContent></Select>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.frequency")}</label>
+                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem></SelectContent></Select>
                 </div>
                 {newSchedule.frequency === "monthly" && (
                   <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">Day of Month</label>
+                    <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.dayOfMonth")}</label>
                     <Select value={String(newSchedule.runDayOfMonth)} onValueChange={(v) => setNewSchedule((s) => ({ ...s, runDayOfMonth: parseInt(v) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{dayOptions.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}</SelectContent></Select>
                   </div>
                 )}
-                <Button className="w-full" disabled={createSchedule.isPending} onClick={() => createSchedule.mutate()}>{createSchedule.isPending ? "Creating…" : "Create Schedule"}</Button>
+                <Button className="w-full" disabled={createSchedule.isPending} onClick={() => createSchedule.mutate()}>{createSchedule.isPending ? t("reports.creatingSchedule") : t("reports.createSchedule")}</Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
         {!schedules?.length ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No scheduled reports yet.</div>
+          <div className="p-8 text-center text-muted-foreground text-sm">{t("reports.noSchedules")}</div>
         ) : (
           <div className="divide-y divide-border">
             {schedules.map((s) => (
@@ -481,8 +484,8 @@ function ActivityReportsTab() {
                 <div className="flex items-center gap-3">
                   <CalendarClock className={`h-4 w-4 ${s.enabled ? "text-primary" : "text-muted-foreground"}`} />
                   <div>
-                    <p className="text-sm font-medium text-foreground">Performance Report</p>
-                    <p className="text-xs text-muted-foreground">{s.frequency === "weekly" ? "Every week" : `Monthly · ${dayLabel(s.run_day_of_month)}`}</p>
+                    <p className="text-sm font-medium text-foreground">{t("reports.performanceReport")}</p>
+                    <p className="text-xs text-muted-foreground">{s.frequency === "weekly" ? t("reports.everyWeek") : `${t("reports.monthlyFreq")} · ${dayLabel(s.run_day_of_month)}`}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -500,9 +503,9 @@ function ActivityReportsTab() {
 
       {/* History */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border"><h3 className="text-sm font-semibold text-foreground">Report History</h3></div>
+        <div className="px-5 py-3 border-b border-border"><h3 className="text-sm font-semibold text-foreground">{t("reports.reportHistory")}</h3></div>
         {!runs?.length ? (
-          <div className="p-12 text-center text-muted-foreground text-sm">No reports generated yet.</div>
+          <div className="p-12 text-center text-muted-foreground text-sm">{t("reports.noReports")}</div>
         ) : (
           <div className="divide-y divide-border">
             {runs.map((run) => {
@@ -512,7 +515,7 @@ function ActivityReportsTab() {
                   <div className="flex items-center gap-3">
                     {statusIcon(run.status)}
                     <div>
-                      <p className="text-sm font-medium text-foreground">Performance Report</p>
+                      <p className="text-sm font-medium text-foreground">{t("reports.performanceReport")}</p>
                       <p className="text-xs text-muted-foreground">
                         {params?.start_date && params?.end_date ? `${format(new Date(params.start_date), "MMM d")} – ${format(new Date(params.end_date), "MMM d, yyyy")}` : format(new Date(run.created_at), "MMM d, yyyy")}
                       </p>
@@ -541,6 +544,7 @@ function ActivityReportsTab() {
 
 // ── Main Reports Page ──
 export default function Reports() {
+  const { t } = useTranslation();
   const { orgId, orgName } = useOrg();
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -564,7 +568,7 @@ export default function Reports() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["report_runs"] });
-      toast.success("Report generation started — check Activity Reports tab to download");
+      toast.success(t("reports.reportGenStarted"));
       setSearchParams({ tab: "activity" }, { replace: true });
     },
     onError: (err: any) => toast.error(err.message || "Failed to generate report"),
@@ -573,15 +577,15 @@ export default function Reports() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold text-foreground">Reports</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Insights and summaries for {orgName}</p>
+      <p className="text-sm text-muted-foreground mb-6">{t("reports.insightsFor", { orgName })}</p>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="activity">Activity Reports</TabsTrigger>
-          <TabsTrigger value="archives">Archives</TabsTrigger>
+          <TabsTrigger value="overview">{t("reports.overview")}</TabsTrigger>
+          <TabsTrigger value="activity">{t("reports.activityReports")}</TabsTrigger>
+          <TabsTrigger value="archives">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>

@@ -37,9 +37,7 @@ export default function SeoTab() {
 
   const siteDomain = sites?.[0]?.domain || "";
 
-  // Initialize scanUrl with homepage when sites load
-  const defaultUrl = siteDomain ? `https://${siteDomain}` : "";
-  const effectiveUrl = scanUrl || defaultUrl;
+  const homepageUrl = siteDomain ? `https://${siteDomain}` : "";
 
   // Fetch scan history (last 20 scans)
   const { data: scanHistory, isLoading: historyLoading } = useQuery({

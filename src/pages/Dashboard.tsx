@@ -240,6 +240,54 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
+  // Security threats (last 24h)
+  const { data: recentSecurityEvents } = useQuery({
+    queryKey: ["recent_security_events", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from("security_events").select("id, event_type, severity, title")
+        .eq("org_id", orgId)
+        .in("severity", ["high", "critical"])
+        .gte("occurred_at", since)
+        .limit(10);
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  // Stale SEO fixes (pending > 1 hour)
+  const { data: staleSeoFixes } = useQuery({
+    queryKey: ["stale_seo_fixes", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count } = await supabase
+        .from("seo_fix_queue").select("*", { count: "exact", head: true })
+        .eq("org_id", orgId).eq("status", "pending").lt("created_at", oneHourAgo);
+      return count || 0;
+    },
+    enabled: !!orgId,
+  });
+
+  // Pending monitoring alerts (unsent)
+  const { data: pendingAlerts } = useQuery({
+    queryKey: ["pending_monitoring_alerts", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count } = await supabase
+        .from("monitoring_alerts").select("*", { count: "exact", head: true })
+        .eq("org_id", orgId).eq("status", "pending");
+      return count || 0;
+    },
+    enabled: !!orgId,
+  });
+
+  // Low SEO score
+  const lowSeoScore = seoMovement && seoMovement.score !== null && seoMovement.score < 60;
+  const seoScoreDrop = seoMovement && seoMovement.change < -10;
+
   const { data: formStartsCount } = useQuery({
     queryKey: ["form_starts_count", orgId, startDate, endDate],
     queryFn: async () => {
@@ -275,6 +323,7 @@ const Dashboard = () => {
 
   const attentionItems = useMemo<AttentionItem[]>(() => {
     const items: AttentionItem[] = [];
+    // Active downtime incidents
     if (activeIncidents && activeIncidents.length > 0) {
       items.push({
         severity: "critical",
@@ -284,26 +333,58 @@ const Dashboard = () => {
         linkLabel: "View",
       });
     }
+    // Security threats
+    if (recentSecurityEvents && recentSecurityEvents.length > 0) {
+      const critCount = recentSecurityEvents.filter((e) => e.severity === "critical").length;
+      items.push({
+        severity: critCount > 0 ? "critical" : "warning",
+        label: `${recentSecurityEvents.length} security event${recentSecurityEvents.length > 1 ? "s" : ""} (24h)`,
+        detail: recentSecurityEvents[0]?.title || "Potential threat detected",
+        link: "/security",
+        linkLabel: "Review",
+      });
+    }
+    // Conversion drops
     const convDrops = (alertsData || []).filter(
       (a) => a.severity === "warning" && a.title?.toLowerCase().includes("conversion")
     );
     if (convDrops.length > 0) {
       items.push({ severity: "warning", label: "Conversion rate dropped", detail: convDrops[0].title, link: "/performance", linkLabel: "Investigate" });
     }
+    // Broken links
     if (brokenLinksCount && brokenLinksCount > 0) {
       items.push({ severity: "warning", label: `${brokenLinksCount} broken link${brokenLinksCount > 1 ? "s" : ""}`, detail: "May affect UX and SEO", link: "/monitoring?tab=broken-links", linkLabel: "View" });
     }
+    // Domain expiry
     if (expiringDomains && expiringDomains.length > 0) {
-      items.push({ severity: "warning", label: "Domain expiring soon", detail: expiringDomains.map((d) => `${d.domain} (${d.days_to_domain_expiry}d)`).join(", "), link: "/monitoring", linkLabel: "View" });
+      const minDays = Math.min(...expiringDomains.map((d) => d.days_to_domain_expiry || 999));
+      items.push({ severity: minDays <= 5 ? "critical" : "warning", label: "Domain expiring soon", detail: expiringDomains.map((d) => `${d.domain} (${d.days_to_domain_expiry}d)`).join(", "), link: "/monitoring", linkLabel: "View" });
     }
+    // SSL expiry
     if (expiringSSL && expiringSSL.length > 0) {
-      items.push({ severity: "warning", label: `SSL expiring soon`, detail: `${expiringSSL.length} certificate${expiringSSL.length > 1 ? "s" : ""} expiring within 30 days`, link: "/monitoring", linkLabel: "View" });
+      const minDays = Math.min(...expiringSSL.map((s) => s.days_to_ssl_expiry || 999));
+      items.push({ severity: minDays <= 5 ? "critical" : "warning", label: `SSL expiring soon`, detail: `${expiringSSL.length} certificate${expiringSSL.length > 1 ? "s" : ""} expiring within 30 days`, link: "/monitoring", linkLabel: "View" });
     }
+    // Unhealthy forms
     if (unhealthyForms && unhealthyForms.length > 0) {
       items.push({ severity: "warning", label: `${unhealthyForms.length} form${unhealthyForms.length > 1 ? "s" : ""} not rendering`, detail: "Forms may be broken or missing from pages", link: "/settings?tab=forms", linkLabel: "Check" });
     }
+    // SEO score issues
+    if (lowSeoScore) {
+      items.push({ severity: "warning", label: `SEO score is low (${seoMovement?.score})`, detail: "Review SEO issues to improve visibility", link: "/seo", linkLabel: "Fix" });
+    } else if (seoScoreDrop) {
+      items.push({ severity: "warning", label: `SEO score dropped ${Math.abs(seoMovement!.change)} pts`, detail: "Recent scan found new issues", link: "/seo", linkLabel: "Review" });
+    }
+    // Stale SEO fixes
+    if (staleSeoFixes && staleSeoFixes > 0) {
+      items.push({ severity: "warning", label: `${staleSeoFixes} stale SEO fix${staleSeoFixes > 1 ? "es" : ""}`, detail: "Plugin may not be polling — check WP cron", link: "/seo", linkLabel: "View" });
+    }
+    // Pending monitoring alerts
+    if (pendingAlerts && pendingAlerts > 0) {
+      items.push({ severity: "info", label: `${pendingAlerts} pending alert${pendingAlerts > 1 ? "s" : ""}`, detail: "Monitoring alerts awaiting delivery", link: "/monitoring", linkLabel: "View" });
+    }
     return items;
-  }, [activeIncidents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms]);
+  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts]);
 
   return (
     <div>

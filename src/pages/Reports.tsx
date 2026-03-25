@@ -32,6 +32,7 @@ import { toast } from "sonner";
 
 import OverviewTab from "@/components/reports/OverviewTab";
 import ArchivesContent from "@/components/archives/ArchivesContent";
+import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
 
 // ── Shared sub-components ──
 const TrendBadge = ({ change }: { change: number | null }) => {
@@ -589,11 +590,13 @@ export default function Reports() {
         <TabsList className="mb-6">
           <TabsTrigger value="overview">{t("reports.overview")}</TabsTrigger>
           <TabsTrigger value="activity">{t("reports.activityReports")}</TabsTrigger>
+          <TabsTrigger value="customize">Customize</TabsTrigger>
           <TabsTrigger value="archives">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="activity"><ActivityReportsTab /></TabsContent>
+        <TabsContent value="customize"><ReportTemplateBuilder /></TabsContent>
         <TabsContent value="archives"><ArchivesContent /></TabsContent>
       </Tabs>
     </div>

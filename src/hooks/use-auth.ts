@@ -9,27 +9,38 @@ export function useAuth() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    let isMounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!isMounted) return;
+
       if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
-        setSession(session);
-        // Log login event (fire-and-forget)
-        if (event === "SIGNED_IN" && session) {
+        setSession(nextSession);
+        if (event === "SIGNED_IN" && nextSession) {
           supabase.functions.invoke("log-login").catch(() => {});
         }
       } else if (event === "SIGNED_OUT") {
         setSession(null);
         queryClient.clear();
       } else {
-        setSession(session);
+        setSession(nextSession);
       }
+
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!isMounted) return;
+      setSession(initialSession);
+      setLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [queryClient]);
 
   const signOut = async () => {

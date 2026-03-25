@@ -422,15 +422,15 @@ function ActivityReportsTab() {
     <div className="space-y-6">
       {/* Generate */}
       <div className="rounded-lg border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Generate a Report</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> {t("reports.generateAReport")}</h3>
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-muted-foreground">Date Range:</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("reports.dateRange")}:</label>
             <div className="flex items-center gap-1">
               {(["monthly", "custom"] as const).map((mode) => (
                 <Button key={mode} variant={dateRangeMode === mode ? "default" : "outline"} size="sm" className="text-xs h-7 px-3 capitalize"
                   onClick={() => { setDateRangeMode(mode); if (mode === "monthly") { setDateFrom(subDays(new Date(), 30)); setDateTo(new Date()); } }}>
-                  {mode === "monthly" ? "Last 30 Days" : "Custom Range"}
+                  {mode === "monthly" ? t("reports.last30Days") : t("reports.customRange")}
                 </Button>
               ))}
             </div>
@@ -445,7 +445,7 @@ function ActivityReportsTab() {
             <p className="text-xs text-muted-foreground">{format(dateFrom, "MMM d")} – {format(dateTo, "MMM d, yyyy")}</p>
           )}
           <Button className="sm:ml-auto" onClick={() => generateReport.mutate()} disabled={generateReport.isPending}>
-            {generateReport.isPending ? "Generating…" : "Generate Report"}
+            {generateReport.isPending ? t("reports.generatingReport") : t("reports.generateReport")}
           </Button>
         </div>
       </div>
@@ -453,29 +453,29 @@ function ActivityReportsTab() {
       {/* Schedules */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><CalendarClock className="h-4 w-4 text-primary" /> Scheduled Reports</h3>
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><CalendarClock className="h-4 w-4 text-primary" /> {t("reports.scheduledReports")}</h3>
           <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-            <DialogTrigger asChild><Button variant="outline" size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Schedule</Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> {t("reports.addSchedule")}</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>New Report Schedule</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t("reports.newReportSchedule")}</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Frequency</label>
-                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem></SelectContent></Select>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.frequency")}</label>
+                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem></SelectContent></Select>
                 </div>
                 {newSchedule.frequency === "monthly" && (
                   <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">Day of Month</label>
+                    <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.dayOfMonth")}</label>
                     <Select value={String(newSchedule.runDayOfMonth)} onValueChange={(v) => setNewSchedule((s) => ({ ...s, runDayOfMonth: parseInt(v) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{dayOptions.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}</SelectContent></Select>
                   </div>
                 )}
-                <Button className="w-full" disabled={createSchedule.isPending} onClick={() => createSchedule.mutate()}>{createSchedule.isPending ? "Creating…" : "Create Schedule"}</Button>
+                <Button className="w-full" disabled={createSchedule.isPending} onClick={() => createSchedule.mutate()}>{createSchedule.isPending ? t("reports.creatingSchedule") : t("reports.createSchedule")}</Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
         {!schedules?.length ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No scheduled reports yet.</div>
+          <div className="p-8 text-center text-muted-foreground text-sm">{t("reports.noSchedules")}</div>
         ) : (
           <div className="divide-y divide-border">
             {schedules.map((s) => (
@@ -483,8 +483,8 @@ function ActivityReportsTab() {
                 <div className="flex items-center gap-3">
                   <CalendarClock className={`h-4 w-4 ${s.enabled ? "text-primary" : "text-muted-foreground"}`} />
                   <div>
-                    <p className="text-sm font-medium text-foreground">Performance Report</p>
-                    <p className="text-xs text-muted-foreground">{s.frequency === "weekly" ? "Every week" : `Monthly · ${dayLabel(s.run_day_of_month)}`}</p>
+                    <p className="text-sm font-medium text-foreground">{t("reports.performanceReport")}</p>
+                    <p className="text-xs text-muted-foreground">{s.frequency === "weekly" ? t("reports.everyWeek") : `${t("reports.monthlyFreq")} · ${dayLabel(s.run_day_of_month)}`}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -502,9 +502,9 @@ function ActivityReportsTab() {
 
       {/* History */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border"><h3 className="text-sm font-semibold text-foreground">Report History</h3></div>
+        <div className="px-5 py-3 border-b border-border"><h3 className="text-sm font-semibold text-foreground">{t("reports.reportHistory")}</h3></div>
         {!runs?.length ? (
-          <div className="p-12 text-center text-muted-foreground text-sm">No reports generated yet.</div>
+          <div className="p-12 text-center text-muted-foreground text-sm">{t("reports.noReports")}</div>
         ) : (
           <div className="divide-y divide-border">
             {runs.map((run) => {
@@ -514,7 +514,7 @@ function ActivityReportsTab() {
                   <div className="flex items-center gap-3">
                     {statusIcon(run.status)}
                     <div>
-                      <p className="text-sm font-medium text-foreground">Performance Report</p>
+                      <p className="text-sm font-medium text-foreground">{t("reports.performanceReport")}</p>
                       <p className="text-xs text-muted-foreground">
                         {params?.start_date && params?.end_date ? `${format(new Date(params.start_date), "MMM d")} – ${format(new Date(params.end_date), "MMM d, yyyy")}` : format(new Date(run.created_at), "MMM d, yyyy")}
                       </p>

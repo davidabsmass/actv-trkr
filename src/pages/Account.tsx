@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Account() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", user?.id],
@@ -84,9 +86,9 @@ export default function Account() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Account</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-1">{t("account.title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Manage your profile and security settings
+        {t("account.subtitle")}
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2 max-w-4xl">
@@ -94,9 +96,9 @@ export default function Account() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-4 w-4" /> Profile
+              <User className="h-4 w-4" /> {t("account.profile")}
             </CardTitle>
-            <CardDescription>Update your name and view your email</CardDescription>
+            <CardDescription>{t("account.profileDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">

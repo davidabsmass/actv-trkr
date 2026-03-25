@@ -30,10 +30,21 @@ export default function ApiKeysSection() {
     enabled: !!orgId,
   });
 
+  const activeKeys = keys?.filter(k => !k.revoked_at) || [];
+  const hasActiveKey = activeKeys.length > 0;
+
   const generateKey = async () => {
     if (!orgId) return;
     setGenerating(true);
     try {
+      // Revoke any existing active keys first
+      for (const k of activeKeys) {
+        await supabase
+          .from("api_keys")
+          .update({ revoked_at: new Date().toISOString() })
+          .eq("id", k.id);
+      }
+
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
@@ -98,7 +109,7 @@ export default function ApiKeysSection() {
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           <Plus className="h-3 w-3" />
-          {generating ? "Generating…" : "New Key"}
+          {generating ? "Generating…" : hasActiveKey ? "Replace Key" : "New Key"}
         </button>
       </div>
 

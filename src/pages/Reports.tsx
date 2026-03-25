@@ -79,20 +79,21 @@ const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count
 
 // ── Monthly Performance Viewer (existing report viewer) ──
 function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () => void }) {
+  const { t } = useTranslation();
   const { executiveSummary: es, growthEngine: ge, conversionIntelligence: ci, userExperience: ux, actionPlan: ap, siteHealth: sh, formHealth: fh, aiInsights } = report;
 
   return (
     <div>
       <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Reports
+        <ArrowLeft className="h-4 w-4" /> {t("reports.backToReports")}
       </button>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Performance Report</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-1">{t("reports.performanceReport")}</h1>
       <p className="text-xs text-muted-foreground mb-6">
         {format(new Date(report.periodStart), "MMM d")} – {format(new Date(report.periodEnd), "MMM d, yyyy")} · {report.periodDays}-day period
       </p>
 
       {aiInsights && aiInsights.length > 0 && (
-        <Section icon={Sparkles} title="AI Insights">
+        <Section icon={Sparkles} title={t("reports.aiInsights")}>
           <div className="space-y-3">
             {aiInsights.map((insight: any, i: number) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-md bg-primary/5 border border-primary/10">
@@ -107,7 +108,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         </Section>
       )}
 
-      <Section icon={Target} title="Executive Summary">
+      <Section icon={Target} title={t("reports.executiveSummary")}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           {[
             { label: "Leads", value: es.leads.current, change: es.leads.change },
@@ -130,14 +131,14 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
           <div className="flex items-start gap-2 p-3 rounded-md bg-success/10 border border-success/20">
             <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Key Win</p>
+              <p className="text-xs font-medium text-foreground">{t("reports.keyWin")}</p>
               <p className="text-xs text-muted-foreground">{es.keyWin}</p>
             </div>
           </div>
           <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20">
             <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Key Risk</p>
+              <p className="text-xs font-medium text-foreground">{t("reports.keyRisk")}</p>
               <p className="text-xs text-muted-foreground">{es.keyRisk}</p>
             </div>
           </div>
@@ -145,7 +146,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
       </Section>
 
       {sh && (
-        <Section icon={Activity} title="Site Health & Uptime">
+        <Section icon={Activity} title={t("reports.siteHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {[
               { label: "Uptime", value: `${sh.uptimePercent}%`, cls: sh.uptimePercent >= 99.5 ? "text-success" : sh.uptimePercent >= 95 ? "text-warning" : "text-destructive" },
@@ -163,7 +164,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
       )}
 
       {fh && (
-        <Section icon={FormInput} title="Form Health">
+        <Section icon={FormInput} title={t("reports.formHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="p-3 rounded-md bg-muted/50">
               <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Total Submissions</p>
@@ -181,23 +182,23 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         </Section>
       )}
 
-      <Section icon={Globe} title="Growth Engine">
+      <Section icon={Globe} title={t("reports.growthEngine")}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Traffic by Source</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.trafficBySource")}</p>
             <RankList items={ge.trafficBySource} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Top Landing Pages</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.topLandingPages")}</p>
             <RankList items={ge.topLandingPages} />
           </div>
         </div>
       </Section>
 
-      <Section icon={BarChart3} title="Conversion Intelligence">
+      <Section icon={BarChart3} title={t("reports.conversionIntelligence")}>
         {ci.leadsByForm?.length > 0 && (
           <div className="mb-4">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Leads by Form</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("reports.leadsByForm")}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -230,43 +231,43 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Top Converting Pages</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.topConvertingPages")}</p>
             <RankList items={ci.topConvertingPages} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Lead Sources</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.leadSources")}</p>
             <RankList items={ci.leadSources} />
           </div>
         </div>
       </Section>
 
-      <Section icon={Users} title="User Experience Signals">
+      <Section icon={Users} title={t("reports.userExperience")}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Device Breakdown</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.deviceBreakdown")}</p>
             <RankList items={ux.deviceBreakdown} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Geography</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.geography")}</p>
             <RankList items={ux.geoBreakdown} maxItems={10} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Top Pages</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.topPages")}</p>
             <RankList items={(ux.topPages || []).slice(0, 10)} />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Referrers</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t("reports.referrers")}</p>
             <RankList items={ux.referrerBreakdown} />
           </div>
         </div>
       </Section>
 
-      <Section icon={Lightbulb} title="Action Plan & Forecast">
+      <Section icon={Lightbulb} title={t("reports.actionPlan")}>
         {ap.forecast?.projectedNextMonth > 0 && (
           <div className="flex items-start gap-2 p-3 rounded-md bg-primary/5 border border-primary/10 mb-4">
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Lead Forecast</p>
+              <p className="text-xs font-medium text-foreground">{t("reports.leadForecast")}</p>
               <p className="text-xs text-muted-foreground">
                 Avg. {ap.forecast.avgDailyLeads} leads/day · Projected next month: {Math.round(ap.forecast.projectedNextMonth * 0.9)}–{Math.round(ap.forecast.projectedNextMonth * 1.1)}
               </p>

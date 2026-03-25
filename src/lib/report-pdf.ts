@@ -115,8 +115,8 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
     html += sectionStart("✦", "AI Insights");
     aiInsights.forEach((ins: any, i: number) => {
       html += `
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;background:rgba(99,91,255,0.05);border:1px solid rgba(99,91,255,0.1);margin-bottom:8px">
-        <span style="font-size:11px;font-weight:700;color:#635bff;flex-shrink:0">${i + 1}.</span>
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;background:${brandPrimary}0d;border:1px solid ${brandPrimary}1a;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;color:${brandPrimary};flex-shrink:0">${i + 1}.</span>
         <div>
           <div style="font-size:12px;font-weight:600;color:#00264d">${safe(ins.title)}</div>
           <div style="font-size:11px;color:#6b6f80;margin-top:2px">${safe(ins.body)}</div>

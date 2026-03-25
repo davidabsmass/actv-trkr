@@ -141,7 +141,7 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
               <tr key={s.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="py-2.5 font-medium text-foreground">{s.name}</td>
                 <td className="py-2.5 text-right font-mono-data">{s.submissions}</td>
-                <td className="py-2.5 text-right font-mono-data">{s.cvr.toFixed(1)}%</td>
+                <td className="py-2.5 text-right font-mono-data">{s.cvr < 0.1 && s.cvr > 0 ? s.cvr.toFixed(2) : s.cvr.toFixed(1)}%</td>
                 <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
                   {s.deviceSplit ? `${s.deviceSplit.desktop}%` : "—"}
                 </td>

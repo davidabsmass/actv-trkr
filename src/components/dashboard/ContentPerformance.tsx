@@ -144,7 +144,7 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
       <div className="glass-card p-5 animate-slide-up">
         <div className="flex items-center gap-2 mb-4">
           <h3 className="text-sm font-semibold text-foreground">Opportunities</h3>
-          <span className="text-[10px] uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full">
+          <span className="text-xs uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full">
             High traffic / Low CVR
           </span>
         </div>

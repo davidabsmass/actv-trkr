@@ -27,11 +27,11 @@ export function TrendsMiniChart({ dailyMap }: TrendsMiniChartProps) {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-[3px] rounded-full bg-primary" />
-            <span className="text-[10px] text-muted-foreground">Sessions</span>
+            <span className="text-xs text-muted-foreground">Sessions</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-[3px] rounded-full bg-success" />
-            <span className="text-[10px] text-muted-foreground">Leads</span>
+            <span className="text-xs text-muted-foreground">Leads</span>
           </div>
         </div>
       </div>

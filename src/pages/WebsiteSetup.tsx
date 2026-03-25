@@ -285,7 +285,7 @@ export default function WebsiteSetup() {
         <h2 className="text-base font-semibold text-foreground mb-4">Your License Key</h2>
         <div className="grid gap-4 sm:grid-cols-2 mb-5">
           <div>
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">License Status</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">License Status</span>
             <div className="mt-1">
               <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
                 <Check className="h-3 w-3" />
@@ -294,26 +294,26 @@ export default function WebsiteSetup() {
             </div>
           </div>
           <div>
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Plan</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan</span>
             <p className="text-sm font-medium text-foreground mt-1 capitalize">{activeTier}</p>
           </div>
           <div>
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Websites Allowed</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Websites Allowed</span>
             <p className="text-sm font-medium text-foreground mt-1">{allowedWebsites}</p>
           </div>
           <div>
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Connected Websites</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Connected Websites</span>
             <p className="text-sm font-medium text-foreground mt-1">{allSites.length}</p>
           </div>
           {connectedSites[0] && (
             <div>
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Primary Connected Domain</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Primary Connected Domain</span>
               <p className="text-sm font-medium text-foreground mt-1">{connectedSites[0].domain}</p>
             </div>
           )}
           {apiKeyData && (
             <div>
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Key Created</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Key Created</span>
               <p className="text-sm font-medium text-foreground mt-1">
                 {format(new Date(apiKeyData.created_at), "MMM d, yyyy")}
               </p>
@@ -335,7 +335,7 @@ export default function WebsiteSetup() {
                 <Copy className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               For security, full API keys are only shown once when generated. Visit <strong>Settings → API Keys</strong> to generate a new key.
             </p>
           </div>
@@ -402,7 +402,7 @@ export default function WebsiteSetup() {
                     <div className="flex items-center gap-2">
                       <Globe className="h-4 w-4 text-primary" />
                       <span className="text-sm font-semibold text-foreground">{site.domain}</span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full border ${
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${
                         siteStatus === "connected" ? "bg-success/10 text-success border-success/20" :
                         siteStatus === "pending" ? "bg-warning/10 text-warning border-warning/20" :
                         "bg-destructive/10 text-destructive border-destructive/20"
@@ -413,7 +413,7 @@ export default function WebsiteSetup() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleDisconnect(site.id, site.domain)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-destructive hover:bg-destructive/10 transition-colors"
                       >
                         <Unplug className="h-3 w-3" />
                         Disconnect

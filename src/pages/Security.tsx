@@ -133,7 +133,7 @@ export default function Security() {
                             <Icon className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium">{evt.title}</p>
-                              <div className="flex items-center gap-3 mt-1 text-[11px] opacity-80">
+                              <div className="flex items-center gap-3 mt-1 text-xs opacity-80">
                                 <span>{format(new Date(evt.occurred_at), "MMM d, h:mm a")}</span>
                                 {details.ip && <span>IP: {details.ip}</span>}
                                 {details.username && <span>User: {details.username}</span>}
@@ -193,7 +193,7 @@ export default function Security() {
                             <Icon className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium">{evt.title}</p>
-                              <div className="flex items-center gap-3 mt-1 text-[11px] opacity-80">
+                              <div className="flex items-center gap-3 mt-1 text-xs opacity-80">
                                 <span>{format(new Date(evt.occurred_at), "MMM d, h:mm a")}</span>
                                 {details.path && <span className="font-mono truncate">{details.path}</span>}
                               </div>

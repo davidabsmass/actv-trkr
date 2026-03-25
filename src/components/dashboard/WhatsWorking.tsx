@@ -109,7 +109,7 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
               <div className="min-w-0">
                 <p className="text-xs font-medium text-foreground">{f.title}</p>
                 {f.explanation && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{f.explanation}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{f.explanation}</p>
                 )}
               </div>
             </div>

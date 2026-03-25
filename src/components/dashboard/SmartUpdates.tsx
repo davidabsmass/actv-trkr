@@ -51,14 +51,14 @@ export function SmartUpdates({ insights, onAction }: SmartUpdatesProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-xs font-semibold text-foreground">{insight.headline}</p>
-                  <span className={`text-[9px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded ${confidenceColors[insight.confidence]}`}>
+                  <span className={`text-xs uppercase tracking-wider font-medium px-1.5 py-0.5 rounded ${confidenceColors[insight.confidence]}`}>
                     {insight.confidence}
                   </span>
                 </div>
                 {insight.impact && <p className="text-xs text-muted-foreground mt-0.5">{insight.impact}</p>}
               </div>
               {insight.actionLabel && insight.actionPath && onAction && (
-                <button onClick={() => onAction(insight.actionPath!)} className="text-[11px] font-medium text-primary hover:underline whitespace-nowrap flex-shrink-0">
+                <button onClick={() => onAction(insight.actionPath!)} className="text-xs font-medium text-primary hover:underline whitespace-nowrap flex-shrink-0">
                   {insight.actionLabel} →
                 </button>
               )}

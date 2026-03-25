@@ -47,14 +47,14 @@ export default function SeoScoreCard({ score, issues, platform, url, scannedAt, 
           <div className="flex items-center gap-2 mb-2">
             <span className={`text-lg font-bold ${statusColors[status]}`}>Grade: {grade}</span>
             {platform && (
-              <Badge variant="outline" className="text-[10px] uppercase">{platform}</Badge>
+              <Badge variant="outline" className="text-xs uppercase">{platform}</Badge>
             )}
           </div>
           <div className="grid grid-cols-4 gap-3">
             {(["Critical", "High", "Medium", "Low"] as const).map((impact) => (
               <div key={impact} className="text-center">
                 <div className="text-lg font-bold text-foreground">{groupedIssues[impact].length}</div>
-                <div className="text-[10px] uppercase text-muted-foreground">{impact}</div>
+                <div className="text-xs uppercase text-muted-foreground">{impact}</div>
               </div>
             ))}
           </div>

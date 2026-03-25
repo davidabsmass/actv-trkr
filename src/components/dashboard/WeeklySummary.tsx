@@ -63,13 +63,13 @@ export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryPro
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">AI Weekly Summary</h3>
         </div>
-        <span className={`text-[11px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full ${config.bg} ${config.text}`}>
+        <span className={`text-xs uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full ${config.bg} ${config.text}`}>
           {config.emoji} {config.label}
         </span>
       </div>
 
       <div className="mb-4">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">What Changed</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">What Changed</p>
         <p className="text-sm text-foreground/80 leading-relaxed">{summary.summary_text}</p>
         <p className="text-xs text-muted-foreground mt-2 italic">{focusLever[primaryFocus]}</p>
       </div>
@@ -83,22 +83,22 @@ export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryPro
 
       {summary.top_opportunity && (
         <div className="p-3 bg-success/5 border border-success/20 rounded-lg mb-4">
-          <p className="text-[10px] uppercase tracking-wider text-success font-medium mb-1">Top Opportunity</p>
+          <p className="text-xs uppercase tracking-wider text-success font-medium mb-1">Top Opportunity</p>
           <p className="text-xs text-foreground">{summary.top_opportunity}</p>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => document.getElementById("section-pages")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
+        <button onClick={() => document.getElementById("section-pages")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <ExternalLink className="h-3 w-3" /> View Pages
         </button>
-        <button onClick={() => document.getElementById("section-sources")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
+        <button onClick={() => document.getElementById("section-sources")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <ExternalLink className="h-3 w-3" /> View Sources
         </button>
-        <button onClick={() => navigate("/exports")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
+        <button onClick={() => navigate("/exports")} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <Download className="h-3 w-3" /> Download Leads
         </button>
-        <button onClick={() => navigate("/reports")} className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
+        <button onClick={() => navigate("/reports")} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
           <FileText className="h-3 w-3" /> Create Report
         </button>
       </div>

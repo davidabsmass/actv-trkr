@@ -168,7 +168,7 @@ export function OnboardingModal() {
                         </button>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">{form.name}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase">{form.provider}</p>
+                          <p className="text-xs text-muted-foreground uppercase">{form.provider}</p>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">$</span>

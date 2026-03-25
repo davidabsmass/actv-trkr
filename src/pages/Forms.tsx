@@ -91,13 +91,13 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
   return (
     <div className="grid grid-cols-2 gap-3 mb-4">
       <div className="glass-card p-4">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Total Submissions</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">Total Submissions</p>
         <p className="text-2xl font-bold font-mono-data text-foreground">{totalSubmissions ?? "—"}</p>
         <p className="text-xs text-muted-foreground">Last {days} days</p>
       </div>
       <div className="glass-card p-4">
         <div className="flex items-center gap-1.5 mb-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Failures</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Failures</p>
           {(failureCount ?? 0) > 0 && <AlertCircle className="h-3 w-3 text-destructive" />}
         </div>
         <p className={`text-2xl font-bold font-mono-data ${(failureCount ?? 0) > 0 ? "text-destructive" : "text-foreground"}`}>
@@ -693,14 +693,14 @@ export default function Forms() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className={`text-sm font-medium ${form.archived ? "text-muted-foreground" : "text-foreground"}`}>{form.name}</p>
-                      <Badge variant="outline" className={`text-[9px] uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
+                      <Badge variant="outline" className={`text-xs uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
                         {form.form_category}
                       </Badge>
                       {form.archived && (
-                        <Badge variant="outline" className="text-[9px] uppercase text-muted-foreground border-border">Archived</Badge>
+                        <Badge variant="outline" className="text-xs uppercase text-muted-foreground border-border">Archived</Badge>
                       )}
                       {form.lead_weight < 1 && (
-                        <span className="text-[10px] text-muted-foreground font-mono-data">{form.lead_weight}×</span>
+                        <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -826,7 +826,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{form.name}</h1>
-          <Badge variant="outline" className={`text-[10px] uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
+          <Badge variant="outline" className={`text-xs uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
             {form.form_category}
           </Badge>
           {form.lead_weight < 1 && (
@@ -1512,7 +1512,7 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
             <div className="space-y-2">
               {statusData.map((s) => (
                 <div key={s.status} className="flex items-center justify-between">
-                  <Badge variant="outline" className={`text-[10px] uppercase ${statusColors[s.status] || ""}`}>{s.status}</Badge>
+                  <Badge variant="outline" className={`text-xs uppercase ${statusColors[s.status] || ""}`}>{s.status}</Badge>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full bg-chart-2" style={{ width: `${totalLeads > 0 ? (s.count / totalLeads) * 100 : 0}%` }} />

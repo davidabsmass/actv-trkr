@@ -341,7 +341,7 @@ function ExportHistory({
               <div className="flex items-center gap-2">
                 <Badge
                   variant="outline"
-                  className={`text-[10px] uppercase ${
+                  className={`text-xs uppercase ${
                     job.status === "succeeded" ? "text-success border-success/20" :
                     job.status === "failed" ? "text-destructive border-destructive/20" :
                     "text-muted-foreground"

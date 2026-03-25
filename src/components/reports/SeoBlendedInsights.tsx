@@ -32,7 +32,7 @@ export default function SeoBlendedInsights({ insights }: Props) {
               <h4 className="text-sm font-semibold text-foreground">{insight.title}</h4>
             </div>
             <p className="text-xs text-foreground/80 leading-relaxed mb-1">{insight.explanation}</p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Page: <span className="font-medium text-foreground">{insight.page}</span>
               {Object.entries(insight.metrics).map(([k, v]) => (
                 <span key={k}> · {k}: <span className="font-medium text-foreground">{v}</span></span>

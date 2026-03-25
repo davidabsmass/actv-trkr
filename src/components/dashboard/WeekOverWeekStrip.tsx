@@ -23,13 +23,13 @@ function ChangeChip({ label, current, previous, isCvr }: { label: string; curren
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+      <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
       <span className="text-sm font-semibold font-mono-data text-foreground">{displayValue}</span>
       <div className="flex items-center gap-0.5">
         {isUp && <TrendingUp className="h-3 w-3 kpi-up" />}
         {isDown && <TrendingDown className="h-3 w-3 kpi-down" />}
         {!isUp && !isDown && <Minus className="h-3 w-3 kpi-neutral" />}
-        <span className={`text-[11px] font-mono-data font-medium ${isUp ? "kpi-up" : isDown ? "kpi-down" : "kpi-neutral"}`}>
+        <span className={`text-xs font-mono-data font-medium ${isUp ? "kpi-up" : isDown ? "kpi-down" : "kpi-neutral"}`}>
           {changeStr}
         </span>
       </div>
@@ -61,13 +61,13 @@ export function WeekOverWeekStrip({ data }: { data: WoWData }) {
   return (
     <div className="glass-card p-4 animate-slide-up">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <span className="text-[10px] uppercase tracking-wider font-semibold text-primary">This Week vs Last</span>
+        <span className="text-xs uppercase tracking-wider font-semibold text-primary">This Week vs Last</span>
         <ChangeChip label="Sessions" current={data.sessions.current} previous={data.sessions.previous} />
         <ChangeChip label="Leads" current={data.leads.current} previous={data.leads.previous} />
         <ChangeChip label="CVR" current={data.cvr.current} previous={data.cvr.previous} isCvr />
         {data.bestPage && (
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Best Page</span>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Best Page</span>
             <span className="text-xs font-medium text-foreground truncate max-w-[150px]">{data.bestPage}</span>
           </div>
         )}

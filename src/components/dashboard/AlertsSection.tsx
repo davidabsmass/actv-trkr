@@ -52,7 +52,7 @@ export function AlertsSection({ alerts }: AlertsProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-semibold text-foreground">{alert.title}</p>
-                  <span className="text-[10px] text-muted-foreground">{alert.date}</span>
+                  <span className="text-xs text-muted-foreground">{alert.date}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{alert.detail}</p>
               </div>

@@ -89,7 +89,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <h5 className="text-sm font-medium text-foreground truncate">{issue.title}</h5>
                         {issue.category && (
-                          <Badge variant="outline" className="text-[9px] uppercase shrink-0">{issue.category}</Badge>
+                          <Badge variant="outline" className="text-xs uppercase shrink-0">{issue.category}</Badge>
                         )}
                       </div>
 
@@ -99,42 +99,42 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                           const isStale = queueItem.created_at && (Date.now() - new Date(queueItem.created_at).getTime()) > 60 * 60 * 1000;
                           return (
                             <div className="flex items-center gap-1.5">
-                              <Badge className={`${isStale ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-warning/20 text-warning border-warning/30"} text-[9px] gap-1`}>
+                              <Badge className={`${isStale ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-warning/20 text-warning border-warning/30"} text-xs gap-1`}>
                                 <Clock className="h-2.5 w-2.5" /> {isStale ? "Stale" : "Pending"}
                               </Badge>
                               {isStale && onRetryStale && (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-6 px-2 text-[10px] gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                  className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
                                   onClick={(e) => { e.stopPropagation(); onRetryStale(queueItem.id); }}
                                 >
                                   <RefreshCw className="h-2.5 w-2.5" /> Retry
                                 </Button>
                               )}
                               {isStale && !onRetryStale && (
-                                <span className="text-[9px] text-destructive/80">Plugin may not be polling — deactivate &amp; reactivate in WP</span>
+                                <span className="text-xs text-destructive/80">Plugin may not be polling — deactivate &amp; reactivate in WP</span>
                               )}
                             </div>
                           );
                         })()}
                         {queueItem?.status === "applied" && (
                           <>
-                            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-[9px] gap-1">
+                            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
                               <Check className="h-2.5 w-2.5" /> Applied
                             </Badge>
                             {onVerify && (
-                              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={(e) => { e.stopPropagation(); onVerify(); }}>
+                              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onVerify(); }}>
                                 <RefreshCw className="h-2.5 w-2.5 mr-1" /> Verify
                               </Button>
                             )}
                           </>
                         )}
                         {queueItem?.status === "skipped" && (
-                          <Badge variant="outline" className="text-[9px]">Skipped</Badge>
+                          <Badge variant="outline" className="text-xs">Skipped</Badge>
                         )}
                         {isMarkedFixed && !queueItem && (
-                          <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-[9px] gap-1">
+                          <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
                             <Check className="h-2.5 w-2.5" /> Marked Fixed
                           </Badge>
                         )}
@@ -144,7 +144,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-6 px-2 text-[10px] gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                            className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
                             onClick={(e) => { e.stopPropagation(); onFixClick(issue.id, fixType); }}
                           >
                             <Wand2 className="h-2.5 w-2.5" /> Fix This
@@ -154,7 +154,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-[10px] text-muted-foreground"
+                            className="h-6 px-2 text-xs text-muted-foreground"
                             onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
                           >
                             Mark Fixed
@@ -164,7 +164,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-[10px] text-muted-foreground"
+                            className="h-6 px-2 text-xs text-muted-foreground"
                             onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
                           >
                             Mark Fixed

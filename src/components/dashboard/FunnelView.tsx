@@ -46,7 +46,7 @@ export function FunnelView({ totalPageviews, formPageViews, totalLeads, locked }
                     {step.value.toLocaleString()}
                   </span>
                   {i > 0 && (
-                    <span className="text-[10px] text-destructive font-medium">
+                    <span className="text-xs text-destructive font-medium">
                       -{dropOff.toFixed(1)}%
                     </span>
                   )}

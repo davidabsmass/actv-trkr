@@ -72,7 +72,7 @@ const SnapshotView = () => {
 
         {data?.wowData && (
           <div className="glass-card p-4 mb-6">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-primary mb-2">This Week vs Last</p>
+            <p className="text-xs uppercase tracking-wider font-semibold text-primary mb-2">This Week vs Last</p>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Sessions</p>

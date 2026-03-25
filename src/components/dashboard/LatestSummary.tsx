@@ -80,10 +80,10 @@ export function LatestSummary() {
         </div>
         <div className="flex items-center gap-2">
           <Clock className="h-3 w-3 text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {new Date(summary.generated_at).toLocaleDateString()}
           </span>
-          <Link to="/reports" className="text-[10px] font-medium text-primary hover:underline ml-2">
+          <Link to="/reports" className="text-xs font-medium text-primary hover:underline ml-2">
             Full Report →
           </Link>
         </div>

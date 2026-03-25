@@ -124,7 +124,7 @@ export default function MonthlyTab() {
             </h3>
           </div>
           <button onClick={generateAiSummary} disabled={loadingAi || cooldownRemaining > 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50">
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summary"}
           </button>
@@ -143,17 +143,17 @@ export default function MonthlyTab() {
         {/* Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="p-3 rounded-md bg-muted/50">
-            <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Sessions</p>
+            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Sessions</p>
             <p className="text-lg font-bold text-foreground">{metrics.currentSessions.toLocaleString()}</p>
             <TrendBadge change={pctChange(metrics.currentSessions, metrics.previousSessions)} />
           </div>
           <div className="p-3 rounded-md bg-muted/50">
-            <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Leads</p>
+            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Leads</p>
             <p className="text-lg font-bold text-foreground">{metrics.currentLeads.toLocaleString()}</p>
             <TrendBadge change={pctChange(metrics.currentLeads, metrics.previousLeads)} />
           </div>
           <div className="p-3 rounded-md bg-muted/50">
-            <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">CVR</p>
+            <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">CVR</p>
             <p className="text-lg font-bold text-foreground">{metrics.currentCvr}%</p>
             <TrendBadge change={pctChange(metrics.currentCvr, metrics.previousCvr)} />
           </div>

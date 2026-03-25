@@ -330,7 +330,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
                         <XCircle className="h-4 w-4 text-destructive" />
                       )}
                       <span className="text-sm text-foreground">{inc.type}</span>
-                      <Badge variant="outline" className="text-[10px]">{inc.severity}</Badge>
+                      <Badge variant="outline" className="text-xs">{inc.severity}</Badge>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {format(new Date(inc.started_at), "MMM d, HH:mm")}
@@ -439,16 +439,16 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
               <div className="rounded-lg border border-border bg-muted/30 p-5 text-center">
                 <Package className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
                 <p className="text-xs font-medium text-foreground mb-1">No updates available</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Plugin update monitoring will alert you when installed plugins have new versions available.
                 </p>
               </div>
               <div className="mt-3 space-y-1.5">
-                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <Info className="h-3 w-3 mt-0.5 shrink-0" />
                   <span>Checks all active plugins daily</span>
                 </div>
-                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <Info className="h-3 w-3 mt-0.5 shrink-0" />
                   <span>Email alerts for available updates</span>
                 </div>
@@ -463,16 +463,16 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
               <div className="rounded-lg border border-border bg-muted/30 p-5 text-center">
                 <Shield className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
                 <p className="text-xs font-medium text-foreground mb-1">No vulnerabilities detected</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Cross-references installed plugins against known vulnerability databases.
                 </p>
               </div>
               <div className="mt-3 space-y-1.5">
-                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <Info className="h-3 w-3 mt-0.5 shrink-0" />
                   <span>Checks against WPScan vulnerability data</span>
                 </div>
-                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <Info className="h-3 w-3 mt-0.5 shrink-0" />
                   <span>Critical alerts sent immediately</span>
                 </div>
@@ -487,16 +487,16 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
               <div className="rounded-lg border border-border bg-muted/30 p-5 text-center">
                 <Globe className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
                 <p className="text-xs font-medium text-foreground mb-1">No core updates pending</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Monitors WordPress core version and alerts when updates are available.
                 </p>
               </div>
               <div className="mt-3 space-y-1.5">
-                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <Info className="h-3 w-3 mt-0.5 shrink-0" />
                   <span>Tracks current WP version</span>
                 </div>
-                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <Info className="h-3 w-3 mt-0.5 shrink-0" />
                   <span>Security releases flagged as critical</span>
                 </div>
@@ -696,7 +696,7 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
                     {isRendered === false ? "Not Found" : isRendered === true ? "Detected" : "Pending"}
                   </Badge>
                   {lastChecked && (
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {format(new Date(lastChecked), "MMM d, HH:mm")}
                     </p>
                   )}
@@ -707,7 +707,7 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground mt-4">
+      <p className="text-xs text-muted-foreground mt-4">
         The plugin checks each form's page hourly to verify the form HTML is still present. Forms behind logins or modals may not be detected.
       </p>
     </div>

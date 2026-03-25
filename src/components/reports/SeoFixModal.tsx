@@ -94,7 +94,7 @@ export default function SeoFixModal({
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-foreground">{label}</label>
             {aiGenerated && !loading && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-xs text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded-full">
                 <Sparkles className="h-2.5 w-2.5" />
                 AI suggested
               </span>
@@ -104,7 +104,7 @@ export default function SeoFixModal({
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Generating AI suggestion…
               </p>
@@ -126,10 +126,10 @@ export default function SeoFixModal({
             />
           )}
           {!loading && fixType === "set_title" && (
-            <p className="text-[10px] text-muted-foreground">{value.length}/60 characters</p>
+            <p className="text-xs text-muted-foreground">{value.length}/60 characters</p>
           )}
           {!loading && fixType === "set_meta_desc" && (
-            <p className="text-[10px] text-muted-foreground">{value.length}/160 characters</p>
+            <p className="text-xs text-muted-foreground">{value.length}/160 characters</p>
           )}
         </div>
 

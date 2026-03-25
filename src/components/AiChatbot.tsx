@@ -115,10 +115,10 @@ export function AiChatbot() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center group"
+        className="fixed bottom-6 right-6 z-50 h-[74px] w-[74px] rounded-full bg-primary/20 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center group cursor-grab active:cursor-grabbing"
         aria-label="Open AI assistant"
       >
-        <img src={robotAvatar} alt="AI Assistant" className="w-9 h-9 rounded-full object-cover group-hover:scale-110 transition-transform" />
+        <img src={robotAvatar} alt="AI Assistant" className="w-12 h-12 rounded-full object-cover group-hover:scale-110 transition-transform" />
       </button>
 
       {/* Chat panel */}

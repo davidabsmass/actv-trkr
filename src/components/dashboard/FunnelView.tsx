@@ -59,8 +59,6 @@ export function FunnelView({ totalPageviews, formPageViews, totalLeads, locked }
                     width: `${widthPct}%`,
                     background: i === 0
                       ? "hsl(var(--primary))"
-                      : i === 1
-                      ? "hsl(var(--chart-6))"
                       : dropOff > 80
                       ? "hsl(var(--destructive))"
                       : dropOff > 50

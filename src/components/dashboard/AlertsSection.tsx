@@ -1,4 +1,5 @@
 import { AlertTriangle, Info, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Alert {
   id: string;
@@ -34,11 +35,12 @@ const severityConfig = {
 };
 
 export function AlertsSection({ alerts }: AlertsProps) {
+  const { t } = useTranslation();
   if (alerts.length === 0) return null;
 
   return (
     <div className="glass-card p-5 animate-slide-up">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Alerts & Anomalies</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-4">{t("dashboard.alertsAndAnomalies")}</h3>
       <div className="space-y-2">
         {alerts.map((alert) => {
           const config = severityConfig[alert.severity];

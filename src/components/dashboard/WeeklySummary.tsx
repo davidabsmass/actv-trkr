@@ -4,6 +4,7 @@ import { useOrg } from "@/hooks/use-org";
 import { Sparkles, ExternalLink, Download, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PrimaryFocus } from "@/hooks/use-site-settings";
+import { useTranslation } from "react-i18next";
 
 type PerformanceStatus = "strong" | "watch" | "risk";
 
@@ -13,12 +14,6 @@ function getStatus(sessionsChange: number, leadsChange: number): PerformanceStat
   return "strong";
 }
 
-const statusConfig: Record<PerformanceStatus, { label: string; emoji: string; bg: string; text: string }> = {
-  strong: { label: "Strong", emoji: "🟢", bg: "bg-success/10", text: "text-success" },
-  watch: { label: "Watch", emoji: "🟡", bg: "bg-warning/10", text: "text-warning" },
-  risk: { label: "Risk", emoji: "🔴", bg: "bg-destructive/10", text: "text-destructive" },
-};
-
 const focusLever: Record<PrimaryFocus, string> = {
   lead_volume: "Primary lever: increase qualified traffic to scale lead volume.",
   marketing_impact: "Primary lever: concentrate spend/effort on top-performing sources.",
@@ -26,25 +21,24 @@ const focusLever: Record<PrimaryFocus, string> = {
   paid_optimization: "Primary lever: reduce waste by fixing underperforming paid traffic.",
 };
 
-interface WeeklySummaryProps {
-  primaryFocus?: PrimaryFocus;
-}
+interface WeeklySummaryProps { primaryFocus?: PrimaryFocus; }
 
 export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryProps) {
   const { orgId } = useOrg();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const statusConfig: Record<PerformanceStatus, { label: string; emoji: string; bg: string; text: string }> = {
+    strong: { label: t("dashboard.strong"), emoji: "🟢", bg: "bg-success/10", text: "text-success" },
+    watch: { label: t("dashboard.watch"), emoji: "🟡", bg: "bg-warning/10", text: "text-warning" },
+    risk: { label: t("dashboard.risk"), emoji: "🔴", bg: "bg-destructive/10", text: "text-destructive" },
+  };
 
   const { data: summary } = useQuery({
     queryKey: ["weekly_summary", orgId],
     queryFn: async () => {
       if (!orgId) return null;
-      const { data, error } = await supabase
-        .from("weekly_summaries")
-        .select("*")
-        .eq("org_id", orgId)
-        .order("week_start", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await supabase.from("weekly_summaries").select("*").eq("org_id", orgId).order("week_start", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -61,7 +55,7 @@ export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryPro
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">AI Weekly Summary</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("dashboard.weeklySummary")}</h3>
         </div>
         <span className={`text-xs uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full ${config.bg} ${config.text}`}>
           {config.emoji} {config.label}
@@ -69,7 +63,7 @@ export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryPro
       </div>
 
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">What Changed</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1.5">{t("dashboard.whatChanged")}</p>
         <p className="text-sm text-foreground/80 leading-relaxed">{summary.summary_text}</p>
         <p className="text-xs text-muted-foreground mt-2 italic">{focusLever[primaryFocus]}</p>
       </div>
@@ -83,23 +77,23 @@ export function WeeklySummary({ primaryFocus = "lead_volume" }: WeeklySummaryPro
 
       {summary.top_opportunity && (
         <div className="p-3 bg-success/5 border border-success/20 rounded-lg mb-4">
-          <p className="text-xs uppercase tracking-wider text-success font-medium mb-1">Top Opportunity</p>
+          <p className="text-xs uppercase tracking-wider text-success font-medium mb-1">{t("dashboard.topOpportunity")}</p>
           <p className="text-xs text-foreground">{summary.top_opportunity}</p>
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
         <button onClick={() => document.getElementById("section-pages")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
-          <ExternalLink className="h-3 w-3" /> View Pages
+          <ExternalLink className="h-3 w-3" /> {t("dashboard.viewPages")}
         </button>
         <button onClick={() => document.getElementById("section-sources")?.scrollIntoView({ behavior: "smooth" })} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
-          <ExternalLink className="h-3 w-3" /> View Sources
+          <ExternalLink className="h-3 w-3" /> {t("dashboard.viewSources")}
         </button>
         <button onClick={() => navigate("/exports")} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
-          <Download className="h-3 w-3" /> Download Leads
+          <Download className="h-3 w-3" /> {t("dashboard.downloadLeads")}
         </button>
         <button onClick={() => navigate("/reports")} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors">
-          <FileText className="h-3 w-3" /> Create Report
+          <FileText className="h-3 w-3" /> {t("dashboard.createReport")}
         </button>
       </div>
     </div>

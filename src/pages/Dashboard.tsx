@@ -420,10 +420,10 @@ const Dashboard = () => {
       ) : !orgs || orgs.length === 0 ? (
         <div className="glass-card p-8 text-center animate-slide-up">
           <Zap className="h-8 w-8 text-primary mx-auto mb-3" />
-          <h2 className="text-lg font-semibold text-foreground mb-2">No organization yet</h2>
-          <p className="text-sm text-muted-foreground mb-4">Create your first org to start tracking.</p>
+          <h2 className="text-lg font-semibold text-foreground mb-2">{t("dashboard.noOrgYet")}</h2>
+          <p className="text-sm text-muted-foreground mb-4">{t("dashboard.noOrgDesc")}</p>
           <button onClick={() => navigate("/onboarding")} className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-            Set up an organization
+            {t("dashboard.setupOrg")}
           </button>
         </div>
       ) : (
@@ -435,16 +435,16 @@ const Dashboard = () => {
                   <Zap className="h-6 w-6 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-foreground mb-1">Get started — connect your website</h3>
+                  <h3 className="text-base font-semibold text-foreground mb-1">{t("dashboard.getStartedConnect")}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Download the ACTV TRKR plugin, install it on WordPress, and paste your API key to start tracking.
+                    {t("dashboard.getStartedConnectDesc")}
                   </p>
                 </div>
                 <button
                   onClick={() => navigate("/settings?tab=setup")}
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
                 >
-                  Start Setup <ArrowUpRight className="h-4 w-4" />
+                  {t("dashboard.startSetup")} <ArrowUpRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -453,33 +453,33 @@ const Dashboard = () => {
           {/* Row 1 – 6 KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <KPICard
-              label={`Sessions (${days}d)`}
+              label={`${t("dashboard.sessions")} (${days}d)`}
               value={periodData.sessions.current.toLocaleString()}
               trend={pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
             />
             <KPICard
-              label={`Leads (${days}d)`}
+              label={`${t("dashboard.leads")} (${days}d)`}
               value={periodData.leads.current}
               trend={pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <KPICard
-              label="Conversion Rate"
+              label={t("dashboard.conversionRate")}
               value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
               trend={pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
             />
             <KPICard
-              label="Top Source"
+              label={t("dashboard.topSource")}
               value={topSource?.source || "—"}
-              sub={topSource ? `${topSource.sessions} sessions` : undefined}
+              sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : undefined}
               icon={<Megaphone className="h-4 w-4" />}
               accent="text-accent-foreground"
             />
             <div className="glass-card p-4 animate-slide-up">
               <div className="flex items-start justify-between mb-2">
-                <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Needs Attention</span>
+                <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("dashboard.needsAttention")}</span>
                 <span className={attentionItems.length === 0 ? "text-success" : attentionItems.some(i => i.severity === "critical") ? "text-destructive" : "text-warning"}>
                   {attentionItems.length === 0 ? (
                     <CheckCircle2 className="h-4 w-4" />
@@ -500,14 +500,14 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs font-medium text-success">All clear — no issues detected.</p>
+                <p className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</p>
               )}
             </div>
             <KPICard
-              label="SEO Score"
+              label={t("dashboard.seoScore")}
               value={seoMovement?.score ?? "—"}
               trend={seoMovement?.change || undefined}
-              sub={seoMovement ? undefined : "No scan yet"}
+              sub={seoMovement ? undefined : t("dashboard.noScanYet")}
               icon={<Search className="h-4 w-4" />}
               accent={seoMovement ? (seoMovement.change >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}
             />
@@ -547,7 +547,7 @@ const Dashboard = () => {
 
       <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
         <BarChart3 className="h-3.5 w-3.5" />
-        <span>Fresh data • Auto-refreshes every 15s</span>
+        <span>{t("dashboard.freshData")}</span>
       </div>
     </div>
   );

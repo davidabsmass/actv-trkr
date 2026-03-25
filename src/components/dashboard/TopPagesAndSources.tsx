@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { BarChart3 } from "lucide-react";
 import { subDays, format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 1000;
 
@@ -41,6 +42,7 @@ interface TopPagesAndSourcesProps {
 
 export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSourcesProps>(function TopPagesAndSources({ startDate: propStart, endDate: propEnd }, ref) {
   const { orgId } = useOrg();
+  const { t } = useTranslation();
 
   const fallbackStart = format(subDays(new Date(), 7), "yyyy-MM-dd");
   const resolvedStart = propStart || fallbackStart;
@@ -135,12 +137,12 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
     <div ref={ref} className="glass-card p-5 animate-slide-up h-full">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
         <BarChart3 className="h-4 w-4 text-primary" />
-        Top Pages & Sources
+        {t("dashboard.topPagesAndSources")}
       </h3>
 
       {/* Top Pages */}
       <div className="mb-4">
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Pages ({rangeLabel})</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">{t("dashboard.pages")} ({rangeLabel})</p>
         {pages.length > 0 ? (
           <div className="space-y-1.5">
             {pages.map((p) => (
@@ -163,13 +165,13 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No page data yet.</p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.noPageData")}</p>
         )}
       </div>
 
       {/* Top Sources */}
       <div>
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Sources ({rangeLabel})</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">{t("dashboard.sources")} ({rangeLabel})</p>
         {sources.length > 0 ? (
           <div className="space-y-1.5">
             {sources.map((s) => (
@@ -192,7 +194,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
             ))}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No source data yet.</p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.noSourceData")}</p>
         )}
       </div>
     </div>

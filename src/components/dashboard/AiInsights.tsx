@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Brain, Lightbulb, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface AiInsightsProps {
   metrics: {
@@ -38,13 +39,13 @@ const priorityConfig = {
 const STORAGE_KEY = "actv_ai_insights";
 const AUTO_LIMIT = 5;
 const MANUAL_LIMIT = 10;
-const TOTAL_LIMIT = AUTO_LIMIT + MANUAL_LIMIT; // 15
+const TOTAL_LIMIT = AUTO_LIMIT + MANUAL_LIMIT;
 
 interface StoredInsights {
   data: InsightsData;
   autoCount: number;
   manualCount: number;
-  day: string; // YYYY-MM-DD to reset daily
+  day: string;
 }
 
 function getTodayKey() {
@@ -56,7 +57,6 @@ function loadStored(): StoredInsights | null {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredInsights;
-    // Reset if it's a new day
     if (parsed.day !== getTodayKey()) return null;
     return parsed;
   } catch {
@@ -71,6 +71,7 @@ function saveStored(stored: StoredInsights) {
 }
 
 export function AiInsights({ metrics }: AiInsightsProps) {
+  const { t } = useTranslation();
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +81,6 @@ export function AiInsights({ metrics }: AiInsightsProps) {
   const [phase, setPhase] = useState<"auto" | "manual" | "exhausted">("auto");
   const hasFired = useRef(false);
 
-  // Load cached state on mount
   useEffect(() => {
     const stored = loadStored();
     if (stored) {
@@ -127,7 +127,6 @@ export function AiInsights({ metrics }: AiInsightsProps) {
       const insightsData = data as InsightsData;
       setInsights(insightsData);
 
-      // Update counts
       const newAuto = isAuto ? autoCount + 1 : autoCount;
       const newManual = !isAuto ? manualCount + 1 : manualCount;
       setAutoCount(newAuto);
@@ -157,7 +156,6 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     }
   }, [metrics, autoCount, manualCount]);
 
-  // Auto-generate on mount if under auto limit and no cached data for this visit
   useEffect(() => {
     if (hasFired.current) return;
     if (metrics.sessionsThisWeek === undefined) return;
@@ -165,37 +163,31 @@ export function AiInsights({ metrics }: AiInsightsProps) {
 
     const stored = loadStored();
     if (stored) {
-      // Already have cached insights — only auto-fire if under auto limit
       if (stored.autoCount < AUTO_LIMIT && (stored.autoCount + stored.manualCount) < TOTAL_LIMIT) {
         callAI(true);
       }
-      // Otherwise just show the cached data (already loaded above)
       return;
     }
 
-    // No cache — first visit of the day, auto-generate
     callAI(true);
   }, [metrics.sessionsThisWeek]);
 
   const handleManualRefresh = () => {
     if (phase === "exhausted") {
-      toast("You've used all your AI insights for today. They'll refresh tomorrow!", {
-        icon: "☕",
-      });
+      toast(t("dashboard.usedAllInsights"), { icon: "☕" });
       return;
     }
     callAI(false);
   };
 
   const remainingManual = Math.max(0, MANUAL_LIMIT - manualCount);
-  const totalUsed = autoCount + manualCount;
 
   if (error && !rateLimited && !insights) {
     return (
       <div className="glass-card p-5 animate-slide-up">
         <div className="flex items-center gap-2 text-muted-foreground">
           <AlertCircle className="h-4 w-4" />
-          <span className="text-xs">AI insights unavailable right now</span>
+          <span className="text-xs">{t("dashboard.aiInsightsUnavailable")}</span>
         </div>
       </div>
     );
@@ -206,10 +198,9 @@ export function AiInsights({ metrics }: AiInsightsProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">AI Performance Insights</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("dashboard.aiInsights")}</h3>
         </div>
         
-        {/* Show refresh button once auto phase is done */}
         {phase === "manual" && (
           <button
             onClick={handleManualRefresh}
@@ -221,13 +212,13 @@ export function AiInsights({ metrics }: AiInsightsProps) {
             ) : (
               <RefreshCw className="h-3 w-3" />
             )}
-            {isLoading ? "Generating…" : `Refresh (${remainingManual} left)`}
+            {isLoading ? t("dashboard.generating") : t("dashboard.refreshInsights", { count: remainingManual })}
           </button>
         )}
 
         {phase === "exhausted" && insights && (
           <span className="text-xs text-muted-foreground/60 font-medium">
-            Refreshes again tomorrow
+            {t("dashboard.refreshesTomorrow")}
           </span>
         )}
       </div>
@@ -236,10 +227,10 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         <div className="p-4 rounded-md bg-muted/30 border border-border">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="h-3.5 w-3.5 text-primary/60" />
-            <span className="text-xs font-medium text-foreground">All caught up!</span>
+            <span className="text-xs font-medium text-foreground">{t("dashboard.allCaughtUp")}</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            You've used all your AI insights for today. Fresh insights will be ready for you tomorrow morning. ☕
+            {t("dashboard.allCaughtUpDesc")}
           </p>
         </div>
       ) : isLoading && !insights ? (
@@ -257,7 +248,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
           {isLoading && (
              <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
                <RefreshCw className="h-3 w-3 animate-spin" />
-               Refreshing insights…
+               {t("dashboard.refreshingInsights")}
             </div>
           )}
           <div className="mb-5">
@@ -268,7 +259,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
               <div className="flex items-center gap-1.5 mb-3">
                 <Lightbulb className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Recommended Actions
+                  {t("dashboard.recommendedActions")}
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

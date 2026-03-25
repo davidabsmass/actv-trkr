@@ -1,38 +1,16 @@
 import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  Area,
+  ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area,
 } from "recharts";
 import { useState, useMemo } from "react";
 import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 interface TrendsChartProps {
-  data: Array<{
-    date: string;
-    dateLabel: string;
-    sessions: number;
-    leads: number;
-    cvr: number;
-  }>;
+  data: Array<{ date: string; dateLabel: string; sessions: number; leads: number; cvr: number; }>;
 }
 
 type MetricView = "leads_sessions" | "cvr";
 type Granularity = "day" | "week" | "month" | "year" | "all";
-
-const granularityOptions: { label: string; value: Granularity }[] = [
-  { label: "Day", value: "day" },
-  { label: "Week", value: "week" },
-  { label: "Month", value: "month" },
-  { label: "Year", value: "year" },
-  { label: "All", value: "all" },
-];
 
 function bucketKey(dateStr: string, granularity: Granularity): string {
   const d = parseISO(dateStr);
@@ -56,8 +34,17 @@ function bucketLabel(key: string, granularity: Granularity): string {
 }
 
 export function TrendsChart({ data }: TrendsChartProps) {
+  const { t } = useTranslation();
   const [view, setView] = useState<MetricView>("leads_sessions");
   const [granularity, setGranularity] = useState<Granularity>("day");
+
+  const granularityOptions: { label: string; value: Granularity }[] = [
+    { label: t("dashboard.day"), value: "day" },
+    { label: t("dashboard.week"), value: "week" },
+    { label: t("dashboard.month"), value: "month" },
+    { label: t("dashboard.year"), value: "year" },
+    { label: t("dashboard.all"), value: "all" },
+  ];
 
   const aggregatedData = useMemo(() => {
     if (granularity === "day") return data;
@@ -81,44 +68,25 @@ export function TrendsChart({ data }: TrendsChartProps) {
   return (
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-foreground">Trends</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t("dashboard.trends")}</h3>
         <div className="flex items-center gap-2">
           <div className="flex gap-1 bg-muted rounded-md p-0.5">
             {granularityOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setGranularity(opt.value)}
-                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                  granularity === opt.value
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
+              <button key={opt.value} onClick={() => setGranularity(opt.value)}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${granularity === opt.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
                 {opt.label}
               </button>
             ))}
           </div>
           <div className="flex gap-1 bg-muted rounded-md p-0.5">
-          <button
-            onClick={() => setView("leads_sessions")}
-            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-              view === "leads_sessions"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Leads & Sessions
-          </button>
-          <button
-            onClick={() => setView("cvr")}
-            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-              view === "cvr"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Conversion Rate
-          </button>
+            <button onClick={() => setView("leads_sessions")}
+              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${view === "leads_sessions" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              {t("dashboard.leadsAndSessions")}
+            </button>
+            <button onClick={() => setView("cvr")}
+              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${view === "cvr" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              {t("dashboard.conversionRate")}
+            </button>
           </div>
         </div>
       </div>
@@ -127,94 +95,21 @@ export function TrendsChart({ data }: TrendsChartProps) {
           {view === "leads_sessions" ? (
             <ComposedChart data={aggregatedData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
-              <XAxis
-                dataKey="dateLabel"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                yAxisId="sessions"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                yAxisId="leads"
-                orientation="right"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-              />
-              <Legend
-                wrapperStyle={{ fontSize: "12px" }}
-                iconType="circle"
-                iconSize={8}
-              />
-              <Area
-                yAxisId="sessions"
-                type="monotone"
-                dataKey="sessions"
-                fill="hsl(var(--chart-1))"
-                fillOpacity={0.08}
-                stroke="hsl(var(--chart-1))"
-                strokeWidth={2}
-                name="Sessions"
-                dot={false}
-              />
-              <Bar
-                yAxisId="leads"
-                dataKey="leads"
-                fill="hsl(var(--chart-2))"
-                fillOpacity={0.7}
-                name="Leads"
-                radius={[2, 2, 0, 0]}
-                barSize={8}
-              />
+              <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis yAxisId="sessions" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="leads" orientation="right" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} labelStyle={{ color: "hsl(var(--foreground))" }} />
+              <Legend wrapperStyle={{ fontSize: "12px" }} iconType="circle" iconSize={8} />
+              <Area yAxisId="sessions" type="monotone" dataKey="sessions" fill="hsl(var(--chart-1))" fillOpacity={0.08} stroke="hsl(var(--chart-1))" strokeWidth={2} name={t("dashboard.sessions")} dot={false} />
+              <Bar yAxisId="leads" dataKey="leads" fill="hsl(var(--chart-2))" fillOpacity={0.7} name={t("dashboard.leads")} radius={[2, 2, 0, 0]} barSize={8} />
             </ComposedChart>
           ) : (
             <ComposedChart data={aggregatedData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
-              <XAxis
-                dataKey="dateLabel"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => `${(v * 100).toFixed(1)}%`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
-                formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, "CVR"]}
-              />
-              <Line
-                type="monotone"
-                dataKey="cvr"
-                stroke="hsl(var(--chart-4))"
-                strokeWidth={2}
-                dot={false}
-                name="Conversion Rate"
-              />
+              <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v * 100).toFixed(1)}%`} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, "CVR"]} />
+              <Line type="monotone" dataKey="cvr" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={false} name={t("dashboard.conversionRate")} />
             </ComposedChart>
           )}
         </ResponsiveContainer>

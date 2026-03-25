@@ -1,4 +1,5 @@
 import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface KPICardProps {
   label: string;
@@ -9,19 +10,20 @@ interface KPICardProps {
   subtext?: string;
 }
 
-function humanizeDelta(delta: number): { text: string; className: string } {
+function humanizeDelta(delta: number, t: (key: string) => string): { text: string; className: string } {
   const pct = Math.abs(delta * 100);
-  if (pct < 1) return { text: "No change", className: "kpi-neutral" };
-  if (delta > 0.15) return { text: "Strong growth", className: "kpi-up" };
+  if (pct < 1) return { text: t("dashboard.noChange"), className: "kpi-neutral" };
+  if (delta > 0.15) return { text: t("dashboard.strongGrowth"), className: "kpi-up" };
   if (delta > 0) return { text: `+${(delta * 100).toFixed(1)}%`, className: "kpi-up" };
-  if (delta < -0.15) return { text: "Attention needed", className: "kpi-down" };
+  if (delta < -0.15) return { text: t("dashboard.attentionNeeded"), className: "kpi-down" };
   return { text: `${(delta * 100).toFixed(1)}%`, className: "kpi-down" };
 }
 
 export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) {
+  const { t } = useTranslation();
   const isUp = delta > 0;
   const isDown = delta < 0;
-  const { text: deltaText, className: deltaClass } = humanizeDelta(delta);
+  const { text: deltaText, className: deltaClass } = humanizeDelta(delta, t);
 
   return (
     <div className="glass-card p-5 flex flex-col gap-1 animate-slide-up">

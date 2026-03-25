@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
 import { CheckCircle2, AlertTriangle, XCircle, Clock, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 type FormHealth = {
   id: string;
@@ -12,6 +13,8 @@ type FormHealth = {
 };
 
 export function FormHealthPanel({ orgId }: { orgId: string | null }) {
+  const { t } = useTranslation();
+
   const { data: healthData, isLoading } = useQuery({
     queryKey: ["form_health", orgId],
     queryFn: async () => {
@@ -93,16 +96,16 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
   if (isLoading || !healthData || healthData.length === 0) return null;
 
   const statusConfig = {
-    healthy: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10", label: "Healthy" },
-    low_activity: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/10", label: "Low Activity" },
-    errors: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: "Errors Detected" },
-    no_activity: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted", label: "No Activity" },
-    not_rendered: { icon: EyeOff, color: "text-destructive", bg: "bg-destructive/10", label: "Not Found" },
+    healthy: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10", label: t("dashboard.formHealthHealthy") },
+    low_activity: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/10", label: t("dashboard.formHealthLowActivity") },
+    errors: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: t("dashboard.formHealthErrors") },
+    no_activity: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted", label: t("dashboard.formHealthNoActivity") },
+    not_rendered: { icon: EyeOff, color: "text-destructive", bg: "bg-destructive/10", label: t("dashboard.formHealthNotFound") },
   };
 
   return (
     <div className="glass-card p-5 animate-slide-up">
-      <h3 className="text-sm font-semibold text-foreground mb-3">Form Health</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-3">{t("dashboard.formHealth")}</h3>
       <div className="space-y-2">
         {healthData.map((form) => {
           const cfg = statusConfig[form.status];

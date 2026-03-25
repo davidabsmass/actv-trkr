@@ -23,7 +23,6 @@ import SeoFixModal from "./SeoFixModal";
 export default function SeoTab() {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
-  const [scanUrl, setScanUrl] = useState("");
   const [selectedScanId, setSelectedScanId] = useState<string | null>(null);
 
   const { data: sites } = useQuery({

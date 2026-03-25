@@ -271,19 +271,19 @@ export function AiInsights({ metrics }: AiInsightsProps) {
                   Recommended Actions
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {insights.suggestions.map((s, i) => {
                   const config = priorityConfig[s.priority];
                   return (
                     <div
                       key={i}
-                      className={`rounded-lg border p-3 ${config.bg} ${config.border} transition-colors`}
+                      className={`rounded-lg border p-4 ${config.bg} ${config.border} transition-colors`}
                     >
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-                        <span className="text-xs font-semibold text-foreground">{s.title}</span>
+                        <span className="text-sm font-semibold text-foreground">{s.title}</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
                         {s.description}
                       </p>
                     </div>

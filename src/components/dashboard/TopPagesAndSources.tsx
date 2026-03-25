@@ -169,7 +169,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
 
       {/* Top Sources */}
       <div>
-        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Sources (7d)</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Sources ({rangeLabel})</p>
         {sources.length > 0 ? (
           <div className="space-y-1.5">
             {sources.map((s) => (

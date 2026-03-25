@@ -377,7 +377,9 @@ function ActivityReportsTab() {
   const createSchedule = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error("No org");
-      const { error } = await supabase.from("report_schedules").insert({ org_id: orgId, template_slug: "monthly_performance", frequency: newSchedule.frequency, run_day_of_month: newSchedule.frequency === "monthly" ? newSchedule.runDayOfMonth : 1 });
+      const freq = newSchedule.frequency === "monthly_today" ? "monthly" : newSchedule.frequency;
+      const day = newSchedule.frequency === "monthly_today" ? new Date().getDate() : (newSchedule.frequency === "monthly" ? newSchedule.runDayOfMonth : 1);
+      const { error } = await supabase.from("report_schedules").insert({ org_id: orgId, template_slug: "monthly_performance", frequency: freq, run_day_of_month: day });
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["report_schedules"] }); toast.success("Schedule created"); setScheduleOpen(false); },
@@ -469,13 +471,16 @@ function ActivityReportsTab() {
               <div className="space-y-4 pt-2">
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.frequency")}</label>
-                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem></SelectContent></Select>
+                  <Select value={newSchedule.frequency} onValueChange={(v) => setNewSchedule((s) => ({ ...s, frequency: v, ...(v === "monthly_today" ? { runDayOfMonth: new Date().getDate() } : {}) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weekly">{t("reports.weeklyFreq")}</SelectItem><SelectItem value="monthly">{t("reports.monthlyFreq")}</SelectItem><SelectItem value="monthly_today">{`This day (${dayLabel(new Date().getDate())}) each month`}</SelectItem></SelectContent></Select>
                 </div>
-                {newSchedule.frequency === "monthly" && (
+                {(newSchedule.frequency === "monthly") && (
                   <div>
                     <label className="text-sm font-medium text-foreground mb-1.5 block">{t("reports.dayOfMonth")}</label>
                     <Select value={String(newSchedule.runDayOfMonth)} onValueChange={(v) => setNewSchedule((s) => ({ ...s, runDayOfMonth: parseInt(v) }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{dayOptions.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}</SelectContent></Select>
                   </div>
+                )}
+                {newSchedule.frequency === "monthly_today" && (
+                  <p className="text-xs text-muted-foreground">Report will generate on the {dayLabel(new Date().getDate())} of every month.</p>
                 )}
                 <Button className="w-full" disabled={createSchedule.isPending} onClick={() => createSchedule.mutate()}>{createSchedule.isPending ? t("reports.creatingSchedule") : t("reports.createSchedule")}</Button>
               </div>

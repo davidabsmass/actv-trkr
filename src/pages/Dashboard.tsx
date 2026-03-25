@@ -122,6 +122,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
   const { t } = useTranslation();
+  const { needsOnboarding, settings } = useSiteSettings();
   const { data: formsData } = useForms(orgId);
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");

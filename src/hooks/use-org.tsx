@@ -41,6 +41,10 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     ? [PREVIEW_FALLBACK_ORG]
     : (orgs ?? []);
 
+  // Helper: find an org whose name contains "APYX" (case-insensitive)
+  const findApyxOrg = (list: typeof effectiveOrgs) =>
+    list.find((o) => o.name.toLowerCase().includes("apyx"));
+
   // In editor preview without auth, bypass gating. With auth, wait for orgs query.
   const isReady = previewBypass && !user
     ? !authLoading

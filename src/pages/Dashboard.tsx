@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { GetStartedBanner } from "@/components/dashboard/GetStartedBanner";
 import { useNavigate, Link } from "react-router-dom";
 import { format, subDays, startOfDay } from "date-fns";
@@ -70,7 +71,7 @@ interface AttentionItem {
   linkLabel: string;
 }
 
-function AttentionPanel({ items }: { items: AttentionItem[] }) {
+function AttentionPanel({ items, t }: { items: AttentionItem[]; t: (key: string) => string }) {
   const severityStyles = {
     critical: "border-destructive/30 bg-destructive/5",
     warning: "border-warning/30 bg-warning/5",
@@ -86,7 +87,7 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
     <div className="glass-card p-5 animate-slide-up h-full">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-warning" />
-        Needs Attention
+        {t("dashboard.needsAttention")}
       </h3>
       {items.length > 0 ? (
         <div className="space-y-2">
@@ -109,7 +110,7 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
           ))}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">Everything looks good — no issues detected.</p>
+        <p className="text-xs text-muted-foreground">{t("dashboard.allClear")}</p>
       )}
     </div>
   );
@@ -120,7 +121,7 @@ const Dashboard = () => {
   const [days, setDays] = useState(30);
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
-  const { needsOnboarding, settings } = useSiteSettings();
+  const { t } = useTranslation();
   const { data: formsData } = useForms(orgId);
 
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");

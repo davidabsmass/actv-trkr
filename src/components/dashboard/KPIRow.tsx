@@ -63,8 +63,9 @@ interface KPIRowProps {
 }
 
 export function KPIRow({ kpis, totalSessions, totalLeads }: KPIRowProps) {
+  const { t } = useTranslation();
   const cvrSubtext = totalSessions && totalLeads !== undefined
-    ? `${totalLeads} of ${totalSessions} sessions converted`
+    ? t("common.ofSessionsConverted", { leads: totalLeads, sessions: totalSessions })
     : undefined;
 
   return (

@@ -44,9 +44,9 @@ export function ShareableSnapshot({ snapshotData, startDate, endDate }: Snapshot
 
       const url = `${window.location.origin}/snapshot/${data.id}`;
       setLink(url);
-      toast({ title: "Snapshot created", description: "Link expires in 7 days." });
+      toast({ title: t("snapshot.snapshotCreated"), description: t("snapshot.linkExpires") });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err?.message });
+      toast({ variant: "destructive", title: t("snapshot.error"), description: err?.message });
     } finally {
       setCreating(false);
     }
@@ -67,7 +67,7 @@ export function ShareableSnapshot({ snapshotData, startDate, endDate }: Snapshot
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-card border border-border rounded-lg hover:bg-muted transition-colors text-foreground"
       >
         <Share2 className="h-3.5 w-3.5" />
-        Share
+        {t("snapshot.share")}
       </button>
 
       {open && (
@@ -85,7 +85,7 @@ export function ShareableSnapshot({ snapshotData, startDate, endDate }: Snapshot
             ) : link ? (
               <>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Read-only link • {startDate} → {endDate} • Expires in 7 days
+                  {t("snapshot.readOnlyLink", { start: startDate, end: endDate })}
                 </p>
                 <div className="flex items-center gap-2 bg-secondary rounded-lg p-2.5">
                   <code className="text-xs font-mono text-secondary-foreground flex-1 truncate">{link}</code>
@@ -96,7 +96,7 @@ export function ShareableSnapshot({ snapshotData, startDate, endDate }: Snapshot
               </>
             ) : null}
             <button onClick={() => setOpen(false)} className="w-full mt-4 py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors">
-              Close
+              {t("snapshot.close")}
             </button>
           </div>
         </div>

@@ -49,8 +49,8 @@ export function WeekOverWeekStrip({ data }: { data: WoWData }) {
   const anomalyMessage = useMemo(() => {
     const leadsChange = pctChange(data.leads.current, data.leads.previous);
     const sessionsChange = pctChange(data.sessions.current, data.sessions.previous);
-    if (leadsChange < -20) return `Leads down ${Math.abs(leadsChange).toFixed(0)}% week-over-week. Investigate conversion.`;
-    if (sessionsChange < -25) return `Sessions dropped ${Math.abs(sessionsChange).toFixed(0)}% WoW. Check traffic sources.`;
+    if (leadsChange < -20) return t("anomaly.leadsDown", { pct: Math.abs(leadsChange).toFixed(0) });
+    if (sessionsChange < -25) return t("anomaly.sessionsDropped", { pct: Math.abs(sessionsChange).toFixed(0) });
     return null;
   }, [data]);
 

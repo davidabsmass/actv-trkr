@@ -26,16 +26,18 @@ const eventIcons: Record<string, React.ReactNode> = {
   form_submit: <Zap className="h-3.5 w-3.5 text-success" />,
 };
 
-const eventLabels: Record<string, string> = {
-  cta_click: "Clicked CTA",
-  download_click: "Downloaded File",
-  outbound_click: "Visited External Link",
-  tel_click: "Clicked Phone Number",
-  mailto_click: "Clicked Email Link",
-  form_start: "Started Form",
-  pageview: "Visited Page",
-  form_submit: "Submitted Form",
-};
+function getEventLabels(t: (key: string) => string): Record<string, string> {
+  return {
+    cta_click: t("timeline.clickedCta"),
+    download_click: t("timeline.downloadedFile"),
+    outbound_click: t("timeline.visitedExternal"),
+    tel_click: t("timeline.clickedPhone"),
+    mailto_click: t("timeline.clickedEmail"),
+    form_start: t("timeline.startedForm"),
+    pageview: t("timeline.visitedPage"),
+    form_submit: t("timeline.submittedForm"),
+  };
+}
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -46,6 +48,7 @@ function formatDuration(seconds: number): string {
 
 export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string | null; orgId: string | null }) {
   const { t } = useTranslation();
+  const eventLabels = getEventLabels(t);
   const { data: timeline, isLoading } = useQuery({
     queryKey: ["lead_activity_timeline", sessionId, orgId],
     queryFn: async () => {
@@ -65,7 +68,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
       const items: TimelineItem[] = [];
 
       (pageviewsRes.data || []).forEach((pv) => {
-        const detail = pv.active_seconds ? `Time on page: ${formatDuration(pv.active_seconds)}` : undefined;
+        const detail = pv.active_seconds ? t("timeline.timeOnPage", { duration: formatDuration(pv.active_seconds) }) : undefined;
         items.push({
           time: pv.occurred_at,
           type: "pageview",
@@ -109,7 +112,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
   if (!sessionId) {
     return (
       <div className="p-4 text-center text-muted-foreground text-xs">
-        No session data available for this lead.
+        {t("timeline.noSessionData")}
       </div>
     );
   }
@@ -162,7 +165,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
       {/* Timeline */}
       {(!timeline || timeline.length === 0) ? (
         <div className="p-4 text-center text-muted-foreground text-xs">
-          No activity data recorded for this session.
+          {t("timeline.noActivityData")}
         </div>
       ) : (
         <div className="relative pl-6">

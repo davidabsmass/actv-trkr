@@ -32,6 +32,7 @@ import { toast } from "sonner";
 
 import OverviewTab from "@/components/reports/OverviewTab";
 import ArchivesContent from "@/components/archives/ArchivesContent";
+import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
 
 // ── Shared sub-components ──
 const TrendBadge = ({ change }: { change: number | null }) => {
@@ -356,16 +357,18 @@ function ActivityReportsTab() {
   const downloadReport = async (run: any) => {
     if (!run.file_path) return;
     try {
-      // Fetch report JSON and white-label settings in parallel
       const { data, error } = await supabase.storage.from("reports").createSignedUrl(run.file_path, 60);
       if (error) throw error;
-      const [resp, wlResult] = await Promise.all([
+      const userId = session?.user?.id;
+      const [resp, wlResult, tplResult] = await Promise.all([
         fetch(data.signedUrl),
         orgId ? supabase.from("white_label_settings").select("*").eq("org_id", orgId).maybeSingle() : Promise.resolve({ data: null }),
+        orgId && userId ? supabase.from("report_custom_templates" as any).select("sections_config").eq("user_id", userId).eq("org_id", orgId).order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       const report = await resp.json();
+      const tplConfig = (tplResult.data as any)?.sections_config || null;
       const { buildReportPdf } = await import("@/lib/report-pdf");
-      const doc = await buildReportPdf(report, run, wlResult.data);
+      const doc = await buildReportPdf(report, run, wlResult.data, tplConfig);
       doc.save(`report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF downloaded");
     } catch { toast.error("Failed to download"); }
@@ -589,11 +592,13 @@ export default function Reports() {
         <TabsList className="mb-6">
           <TabsTrigger value="overview">{t("reports.overview")}</TabsTrigger>
           <TabsTrigger value="activity">{t("reports.activityReports")}</TabsTrigger>
+          <TabsTrigger value="customize">Customize</TabsTrigger>
           <TabsTrigger value="archives">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="activity"><ActivityReportsTab /></TabsContent>
+        <TabsContent value="customize"><ReportTemplateBuilder /></TabsContent>
         <TabsContent value="archives"><ArchivesContent /></TabsContent>
       </Tabs>
     </div>

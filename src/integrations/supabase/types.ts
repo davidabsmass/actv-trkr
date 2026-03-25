@@ -1970,6 +1970,44 @@ export type Database = {
           },
         ]
       }
+      report_custom_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+          sections_config: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          org_id: string
+          sections_config?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+          sections_config?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_custom_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_runs: {
         Row: {
           completed_at: string | null

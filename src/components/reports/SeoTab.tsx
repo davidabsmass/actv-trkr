@@ -391,15 +391,6 @@ export default function SeoTab() {
         </div>
       )}
 
-      {/* Scan History */}
-      {scanHistory && scanHistory.length > 0 && (
-        <SeoScanHistory
-          scans={scanHistory}
-          activeScanId={activeScanId}
-          onSelect={setSelectedScanId}
-          getPathFromUrl={getPathFromUrl}
-        />
-      )}
     </div>
   );
 }

@@ -109,7 +109,7 @@ export default function ApiKeysSection() {
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           <Plus className="h-3 w-3" />
-          {generating ? "Generating…" : "New Key"}
+          {generating ? "Generating…" : hasActiveKey ? "Replace Key" : "New Key"}
         </button>
       </div>
 

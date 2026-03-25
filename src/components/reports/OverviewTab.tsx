@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
 import { SummaryCard, InsightCard } from "./InsightCard";
 import { Calendar } from "@/components/ui/calendar";
@@ -45,6 +46,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
   startDate: string; endDate: string; prevStartDate: string; prevEndDate: string; periodLabel: string;
 }) {
   const { orgId } = useOrg();
+  const { t } = useTranslation();
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [loadingAi, setLoadingAi] = useState(false);
 
@@ -97,13 +99,13 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       });
       if (error) {
         if (error.message?.includes("429") || error.message?.includes("RATE_LIMITED")) {
-          toast.error("Daily AI report limit reached. Try again tomorrow.");
+          toast.error(t("reports.dailyLimitReached"));
           return;
         }
         throw error;
       }
       if (result?.code === "RATE_LIMITED") {
-        toast.error(result.error || "Daily AI report limit reached.");
+        toast.error(result.error || t("reports.dailyLimitReached"));
         return;
       }
       const summaries: Record<string, string> = {};
@@ -114,7 +116,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       setAiSummaries(summaries);
       setCooldownUntil(Date.now() + 30_000);
     } catch {
-      toast.error("Failed to generate AI summaries");
+      toast.error(t("reports.failedAiSummaries"));
     } finally {
       setLoadingAi(false);
     }
@@ -127,7 +129,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
   if (!liveData) {
     return (
       <div className="rounded-lg border border-border bg-card p-12 text-center">
-        <p className="text-sm text-muted-foreground">ACTV TRKR is collecting activity data. Insights will appear once enough data is available.</p>
+        <p className="text-sm text-muted-foreground">{t("reports.noDataYet")}</p>
       </div>
     );
   }
@@ -152,19 +154,19 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
             {currentRange} vs {previousRange}
           </span>
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/60 border border-border/50 rounded px-1.5 py-0.5">
-            <Wifi className="h-2.5 w-2.5" /> Live
+            <Wifi className="h-2.5 w-2.5" /> {t("reports.live")}
           </span>
           <button onClick={fetchAiSummaries} disabled={loadingAi || cooldownRemaining > 0}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50 ml-auto">
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summaries"}
+            {loadingAi ? t("reports.generatingAi") : cooldownRemaining > 0 ? t("reports.waitSeconds", { seconds: cooldownRemaining }) : t("reports.aiSummaries")}
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <SummaryCard label={`Traffic (${periodLabel})`} value={currentSessions.toLocaleString()} change={sessionsPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.traffic_up || aiSummaries.traffic_down} />
-          <SummaryCard label={`Leads (${periodLabel})`} value={currentLeads.toLocaleString()} change={leadsPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.lead_growth || aiSummaries.lead_drop} />
-          <SummaryCard label={`CVR (${periodLabel})`} value={`${currentCvr}%`} change={cvrPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.conversion_gain || aiSummaries.conversion_drop} />
-          <SummaryCard label="Site Health" value={activeIncidents > 0 ? `${activeIncidents} issues` : "Healthy"} summary={brokenLinks > 5 ? `${brokenLinks} broken links detected.` : undefined} />
+          <SummaryCard label={`${t("reports.traffic")} (${periodLabel})`} value={currentSessions.toLocaleString()} change={sessionsPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.traffic_up || aiSummaries.traffic_down} />
+          <SummaryCard label={`${t("reports.leads")} (${periodLabel})`} value={currentLeads.toLocaleString()} change={leadsPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.lead_growth || aiSummaries.lead_drop} />
+          <SummaryCard label={`${t("reports.cvr")} (${periodLabel})`} value={`${currentCvr}%`} change={cvrPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.conversion_gain || aiSummaries.conversion_drop} />
+          <SummaryCard label={t("reports.siteHealth")} value={activeIncidents > 0 ? `${activeIncidents} ${t("reports.issues")}` : t("reports.sitHealthy")} summary={brokenLinks > 5 ? t("reports.brokenLinksDetected", { count: brokenLinks }) : undefined} />
         </div>
       </div>
 
@@ -172,13 +174,13 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {negativeFindings.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Activity className="h-4 w-4 text-destructive" /> Needs Attention</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Activity className="h-4 w-4 text-destructive" /> {t("reports.needsAttention")}</h3>
               <div className="space-y-2">{negativeFindings.map((f: any, i: number) => (<InsightCard key={i} finding={f} />))}</div>
             </div>
           )}
           {positiveFindings.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-success" /> What's Working</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Users className="h-4 w-4 text-success" /> {t("reports.whatsWorking")}</h3>
               <div className="space-y-2">{positiveFindings.map((f: any, i: number) => (<InsightCard key={i} finding={f} />))}</div>
             </div>
           )}
@@ -192,6 +194,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
 // Main export — unified with period toggle + custom range
 // ────────────────────────────────────────
 export default function OverviewTab() {
+  const { t } = useTranslation();
   const now = new Date();
   const [period, setPeriod] = useState<Period>("7d");
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
@@ -238,11 +241,10 @@ export default function OverviewTab() {
   })();
 
   const presetOptions: { key: Period; label: string }[] = [
-    { key: "7d", label: "7 Days" },
-    { key: "14d", label: "14 Days" },
-    { key: "30d", label: "30 Days" },
-    
-    { key: "monthly", label: "Monthly" },
+    { key: "7d", label: t("reports.7days") },
+    { key: "14d", label: t("reports.14days") },
+    { key: "30d", label: t("reports.30days") },
+    { key: "monthly", label: t("reports.monthlyLabel") },
   ];
 
   return (
@@ -250,7 +252,7 @@ export default function OverviewTab() {
       {/* At a Glance header with period toggle + custom range */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Eye className="h-4 w-4 text-primary" /> At a Glance
+          <Eye className="h-4 w-4 text-primary" /> {t("reports.atAGlance")}
         </h3>
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
@@ -295,7 +297,7 @@ export default function OverviewTab() {
                   <CalendarIcon className="h-3 w-3" />
                   {period === "custom" && customRange
                     ? `${format(customRange.from, "MMM d")}–${format(customRange.to, "MMM d")}`
-                    : "Custom"}
+                    : t("reports.customLabel")}
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2" align="end">
@@ -313,7 +315,7 @@ export default function OverviewTab() {
                     onClick={() => setCustomOpen(false)}
                     className="px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md"
                   >
-                    Cancel
+                    {t("dateRange.cancel")}
                   </button>
                   <button
                     onClick={() => {
@@ -325,7 +327,7 @@ export default function OverviewTab() {
                     disabled={!pendingRange?.from || !pendingRange?.to}
                     className="px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-40"
                   >
-                    Apply
+                    {t("dateRange.apply")}
                   </button>
                 </div>
               </PopoverContent>

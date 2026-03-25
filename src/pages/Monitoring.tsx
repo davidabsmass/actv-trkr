@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import {
   Activity, Globe, Shield, Link2, RefreshCw, AlertTriangle, CheckCircle2,
   XCircle, Plus, Trash2, Bell, ChevronRight, ExternalLink, FileSearch, EyeOff,
+  Package, Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -253,7 +254,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notif_rules", site.id] }),
   });
 
-  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING"];
+  const alertTypes = ["DOWNTIME", "FORM_FAILURE", "CONVERSION_DROP", "DOMAIN_EXPIRING", "SSL_EXPIRING", "PLUGIN_UPDATE", "PLUGIN_VULNERABILITY", "WP_CORE_UPDATE"];
   const channels = ["in_app", "email"];
 
   const getRuleEnabled = (alertType: string, channel: string) => {
@@ -280,6 +281,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
           <TabsTrigger value="form-checks">Form Checks</TabsTrigger>
           <TabsTrigger value="broken-links">Broken Links</TabsTrigger>
           <TabsTrigger value="domain-ssl">Domain & SSL</TabsTrigger>
+          <TabsTrigger value="plugin-wp">Plugin & WordPress</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
 
@@ -426,6 +428,88 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
         </TabsContent>
 
 
+        {/* Plugin & WordPress */}
+        <TabsContent value="plugin-wp" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Plugin Updates */}
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" /> Plugin Updates
+              </h3>
+              <div className="rounded-lg border border-border bg-muted/30 p-5 text-center">
+                <Package className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                <p className="text-xs font-medium text-foreground mb-1">No updates available</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Plugin update monitoring will alert you when installed plugins have new versions available.
+                </p>
+              </div>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Checks all active plugins daily</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Email alerts for available updates</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Plugin Vulnerability Alerts */}
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning" /> Vulnerability Alerts
+              </h3>
+              <div className="rounded-lg border border-border bg-muted/30 p-5 text-center">
+                <Shield className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                <p className="text-xs font-medium text-foreground mb-1">No vulnerabilities detected</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Cross-references installed plugins against known vulnerability databases.
+                </p>
+              </div>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Checks against WPScan vulnerability data</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Critical alerts sent immediately</span>
+                </div>
+              </div>
+            </div>
+
+            {/* WordPress Core Updates */}
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" /> Core WordPress
+              </h3>
+              <div className="rounded-lg border border-border bg-muted/30 p-5 text-center">
+                <Globe className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                <p className="text-xs font-medium text-foreground mb-1">No core updates pending</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Monitors WordPress core version and alerts when updates are available.
+                </p>
+              </div>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Tracks current WP version</span>
+                </div>
+                <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>Security releases flagged as critical</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card p-4">
+            <p className="text-xs text-muted-foreground text-center">
+              Plugin and WordPress monitoring requires ACTV TRKR plugin v1.4+. These features will activate automatically once your plugin is updated.
+            </p>
+          </div>
+        </TabsContent>
 
         {/* Notifications */}
         <TabsContent value="notifications" className="space-y-4">

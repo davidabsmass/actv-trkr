@@ -338,7 +338,14 @@
     "contentOpportunities": "Content-Chancen",
     "firstDayOfMonth": "Erster Tag des Monats",
     "lastDayOfMonth": "Letzter Tag des Monats",
-    "thisDayEachMonth": "Dieser Tag ({{day}}) jeden Monat"
+    "thisDayEachMonth": "Dieser Tag ({{day}}) jeden Monat",
+    "reportTemplate": "Berichtsvorlage",
+    "customizeDesc": "Passen Sie an, welche Abschnitte und Metriken in Ihren PDF-Berichten erscheinen. Ziehen zum Neuordnen.",
+    "resetDefaults": "Zurücksetzen",
+    "saveTemplate": "Vorlage speichern",
+    "sectionsEnabled": "{{enabled}} von {{total}} Abschnitten aktiviert",
+    "changesApply": "Änderungen gelten für neue Berichte. Bereits erstellte Berichte sind nicht betroffen.",
+    "templateSaved": "Vorlage gespeichert"
   },
   "forms": {
     "title": "Formulare & Leads",

@@ -338,7 +338,14 @@
     "contentOpportunities": "Oportunidades de contenido",
     "firstDayOfMonth": "Primer día del mes",
     "lastDayOfMonth": "Último día del mes",
-    "thisDayEachMonth": "Este día ({{day}}) cada mes"
+    "thisDayEachMonth": "Este día ({{day}}) cada mes",
+    "reportTemplate": "Plantilla de informe",
+    "customizeDesc": "Personalice qué secciones y métricas aparecen en sus informes PDF. Arrastre para reordenar.",
+    "resetDefaults": "Restablecer",
+    "saveTemplate": "Guardar plantilla",
+    "sectionsEnabled": "{{enabled}} de {{total}} secciones habilitadas",
+    "changesApply": "Los cambios se aplican a los nuevos informes que genere. Los informes anteriores no se ven afectados.",
+    "templateSaved": "Plantilla guardada"
   },
   "forms": {
     "title": "Formularios y leads",

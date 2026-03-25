@@ -338,7 +338,14 @@
     "contentOpportunities": "内容机会",
     "firstDayOfMonth": "每月第一天",
     "lastDayOfMonth": "每月最后一天",
-    "thisDayEachMonth": "每月这天 ({{day}})"
+    "thisDayEachMonth": "每月这天 ({{day}})",
+    "reportTemplate": "报告模板",
+    "customizeDesc": "自定义PDF报告中显示的部分和指标。拖拽以重新排序。",
+    "resetDefaults": "重置默认",
+    "saveTemplate": "保存模板",
+    "sectionsEnabled": "已启用 {{enabled}}/{{total}} 个部分",
+    "changesApply": "更改适用于您生成的新报告。之前生成的报告不受影响。",
+    "templateSaved": "模板已保存"
   },
   "forms": {
     "title": "表单和线索",

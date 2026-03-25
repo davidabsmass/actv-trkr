@@ -338,7 +338,14 @@
     "contentOpportunities": "コンテンツの機会",
     "firstDayOfMonth": "月初日",
     "lastDayOfMonth": "月末日",
-    "thisDayEachMonth": "毎月この日 ({{day}})"
+    "thisDayEachMonth": "毎月この日 ({{day}})",
+    "reportTemplate": "レポートテンプレート",
+    "customizeDesc": "PDFレポートに表示するセクションと指標をカスタマイズします。ドラッグで並べ替え。",
+    "resetDefaults": "デフォルトに戻す",
+    "saveTemplate": "テンプレートを保存",
+    "sectionsEnabled": "{{total}}セクション中{{enabled}}セクション有効",
+    "changesApply": "変更は新しいレポートに適用されます。以前のレポートには影響しません。",
+    "templateSaved": "テンプレートを保存しました"
   },
   "forms": {
     "title": "フォームとリード",

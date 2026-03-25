@@ -338,7 +338,14 @@
     "contentOpportunities": "فرص المحتوى",
     "firstDayOfMonth": "أول يوم في الشهر",
     "lastDayOfMonth": "آخر يوم في الشهر",
-    "thisDayEachMonth": "هذا اليوم ({{day}}) كل شهر"
+    "thisDayEachMonth": "هذا اليوم ({{day}}) كل شهر",
+    "reportTemplate": "قالب التقرير",
+    "customizeDesc": "خصص الأقسام والمقاييس التي تظهر في تقارير PDF الخاصة بك. اسحب لإعادة الترتيب.",
+    "resetDefaults": "إعادة تعيين",
+    "saveTemplate": "حفظ القالب",
+    "sectionsEnabled": "{{enabled}} من {{total}} أقسام مفعلة",
+    "changesApply": "التغييرات تنطبق على التقارير الجديدة التي تنشئها. التقارير السابقة لا تتأثر.",
+    "templateSaved": "تم حفظ القالب"
   },
   "forms": {
     "title": "النماذج والعملاء المحتملون",

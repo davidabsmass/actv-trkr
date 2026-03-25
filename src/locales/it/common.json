@@ -338,7 +338,14 @@
     "contentOpportunities": "Opportunità di contenuto",
     "firstDayOfMonth": "Primo giorno del mese",
     "lastDayOfMonth": "Ultimo giorno del mese",
-    "thisDayEachMonth": "Questo giorno ({{day}}) ogni mese"
+    "thisDayEachMonth": "Questo giorno ({{day}}) ogni mese",
+    "reportTemplate": "Modello di report",
+    "customizeDesc": "Personalizza quali sezioni e metriche appaiono nei tuoi report PDF. Trascina per riordinare.",
+    "resetDefaults": "Ripristina",
+    "saveTemplate": "Salva modello",
+    "sectionsEnabled": "{{enabled}} di {{total}} sezioni abilitate",
+    "changesApply": "Le modifiche si applicano ai nuovi report generati. I report precedenti non vengono influenzati.",
+    "templateSaved": "Modello salvato"
   },
   "forms": {
     "title": "Moduli e Lead",

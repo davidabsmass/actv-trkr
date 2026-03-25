@@ -338,7 +338,14 @@
     "contentOpportunities": "Content Opportunities",
     "firstDayOfMonth": "First day of month",
     "lastDayOfMonth": "Last day of month",
-    "thisDayEachMonth": "This day ({{day}}) each month"
+    "thisDayEachMonth": "This day ({{day}}) each month",
+    "reportTemplate": "Report Template",
+    "customizeDesc": "Customize which sections and metrics appear in your PDF reports. Drag to reorder.",
+    "resetDefaults": "Reset Defaults",
+    "saveTemplate": "Save Template",
+    "sectionsEnabled": "{{enabled}} of {{total}} sections enabled",
+    "changesApply": "Changes apply to new reports you generate. Previously generated reports are not affected.",
+    "templateSaved": "Template saved"
   },
   "forms": {
     "title": "Forms & Leads",

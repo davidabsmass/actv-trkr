@@ -118,7 +118,7 @@ export function AiChatbot() {
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center group"
         aria-label="Open AI assistant"
       >
-        <img src={robotAvatar} alt="AI Assistant" className="w-9 h-9 group-hover:scale-110 transition-transform" />
+        <img src={robotAvatar} alt="AI Assistant" className="w-9 h-9 rounded-full object-cover group-hover:scale-110 transition-transform" />
       </button>
 
       {/* Chat panel */}
@@ -126,7 +126,7 @@ export function AiChatbot() {
         <div className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[520px] rounded-2xl border border-border bg-background shadow-2xl flex flex-col animate-slide-up overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-primary/5">
-            <img src={robotAvatar} alt="" className="w-8 h-8" />
+            <img src={robotAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-foreground">{t("chatbot.title")}</h3>
             </div>
@@ -139,7 +139,7 @@ export function AiChatbot() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[280px]">
             {messages.length === 0 && (
               <div className="flex gap-2">
-                <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0" />
+                <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0 rounded-full object-cover" />
                 <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
                   {t("chatbot.greeting")}
                 </div>
@@ -148,7 +148,7 @@ export function AiChatbot() {
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : ""}`}>
                 {msg.role === "assistant" && (
-                  <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0" />
+                  <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0 rounded-full object-cover" />
                 )}
                 <div
                   className={`text-sm rounded-lg px-3 py-2 max-w-[85%] ${
@@ -169,7 +169,7 @@ export function AiChatbot() {
             ))}
             {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
               <div className="flex gap-2">
-                <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0" />
+                <img src={robotAvatar} alt="" className="w-6 h-6 mt-0.5 flex-shrink-0 rounded-full object-cover" />
                 <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2 flex items-center gap-1.5">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   {t("chatbot.thinking")}

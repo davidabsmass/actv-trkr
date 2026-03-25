@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 export default function PluginSection() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const [downloading, setDownloading] = useState(false);
   const { data: activeKey } = useQuery({
@@ -65,7 +66,7 @@ export default function PluginSection() {
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <img src={pluginThumb} alt="ACTV TRKR Plugin" className="h-10 w-10 rounded-lg object-cover" />
-          <h3 className="text-sm font-semibold text-foreground">WordPress Plugin</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("settings.wordpressPlugin")}</h3>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground font-mono">v1.4.1</span>

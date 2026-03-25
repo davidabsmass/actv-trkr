@@ -30,6 +30,7 @@ const NOTIFICATION_OPTIONS: { key: keyof NotificationPrefs; label: string; descr
 ];
 
 export default function NotificationsSection() {
+  const { t } = useTranslation();
   const { settings, isLoading } = useSiteSettings();
   const updateSettings = useUpdateSiteSettings();
 
@@ -68,7 +69,7 @@ export default function NotificationsSection() {
     <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-center gap-2 mb-3">
         <Bell className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t("settings.notifications")}</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
         Choose how you want to be notified about new leads and activity.

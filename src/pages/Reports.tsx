@@ -57,14 +57,14 @@ const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count
   const top = (items || []).slice(0, maxItems);
   const maxCount = top[0]?.count || 1;
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {top.map((item, i) => (
         <div key={i} className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}</span>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-0.5">
-              <span className="text-xs font-medium text-foreground truncate">{item.label}</span>
-              <span className="text-xs text-muted-foreground ml-2">{item.count}</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-foreground truncate pr-2">{item.label}</span>
+              <span className="text-xs text-muted-foreground ml-2 shrink-0">{item.count}</span>
             </div>
             <div className="h-1 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-primary/60 rounded-full" style={{ width: `${(item.count / maxCount) * 100}%` }} />

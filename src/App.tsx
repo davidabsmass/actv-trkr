@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import AppLayout from "@/components/AppLayout";
+import AutoTranslateDom from "@/components/i18n/AutoTranslateDom";
 
 // ── Lazy-loaded pages (route-level code splitting) ──
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -79,6 +80,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AutoTranslateDom />
         <Suspense fallback={<PageSpinner />}>
           <Routes>
             <Route index element={<Index />} />

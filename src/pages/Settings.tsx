@@ -8,6 +8,7 @@ import FormsSection from "@/components/settings/FormsSection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 import GetStartedGuide from "@/components/onboarding/GetStartedGuide";
+import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function SettingsPage() {
@@ -32,6 +33,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
           <TabsTrigger value="general">General</TabsTrigger>
+          {showAdminSections && <TabsTrigger value="white-label">White Label</TabsTrigger>}
           <TabsTrigger value="setup">Website Setup</TabsTrigger>
           <TabsTrigger value="guide">Get Started</TabsTrigger>
         </TabsList>
@@ -45,6 +47,12 @@ export default function SettingsPage() {
             <NotificationsSection />
           </div>
         </TabsContent>
+
+        {showAdminSections && (
+          <TabsContent value="white-label">
+            <WhiteLabelSection />
+          </TabsContent>
+        )}
 
         <TabsContent value="setup">
           <WebsiteSetup />

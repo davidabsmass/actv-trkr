@@ -2788,6 +2788,53 @@ export type Database = {
           },
         ]
       }
+      white_label_settings: {
+        Row: {
+          accent_color: string | null
+          client_name: string | null
+          created_at: string
+          hide_actv_branding: boolean | null
+          id: string
+          logo_url: string | null
+          org_id: string
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          client_name?: string | null
+          created_at?: string
+          hide_actv_branding?: boolean | null
+          id?: string
+          logo_url?: string | null
+          org_id: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          client_name?: string | null
+          created_at?: string
+          hide_actv_branding?: boolean | null
+          id?: string
+          logo_url?: string | null
+          org_id?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "white_label_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

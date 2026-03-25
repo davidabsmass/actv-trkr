@@ -40,6 +40,15 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
+      // Fetch site domains for self-referral filtering
+      const { data: sitesData } = await supabase
+        .from("sites")
+        .select("domain")
+        .eq("org_id", orgId);
+      const ownDomains = new Set(
+        (sitesData || []).map((s: any) => (s.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase())
+      );
+
       // Exact counts (head-only, no row limit issue)
       const [pvRes, sessRes, leadRes, pvCountry] = await Promise.all([
         supabase.from("pageviews").select("*", { count: "exact", head: true })
@@ -112,26 +121,29 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       });
 
       // Build session_id → source lookup for lead attribution
+      // Helper: reclassify self-referrals as "direct"
+      const resolveSource = (raw: string) => ownDomains.has(raw.toLowerCase()) ? "direct" : raw;
+
       const sessionSourceLookup: Record<string, string> = {};
       sessions.forEach((s: any) => {
         if (s.session_id) {
-          sessionSourceLookup[s.session_id] = s.utm_source || s.landing_referrer_domain || "direct";
+          sessionSourceLookup[s.session_id] = resolveSource(s.utm_source || s.landing_referrer_domain || "direct");
         }
       });
 
       // Source breakdown
       const sourceMap: Record<string, { sessions: number; leads: number }> = {};
       sessions.forEach((s: any) => {
-        const src = s.utm_source || s.landing_referrer_domain || "direct";
+        const src = resolveSource(s.utm_source || s.landing_referrer_domain || "direct");
         if (!sourceMap[src]) sourceMap[src] = { sessions: 0, leads: 0 };
         sourceMap[src].sessions++;
       });
       leads.forEach((l: any) => {
-        const src = (l.session_id && sessionSourceLookup[l.session_id])
+        const raw = (l.session_id && sessionSourceLookup[l.session_id])
           ? sessionSourceLookup[l.session_id]
-          : (l.source || l.utm_source || l.referrer_domain || "direct");
-        if (!sourceMap[src]) sourceMap[src] = { sessions: 0, leads: 0 };
-        sourceMap[src].leads++;
+          : resolveSource(l.source || l.utm_source || l.referrer_domain || "direct");
+        if (!sourceMap[raw]) sourceMap[raw] = { sessions: 0, leads: 0 };
+        sourceMap[raw].leads++;
       });
 
       // Campaign breakdown

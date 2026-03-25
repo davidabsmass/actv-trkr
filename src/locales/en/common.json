@@ -174,7 +174,8 @@
     "title": "Performance",
     "deeperAnalytics": "Deeper analytics",
     "analytics": "Analytics",
-    "reports": "Reports"
+    "reports": "Reports",
+    "subtitle": "Deeper analytics"
   },
   "reports": {
     "title": "Reports",
@@ -671,5 +672,41 @@
       "explanation": "{{count}} issues detected on your site.",
       "action": "Check the Monitoring page for details."
     }
+  },
+  "content": {
+    "topPages": "Top Pages",
+    "opportunities": "Opportunities",
+    "highTrafficLowCvr": "High traffic / Low CVR",
+    "noOpportunities": "No significant opportunities detected.",
+    "page": "Page",
+    "sessions": "Sessions",
+    "leads": "Leads",
+    "cvr": "CVR",
+    "avgTime": "Avg Time"
+  },
+  "funnel": {
+    "title": "Conversion Funnel",
+    "landingPageViews": "Landing Page Views",
+    "formPageViews": "Form Page Views",
+    "formSubmissions": "Form Submissions"
+  },
+  "visitorMap": {
+    "title": "Visitor Locations",
+    "low": "Low",
+    "high": "High",
+    "noData": "No geographic data yet. Country data will appear automatically as new pageviews arrive with location info.",
+    "showAll": "Show all {{count}} countries",
+    "country": "Country",
+    "sessions": "Sessions",
+    "share": "Share"
+  },
+  "clickDrill": {
+    "eventLog": "Event Log",
+    "eventsFrom": "Individual click events from {{start}} to {{end}}",
+    "noEvents": "No events found.",
+    "timestamp": "Timestamp",
+    "target": "Target",
+    "pagePath": "Page",
+    "session": "Session"
   }
 }

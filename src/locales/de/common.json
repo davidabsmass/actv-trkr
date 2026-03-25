@@ -73,8 +73,9 @@
   "performance": {
     "title": "Leistung",
     "deeperAnalytics": "Tiefere Analysen",
-    "analytics": "Analysen",
-    "reports": "Berichte"
+    "analytics": "Analytik",
+    "reports": "Berichte",
+    "subtitle": "Tiefere Analytik"
   },
   "reports": {
     "title": "Berichte",
@@ -580,5 +581,41 @@
       "explanation": "{{count}} Probleme auf Ihrer Website erkannt.",
       "action": "Prüfen Sie die Monitoring-Seite."
     }
+  },
+  "content": {
+    "topPages": "Top-Seiten",
+    "opportunities": "Chancen",
+    "highTrafficLowCvr": "Hoher Traffic / Niedrige CVR",
+    "noOpportunities": "Keine signifikanten Chancen erkannt.",
+    "page": "Seite",
+    "sessions": "Sitzungen",
+    "leads": "Leads",
+    "cvr": "CVR",
+    "avgTime": "Ø Zeit"
+  },
+  "funnel": {
+    "title": "Konversionstrichter",
+    "landingPageViews": "Landingpage-Aufrufe",
+    "formPageViews": "Formularseiten-Aufrufe",
+    "formSubmissions": "Formular-Einreichungen"
+  },
+  "visitorMap": {
+    "title": "Besucherstandorte",
+    "low": "Niedrig",
+    "high": "Hoch",
+    "noData": "Noch keine geografischen Daten. Erscheinen automatisch mit neuen Seitenaufrufen.",
+    "showAll": "Alle {{count}} Länder anzeigen",
+    "country": "Land",
+    "sessions": "Sitzungen",
+    "share": "Anteil"
+  },
+  "clickDrill": {
+    "eventLog": "Ereignisprotokoll",
+    "eventsFrom": "Einzelne Klickereignisse von {{start}} bis {{end}}",
+    "noEvents": "Keine Ereignisse gefunden.",
+    "timestamp": "Zeitstempel",
+    "target": "Ziel",
+    "pagePath": "Seite",
+    "session": "Sitzung"
   }
 }

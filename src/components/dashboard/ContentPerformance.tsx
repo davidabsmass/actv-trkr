@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowUpRight, Clock, ChevronUp, ChevronDown } from "lucide-react";
 
 interface PageData {
@@ -39,19 +40,10 @@ function sortRows<T extends PageData>(rows: T[], key: SortKey, dir: SortDir): T[
 }
 
 function SortableHeader({
-  label,
-  icon,
-  sortKey,
-  activeKey,
-  activeDir,
-  onSort,
+  label, icon, sortKey, activeKey, activeDir, onSort,
 }: {
-  label: string;
-  icon?: React.ReactNode;
-  sortKey: SortKey;
-  activeKey: SortKey;
-  activeDir: SortDir;
-  onSort: (key: SortKey) => void;
+  label: string; icon?: React.ReactNode; sortKey: SortKey;
+  activeKey: SortKey; activeDir: SortDir; onSort: (key: SortKey) => void;
 }) {
   const isActive = activeKey === sortKey;
   return (
@@ -72,23 +64,14 @@ function SortableHeader({
   );
 }
 
-function SortableTable<T extends PageData>({
-  rows,
-  defaultSort = "sessions",
-}: {
-  rows: T[];
-  defaultSort?: SortKey;
-}) {
+function SortableTable<T extends PageData>({ rows, defaultSort = "sessions" }: { rows: T[]; defaultSort?: SortKey }) {
+  const { t } = useTranslation();
   const [sortKey, setSortKey] = useState<SortKey>(defaultSort);
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const handleSort = (key: SortKey) => {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
-    } else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
+    if (key === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else { setSortKey(key); setSortDir("desc"); }
   };
 
   const sorted = sortRows(rows, sortKey, sortDir);
@@ -98,31 +81,21 @@ function SortableTable<T extends PageData>({
       <table className="w-full text-xs">
         <thead className="sticky top-0 bg-card">
           <tr className="border-b border-border">
-            <th className="text-left py-2 px-2 text-muted-foreground font-medium tracking-wider">Page</th>
-            <SortableHeader label="Sessions" sortKey="sessions" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
-            <SortableHeader label="Leads" sortKey="leads" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
-            <SortableHeader label="CVR" sortKey="cvr" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
-            <SortableHeader label="Avg Time" icon={<Clock className="h-3 w-3" />} sortKey="avgActiveSeconds" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
+            <th className="text-left py-2 px-2 text-muted-foreground font-medium tracking-wider">{t("content.page")}</th>
+            <SortableHeader label={t("content.sessions")} sortKey="sessions" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
+            <SortableHeader label={t("content.leads")} sortKey="leads" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
+            <SortableHeader label={t("content.cvr")} sortKey="cvr" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
+            <SortableHeader label={t("content.avgTime")} icon={<Clock className="h-3 w-3" />} sortKey="avgActiveSeconds" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} />
           </tr>
         </thead>
         <tbody>
           {sorted.map((p, i) => (
             <tr key={i} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
-              <td className="py-2 px-2 font-medium text-foreground truncate max-w-[200px]" title={p.path}>
-                {p.path}
-              </td>
-              <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">
-                {p.sessions.toLocaleString()}
-              </td>
-              <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">
-                {p.leads.toLocaleString()}
-              </td>
-              <td className="py-2 px-2 text-right font-mono-data text-foreground">
-                {(p.cvr * 100).toFixed(2)}%
-              </td>
-              <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">
-                {formatTime(p.avgActiveSeconds)}
-              </td>
+              <td className="py-2 px-2 font-medium text-foreground truncate max-w-[200px]" title={p.path}>{p.path}</td>
+              <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">{p.sessions.toLocaleString()}</td>
+              <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">{p.leads.toLocaleString()}</td>
+              <td className="py-2 px-2 text-right font-mono-data text-foreground">{(p.cvr * 100).toFixed(2)}%</td>
+              <td className="py-2 px-2 text-right font-mono-data text-muted-foreground">{formatTime(p.avgActiveSeconds)}</td>
             </tr>
           ))}
         </tbody>
@@ -132,24 +105,23 @@ function SortableTable<T extends PageData>({
 }
 
 export function ContentPerformance({ pages, opportunities }: ContentProps) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-      {/* Top Pages */}
       <div className="glass-card p-5 animate-slide-up">
-        <h3 className="text-sm font-semibold text-foreground mb-4">Top Pages</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-4">{t("content.topPages")}</h3>
         <SortableTable rows={pages} defaultSort="sessions" />
       </div>
 
-      {/* Opportunity List */}
       <div className="glass-card p-5 animate-slide-up">
         <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-sm font-semibold text-foreground">Opportunities</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("content.opportunities")}</h3>
           <span className="text-xs uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full">
-            High traffic / Low CVR
+            {t("content.highTrafficLowCvr")}
           </span>
         </div>
         {opportunities.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No significant opportunities detected.</p>
+          <p className="text-xs text-muted-foreground">{t("content.noOpportunities")}</p>
         ) : (
           <SortableTable rows={opportunities} defaultSort="sessions" />
         )}

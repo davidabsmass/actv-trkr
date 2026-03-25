@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import { format, subDays, startOfDay } from "date-fns";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
 import { useSearchParams } from "react-router-dom";
@@ -16,9 +17,11 @@ import { useOrg } from "@/hooks/use-org";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { usePlanTier } from "@/hooks/use-plan-tier";
 import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
-import Reports from "./Reports";
+
+const Reports = lazy(() => import("./Reports"));
 
 const Performance = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "analytics";
   const [days, setDays] = useState<number | null>(30);
@@ -36,7 +39,6 @@ const Performance = () => {
     : format(subDays(startOfDay(new Date()), days ?? 30), "yyyy-MM-dd");
 
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
-  // Use the same overview hook as Dashboard for consistent top-level KPIs
   const { data: overviewData } = useDashboardOverview(orgId, startDate, endDate);
 
   const isLoading = !realtimeData;
@@ -45,16 +47,15 @@ const Performance = () => {
     if (isLoading || !realtimeData) {
       return {
         kpis: {
-          sessions: { value: 0, delta: 0, label: "Sessions" },
-          leads: { value: 0, delta: 0, label: "Leads" },
-          pageviews: { value: 0, delta: 0, label: "Pageviews" },
-          cvr: { value: 0, delta: 0, label: "Conversion Rate" },
+          sessions: { value: 0, delta: 0, label: t("dashboard.sessions") },
+          leads: { value: 0, delta: 0, label: t("dashboard.leads") },
+          pageviews: { value: 0, delta: 0, label: t("dashboard.pageviews") },
+          cvr: { value: 0, delta: 0, label: t("dashboard.conversionRate") },
         },
         dailyData: [], sources: [], campaigns: [], pages: [], opportunities: [],
       };
     }
 
-    // Use overview counts for top-level KPIs (same source as Dashboard)
     const totalSessions = overviewData?.totalSessions ?? realtimeData.totalSessions;
     const totalLeads = overviewData?.totalLeads ?? realtimeData.totalLeads;
     const totalPageviews = overviewData?.totalPageviews ?? realtimeData.totalPageviews;
@@ -77,16 +78,15 @@ const Performance = () => {
 
     return {
       kpis: {
-        sessions: { value: totalSessions, delta: 0, label: "Sessions" },
-        leads: { value: totalLeads, delta: 0, label: "Leads" },
-        pageviews: { value: totalPageviews, delta: 0, label: "Pageviews" },
-        cvr: { value: cvr, delta: 0, label: "Conversion Rate" },
+        sessions: { value: totalSessions, delta: 0, label: t("dashboard.sessions") },
+        leads: { value: totalLeads, delta: 0, label: t("dashboard.leads") },
+        pageviews: { value: totalPageviews, delta: 0, label: t("dashboard.pageviews") },
+        cvr: { value: cvr, delta: 0, label: t("dashboard.conversionRate") },
       },
       dailyData, sources, campaigns, pages, opportunities,
     };
-  }, [isLoading, realtimeData, overviewData]);
+  }, [isLoading, realtimeData, overviewData, t]);
 
-  // Focus-aware section ordering
   const renderSections = () => {
     const sections = {
       attributionDetail: (
@@ -118,8 +118,8 @@ const Performance = () => {
     <div>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Performance</h1>
-          <p className="text-sm text-muted-foreground">{orgName} · Deeper analytics</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("performance.title")}</h1>
+          <p className="text-sm text-muted-foreground">{orgName} · {t("performance.subtitle")}</p>
         </div>
         <DateRangeSelector
           selectedDays={days}
@@ -131,8 +131,8 @@ const Performance = () => {
 
       <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsTrigger value="analytics">{t("performance.analytics")}</TabsTrigger>
+          <TabsTrigger value="reports">{t("performance.reports")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analytics">
@@ -159,7 +159,9 @@ const Performance = () => {
         </TabsContent>
 
         <TabsContent value="reports">
-          <Reports />
+          <Suspense fallback={<div className="flex items-center justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+            <Reports />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

@@ -74,7 +74,8 @@
     "title": "性能",
     "deeperAnalytics": "深度分析",
     "analytics": "分析",
-    "reports": "报告"
+    "reports": "报告",
+    "subtitle": "深度分析"
   },
   "reports": {
     "title": "报告",
@@ -580,5 +581,41 @@
       "explanation": "检测到{{count}}个问题。",
       "action": "查看监控页面了解详情。"
     }
+  },
+  "content": {
+    "topPages": "热门页面",
+    "opportunities": "优化机会",
+    "highTrafficLowCvr": "高流量 / 低转化率",
+    "noOpportunities": "未检测到显著的优化机会。",
+    "page": "页面",
+    "sessions": "会话",
+    "leads": "线索",
+    "cvr": "转化率",
+    "avgTime": "平均时间"
+  },
+  "funnel": {
+    "title": "转化漏斗",
+    "landingPageViews": "着陆页浏览量",
+    "formPageViews": "表单页浏览量",
+    "formSubmissions": "表单提交"
+  },
+  "visitorMap": {
+    "title": "访客位置",
+    "low": "低",
+    "high": "高",
+    "noData": "暂无地理数据。新访问到达时会自动显示。",
+    "showAll": "显示所有 {{count}} 个国家",
+    "country": "国家",
+    "sessions": "会话",
+    "share": "占比"
+  },
+  "clickDrill": {
+    "eventLog": "事件日志",
+    "eventsFrom": "从 {{start}} 到 {{end}} 的点击事件",
+    "noEvents": "未找到事件。",
+    "timestamp": "时间戳",
+    "target": "目标",
+    "pagePath": "页面",
+    "session": "会话"
   }
 }

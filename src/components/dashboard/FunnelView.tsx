@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Lock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface FunnelStep {
   label: string;
@@ -14,31 +14,31 @@ interface FunnelViewProps {
 }
 
 export function FunnelView({ totalPageviews, formPageViews, totalLeads, locked }: FunnelViewProps) {
+  const { t } = useTranslation();
+
   const steps: FunnelStep[] = useMemo(
     () => [
-      { label: "Landing Page Views", value: totalPageviews },
-      { label: "Form Page Views", value: formPageViews || Math.round(totalPageviews * 0.35) },
-      { label: "Form Submissions", value: totalLeads },
+      { label: t("funnel.landingPageViews"), value: totalPageviews },
+      { label: t("funnel.formPageViews"), value: formPageViews || Math.round(totalPageviews * 0.35) },
+      { label: t("funnel.formSubmissions"), value: totalLeads },
     ],
-    [totalPageviews, formPageViews, totalLeads]
+    [totalPageviews, formPageViews, totalLeads, t]
   );
 
-  if (locked) {
-    return null;
-  }
+  if (locked) return null;
 
   const maxVal = steps[0]?.value || 1;
 
   return (
     <div className="glass-card p-6">
-      <h3 className="text-sm font-semibold text-foreground mb-5">Conversion Funnel</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-5">{t("funnel.title")}</h3>
       <div className="space-y-3">
         {steps.map((step, i) => {
           const widthPct = Math.max((step.value / maxVal) * 100, 8);
           const dropOff = i > 0 ? ((steps[i - 1].value - step.value) / (steps[i - 1].value || 1)) * 100 : 0;
 
           return (
-            <div key={step.label}>
+            <div key={i}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-foreground">{step.label}</span>
                 <div className="flex items-center gap-2">

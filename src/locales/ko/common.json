@@ -74,7 +74,8 @@
     "title": "성과",
     "deeperAnalytics": "심층 분석",
     "analytics": "분석",
-    "reports": "보고서"
+    "reports": "보고서",
+    "subtitle": "심층 분석"
   },
   "reports": {
     "title": "보고서",
@@ -580,5 +581,41 @@
       "explanation": "{{count}}개의 문제가 감지되었습니다.",
       "action": "모니터링 페이지에서 자세한 내용을 확인하세요."
     }
+  },
+  "content": {
+    "topPages": "상위 페이지",
+    "opportunities": "기회",
+    "highTrafficLowCvr": "높은 트래픽 / 낮은 CVR",
+    "noOpportunities": "중요한 기회가 감지되지 않았습니다.",
+    "page": "페이지",
+    "sessions": "세션",
+    "leads": "리드",
+    "cvr": "CVR",
+    "avgTime": "평균 시간"
+  },
+  "funnel": {
+    "title": "전환 퍼널",
+    "landingPageViews": "랜딩 페이지 조회수",
+    "formPageViews": "폼 페이지 조회수",
+    "formSubmissions": "폼 제출수"
+  },
+  "visitorMap": {
+    "title": "방문자 위치",
+    "low": "낮음",
+    "high": "높음",
+    "noData": "아직 지리 데이터가 없습니다. 새 방문이 도착하면 자동으로 표시됩니다.",
+    "showAll": "{{count}}개국 모두 보기",
+    "country": "국가",
+    "sessions": "세션",
+    "share": "점유율"
+  },
+  "clickDrill": {
+    "eventLog": "이벤트 로그",
+    "eventsFrom": "{{start}}부터 {{end}}까지의 클릭 이벤트",
+    "noEvents": "이벤트가 없습니다.",
+    "timestamp": "타임스탬프",
+    "target": "대상",
+    "pagePath": "페이지",
+    "session": "세션"
   }
 }

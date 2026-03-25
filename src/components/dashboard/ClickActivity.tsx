@@ -31,7 +31,6 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
     queryKey: ["click_activity", orgId, startDate, endDate],
     queryFn: async () => {
       if (!orgId) return [];
-
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
@@ -69,7 +68,6 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
     enabled: !!orgId,
   });
 
-  // Drill-down query: individual events for selected type
   const { data: drillData, isLoading: drillLoading } = useQuery({
     queryKey: ["click_drill", orgId, startDate, endDate, selectedType],
     queryFn: async () => {
@@ -104,9 +102,7 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
     return (
       <div className="glass-card p-6">
         <h3 className="text-sm font-semibold text-foreground mb-3">{t("dashboard.clickActivity")}</h3>
-        <p className="text-xs text-muted-foreground text-center py-6">
-          {t("dashboard.clickDataPending")}
-        </p>
+        <p className="text-xs text-muted-foreground text-center py-6">{t("dashboard.clickDataPending")}</p>
       </div>
     );
   }
@@ -149,10 +145,7 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
                       <span className="text-xs text-muted-foreground truncate max-w-[70%]">{tgt.text}</span>
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-primary/50"
-                            style={{ width: `${(tgt.count / metric.count) * 100}%` }}
-                          />
+                          <div className="h-full rounded-full bg-primary/50" style={{ width: `${(tgt.count / metric.count) * 100}%` }} />
                         </div>
                         <span className="text-xs font-mono-data text-muted-foreground w-6 text-right">{tgt.count}</span>
                       </div>
@@ -165,16 +158,15 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
         </div>
       </div>
 
-      {/* Drill-down dialog */}
       <Dialog open={!!selectedType} onOpenChange={(open) => !open && setSelectedType(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedType && typeConfig[selectedType]?.icon}
-              {selectedLabel} — Event Log
+              {selectedLabel} — {t("clickDrill.eventLog")}
             </DialogTitle>
             <DialogDescription>
-              Individual click events from {startDate} to {endDate}
+              {t("clickDrill.eventsFrom", { start: startDate, end: endDate })}
             </DialogDescription>
           </DialogHeader>
 
@@ -183,15 +175,15 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
               {[1, 2, 3].map(i => <div key={i} className="h-8 bg-muted rounded animate-pulse" />)}
             </div>
           ) : !drillData || drillData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">No events found.</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">{t("clickDrill.noEvents")}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[140px]">Timestamp</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Page</TableHead>
-                  <TableHead className="w-[100px]">Session</TableHead>
+                  <TableHead className="w-[140px]">{t("clickDrill.timestamp")}</TableHead>
+                  <TableHead>{t("clickDrill.target")}</TableHead>
+                  <TableHead>{t("clickDrill.pagePath")}</TableHead>
+                  <TableHead className="w-[100px]">{t("clickDrill.session")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -200,12 +192,8 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
                     <TableCell className="text-xs font-mono-data whitespace-nowrap">
                       {format(new Date(evt.occurred_at), "MMM d, h:mm a")}
                     </TableCell>
-                    <TableCell className="text-xs truncate max-w-[180px]" title={evt.target_text || ""}>
-                      {evt.target_text || "—"}
-                    </TableCell>
-                    <TableCell className="text-xs truncate max-w-[200px]" title={evt.page_path || evt.page_url || ""}>
-                      {evt.page_path || evt.page_url || "—"}
-                    </TableCell>
+                    <TableCell className="text-xs truncate max-w-[180px]" title={evt.target_text || ""}>{evt.target_text || "—"}</TableCell>
+                    <TableCell className="text-xs truncate max-w-[200px]" title={evt.page_path || evt.page_url || ""}>{evt.page_path || evt.page_url || "—"}</TableCell>
                     <TableCell className="text-xs font-mono-data text-muted-foreground truncate max-w-[100px]" title={evt.session_id || ""}>
                       {evt.session_id ? evt.session_id.slice(0, 8) + "…" : "—"}
                     </TableCell>

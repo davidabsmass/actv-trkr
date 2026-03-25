@@ -5,11 +5,14 @@ import { useOrg } from "@/hooks/use-org";
 import { Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 export function NotificationBell() {
   const { user } = useAuth();
   const { orgId } = useOrg();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const { data: unreadCount } = useQuery({
     queryKey: ["unread_notifications", user?.id, orgId],
@@ -35,15 +38,17 @@ export function NotificationBell() {
   });
 
   return (
-    <button
-      onClick={() => navigate("/notifications")}
-      className="relative p-2 rounded-md hover:bg-muted transition-colors"
-      aria-label="Notifications"
-    >
-      <Bell className="h-4.5 w-4.5 text-muted-foreground" />
-      {(unreadCount || 0) > 0 && (
-        <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-warning border-2 border-background" />
-      )}
-    </button>
+    <IconTooltip label={t("sidebar.notifications", "Notifications")}>
+      <button
+        onClick={() => navigate("/notifications")}
+        className="relative p-2 rounded-md hover:bg-muted transition-colors"
+        aria-label="Notifications"
+      >
+        <Bell className="h-4.5 w-4.5 text-muted-foreground" />
+        {(unreadCount || 0) > 0 && (
+          <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-warning border-2 border-background" />
+        )}
+      </button>
+    </IconTooltip>
   );
 }

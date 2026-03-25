@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Send, Loader2 } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import robotAvatar from "@/assets/robot-avatar.png";

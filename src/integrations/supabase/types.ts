@@ -1608,6 +1608,138 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          order_id: string
+          org_id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          sku: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          order_id: string
+          org_id: string
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          sku?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          order_id?: string
+          org_id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          sku?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_name: string | null
+          external_order_id: string
+          id: string
+          landing_page: string | null
+          ordered_at: string
+          org_id: string
+          payment_method: string | null
+          referrer_domain: string | null
+          session_id: string | null
+          site_id: string
+          status: string
+          total: number
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          external_order_id: string
+          id?: string
+          landing_page?: string | null
+          ordered_at?: string
+          org_id: string
+          payment_method?: string | null
+          referrer_domain?: string | null
+          session_id?: string | null
+          site_id: string
+          status?: string
+          total?: number
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          external_order_id?: string
+          id?: string
+          landing_page?: string | null
+          ordered_at?: string
+          org_id?: string
+          payment_method?: string | null
+          referrer_domain?: string | null
+          session_id?: string | null
+          site_id?: string
+          status?: string
+          total?: number
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_users: {
         Row: {
           created_at: string

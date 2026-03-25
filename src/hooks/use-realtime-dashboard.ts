@@ -40,6 +40,15 @@ export function useRealtimeDashboard(orgId: string | null, startDate: string, en
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
+      // Fetch site domains for self-referral filtering
+      const { data: sitesData } = await supabase
+        .from("sites")
+        .select("domain")
+        .eq("org_id", orgId);
+      const ownDomains = new Set(
+        (sitesData || []).map((s: any) => (s.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase())
+      );
+
       // Exact counts (head-only, no row limit issue)
       const [pvRes, sessRes, leadRes, pvCountry] = await Promise.all([
         supabase.from("pageviews").select("*", { count: "exact", head: true })

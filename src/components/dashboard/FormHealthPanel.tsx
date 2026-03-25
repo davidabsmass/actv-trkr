@@ -76,18 +76,18 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
 
         // Liveness probe failure takes highest priority
         if (probe && !probe.is_rendered) {
-          return { id: form.id, name: form.name, status: "not_rendered", detail: `Not detected on page since ${format(new Date(probe.last_checked_at), "MMM d, HH:mm")}` };
+          return { id: form.id, name: form.name, status: "not_rendered", detail: t("formHealth.notDetected", { date: format(new Date(probe.last_checked_at), "MMM d, HH:mm") }) };
         }
         if (errCount > 0) {
-          return { id: form.id, name: form.name, status: "errors", detail: `${errCount} error${errCount > 1 ? "s" : ""} this week` };
+          return { id: form.id, name: form.name, status: "errors", detail: t("formHealth.errorsThisWeek", { count: errCount }) };
         }
         if (count30 === 0) {
-          return { id: form.id, name: form.name, status: "no_activity", detail: "No submissions in 30 days" };
+          return { id: form.id, name: form.name, status: "no_activity", detail: t("formHealth.noSubmissions30d") };
         }
         if (baseline7 > 0 && count7 < baseline7 * 0.5) {
-          return { id: form.id, name: form.name, status: "low_activity", detail: `${count7} vs ${baseline7} expected this week` };
+          return { id: form.id, name: form.name, status: "low_activity", detail: t("formHealth.vsExpected", { actual: count7, expected: baseline7 }) };
         }
-        return { id: form.id, name: form.name, status: "healthy", detail: `${count7} submissions this week` };
+        return { id: form.id, name: form.name, status: "healthy", detail: t("formHealth.submissionsThisWeek", { count: count7 }) };
       });
     },
     enabled: !!orgId,

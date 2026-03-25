@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Share2, Copy, Check, ExternalLink } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { toast } from "@/hooks/use-toast";

@@ -112,11 +112,11 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
       <Section icon={Target} title={t("reports.executiveSummary")}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           {[
-            { label: "Leads", value: es.leads.current, change: es.leads.change },
-            { label: "Sessions", value: es.sessions.current, change: es.sessions.change },
-            { label: "Pageviews", value: es.pageviews.current, change: es.pageviews.change },
-            { label: "CVR", value: `${es.cvr.current}%`, change: es.cvr.change },
-            { label: "Weighted Leads", value: es.weightedLeads, change: null },
+            { label: t("reports.leads"), value: es.leads.current, change: es.leads.change },
+            { label: t("reports.sessions"), value: es.sessions.current, change: es.sessions.change },
+            { label: t("dashboard.pageviews"), value: es.pageviews.current, change: es.pageviews.change },
+            { label: t("reports.cvr"), value: `${es.cvr.current}%`, change: es.cvr.change },
+            { label: t("reports.weightedLeads"), value: es.weightedLeads, change: null },
           ].map((kpi) => (
             <div key={kpi.label} className="p-3 rounded-md bg-muted/50">
               <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{kpi.label}</p>
@@ -150,10 +150,10 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         <Section icon={Activity} title={t("reports.siteHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {[
-              { label: "Uptime", value: `${sh.uptimePercent}%`, cls: sh.uptimePercent >= 99.5 ? "text-success" : sh.uptimePercent >= 95 ? "text-warning" : "text-destructive" },
-              { label: "Downtime", value: `${sh.totalDowntimeMinutes}m` },
-              { label: "Incidents", value: sh.downtimeIncidents?.length || 0 },
-              { label: "Broken Links", value: sh.brokenLinksCount || 0 },
+              { label: t("reports.uptime"), value: `${sh.uptimePercent}%`, cls: sh.uptimePercent >= 99.5 ? "text-success" : sh.uptimePercent >= 95 ? "text-warning" : "text-destructive" },
+              { label: t("reports.downtime"), value: `${sh.totalDowntimeMinutes}m` },
+              { label: t("reports.incidents"), value: sh.downtimeIncidents?.length || 0 },
+              { label: t("reports.brokenLinks"), value: sh.brokenLinksCount || 0 },
             ].map((m) => (
               <div key={m.label} className="p-3 rounded-md bg-muted/50">
                 <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>
@@ -168,15 +168,15 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         <Section icon={FormInput} title={t("reports.formHealth")}>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Total Submissions</p>
+             <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.totalSubmissions")}</p>
               <p className="text-lg font-bold text-foreground">{fh.totalSubmissions}</p>
             </div>
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Failures</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.failures")}</p>
               <p className={`text-lg font-bold ${fh.totalFailures > 0 ? "text-destructive" : "text-foreground"}`}>{fh.totalFailures}</p>
             </div>
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Failure Rate</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{t("reports.failureRate")}</p>
               <p className={`text-lg font-bold ${fh.overallFailureRate > 5 ? "text-destructive" : "text-foreground"}`}>{fh.overallFailureRate}%</p>
             </div>
           </div>

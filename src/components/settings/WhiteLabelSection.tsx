@@ -169,7 +169,7 @@ export default function WhiteLabelSection() {
                 placeholder="e.g. Acme Health Group"
                 className="mt-1"
               />
-              <p className="text-[11px] text-muted-foreground mt-1">Appears in report headers and exports</p>
+              <p className="text-xs text-muted-foreground mt-1">Appears in report headers and exports</p>
             </div>
 
             <div>
@@ -197,7 +197,7 @@ export default function WhiteLabelSection() {
                       disabled={uploading}
                     />
                   </label>
-                  <p className="text-[11px] text-muted-foreground">PNG, JPG, SVG, or WebP. Max 2MB.</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPG, SVG, or WebP. Max 2MB.</p>
                 </div>
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function WhiteLabelSection() {
               </div>
             </div>
 
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Applied to PDF report headers, charts, and accent elements only.
             </p>
           </CardContent>
@@ -292,7 +292,7 @@ export default function WhiteLabelSection() {
               <EyeOff className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium text-foreground">Remove ACTV TRKR branding from reports</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   When enabled, your client logo and name replace ACTV TRKR branding on PDF report exports.
                 </p>
               </div>

@@ -81,7 +81,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
 
       {/* Top Pages */}
       <div className="mb-4">
-        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Pages (7d)</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Pages (7d)</p>
         {pages.length > 0 ? (
           <div className="space-y-1.5">
             {pages.map((p) => (
@@ -92,12 +92,12 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
                       className="absolute inset-y-0 left-0 bg-primary/15 rounded"
                       style={{ width: `${(p.views / maxViews) * 100}%` }}
                     />
-                    <span className="relative px-2 text-[11px] font-medium text-foreground truncate block leading-5">
+                    <span className="relative px-2 text-xs font-medium text-foreground truncate block leading-5">
                       {p.path}
                     </span>
                   </div>
                 </div>
-                <span className="text-[11px] font-mono-data text-muted-foreground w-10 text-right shrink-0">
+                <span className="text-xs font-mono-data text-muted-foreground w-10 text-right shrink-0">
                   {p.views}
                 </span>
               </div>
@@ -110,7 +110,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
 
       {/* Top Sources */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">Sources (7d)</p>
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">Sources (7d)</p>
         {sources.length > 0 ? (
           <div className="space-y-1.5">
             {sources.map((s) => (
@@ -121,12 +121,12 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopP
                       className="absolute inset-y-0 left-0 bg-accent/30 rounded"
                       style={{ width: `${(s.sessions / maxSessions) * 100}%` }}
                     />
-                    <span className="relative px-2 text-[11px] font-medium text-foreground truncate block leading-5">
+                    <span className="relative px-2 text-xs font-medium text-foreground truncate block leading-5">
                       {s.source}
                     </span>
                   </div>
                 </div>
-                <span className="text-[11px] font-mono-data text-muted-foreground w-10 text-right shrink-0">
+                <span className="text-xs font-mono-data text-muted-foreground w-10 text-right shrink-0">
                   {s.sessions}
                 </span>
               </div>

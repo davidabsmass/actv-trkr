@@ -258,7 +258,7 @@ export default function AdminSetup() {
                       {expandedEvent === evt.id && (
                         <tr key={`${evt.id}-detail`}>
                           <td colSpan={4} className="p-3 bg-muted/20">
-                            <pre className="text-[11px] text-foreground whitespace-pre-wrap overflow-auto max-h-40">{JSON.stringify(evt.event_payload, null, 2)}</pre>
+                            <pre className="text-xs text-foreground whitespace-pre-wrap overflow-auto max-h-40">{JSON.stringify(evt.event_payload, null, 2)}</pre>
                           </td>
                         </tr>
                       )}

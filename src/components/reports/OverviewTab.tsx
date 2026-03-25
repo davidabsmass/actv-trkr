@@ -148,14 +148,14 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       {/* KPI Cards */}
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {currentRange} vs {previousRange}
           </span>
-          <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground/60 border border-border/50 rounded px-1.5 py-0.5">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/60 border border-border/50 rounded px-1.5 py-0.5">
             <Wifi className="h-2.5 w-2.5" /> Live
           </span>
           <button onClick={fetchAiSummaries} disabled={loadingAi || cooldownRemaining > 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50 ml-auto">
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50 ml-auto">
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summaries"}
           </button>
@@ -261,7 +261,7 @@ export default function OverviewTab() {
                   setPeriod(o.key);
                   setCustomRange(null);
                 }}
-                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                   period === o.key
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -286,7 +286,7 @@ export default function OverviewTab() {
             >
               <PopoverTrigger asChild>
                 <button
-                  className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors inline-flex items-center gap-1.5 ${
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1.5 ${
                     period === "custom"
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"

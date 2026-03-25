@@ -133,7 +133,7 @@ export default function WeeklyTab() {
         <button
           onClick={() => void hydrateWeeklySummary(false)}
           disabled={isHydrating}
-          className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
+          className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`h-3 w-3 ${isHydrating ? "animate-spin" : ""}`} />
           Generate Weekly Summary
@@ -154,7 +154,7 @@ export default function WeeklyTab() {
           <button
             onClick={generateAiSummary}
             disabled={loadingAi || cooldownRemaining > 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
           >
             {loadingAi ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             {loadingAi ? "Generating…" : cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : "AI Summary"}
@@ -175,7 +175,7 @@ export default function WeeklyTab() {
             { label: "Top Source", value: topSource, change: null },
           ].map((m) => (
             <div key={m.label} className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>
               <p className="text-lg font-bold text-foreground">{m.value}</p>
               <TrendBadge change={m.change} />
             </div>
@@ -187,13 +187,13 @@ export default function WeeklyTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {summary.risk_alert && (
           <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-            <p className="text-[10px] uppercase tracking-wider text-destructive font-medium mb-1">⚠️ Risk Alert</p>
+            <p className="text-xs uppercase tracking-wider text-destructive font-medium mb-1">⚠️ Risk Alert</p>
             <p className="text-sm text-foreground">{summary.risk_alert}</p>
           </div>
         )}
         {summary.top_opportunity && (
           <div className="rounded-lg border border-success/20 bg-success/5 p-4">
-            <p className="text-[10px] uppercase tracking-wider text-success font-medium mb-1">🟢 Top Opportunity</p>
+            <p className="text-xs uppercase tracking-wider text-success font-medium mb-1">🟢 Top Opportunity</p>
             <p className="text-sm text-foreground">{summary.top_opportunity}</p>
           </div>
         )}

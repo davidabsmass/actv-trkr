@@ -118,7 +118,7 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
           <div key={m.label} className="text-center">
             <m.icon className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
             <p className="text-lg font-bold font-mono-data text-foreground">{m.value}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">{m.label}</p>
           </div>
         ))}
       </div>
@@ -137,7 +137,7 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
               <div className="bg-muted-foreground/30" style={{ width: `${(data.scoreDistribution.low / totalScored) * 100}%` }} />
             )}
           </div>
-          <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+          <div className="flex justify-between mt-1.5 text-xs text-muted-foreground">
             <span>Low ({data.scoreDistribution.low})</span>
             <span>Medium ({data.scoreDistribution.medium})</span>
             <span>High ({data.scoreDistribution.high})</span>

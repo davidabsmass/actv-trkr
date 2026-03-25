@@ -265,7 +265,7 @@ export default function ArchivesContent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={`text-[10px] uppercase ${job.status === "complete" || job.status === "succeeded" ? "text-success border-success/20" : job.status === "failed" ? "text-destructive border-destructive/20" : "text-muted-foreground"}`}>
+                  <Badge variant="outline" className={`text-xs uppercase ${job.status === "complete" || job.status === "succeeded" ? "text-success border-success/20" : job.status === "failed" ? "text-destructive border-destructive/20" : "text-muted-foreground"}`}>
                     {job.status}
                   </Badge>
                   {(job.status === "complete" || job.status === "succeeded") && job.file_path && (

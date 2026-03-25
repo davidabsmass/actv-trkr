@@ -107,7 +107,7 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
         <FileText className="h-4 w-4 text-primary" />
         Form Performance Leaderboard
       </h3>
-      <p className="text-[11px] text-muted-foreground mb-4">Based on tracked submissions</p>
+      <p className="text-xs text-muted-foreground mb-4">Based on tracked submissions</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

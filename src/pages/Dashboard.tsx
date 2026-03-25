@@ -36,7 +36,7 @@ function KPICard({ label, value, sub, trend, icon, accent }: KPICardProps) {
   return (
     <div className="glass-card p-4 animate-slide-up">
       <div className="flex items-start justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
+        <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
         <span className={accent || "text-primary"}>{icon}</span>
       </div>
       <p className="text-xl font-bold font-mono-data text-foreground leading-tight">{value}</p>
@@ -44,13 +44,13 @@ function KPICard({ label, value, sub, trend, icon, accent }: KPICardProps) {
         {trend !== undefined && trend !== 0 && (
           <>
             {trend > 0 ? <ArrowUpRight className="h-3 w-3 kpi-up" /> : <ArrowDownRight className="h-3 w-3 kpi-down" />}
-            <span className={`text-[10px] font-mono-data font-medium ${trend > 0 ? "kpi-up" : "kpi-down"}`}>
+            <span className={`text-xs font-mono-data font-medium ${trend > 0 ? "kpi-up" : "kpi-down"}`}>
               {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
             </span>
           </>
         )}
         {trend === 0 && <Minus className="h-3 w-3 kpi-neutral" />}
-        {sub && <span className="text-[10px] text-muted-foreground">{sub}</span>}
+        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
       </div>
     </div>
   );
@@ -96,12 +96,12 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotStyles[item.severity]}`} />
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-foreground">{item.label}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{item.detail}</p>
+                  <p className="text-xs text-muted-foreground truncate">{item.detail}</p>
                 </div>
               </div>
               <Link
                 to={item.link}
-                className="text-[10px] font-medium text-primary hover:underline whitespace-nowrap ml-2"
+                className="text-xs font-medium text-primary hover:underline whitespace-nowrap ml-2"
               >
                 {item.linkLabel} →
               </Link>
@@ -319,7 +319,7 @@ const Dashboard = () => {
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-            <span className="text-[11px] font-medium text-success">Live</span>
+            <span className="text-xs font-medium text-success">Live</span>
           </div>
         </div>
       </div>
@@ -395,7 +395,7 @@ const Dashboard = () => {
             />
             <div className="glass-card p-4 animate-slide-up">
               <div className="flex items-start justify-between mb-2">
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Needs Attention</span>
+                <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Needs Attention</span>
                 <span className={attentionItems.length === 0 ? "text-success" : attentionItems.some(i => i.severity === "critical") ? "text-destructive" : "text-warning"}>
                   {attentionItems.length === 0 ? (
                     <CheckCircle2 className="h-4 w-4" />
@@ -411,7 +411,7 @@ const Dashboard = () => {
                   {attentionItems.map((item, i) => (
                     <Link key={i} to={item.link} className="flex items-center gap-1.5 group">
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.severity === "critical" ? "bg-destructive" : item.severity === "warning" ? "bg-warning" : "bg-primary"}`} />
-                      <span className="text-[11px] text-foreground group-hover:text-primary truncate">{item.label}</span>
+                      <span className="text-xs text-foreground group-hover:text-primary truncate">{item.label}</span>
                     </Link>
                   ))}
                 </div>

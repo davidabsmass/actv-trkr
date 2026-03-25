@@ -116,7 +116,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
             { label: "Weighted Leads", value: es.weightedLeads, change: null },
           ].map((kpi) => (
             <div key={kpi.label} className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{kpi.label}</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{kpi.label}</p>
               <p className="text-lg font-bold text-foreground">{kpi.value}</p>
               <TrendBadge change={kpi.change} />
             </div>
@@ -153,7 +153,7 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
               { label: "Broken Links", value: sh.brokenLinksCount || 0 },
             ].map((m) => (
               <div key={m.label} className="p-3 rounded-md bg-muted/50">
-                <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>
+                <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">{m.label}</p>
                 <p className={`text-lg font-bold ${(m as any).cls || "text-foreground"}`}>{m.value}</p>
               </div>
             ))}
@@ -165,15 +165,15 @@ function MonthlyPerformanceViewer({ report, onBack }: { report: any; onBack: () 
         <Section icon={FormInput} title="Form Health">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Total Submissions</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Total Submissions</p>
               <p className="text-lg font-bold text-foreground">{fh.totalSubmissions}</p>
             </div>
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Failures</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Failures</p>
               <p className={`text-lg font-bold ${fh.totalFailures > 0 ? "text-destructive" : "text-foreground"}`}>{fh.totalFailures}</p>
             </div>
             <div className="p-3 rounded-md bg-muted/50">
-              <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Failure Rate</p>
+              <p className="text-xs uppercase text-muted-foreground tracking-wider mb-1">Failure Rate</p>
               <p className={`text-lg font-bold ${fh.overallFailureRate > 5 ? "text-destructive" : "text-foreground"}`}>{fh.overallFailureRate}%</p>
             </div>
           </div>
@@ -486,7 +486,7 @@ function ActivityReportsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px] uppercase">{s.frequency}</Badge>
+                  <Badge variant="outline" className="text-xs uppercase">{s.frequency}</Badge>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleSchedule.mutate({ id: s.id, enabled: !s.enabled })}>
                     {s.enabled ? <ToggleRight className="h-4 w-4 text-success" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
                   </Button>
@@ -519,7 +519,7 @@ function ActivityReportsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={`text-[10px] uppercase ${run.status === "succeeded" || run.status === "completed" ? "text-success border-success/20" : run.status === "failed" || run.status === "error" ? "text-destructive border-destructive/20" : "text-muted-foreground"}`}>
+                    <Badge variant="outline" className={`text-xs uppercase ${run.status === "succeeded" || run.status === "completed" ? "text-success border-success/20" : run.status === "failed" || run.status === "error" ? "text-destructive border-destructive/20" : "text-muted-foreground"}`}>
                       {run.status === "succeeded" ? "completed" : run.status}
                     </Badge>
                     {(run.status === "succeeded" || run.status === "completed") && run.file_path && (

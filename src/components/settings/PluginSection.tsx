@@ -67,7 +67,7 @@ export default function PluginSection() {
           <h3 className="text-sm font-semibold text-foreground">WordPress Plugin</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground font-mono">v1.4.1</span>
+          <span className="text-xs text-muted-foreground font-mono">v1.4.1</span>
           <button
             onClick={handleDownload}
             disabled={downloading}
@@ -83,7 +83,7 @@ export default function PluginSection() {
       </p>
 
       <div>
-        <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           API Key Status
         </label>
         <div className="mt-1">

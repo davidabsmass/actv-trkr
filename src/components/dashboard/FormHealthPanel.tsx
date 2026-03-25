@@ -122,7 +122,7 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
                   <p className="text-xs text-muted-foreground">{form.detail}</p>
                 </div>
               </div>
-              <span className={`text-[10px] uppercase font-semibold tracking-wider ${cfg.color}`}>
+              <span className={`text-xs uppercase font-semibold tracking-wider ${cfg.color}`}>
                 {cfg.label}
               </span>
             </Link>

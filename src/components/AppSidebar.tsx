@@ -49,7 +49,7 @@ export function AppSidebar() {
         <div className="mb-1">
           <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto" />
         </div>
-        <span className="px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-4">Beta</span>
+        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-4">Beta</span>
 
         {orgs.length > 1 ? (
           <DropdownMenu>
@@ -80,7 +80,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-white/50 px-4">
+          <SidebarGroupLabel className="text-xs uppercase tracking-wider text-white/50 px-4">
             Dashboard
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -108,7 +108,7 @@ export function AppSidebar() {
         {/* Admin-only section */}
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-white/50 px-4">
+            <SidebarGroupLabel className="text-xs uppercase tracking-wider text-white/50 px-4">
               Admin
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -169,7 +169,7 @@ export function AppSidebar() {
         <div className="px-4 py-1.5 mb-2">
           <p className="text-xs text-white/50 truncate">{user?.email}</p>
           {orgRole && (
-            <p className="text-[10px] text-white/40 uppercase tracking-wider">{orgRole}</p>
+            <p className="text-xs text-white/40 uppercase tracking-wider">{orgRole}</p>
           )}
         </div>
         <SidebarMenu>

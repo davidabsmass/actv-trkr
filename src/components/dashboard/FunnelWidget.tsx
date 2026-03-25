@@ -46,7 +46,7 @@ export function FunnelWidget({ totalSessions, totalPageviews, totalLeads, formSt
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-foreground">{step.label}</span>
                   {dropoff !== null && dropoff > 0 && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       −{dropoff}%
                     </span>
                   )}
@@ -71,7 +71,7 @@ export function FunnelWidget({ totalSessions, totalPageviews, totalLeads, formSt
       {totalSessions > 0 && (
         <div className="mt-4 pt-3 border-t border-border/30">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Overall CVR</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Overall CVR</span>
             <span className="text-sm font-bold font-mono-data text-foreground">
               {totalSessions > 0 ? ((totalLeads / totalSessions) * 100).toFixed(1) : "0.0"}%
             </span>

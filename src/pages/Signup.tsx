@@ -212,7 +212,7 @@ const Signup = () => {
             {/* Step 1: Download Plugin */}
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-1">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">1</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
                 <h3 className="text-sm font-medium text-foreground">Download the Plugin</h3>
               </div>
               <p className="text-xs text-muted-foreground mb-3 ml-7">
@@ -230,7 +230,7 @@ const Signup = () => {
             {/* Step 2: Upload to WordPress */}
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-1">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">2</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
                 <h3 className="text-sm font-medium text-foreground">Upload &amp; Activate in WordPress</h3>
               </div>
               <ol className="text-xs text-muted-foreground ml-7 space-y-1.5 list-decimal list-inside">
@@ -244,7 +244,7 @@ const Signup = () => {
             {/* Step 3: Automatic sync */}
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-1">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">3</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
                 <h3 className="text-sm font-medium text-foreground">You're Connected</h3>
               </div>
               <p className="text-xs text-muted-foreground ml-7">

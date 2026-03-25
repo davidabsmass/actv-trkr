@@ -43,7 +43,7 @@ export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) 
         </span>
       </div>
       {subtext && (
-        <p className="text-[11px] text-muted-foreground mt-0.5">{subtext}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{subtext}</p>
       )}
     </div>
   );

@@ -143,7 +143,7 @@ export default function NotificationsPage() {
         <TabsList>
           <TabsTrigger value="inbox" className="gap-1.5">
             Inbox
-            {unreadCount > 0 && <Badge className="h-4 min-w-[16px] px-1 text-[10px]">{unreadCount}</Badge>}
+            {unreadCount > 0 && <Badge className="h-4 min-w-[16px] px-1 text-xs">{unreadCount}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="alerts">Monitoring Alerts</TabsTrigger>
@@ -176,7 +176,7 @@ export default function NotificationsPage() {
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm ${!n.is_read ? "font-semibold text-foreground" : "text-foreground"}`}>{n.title}</p>
                       {n.body && <p className="text-xs mt-0.5 text-muted-foreground">{n.body}</p>}
-                      <p className="text-[10px] mt-1 text-muted-foreground">{format(new Date(n.created_at), "MMM d, HH:mm")}</p>
+                      <p className="text-xs mt-1 text-muted-foreground">{format(new Date(n.created_at), "MMM d, HH:mm")}</p>
                     </div>
                     {!n.is_read && (
                       <button onClick={() => markRead.mutate(n.id)} className="text-primary hover:text-primary/80">
@@ -240,7 +240,7 @@ export default function NotificationsPage() {
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{site.domain}</h4>
                   <div className="border border-border rounded-lg overflow-hidden">
                     {/* Header */}
-                    <div className="grid grid-cols-[1fr_80px_80px] gap-2 px-4 py-2 bg-muted/50 text-[10px] font-semibold text-muted-foreground uppercase">
+                    <div className="grid grid-cols-[1fr_80px_80px] gap-2 px-4 py-2 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase">
                       <span>Alert Type</span>
                       {CHANNELS.map(ch => (
                         <span key={ch} className="text-center">{ch.replace("_", " ")}</span>
@@ -253,7 +253,7 @@ export default function NotificationsPage() {
                           <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                           <div>
                             <p className="text-sm font-medium text-foreground">{label}</p>
-                            <p className="text-[10px] text-muted-foreground">{desc}</p>
+                            <p className="text-xs text-muted-foreground">{desc}</p>
                           </div>
                         </div>
                         {CHANNELS.map(ch => (

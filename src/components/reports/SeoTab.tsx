@@ -328,7 +328,7 @@ export default function SeoTab() {
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">SEO Scanner</h3>
-            <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-primary border-primary/30">Beta</Badge>
+            <Badge variant="outline" className="text-xs uppercase tracking-wider text-primary border-primary/30">Beta</Badge>
           </div>
         </div>
 

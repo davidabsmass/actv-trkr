@@ -12,7 +12,7 @@ export function SummaryCard({
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">{label}</p>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">{label}</p>
       <div className="flex items-end gap-2 mb-1.5">
         <span className="text-2xl font-bold text-foreground">{value}</span>
         {change !== null && change !== undefined && (
@@ -23,7 +23,7 @@ export function SummaryCard({
         )}
       </div>
       {changeLabel && change !== null && change !== undefined && (
-        <p className="text-[10px] text-muted-foreground/60 mb-1">{changeLabel}</p>
+        <p className="text-xs text-muted-foreground/60 mb-1">{changeLabel}</p>
       )}
       {summary && <p className="text-xs text-muted-foreground leading-relaxed">{summary}</p>}
     </div>
@@ -51,10 +51,10 @@ export function InsightCard({ finding }: { finding: Finding }) {
   return (
     <div className={`rounded-lg border p-4 ${severityColors[finding.severity]}`}>
       <div className="flex items-center gap-2 mb-1.5">
-        <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${categoryColors[finding.category] || "bg-muted text-muted-foreground"}`}>
+        <span className={`text-xs uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${categoryColors[finding.category] || "bg-muted text-muted-foreground"}`}>
           {finding.category}
         </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
           {finding.severity} priority
         </span>
       </div>
@@ -65,7 +65,7 @@ export function InsightCard({ finding }: { finding: Finding }) {
       {metricEntries.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {metricEntries.map(([key, val]) => (
-            <span key={key} className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 rounded px-2 py-0.5">
+            <span key={key} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted/50 rounded px-2 py-0.5">
               <span className="capitalize">{key.replace(/_/g, " ")}:</span>
               <span className="text-foreground font-semibold">{typeof val === "number" ? `${val.toLocaleString()}${key.toLowerCase().includes("change") || key.toLowerCase().includes("pct") ? "%" : ""}` : val}</span>
             </span>
@@ -75,7 +75,7 @@ export function InsightCard({ finding }: { finding: Finding }) {
 
       {finding.recommended_action && (
         <div className="mt-2 pt-2 border-t border-border/50">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Suggested Action</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Suggested Action</p>
           <p className="text-xs text-foreground">{finding.recommended_action}</p>
         </div>
       )}

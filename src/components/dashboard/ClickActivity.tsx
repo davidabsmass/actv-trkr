@@ -116,7 +116,7 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
                           style={{ width: `${(t.count / metric.count) * 100}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-mono-data text-muted-foreground w-6 text-right">{t.count}</span>
+                      <span className="text-xs font-mono-data text-muted-foreground w-6 text-right">{t.count}</span>
                     </div>
                   </div>
                 ))}

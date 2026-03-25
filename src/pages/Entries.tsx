@@ -88,7 +88,7 @@ export default function Entries() {
         </button>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-foreground">{selectedForm.name}</h1>
-          <Badge variant="outline" className={`text-[10px] uppercase ${categoryColors[selectedForm.form_category] || categoryColors.other}`}>
+          <Badge variant="outline" className={`text-xs uppercase ${categoryColors[selectedForm.form_category] || categoryColors.other}`}>
             {selectedForm.form_category}
           </Badge>
           {selectedForm.lead_weight < 1 && (
@@ -169,14 +169,14 @@ export default function Entries() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className={`text-sm font-medium ${form.archived ? "text-muted-foreground" : "text-foreground"}`}>{form.name}</p>
-                      <Badge variant="outline" className={`text-[9px] uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
+                      <Badge variant="outline" className={`text-xs uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
                         {form.form_category}
                       </Badge>
                       {form.archived && (
-                        <Badge variant="outline" className="text-[9px] uppercase text-muted-foreground border-border">Archived</Badge>
+                        <Badge variant="outline" className="text-xs uppercase text-muted-foreground border-border">Archived</Badge>
                       )}
                       {form.lead_weight < 1 && (
-                        <span className="text-[10px] text-muted-foreground font-mono-data">{form.lead_weight}×</span>
+                        <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -744,7 +744,7 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
             <div className="space-y-2">
               {statusData.map((s) => (
                 <div key={s.status} className="flex items-center justify-between">
-                  <Badge variant="outline" className={`text-[10px] uppercase ${statusColors[s.status] || ""}`}>{s.status}</Badge>
+                  <Badge variant="outline" className={`text-xs uppercase ${statusColors[s.status] || ""}`}>{s.status}</Badge>
                   <div className="flex items-center gap-2">
                     <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full bg-chart-2" style={{ width: `${totalLeads > 0 ? (s.count / totalLeads) * 100 : 0}%` }} />

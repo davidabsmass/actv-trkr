@@ -53,7 +53,7 @@ export default function SeoScanHistory({ scans, activeScanId, onSelect, getPathF
                 <span className={`text-sm font-bold ${statusColors[status]}`}>
                   {scan.score}
                 </span>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {new Date(scan.scanned_at).toLocaleDateString()}
                 </span>
               </div>

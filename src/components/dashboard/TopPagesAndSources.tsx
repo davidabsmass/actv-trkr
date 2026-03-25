@@ -14,7 +14,7 @@ interface SourceRow {
   sessions: number;
 }
 
-export function TopPagesAndSources() {
+export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopPagesAndSources(_props, ref) {
   const { orgId } = useOrg();
 
   const { data } = useQuery({

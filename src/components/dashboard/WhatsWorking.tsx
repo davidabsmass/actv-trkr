@@ -9,7 +9,7 @@ interface PositiveFinding {
   explanation: string;
 }
 
-export function WhatsWorking() {
+export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorking(_props, ref) {
   const { orgId } = useOrg();
 
   const { data: findings } = useQuery({

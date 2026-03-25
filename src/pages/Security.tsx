@@ -5,6 +5,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 const severityStyles: Record<string, string> = {
   critical: "bg-destructive/10 text-destructive border-destructive/20",
@@ -20,6 +21,7 @@ const severityIcons: Record<string, typeof AlertTriangle> = {
 
 export default function Security() {
   const { orgName, orgId } = useOrg();
+  const { t } = useTranslation();
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],
@@ -65,10 +67,10 @@ export default function Security() {
     <div>
       <div className="flex items-center gap-3 mb-1">
         <ShieldAlert className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">Security</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("security.title")}</h1>
       </div>
       <p className="text-sm text-muted-foreground mb-6">
-        WordPress security monitoring for {orgName}
+        {t("security.subtitle", { orgName })}
       </p>
 
       {!hasSites ? (

@@ -3,9 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { useOrg } from "@/hooks/use-org";
 import SeoTab from "@/components/reports/SeoTab";
 import { Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export default function Seo() {
   const { orgName, orgId, loading: orgLoading } = useOrg();
+  const { t } = useTranslation();
 
   if (orgLoading) {
     return (
@@ -23,10 +25,10 @@ export default function Seo() {
     <div>
       <div className="flex items-center gap-3 mb-1">
         <Search className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground">SEO Insights</h1>
-        <Badge variant="outline" className="text-xs uppercase tracking-wider px-1.5 py-0 h-4 text-primary border-primary/30">Beta</Badge>
+        <h1 className="text-2xl font-bold text-foreground">{t("seo.title")}</h1>
+        <Badge variant="outline" className="text-xs uppercase tracking-wider px-1.5 py-0 h-4 text-primary border-primary/30">{t("sidebar.beta")}</Badge>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Site health and search optimization for {orgName}</p>
+      <p className="text-sm text-muted-foreground mb-6">{t("seo.subtitle", { orgName })}</p>
       <SeoTab />
     </div>
   );

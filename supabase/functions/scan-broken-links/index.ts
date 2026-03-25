@@ -122,8 +122,30 @@ Deno.serve(async (req) => {
 
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
-  if (!cronSecret || incoming !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const isCron = cronSecret && incoming === cronSecret;
+
+  // Also allow authenticated users via JWT
+  let userOrgId: string | null = null;
+  if (!isCron) {
+    const authHeader = req.headers.get("authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Look up user's org
+    const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: ouRow } = await svc.from("org_users").select("org_id").eq("user_id", user.id).limit(1).maybeSingle();
+    if (!ouRow) {
+      return new Response(JSON.stringify({ error: "No org found" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    userOrgId = ouRow.org_id;
   }
 
   try {
@@ -133,6 +155,7 @@ Deno.serve(async (req) => {
     try { const body = await req.json(); targetSiteId = body.site_id || null; } catch { /* no body */ }
 
     const query = supabase.from("sites").select("id, org_id, domain");
+    if (userOrgId) query.eq("org_id", userOrgId);
     if (targetSiteId) query.eq("id", targetSiteId);
     const { data: sites } = await query;
 

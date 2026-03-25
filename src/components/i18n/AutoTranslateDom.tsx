@@ -1,15 +1,15 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 
 const TEXT_TAGS = "h1,h2,h3,h4,h5,h6,p,span,button,a,label,th,td,option,small,strong,em,li";
-const ATTRS = ["placeholder", "title", "aria-label"] as const;
+const ATTRS = ["placeholder", "title", "aria-label", "alt"] as const;
 const originalNodeText = new WeakMap<Text, string>();
 
 const shouldTranslate = (value: string) => {
   const text = value.trim();
-  if (!text || text.length < 2 || text.length > 220) return false;
+  if (!text || text.length < 1 || text.length > 500) return false;
   if (!/[A-Za-z]/.test(text)) return false;
   if (/^[-–—•\d\s%.,:/()]+$/.test(text)) return false;
   if (/^(https?:\/\/|www\.)/i.test(text)) return false;
@@ -36,25 +36,36 @@ const setCache = (lang: string, cache: Record<string, string>) => {
 export default function AutoTranslateDom() {
   const { i18n } = useTranslation();
   const location = useLocation();
+  const applyingRef = useRef(false);
 
   const targetLanguage = useMemo(() => i18n.language.split("-")[0], [i18n.language]);
 
   useEffect(() => {
-    const root = document.querySelector("main") ?? document.body;
+    const root = document.body;
     if (!root) return;
 
-    const elements = Array.from(root.querySelectorAll<HTMLElement>(TEXT_TAGS));
-    const textNodes: Text[] = [];
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let currentNode = walker.nextNode();
-    while (currentNode) {
-      if (currentNode instanceof Text) {
-        textNodes.push(currentNode);
+    let disposed = false;
+    let mutationObserver: MutationObserver | null = null;
+    let scheduleTimer: number | null = null;
+
+    const getSnapshot = () => {
+      const elements = Array.from(root.querySelectorAll<HTMLElement>(TEXT_TAGS));
+      const textNodes: Text[] = [];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let currentNode = walker.nextNode();
+      while (currentNode) {
+        if (currentNode instanceof Text) {
+          textNodes.push(currentNode);
+        }
+        currentNode = walker.nextNode();
       }
-      currentNode = walker.nextNode();
-    }
+      return { elements, textNodes };
+    };
 
     const restoreEnglish = () => {
+      const { elements, textNodes } = getSnapshot();
+
+      applyingRef.current = true;
       textNodes.forEach((node) => {
         const original = originalNodeText.get(node);
         if (original !== undefined) {
@@ -69,79 +80,141 @@ export default function AutoTranslateDom() {
           if (original !== undefined) el.setAttribute(attr, original);
         });
       });
+      applyingRef.current = false;
     };
 
-    if (targetLanguage === "en") {
-      restoreEnglish();
-      return;
-    }
-
-    const items: Array<
-      | { node: Text; type: "text"; value: string }
-      | { el: HTMLElement; type: "attr"; value: string; attr: (typeof ATTRS)[number] }
-    > = [];
-
-    textNodes.forEach((node) => {
-      const parent = node.parentElement;
-      if (!parent || parent.closest("[data-no-auto-translate='true']")) return;
-      if (["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "CODE", "PRE"].includes(parent.tagName)) return;
-
-      const original = originalNodeText.get(node) ?? (node.textContent || "").trim();
-      if (shouldTranslate(original)) {
-        if (!originalNodeText.has(node)) originalNodeText.set(node, original);
-        items.push({ node, type: "text", value: original });
-      }
-    });
-
-    elements.forEach((el) => {
-      if (el.closest("[data-no-auto-translate='true']")) return;
-
-      ATTRS.forEach((attr) => {
-        const datasetKey = `atOrig${attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase()).replace(/^./, (c) => c.toUpperCase())}`;
-        const original = (el.dataset as Record<string, string | undefined>)[datasetKey] ?? el.getAttribute(attr) ?? "";
-        if (shouldTranslate(original)) {
-          if (!(el.dataset as Record<string, string | undefined>)[datasetKey]) {
-            (el.dataset as Record<string, string | undefined>)[datasetKey] = original;
-          }
-          items.push({ el, type: "attr", value: original, attr });
-        }
+    const fetchTranslations = async (texts: string[]) => {
+      const { data, error } = await supabase.functions.invoke("auto-translate-ui", {
+        body: { target: targetLanguage, texts },
       });
-    });
 
-    if (items.length === 0) return;
-
-    const applyTranslations = (cache: Record<string, string>) => {
-      items.forEach((item) => {
-        const value = item.value;
-        const translated = cache[value] || value;
-        if (item.type === "text") {
-          item.node.textContent = translated;
-        } else {
-          item.el.setAttribute(item.attr, translated);
-        }
-      });
+      if (error) throw error;
+      return (data?.translations || {}) as Record<string, string>;
     };
 
     const run = async () => {
-      const cache = getCache(targetLanguage);
-      const missing = [...new Set(items.map((i) => i.value))].filter((text) => !cache[text]);
+      if (disposed || applyingRef.current) return;
 
-      if (missing.length > 0) {
-        const { data } = await supabase.functions.invoke("auto-translate-ui", {
-          body: { target: targetLanguage, texts: missing.slice(0, 300) },
-        });
-        const translated = (data?.translations || {}) as Record<string, string>;
-        Object.assign(cache, translated);
-        setCache(targetLanguage, cache);
+      if (targetLanguage === "en") {
+        restoreEnglish();
+        return;
       }
 
+      const { elements, textNodes } = getSnapshot();
+
+      const items: Array<
+        | { node: Text; type: "text"; value: string }
+        | { el: HTMLElement; type: "attr"; value: string; attr: (typeof ATTRS)[number] }
+      > = [];
+
+      textNodes.forEach((node) => {
+        const parent = node.parentElement;
+        if (!parent || parent.closest("[data-no-auto-translate='true']")) return;
+        if (["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "CODE", "PRE"].includes(parent.tagName)) return;
+
+        const original = originalNodeText.get(node) ?? (node.textContent || "").trim();
+        if (shouldTranslate(original)) {
+          if (!originalNodeText.has(node)) originalNodeText.set(node, original);
+          items.push({ node, type: "text", value: original });
+        }
+      });
+
+      elements.forEach((el) => {
+        if (el.closest("[data-no-auto-translate='true']")) return;
+
+        ATTRS.forEach((attr) => {
+          const datasetKey = `atOrig${attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase()).replace(/^./, (c) => c.toUpperCase())}`;
+          const original = (el.dataset as Record<string, string | undefined>)[datasetKey] ?? el.getAttribute(attr) ?? "";
+          if (shouldTranslate(original)) {
+            if (!(el.dataset as Record<string, string | undefined>)[datasetKey]) {
+              (el.dataset as Record<string, string | undefined>)[datasetKey] = original;
+            }
+            items.push({ el, type: "attr", value: original, attr });
+          }
+        });
+      });
+
+      if (items.length === 0) return;
+
+      const applyTranslations = (cache: Record<string, string>) => {
+        applyingRef.current = true;
+        items.forEach((item) => {
+          const value = item.value;
+          const translated = cache[value] || value;
+          if (item.type === "text") {
+            item.node.textContent = translated;
+          } else {
+            item.el.setAttribute(item.attr, translated);
+          }
+        });
+        applyingRef.current = false;
+      };
+
+      const cache = getCache(targetLanguage);
       applyTranslations(cache);
+
+      const missing = [...new Set(items.map((i) => i.value))].filter((text) => !cache[text]);
+      if (missing.length === 0) return;
+
+      let updated = false;
+
+      for (let i = 0; i < missing.length; i += 50) {
+        const chunk = missing.slice(i, i + 50);
+        if (disposed) break;
+
+        try {
+          const translated = await fetchTranslations(chunk);
+          Object.assign(cache, translated);
+          updated = true;
+        } catch {
+          for (const text of chunk) {
+            if (disposed) break;
+            try {
+              const translated = await fetchTranslations([text]);
+              Object.assign(cache, translated);
+              updated = true;
+            } catch {
+              // keep original text on hard failure
+            }
+          }
+        }
+
+        applyTranslations(cache);
+      }
+
+      if (updated) {
+        setCache(targetLanguage, cache);
+      }
     };
 
-    run().catch(() => {
-      // silently fail to avoid impacting navigation
+    const scheduleRun = () => {
+      if (scheduleTimer) window.clearTimeout(scheduleTimer);
+      scheduleTimer = window.setTimeout(() => {
+        void run();
+      }, 120);
+    };
+
+    scheduleRun();
+
+    mutationObserver = new MutationObserver(() => {
+      if (applyingRef.current || disposed || targetLanguage === "en") return;
+      scheduleRun();
     });
-  }, [targetLanguage, location.pathname, location.search]);
+
+    mutationObserver.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: [...ATTRS],
+    });
+
+    return () => {
+      disposed = true;
+      if (scheduleTimer) window.clearTimeout(scheduleTimer);
+      mutationObserver?.disconnect();
+    };
+  }, [targetLanguage, location.pathname, location.search, location.hash]);
 
   return null;
 }

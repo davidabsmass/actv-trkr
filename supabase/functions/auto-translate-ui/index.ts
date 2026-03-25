@@ -1,6 +1,7 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const SUPPORTED = new Set(["es", "fr", "pt", "de", "it", "zh", "ja", "ko", "ar"]);
@@ -8,7 +9,7 @@ const SUPPORTED = new Set(["es", "fr", "pt", "de", "it", "zh", "ja", "ko", "ar"]
 const sanitize = (value: unknown): string | null => {
   if (typeof value !== "string") return null;
   const text = value.trim();
-  if (!text || text.length > 220) return null;
+  if (!text || text.length > 500) return null;
   return text;
 };
 
@@ -29,7 +30,14 @@ async function translateText(text: string, target: string) {
 
   if (!response.ok) throw new Error("Translation upstream failed");
   const payload = await response.json();
-  return typeof payload?.[0]?.[0]?.[0] === "string" ? payload[0][0][0] : text;
+  if (!Array.isArray(payload?.[0])) return text;
+
+  const translated = payload[0]
+    .map((part: unknown) => (Array.isArray(part) && typeof part[0] === "string" ? part[0] : ""))
+    .join("")
+    .trim();
+
+  return translated || text;
 }
 
 Deno.serve(async (req) => {

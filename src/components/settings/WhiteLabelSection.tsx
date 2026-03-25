@@ -80,37 +80,29 @@ export default function WhiteLabelSection() {
     onError: (err: any) => toast.error(err.message || "Failed to save"),
   });
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !orgId) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Logo must be under 2MB");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const ext = file.name.split(".").pop();
-      const path = `${orgId}/logo.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("client-logos")
-        .upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("client-logos")
-        .getPublicUrl(path);
-
-      setLogoUrl(urlData.publicUrl);
-      toast.success("Logo uploaded");
-    } catch (err: any) {
-      toast.error(err.message || "Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
+  const revertMutation = useMutation({
+    mutationFn: async () => {
+      if (!orgId) throw new Error("No org");
+      if (settings?.id) {
+        const { error } = await supabase
+          .from("white_label_settings")
+          .delete()
+          .eq("id", settings.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      setClientName("");
+      setPrimaryColor("#6366f1");
+      setSecondaryColor("#8b5cf6");
+      setAccentColor("#f59e0b");
+      setHideBranding(false);
+      setLogoUrl("");
+      queryClient.invalidateQueries({ queryKey: ["white_label", orgId] });
+      toast.success("White-label settings reverted to defaults");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to revert"),
+  });
 
   if (isLoading) {
     return (

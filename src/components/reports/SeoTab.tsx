@@ -319,21 +319,18 @@ export default function SeoTab() {
         </div>
 
         {sites && sites.length > 0 ? (
-          <div className="flex gap-2">
-            <Input
-              value={effectiveUrl}
-              onChange={(e) => setScanUrl(e.target.value)}
-              placeholder={`https://${siteDomain}/page`}
-              className="flex-1 text-sm bg-background"
-            />
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted-foreground flex-1">
+              Scanning: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
+            </p>
             <Button
               size="sm"
               onClick={() => runScan.mutate()}
-              disabled={runScan.isPending || !effectiveUrl.trim()}
+              disabled={runScan.isPending || !homepageUrl}
               className="gap-1.5 shrink-0"
             >
               {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {runScan.isPending ? "Scanning…" : "Scan Now"}
+              {runScan.isPending ? "Scanning…" : "Scan Homepage"}
             </Button>
           </div>
         ) : (

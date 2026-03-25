@@ -170,7 +170,7 @@ export default function SeoTab() {
   const runScan = useMutation({
     mutationFn: async () => {
       if (!sites?.length || !orgId) throw new Error("No sites configured");
-      const urlToScan = effectiveUrl.trim().replace(/\/+$/, "");
+      const urlToScan = homepageUrl.trim().replace(/\/+$/, "");
       if (!validateUrl(urlToScan)) throw new Error(`URL must belong to ${siteDomain}`);
       const site = sites[0];
       const { data, error } = await supabase.functions.invoke("scan-site-seo", {

@@ -364,7 +364,7 @@
     "noFormsYet": "Noch keine Formulare synchronisiert.",
     "noFormsSyncedDesc": "Formulare werden automatisch von Ihrem WordPress-Plugin erkannt, oder Sie können eine manuelle Synchronisierung über die ACTV TRKR-Einstellungsseite in WordPress auslösen.",
     "noArchivedForms": "Keine archivierten Formulare.",
-    "allFormsArchived": "Alle Formulare sind archiviert. Klicken Sie oben auf „Archiviert", um sie anzuzeigen.",
+    "allFormsArchived": "Alle Formulare sind archiviert. Klicken Sie oben auf Archiviert, um sie anzuzeigen.",
     "loadingForms": "Formulare werden geladen…",
     "installPlugin": "Installieren Sie das WordPress-Plugin und synchronisieren Sie Ihre Formulare, um mit dem Lead-Tracking zu beginnen.",
     "leadCategory": "Lead (Contact, Quote, etc.)",

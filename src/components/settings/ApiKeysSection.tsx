@@ -23,7 +23,9 @@ export default function ApiKeysSection() {
         .from("api_keys")
         .select("id, label, created_at, revoked_at")
         .eq("org_id", orgId)
-        .order("created_at", { ascending: false });
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1);
       if (error) throw error;
       return data;
     },

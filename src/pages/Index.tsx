@@ -32,6 +32,7 @@ import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";
 import spaceboy from "@/assets/astroman-2.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";
+import FaqSection from "@/components/FaqSection";
 import helmetImg from "@/assets/helmet.png";
 import presentationBgImg from "@/assets/section-2-bgd.jpg";
 import platformBg from "@/assets/section-3-space.jpg";
@@ -476,6 +477,21 @@ const Index = () => {
               No bloated analytics stack. No scattered reports. Just clear visibility into what your website is doing.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', background: 'linear-gradient(to bottom, #0a0a1a, #111128)' }}>
+        <div className="max-w-3xl mx-auto relative z-10">
+          <div className="text-center mb-10">
+            <h2 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+              Frequently Asked Questions
+            </h2>
+            <p className="text-white/60 max-w-2xl mx-auto">
+              How ACTV TRKR compares to other tools and what you need to know before getting started.
+            </p>
+          </div>
+          <FaqSection variant="landing" />
         </div>
       </section>
 

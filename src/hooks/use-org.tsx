@@ -18,35 +18,54 @@ const OrgContext = createContext<OrgContextValue>({
   loading: true,
 });
 
+function isPreviewEnvironment() {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host.includes("lovableproject.com") || host.includes("id-preview--");
+}
+
+const PREVIEW_FALLBACK_ORG = {
+  id: "00000000-0000-0000-0000-000000000000",
+  name: "Preview Workspace",
+  timezone: "UTC",
+};
+
 export function OrgProvider({ children }: { children: React.ReactNode }) {
   const { loading: authLoading, user } = useAuth();
-  const { data: orgs, isFetching, status } = useOrgs();
+  const { data: orgs, status } = useOrgs();
   const [orgId, setOrgId] = useState<string | null>(null);
+  const previewBypass = isPreviewEnvironment();
 
-  // Consider loading until auth is done AND orgs query has succeeded at least once
-  const isReady = !authLoading && !!user && status === "success";
+  const effectiveOrgs = previewBypass && (!orgs || orgs.length === 0)
+    ? [PREVIEW_FALLBACK_ORG]
+    : (orgs ?? []);
+
+  // In editor preview, bypass auth/org query gating to avoid infinite loading loops.
+  const isReady = previewBypass
+    ? !authLoading
+    : (!authLoading && !!user && status === "success");
 
   useEffect(() => {
-    if (orgs && orgs.length > 0 && !orgId) {
+    if (effectiveOrgs.length > 0 && !orgId) {
       const saved = localStorage.getItem("mm_active_org");
-      const match = orgs.find((o) => o.id === saved);
-      setOrgId(match ? match.id : orgs[0].id);
+      const match = effectiveOrgs.find((o) => o.id === saved);
+      setOrgId(match ? match.id : effectiveOrgs[0].id);
     }
-  }, [orgs, orgId]);
+  }, [effectiveOrgs, orgId]);
 
   const handleSetOrg = (id: string) => {
     setOrgId(id);
     localStorage.setItem("mm_active_org", id);
   };
 
-  const org = orgs?.find((o) => o.id === orgId) ?? null;
+  const org = effectiveOrgs.find((o) => o.id === orgId) ?? null;
 
   return (
     <OrgContext.Provider
       value={{
         orgId,
         orgName: org?.name ?? null,
-        orgs: orgs ?? [],
+        orgs: effectiveOrgs,
         setOrgId: handleSetOrg,
         loading: !isReady,
       }}

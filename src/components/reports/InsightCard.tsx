@@ -66,9 +66,12 @@ export function InsightCard({ finding }: { finding: Finding }) {
 
   // Build interpolation values from metric_values for explanation
   const metricVals = finding.metric_values || {};
+  // Provide absolute change value for "dropped X%" translations
+  const changeVal = typeof metricVals.change === "number" ? metricVals.change : 0;
   const translatedExplanation = t(`findings.${finding.type}.explanation`, {
     defaultValue: finding.explanation,
     ...metricVals,
+    change: Math.abs(changeVal),
     page: finding.page || "",
   });
   const translatedAction = finding.recommended_action

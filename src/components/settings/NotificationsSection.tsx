@@ -3,6 +3,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useSiteSettings, useUpdateSiteSettings } from "@/hooks/use-site-settings";
 import { Bell } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 interface NotificationPrefs {
   weekly_summary: boolean;

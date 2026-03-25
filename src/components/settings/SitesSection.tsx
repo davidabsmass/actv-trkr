@@ -6,8 +6,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Globe, CheckCircle, AlertTriangle, Plus, Trash2, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export default function SitesSection() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const { data: sites, isLoading } = useSites(orgId);
   const queryClient = useQueryClient();
@@ -59,7 +61,7 @@ export default function SitesSection() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Connected Sites</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("settings.connectedSites")}</h3>
         </div>
         {!showForm && (
           <button
@@ -103,12 +105,12 @@ export default function SitesSection() {
       )}
 
       {isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
       ) : !sites || sites.length === 0 ? (
         <div className="flex items-start gap-2 p-3 rounded-md bg-warning/10 border border-warning/20">
           <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-xs font-medium text-foreground mb-1">No sites connected yet</p>
+            <p className="text-xs font-medium text-foreground mb-1">{t("settings.noSitesConnected")}</p>
             <p className="text-xs text-muted-foreground">
               Click "Add Site" above or install the WordPress plugin. The site will appear here once registered.
             </p>

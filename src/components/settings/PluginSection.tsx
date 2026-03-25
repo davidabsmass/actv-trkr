@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Check, Download, Loader2 } from "lucide-react";
 import pluginThumb from "@/assets/actv-trkr-plugin-thumb.jpg";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export default function PluginSection() {
   const { orgId } = useOrg();

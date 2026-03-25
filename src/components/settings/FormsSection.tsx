@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileText, Archive, ArchiveRestore, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 function useFormFields(orgId: string | null) {
   return useQuery({

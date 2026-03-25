@@ -537,7 +537,7 @@ const Dashboard = () => {
             formStarts={formStartsCount || undefined}
           />
           <WhatsWorking />
-          <TopPagesAndSources />
+          <TopPagesAndSources startDate={startDate} endDate={endDate} />
         </div>
       )}
 

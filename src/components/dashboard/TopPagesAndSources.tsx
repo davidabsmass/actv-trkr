@@ -34,15 +34,24 @@ interface SourceRow {
   sessions: number;
 }
 
-export const TopPagesAndSources = React.forwardRef<HTMLDivElement>(function TopPagesAndSources(_props, ref) {
+interface TopPagesAndSourcesProps {
+  startDate?: string;
+  endDate?: string;
+}
+
+export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSourcesProps>(function TopPagesAndSources({ startDate: propStart, endDate: propEnd }, ref) {
   const { orgId } = useOrg();
 
+  const fallbackStart = format(subDays(new Date(), 7), "yyyy-MM-dd");
+  const resolvedStart = propStart || fallbackStart;
+  const resolvedEnd = propEnd || format(new Date(), "yyyy-MM-dd");
+
   const { data } = useQuery({
-    queryKey: ["dashboard_top_pages_sources", orgId],
+    queryKey: ["dashboard_top_pages_sources", orgId, resolvedStart, resolvedEnd],
     queryFn: async () => {
       if (!orgId) return { pages: [], sources: [] };
-      const start = format(subDays(new Date(), 7), "yyyy-MM-dd");
-      const startTs = `${start}T00:00:00Z`;
+      const startTs = `${resolvedStart}T00:00:00Z`;
+      const endTs = `${resolvedEnd}T23:59:59.999Z`;
 
       // Fetch site domains for self-referral filtering
       const { data: sites } = await supabase

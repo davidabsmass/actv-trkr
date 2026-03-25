@@ -299,7 +299,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null): string {
 
 // ── Main export: render HTML → canvas → PDF ──
 
-export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
+export async function buildReportPdf(report: any, _run: any, whiteLabel?: WhiteLabelConfig | null): Promise<jsPDF> {
   // Create off-screen container
   const container = document.createElement("div");
   container.style.position = "fixed";
@@ -308,7 +308,7 @@ export async function buildReportPdf(report: any, _run: any): Promise<jsPDF> {
   container.style.width = "680px";
   container.style.background = "#ffffff";
   container.style.zIndex = "-1";
-  container.innerHTML = buildReportHtml(report);
+  container.innerHTML = buildReportHtml(report, whiteLabel);
   document.body.appendChild(container);
 
   // Wait for rendering

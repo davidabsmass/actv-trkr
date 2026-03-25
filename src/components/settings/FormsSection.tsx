@@ -50,6 +50,7 @@ function useFormFields(orgId: string | null) {
 }
 
 export default function FormsSection() {
+  const { t } = useTranslation();
   const { orgId } = useOrg();
   const { data: forms, isLoading } = useForms(orgId);
   const queryClient = useQueryClient();

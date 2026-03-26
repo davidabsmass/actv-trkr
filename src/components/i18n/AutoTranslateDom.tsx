@@ -37,7 +37,6 @@ export default function AutoTranslateDom() {
   const { i18n } = useTranslation();
   const location = useLocation();
   const applyingRef = useRef(false);
-  const prevLangRef = useRef(i18n.language.split("-")[0]);
 
   const targetLanguage = useMemo(() => i18n.language.split("-")[0], [i18n.language]);
 
@@ -45,12 +44,9 @@ export default function AutoTranslateDom() {
     const root = document.body;
     if (!root) return;
 
-    // Smooth fade when language actually changes
-    const isLangSwitch = prevLangRef.current !== targetLanguage;
-    prevLangRef.current = targetLanguage;
-
-    if (isLangSwitch) {
-      root.style.transition = "opacity 0.15s ease";
+    // For non-English, ensure body starts hidden (covers both lang switch and page load)
+    if (targetLanguage !== "en") {
+      root.style.transition = "opacity 0.25s ease";
       root.style.opacity = "0";
     }
 
@@ -103,7 +99,7 @@ export default function AutoTranslateDom() {
     };
 
     const fadeIn = () => {
-      if (isLangSwitch) {
+      if (targetLanguage !== "en") {
         requestAnimationFrame(() => {
           root.style.opacity = "1";
         });

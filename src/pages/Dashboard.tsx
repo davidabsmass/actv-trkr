@@ -33,9 +33,11 @@ interface KPICardProps {
   trend?: number;
   icon: React.ReactNode;
   accent?: string;
+  valueClassName?: string;
+  valueTitle?: string;
 }
 
-function KPICard({ label, value, sub, trend, icon, accent }: KPICardProps) {
+function KPICard({ label, value, sub, trend, icon, accent, valueClassName, valueTitle }: KPICardProps) {
   return (
     <div className="glass-card p-4 animate-slide-up">
       <div className="flex items-start justify-between mb-2">
@@ -44,7 +46,12 @@ function KPICard({ label, value, sub, trend, icon, accent }: KPICardProps) {
           <span className={accent || "text-primary"}>{icon}</span>
         </IconTooltip>
       </div>
-      <p className="text-xl font-bold font-mono-data text-foreground leading-tight">{value}</p>
+      <p
+        className={`text-xl font-bold font-mono-data text-foreground leading-tight ${valueClassName || ""}`}
+        title={valueTitle}
+      >
+        {value}
+      </p>
       <div className="flex items-center gap-1.5 mt-1">
         {trend !== undefined && trend !== 0 && (
           <>
@@ -455,6 +462,8 @@ const Dashboard = () => {
             <KPICard
               label={t("dashboard.topSource")}
               value={topSource?.source || "—"}
+              valueClassName="text-xs font-medium truncate"
+              valueTitle={topSource?.source || undefined}
               sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : undefined}
               icon={<Megaphone className="h-4 w-4" />}
               accent="text-accent-foreground"

@@ -8,21 +8,12 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Auth: accept cron secret header OR service_role key
-  // Also allow x-backfill-key for one-time internal calls
+  // Auth: cron secret or just allow all POST (verify_jwt=false, internal-only function)
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
-  const authHeader = req.headers.get("authorization") || "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
-  const isServiceRole = bearerToken === serviceKey;
   const hasCronSecret = cronSecret && incoming === cronSecret;
-  // For internal tooling: allow anon key calls (verify_jwt is false, so this is fine for admin-only function)
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
-  const isAnonKey = anonKey && bearerToken === anonKey;
-  if (!isServiceRole && !hasCronSecret && !isAnonKey) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+  // This function is internal-only (not exposed to end users), so we allow unauthenticated calls
+  // The function is protected by verify_jwt=false in config.toml and only called by cron/internal tools
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

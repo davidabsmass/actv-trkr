@@ -924,6 +924,57 @@ export type Database = {
           },
         ]
       }
+      goals_config: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          is_conversion: boolean
+          match_type: string
+          match_value: string
+          name: string
+          org_id: string
+          site_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          is_conversion?: boolean
+          match_type?: string
+          match_value: string
+          name: string
+          org_id: string
+          site_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          is_conversion?: boolean
+          match_type?: string
+          match_value?: string
+          name?: string
+          org_id?: string
+          site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_config_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_config_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incidents: {
         Row: {
           details: Json | null

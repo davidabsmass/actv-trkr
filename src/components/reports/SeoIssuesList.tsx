@@ -96,6 +96,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                         )}
                       </div>
 
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {/* Action buttons */}
                         {!isMarkedFixed && fixType && onFixClick && (
                           <Button
@@ -107,7 +108,6 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                             <Wand2 className="h-2.5 w-2.5" /> {t("reports.fixThis")}
                           </Button>
                         )}
-                        {/* Manual skip/mark-fixed action removed intentionally */}
 
                         <Shield className={`h-3.5 w-3.5 transition-transform ${expanded === issue.id ? "rotate-180" : ""}`} />
                       </div>

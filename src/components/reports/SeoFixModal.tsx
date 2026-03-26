@@ -52,12 +52,18 @@ export default function SeoFixModal({
       })
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (!error && data?.suggested_value) {
+        if (error) {
+          console.error("seo-suggest-fix invoke error:", error);
+        } else if (data?.suggested_value) {
           setValue(data.suggested_value);
           setAiGenerated(true);
+        } else {
+          console.warn("seo-suggest-fix returned no suggested_value:", data);
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (!cancelled) console.error("seo-suggest-fix network error:", err);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });

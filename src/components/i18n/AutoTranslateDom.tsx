@@ -37,7 +37,6 @@ export default function AutoTranslateDom() {
   const { i18n } = useTranslation();
   const location = useLocation();
   const applyingRef = useRef(false);
-  const prevLangRef = useRef(i18n.language.split("-")[0]);
 
   const targetLanguage = useMemo(() => i18n.language.split("-")[0], [i18n.language]);
 

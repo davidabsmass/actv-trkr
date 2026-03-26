@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, Info, CheckCircle2, Shield, Wand2, Check, Clock, RefreshCw } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, CheckCircle2, Shield, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SeoIssue } from "@/lib/seo-scoring";
@@ -30,29 +30,14 @@ const AUTO_FIXABLE: Record<string, string> = {
   "og-tags-missing": "add_og_tags",
 };
 
-export interface FixQueueItem {
-  id: string;
-  issue_id: string;
-  status: string;
-  created_at?: string;
-}
-
 interface Props {
   issues: SeoIssue[];
-  fixQueue?: FixQueueItem[];
-  markedFixed?: Set<string>;
   onFixClick?: (issueId: string, fixType: string) => void;
-  onMarkFixed?: (issueId: string) => void;
-  onVerify?: () => void;
-  onRetryStale?: (fixQueueId: string) => void;
 }
 
-export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new Set(), onFixClick, onMarkFixed, onVerify, onRetryStale }: Props) {
+export default function SeoIssuesList({ issues, onFixClick }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<string | null>(null);
-
-  const getFixStatus = (issueId: string): FixQueueItem | undefined =>
-    fixQueue.find((f) => f.issue_id === issueId);
 
   const groupedIssues = {
     Critical: issues.filter(i => i.impact === "Critical"),
@@ -74,18 +59,11 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
             <div className="space-y-2">
               {group.map((issue) => {
                 const fixType = AUTO_FIXABLE[issue.id];
-                const queueItem = getFixStatus(issue.id);
-                const canRetryFix = queueItem?.status === "failed" || queueItem?.status === "skipped";
-                const isMarkedFixed = markedFixed.has(issue.id);
 
                 return (
                   <div
                     key={issue.id}
-                    className={`rounded-lg border p-4 transition-colors ${
-                      isMarkedFixed || queueItem?.status === "applied"
-                        ? "opacity-60 bg-muted/20 border-border"
-                        : `cursor-pointer hover:bg-muted/30 ${impactColors[impact]}`
-                    }`}
+                    className={`rounded-lg border p-4 transition-colors cursor-pointer hover:bg-muted/30 ${impactColors[impact]}`}
                     onClick={() => setExpanded(expanded === issue.id ? null : issue.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -97,8 +75,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Action buttons */}
-                        {!isMarkedFixed && fixType && onFixClick && (
+                        {fixType && onFixClick && (
                           <Button
                             variant="outline"
                             size="sm"

@@ -14,6 +14,7 @@ import {
   Activity, Shield, Link2, AlertTriangle,
   Sparkles, DollarSign, FormInput,
 } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -502,10 +503,14 @@ function ActivityReportsTab() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs uppercase">{s.frequency}</Badge>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleSchedule.mutate({ id: s.id, enabled: !s.enabled })}>
-                    {s.enabled ? <ToggleRight className="h-4 w-4 text-success" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteSchedule.mutate(s.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <IconTooltip label={s.enabled ? t("reports.disableSchedule", "Disable schedule") : t("reports.enableSchedule", "Enable schedule")}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleSchedule.mutate({ id: s.id, enabled: !s.enabled })}>
+                      {s.enabled ? <ToggleRight className="h-4 w-4 text-success" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
+                    </Button>
+                  </IconTooltip>
+                  <IconTooltip label={t("reports.deleteSchedule", "Delete schedule")}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteSchedule.mutate(s.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </IconTooltip>
                 </div>
               </div>
             ))}
@@ -539,8 +544,12 @@ function ActivityReportsTab() {
                     </Badge>
                     {(run.status === "succeeded" || run.status === "completed") && run.file_path && (
                       <>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)}><Eye className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)}><Download className="h-4 w-4" /></Button>
+                        <IconTooltip label={t("reports.viewReport", "View report")}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)}><Eye className="h-4 w-4" /></Button>
+                        </IconTooltip>
+                        <IconTooltip label={t("reports.downloadReport", "Download report")}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)}><Download className="h-4 w-4" /></Button>
+                        </IconTooltip>
                       </>
                     )}
                   </div>

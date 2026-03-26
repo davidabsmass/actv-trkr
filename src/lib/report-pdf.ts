@@ -105,11 +105,11 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0">${i + 1}</span>
           <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px">
-              <span style="font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.6">${safe(item.label)}</span>
-              <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.6">${fmtNum(item.count)}</span>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:4px">
+              <span style="font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.4">${safe(item.label)}</span>
+              <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.4">${fmtNum(item.count)}</span>
             </div>
-            <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden">
+            <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden;margin-top:2px">
               <div style="height:100%;background:${brandPrimary}80;border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
             </div>
           </div>
@@ -122,7 +122,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
   <!-- Header -->
   <div style="background:linear-gradient(135deg,${brandGradientStart},${brandSecondary});padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-      ${wl?.logo_url ? `<img src="${wl.logo_url}" style="height:20px;max-width:120px;object-fit:contain" />` : ''}
+      ${wl?.logo_url ? `<img src="${wl.logo_url}" style="height:36px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);opacity:1" crossorigin="anonymous" />` : ''}
       ${brandName ? `<span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">${brandName}</span>` : ''}
       <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
       <span style="font-size:10px;color:rgba(255,255,255,0.8)">Activity Report</span>

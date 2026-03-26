@@ -96,61 +96,15 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Fix status badges */}
-                        {queueItem?.status === "pending" && (() => {
-                          const isStale = queueItem.created_at && (Date.now() - new Date(queueItem.created_at).getTime()) > 60 * 60 * 1000;
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <Badge className={`${isStale ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-warning/20 text-warning border-warning/30"} text-xs gap-1`}>
-                                <Clock className="h-2.5 w-2.5" /> {isStale ? t("reports.stale") : t("reports.pending")}
-                              </Badge>
-                              {isStale && onRetryStale && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
-                                  onClick={(e) => { e.stopPropagation(); onRetryStale(queueItem.id); }}
-                                >
-                                  <RefreshCw className="h-2.5 w-2.5" /> {t("reports.retryFix")}
-                                </Button>
-                              )}
-                              {isStale && !onRetryStale && (
-                                <span className="text-xs text-destructive/80">{t("reports.pluginNotPolling")}</span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                        {queueItem?.status === "applied" && (
-                          <>
-                            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
-                              <Check className="h-2.5 w-2.5" /> {t("reports.applied")}
-                            </Badge>
-                            {onVerify && (
-                              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onVerify(); }}>
-                                <RefreshCw className="h-2.5 w-2.5 mr-1" /> {t("reports.verify")}
-                              </Button>
-                            )}
-                          </>
-                        )}
-                        {canRetryFix && (
-                          <Badge variant="outline" className="text-xs border-destructive/30 text-destructive">{t("monitoring.scanFailed", { defaultValue: "Failed" })}</Badge>
-                        )}
-                        {isMarkedFixed && !queueItem && (
-                          <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
-                            <Check className="h-2.5 w-2.5" /> {t("reports.markedFixed")}
-                          </Badge>
-                        )}
-
                         {/* Action buttons */}
-                        {(!queueItem || canRetryFix) && !isMarkedFixed && fixType && onFixClick && (
+                        {!isMarkedFixed && fixType && onFixClick && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
                             onClick={(e) => { e.stopPropagation(); onFixClick(issue.id, fixType); }}
                           >
-                            <Wand2 className="h-2.5 w-2.5" /> {canRetryFix ? t("reports.retryFix") : t("reports.fixThis")}
+                            <Wand2 className="h-2.5 w-2.5" /> {t("reports.fixThis")}
                           </Button>
                         )}
                         {/* Manual skip/mark-fixed action removed intentionally */}

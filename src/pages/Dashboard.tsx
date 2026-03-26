@@ -262,6 +262,7 @@ const Dashboard = () => {
       const { data } = await supabase
         .from("security_events").select("id, event_type, severity, title")
         .eq("org_id", orgId)
+        .is("reviewed_at", null)
         .in("severity", ["high", "critical"])
         .gte("occurred_at", since)
         .limit(10);

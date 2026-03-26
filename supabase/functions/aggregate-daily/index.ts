@@ -19,18 +19,23 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    
+    // Support backfill mode
+    let body: any = {};
+    try { body = await req.json(); } catch { /* empty body is fine */ }
+    const backfillDays = body.backfill_days || 2; // default: today + yesterday
+
     const { data: orgs } = await supabase.from("orgs").select("id, timezone");
     if (!orgs) return new Response(JSON.stringify({ error: "No orgs" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const results: Record<string, any> = {};
 
-    // Process today AND yesterday (covers all recent data)
-    const today = new Date();
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    const datesToProcess = [
-      today.toISOString().split("T")[0],
-      yesterday.toISOString().split("T")[0],
-    ];
+    const datesToProcess: string[] = [];
+    for (let i = 0; i < backfillDays; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      datesToProcess.push(d.toISOString().split("T")[0]);
+    }
 
     for (const org of orgs) {
       const orgId = org.id;

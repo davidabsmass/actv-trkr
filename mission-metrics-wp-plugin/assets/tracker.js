@@ -93,6 +93,19 @@
     return 'desktop';
   }
 
+  // ── Visitor identity (includes WP user if logged in) ──────────
+
+  function buildVisitor(vid) {
+    var v = { visitor_id: vid };
+    if (CFG.wpUser) {
+      v.wp_user_id = CFG.wpUser.id;
+      v.wp_user_name = CFG.wpUser.name;
+      v.wp_user_email = CFG.wpUser.email;
+      v.wp_user_role = CFG.wpUser.role;
+    }
+    return v;
+  }
+
   // ── Send ────────────────────────────────────────────────────────
 
   function send(endpoint, payload) {

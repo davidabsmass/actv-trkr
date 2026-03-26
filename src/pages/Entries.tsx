@@ -686,7 +686,7 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
         ].map((kpi, i) => (
           <div key={i} className="rounded-lg border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
-            <p className={`font-bold font-mono-data text-foreground ${kpi.small ? "text-lg truncate" : "text-2xl"}`}>{kpi.value}</p>
+            <p className={`font-bold font-mono-data text-foreground ${kpi.small ? "text-sm truncate" : "text-2xl"}`} title={typeof kpi.value === 'string' ? kpi.value : undefined}>{kpi.value}</p>
             <p className="text-xs text-muted-foreground">{kpi.sub}</p>
           </div>
         ))}

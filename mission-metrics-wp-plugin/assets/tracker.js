@@ -235,6 +235,8 @@
 
   var DOWNLOAD_EXTENSIONS = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|csv|txt|rtf|mp3|mp4|avi|mov|epub)$/i;
 
+  var CTA_CLASS_PATTERN = /\b(btn|button|cta|book)\b/i;
+
   function classifyClick(el) {
     if (!el) return null;
 
@@ -243,9 +245,9 @@
     for (var i = 0; i < 5 && target; i++) {
       var tag = (target.tagName || '').toLowerCase();
 
-      // Check for data-actv="cta" attribute
+      // Check for data-actv="cta" attribute (explicit tagging)
       if (target.getAttribute && target.getAttribute('data-actv') === 'cta') {
-        return { type: 'cta_click', text: getClickText(target), el: target };
+        return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
       }
 
       if (tag === 'a') {
@@ -253,26 +255,35 @@
 
         // tel: links
         if (href.indexOf('tel:') === 0) {
-          return { type: 'tel_click', text: href.replace('tel:', ''), el: target };
+          return { type: 'tel_click', text: href.replace('tel:', ''), label: getActvLabel(target), el: target };
         }
 
         // mailto: links
         if (href.indexOf('mailto:') === 0) {
-          return { type: 'mailto_click', text: href.replace('mailto:', ''), el: target };
+          return { type: 'mailto_click', text: href.replace('mailto:', ''), label: getActvLabel(target), el: target };
         }
 
         // Download links
         if (DOWNLOAD_EXTENSIONS.test(href)) {
-          return { type: 'download_click', text: getClickText(target) || href.split('/').pop(), el: target };
+          return { type: 'download_click', text: getClickText(target) || href.split('/').pop(), label: getActvLabel(target), el: target };
         }
 
         // Outbound links
         try {
           var linkHost = new URL(href, window.location.origin).hostname;
           if (linkHost && linkHost !== window.location.hostname) {
-            return { type: 'outbound_click', text: getClickText(target) || linkHost, el: target };
+            return { type: 'outbound_click', text: getClickText(target) || linkHost, label: getActvLabel(target), el: target };
           }
         } catch (e) { /* invalid URL */ }
+
+        // Internal <a> tags that look like CTA buttons
+        var classes = target.className || '';
+        if (typeof classes === 'string' && CTA_CLASS_PATTERN.test(classes)) {
+          return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
+        }
+        if (target.getAttribute('role') === 'button') {
+          return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
+        }
       }
 
       // Button elements (not inside forms — those are form_start)
@@ -280,7 +291,7 @@
         var inForm = target.closest && target.closest('form');
         var btnType = (target.getAttribute('type') || '').toLowerCase();
         if (!inForm || btnType !== 'submit') {
-          return { type: 'cta_click', text: getClickText(target), el: target };
+          return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
         }
       }
 
@@ -290,7 +301,15 @@
     return null;
   }
 
+  function getActvLabel(el) {
+    if (!el || !el.getAttribute) return null;
+    return el.getAttribute('data-actv-label') || null;
+  }
+
   function getClickText(el) {
+    // Prefer data-actv-label if present
+    var label = getActvLabel(el);
+    if (label) return label;
     var text = (el.innerText || el.textContent || '').trim();
     if (text.length > 100) text = text.substring(0, 100);
     return text || el.getAttribute('aria-label') || el.getAttribute('title') || '';
@@ -305,7 +324,7 @@
     var vid = getCookie(COOKIE_VID);
     var sid = getCookie(COOKIE_SID);
 
-    eventBatch.push({
+    var evt = {
       event_type: result.type,
       target_text: result.text,
       page_url: window.location.href,
@@ -313,7 +332,11 @@
       timestamp: new Date().toISOString(),
       session_id: sid,
       visitor_id: vid,
-    });
+    };
+    if (result.label) {
+      evt.target_label = result.label;
+    }
+    eventBatch.push(evt);
 
     // Start batch timer if not already running
     if (!batchTimer) {

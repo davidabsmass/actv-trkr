@@ -11,6 +11,7 @@ import { FunnelView } from "@/components/dashboard/FunnelView";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorEngagement } from "@/components/dashboard/VisitorEngagement";
 import { ClickActivity } from "@/components/dashboard/ClickActivity";
+import { GoalConversions } from "@/components/dashboard/GoalConversions";
 import { KPIRow } from "@/components/dashboard/KPIRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrg } from "@/hooks/use-org";
@@ -153,6 +154,7 @@ const Performance = () => {
                 <VisitorEngagement orgId={orgId} startDate={startDate} endDate={endDate} />
                 <ClickActivity orgId={orgId} startDate={startDate} endDate={endDate} />
               </div>
+              <GoalConversions orgId={orgId} startDate={startDate} endDate={endDate} />
               {renderSections()}
             </div>
           )}

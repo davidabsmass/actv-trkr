@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
       let occurredAt = evt.timestamp ? new Date(evt.timestamp) : now;
       if (isNaN(occurredAt.getTime()) || Math.abs(occurredAt.getTime() - now.getTime()) / 36e5 > 24) occurredAt = now;
 
+      const targetLabel = sanitizeStr(evt.target_label, 256);
       rows.push({
         org_id: orgId,
         site_id: siteId,
@@ -144,6 +145,7 @@ Deno.serve(async (req) => {
         page_path: sanitizeStr(evt.page_path, 2048),
         target_text: sanitizeStr(evt.target_text, 256),
         occurred_at: occurredAt.toISOString(),
+        meta: targetLabel ? { target_label: targetLabel } : {},
       });
     }
 

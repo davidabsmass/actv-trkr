@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useActivityTracker } from "@/hooks/use-activity-tracker";
 import { Outlet, Navigate, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -15,6 +16,7 @@ import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();
+  useActivityTracker();
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

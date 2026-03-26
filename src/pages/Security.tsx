@@ -23,6 +23,7 @@ const severityIcons: Record<string, typeof AlertTriangle> = {
 export default function Security() {
   const { orgName, orgId } = useOrg();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],

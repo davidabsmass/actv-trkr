@@ -140,7 +140,7 @@ class MM_SEO_Fixes {
 				update_post_meta( $post_id, self::META_OG, sanitize_text_field( $value ) );
 				break;
 			default:
-				$status = 'skipped';
+				$status = 'failed';
 				break;
 		}
 

@@ -2202,6 +2202,7 @@ export type Database = {
           id: string
           occurred_at: string
           org_id: string
+          reviewed_at: string | null
           severity: string
           site_id: string
           title: string
@@ -2213,6 +2214,7 @@ export type Database = {
           id?: string
           occurred_at?: string
           org_id: string
+          reviewed_at?: string | null
           severity?: string
           site_id: string
           title?: string
@@ -2224,6 +2226,7 @@ export type Database = {
           id?: string
           occurred_at?: string
           org_id?: string
+          reviewed_at?: string | null
           severity?: string
           site_id?: string
           title?: string

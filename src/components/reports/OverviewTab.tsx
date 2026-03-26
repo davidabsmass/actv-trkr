@@ -54,33 +54,49 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     queryKey: ["reports_overview_live", orgId, startDate, endDate, prevStartDate, prevEndDate],
     queryFn: async () => {
       if (!orgId) return null;
-      const dayStart = `${startDate}T00:00:00Z`;
-      const dayEnd = `${endDate}T23:59:59.999Z`;
-      const prevDayStart = `${prevStartDate}T00:00:00Z`;
-      const prevDayEnd = `${prevEndDate}T23:59:59.999Z`;
 
-      const [sessRes, prevSessRes, leadsRes, prevLeadsRes, brokenRes, incidentsRes] = await Promise.all([
-        supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd),
-        supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", prevDayStart).lte("started_at", prevDayEnd),
-        supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
-        supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", prevDayStart).lte("submitted_at", prevDayEnd),
+      // Use pre-aggregated tables for speed — no raw row scanning
+      const sum = (rows: any[] | null) => (rows || []).reduce((s, r) => s + Number(r.value || 0), 0);
+
+      const [sessAgg, prevSessAgg, leadsAgg, prevLeadsAgg, brokenRes, incidentsRes, formsRes, formLeadsRes] = await Promise.all([
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
         supabase.from("broken_links").select("id", { count: "exact", head: true }).eq("org_id", orgId),
         supabase.from("incidents").select("id", { count: "exact", head: true }).eq("org_id", orgId).is("resolved_at", null),
+        // Form list for form breakdown
+        supabase.from("forms").select("id, name, external_form_id").eq("org_id", orgId).eq("archived", false),
+        // Form-level lead counts from aggregated data
+        supabase.from("kpi_daily").select("dimension, value").eq("org_id", orgId).eq("metric", "leads_by_form").gte("date", startDate).lte("date", endDate),
       ]);
 
-      const currentSessions = sessRes.count || 0;
-      const previousSessions = prevSessRes.count || 0;
-      const currentLeads = leadsRes.count || 0;
-      const previousLeads = prevLeadsRes.count || 0;
+      const currentSessions = sum(sessAgg.data);
+      const previousSessions = sum(prevSessAgg.data);
+      const currentLeads = sum(leadsAgg.data);
+      const previousLeads = sum(prevLeadsAgg.data);
       const currentCvr = currentSessions > 0 ? Math.round((currentLeads / currentSessions) * 10000) / 100 : 0;
       const previousCvr = previousSessions > 0 ? Math.round((previousLeads / previousSessions) * 10000) / 100 : 0;
       const brokenLinks = brokenRes.count || 0;
       const activeIncidents = incidentsRes.count || 0;
 
+      // Build form breakdown
+      const formMap: Record<string, { name: string; leads: number }> = {};
+      (formsRes.data || []).forEach((f: any) => { formMap[f.id] = { name: f.name, leads: 0 }; });
+      (formLeadsRes.data || []).forEach((r: any) => {
+        if (r.dimension && formMap[r.dimension]) {
+          formMap[r.dimension].leads += Number(r.value || 0);
+        }
+      });
+      const formBreakdown = Object.entries(formMap)
+        .map(([id, f]) => ({ id, name: f.name, leads: f.leads }))
+        .filter(f => f.leads > 0)
+        .sort((a, b) => b.leads - a.leads);
+
       const inputs: InsightInputs = { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinksCount: brokenLinks, activeIncidents };
       return {
         currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr,
-        brokenLinks, activeIncidents, findings: generateFindings(inputs),
+        brokenLinks, activeIncidents, formBreakdown, findings: generateFindings(inputs),
       };
     },
     enabled: !!orgId,
@@ -134,7 +150,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     );
   }
 
-  const { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinks, activeIncidents, findings } = liveData;
+  const { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinks, activeIncidents, formBreakdown, findings } = liveData;
   const sessionsPct = pctChange(currentSessions, previousSessions);
   const leadsPct = pctChange(currentLeads, previousLeads);
   const cvrPct = pctChange(currentCvr, previousCvr);
@@ -169,6 +185,23 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
           <SummaryCard label={t("reports.siteHealth")} value={activeIncidents > 0 ? `${activeIncidents} ${t("reports.issues")}` : t("reports.sitHealthy")} summary={brokenLinks > 5 ? t("reports.brokenLinksDetected", { count: brokenLinks }) : undefined} />
         </div>
       </div>
+
+      {/* Form Breakdown */}
+      {formBreakdown && formBreakdown.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> Form Submissions ({periodLabel})
+          </h3>
+          <div className="space-y-2">
+            {formBreakdown.slice(0, 8).map((f: any) => (
+              <div key={f.id} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
+                <span className="text-sm text-foreground truncate max-w-[70%]">{f.name}</span>
+                <span className="text-sm font-semibold text-foreground">{f.leads} {f.leads === 1 ? "lead" : "leads"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {(negativeFindings.length > 0 || positiveFindings.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

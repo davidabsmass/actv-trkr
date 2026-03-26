@@ -150,7 +150,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     );
   }
 
-  const { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinks, activeIncidents, findings } = liveData;
+  const { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinks, activeIncidents, formBreakdown, findings } = liveData;
   const sessionsPct = pctChange(currentSessions, previousSessions);
   const leadsPct = pctChange(currentLeads, previousLeads);
   const cvrPct = pctChange(currentCvr, previousCvr);

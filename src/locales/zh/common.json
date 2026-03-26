@@ -1004,7 +1004,7 @@
     "lastAction": "最后操作",
     "noActivityYet": "尚未记录任何活动。用户浏览仪表板时将显示活动。",
     "actionType": "操作",
-    "pageFeature": "页面 / 功能"
+    "pageFeature": "页面 / 功能",
     "userActivity": "用户活动",
     "loginEventsTracked": "已跟踪 {{count}} 个登录事件",
     "loadingActivity": "正在加载活动…",

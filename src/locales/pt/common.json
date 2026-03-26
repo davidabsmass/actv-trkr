@@ -1004,7 +1004,7 @@
     "lastAction": "Última ação",
     "noActivityYet": "Nenhuma atividade registrada ainda. A atividade aparecerá conforme os usuários navegam no painel.",
     "actionType": "Ação",
-    "pageFeature": "Página / Recurso"
+    "pageFeature": "Página / Recurso",
     "userActivity": "Atividade dos Usuários",
     "loginEventsTracked": "{{count}} eventos de login rastreados",
     "loadingActivity": "Carregando atividade…",

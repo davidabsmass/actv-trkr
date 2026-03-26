@@ -1004,7 +1004,7 @@
     "lastAction": "最後のアクション",
     "noActivityYet": "まだアクティビティは記録されていません。ユーザーがダッシュボードを操作するとアクティビティが表示されます。",
     "actionType": "アクション",
-    "pageFeature": "ページ / 機能"
+    "pageFeature": "ページ / 機能",
     "userActivity": "ユーザーアクティビティ",
     "loginEventsTracked": "{{count}} 件のログインイベントを追跡",
     "loadingActivity": "アクティビティを読み込み中…",

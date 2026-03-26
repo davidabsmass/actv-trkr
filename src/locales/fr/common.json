@@ -1004,7 +1004,7 @@
     "lastAction": "Dernière action",
     "noActivityYet": "Aucune activité enregistrée. L'activité apparaîtra lorsque les utilisateurs navigueront sur le tableau de bord.",
     "actionType": "Action",
-    "pageFeature": "Page / Fonction"
+    "pageFeature": "Page / Fonction",
     "userActivity": "Activité des Utilisateurs",
     "loginEventsTracked": "{{count}} événements de connexion enregistrés",
     "loadingActivity": "Chargement de l'activité…",

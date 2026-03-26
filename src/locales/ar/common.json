@@ -1004,7 +1004,7 @@
     "lastAction": "آخر إجراء",
     "noActivityYet": "لم يتم تسجيل أي نشاط بعد. سيظهر النشاط عندما يتصفح المستخدمون لوحة المعلومات.",
     "actionType": "الإجراء",
-    "pageFeature": "الصفحة / الميزة"
+    "pageFeature": "الصفحة / الميزة",
     "userActivity": "نشاط المستخدمين",
     "loginEventsTracked": "تم تتبع {{count}} حدث تسجيل دخول",
     "loadingActivity": "جارٍ تحميل النشاط…",

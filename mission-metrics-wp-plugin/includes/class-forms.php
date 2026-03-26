@@ -1144,16 +1144,17 @@ class MM_Forms {
 			// Filter out non-data types
 			$skip_types = array( 'submit', 'notice', 'html', 'hidden', 'captcha', 'honeypot', 'section', 'page' );
 
-			$field_index = 0;
+			$data_field_pos = 0;
 			for ( $i = 0; $i < count( $types ); $i++ ) {
 				$type = strtolower( $types[ $i ] );
 				if ( in_array( $type, $skip_types, true ) ) {
 					continue;
 				}
 
-				$value = isset( $values[ $field_index ] ) ? $values[ $field_index ] : '';
-				$label = isset( $labels[ $field_index ] ) ? $labels[ $field_index ] : '';
-				$field_index++;
+				// Use $i to index into values/labels — Avada includes entries for ALL field types
+				$value = isset( $values[ $i ] ) ? $values[ $i ] : '';
+				$label = isset( $labels[ $i ] ) ? $labels[ $i ] : '';
+				$data_field_pos++;
 
 				if ( '' === $value ) {
 					continue;
@@ -1163,7 +1164,7 @@ class MM_Forms {
 				if ( $label ) {
 					$name = $label;
 				} else {
-					$name = self::infer_avada_field_name( $type, $value, $field_index );
+					$name = self::infer_avada_field_name( $type, $value, $data_field_pos );
 				}
 
 				$fields[] = array(

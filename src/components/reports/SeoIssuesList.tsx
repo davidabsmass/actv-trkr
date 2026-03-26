@@ -82,7 +82,7 @@ export default function SeoIssuesList({ issues, onFixClick }: Props) {
                             className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
                             onClick={(e) => { e.stopPropagation(); onFixClick(issue.id, fixType); }}
                           >
-                            <Wand2 className="h-2.5 w-2.5" /> {t("reports.fixThis")}
+                            <Wand2 className="h-2.5 w-2.5" /> {t("reports.suggestedCopy", { defaultValue: "Suggested Copy" })}
                           </Button>
                         )}
 

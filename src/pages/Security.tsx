@@ -106,7 +106,21 @@ export default function Security() {
         </Card>
       ) : (
         <>
-          {/* Summary strip */}
+          {/* Dismiss all + Summary strip */}
+          {(events?.length ?? 0) > 0 && (
+            <div className="flex justify-end mb-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                disabled={dismissAll.isPending}
+                onClick={() => dismissAll.mutate()}
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                {t("security.dismissAll", "Dismiss All")}
+              </Button>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="rounded-lg border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{events?.length ?? 0}</p>

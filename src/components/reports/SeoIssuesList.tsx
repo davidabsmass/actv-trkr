@@ -75,6 +75,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
               {group.map((issue) => {
                 const fixType = AUTO_FIXABLE[issue.id];
                 const queueItem = getFixStatus(issue.id);
+                const canRetryFix = queueItem?.status === "failed" || queueItem?.status === "skipped";
                 const isMarkedFixed = markedFixed.has(issue.id);
 
                 return (
@@ -132,8 +133,8 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                             )}
                           </>
                         )}
-                        {queueItem?.status === "skipped" && (
-                          <Badge variant="outline" className="text-xs">{t("reports.skipped")}</Badge>
+                        {canRetryFix && (
+                          <Badge variant="outline" className="text-xs border-destructive/30 text-destructive">{t("monitoring.scanFailed", { defaultValue: "Failed" })}</Badge>
                         )}
                         {isMarkedFixed && !queueItem && (
                           <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
@@ -142,36 +143,17 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                         )}
 
                         {/* Action buttons */}
-                        {!queueItem && !isMarkedFixed && fixType && onFixClick && (
+                        {(!queueItem || canRetryFix) && !isMarkedFixed && fixType && onFixClick && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
                             onClick={(e) => { e.stopPropagation(); onFixClick(issue.id, fixType); }}
                           >
-                            <Wand2 className="h-2.5 w-2.5" /> {t("reports.fixThis")}
+                            <Wand2 className="h-2.5 w-2.5" /> {canRetryFix ? t("reports.retryFix") : t("reports.fixThis")}
                           </Button>
                         )}
-                        {!queueItem && !isMarkedFixed && !fixType && onMarkFixed && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs text-muted-foreground"
-                            onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
-                          >
-                            {t("reports.markFixed")}
-                          </Button>
-                        )}
-                        {!queueItem && !isMarkedFixed && fixType && onMarkFixed && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs text-muted-foreground"
-                            onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
-                          >
-                            {t("reports.markFixed")}
-                          </Button>
-                        )}
+                        {/* Manual skip/mark-fixed action removed intentionally */}
 
                         <Shield className={`h-3.5 w-3.5 transition-transform ${expanded === issue.id ? "rotate-180" : ""}`} />
                       </div>

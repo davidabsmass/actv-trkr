@@ -105,7 +105,7 @@ class MM_SEO_Fixes {
 
 		// Check for conflicting SEO plugins.
 		if ( self::has_seo_plugin() && in_array( $type, array( 'set_title', 'set_meta_desc', 'add_canonical', 'add_og_tags' ), true ) ) {
-			self::confirm( $fix_id, 'skipped', 'Another SEO plugin is active', $api_key, $api_url );
+			self::confirm( $fix_id, 'failed', 'Another SEO plugin is active', $api_key, $api_url );
 			return;
 		}
 
@@ -140,7 +140,7 @@ class MM_SEO_Fixes {
 				update_post_meta( $post_id, self::META_OG, sanitize_text_field( $value ) );
 				break;
 			default:
-				$status = 'skipped';
+				$status = 'failed';
 				break;
 		}
 

@@ -400,10 +400,16 @@ const Dashboard = () => {
     return items;
   }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, t]);
 
+  // Redirect to setup if current org has no connected sites
+  useEffect(() => {
+    if (!isLoading && sitesData && sitesData.length === 0 && orgId) {
+      navigate("/settings?tab=setup", { replace: true });
+    }
+  }, [isLoading, sitesData, orgId, navigate]);
+
   return (
     <div>
       {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
-      {(!sitesData || sitesData.length === 0) && <GetStartedBanner hasSites={false} />}
 
       <div className="flex items-center justify-between mb-5">
         <div>

@@ -21,11 +21,24 @@ class MM_Tracker {
 			true
 		);
 
-		wp_localize_script( 'mm-tracker', 'mmConfig', array(
+		$config = array(
 			'endpoint'       => rtrim( $opts['endpoint_url'], '/' ) . '/track-pageview',
 			'apiKey'         => $opts['api_key'],
 			'domain'         => wp_parse_url( home_url(), PHP_URL_HOST ),
 			'pluginVersion'  => MM_PLUGIN_VERSION,
-		) );
+		);
+
+		// Pass logged-in WordPress user identity for visitor tracking
+		if ( is_user_logged_in() ) {
+			$current_user = wp_get_current_user();
+			$config['wpUser'] = array(
+				'id'    => $current_user->ID,
+				'name'  => $current_user->display_name,
+				'email' => $current_user->user_email,
+				'role'  => implode( ',', $current_user->roles ),
+			);
+		}
+
+		wp_localize_script( 'mm-tracker', 'mmConfig', $config );
 	}
 }

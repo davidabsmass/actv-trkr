@@ -434,9 +434,7 @@
         occurred_at: new Date().toISOString(),
       },
       attribution: attribution,
-      visitor: {
-        visitor_id: vid,
-      },
+      visitor: buildVisitor(vid),
     });
   }
 

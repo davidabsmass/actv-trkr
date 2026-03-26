@@ -95,7 +95,10 @@ export default function NotificationsPage() {
     mutationFn: async (id: string) => {
       await supabase.from("notification_inbox").update({ is_read: true }).eq("id", id);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification_inbox", user?.id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification_inbox", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["unread_notifications"] });
+    },
   });
 
   const markAllRead = useMutation({
@@ -103,7 +106,10 @@ export default function NotificationsPage() {
       if (!user?.id) return;
       await supabase.from("notification_inbox").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification_inbox", user?.id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification_inbox", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["unread_notifications"] });
+    },
   });
 
   const updatePref = useMutation({

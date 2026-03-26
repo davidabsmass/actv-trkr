@@ -1004,7 +1004,7 @@
     "lastAction": "마지막 작업",
     "noActivityYet": "아직 기록된 활동이 없습니다. 사용자가 대시보드를 탐색하면 활동이 표시됩니다.",
     "actionType": "작업",
-    "pageFeature": "페이지 / 기능"
+    "pageFeature": "페이지 / 기능",
     "userActivity": "사용자 활동",
     "loginEventsTracked": "{{count}}개의 로그인 이벤트 추적됨",
     "loadingActivity": "활동 로딩 중…",

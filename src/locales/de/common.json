@@ -1221,7 +1221,7 @@
     "lastAction": "Letzte Aktion",
     "noActivityYet": "Noch keine Aktivität aufgezeichnet. Aktivitäten werden angezeigt, sobald Benutzer das Dashboard nutzen.",
     "actionType": "Aktion",
-    "pageFeature": "Seite / Funktion"
+    "pageFeature": "Seite / Funktion",
     "userActivity": "Benutzeraktivität",
     "loginEventsTracked": "{{count}} Anmeldeereignisse erfasst",
     "loadingActivity": "Aktivität wird geladen…",

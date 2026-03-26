@@ -1,8 +1,9 @@
-import { ShieldAlert, Lock, FileWarning, Info, AlertTriangle, CheckCircle, XCircle, Eye } from "lucide-react";
+import { ShieldAlert, Lock, FileWarning, Info, AlertTriangle, CheckCircle, XCircle, Eye, CheckCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrg } from "@/hooks/use-org";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
@@ -22,6 +23,7 @@ const severityIcons: Record<string, typeof AlertTriangle> = {
 export default function Security() {
   const { orgName, orgId } = useOrg();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],
@@ -41,6 +43,7 @@ export default function Security() {
         .from("security_events")
         .select("*")
         .eq("org_id", orgId)
+        .is("reviewed_at", null)
         .order("occurred_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -51,6 +54,25 @@ export default function Security() {
   });
 
   const hasSites = (sites?.length ?? 0) > 0;
+
+  const dismissEvent = useMutation({
+    mutationFn: async (id: string) => {
+      await (supabase as any).from("security_events").update({ reviewed_at: new Date().toISOString() }).eq("id", id);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
+  });
+
+  const dismissAll = useMutation({
+    mutationFn: async () => {
+      if (!orgId) return;
+      const ids = events?.map(e => e.id) || [];
+      if (ids.length === 0) return;
+      for (const id of ids) {
+        await (supabase as any).from("security_events").update({ reviewed_at: new Date().toISOString() }).eq("id", id);
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
+  });
 
   const loginEvents = events?.filter(e =>
     ["failed_login", "brute_force", "new_ip_login"].includes(e.event_type)
@@ -84,7 +106,21 @@ export default function Security() {
         </Card>
       ) : (
         <>
-          {/* Summary strip */}
+          {/* Dismiss all + Summary strip */}
+          {(events?.length ?? 0) > 0 && (
+            <div className="flex justify-end mb-3">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs"
+                disabled={dismissAll.isPending}
+                onClick={() => dismissAll.mutate()}
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                {t("security.dismissAll", "Dismiss All")}
+              </Button>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="rounded-lg border border-border bg-card p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{events?.length ?? 0}</p>
@@ -160,6 +196,13 @@ export default function Security() {
                                   {details.username && <span>{t("security.userLabel")}: {details.username}</span>}
                                 </div>
                               </div>
+                              <button
+                                onClick={() => dismissEvent.mutate(evt.id)}
+                                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                                title={t("security.dismiss", "Dismiss")}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </div>
                         );
@@ -220,6 +263,13 @@ export default function Security() {
                                 {details.path && <span className="font-mono truncate">{details.path}</span>}
                               </div>
                             </div>
+                            <button
+                              onClick={() => dismissEvent.mutate(evt.id)}
+                              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                              title={t("security.dismiss", "Dismiss")}
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         </div>
                       );

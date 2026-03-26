@@ -233,6 +233,8 @@ export default function AutoTranslateDom() {
       disposed = true;
       if (scheduleTimer) window.clearTimeout(scheduleTimer);
       mutationObserver?.disconnect();
+      // Ensure body is visible if effect re-runs before fade completes
+      root.style.opacity = "1";
     };
   }, [targetLanguage, location.pathname, location.search, location.hash]);
 

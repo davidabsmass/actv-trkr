@@ -2,22 +2,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { subDays, format } from "date-fns";
-import {
-  Search, RefreshCw, Shield, AlertCircle, AlertTriangle, Info, CheckCircle2,
-  TrendingUp, TrendingDown, Eye, Sparkles, Zap, Clock, Globe,
-} from "lucide-react";
-import { useState, useMemo } from "react";
+import { Search, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
-import { getScoreGrade, getScoreStatus, calculateScore, calculateSeverityMultiplier } from "@/lib/seo-scoring";
 import type { SeoIssue } from "@/lib/seo-scoring";
-import SeoScanHistory from "./SeoScanHistory";
 import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
-import type { FixQueueItem } from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
 import SeoFixModal from "./SeoFixModal";
 
@@ -195,124 +189,11 @@ export default function SeoTab() {
   const issues = (activeScan?.issues_json as unknown as SeoIssue[] | null) || [];
   const score = activeScan?.score || 0;
 
-  // Fix queue for active scan's page
-  const { data: fixQueue } = useQuery({
-    queryKey: ["seo_fix_queue", orgId, activeScan?.url],
-    queryFn: async () => {
-      if (!orgId || !activeScan?.url) return [];
-      const { data } = await supabase
-        .from("seo_fix_queue")
-        .select("id, issue_id, status, created_at")
-        .eq("org_id", orgId)
-        .eq("page_url", activeScan.url)
-        .order("created_at", { ascending: false });
-      return (data || []) as FixQueueItem[];
-    },
-    enabled: !!orgId && !!activeScan?.url,
-  });
-
-  // Load persisted marked-fixed issues from DB
-  const { data: fixHistoryData } = useQuery({
-    queryKey: ["seo_fix_history", orgId, activeScan?.url],
-    queryFn: async () => {
-      if (!orgId || !activeScan?.url) return [];
-      const { data } = await supabase
-        .from("seo_fix_history")
-        .select("issue_id")
-        .eq("org_id", orgId)
-        .eq("page_url", activeScan.url);
-      return (data || []).map(r => r.issue_id);
-    },
-    enabled: !!orgId && !!activeScan?.url,
-  });
-
-  const [localMarkedFixed, setLocalMarkedFixed] = useState<Set<string>>(new Set());
-  const markedFixed = useMemo(() => {
-    const set = new Set(fixHistoryData || []);
-    localMarkedFixed.forEach(id => set.add(id));
-    return set;
-  }, [fixHistoryData, localMarkedFixed]);
-
-  // Filter out marked-fixed issues from display
-  const visibleIssues = useMemo(() => issues.filter(i => !markedFixed.has(i.id)), [issues, markedFixed]);
-
-  // Recalculate score based on visible issues (after filtering marked-fixed)
-  const adjustedScore = useMemo(() => {
-    if (!activeScan) return 0;
-    if (markedFixed.size === 0) return activeScan.score || 0;
-    const scoredIssues = visibleIssues.map(i => ({
-      ...i,
-      severityMultiplier: calculateSeverityMultiplier(i.id, i.count),
-    }));
-    return calculateScore(scoredIssues);
-  }, [visibleIssues, activeScan, markedFixed]);
-
-  const handleMarkFixed = async (issueId: string) => {
-    if (!orgId || !activeScan) return;
-    const site = sites?.[0];
-    if (!site) return;
-    await supabase.from("seo_fix_history").insert({
-      org_id: orgId,
-      site_id: site.id,
-      issue_id: issueId,
-      page_url: activeScan.url,
-      before_score: score,
-    });
-    setLocalMarkedFixed(prev => new Set(prev).add(issueId));
-    queryClient.invalidateQueries({ queryKey: ["seo_fix_history", orgId, activeScan.url] });
-    toast.success(t("reports.issueMarkedFixed"));
-  };
-
-  const [fixModal, setFixModal] = useState<{ issueId: string; fixType: string; title: string } | null>(null);
-
-  const queueFix = useMutation({
-    mutationFn: async ({ issueId, fixType, fixValue }: { issueId: string; fixType: string; fixValue: string }) => {
-      if (!orgId || !sites?.length || !activeScan) throw new Error("Missing context");
-      const { data, error } = await supabase.functions.invoke("seo-fix-command", {
-        body: {
-          org_id: orgId,
-          site_id: sites[0].id,
-          page_url: activeScan.url,
-          issue_id: issueId,
-          fix_type: fixType,
-          fix_value: fixValue,
-          scan_id: activeScan.id,
-        },
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["seo_fix_queue", orgId] });
-      setFixModal(null);
-      toast.success(t("reports.fixQueued"));
-    },
-    onError: (err: any) => toast.error(err.message || t("seo.failedToQueueFix", { defaultValue: "Failed to queue fix" })),
-  });
+  const [fixModal, setFixModal] = useState<{ fixType: string; title: string } | null>(null);
 
   const handleFixClick = (issueId: string, fixType: string) => {
     const issue = issues.find(i => i.id === issueId);
-    setFixModal({ issueId, fixType, title: issue?.title || issueId });
-  };
-
-  const handleVerify = () => {
-    if (activeScan?.url) {
-      runScan.mutate();
-    }
-  };
-
-  const handleRetryStale = async (fixQueueId: string) => {
-    // Reset created_at to now so the fix is no longer stale and gets picked up on next poll
-    const { error } = await supabase
-      .from("seo_fix_queue")
-      .update({ created_at: new Date().toISOString() } as any)
-      .eq("id", fixQueueId);
-    if (error) {
-      toast.error(t("seo.failedToRetryFix", { defaultValue: "Failed to retry fix" }));
-      return;
-    }
-    queryClient.invalidateQueries({ queryKey: ["seo_fix_queue", orgId] });
-    toast.success(t("reports.fixReQueued"));
+    setFixModal({ fixType, title: issue?.title || issueId });
   };
 
   const getPathFromUrl = (url: string) => {
@@ -359,8 +240,8 @@ export default function SeoTab() {
       {/* Score card */}
       {activeScan && (
         <SeoScoreCard
-          score={adjustedScore}
-          issues={visibleIssues}
+          score={score}
+          issues={issues}
           platform={activeScan.platform}
           url={activeScan.url}
           scannedAt={activeScan.scanned_at}
@@ -374,15 +255,10 @@ export default function SeoTab() {
       )}
 
       {/* Issues */}
-      {activeScan && visibleIssues.length > 0 && (
+      {activeScan && issues.length > 0 && (
         <SeoIssuesList
-          issues={visibleIssues}
-          fixQueue={fixQueue || []}
-          markedFixed={markedFixed}
+          issues={issues}
           onFixClick={handleFixClick}
-          onMarkFixed={handleMarkFixed}
-          onVerify={handleVerify}
-          onRetryStale={handleRetryStale}
         />
       )}
 
@@ -391,13 +267,9 @@ export default function SeoTab() {
         <SeoFixModal
           open={!!fixModal}
           onOpenChange={(open) => !open && setFixModal(null)}
-          issueId={fixModal.issueId}
           issueTitle={fixModal.title}
           fixType={fixModal.fixType}
-          suggestedValue=""
           pageUrl={activeScan?.url || ""}
-          onConfirm={(value) => queueFix.mutate({ issueId: fixModal.issueId, fixType: fixModal.fixType, fixValue: value })}
-          isPending={queueFix.isPending}
         />
       )}
 

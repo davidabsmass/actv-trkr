@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, Info, CheckCircle2, Shield, Wand2, Check, Clock, RefreshCw } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, CheckCircle2, Shield, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SeoIssue } from "@/lib/seo-scoring";
@@ -30,29 +30,14 @@ const AUTO_FIXABLE: Record<string, string> = {
   "og-tags-missing": "add_og_tags",
 };
 
-export interface FixQueueItem {
-  id: string;
-  issue_id: string;
-  status: string;
-  created_at?: string;
-}
-
 interface Props {
   issues: SeoIssue[];
-  fixQueue?: FixQueueItem[];
-  markedFixed?: Set<string>;
   onFixClick?: (issueId: string, fixType: string) => void;
-  onMarkFixed?: (issueId: string) => void;
-  onVerify?: () => void;
-  onRetryStale?: (fixQueueId: string) => void;
 }
 
-export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new Set(), onFixClick, onMarkFixed, onVerify, onRetryStale }: Props) {
+export default function SeoIssuesList({ issues, onFixClick }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<string | null>(null);
-
-  const getFixStatus = (issueId: string): FixQueueItem | undefined =>
-    fixQueue.find((f) => f.issue_id === issueId);
 
   const groupedIssues = {
     Critical: issues.filter(i => i.impact === "Critical"),
@@ -74,18 +59,11 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
             <div className="space-y-2">
               {group.map((issue) => {
                 const fixType = AUTO_FIXABLE[issue.id];
-                const queueItem = getFixStatus(issue.id);
-                const canRetryFix = queueItem?.status === "failed" || queueItem?.status === "skipped";
-                const isMarkedFixed = markedFixed.has(issue.id);
 
                 return (
                   <div
                     key={issue.id}
-                    className={`rounded-lg border p-4 transition-colors ${
-                      isMarkedFixed || queueItem?.status === "applied"
-                        ? "opacity-60 bg-muted/20 border-border"
-                        : `cursor-pointer hover:bg-muted/30 ${impactColors[impact]}`
-                    }`}
+                    className={`rounded-lg border p-4 transition-colors cursor-pointer hover:bg-muted/30 ${impactColors[impact]}`}
                     onClick={() => setExpanded(expanded === issue.id ? null : issue.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -97,63 +75,16 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Fix status badges */}
-                        {queueItem?.status === "pending" && (() => {
-                          const isStale = queueItem.created_at && (Date.now() - new Date(queueItem.created_at).getTime()) > 60 * 60 * 1000;
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <Badge className={`${isStale ? "bg-destructive/20 text-destructive border-destructive/30" : "bg-warning/20 text-warning border-warning/30"} text-xs gap-1`}>
-                                <Clock className="h-2.5 w-2.5" /> {isStale ? t("reports.stale") : t("reports.pending")}
-                              </Badge>
-                              {isStale && onRetryStale && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
-                                  onClick={(e) => { e.stopPropagation(); onRetryStale(queueItem.id); }}
-                                >
-                                  <RefreshCw className="h-2.5 w-2.5" /> {t("reports.retryFix")}
-                                </Button>
-                              )}
-                              {isStale && !onRetryStale && (
-                                <span className="text-xs text-destructive/80">{t("reports.pluginNotPolling")}</span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                        {queueItem?.status === "applied" && (
-                          <>
-                            <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
-                              <Check className="h-2.5 w-2.5" /> {t("reports.applied")}
-                            </Badge>
-                            {onVerify && (
-                              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={(e) => { e.stopPropagation(); onVerify(); }}>
-                                <RefreshCw className="h-2.5 w-2.5 mr-1" /> {t("reports.verify")}
-                              </Button>
-                            )}
-                          </>
-                        )}
-                        {canRetryFix && (
-                          <Badge variant="outline" className="text-xs border-destructive/30 text-destructive">{t("monitoring.scanFailed", { defaultValue: "Failed" })}</Badge>
-                        )}
-                        {isMarkedFixed && !queueItem && (
-                          <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30 text-xs gap-1">
-                            <Check className="h-2.5 w-2.5" /> {t("reports.markedFixed")}
-                          </Badge>
-                        )}
-
-                        {/* Action buttons */}
-                        {(!queueItem || canRetryFix) && !isMarkedFixed && fixType && onFixClick && (
+                        {fixType && onFixClick && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="h-6 px-2 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
                             onClick={(e) => { e.stopPropagation(); onFixClick(issue.id, fixType); }}
                           >
-                            <Wand2 className="h-2.5 w-2.5" /> {canRetryFix ? t("reports.retryFix") : t("reports.fixThis")}
+                            <Wand2 className="h-2.5 w-2.5" /> {t("reports.fixThis")}
                           </Button>
                         )}
-                        {/* Manual skip/mark-fixed action removed intentionally */}
 
                         <Shield className={`h-3.5 w-3.5 transition-transform ${expanded === issue.id ? "rotate-180" : ""}`} />
                       </div>

@@ -229,7 +229,7 @@ export default function SeoTab() {
               className="gap-1.5 shrink-0"
             >
               {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {runScan.isPending ? t("dashboard.scanningDots") : t("dashboard.scanHomepage")}
+              {runScan.isPending ? t("dashboard.scanningDots") : t("dashboard.newScan", { defaultValue: "New Scan" })}
             </Button>
           </div>
         ) : (

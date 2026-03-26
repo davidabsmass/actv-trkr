@@ -268,6 +268,13 @@ Deno.serve(async (req) => {
     const pluginVersion = sanitizeStr(source?.plugin_version, 32);
     const siteType = sanitizeStr(source?.type, 32) || "wordpress";
 
+    // WP user identity
+    const wpUserId = sanitizeStr(visitor?.wp_user_id, 64);
+    const wpUserName = sanitizeStr(visitor?.wp_user_name, 256);
+    const wpUserEmail = sanitizeStr(visitor?.wp_user_email, 256);
+    const wpUserRole = sanitizeStr(visitor?.wp_user_role, 128);
+    const siteType = sanitizeStr(source?.type, 32) || "wordpress";
+
     const utmSource = sanitizeStr(attribution?.utm_source, 256);
     const utmMedium = sanitizeStr(attribution?.utm_medium, 256);
     const utmCampaign = sanitizeStr(attribution?.utm_campaign, 256);

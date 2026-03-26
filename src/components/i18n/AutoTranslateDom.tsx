@@ -37,12 +37,22 @@ export default function AutoTranslateDom() {
   const { i18n } = useTranslation();
   const location = useLocation();
   const applyingRef = useRef(false);
+  const prevLangRef = useRef(i18n.language.split("-")[0]);
 
   const targetLanguage = useMemo(() => i18n.language.split("-")[0], [i18n.language]);
 
   useEffect(() => {
     const root = document.body;
     if (!root) return;
+
+    // Smooth fade when language actually changes
+    const isLangSwitch = prevLangRef.current !== targetLanguage;
+    prevLangRef.current = targetLanguage;
+
+    if (isLangSwitch) {
+      root.style.transition = "opacity 0.15s ease";
+      root.style.opacity = "0";
+    }
 
     let disposed = false;
     let mutationObserver: MutationObserver | null = null;
@@ -92,11 +102,20 @@ export default function AutoTranslateDom() {
       return (data?.translations || {}) as Record<string, string>;
     };
 
+    const fadeIn = () => {
+      if (isLangSwitch) {
+        requestAnimationFrame(() => {
+          root.style.opacity = "1";
+        });
+      }
+    };
+
     const run = async () => {
       if (disposed || applyingRef.current) return;
 
       if (targetLanguage === "en") {
         restoreEnglish();
+        fadeIn();
         return;
       }
 
@@ -134,7 +153,7 @@ export default function AutoTranslateDom() {
         });
       });
 
-      if (items.length === 0) return;
+      if (items.length === 0) { fadeIn(); return; }
 
       const applyTranslations = (cache: Record<string, string>) => {
         applyingRef.current = true;
@@ -154,7 +173,7 @@ export default function AutoTranslateDom() {
       applyTranslations(cache);
 
       const missing = [...new Set(items.map((i) => i.value))].filter((text) => !cache[text]);
-      if (missing.length === 0) return;
+      if (missing.length === 0) { fadeIn(); return; }
 
       let updated = false;
 
@@ -185,6 +204,7 @@ export default function AutoTranslateDom() {
       if (updated) {
         setCache(targetLanguage, cache);
       }
+      fadeIn();
     };
 
     const scheduleRun = () => {
@@ -213,6 +233,8 @@ export default function AutoTranslateDom() {
       disposed = true;
       if (scheduleTimer) window.clearTimeout(scheduleTimer);
       mutationObserver?.disconnect();
+      // Ensure body is visible if effect re-runs before fade completes
+      root.style.opacity = "1";
     };
   }, [targetLanguage, location.pathname, location.search, location.hash]);
 

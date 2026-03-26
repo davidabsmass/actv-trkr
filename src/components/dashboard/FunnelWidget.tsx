@@ -16,14 +16,13 @@ export function FunnelWidget({ totalSessions, totalPageviews, totalLeads, formSt
   const steps = useMemo<FunnelStep[]>(() => {
     const s: FunnelStep[] = [
       { label: t("dashboard.sessions"), value: totalSessions, color: "bg-primary" },
-      { label: t("dashboard.pageviews"), value: totalPageviews, color: "bg-accent" },
     ];
     if (formStarts !== undefined && formStarts > 0) {
       s.push({ label: t("dashboard.formStarts"), value: formStarts, color: "bg-warning" });
     }
     s.push({ label: t("dashboard.leads"), value: totalLeads, color: "bg-success" });
     return s;
-  }, [totalSessions, totalPageviews, totalLeads, formStarts, t]);
+  }, [totalSessions, totalLeads, formStarts, t]);
 
   const maxValue = Math.max(...steps.map((s) => s.value), 1);
 

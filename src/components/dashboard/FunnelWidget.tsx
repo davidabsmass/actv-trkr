@@ -39,7 +39,7 @@ export function FunnelWidget({ totalSessions, totalPageviews, totalLeads, formSt
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-foreground">{step.label}</span>
-                  {dropoff !== null && dropoff > 0 && <span className="text-xs text-muted-foreground">−{dropoff}%</span>}
+                  {dropoff !== null && dropoff > 0 && <span className="text-xs text-muted-foreground">−{dropoff}% · {steps[i - 1].label}</span>}
                 </div>
                 <span className="text-xs font-mono-data font-semibold text-foreground">{step.value.toLocaleString()}</span>
               </div>

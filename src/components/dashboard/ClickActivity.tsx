@@ -77,7 +77,7 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
 
       const { data } = await supabase
         .from("events")
-        .select("occurred_at, target_text, page_url, page_path, session_id")
+        .select("occurred_at, target_text, page_url, page_path, session_id, meta")
         .eq("org_id", orgId)
         .eq("event_type", selectedType)
         .gte("occurred_at", dayStart).lte("occurred_at", dayEnd)
@@ -180,25 +180,30 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[140px]">{t("clickDrill.timestamp")}</TableHead>
-                  <TableHead>{t("clickDrill.target")}</TableHead>
-                  <TableHead>{t("clickDrill.pagePath")}</TableHead>
-                  <TableHead className="w-[100px]">{t("clickDrill.session")}</TableHead>
+                   <TableHead>{t("clickDrill.timestamp")}</TableHead>
+                   <TableHead>{t("clickDrill.target")}</TableHead>
+                   <TableHead>{t("goals.title")}</TableHead>
+                   <TableHead>{t("clickDrill.pagePath")}</TableHead>
+                   <TableHead className="w-[100px]">{t("clickDrill.session")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {drillData.map((evt: any, i: number) => (
-                  <TableRow key={i}>
-                    <TableCell className="text-xs font-mono-data whitespace-nowrap">
-                      {format(new Date(evt.occurred_at), "MMM d, h:mm a")}
-                    </TableCell>
-                    <TableCell className="text-xs truncate max-w-[180px]" title={evt.target_text || ""}>{evt.target_text || "—"}</TableCell>
-                    <TableCell className="text-xs truncate max-w-[200px]" title={evt.page_path || evt.page_url || ""}>{evt.page_path || evt.page_url || "—"}</TableCell>
-                    <TableCell className="text-xs font-mono-data text-muted-foreground truncate max-w-[100px]" title={evt.session_id || ""}>
-                      {evt.session_id ? evt.session_id.slice(0, 8) + "…" : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {drillData.map((evt: any, i: number) => {
+                  const label = evt.meta?.target_label || "";
+                  return (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs font-mono-data whitespace-nowrap">
+                        {format(new Date(evt.occurred_at), "MMM d, h:mm a")}
+                      </TableCell>
+                      <TableCell className="text-xs truncate max-w-[180px]" title={evt.target_text || ""}>{evt.target_text || "—"}</TableCell>
+                      <TableCell className="text-xs truncate max-w-[120px] text-muted-foreground" title={label}>{label || "—"}</TableCell>
+                      <TableCell className="text-xs truncate max-w-[200px]" title={evt.page_path || evt.page_url || ""}>{evt.page_path || evt.page_url || "—"}</TableCell>
+                      <TableCell className="text-xs font-mono-data text-muted-foreground truncate max-w-[100px]" title={evt.session_id || ""}>
+                        {evt.session_id ? evt.session_id.slice(0, 8) + "…" : "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

@@ -39,7 +39,7 @@ function checkRate(orgId: string): boolean {
   return bucket.count <= RATE_LIMIT;
 }
 
-// ── Bot detection ────────────────────────────────────────────────
+// Bot detection
 const BOT_UA_PATTERNS = [
   /bot\b/i, /crawl/i, /spider/i, /slurp/i, /mediapartners/i,
   /googlebot/i, /bingbot/i, /yandexbot/i, /baiduspider/i,
@@ -64,11 +64,61 @@ function isBot(ua: string | null): boolean {
   return false;
 }
 
+/* ─── Goal Matching ─── */
+
+interface GoalRow {
+  id: string;
+  goal_type: string;
+  tracking_rules: Record<string, any>;
+}
+
+function matchEventToGoals(
+  evt: { event_type: string; target_text: string | null; page_url: string | null; page_path: string | null; meta: Record<string, any> },
+  goals: GoalRow[]
+): string[] {
+  const matched: string[] = [];
+  const text = (evt.target_text || "").toLowerCase();
+  const label = (evt.meta?.target_label || "").toLowerCase();
+  const url = (evt.page_url || "").toLowerCase();
+  const path = (evt.page_path || "").toLowerCase();
+
+  for (const goal of goals) {
+    if (goal.goal_type !== evt.event_type && goal.goal_type !== "custom_event") continue;
+    const r = goal.tracking_rules || {};
+
+    // Custom event matching
+    if (goal.goal_type === "custom_event") {
+      if (r.event_name && r.event_name === evt.event_type) { matched.push(goal.id); }
+      continue;
+    }
+
+    // Type-specific matching
+    let passes = true;
+
+    if (r.text_contains && !text.includes(r.text_contains.toLowerCase()) && !label.includes(r.text_contains.toLowerCase())) {
+      passes = false;
+    }
+    if (r.href_contains && !text.includes(r.href_contains.toLowerCase()) && !url.includes(r.href_contains.toLowerCase())) {
+      passes = false;
+    }
+    if (r.page_path_contains && !path.includes(r.page_path_contains.toLowerCase())) {
+      passes = false;
+    }
+    // "match all" — no filters, just match by event type
+    if (r.match === "all") {
+      passes = true;
+    }
+
+    if (passes) matched.push(goal.id);
+  }
+
+  return matched;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  // Reject bot traffic early
   const userAgent = req.headers.get("user-agent");
   if (isBot(userAgent)) {
     return new Response(JSON.stringify({ status: "ok", filtered: "bot" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -90,7 +140,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Support API key from Authorization header OR request body (sendBeacon can't set headers)
     const authHeader = req.headers.get("authorization") || "";
     let apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
     if (!apiKey && body.api_key) {
@@ -117,13 +166,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No events" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Resolve site
     const { data: site } = await supabase.from("sites").select("id").eq("org_id", orgId).eq("domain", domain).maybeSingle();
     if (!site) return new Response(JSON.stringify({ error: "Unknown site" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const siteId = site.id;
 
     // Process events (max 50 per batch)
-    const rows = [];
+    const rows: any[] = [];
     const maxEvents = Math.min(events.length, 50);
     for (let i = 0; i < maxEvents; i++) {
       const evt = events[i];
@@ -154,6 +202,62 @@ Deno.serve(async (req) => {
       if (insertError) {
         console.error("Event insert error:", insertError);
         return new Response(JSON.stringify({ error: "Failed to store events" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // ── Goal Matching ──────────────────────────────────────────────
+      try {
+        const { data: activeGoals } = await supabase
+          .from("conversion_goals")
+          .select("id, goal_type, tracking_rules")
+          .eq("org_id", orgId)
+          .eq("is_active", true)
+          .eq("is_conversion", true);
+
+        if (activeGoals && activeGoals.length > 0) {
+          const completionRows: any[] = [];
+          const DEDUPE_WINDOW = 300_000; // 5 minutes
+          const timeBucket = Math.floor(Date.now() / DEDUPE_WINDOW);
+
+          for (const row of rows) {
+            const matchedGoalIds = matchEventToGoals(
+              { event_type: row.event_type, target_text: row.target_text, page_url: row.page_url, page_path: row.page_path, meta: row.meta || {} },
+              activeGoals as GoalRow[]
+            );
+
+            for (const goalId of matchedGoalIds) {
+              const sessionKey = row.session_id || "no-session";
+              const dedupeKey = `${goalId}:${sessionKey}:${timeBucket}`;
+
+              completionRows.push({
+                org_id: orgId,
+                goal_id: goalId,
+                site_id: siteId,
+                session_id: row.session_id,
+                visitor_id: row.visitor_id,
+                event_type: row.event_type,
+                page_url: row.page_url,
+                page_path: row.page_path,
+                target_text: row.target_text,
+                dedupe_key: dedupeKey,
+                completed_at: row.occurred_at,
+              });
+            }
+          }
+
+          if (completionRows.length > 0) {
+            // Use upsert with ON CONFLICT to handle deduplication
+            const { error: compError } = await supabase
+              .from("goal_completions")
+              .upsert(completionRows, { onConflict: "org_id,dedupe_key", ignoreDuplicates: true });
+
+            if (compError) {
+              console.error("Goal completion insert error:", compError);
+              // Non-fatal — events are already stored
+            }
+          }
+        }
+      } catch (goalErr) {
+        console.error("Goal matching error (non-fatal):", goalErr);
       }
     }
 

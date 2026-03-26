@@ -278,6 +278,59 @@ export type Database = {
           },
         ]
       }
+      conversion_goals: {
+        Row: {
+          conversion_value: number | null
+          created_at: string
+          description: string
+          goal_type: string
+          id: string
+          is_active: boolean
+          is_conversion: boolean
+          name: string
+          org_id: string
+          priority_level: string | null
+          tracking_rules: Json
+          updated_at: string
+        }
+        Insert: {
+          conversion_value?: number | null
+          created_at?: string
+          description?: string
+          goal_type?: string
+          id?: string
+          is_active?: boolean
+          is_conversion?: boolean
+          name: string
+          org_id: string
+          priority_level?: string | null
+          tracking_rules?: Json
+          updated_at?: string
+        }
+        Update: {
+          conversion_value?: number | null
+          created_at?: string
+          description?: string
+          goal_type?: string
+          id?: string
+          is_active?: boolean
+          is_conversion?: boolean
+          name?: string
+          org_id?: string
+          priority_level?: string | null
+          tracking_rules?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversion_goals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversions_daily: {
         Row: {
           conversion_rate: number
@@ -888,6 +941,91 @@ export type Database = {
           },
           {
             foreignKeyName: "forms_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_completions: {
+        Row: {
+          completed_at: string
+          dedupe_key: string | null
+          device_type: string | null
+          event_type: string
+          goal_id: string
+          id: string
+          landing_page: string | null
+          org_id: string
+          page_path: string | null
+          page_url: string | null
+          referrer: string | null
+          session_id: string | null
+          site_id: string
+          target_text: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          completed_at?: string
+          dedupe_key?: string | null
+          device_type?: string | null
+          event_type: string
+          goal_id: string
+          id?: string
+          landing_page?: string | null
+          org_id: string
+          page_path?: string | null
+          page_url?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          site_id: string
+          target_text?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          completed_at?: string
+          dedupe_key?: string | null
+          device_type?: string | null
+          event_type?: string
+          goal_id?: string
+          id?: string
+          landing_page?: string | null
+          org_id?: string
+          page_path?: string | null
+          page_url?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          site_id?: string
+          target_text?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_completions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "conversion_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_completions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_completions_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"

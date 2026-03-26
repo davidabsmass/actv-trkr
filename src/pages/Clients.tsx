@@ -469,7 +469,9 @@ function MembersSection({ org }: { org: any }) {
 
 function UserActivitySection({ orgId }: { orgId: string }) {
   const { t } = useTranslation();
-  const { data: loginEvents, isLoading } = useQuery({
+  const [activityTab, setActivityTab] = useState<"activity" | "logins">("activity");
+
+  const { data: loginEvents, isLoading: loginsLoading } = useQuery({
     queryKey: ["login-events", orgId],
     queryFn: async () => {
       const allRows: Array<{
@@ -501,6 +503,39 @@ function UserActivitySection({ orgId }: { orgId: string }) {
     },
   });
 
+  // Full activity log
+  const { data: activityLog, isLoading: activityLoading } = useQuery({
+    queryKey: ["user-activity-log", orgId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("user_activity_log")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return data as Array<{
+        id: string; user_id: string; org_id: string; activity_type: string;
+        page_path: string | null; page_title: string | null; details: any; created_at: string;
+      }>;
+    },
+  });
+
+  // Get profiles for activity log user names
+  const { data: profiles } = useQuery({
+    queryKey: ["admin-profiles-for-activity"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("user_id, full_name, email");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const profileMap = (profiles || []).reduce((acc, p) => {
+    acc[p.user_id] = p;
+    return acc;
+  }, {} as Record<string, { full_name: string | null; email: string | null }>);
+
   const userStats = (loginEvents || []).reduce((acc, ev) => {
     const key = ev.user_id;
     if (!acc[key]) {
@@ -516,99 +551,215 @@ function UserActivitySection({ orgId }: { orgId: string }) {
     new Date(b.last_login).getTime() - new Date(a.last_login).getTime()
   );
 
+  // Activity stats
+  const activityStats = (activityLog || []).reduce((acc, ev) => {
+    const key = ev.user_id;
+    if (!acc[key]) acc[key] = { pages: new Set<string>(), actions: 0 };
+    acc[key].actions++;
+    if (ev.page_path) acc[key].pages.add(ev.page_path);
+    return acc;
+  }, {} as Record<string, { pages: Set<string>; actions: number }>);
+
+  const activityTypeIcons: Record<string, string> = {
+    page_view: "📄",
+    feature_click: "🖱️",
+    export: "📥",
+    report_run: "📊",
+  };
+
   return (
     <div className="mt-10 border-t border-border pt-8">
       <div className="flex items-center gap-2 mb-4">
         <Activity className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-semibold text-foreground">{t("clients.userActivity")}</h2>
-        <span className="text-xs text-muted-foreground ml-2">
-          {t("clients.loginEventsTracked", { count: totalCount ?? loginEvents?.length ?? 0 })}
-        </span>
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t("clients.loadingActivity")}</p>
-      ) : sortedUsers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("clients.noLoginEvents")}</p>
-      ) : (
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b border-border">
+        <button
+          onClick={() => setActivityTab("activity")}
+          className={cn(
+            "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            activityTab === "activity"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("clients.activityLog", "Activity Log")}
+        </button>
+        <button
+          onClick={() => setActivityTab("logins")}
+          className={cn(
+            "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+            activityTab === "logins"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("clients.loginHistory", "Login History")}
+          <span className="ml-1.5 text-xs text-muted-foreground">({totalCount ?? loginEvents?.length ?? 0})</span>
+        </button>
+      </div>
+
+      {activityTab === "activity" && (
         <>
+          {/* Activity stats cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-xs text-muted-foreground mb-1">{t("clients.totalUsers")}</p>
-              <p className="text-2xl font-bold text-foreground">{sortedUsers.length}</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("clients.totalActions", "Total Actions")}</p>
+              <p className="text-2xl font-bold text-foreground">{activityLog?.length ?? 0}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-xs text-muted-foreground mb-1">{t("clients.totalLogins")}</p>
-              <p className="text-2xl font-bold text-foreground">{totalCount ?? loginEvents?.length ?? 0}</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("clients.activeUsers", "Active Users")}</p>
+              <p className="text-2xl font-bold text-foreground">{Object.keys(activityStats).length}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-xs text-muted-foreground mb-1">{t("clients.lastActivity")}</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("clients.lastAction", "Last Action")}</p>
               <p className="text-sm font-medium text-foreground">
-                {sortedUsers[0] ? formatDistanceToNow(new Date(sortedUsers[0].last_login), { addSuffix: true }) : "—"}
+                {activityLog?.[0] ? formatDistanceToNow(new Date(activityLog[0].created_at), { addSuffix: true }) : "—"}
               </p>
             </div>
           </div>
 
-          <div className="rounded-lg border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.user")}</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.email")}</th>
-                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("clients.logins")}</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.lastLogin")}</th>
-                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.firstSeen")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedUsers.map((u) => (
-                    <tr key={u.user_id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-2.5 font-medium text-foreground">{u.full_name || "—"}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{u.email || "—"}</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{u.total_logins}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {formatDistanceToNow(new Date(u.last_login), { addSuffix: true })}
-                      </td>
-                      <td className="px-4 py-2.5 text-muted-foreground">
-                        {format(new Date(u.first_login), "MMM d, yyyy")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {activityLoading ? (
+            <p className="text-sm text-muted-foreground">{t("clients.loadingActivity")}</p>
+          ) : !activityLog || activityLog.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card p-8 text-center">
+              <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">{t("clients.noActivityYet", "No activity recorded yet. Activity will appear as users navigate the dashboard.")}</p>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.time")}</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.user")}</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.actionType", "Action")}</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.pageFeature", "Page / Feature")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activityLog.map((ev) => {
+                      const profile = profileMap[ev.user_id];
+                      return (
+                        <tr key={ev.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap text-xs">
+                            {format(new Date(ev.created_at), "MMM d, HH:mm:ss")}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{profile?.full_name || "Unknown"}</p>
+                              <p className="text-xs text-muted-foreground">{profile?.email || ev.user_id.slice(0, 8)}</p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full bg-muted text-foreground">
+                              {activityTypeIcons[ev.activity_type] || "📌"} {ev.activity_type.replace(/_/g, " ")}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-sm text-foreground">
+                            {ev.page_title || ev.page_path || "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
-          <details className="mt-4">
-            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-              {t("clients.viewRawLog", { count: loginEvents?.length ?? 0 })}
-            </summary>
-            <div className="mt-2 rounded-lg border border-border overflow-hidden max-h-64 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-muted/50 backdrop-blur-sm">
-                  <tr className="border-b border-border">
-                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.time")}</th>
-                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.user")}</th>
-                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.email")}</th>
-                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.ip")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(loginEvents || []).map((ev) => (
-                    <tr key={ev.id} className="border-b border-border last:border-0">
-                      <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">
-                        {format(new Date(ev.logged_in_at), "MMM d, HH:mm")}
-                      </td>
-                      <td className="px-3 py-1.5 text-foreground">{ev.full_name || "—"}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{ev.email || "—"}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground font-mono">{ev.ip_address || "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
+      {activityTab === "logins" && (
+        <>
+          {loginsLoading ? (
+            <p className="text-sm text-muted-foreground">{t("clients.loadingActivity")}</p>
+          ) : sortedUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("clients.noLoginEvents")}</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-xs text-muted-foreground mb-1">{t("clients.totalUsers")}</p>
+                  <p className="text-2xl font-bold text-foreground">{sortedUsers.length}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-xs text-muted-foreground mb-1">{t("clients.totalLogins")}</p>
+                  <p className="text-2xl font-bold text-foreground">{totalCount ?? loginEvents?.length ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <p className="text-xs text-muted-foreground mb-1">{t("clients.lastActivity")}</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {sortedUsers[0] ? formatDistanceToNow(new Date(sortedUsers[0].last_login), { addSuffix: true }) : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.user")}</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.email")}</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">{t("clients.logins")}</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.lastLogin")}</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t("clients.firstSeen")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedUsers.map((u) => (
+                        <tr key={u.user_id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-2.5 font-medium text-foreground">{u.full_name || "—"}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{u.email || "—"}</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-foreground">{u.total_logins}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            {formatDistanceToNow(new Date(u.last_login), { addSuffix: true })}
+                          </td>
+                          <td className="px-4 py-2.5 text-muted-foreground">
+                            {format(new Date(u.first_login), "MMM d, yyyy")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <details className="mt-4">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                  {t("clients.viewRawLog", { count: loginEvents?.length ?? 0 })}
+                </summary>
+                <div className="mt-2 rounded-lg border border-border overflow-hidden max-h-64 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-muted/50 backdrop-blur-sm">
+                      <tr className="border-b border-border">
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.time")}</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.user")}</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.email")}</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("clients.ip")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(loginEvents || []).map((ev) => (
+                        <tr key={ev.id} className="border-b border-border last:border-0">
+                          <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap">
+                            {format(new Date(ev.logged_in_at), "MMM d, HH:mm")}
+                          </td>
+                          <td className="px-3 py-1.5 text-foreground">{ev.full_name || "—"}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{ev.email || "—"}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground font-mono">{ev.ip_address || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </>
+          )}
         </>
       )}
     </div>

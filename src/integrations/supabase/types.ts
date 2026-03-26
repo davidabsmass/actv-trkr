@@ -2840,6 +2840,47 @@ export type Database = {
           },
         ]
       }
+      user_activity_log: {
+        Row: {
+          activity_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          org_id: string | null
+          page_path: string | null
+          page_title: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          org_id?: string | null
+          page_path?: string | null
+          page_title?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          org_id?: string | null
+          page_path?: string | null
+          page_title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_input_events: {
         Row: {
           created_at: string

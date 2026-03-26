@@ -33,7 +33,8 @@ export function FunnelWidget({ totalSessions, totalPageviews, totalLeads, formSt
       <div className="space-y-3">
         {steps.map((step, i) => {
           const pct = (step.value / maxValue) * 100;
-          const dropoff = i > 0 ? steps[i - 1].value > 0 ? Math.round(((steps[i - 1].value - step.value) / steps[i - 1].value) * 100) : 0 : null;
+          const dropoffRaw = i > 0 ? steps[i - 1].value > 0 ? ((steps[i - 1].value - step.value) / steps[i - 1].value) * 100 : 0 : null;
+          const dropoff = dropoffRaw !== null ? (dropoffRaw >= 99.5 && dropoffRaw < 100 ? parseFloat(dropoffRaw.toFixed(1)) : Math.round(dropoffRaw)) : null;
           return (
             <div key={step.label}>
               <div className="flex items-center justify-between mb-1">

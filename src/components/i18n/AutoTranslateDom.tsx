@@ -102,11 +102,20 @@ export default function AutoTranslateDom() {
       return (data?.translations || {}) as Record<string, string>;
     };
 
+    const fadeIn = () => {
+      if (isLangSwitch) {
+        requestAnimationFrame(() => {
+          root.style.opacity = "1";
+        });
+      }
+    };
+
     const run = async () => {
       if (disposed || applyingRef.current) return;
 
       if (targetLanguage === "en") {
         restoreEnglish();
+        fadeIn();
         return;
       }
 
@@ -144,7 +153,7 @@ export default function AutoTranslateDom() {
         });
       });
 
-      if (items.length === 0) return;
+      if (items.length === 0) { fadeIn(); return; }
 
       const applyTranslations = (cache: Record<string, string>) => {
         applyingRef.current = true;
@@ -164,7 +173,7 @@ export default function AutoTranslateDom() {
       applyTranslations(cache);
 
       const missing = [...new Set(items.map((i) => i.value))].filter((text) => !cache[text]);
-      if (missing.length === 0) return;
+      if (missing.length === 0) { fadeIn(); return; }
 
       let updated = false;
 
@@ -195,6 +204,7 @@ export default function AutoTranslateDom() {
       if (updated) {
         setCache(targetLanguage, cache);
       }
+      fadeIn();
     };
 
     const scheduleRun = () => {

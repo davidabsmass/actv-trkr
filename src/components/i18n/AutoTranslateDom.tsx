@@ -37,12 +37,22 @@ export default function AutoTranslateDom() {
   const { i18n } = useTranslation();
   const location = useLocation();
   const applyingRef = useRef(false);
+  const prevLangRef = useRef(i18n.language.split("-")[0]);
 
   const targetLanguage = useMemo(() => i18n.language.split("-")[0], [i18n.language]);
 
   useEffect(() => {
     const root = document.body;
     if (!root) return;
+
+    // Smooth fade when language actually changes
+    const isLangSwitch = prevLangRef.current !== targetLanguage;
+    prevLangRef.current = targetLanguage;
+
+    if (isLangSwitch) {
+      root.style.transition = "opacity 0.15s ease";
+      root.style.opacity = "0";
+    }
 
     let disposed = false;
     let mutationObserver: MutationObserver | null = null;

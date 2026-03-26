@@ -203,7 +203,7 @@
           session_id: sid,
           active_seconds: this.getActiveSeconds(),
         },
-        visitor: { visitor_id: vid },
+        visitor: buildVisitor(vid),
       });
     },
 
@@ -221,7 +221,7 @@
           session_id: sid,
           active_seconds: this.getActiveSeconds(),
         },
-        visitor: { visitor_id: vid },
+        visitor: buildVisitor(vid),
       });
     },
   };

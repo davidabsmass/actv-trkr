@@ -54,33 +54,49 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     queryKey: ["reports_overview_live", orgId, startDate, endDate, prevStartDate, prevEndDate],
     queryFn: async () => {
       if (!orgId) return null;
-      const dayStart = `${startDate}T00:00:00Z`;
-      const dayEnd = `${endDate}T23:59:59.999Z`;
-      const prevDayStart = `${prevStartDate}T00:00:00Z`;
-      const prevDayEnd = `${prevEndDate}T23:59:59.999Z`;
 
-      const [sessRes, prevSessRes, leadsRes, prevLeadsRes, brokenRes, incidentsRes] = await Promise.all([
-        supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd),
-        supabase.from("sessions").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("started_at", prevDayStart).lte("started_at", prevDayEnd),
-        supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", dayStart).lte("submitted_at", dayEnd),
-        supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", prevDayStart).lte("submitted_at", prevDayEnd),
+      // Use pre-aggregated tables for speed — no raw row scanning
+      const sum = (rows: any[] | null) => (rows || []).reduce((s, r) => s + Number(r.value || 0), 0);
+
+      const [sessAgg, prevSessAgg, leadsAgg, prevLeadsAgg, brokenRes, incidentsRes, formsRes, formLeadsRes] = await Promise.all([
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
+        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
+        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
         supabase.from("broken_links").select("id", { count: "exact", head: true }).eq("org_id", orgId),
         supabase.from("incidents").select("id", { count: "exact", head: true }).eq("org_id", orgId).is("resolved_at", null),
+        // Form list for form breakdown
+        supabase.from("forms").select("id, name, external_form_id").eq("org_id", orgId).eq("archived", false),
+        // Form-level lead counts from aggregated data
+        supabase.from("kpi_daily").select("dimension, value").eq("org_id", orgId).eq("metric", "leads_by_form").gte("date", startDate).lte("date", endDate),
       ]);
 
-      const currentSessions = sessRes.count || 0;
-      const previousSessions = prevSessRes.count || 0;
-      const currentLeads = leadsRes.count || 0;
-      const previousLeads = prevLeadsRes.count || 0;
+      const currentSessions = sum(sessAgg.data);
+      const previousSessions = sum(prevSessAgg.data);
+      const currentLeads = sum(leadsAgg.data);
+      const previousLeads = sum(prevLeadsAgg.data);
       const currentCvr = currentSessions > 0 ? Math.round((currentLeads / currentSessions) * 10000) / 100 : 0;
       const previousCvr = previousSessions > 0 ? Math.round((previousLeads / previousSessions) * 10000) / 100 : 0;
       const brokenLinks = brokenRes.count || 0;
       const activeIncidents = incidentsRes.count || 0;
 
+      // Build form breakdown
+      const formMap: Record<string, { name: string; leads: number }> = {};
+      (formsRes.data || []).forEach((f: any) => { formMap[f.id] = { name: f.name, leads: 0 }; });
+      (formLeadsRes.data || []).forEach((r: any) => {
+        if (r.dimension && formMap[r.dimension]) {
+          formMap[r.dimension].leads += Number(r.value || 0);
+        }
+      });
+      const formBreakdown = Object.entries(formMap)
+        .map(([id, f]) => ({ id, name: f.name, leads: f.leads }))
+        .filter(f => f.leads > 0)
+        .sort((a, b) => b.leads - a.leads);
+
       const inputs: InsightInputs = { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinksCount: brokenLinks, activeIncidents };
       return {
         currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr,
-        brokenLinks, activeIncidents, findings: generateFindings(inputs),
+        brokenLinks, activeIncidents, formBreakdown, findings: generateFindings(inputs),
       };
     },
     enabled: !!orgId,

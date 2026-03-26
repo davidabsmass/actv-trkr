@@ -263,6 +263,13 @@ export default function Security() {
                                 {details.path && <span className="font-mono truncate">{details.path}</span>}
                               </div>
                             </div>
+                            <button
+                              onClick={() => dismissEvent.mutate(evt.id)}
+                              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                              title={t("security.dismiss", "Dismiss")}
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         </div>
                       );

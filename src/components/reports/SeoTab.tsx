@@ -246,8 +246,8 @@ export default function SeoTab() {
       {/* Score card */}
       {activeScan && (
         <SeoScoreCard
-          score={adjustedScore}
-          issues={visibleIssues}
+          score={score}
+          issues={issues}
           platform={activeScan.platform}
           url={activeScan.url}
           scannedAt={activeScan.scanned_at}
@@ -261,15 +261,10 @@ export default function SeoTab() {
       )}
 
       {/* Issues */}
-      {activeScan && visibleIssues.length > 0 && (
+      {activeScan && issues.length > 0 && (
         <SeoIssuesList
-          issues={visibleIssues}
-          fixQueue={fixQueue || []}
-          markedFixed={markedFixed}
+          issues={issues}
           onFixClick={handleFixClick}
-          onMarkFixed={handleMarkFixed}
-          onVerify={handleVerify}
-          onRetryStale={handleRetryStale}
         />
       )}
 
@@ -278,13 +273,9 @@ export default function SeoTab() {
         <SeoFixModal
           open={!!fixModal}
           onOpenChange={(open) => !open && setFixModal(null)}
-          issueId={fixModal.issueId}
           issueTitle={fixModal.title}
           fixType={fixModal.fixType}
-          suggestedValue=""
           pageUrl={activeScan?.url || ""}
-          onConfirm={(value) => queueFix.mutate({ issueId: fixModal.issueId, fixType: fixModal.fixType, fixValue: value })}
-          isPending={queueFix.isPending}
         />
       )}
 

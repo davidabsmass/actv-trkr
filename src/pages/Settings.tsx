@@ -10,6 +10,7 @@ import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 import GetStartedGuide from "@/components/onboarding/GetStartedGuide";
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
+import GoalsSection from "@/components/settings/GoalsSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function SettingsPage() {
@@ -47,6 +48,7 @@ export default function SettingsPage() {
             <SitesSection />
             <FormsSection />
             <NotificationsSection />
+            <GoalsSection />
           </div>
         </TabsContent>
 

@@ -68,7 +68,7 @@ export default function SeoIssuesList({ issues, onFixClick }: Props) {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <h5 className="text-sm font-medium text-foreground truncate">{issue.title}</h5>
+                        <h5 className="text-sm font-medium text-foreground">{issue.title}</h5>
                         {issue.category && (
                           <Badge variant="outline" className="text-xs uppercase shrink-0">{issue.category}</Badge>
                         )}

@@ -2,22 +2,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { subDays, format } from "date-fns";
-import {
-  Search, RefreshCw, Shield, AlertCircle, AlertTriangle, Info, CheckCircle2,
-  TrendingUp, TrendingDown, Eye, Sparkles, Zap, Clock, Globe,
-} from "lucide-react";
-import { useState, useMemo } from "react";
+import { Search, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
-import { getScoreGrade, getScoreStatus, calculateScore, calculateSeverityMultiplier } from "@/lib/seo-scoring";
 import type { SeoIssue } from "@/lib/seo-scoring";
-import SeoScanHistory from "./SeoScanHistory";
 import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
-import type { FixQueueItem } from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
 import SeoFixModal from "./SeoFixModal";
 

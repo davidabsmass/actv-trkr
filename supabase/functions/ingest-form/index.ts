@@ -301,46 +301,25 @@ Deno.serve(async (req) => {
         const rawLabels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
         const allLabelsEmpty = rawLabels.every((l: string) => !l || l === "");
 
-        // Count non-skip field types to know expected value count
-        const realTypes: { type: string; index: number }[] = [];
-        for (let i = 0; i < types.length; i++) {
-          if (!SKIP_AVADA_TYPES.has(types[i]?.toLowerCase())) {
-            realTypes.push({ type: types[i], index: i });
-          }
-        }
-
-        // Smart split: split from front, last field gets all remaining text
-        // This handles commas inside message/textarea fields
-        const rawDataStr = dataEntry.value as string;
-        const fieldValues: string[] = [];
-        let remaining = rawDataStr;
-        for (let fi = 0; fi < realTypes.length; fi++) {
-          if (fi === realTypes.length - 1) {
-            fieldValues.push(remaining.trim());
-          } else {
-            const commaIdx = remaining.indexOf(", ");
-            if (commaIdx === -1) {
-              fieldValues.push(remaining.trim());
-              remaining = "";
-            } else {
-              fieldValues.push(remaining.substring(0, commaIdx).trim());
-              remaining = remaining.substring(commaIdx + 2);
-            }
-          }
-        }
+        // Split ALL values by ", " — Avada includes entries for every field type
+        const allValues = (dataEntry.value as string).split(", ").map((v: string) => v.trim());
 
         const flatRows: any[] = [];
-        for (let fi = 0; fi < realTypes.length; fi++) {
-          const type = realTypes[fi].type.toLowerCase();
-          const val = fieldValues[fi] || "";
+        let dataFieldPos = 0;
+        for (let i = 0; i < types.length; i++) {
+          const type = types[i]?.toLowerCase() || "";
+          if (SKIP_AVADA_TYPES.has(type)) continue;
+
+          dataFieldPos++;
+          const val = allValues[i] || "";
           if (!val || val === "Array") continue;
 
           let label: string;
-          const rawLabel = rawLabels[realTypes[fi].index] || "";
+          const rawLabel = rawLabels[i] || "";
           if (rawLabel && !allLabelsEmpty) {
             label = rawLabel;
           } else {
-            label = inferAvadaFieldName(type, val, fi + 1);
+            label = inferAvadaFieldName(type, val, dataFieldPos);
           }
 
           flatRows.push({

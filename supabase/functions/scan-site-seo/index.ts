@@ -121,9 +121,9 @@ function buildDeterministicIssues(ctx: {
   // Render-blocking scripts
   if (ctx.blockingScriptsCount > 0) {
     const detail = ctx.blockingScriptSrcs.length > 0
-      ? `\n\nBlocking scripts:\n${ctx.blockingScriptSrcs.map(s => `• ${s}`).join("\n")}`
+      ? `Blocking scripts:\n${ctx.blockingScriptSrcs.map(s => `• ${s}`).join("\n")}`
       : "";
-    issues.push({ id: "render-blocking-scripts", title: `${ctx.blockingScriptsCount} render-blocking script(s) in <head>${detail}`, fix: "", impact: "Medium", category: "Performance", count: ctx.blockingScriptsCount });
+    issues.push({ id: "render-blocking-scripts", title: `${ctx.blockingScriptsCount} render-blocking script(s) in <head>`, fix: detail || "Add async or defer attributes to render-blocking scripts in the <head>.", impact: "Medium", category: "Performance", count: ctx.blockingScriptsCount });
   }
 
   // Lazy loading

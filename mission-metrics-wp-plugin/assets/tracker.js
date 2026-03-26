@@ -93,6 +93,19 @@
     return 'desktop';
   }
 
+  // ── Visitor identity (includes WP user if logged in) ──────────
+
+  function buildVisitor(vid) {
+    var v = { visitor_id: vid };
+    if (CFG.wpUser) {
+      v.wp_user_id = CFG.wpUser.id;
+      v.wp_user_name = CFG.wpUser.name;
+      v.wp_user_email = CFG.wpUser.email;
+      v.wp_user_role = CFG.wpUser.role;
+    }
+    return v;
+  }
+
   // ── Send ────────────────────────────────────────────────────────
 
   function send(endpoint, payload) {
@@ -190,7 +203,7 @@
           session_id: sid,
           active_seconds: this.getActiveSeconds(),
         },
-        visitor: { visitor_id: vid },
+        visitor: buildVisitor(vid),
       });
     },
 
@@ -208,7 +221,7 @@
           session_id: sid,
           active_seconds: this.getActiveSeconds(),
         },
-        visitor: { visitor_id: vid },
+        visitor: buildVisitor(vid),
       });
     },
   };
@@ -434,9 +447,7 @@
         occurred_at: new Date().toISOString(),
       },
       attribution: attribution,
-      visitor: {
-        visitor_id: vid,
-      },
+      visitor: buildVisitor(vid),
     });
   }
 

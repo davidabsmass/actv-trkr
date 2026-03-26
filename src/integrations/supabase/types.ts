@@ -2787,6 +2787,60 @@ export type Database = {
           },
         ]
       }
+      site_visitors: {
+        Row: {
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          org_id: string
+          site_id: string
+          visitor_id: string
+          wp_user_email: string | null
+          wp_user_id: string | null
+          wp_user_name: string | null
+          wp_user_role: string | null
+        }
+        Insert: {
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          org_id: string
+          site_id: string
+          visitor_id: string
+          wp_user_email?: string | null
+          wp_user_id?: string | null
+          wp_user_name?: string | null
+          wp_user_role?: string | null
+        }
+        Update: {
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          org_id?: string
+          site_id?: string
+          visitor_id?: string
+          wp_user_email?: string | null
+          wp_user_id?: string | null
+          wp_user_name?: string | null
+          wp_user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_visitors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_visitors_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           created_at: string

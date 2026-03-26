@@ -268,6 +268,13 @@ Deno.serve(async (req) => {
     const pluginVersion = sanitizeStr(source?.plugin_version, 32);
     const siteType = sanitizeStr(source?.type, 32) || "wordpress";
 
+    // WP user identity
+    const wpUserId = sanitizeStr(visitor?.wp_user_id, 64);
+    const wpUserName = sanitizeStr(visitor?.wp_user_name, 256);
+    const wpUserEmail = sanitizeStr(visitor?.wp_user_email, 256);
+    const wpUserRole = sanitizeStr(visitor?.wp_user_role, 128);
+    const siteType = sanitizeStr(source?.type, 32) || "wordpress";
+
     const utmSource = sanitizeStr(attribution?.utm_source, 256);
     const utmMedium = sanitizeStr(attribution?.utm_medium, 256);
     const utmCampaign = sanitizeStr(attribution?.utm_campaign, 256);
@@ -315,6 +322,16 @@ Deno.serve(async (req) => {
         p_page_path: pagePath, p_referrer_domain: referrerDomain || "",
         p_utm_source: utmSource || "", p_utm_medium: utmMedium || "", p_utm_campaign: utmCampaign || "",
       });
+    }
+
+    // Upsert identified WP visitor
+    if (visitorId && siteId && wpUserId) {
+      await supabase.from("site_visitors").upsert({
+        org_id: orgId, site_id: siteId, visitor_id: visitorId,
+        wp_user_id: wpUserId, wp_user_name: wpUserName,
+        wp_user_email: wpUserEmail, wp_user_role: wpUserRole,
+        last_seen_at: occurredAt.toISOString(),
+      }, { onConflict: "org_id,site_id,visitor_id" });
     }
 
     return new Response(JSON.stringify({ status: "ok", event_id: eventId }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

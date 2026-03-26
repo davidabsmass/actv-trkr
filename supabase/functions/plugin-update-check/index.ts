@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.3.25: Fixed PHP syntax error caused by JS template literal escaping of regex patterns
-const LATEST_VERSION = "1.3.28";
+// v1.4.1: Added visitor identity tracking, goal/conversion engine, Nova AI full-context chatbot
+const LATEST_VERSION = "1.4.1";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

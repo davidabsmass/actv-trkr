@@ -43,6 +43,7 @@ export default function Security() {
         .from("security_events")
         .select("*")
         .eq("org_id", orgId)
+        .is("reviewed_at", null)
         .order("occurred_at", { ascending: false })
         .limit(100);
       if (error) throw error;

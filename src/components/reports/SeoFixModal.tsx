@@ -1,22 +1,17 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wand2, Loader2, Sparkles } from "lucide-react";
+import { Wand2, Loader2, Sparkles, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface SeoFixModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  issueId: string;
   issueTitle: string;
   fixType: string;
-  suggestedValue: string;
   pageUrl: string;
-  onConfirm: (value: string) => void;
-  isPending: boolean;
 }
 
 const fixTypeLabels: Record<string, string> = {
@@ -27,24 +22,19 @@ const fixTypeLabels: Record<string, string> = {
 };
 
 export default function SeoFixModal({
-  open, onOpenChange, issueId, issueTitle, fixType, suggestedValue, pageUrl, onConfirm, isPending,
+  open, onOpenChange, issueTitle, fixType, pageUrl,
 }: SeoFixModalProps) {
-  const [value, setValue] = useState(suggestedValue);
+  const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
-  const [aiGenerated, setAiGenerated] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!open || !pageUrl || !fixType) return;
 
-    // If a suggestedValue was already provided, use it
-    if (suggestedValue) {
-      setValue(suggestedValue);
-      return;
-    }
-
     let cancelled = false;
     setLoading(true);
-    setAiGenerated(false);
+    setValue("");
+    setCopied(false);
 
     supabase.functions
       .invoke("seo-suggest-fix", {
@@ -56,7 +46,6 @@ export default function SeoFixModal({
           console.error("seo-suggest-fix invoke error:", error);
         } else if (data?.suggested_value) {
           setValue(data.suggested_value);
-          setAiGenerated(true);
         } else {
           console.warn("seo-suggest-fix returned no suggested_value:", data);
         }
@@ -69,18 +58,28 @@ export default function SeoFixModal({
       });
 
     return () => { cancelled = true; };
-  }, [open, pageUrl, fixType, suggestedValue]);
+  }, [open, pageUrl, fixType]);
 
   // Reset when modal closes
   useEffect(() => {
     if (!open) {
       setValue("");
-      setAiGenerated(false);
       setLoading(false);
+      setCopied(false);
     }
   }, [open]);
 
-  const isLongText = fixType === "set_meta_desc";
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
   const label = fixTypeLabels[fixType] || fixType;
 
   return (
@@ -89,17 +88,17 @@ export default function SeoFixModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Wand2 className="h-4 w-4 text-primary" />
-            Fix: {issueTitle}
+            Suggested Fix: {issueTitle}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Review and edit the suggested {label.toLowerCase()} before applying.
+            Copy the suggested {label.toLowerCase()} and paste it into your site's SEO settings.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">
           <div className="flex items-center gap-2">
             <label className="text-xs font-medium text-foreground">{label}</label>
-            {aiGenerated && !loading && (
+            {!loading && value && (
               <span className="inline-flex items-center gap-1 text-xs text-primary font-medium bg-primary/10 px-1.5 py-0.5 rounded-full">
                 <Sparkles className="h-2.5 w-2.5" />
                 AI suggested
@@ -115,38 +114,32 @@ export default function SeoFixModal({
                 Generating AI suggestion…
               </p>
             </div>
-          ) : isLongText ? (
-            <Textarea
-              value={value}
-              onChange={(e) => { setValue(e.target.value); setAiGenerated(false); }}
-              rows={3}
-              className="text-sm"
-              maxLength={160}
-            />
+          ) : value ? (
+            <div className="rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-sm text-foreground leading-relaxed">{value}</p>
+            </div>
           ) : (
-            <Input
-              value={value}
-              onChange={(e) => { setValue(e.target.value); setAiGenerated(false); }}
-              className="text-sm"
-              maxLength={fixType === "set_title" ? 60 : undefined}
-            />
+            <p className="text-xs text-muted-foreground">No suggestion available for this issue.</p>
           )}
-          {!loading && fixType === "set_title" && (
+
+          {!loading && fixType === "set_title" && value && (
             <p className="text-xs text-muted-foreground">{value.length}/60 characters</p>
           )}
-          {!loading && fixType === "set_meta_desc" && (
+          {!loading && fixType === "set_meta_desc" && value && (
             <p className="text-xs text-muted-foreground">{value.length}/160 characters</p>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={isPending}>
-            Cancel
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            Close
           </Button>
-          <Button size="sm" onClick={() => onConfirm(value)} disabled={isPending || loading || !value.trim()}>
-            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-            Apply Fix
-          </Button>
+          {value && (
+            <Button size="sm" onClick={handleCopy} className="gap-1.5">
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copied!" : "Copy"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

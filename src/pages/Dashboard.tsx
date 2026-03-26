@@ -395,7 +395,7 @@ const Dashboard = () => {
   return (
     <div>
       {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
-      <GetStartedBanner hasSites={!!(sitesData && sitesData.length > 0)} />
+      {(!sitesData || sitesData.length === 0) && <GetStartedBanner hasSites={false} />}
 
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -431,27 +431,6 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {sitesData && sitesData.length === 0 && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 animate-slide-up">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Zap className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-foreground mb-1">{t("dashboard.getStartedConnect")}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {t("dashboard.getStartedConnectDesc")}
-                  </p>
-                </div>
-                <button
-                  onClick={() => navigate("/settings?tab=setup")}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
-                >
-                  {t("dashboard.startSetup")} <ArrowUpRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Row 1 – 6 KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

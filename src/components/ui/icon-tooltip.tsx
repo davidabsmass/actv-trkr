@@ -13,7 +13,7 @@ interface IconTooltipProps {
 
 export function IconTooltip({ label, children, side = "bottom", className }: IconTooltipProps) {
   return (
-    <Tooltip>
+    <Tooltip delayDuration={2000}>
       <TooltipTrigger asChild>
         <span className={className}>{children}</span>
       </TooltipTrigger>

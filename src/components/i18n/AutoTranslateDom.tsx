@@ -45,12 +45,9 @@ export default function AutoTranslateDom() {
     const root = document.body;
     if (!root) return;
 
-    // Smooth fade when language actually changes
-    const isLangSwitch = prevLangRef.current !== targetLanguage;
-    prevLangRef.current = targetLanguage;
-
-    if (isLangSwitch) {
-      root.style.transition = "opacity 0.15s ease";
+    // For non-English, ensure body starts hidden (covers both lang switch and page load)
+    if (targetLanguage !== "en") {
+      root.style.transition = "opacity 0.25s ease";
       root.style.opacity = "0";
     }
 

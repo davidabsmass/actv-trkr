@@ -8,16 +8,16 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Auth: accept cron secret header OR service_role key
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
   const authHeader = req.headers.get("authorization") || "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const isServiceRole = authHeader === `Bearer ${serviceKey}`;
-  const isAnon = authHeader === `Bearer ${anonKey}`;
+  const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const isServiceRole = bearerToken === serviceKey;
   const hasCronSecret = cronSecret && incoming === cronSecret;
-  // Allow: service_role, valid cron secret, or anon key (for internal tooling calls)
-  if (!isServiceRole && !hasCronSecret && !isAnon) {
+  console.log("Auth check:", { hasCronSecret, isServiceRole, hasAuth: !!bearerToken, hasServiceKey: !!serviceKey });
+  if (!isServiceRole && !hasCronSecret) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 

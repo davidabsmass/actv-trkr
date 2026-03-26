@@ -883,7 +883,15 @@
     "time": "Time",
     "ip": "IP",
     "setNewPassword": "Set new password for {{email}} (min 6 chars):",
-    "passwordMinChars": "Password must be at least 6 characters"
+    "passwordMinChars": "Password must be at least 6 characters",
+    "activityLog": "Activity Log",
+    "loginHistory": "Login History",
+    "totalActions": "Total Actions",
+    "activeUsers": "Active Users",
+    "lastAction": "Last Action",
+    "noActivityYet": "No activity recorded yet. Activity will appear as users navigate the dashboard.",
+    "actionType": "Action",
+    "pageFeature": "Page / Feature"
   },
   "adminSetup": {
     "title": "Setup & Inputs",

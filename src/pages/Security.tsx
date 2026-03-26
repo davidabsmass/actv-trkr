@@ -1,8 +1,9 @@
-import { ShieldAlert, Lock, FileWarning, Info, AlertTriangle, CheckCircle, XCircle, Eye } from "lucide-react";
+import { ShieldAlert, Lock, FileWarning, Info, AlertTriangle, CheckCircle, XCircle, Eye, CheckCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrg } from "@/hooks/use-org";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";

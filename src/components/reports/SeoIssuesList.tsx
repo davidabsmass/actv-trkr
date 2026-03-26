@@ -153,26 +153,7 @@ export default function SeoIssuesList({ issues, fixQueue = [], markedFixed = new
                             <Wand2 className="h-2.5 w-2.5" /> {canRetryFix ? t("reports.retryFix") : t("reports.fixThis")}
                           </Button>
                         )}
-                        {!queueItem && !isMarkedFixed && !fixType && onMarkFixed && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs text-muted-foreground"
-                            onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
-                          >
-                            {t("reports.markFixed")}
-                          </Button>
-                        )}
-                        {!queueItem && !isMarkedFixed && fixType && onMarkFixed && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs text-muted-foreground"
-                            onClick={(e) => { e.stopPropagation(); onMarkFixed(issue.id); }}
-                          >
-                            {t("reports.markFixed")}
-                          </Button>
-                        )}
+                        {/* Manual skip/mark-fixed action removed intentionally */}
 
                         <Shield className={`h-3.5 w-3.5 transition-transform ${expanded === issue.id ? "rotate-180" : ""}`} />
                       </div>

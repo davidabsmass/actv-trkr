@@ -36,7 +36,10 @@ export function LanguageSwitcher({ variant = "sidebar" }: { variant?: "sidebar" 
             {languages.map((lang) => (
               <DropdownMenuItem
                 key={lang.code}
-                onClick={() => i18n.changeLanguage(lang.code)}
+                onClick={() => {
+                  localStorage.setItem('at_language', lang.code);
+                  window.location.reload();
+                }}
                 className={lang.code === i18n.language ? "font-medium bg-accent" : ""}
               >
                 <span className="mr-2">{lang.flag}</span>
@@ -62,7 +65,10 @@ export function LanguageSwitcher({ variant = "sidebar" }: { variant?: "sidebar" 
           {languages.map((lang) => (
             <DropdownMenuItem
               key={lang.code}
-              onClick={() => i18n.changeLanguage(lang.code)}
+              onClick={() => {
+                localStorage.setItem('at_language', lang.code);
+                window.location.reload();
+              }}
               className={lang.code === i18n.language ? "font-medium bg-accent" : ""}
             >
               <span className="mr-2">{lang.flag}</span>

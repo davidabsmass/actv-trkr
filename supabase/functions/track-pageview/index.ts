@@ -324,6 +324,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Upsert identified WP visitor
+    if (visitorId && siteId && wpUserId) {
+      await supabase.from("site_visitors").upsert({
+        org_id: orgId, site_id: siteId, visitor_id: visitorId,
+        wp_user_id: wpUserId, wp_user_name: wpUserName,
+        wp_user_email: wpUserEmail, wp_user_role: wpUserRole,
+        last_seen_at: occurredAt.toISOString(),
+      }, { onConflict: "org_id,site_id,visitor_id" });
+    }
+
     return new Response(JSON.stringify({ status: "ok", event_id: eventId }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Pageview tracking error:", err);

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
 import type { SeoIssue } from "@/lib/seo-scoring";
-import { getScoreGrade } from "@/lib/seo-scoring";
 import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
@@ -206,40 +205,35 @@ export default function SeoTab() {
     }
   };
 
-  const exportSeoFindings = () => {
+  const [exporting, setExporting] = useState(false);
+
+  const exportSeoFindings = async () => {
     if (!activeScan || issues.length === 0) return;
-    const grade = getScoreGrade(score);
-    const rows: string[][] = [
-      ["SEO Scan Export"],
-      ["URL", activeScan.url],
-      ["Score", `${score}/100 (Grade: ${grade})`],
-      ["Platform", activeScan.platform || "Unknown"],
-      ["Scanned", new Date(activeScan.scanned_at).toLocaleDateString()],
-      [],
-      ["Priority", "Category", "Issue", "Recommendation"],
-    ];
-    for (const issue of issues) {
-      rows.push([
-        issue.impact,
-        issue.category || "",
-        issue.title,
-        (issue.fix || "").replace(/\n/g, " "),
-      ]);
+    setExporting(true);
+    try {
+      const wlResult = orgId
+        ? await supabase.from("white_label_settings").select("*").eq("org_id", orgId).maybeSingle()
+        : { data: null };
+      const { buildSeoPdf } = await import("@/lib/seo-pdf");
+      const doc = await buildSeoPdf(
+        {
+          url: activeScan.url,
+          score,
+          issues,
+          platform: activeScan.platform,
+          scannedAt: activeScan.scanned_at,
+          blendedInsights: blendedInsights || undefined,
+        },
+        wlResult.data as any
+      );
+      doc.save(`seo-report-${siteDomain || "scan"}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(t("seo.exportSuccess", { defaultValue: "SEO report exported" }));
+    } catch (err: any) {
+      console.error("SEO PDF export error:", err);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setExporting(false);
     }
-    if (blendedInsights && blendedInsights.length > 0) {
-      rows.push([], ["SEO + Engagement Insights"], ["Page", "Insight", "Details"]);
-      for (const insight of blendedInsights) {
-        rows.push([insight.page, insight.title, insight.explanation]);
-      }
-    }
-    const csv = rows.map(r => r.map(c => `"${(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `seo-report-${siteDomain || "scan"}-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast.success(t("seo.exportSuccess", { defaultValue: "SEO report exported" }));
   };
 
   return (
@@ -265,10 +259,11 @@ export default function SeoTab() {
                   variant="outline"
                   size="sm"
                   onClick={exportSeoFindings}
+                  disabled={exporting}
                   className="gap-1.5 shrink-0"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  {t("seo.export", { defaultValue: "Export" })}
+                  {exporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  {exporting ? t("seo.exportingPdf", { defaultValue: "Generating…" }) : t("seo.exportPdf", { defaultValue: "Export PDF" })}
                 </Button>
               )}
               <Button

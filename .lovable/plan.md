@@ -1,68 +1,63 @@
 
 
-# CTA Goal Tracking — Plan
+## How It Works Now (And Why It's Broken)
 
-## What's happening now
+### Problem 1: AI Performance Insights — Poor Quality + Quick Lockout
 
-The tracker already captures `cta_click` for any `<button>` outside a form and any element with `data-actv="cta"`. The "Book Online" button on Georgia Bone & Joint is likely an `<a>` tag (not a `<button>`, not outbound, not tel/mailto/download), so it falls through all classification rules and is never tracked.
+**Current flow:**
+1. Every time the Dashboard loads, the `AiInsights` component auto-fires a call to the `dashboard-ai-insights` edge function
+2. The edge function receives pre-computed metrics (sessions, leads, CVR) but resolves the org by picking the **first org** in `org_users` for the user — not the currently selected one
+3. The function has a daily limit of 15 calls per org (5 auto + 10 manual on the frontend side, 15 on the backend)
+4. Auto-calls fire on every dashboard page load (up to 5 per day), burning through the quota fast
+5. Once exhausted, the user sees "All caught up — try tomorrow"
 
-## The fix — two parts
+**Why insights are bad:** The function only gets raw numbers (sessions this week: X, leads: Y). It has no site name, no page names, no source breakdown — just totals. The AI has very little context to work with.
 
-### Part 1: Expand tracker to support `data-actv-label` and catch more CTAs
+### Problem 2: Chatbot Talks About Wrong Client
 
-**tracker.js changes:**
-- Add support for a `data-actv-label` attribute so clients can tag any element with a custom label (e.g., `data-actv="cta" data-actv-label="Book Online - Dr. Smith"`)
-- When `data-actv-label` is present, use it as `target_text` instead of the element's inner text
-- Also capture `data-actv-label` as a separate `target_label` field in the event payload for grouping
-- Expand `classifyClick` to also detect internal `<a>` tags that look like CTAs — specifically links with classes containing "btn", "button", "cta", or "book", or links with `role="button"`
+**Current flow:**
+1. The chatbot frontend (`AiChatbot.tsx`) sends messages + language, but **no `orgId`**
+2. The edge function resolves org via `org_users` with `limit(1)` — always picks the first org alphabetically/by insertion order
+3. All data fetched (sessions, leads, pages, SEO, etc.) comes from that first org, not the one the user is looking at
 
-**track-event edge function:**
-- Add `target_label` to the sanitized fields stored in the `events` table (the column `meta` jsonb already exists and can hold this, or we store it there)
+---
 
-### Part 2: Goals system — let users define trackable goals in Settings
+## Plan
 
-**Database: new `goals_config` table**
-```
-goals_config:
-  id uuid PK
-  org_id uuid
-  site_id uuid (nullable)
-  name text (e.g., "Book Online")
-  match_type text ('target_text_contains' | 'target_label_exact' | 'page_path_contains')
-  match_value text (e.g., "Book Online" or "dr-smith")
-  event_type text default 'cta_click'
-  is_conversion boolean default true
-  created_at timestamptz
-```
-RLS: org members can read, admins can write.
+### Fix 1: Chatbot — Pass the Active Org
 
-**Settings UI: new "Goals" tab or section**
-- Simple form: Name, Match rule (button text contains / label equals / page path contains), Event type dropdown
-- List of configured goals with delete
+**`src/components/AiChatbot.tsx`**
+- Import `useOrg` hook
+- Send `orgId` in the request body alongside `messages` and `language`
 
-**Dashboard: Goals widget**
-- New `GoalConversions` component on Performance page
-- Queries `events` table, filters by the goal match rules, shows a leaderboard: goal name, count, trend
-- For the doctor use case: if buttons are tagged `data-actv-label="Dr. Smith"`, goals auto-group by label
+**`supabase/functions/ai-chatbot/index.ts`**
+- Read `orgId` from request body instead of guessing from `org_users`
+- Validate that the authenticated user is a member of that org before fetching data
+- Fall back to current behavior if no orgId provided
 
-### Part 3: WordPress setup instructions
+### Fix 2: AI Insights — Pass Org + Improve Context + Reduce Auto-Burn
 
-Add a note in the Settings > Website Setup page explaining:
-- To track any element as a CTA: add `data-actv="cta"` to it
-- To add a custom label for grouping: add `data-actv-label="Your Label"`
-- Example HTML shown in a code block
+**`src/components/dashboard/AiInsights.tsx`**
+- Accept `orgId` as a prop and send it in the function call body
+- Reduce `AUTO_LIMIT` from 5 to 1 (one auto-call per day is enough; the rest should be manual refreshes)
+- Scope the sessionStorage cache key by orgId so switching clients doesn't show stale insights
 
-## Files changed
+**`supabase/functions/dashboard-ai-insights/index.ts`**
+- Read `orgId` from request body (validate user membership)
+- Enrich the AI prompt with actual org data: fetch the org name, site domains, top page names, and top sources server-side so the AI has real context to reference
+- This transforms the AI from "you have 12 sessions" to "apyxmedical.com had 12 sessions, mostly from Google, with /services as the top page"
 
-| File | Change |
-|------|--------|
-| `mission-metrics-wp-plugin/assets/tracker.js` | Expand `classifyClick` to catch CTA-like `<a>` tags; read `data-actv-label` |
-| `supabase/functions/track-event/index.ts` | Store `target_label` in `meta` jsonb |
-| New migration | Create `goals_config` table with RLS |
-| `src/components/settings/GoalsSection.tsx` | New component: CRUD goals |
-| `src/pages/Settings.tsx` | Add Goals section to general tab |
-| `src/components/dashboard/GoalConversions.tsx` | New widget: goal leaderboard |
-| `src/pages/Performance.tsx` | Add GoalConversions widget |
-| `src/components/dashboard/ClickActivity.tsx` | Show `target_label` when available in drill-down |
-| Locale files (all languages) | Add translation keys for goals UI |
+**`src/pages/Dashboard.tsx`**
+- Pass `orgId` to the `AiInsights` component
+
+### Technical Details
+
+| Change | File | What |
+|--------|------|------|
+| Pass orgId to chatbot | `AiChatbot.tsx` | Add `useOrg()`, include `orgId` in POST body |
+| Chatbot uses passed org | `ai-chatbot/index.ts` | Read `orgId` from body, validate membership, skip blind `limit(1)` lookup |
+| Pass orgId to insights | `Dashboard.tsx` → `AiInsights.tsx` | Thread orgId prop through |
+| Insights uses passed org | `dashboard-ai-insights/index.ts` | Read `orgId` from body, validate, fetch enriched context (org name, domains, top pages, sources) |
+| Reduce auto-burn | `AiInsights.tsx` | `AUTO_LIMIT` 5→1, scope cache key by orgId |
+| Better AI prompt | `dashboard-ai-insights/index.ts` | Add org name, site domains, top 5 pages, top 5 sources to the prompt so insights are specific and useful |
 

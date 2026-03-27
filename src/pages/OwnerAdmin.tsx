@@ -37,30 +37,41 @@ type SortKey = "created_at" | "mrr" | "last_active_date" | "churn_date";
 export default function OwnerAdmin() {
   const [searchParams] = useSearchParams();
   const secret = searchParams.get("secret");
-  const adminSecret = import.meta.env.VITE_ADMIN_SECRET;
 
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [errors, setErrors] = useState<ErrorLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortAsc, setSortAsc] = useState(false);
 
-  // Allow access if env var matches or if no env var set (dev mode)
-  const authorized = !adminSecret || secret === adminSecret;
-
   useEffect(() => {
-    if (!authorized) return;
-    const load = async () => {
-      const [subRes, errRes] = await Promise.all([
-        supabase.from("subscribers").select("*"),
-        supabase.from("error_logs").select("*").order("created_at", { ascending: false }).limit(100),
-      ]);
-      if (subRes.data) setSubscribers(subRes.data as any);
-      if (errRes.data) setErrors(errRes.data as any);
+    if (!secret) { setAuthorized(false); setLoading(false); return; }
+    const verify = async () => {
+      try {
+        const res = await fetch(
+          `https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1/admin-verify`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ secret }),
+          }
+        );
+        const data = await res.json();
+        if (!data.authorized) { setAuthorized(false); setLoading(false); return; }
+        setAuthorized(true);
+
+        const [subRes, errRes] = await Promise.all([
+          supabase.from("subscribers").select("*"),
+          supabase.from("error_logs").select("*").order("created_at", { ascending: false }).limit(100),
+        ]);
+        if (subRes.data) setSubscribers(subRes.data as any);
+        if (errRes.data) setErrors(errRes.data as any);
+      } catch { setAuthorized(false); }
       setLoading(false);
     };
-    load();
-  }, [authorized]);
+    verify();
+  }, [secret]);
 
   const active = useMemo(() => subscribers.filter((s) => s.status === "active"), [subscribers]);
   const churned = useMemo(() => subscribers.filter((s) => s.status === "churned"), [subscribers]);

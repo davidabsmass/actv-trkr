@@ -2590,6 +2590,7 @@ export type Database = {
           recommendations_json: Json
           scanned_at: string
           score: number
+          signals_json: Json | null
           site_id: string
           url: string
         }
@@ -2601,6 +2602,7 @@ export type Database = {
           recommendations_json?: Json
           scanned_at?: string
           score?: number
+          signals_json?: Json | null
           site_id: string
           url: string
         }
@@ -2612,6 +2614,7 @@ export type Database = {
           recommendations_json?: Json
           scanned_at?: string
           score?: number
+          signals_json?: Json | null
           site_id?: string
           url?: string
         }

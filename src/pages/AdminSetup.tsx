@@ -21,6 +21,7 @@ export default function AdminSetup() {
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics">("clients");
+  const [filterFocus, setFilterFocus] = useState<string>("");
   const [filterOnboarding, setFilterOnboarding] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [logPage, setLogPage] = useState(0);

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import robotAvatar from "@/assets/robot-avatar.png";
 import ReactMarkdown from "react-markdown";
+import { useOrg } from "@/hooks/use-org";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -12,10 +13,12 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chatbot`;
 
 export function AiChatbot() {
   const { t, i18n } = useTranslation();
+  const { orgId } = useOrg();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -53,10 +56,20 @@ export function AiChatbot() {
         body: JSON.stringify({
           messages: newMessages,
           language: i18n.language,
+          orgId,
         }),
       });
 
       if (!resp.ok || !resp.body) {
+        if (resp.status === 429) {
+          setRateLimited(true);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: t("chatbot.rateLimited", "You've used all 300 AI assistant messages this month. They'll reset next month!") },
+          ]);
+          setIsLoading(false);
+          return;
+        }
         throw new Error("Stream failed");
       }
 
@@ -109,7 +122,7 @@ export function AiChatbot() {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, i18n.language, t]);
+  }, [input, isLoading, messages, i18n.language, t, orgId]);
 
   return (
     <>

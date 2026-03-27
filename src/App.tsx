@@ -30,6 +30,9 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Account = lazy(() => import("./pages/Account"));
 const GetStarted = lazy(() => import("./pages/GetStarted"));
 const Index = lazy(() => import("./pages/Index"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const OwnerAdmin = lazy(() => import("./pages/OwnerAdmin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,6 +117,9 @@ const App = () => (
             <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/checkout-success" element={<CheckoutSuccess />} />
+            <Route path="/owner-admin" element={<OwnerAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

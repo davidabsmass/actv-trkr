@@ -1,0 +1,1 @@
+ALTER TABLE public.subscribers ADD CONSTRAINT subscribers_stripe_customer_id_key UNIQUE (stripe_customer_id);

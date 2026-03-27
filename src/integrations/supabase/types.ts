@@ -589,6 +589,38 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          action: string
+          created_at: string
+          error_message: string | null
+          id: string
+          subscriber_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          subscriber_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          subscriber_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "error_logs_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           event_type: string
@@ -2944,6 +2976,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscribers: {
+        Row: {
+          ai_calls_per_day_avg: number | null
+          churn_date: string | null
+          churn_reason: string | null
+          created_at: string
+          email: string
+          features_used: Json | null
+          id: string
+          last_active_date: string | null
+          mrr: number
+          plan: string
+          referral_source: string | null
+          report_downloads: number | null
+          site_url: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          white_label_enabled: boolean
+        }
+        Insert: {
+          ai_calls_per_day_avg?: number | null
+          churn_date?: string | null
+          churn_reason?: string | null
+          created_at?: string
+          email: string
+          features_used?: Json | null
+          id?: string
+          last_active_date?: string | null
+          mrr?: number
+          plan?: string
+          referral_source?: string | null
+          report_downloads?: number | null
+          site_url?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          white_label_enabled?: boolean
+        }
+        Update: {
+          ai_calls_per_day_avg?: number | null
+          churn_date?: string | null
+          churn_reason?: string | null
+          created_at?: string
+          email?: string
+          features_used?: Json | null
+          id?: string
+          last_active_date?: string | null
+          mrr?: number
+          plan?: string
+          referral_source?: string | null
+          report_downloads?: number | null
+          site_url?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          white_label_enabled?: boolean
+        }
+        Relationships: []
       }
       subscription_status: {
         Row: {

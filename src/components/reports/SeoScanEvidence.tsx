@@ -13,6 +13,7 @@ interface ScanSignals {
   meta_description_text: string | null;
   meta_description_length: number;
   og_title: string | null;
+  og_image: string | null;
   canonical: string | null;
   final_url: string;
   fetched_at: string;

@@ -13,6 +13,7 @@ interface ScanSignals {
   meta_description_text: string | null;
   meta_description_length: number;
   og_title: string | null;
+  og_image: string | null;
   canonical: string | null;
   final_url: string;
   fetched_at: string;
@@ -94,6 +95,24 @@ export default function SeoScanEvidence({ signals }: Props) {
           </p>
         </div>
       </div>
+
+      {/* OG Image */}
+      {signals.og_image && (
+        <div className="space-y-1.5 pt-1">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            {t("seo.ogImage", { defaultValue: "Open Graph Image" })}
+          </span>
+          <div className="rounded-md border border-border overflow-hidden bg-muted/30 max-w-sm">
+            <img
+              src={signals.og_image}
+              alt="Open Graph preview"
+              className="w-full h-auto object-cover max-h-48"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground font-mono break-all">{signals.og_image}</p>
+        </div>
+      )}
 
       {/* Smart homepage hint */}
       {showHomepageHint && (

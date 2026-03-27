@@ -432,12 +432,15 @@ HTML: ${analyzableHtml}`,
     const canonicalHrefMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
     const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']*)["']/i) ||
                          html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:title["']/i);
+    const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']*)["']/i) ||
+                         html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:image["']/i);
     const signals = {
       title_text: titleContent || null,
       title_length: titleLength,
       meta_description_text: metaDescContent || null,
       meta_description_length: metaDescLength,
       og_title: ogTitleMatch ? ogTitleMatch[1].trim() : null,
+      og_image: ogImageMatch ? ogImageMatch[1].trim() : null,
       canonical: canonicalHrefMatch ? canonicalHrefMatch[1].trim() : null,
       final_url: url,
       fetched_at: new Date().toISOString(),

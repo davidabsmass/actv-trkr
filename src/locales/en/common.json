@@ -434,7 +434,7 @@
     "noData": "No data."
   },
   "seo": {
-    "title": "SEO Scanner",
+    "title": "SEO Insights",
     "subtitle": "Site health and search optimization for {{orgName}}",
     "blendedInsightsTitle": "SEO + Engagement Insights",
     "pageLabel": "Page",

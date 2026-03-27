@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
 import type { SeoIssue } from "@/lib/seo-scoring";
+import { getScoreGrade } from "@/lib/seo-scoring";
 import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";

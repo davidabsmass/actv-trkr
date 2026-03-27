@@ -73,9 +73,9 @@ function buildDeterministicIssues(ctx: {
   if (ctx.titleStatus === "missing") {
     issues.push({ id: "title-missing", title: "Page title is missing", fix: "", impact: "Critical", category: "SEO" });
   } else if (ctx.titleStatus === "too-short") {
-    issues.push({ id: "title-too-short", title: `Page title is too short (${ctx.titleLength} chars, aim for 30-60)`, fix: "", impact: "Medium", category: "SEO" });
+    issues.push({ id: "title-too-short", title: `Page title is too short (${ctx.titleLength} chars, aim for 30-65)`, fix: "", impact: "Medium", category: "SEO" });
   } else if (ctx.titleStatus === "too-long") {
-    issues.push({ id: "title-too-long", title: `Page title is too long (${ctx.titleLength} chars, aim for 30-60)`, fix: "", impact: "Medium", category: "SEO" });
+    issues.push({ id: "title-too-long", title: `Page title is too long (${ctx.titleLength} chars, aim for 30-65)`, fix: "", impact: "Medium", category: "SEO" });
   }
 
   // Meta description
@@ -297,7 +297,7 @@ serve(async (req) => {
     const imgsNoLazy = imgTags.filter(t => !/loading=/i.test(t)).length;
 
     let titleStatus = "missing";
-    if (titleContent) titleStatus = titleLength < 30 ? "too-short" : titleLength > 60 ? "too-long" : "good";
+    if (titleContent) titleStatus = titleLength < 30 ? "too-short" : titleLength > 65 ? "too-long" : "good";
 
     const bodyContent = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]*>/g, "").trim();
     const isSPA = bodyContent.length < 500 && /<div[^>]+id=["'](root|app|__next)["']/i.test(html);

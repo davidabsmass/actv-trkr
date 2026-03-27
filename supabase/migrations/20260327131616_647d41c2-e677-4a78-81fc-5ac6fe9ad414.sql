@@ -1,0 +1,1 @@
+ALTER TABLE public.seo_scans ADD COLUMN IF NOT EXISTS signals_json jsonb DEFAULT '{}'::jsonb;

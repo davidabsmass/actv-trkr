@@ -14,6 +14,7 @@ import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
 import SeoFixModal from "./SeoFixModal";
+import SeoScanEvidence from "./SeoScanEvidence";
 
 export default function SeoTab() {
   const { t } = useTranslation();
@@ -292,6 +293,11 @@ export default function SeoTab() {
           scannedAt={activeScan.scanned_at}
           getPathFromUrl={getPathFromUrl}
         />
+      )}
+
+      {/* Scan Evidence */}
+      {activeScan?.signals_json && Object.keys(activeScan.signals_json as Record<string, unknown>).length > 0 && (
+        <SeoScanEvidence signals={activeScan.signals_json as any} />
       )}
 
       {/* Blended SEO + Engagement Insights */}

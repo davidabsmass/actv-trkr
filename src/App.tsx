@@ -117,6 +117,9 @@ const App = () => (
             <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/checkout-success" element={<CheckoutSuccess />} />
+            <Route path="/owner-admin" element={<OwnerAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

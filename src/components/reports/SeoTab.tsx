@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { subDays, format } from "date-fns";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Download } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
 import type { SeoIssue } from "@/lib/seo-scoring";
+import { getScoreGrade } from "@/lib/seo-scoring";
 import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
@@ -205,6 +206,42 @@ export default function SeoTab() {
     }
   };
 
+  const exportSeoFindings = () => {
+    if (!activeScan || issues.length === 0) return;
+    const grade = getScoreGrade(score);
+    const rows: string[][] = [
+      ["SEO Scan Export"],
+      ["URL", activeScan.url],
+      ["Score", `${score}/100 (Grade: ${grade})`],
+      ["Platform", activeScan.platform || "Unknown"],
+      ["Scanned", new Date(activeScan.scanned_at).toLocaleDateString()],
+      [],
+      ["Priority", "Category", "Issue", "Recommendation"],
+    ];
+    for (const issue of issues) {
+      rows.push([
+        issue.impact,
+        issue.category || "",
+        issue.title,
+        (issue.fix || "").replace(/\n/g, " "),
+      ]);
+    }
+    if (blendedInsights && blendedInsights.length > 0) {
+      rows.push([], ["SEO + Engagement Insights"], ["Page", "Insight", "Details"]);
+      for (const insight of blendedInsights) {
+        rows.push([insight.page, insight.title, insight.explanation]);
+      }
+    }
+    const csv = rows.map(r => r.map(c => `"${(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `seo-report-${siteDomain || "scan"}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success(t("seo.exportSuccess", { defaultValue: "SEO report exported" }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Scan controls */}
@@ -222,15 +259,28 @@ export default function SeoTab() {
             <p className="text-xs text-muted-foreground flex-1">
               {t("dashboard.scanning")}: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
             </p>
-            <Button
-              size="sm"
-              onClick={() => runScan.mutate()}
-              disabled={runScan.isPending || !homepageUrl}
-              className="gap-1.5 shrink-0"
-            >
-              {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {runScan.isPending ? t("dashboard.scanningDots") : t("dashboard.newScan", { defaultValue: "New Scan" })}
-            </Button>
+            <div className="flex items-center gap-2">
+              {activeScan && issues.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportSeoFindings}
+                  className="gap-1.5 shrink-0"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {t("seo.export", { defaultValue: "Export" })}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => runScan.mutate()}
+                disabled={runScan.isPending || !homepageUrl}
+                className="gap-1.5 shrink-0"
+              >
+                {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                {runScan.isPending ? t("dashboard.scanningDots") : t("dashboard.newScan", { defaultValue: "New Scan" })}
+              </Button>
+            </div>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">{t("dashboard.addSiteForSeo")}</p>

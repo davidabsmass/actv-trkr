@@ -259,15 +259,28 @@ export default function SeoTab() {
             <p className="text-xs text-muted-foreground flex-1">
               {t("dashboard.scanning")}: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
             </p>
-            <Button
-              size="sm"
-              onClick={() => runScan.mutate()}
-              disabled={runScan.isPending || !homepageUrl}
-              className="gap-1.5 shrink-0"
-            >
-              {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {runScan.isPending ? t("dashboard.scanningDots") : t("dashboard.newScan", { defaultValue: "New Scan" })}
-            </Button>
+            <div className="flex items-center gap-2">
+              {activeScan && issues.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportSeoFindings}
+                  className="gap-1.5 shrink-0"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {t("seo.export", { defaultValue: "Export" })}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => runScan.mutate()}
+                disabled={runScan.isPending || !homepageUrl}
+                className="gap-1.5 shrink-0"
+              >
+                {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                {runScan.isPending ? t("dashboard.scanningDots") : t("dashboard.newScan", { defaultValue: "New Scan" })}
+              </Button>
+            </div>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">{t("dashboard.addSiteForSeo")}</p>

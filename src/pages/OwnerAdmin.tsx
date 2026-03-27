@@ -126,7 +126,7 @@ export default function OwnerAdmin() {
     else { setSortKey(key); setSortAsc(false); }
   };
 
-  if (!authorized) return <Navigate to="/" replace />;
+  if (authorized === false) return <Navigate to="/" replace />;
 
   if (loading) {
     return (

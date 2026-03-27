@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Check, Copy, Download, Globe, User, Mail, Lock, Eye, EyeOff, Zap } from "lucide-react";
 import { downloadPlugin } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
-import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
 

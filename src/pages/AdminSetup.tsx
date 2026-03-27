@@ -16,9 +16,11 @@ const OWNER_EMAIL = "david@newuniformdesign.com";
 export default function AdminSetup() {
   const { t } = useTranslation();
   const { isAdmin } = useUserRole();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [filterFocus, setFilterFocus] = useState<string>("");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics">("clients");
   const [filterOnboarding, setFilterOnboarding] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [logPage, setLogPage] = useState(0);

@@ -60,19 +60,20 @@ const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count
   const top = (items || []).slice(0, maxItems);
   const maxCount = top[0]?.count || 1;
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {top.map((item, i) => (
         <div key={i} className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-medium text-foreground truncate pr-2">{item.label}</span>
-              <span className="text-xs text-muted-foreground ml-2 shrink-0">{item.count}</span>
-            </div>
-            <div className="h-1 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-primary/60 rounded-full" style={{ width: `${(item.count / maxCount) * 100}%` }} />
-            </div>
+          <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{i + 1}</span>
+          <div className="flex-1 min-w-0 relative h-6 rounded bg-muted/30 overflow-hidden">
+            <div
+              className="absolute inset-y-0 left-0 bg-primary/15 rounded"
+              style={{ width: `${(item.count / maxCount) * 100}%` }}
+            />
+            <span className="relative z-10 px-2 text-xs font-medium text-foreground truncate block leading-6">
+              {item.label}
+            </span>
           </div>
+          <span className="text-xs font-mono text-muted-foreground shrink-0 w-10 text-right">{item.count}</span>
         </div>
       ))}
     </div>

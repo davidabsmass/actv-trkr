@@ -113,6 +113,79 @@ export default function AdminSetup() {
     enabled: !!selectedOrg,
   });
 
+  // Owner-only: subscriber metrics
+  const [subSortKey, setSubSortKey] = useState<"created_at" | "mrr" | "last_active_date" | "churn_date">("created_at");
+  const [subSortAsc, setSubSortAsc] = useState(false);
+
+  const { data: subscribers = [] } = useQuery({
+    queryKey: ["owner_subscribers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("subscribers").select("*");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: isOwner,
+  });
+
+  const { data: errorLogs = [] } = useQuery({
+    queryKey: ["owner_errors"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("error_logs").select("*").order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: isOwner,
+  });
+
+  const activeSubs = useMemo(() => subscribers.filter((s: any) => s.status === "active"), [subscribers]);
+  const churnedSubs = useMemo(() => subscribers.filter((s: any) => s.status === "churned"), [subscribers]);
+  const pastDueSubs = useMemo(() => subscribers.filter((s: any) => s.status === "past_due"), [subscribers]);
+  const totalMrr = useMemo(() => activeSubs.reduce((sum: number, s: any) => sum + Number(s.mrr || 0), 0), [activeSubs]);
+  const avgArpu = activeSubs.length ? totalMrr / activeSubs.length : 0;
+  const churnRateVal = subscribers.length ? ((churnedSubs.length / subscribers.length) * 100).toFixed(1) : "0";
+
+  const nowDate = new Date();
+  const thisMonthStr = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, "0")}`;
+  const lastMonthDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1);
+  const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}`;
+  const signupsThisMonth = subscribers.filter((s: any) => s.created_at?.startsWith(thisMonthStr)).length;
+  const signupsLastMonth = subscribers.filter((s: any) => s.created_at?.startsWith(lastMonthStr)).length;
+
+  const featureCountsOwner = useMemo(() => {
+    const counts: Record<string, number> = {};
+    activeSubs.forEach((s: any) => {
+      const features = Array.isArray(s.features_used) ? s.features_used : [];
+      features.forEach((f: string) => { counts[f] = (counts[f] || 0) + 1; });
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [activeSubs]);
+
+  const avgAiCalls = activeSubs.length
+    ? (activeSubs.reduce((sum: number, s: any) => sum + Number(s.ai_calls_per_day_avg || 0), 0) / activeSubs.length).toFixed(1)
+    : "0";
+
+  const referralCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    subscribers.forEach((s: any) => {
+      const src = s.referral_source || "Unknown";
+      counts[src] = (counts[src] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [subscribers]);
+
+  const sortedSubs = useMemo(() => {
+    return [...subscribers].sort((a: any, b: any) => {
+      const av = a[subSortKey] ?? "";
+      const bv = b[subSortKey] ?? "";
+      return subSortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+  }, [subscribers, subSortKey, subSortAsc]);
+
+  const toggleSubSort = (key: "created_at" | "mrr" | "last_active_date" | "churn_date") => {
+    if (subSortKey === key) setSubSortAsc(!subSortAsc);
+    else { setSubSortKey(key); setSubSortAsc(false); }
+  };
+
   const enrichedOrgs = useMemo(() => {
     if (!orgsData) return [];
     const settingsMap: Record<string, any> = {};

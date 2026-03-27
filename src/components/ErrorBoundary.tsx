@@ -12,6 +12,8 @@ interface State {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
+  private lastError: Error | null = null;
+
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -23,7 +25,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("ErrorBoundary caught:", error, info.componentStack);
+    this.lastError = error;
   }
+
+  private handleRetry = () => {
+    // If the error was a failed dynamic import (stale chunk), do a full reload
+    if (
+      this.lastError?.message?.includes("dynamically imported module") ||
+      this.lastError?.message?.includes("Failed to fetch")
+    ) {
+      window.location.reload();
+      return;
+    }
+    this.setState({ hasError: false });
+  };
 
   render() {
     if (this.state.hasError) {
@@ -36,7 +51,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => this.setState({ hasError: false })}
+            onClick={this.handleRetry}
           >
             Retry
           </Button>

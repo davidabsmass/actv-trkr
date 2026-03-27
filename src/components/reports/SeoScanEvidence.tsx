@@ -1,6 +1,12 @@
 import { Info, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+function decodeHtmlEntities(str: string): string {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = str;
+  return textarea.value;
+}
+
 interface ScanSignals {
   title_text: string | null;
   title_length: number;
@@ -43,7 +49,7 @@ export default function SeoScanEvidence({ signals }: Props) {
             {t("seo.pageTitle", { defaultValue: "Page Title" })}
           </span>
           <p className="text-foreground font-mono break-all">
-            {signals.title_text ? `"${signals.title_text}"` : <span className="text-destructive italic">Not found</span>}
+            {signals.title_text ? `"${decodeHtmlEntities(signals.title_text)}"` : <span className="text-destructive italic">Not found</span>}
           </p>
           <p className="text-muted-foreground">
             {signals.title_length} {t("seo.chars", { defaultValue: "chars" })}
@@ -62,7 +68,7 @@ export default function SeoScanEvidence({ signals }: Props) {
           </span>
           <p className="text-foreground font-mono break-all line-clamp-2">
             {signals.meta_description_text
-              ? `"${signals.meta_description_text.slice(0, 100)}${signals.meta_description_text.length > 100 ? "…" : ""}"`
+              ? (() => { const d = decodeHtmlEntities(signals.meta_description_text); return `"${d.slice(0, 100)}${d.length > 100 ? "…" : ""}"`; })()
               : <span className="text-destructive italic">Not found</span>}
           </p>
           <p className="text-muted-foreground">{signals.meta_description_length} {t("seo.chars", { defaultValue: "chars" })}</p>

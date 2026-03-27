@@ -50,7 +50,7 @@ function buildSeoHtml(data: SeoReportData, wl?: WhiteLabelConfig | null): string
   const brandPrimary = wl?.primary_color || "#635bff";
   const brandSecondary = wl?.secondary_color || "#9449e0";
   const brandGradientStart = wl?.primary_color || "#6d5dd4";
-  const brandName = wl?.hide_actv_branding ? (wl?.client_name || "") : "ACTV TRKR";
+  const brandName = (wl?.hide_actv_branding || wl?.logo_url) ? (wl?.client_name || "") : "ACTV TRKR";
 
   const grade = getScoreGrade(data.score);
   const status = getScoreStatus(data.score);

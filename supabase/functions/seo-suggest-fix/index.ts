@@ -108,10 +108,11 @@ serve(async (req) => {
       prompt = `You are an SEO expert. Given the following page context, write ONE optimized page title tag.
 
 Rules:
-- Must be under 60 characters
+- MUST be between 30 and 55 characters (hard limit — count carefully before answering)
 - Include the primary keyword naturally
 - Be compelling and click-worthy
 - Do NOT include quotes around the title
+- If the first attempt exceeds 55 characters, shorten it before responding
 
 ${context}
 

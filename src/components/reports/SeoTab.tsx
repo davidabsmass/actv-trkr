@@ -249,7 +249,7 @@ export default function SeoTab() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">{t("dashboard.seoScanner")}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("dashboard.seoScanner", { defaultValue: "SEO Scanner" })}</h3>
             <Badge variant="outline" className="text-xs uppercase tracking-wider text-primary border-primary/30">{t("sidebar.beta")}</Badge>
           </div>
         </div>
@@ -283,7 +283,7 @@ export default function SeoTab() {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">{t("dashboard.addSiteForSeo")}</p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.addSiteForSeo", { defaultValue: "Add a site in Settings to enable SEO scanning." })}</p>
         )}
       </div>
 

@@ -108,7 +108,7 @@ const Signup = () => {
         {/* Sign Up Form */}
         {!done && (
           <div className="glass-card p-6 animate-slide-up">
-            <h2 className="text-lg font-semibold text-foreground mb-1">Create your account</h2>
+            <h2 className="text-lg font-semibold text-white mb-1">Create your account</h2>
             <p className="text-sm text-muted-foreground mb-5">
               Fill in your details to get started with analytics tracking.
             </p>

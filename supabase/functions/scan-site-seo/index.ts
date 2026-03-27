@@ -233,12 +233,17 @@ serve(async (req) => {
     for (let i = 0; i < userAgents.length; i++) {
       try {
         if (i > 0) await new Promise(r => setTimeout(r, 2000));
-        const resp = await fetch(url, {
+        // Add cache-busting query param + no-cache headers to bypass WordPress/CDN caches
+        const bustUrl = new URL(url);
+        bustUrl.searchParams.set("_seo_scan", Date.now().toString());
+        const resp = await fetch(bustUrl.toString(), {
           redirect: "follow",
           headers: {
             "User-Agent": userAgents[i],
             Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
           },
           signal: AbortSignal.timeout(15000),
         });

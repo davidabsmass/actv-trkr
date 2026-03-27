@@ -21,6 +21,10 @@ import {
   FileText,
   TrendingUp,
   Search,
+  Wifi,
+  Palette,
+  ShoppingCart,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -377,21 +381,21 @@ const Index = () => {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 pt-[10px] pb-[50px]">
             {([
-              { icon: Globe, label: "Traffic Sources" },
-              { icon: Target, label: "UTM Tracking" },
+              { icon: Sparkles, label: "AI-Powered SEO Fix Suggestions" },
+              { icon: FileCheck, label: "Universal Form Capture" },
+              { icon: Wifi, label: "Uptime Monitoring" },
+              { icon: Palette, label: "White-Label Branding" },
+              { icon: Activity, label: "Real-Time Visitor Activity Tracking" },
               { icon: TrendingUp, label: "Lead Attribution" },
-              { icon: FileCheck, label: "Form Tracking" },
-              { icon: MousePointer2, label: "Conversion Tracking" },
-              { icon: BarChart3, label: "Top Pages" },
-              { icon: FileText, label: "Activity Reports" },
-              { icon: Sparkles, label: "AI Suggestions" },
-              { icon: Shield, label: "Site Health" },
-              { icon: Search, label: "Form Checks" },
-              { icon: Link2, label: "Broken Links" },
-              { icon: Lock, label: "SSL Alerts" },
-              { icon: CalendarClock, label: "Domain Alerts" },
-              { icon: Download, label: "CSV Exports" },
-              { icon: Share2, label: "Shareable Snapshots" },
+              { icon: Link2, label: "Broken Link Detection" },
+              { icon: Lock, label: "SSL & Domain Expiry Alerts" },
+              { icon: Download, label: "PDF Report Downloads" },
+              { icon: Search, label: "AI-Powered Insights & Recommendations" },
+              { icon: ShoppingCart, label: "WooCommerce Order Tracking" },
+              { icon: CalendarClock, label: "Weekly & Monthly Summaries" },
+              { icon: Shield, label: "Broken Form Detection" },
+              { icon: Globe, label: "Traffic Source Breakdown" },
+              { icon: AlertTriangle, label: "Incident Tracking" },
             ] as { icon: LucideIcon; label: string }[]).map(({ icon: Icon, label }) => (
               <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-white/90 border border-white/40 shadow-sm hover:shadow-md hover:border-accent/40 transition-all duration-200 backdrop-blur-sm">
                 <Icon className="h-6 w-6 text-primary" />

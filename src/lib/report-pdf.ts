@@ -486,7 +486,7 @@ export async function buildReportPdf(report: any, _run: any, whiteLabel?: WhiteL
       doc.setLineWidth(0.3);
       doc.line(0, pageH - footerH - margin + 2, pageW, pageH - footerH - margin + 2);
 
-      const footerBrand = whiteLabel?.hide_actv_branding ? (whiteLabel?.client_name || "") : "ACTV TRKR";
+      const footerBrand = (whiteLabel?.hide_actv_branding || whiteLabel?.logo_url) ? (whiteLabel?.client_name || "") : "ACTV TRKR";
       doc.setFontSize(7);
       doc.setTextColor(107, 111, 128);
       doc.text(`${footerBrand}${footerBrand ? "  |  " : ""}Generated ${fmtDate(report.generatedAt)}`, margin, pageH - margin + 1);

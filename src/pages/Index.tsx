@@ -429,7 +429,7 @@ const Index = () => {
           <div className="max-w-4xl mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col">
               <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$250' : '$25'}</span>
+                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$330' : '$30'}</span>
                 <span className="text-muted-foreground text-sm">{isAnnual ? '/year' : '/month'}</span>
               </div>
               

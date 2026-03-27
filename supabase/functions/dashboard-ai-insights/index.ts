@@ -17,7 +17,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -32,40 +31,37 @@ serve(async (req) => {
     }
 
     const userId = data.claims.sub as string;
-
-    // Service-role client for ai_usage_log
     const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Resolve org_id from org_users
-    const { data: orgRow } = await adminClient
-      .from("org_users")
-      .select("org_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle();
-    const orgId = orgRow?.org_id;
+    const { metrics, orgId: bodyOrgId } = await req.json();
+
+    // Resolve and validate org membership
+    let orgId = bodyOrgId;
+    if (orgId) {
+      const { data: membership } = await adminClient
+        .from("org_users").select("org_id").eq("user_id", userId).eq("org_id", orgId).maybeSingle();
+      if (!membership) orgId = null;
+    }
+    if (!orgId) {
+      const { data: orgRow } = await adminClient
+        .from("org_users").select("org_id").eq("user_id", userId).limit(1).maybeSingle();
+      orgId = orgRow?.org_id;
+    }
     if (!orgId) {
       return new Response(JSON.stringify({ error: "No organization found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { metrics } = await req.json();
     const metricsHash = `${metrics.sessionsThisWeek}-${metrics.leadsThisWeek}-${(metrics.cvrThisWeek ?? 0).toFixed(4)}`;
 
-    // Check cache first (< 4 hours, matching metrics hash)
+    // Check cache
     const cacheThreshold = new Date(Date.now() - CACHE_HOURS * 60 * 60 * 1000).toISOString();
     const { data: cachedRows } = await adminClient
       .from("ai_usage_log")
       .select("response_cache")
-      .eq("org_id", orgId)
-      .eq("function_name", FUNCTION_NAME)
-      .eq("metrics_hash", metricsHash)
-      .eq("cached", false)
-      .gte("created_at", cacheThreshold)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .eq("org_id", orgId).eq("function_name", FUNCTION_NAME).eq("metrics_hash", metricsHash).eq("cached", false)
+      .gte("created_at", cacheThreshold).order("created_at", { ascending: false }).limit(1);
 
     if (cachedRows && cachedRows.length > 0 && cachedRows[0].response_cache) {
-      // Log as cached hit
       await adminClient.from("ai_usage_log").insert({
         org_id: orgId, function_name: FUNCTION_NAME, cached: true, metrics_hash: metricsHash,
       });
@@ -74,57 +70,82 @@ serve(async (req) => {
       });
     }
 
-    // Rate limit check
+    // Rate limit
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count } = await adminClient
       .from("ai_usage_log")
       .select("*", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .eq("function_name", FUNCTION_NAME)
-      .eq("cached", false)
-      .gte("created_at", dayAgo);
+      .eq("org_id", orgId).eq("function_name", FUNCTION_NAME).eq("cached", false).gte("created_at", dayAgo);
 
     if ((count ?? 0) >= DAILY_LIMIT) {
       return new Response(
-        JSON.stringify({
-          error: "Daily AI insight limit reached. Try again tomorrow.",
-          code: "RATE_LIMITED",
-          rate_limited: true,
-        }),
+        JSON.stringify({ error: "Daily AI insight limit reached. Try again tomorrow.", code: "RATE_LIMITED", rate_limited: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Fetch enriched context: org name, site domains, top pages, top sources
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+    const [orgData, sitesData, topPagesData, topSourcesData] = await Promise.all([
+      adminClient.from("orgs").select("name").eq("id", orgId).single(),
+      adminClient.from("sites").select("domain").eq("org_id", orgId).limit(10),
+      adminClient.from("pageviews").select("page_path").eq("org_id", orgId).gte("occurred_at", thirtyDaysAgo).limit(500),
+      adminClient.from("sessions").select("utm_source, landing_referrer_domain").eq("org_id", orgId).gte("started_at", thirtyDaysAgo).limit(500),
+    ]);
+
+    const orgName = orgData.data?.name || "Unknown";
+    const siteDomains = (sitesData.data || []).map((s: any) => s.domain).join(", ");
+
+    const pageCounts: Record<string, number> = {};
+    (topPagesData.data || []).forEach((p: any) => {
+      const path = p.page_path || "/";
+      pageCounts[path] = (pageCounts[path] || 0) + 1;
+    });
+    const topPagesStr = Object.entries(pageCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([path, cnt]) => `${path} (${cnt} views)`).join(", ");
+
+    const sourceCounts: Record<string, number> = {};
+    (topSourcesData.data || []).forEach((s: any) => {
+      const src = s.utm_source || s.landing_referrer_domain || "direct";
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+    });
+    const topSourcesStr = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([src, cnt]) => `${src} (${cnt} sessions)`).join(", ");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = `You are a sharp marketing analytics advisor for ACTV TRKR, a website performance tracker. Given the metrics below, write a concise performance summary (2-3 sentences) and exactly 3 actionable suggestions. Each suggestion should be specific, data-driven, and immediately actionable.
 
+CLIENT: ${orgName}
+SITES: ${siteDomains || "None"}
+TOP PAGES (30d): ${topPagesStr || "No data"}
+TOP SOURCES (30d): ${topSourcesStr || "No data"}
+
 Return a JSON object with this exact structure (no markdown, no code fences):
 {
-  "summary": "Your 2-3 sentence performance overview",
+  "summary": "Your 2-3 sentence performance overview mentioning the client by name",
   "suggestions": [
-    { "title": "Short title", "description": "One sentence action item", "priority": "high|medium|low" },
+    { "title": "Short title", "description": "One sentence action item referencing specific pages or sources", "priority": "high|medium|low" },
     { "title": "Short title", "description": "One sentence action item", "priority": "high|medium|low" },
     { "title": "Short title", "description": "One sentence action item", "priority": "high|medium|low" }
   ]
 }
 
 Rules:
-- Be specific about numbers, not vague.
-- Reference the actual data provided.
+- Be specific about numbers, not vague. Reference the client name, specific pages, and sources.
 - Suggestions should feel like they come from a strategist, not a chatbot.
-- If data is sparse (zeros or very low numbers), acknowledge the early stage and focus on setup/launch actions.
-- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words like "plummeted," "collapsed," "crashed," "nosedived," "alarming," "devastating," or "critical." Instead use neutral phrases like "decreased," "dropped," "declined," "slowed," or "dipped." Frame downturns as opportunities for improvement, not disasters.`;
+- If data is sparse, acknowledge the early stage and focus on setup/launch actions.
+- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words.`;
 
-    const userPrompt = `Here are the current dashboard metrics:
+    const userPrompt = `Here are the current dashboard metrics for ${orgName}:
 
-Sessions (this week): ${metrics.sessionsThisWeek}
-Sessions (last week): ${metrics.sessionsLastWeek}
-Leads (this week): ${metrics.leadsThisWeek}
-Leads (last week): ${metrics.leadsLastWeek}
-Conversion Rate (this week): ${(metrics.cvrThisWeek * 100).toFixed(2)}%
-Conversion Rate (last week): ${(metrics.cvrLastWeek * 100).toFixed(2)}%
+Sessions (this period): ${metrics.sessionsThisWeek}
+Sessions (previous period): ${metrics.sessionsLastWeek}
+Leads (this period): ${metrics.leadsThisWeek}
+Leads (previous period): ${metrics.leadsLastWeek}
+Conversion Rate (this period): ${(metrics.cvrThisWeek * 100).toFixed(2)}%
+Conversion Rate (previous period): ${(metrics.cvrLastWeek * 100).toFixed(2)}%
 Top Page: ${metrics.topPage || "N/A"}
 Top Source: ${metrics.topSource || "N/A"}
 Total Forms: ${metrics.totalForms || 0}
@@ -149,8 +170,7 @@ Primary Focus: ${metrics.primaryFocus || "lead_volume"}`;
               type: "function",
               function: {
                 name: "provide_insights",
-                description:
-                  "Return a performance summary and 3 actionable suggestions.",
+                description: "Return a performance summary and 3 actionable suggestions.",
                 parameters: {
                   type: "object",
                   properties: {
@@ -162,10 +182,7 @@ Primary Focus: ${metrics.primaryFocus || "lead_volume"}`;
                         properties: {
                           title: { type: "string" },
                           description: { type: "string" },
-                          priority: {
-                            type: "string",
-                            enum: ["high", "medium", "low"],
-                          },
+                          priority: { type: "string", enum: ["high", "medium", "low"] },
                         },
                         required: ["title", "description", "priority"],
                         additionalProperties: false,
@@ -178,10 +195,7 @@ Primary Focus: ${metrics.primaryFocus || "lead_volume"}`;
               },
             },
           ],
-          tool_choice: {
-            type: "function",
-            function: { name: "provide_insights" },
-          },
+          tool_choice: { type: "function", function: { name: "provide_insights" } },
         }),
       }
     );
@@ -189,17 +203,13 @@ Primary Focus: ${metrics.primaryFocus || "lead_volume"}`;
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({
-            error: "AI service is temporarily rate limited. Please try again shortly.",
-            code: "RATE_LIMITED",
-            rate_limited: true,
-          }),
+          JSON.stringify({ error: "AI service is temporarily rate limited.", code: "RATE_LIMITED", rate_limited: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI usage limit reached. Please add credits." }),
+          JSON.stringify({ error: "AI usage limit reached." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -223,13 +233,8 @@ Primary Focus: ${metrics.primaryFocus || "lead_volume"}`;
       insights = JSON.parse(cleaned);
     }
 
-    // Log usage + cache the response
     await adminClient.from("ai_usage_log").insert({
-      org_id: orgId,
-      function_name: FUNCTION_NAME,
-      cached: false,
-      response_cache: insights,
-      metrics_hash: metricsHash,
+      org_id: orgId, function_name: FUNCTION_NAME, cached: false, response_cache: insights, metrics_hash: metricsHash,
     });
 
     return new Response(JSON.stringify(insights), {

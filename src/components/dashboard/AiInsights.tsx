@@ -18,6 +18,7 @@ interface AiInsightsProps {
     totalForms: number;
     primaryFocus: string;
   };
+  orgId?: string | null;
 }
 
 interface Suggestion {
@@ -37,10 +38,13 @@ const priorityConfig = {
   low: { bg: "bg-primary/8", border: "border-primary/20", dot: "bg-primary" },
 };
 
-const STORAGE_KEY = "actv_ai_insights";
-const AUTO_LIMIT = 5;
+const AUTO_LIMIT = 1;
 const MANUAL_LIMIT = 10;
 const TOTAL_LIMIT = AUTO_LIMIT + MANUAL_LIMIT;
+
+function getStorageKey(orgId?: string | null) {
+  return `actv_ai_insights_${orgId || "default"}`;
+}
 
 interface StoredInsights {
   data: InsightsData;
@@ -53,9 +57,9 @@ function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function loadStored(): StoredInsights | null {
+function loadStored(orgId?: string | null): StoredInsights | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(getStorageKey(orgId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredInsights;
     if (parsed.day !== getTodayKey()) return null;
@@ -65,13 +69,13 @@ function loadStored(): StoredInsights | null {
   }
 }
 
-function saveStored(stored: StoredInsights) {
+function saveStored(orgId: string | null | undefined, stored: StoredInsights) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    sessionStorage.setItem(getStorageKey(orgId), JSON.stringify(stored));
   } catch { /* ignore */ }
 }
 
-export function AiInsights({ metrics }: AiInsightsProps) {
+export function AiInsights({ metrics, orgId }: AiInsightsProps) {
   const { t } = useTranslation();
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -83,7 +87,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
   const hasFired = useRef(false);
 
   useEffect(() => {
-    const stored = loadStored();
+    const stored = loadStored(orgId);
     if (stored) {
       setInsights(stored.data);
       setAutoCount(stored.autoCount);
@@ -97,7 +101,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         setPhase("auto");
       }
     }
-  }, []);
+  }, [orgId]);
 
   const callAI = useCallback(async (isAuto: boolean): Promise<boolean> => {
     setIsLoading(true);
@@ -106,7 +110,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
         "dashboard-ai-insights",
-        { body: { metrics } }
+        { body: { metrics, orgId } }
       );
       if (fnError) {
         if (fnError.message?.includes("429") || fnError.message?.includes("RATE_LIMITED")) {
@@ -140,7 +144,7 @@ export function AiInsights({ metrics }: AiInsightsProps) {
         setPhase("manual");
       }
 
-      saveStored({
+      saveStored(orgId, {
         data: insightsData,
         autoCount: newAuto,
         manualCount: newManual,
@@ -155,14 +159,14 @@ export function AiInsights({ metrics }: AiInsightsProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [metrics, autoCount, manualCount]);
+  }, [metrics, autoCount, manualCount, orgId]);
 
   useEffect(() => {
     if (hasFired.current) return;
     if (metrics.sessionsThisWeek === undefined) return;
     hasFired.current = true;
 
-    const stored = loadStored();
+    const stored = loadStored(orgId);
     if (stored) {
       if (stored.autoCount < AUTO_LIMIT && (stored.autoCount + stored.manualCount) < TOTAL_LIMIT) {
         callAI(true);

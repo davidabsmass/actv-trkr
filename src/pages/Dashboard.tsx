@@ -514,6 +514,7 @@ const Dashboard = () => {
 
           {/* AI Insights – auto-generates on load */}
           <AiInsights
+            orgId={orgId}
             metrics={{
               sessionsThisWeek: periodData.sessions.current,
               sessionsLastWeek: periodData.sessions.previous,

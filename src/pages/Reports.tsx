@@ -60,7 +60,7 @@ const RankList = ({ items, maxItems = 8 }: { items: Array<{ label: string; count
   const top = (items || []).slice(0, maxItems);
   const maxCount = top[0]?.count || 1;
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {top.map((item, i) => (
         <div key={i} className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{i + 1}</span>

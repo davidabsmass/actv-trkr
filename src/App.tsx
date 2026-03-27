@@ -30,6 +30,9 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Account = lazy(() => import("./pages/Account"));
 const GetStarted = lazy(() => import("./pages/GetStarted"));
 const Index = lazy(() => import("./pages/Index"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const OwnerAdmin = lazy(() => import("./pages/OwnerAdmin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

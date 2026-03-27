@@ -14,6 +14,7 @@ import SeoScoreCard from "./SeoScoreCard";
 import SeoIssuesList from "./SeoIssuesList";
 import SeoBlendedInsights from "./SeoBlendedInsights";
 import SeoFixModal from "./SeoFixModal";
+import SeoScanEvidence from "./SeoScanEvidence";
 
 export default function SeoTab() {
   const { t } = useTranslation();

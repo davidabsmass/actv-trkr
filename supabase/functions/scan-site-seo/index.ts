@@ -426,12 +426,28 @@ HTML: ${analyzableHtml}`,
     // ── Step 4: Score using shared logic ──
     const score = calculateScore(finalIssues);
 
+    // Build scan evidence signals
+    const canonicalHrefMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+    const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']*)["']/i) ||
+                         html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:title["']/i);
+    const signals = {
+      title_text: titleContent || null,
+      title_length: titleLength,
+      meta_description_text: metaDescContent || null,
+      meta_description_length: metaDescLength,
+      og_title: ogTitleMatch ? ogTitleMatch[1].trim() : null,
+      canonical: canonicalHrefMatch ? canonicalHrefMatch[1].trim() : null,
+      final_url: url,
+      fetched_at: new Date().toISOString(),
+    };
+
     // Store scan result
     await adminClient.from("seo_scans").insert({
       org_id, site_id, url, score,
       issues_json: finalIssues,
       recommendations_json: [],
       platform,
+      signals_json: signals,
     });
 
     // Log AI usage

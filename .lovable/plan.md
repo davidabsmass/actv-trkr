@@ -1,49 +1,48 @@
 
+What’s happening right now (root cause)
+1) The scanner is reading the live homepage HTML correctly, and the latest scan response is still:
+   - "Page title is too short (19 chars, aim for 30-60)"
+2) The latest saved scan records in Lovable Cloud also show the same 19-char title result repeatedly.
+3) So this is not a stale UI bug — the page source being served to the scanner still has a short `<title>` (likely homepage title override behavior in your current WordPress/Avada/Yoast setup).
 
-# Fix AI Features: Org Context, 300/Month Limit, Cost Reduction
+Plan to fix the confusion and make this debuggable in-product
+1) Add “scan evidence” to the SEO scan result payload
+   - Capture and return: `title_text`, `title_length`, `meta_description_length`, `og_title`, `canonical`, `final_url`, and `fetched_at`.
+   - Keep this deterministic (no AI dependency).
 
-## What We're Fixing
+2) Persist scan evidence with each scan
+   - Add a new JSON column (e.g. `signals_json`) to `seo_scans` in Lovable Cloud.
+   - Store the exact extracted values used for scoring so users can see exactly what the scanner saw.
 
-1. **Chatbot reads wrong org** — always picks first org instead of the one you're viewing
-2. **Chatbot has no rate limit** — unlimited messages, unbounded cost
-3. **AI Insights auto-fires too much** — burns 5 calls just navigating around
-4. **AI Insights gives generic advice** — no site names, pages, or sources in the prompt
+3) Show “What we scanned” in SEO UI
+   - Add a compact evidence panel in `/seo`:
+     - Scanned title (raw text + char count)
+     - Scanned meta description (char count)
+     - Final fetched URL + timestamp
+   - This removes guesswork when title updates “look right” in WP admin but not in live HTML.
 
-## What Changes
+4) Add smart mismatch hints for homepage
+   - If title is short and looks like homepage default patterns (e.g., “HOME - Brand”), show targeted guidance:
+     - “Live source is still serving a short homepage title.”
+     - “Check homepage SEO title source priority (theme/page settings vs plugin settings).”
 
-### Chatbot fixes
-- Frontend sends the active orgId to the chatbot edge function
-- Edge function validates user belongs to that org, then fetches data for that specific org
-- Add 300 messages/month limit per org (checked against `ai_usage_log` table, current calendar month)
-- Cache the site context for 1 hour so repeat messages skip all 18 database queries
-- Use cheaper model (`gemini-2.5-flash-lite`) for follow-up messages in a conversation
-- Show friendly message when limit reached: "You've used all 300 AI assistant messages this month"
+5) Keep scan logic strict and deterministic
+   - No change to scoring thresholds.
+   - No AI-generated title verdicts.
+   - Continue cache-busting fetch, but now show evidence so users can verify instantly.
 
-### AI Insights fixes
-- Frontend sends orgId, auto-call reduced from 5 to 1 per day
-- Cache key scoped by orgId so switching clients doesn't show stale data
-- Edge function fetches org name, site domains, top 5 pages, top 5 sources and includes them in the AI prompt
-- Insights will reference actual site names and pages instead of generic advice
+Files/areas to update
+- `supabase/functions/scan-site-seo/index.ts`
+  - Build and return/store scan evidence object.
+- `src/components/reports/SeoTab.tsx`
+  - Read and pass evidence to UI.
+- `src/components/reports/SeoScoreCard.tsx` (or a new small component)
+  - Render “What we scanned” block.
+- `supabase/migrations/*`
+  - Add `seo_scans.signals_json jsonb` (with safe default).
 
-## Cost Impact
-
-| Feature | Before | After |
-|---------|--------|-------|
-| Chatbot messages/month | Unlimited | 300 cap |
-| Chatbot cost/org/month | Unbounded | ~$1.50 max |
-| Insights auto-calls/day | 5 | 1 |
-| Insights cost/org/month | ~$0.90 | ~$0.45 |
-| Total AI cost (50 orgs) | $200-350+ | ~$100 |
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `src/components/AiChatbot.tsx` | Import `useOrg`, send `orgId` in POST body |
-| `supabase/functions/ai-chatbot/index.ts` | Read orgId from body, validate membership, add 300/month rate limit via `ai_usage_log`, cache context 1hr, use lite model for follow-ups |
-| `src/components/dashboard/AiInsights.tsx` | Accept `orgId` prop, `AUTO_LIMIT` 5→1, scope sessionStorage key by orgId |
-| `src/pages/Dashboard.tsx` | Pass `orgId` to `<AiInsights>` |
-| `supabase/functions/dashboard-ai-insights/index.ts` | Read orgId from body, validate, fetch org name + domains + top pages + top sources, enrich AI prompt |
-
-No database migrations needed — `ai_usage_log` table already exists with the right columns.
-
+Validation steps (post-implementation)
+1) Run a new homepage scan and confirm the evidence panel shows the exact title text and length.
+2) Update homepage title in WP, rescan, and verify evidence changes immediately.
+3) Confirm score/issue logic remains unchanged except when real title length changes.
+4) Test end-to-end in `/seo`: New Scan → evidence updates → issue disappears once live title is 30–60 chars.

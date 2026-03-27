@@ -113,7 +113,6 @@ export default function SeoScanEvidence({ signals }: Props) {
           <p className="text-[10px] text-muted-foreground font-mono break-all">{signals.og_image}</p>
         </div>
       )}
-      </div>
 
       {/* Smart homepage hint */}
       {showHomepageHint && (

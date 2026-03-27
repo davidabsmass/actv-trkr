@@ -295,6 +295,11 @@ export default function SeoTab() {
         />
       )}
 
+      {/* Scan Evidence */}
+      {activeScan?.signals_json && Object.keys(activeScan.signals_json as Record<string, unknown>).length > 0 && (
+        <SeoScanEvidence signals={activeScan.signals_json as any} />
+      )}
+
       {/* Blended SEO + Engagement Insights */}
       {blendedInsights && blendedInsights.length > 0 && (
         <SeoBlendedInsights insights={blendedInsights} />

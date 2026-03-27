@@ -259,10 +259,11 @@ export default function SeoTab() {
                   variant="outline"
                   size="sm"
                   onClick={exportSeoFindings}
+                  disabled={exporting}
                   className="gap-1.5 shrink-0"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  {t("seo.export", { defaultValue: "Export" })}
+                  {exporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  {exporting ? t("seo.exportingPdf", { defaultValue: "Generating…" }) : t("seo.exportPdf", { defaultValue: "Export PDF" })}
                 </Button>
               )}
               <Button

@@ -206,6 +206,42 @@ export default function SeoTab() {
     }
   };
 
+  const exportSeoFindings = () => {
+    if (!activeScan || issues.length === 0) return;
+    const grade = getScoreGrade(score);
+    const rows: string[][] = [
+      ["SEO Scan Export"],
+      ["URL", activeScan.url],
+      ["Score", `${score}/100 (Grade: ${grade})`],
+      ["Platform", activeScan.platform || "Unknown"],
+      ["Scanned", new Date(activeScan.scanned_at).toLocaleDateString()],
+      [],
+      ["Priority", "Category", "Issue", "Recommendation"],
+    ];
+    for (const issue of issues) {
+      rows.push([
+        issue.impact,
+        issue.category || "",
+        issue.title,
+        (issue.fix || "").replace(/\n/g, " "),
+      ]);
+    }
+    if (blendedInsights && blendedInsights.length > 0) {
+      rows.push([], ["SEO + Engagement Insights"], ["Page", "Insight", "Details"]);
+      for (const insight of blendedInsights) {
+        rows.push([insight.page, insight.title, insight.explanation]);
+      }
+    }
+    const csv = rows.map(r => r.map(c => `"${(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `seo-report-${siteDomain || "scan"}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success(t("seo.exportSuccess", { defaultValue: "SEO report exported" }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Scan controls */}

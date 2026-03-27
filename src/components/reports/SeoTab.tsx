@@ -283,7 +283,7 @@ export default function SeoTab() {
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">{t("dashboard.addSiteForSeo")}</p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.addSiteForSeo", { defaultValue: "Add a site in Settings to enable SEO scanning." })}</p>
         )}
       </div>
 

@@ -270,7 +270,7 @@ export async function buildSeoPdf(data: SeoReportData, whiteLabel?: WhiteLabelCo
     const fbR = parseInt(footerBrandHex.slice(1, 3), 16);
     const fbG = parseInt(footerBrandHex.slice(3, 5), 16);
     const fbB = parseInt(footerBrandHex.slice(5, 7), 16);
-    const footerBrand = whiteLabel?.hide_actv_branding ? (whiteLabel?.client_name || "") : "ACTV TRKR";
+    const footerBrand = (whiteLabel?.hide_actv_branding || whiteLabel?.logo_url) ? (whiteLabel?.client_name || "") : "ACTV TRKR";
 
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) doc.addPage();

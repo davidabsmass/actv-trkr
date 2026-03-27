@@ -269,12 +269,14 @@ serve(async (req) => {
 
     const h1Count = (html.match(/<h1(\s[^>]*)?>/gi) || []).length;
     const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    const titleContent = titleMatch ? titleMatch[1].trim() : null;
+    const titleContentRaw = titleMatch ? titleMatch[1].trim() : null;
+    const titleContent = titleContentRaw ? titleContentRaw.replace(/&#(\d+);/g, (_: string, n: string) => String.fromCharCode(Number(n))).replace(/&#x([0-9a-fA-F]+);/g, (_: string, h: string) => String.fromCharCode(parseInt(h, 16))).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'") : null;
     const titleLength = titleContent ? titleContent.length : 0;
 
     const metaDescMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i) ||
                           html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i);
-    const metaDescContent = metaDescMatch ? metaDescMatch[1].trim() : null;
+    const metaDescRaw = metaDescMatch ? metaDescMatch[1].trim() : null;
+    const metaDescContent = metaDescRaw ? metaDescRaw.replace(/&#(\d+);/g, (_: string, n: string) => String.fromCharCode(Number(n))).replace(/&#x([0-9a-fA-F]+);/g, (_: string, h: string) => String.fromCharCode(parseInt(h, 16))).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'") : null;
     const metaDescLength = metaDescContent ? metaDescContent.length : 0;
     const metaDescAllMatches = html.match(/<meta[^>]+name=["']description["']/gi) || [];
     const metaDescCount = metaDescAllMatches.length;

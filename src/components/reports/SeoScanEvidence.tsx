@@ -96,6 +96,25 @@ export default function SeoScanEvidence({ signals }: Props) {
         </div>
       </div>
 
+      {/* OG Image */}
+      {signals.og_image && (
+        <div className="space-y-1.5 pt-1">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            {t("seo.ogImage", { defaultValue: "Open Graph Image" })}
+          </span>
+          <div className="rounded-md border border-border overflow-hidden bg-muted/30 max-w-sm">
+            <img
+              src={signals.og_image}
+              alt="Open Graph preview"
+              className="w-full h-auto object-cover max-h-48"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground font-mono break-all">{signals.og_image}</p>
+        </div>
+      )}
+      </div>
+
       {/* Smart homepage hint */}
       {showHomepageHint && (
         <div className="flex items-start gap-2 rounded-md bg-warning/10 border border-warning/20 p-3 mt-2">

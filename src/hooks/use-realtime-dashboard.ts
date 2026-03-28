@@ -156,6 +156,27 @@ export function useRealtimeDashboard(
           dailyMap[d].pageviews += Number(row.value);
       });
 
+      // Patch today's data with real-time counts from raw tables
+      const todayStr = fnsFormat(new Date(), "yyyy-MM-dd");
+      if (dailyMap[todayStr]) {
+        const todayStart = `${todayStr}T00:00:00Z`;
+        const todayEnd = `${todayStr}T23:59:59.999Z`;
+        const [todayPv, todaySess, todayLeads] = await Promise.all([
+          supabase.from("pageviews").select("*", { count: "exact", head: true })
+            .eq("org_id", orgId).gte("occurred_at", todayStart).lte("occurred_at", todayEnd),
+          supabase.from("sessions").select("*", { count: "exact", head: true })
+            .eq("org_id", orgId).gte("started_at", todayStart).lte("started_at", todayEnd),
+          supabase.from("leads").select("*", { count: "exact", head: true })
+            .eq("org_id", orgId).neq("status", "trashed")
+            .gte("submitted_at", todayStart).lte("submitted_at", todayEnd),
+        ]);
+        dailyMap[todayStr] = {
+          pageviews: todayPv.count || 0,
+          sessions: todaySess.count || 0,
+          leads: todayLeads.count || 0,
+        };
+      }
+
       // Fallback: if no aggregated data, build from the capped session/lead rows
       if (!hasAggData) {
         const sessions = sessionsBreakdown.data || [];

@@ -343,7 +343,13 @@ function ActivityReportsTab() {
       supabase.functions.invoke("process-report", { body: { run_id: inserted.id } }).catch(() => {});
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["report_runs"] }); toast.success("Report generation started"); },
-    onError: (err: any) => toast.error(err.message || "Failed"),
+    onError: (err: any) => {
+      if (err.message?.includes("row-level security") || err.code === "42501") {
+        toast.error("No reports available for this client");
+      } else {
+        toast.error(err.message || "Failed");
+      }
+    },
   });
 
   const viewReport = async (run: any) => {

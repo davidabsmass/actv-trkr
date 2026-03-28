@@ -1,0 +1,1 @@
+CREATE POLICY "rr_insert" ON public.report_runs FOR INSERT TO authenticated WITH CHECK (user_org_role(org_id) = ANY (ARRAY['admin'::text, 'member'::text]));

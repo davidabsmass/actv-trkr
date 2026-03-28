@@ -102,21 +102,18 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
     const maxCount = top[0]?.count || 1;
     return top
       .map((item, i) => {
-        const widthPct = Math.max(2, Math.min(100, (item.count / maxCount) * 100));
+        const widthPct = Math.max(0, Math.min(100, (item.count / maxCount) * 100));
         return `
-      <div style="display:block;margin-bottom:16px">
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0;line-height:1.5">${i + 1}</span>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;min-height:18px">
-              <span style="display:block;font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.5;padding-bottom:1px">${safe(item.label)}</span>
-              <span style="display:block;font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.5">${fmtNum(item.count)}</span>
-            </div>
-            <div style="height:6px;background:#e4e6ed;border-radius:999px;overflow:hidden">
-              <div style="height:100%;background:${brandPrimary}80;border-radius:999px;width:${widthPct}%"></div>
+      <div style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:12px;color:#6b6f80;width:20px;text-align:right;flex-shrink:0">${i + 1}</span>
+          <div style="position:relative;flex:1;min-width:0;height:24px;border-radius:6px;background:rgba(228,230,237,0.45);overflow:hidden">
+            <div style="position:absolute;inset:0 auto 0 0;height:100%;background:${brandPrimary}26;border-radius:6px;width:${widthPct}%"></div>
+            <span style="position:relative;z-index:1;display:block;padding:0 8px;font-size:12px;font-weight:500;color:#00264d;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safe(item.label)}</span>
+          </div>
+          <span style="font-size:12px;color:#6b6f80;flex-shrink:0;width:40px;text-align:right;font-variant-numeric:tabular-nums">${fmtNum(item.count)}</span>
             </div>
           </div>
-        </div>
       </div>`;
       })
       .join("");

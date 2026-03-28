@@ -365,7 +365,7 @@
     var events = eventBatch.splice(0);
     var eventEndpoint = CFG.endpoint.replace(/\/track-pageview$/, '/track-event');
 
-    sendBeaconSafe(eventEndpoint, {
+    send(eventEndpoint, {
       api_key: CFG.apiKey,
       source: {
         domain: CFG.domain,

@@ -15,6 +15,7 @@ interface GoalResult {
 
 export function GoalConversions({ orgId, startDate, endDate }: { orgId: string | null; startDate: string; endDate: string }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["goal_conversions_v2", orgId, startDate, endDate],

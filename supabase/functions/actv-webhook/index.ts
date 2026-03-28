@@ -46,14 +46,16 @@ serve(async (req) => {
         const metadata = session.metadata || {};
         const plan = metadata.plan || "monthly";
         const mrr = plan === "annual" ? 27.5 : 30;
+        const siteUrl = metadata.site_url || null;
 
+        // 1. Upsert subscriber record
         const { error } = await supabase.from("subscribers").upsert({
           email,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
           plan,
           status: "active",
-          site_url: metadata.site_url || null,
+          site_url: siteUrl,
           referral_source: metadata.referral_source || null,
           mrr,
           last_active_date: new Date().toISOString(),
@@ -61,6 +63,109 @@ serve(async (req) => {
 
         if (error) logStep("DB insert error", { error });
         else logStep("Subscriber created", { email, plan });
+
+        // 2. Create auth user (skip if already exists)
+        const tempPassword = crypto.randomUUID();
+        const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+          email,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { full_name: "" },
+        });
+
+        let userId: string | null = null;
+
+        if (createErr) {
+          if (createErr.message?.includes("already been registered")) {
+            logStep("User already exists, skipping account creation", { email });
+            // Look up existing user
+            const { data: { users } } = await supabase.auth.admin.listUsers();
+            const existing = users?.find((u: any) => (u.email || "").toLowerCase() === email.toLowerCase());
+            userId = existing?.id || null;
+          } else {
+            logStep("Auth user creation error", { error: createErr.message });
+          }
+        } else {
+          userId = newUser?.user?.id || null;
+          logStep("Auth user created", { userId });
+        }
+
+        // 3. Create org + link user (only for new users with no org yet)
+        if (userId) {
+          const { data: existingOrg } = await supabase
+            .from("org_users")
+            .select("org_id")
+            .eq("user_id", userId)
+            .limit(1)
+            .maybeSingle();
+
+          if (!existingOrg) {
+            // Derive org name from email domain or site URL
+            let orgName = email.split("@")[1] || "My Organization";
+            if (siteUrl) {
+              try {
+                orgName = new URL(siteUrl).hostname.replace(/^www\./, "");
+              } catch { /* keep email domain */ }
+            }
+
+            const { data: org, error: orgErr } = await supabase
+              .from("orgs")
+              .insert({ name: orgName })
+              .select("id")
+              .single();
+
+            if (orgErr) {
+              logStep("Org creation error", { error: orgErr.message });
+            } else {
+              await supabase.from("org_users").insert({
+                org_id: org.id,
+                user_id: userId,
+                role: "admin",
+              });
+
+              // If site_url provided, create site record
+              if (siteUrl) {
+                await supabase.from("sites").insert({
+                  org_id: org.id,
+                  name: orgName,
+                  url: siteUrl,
+                }).then(({ error: siteErr }) => {
+                  if (siteErr) logStep("Site creation error", { error: siteErr.message });
+                });
+              }
+
+              logStep("Org + membership created", { orgId: org.id });
+            }
+          } else {
+            logStep("User already has org, skipping", { orgId: existingOrg.org_id });
+          }
+
+          // 4. Generate password-set link & send welcome email
+          try {
+            const { data: resetData } = await supabase.auth.admin.generateLink({
+              type: "recovery",
+              email,
+              options: { redirectTo: "https://actvtrkr.com/reset-password" },
+            });
+            const setPasswordUrl = resetData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+
+            await supabase.functions.invoke("send-transactional-email", {
+              body: {
+                templateName: "welcome",
+                recipientEmail: email,
+                idempotencyKey: `welcome-checkout-${session.id}`,
+                templateData: {
+                  name: undefined,
+                  setPasswordUrl,
+                },
+              },
+            });
+            logStep("Welcome email queued", { email });
+          } catch (emailErr) {
+            logStep("Welcome email failed (non-fatal)", { error: String(emailErr) });
+          }
+        }
+
         break;
       }
 

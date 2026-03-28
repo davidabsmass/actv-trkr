@@ -104,7 +104,21 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
     );
   }
 
-  if (!results || results.length === 0) return null;
+  if (!results || results.length === 0) return (
+    <div className="glass-card p-6 animate-slide-up">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          {t("goals.goalCompletions")}
+        </h3>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">No goals configured yet. Create a goal to start tracking conversions.</p>
+      <Button size="sm" variant="outline" onClick={() => navigate("/settings?tab=general")} className="gap-1.5">
+        <Plus className="h-3.5 w-3.5" />
+        Create a New Goal
+      </Button>
+    </div>
+  );
 
   const total = results.reduce((s, r) => s + r.count, 0);
 

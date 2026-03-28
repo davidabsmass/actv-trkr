@@ -15,10 +15,6 @@ const faqs = [
     a: "Google Analytics gives you broad audience and acquisition data across any website. ACTV TRKR is purpose-built for WordPress and focused on what GA doesn't cover well: real-time lead attribution down to the individual form submission, automatic form health checks, broken-link detection, uptime monitoring, and plain-language AI summaries. Many teams run both side by side — GA for the big picture, ACTV TRKR for the operational detail and actionable alerts.",
   },
   {
-    q: "How does visitor identification work?",
-    a: "Before a visitor fills out a form, all tracking is anonymous — we assign a random visitor ID via a first-party cookie and record pages viewed, clicks, and traffic source. The moment a visitor submits a form (or logs in as a WordPress user), their identity is linked to that visitor ID. From that point on, you can see a full chronological activity timeline: every page they visited, every CTA they clicked, and every asset they downloaded — both before and after identification. This gives you a complete picture of the journey that led to a conversion.",
-  },
-  {
     q: "What form plugins are supported?",
     a: "ACTV TRKR supports Gravity Forms, Contact Form 7, WPForms, Avada / Fusion Forms, Ninja Forms, Formidable Forms, Elementor Forms, Fluent Forms, HappyForms, and WS Form out of the box. On top of that, our universal capture engine intercepts any standard HTML form submission event — so even custom-built or niche forms are detected automatically with no extra configuration.",
   },

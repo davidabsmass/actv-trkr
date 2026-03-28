@@ -52,12 +52,6 @@ Deno.serve(async (req) => {
     const xff = req.headers.get("x-forwarded-for");
     const ip = xff ? xff.split(",")[0].trim() : req.headers.get("x-real-ip") || null;
 
-    // Check if this is the user's first login
-    const { count: loginCount } = await supabase
-      .from("login_events")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId);
-
     await supabase.from("login_events").insert({
       user_id: userId,
       email: email || null,
@@ -66,22 +60,6 @@ Deno.serve(async (req) => {
       ip_address: ip,
       user_agent: userAgent,
     });
-
-    // Send welcome email on first login
-    if (loginCount === 0 && email) {
-      try {
-        await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "welcome",
-            recipientEmail: email,
-            idempotencyKey: `welcome-${userId}`,
-            templateData: { name: user?.user_metadata?.full_name || undefined },
-          },
-        });
-      } catch (welcomeErr) {
-        console.warn("log-login: welcome email failed (non-fatal)", welcomeErr);
-      }
-    }
 
     return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {

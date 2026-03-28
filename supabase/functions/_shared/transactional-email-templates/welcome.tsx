@@ -11,7 +11,6 @@ import {
   Preview,
   Section,
   Text,
-  Hr,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -20,15 +19,16 @@ const LOGO_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/pub
 
 interface WelcomeEmailProps {
   name?: string
+  setPasswordUrl?: string
 }
 
-const WelcomeEmail = ({ name }: WelcomeEmailProps) => (
+const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Welcome to {SITE_NAME} — your analytics dashboard is ready</Preview>
+    <Preview>Welcome to {SITE_NAME} — set your password to get started</Preview>
     <Body style={main}>
       <Container style={container}>
-        {/* Header with gradient accent */}
+        {/* Header */}
         <Section style={headerSection}>
           <div style={gradientBar} />
           <Section style={logoWrap}>
@@ -38,60 +38,38 @@ const WelcomeEmail = ({ name }: WelcomeEmailProps) => (
 
         <Section style={contentSection}>
           <Heading style={h1}>
-            {name ? `Welcome aboard, ${name}!` : 'Welcome aboard!'}
+            {name ? `Hi ${name},` : 'Hi there,'}
           </Heading>
 
-          <Text style={leadText}>
-            Your {SITE_NAME} dashboard is ready. Here's what you can do right away:
+          <Text style={text}>Welcome to ACTV TRKR.</Text>
+
+          <Text style={text}>
+            Your account has been created, and you're ready to get started. To access your dashboard, you'll first need to set your password.
           </Text>
 
-          {/* Feature highlights */}
-          <Section style={featureCard}>
-            <Text style={featureTitle}>📊 Real-Time Analytics</Text>
-            <Text style={featureDesc}>
-              Track pageviews, sessions, and visitor behavior as it happens across all your sites.
-            </Text>
-          </Section>
-
-          <Section style={featureCard}>
-            <Text style={featureTitle}>🎯 Lead & Form Tracking</Text>
-            <Text style={featureDesc}>
-              See every form submission, conversion rate, and lead source — attributed to the right campaign.
-            </Text>
-          </Section>
-
-          <Section style={featureCard}>
-            <Text style={featureTitle}>🔍 SEO Monitoring</Text>
-            <Text style={featureDesc}>
-              Automated SEO scans find issues and suggest one-click fixes to improve your rankings.
-            </Text>
-          </Section>
-
-          <Section style={featureCard}>
-            <Text style={featureTitle}>🛡️ Uptime & Security</Text>
-            <Text style={featureDesc}>
-              24/7 uptime monitoring with instant alerts, plus security event tracking and SSL checks.
-            </Text>
-          </Section>
-
-          <Hr style={divider} />
-
-          <Text style={ctaIntro}>
-            Get started by installing the tracking plugin on your WordPress site:
+          <Text style={text}>
+            Click below to create your password and activate your account:
           </Text>
 
           <Section style={buttonWrap}>
-            <Button style={button} href="https://actvtrkr.com/get-started">
-              Get Started →
+            <Button style={button} href={setPasswordUrl || 'https://actvtrkr.com/reset-password'}>
+              Set Your Password
             </Button>
           </Section>
 
-          <Text style={footerText}>
-            Need help? Just reply to this email — we're here for you.
+          <Text style={text}>
+            Once you log in, we'll take you straight to the setup instructions page so you can install the plugin, connect your WordPress site, and start tracking your data.
+          </Text>
+
+          <Text style={text}>
+            If you need help at any point, just reply to this email and we'll point you in the right direction.
           </Text>
 
           <Text style={signoff}>
-            — The {SITE_NAME} Team
+            Thanks,
+          </Text>
+          <Text style={signoffTeam}>
+            The {SITE_NAME} Team
           </Text>
         </Section>
       </Container>
@@ -101,9 +79,9 @@ const WelcomeEmail = ({ name }: WelcomeEmailProps) => (
 
 export const template = {
   component: WelcomeEmail,
-  subject: `Welcome to ${SITE_NAME} — Let's get tracking`,
-  displayName: 'Welcome email',
-  previewData: { name: 'Alex' },
+  subject: `Welcome to ${SITE_NAME} — Set your password to get started`,
+  displayName: 'Welcome / account activation',
+  previewData: { name: 'David', setPasswordUrl: 'https://actvtrkr.com/reset-password?token=example' },
 } satisfies TemplateEntry
 
 /* ── Styles ─────────────────────────────────────────── */
@@ -140,56 +118,23 @@ const contentSection = {
 }
 
 const h1 = {
-  fontSize: '24px',
+  fontSize: '22px',
   fontWeight: 'bold' as const,
   color: '#00264D',
-  margin: '0 0 12px',
+  margin: '0 0 20px',
   lineHeight: '1.3',
 }
 
-const leadText = {
+const text = {
   fontSize: '15px',
   color: '#4B5563',
-  lineHeight: '1.6',
-  margin: '0 0 28px',
-}
-
-const featureCard = {
-  backgroundColor: '#F8F9FC',
-  borderRadius: '10px',
-  padding: '16px 20px',
-  marginBottom: '12px',
-}
-
-const featureTitle = {
-  fontSize: '15px',
-  fontWeight: '600' as const,
-  color: '#00264D',
-  margin: '0 0 4px',
-}
-
-const featureDesc = {
-  fontSize: '13px',
-  color: '#6B7280',
-  lineHeight: '1.5',
-  margin: '0',
-}
-
-const divider = {
-  borderColor: '#E5E7EB',
-  margin: '28px 0',
-}
-
-const ctaIntro = {
-  fontSize: '15px',
-  color: '#4B5563',
-  lineHeight: '1.5',
-  margin: '0 0 20px',
+  lineHeight: '1.7',
+  margin: '0 0 16px',
 }
 
 const buttonWrap = {
   textAlign: 'center' as const,
-  marginBottom: '28px',
+  margin: '28px 0',
 }
 
 const button = {
@@ -203,15 +148,16 @@ const button = {
   display: 'inline-block',
 }
 
-const footerText = {
-  fontSize: '13px',
-  color: '#9CA3AF',
+const signoff = {
+  fontSize: '15px',
+  color: '#4B5563',
+  margin: '24px 0 0',
   lineHeight: '1.5',
-  margin: '0 0 8px',
 }
 
-const signoff = {
-  fontSize: '13px',
-  color: '#9CA3AF',
+const signoffTeam = {
+  fontSize: '15px',
+  color: '#4B5563',
   margin: '0',
+  lineHeight: '1.5',
 }

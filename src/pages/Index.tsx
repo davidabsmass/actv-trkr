@@ -510,10 +510,10 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">
                 © 2026 ACTV TRKR. All rights reserved.
               </p>
-              <div className="flex items-center gap-6 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <span className="cursor-pointer hover:text-foreground">Privacy</span>
-                <span className="cursor-pointer hover:text-foreground">Terms</span>
-                <span className="cursor-pointer hover:text-foreground">Contact</span>
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <a href="/privacy" className="cursor-pointer hover:text-foreground transition-colors">Privacy</a>
+                <a href="/terms" className="cursor-pointer hover:text-foreground transition-colors">Terms</a>
+                <span className="cursor-pointer hover:text-foreground transition-colors">Contact</span>
               </div>
             </div>
           </div>

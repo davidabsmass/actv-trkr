@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Target } from "lucide-react";
+import { Target, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { GOAL_TYPES, type ConversionGoal } from "@/hooks/use-goals";
 
 interface GoalResult {
@@ -13,6 +15,7 @@ interface GoalResult {
 
 export function GoalConversions({ orgId, startDate, endDate }: { orgId: string | null; startDate: string; endDate: string }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["goal_conversions_v2", orgId, startDate, endDate],
@@ -101,7 +104,21 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
     );
   }
 
-  if (!results || results.length === 0) return null;
+  if (!results || results.length === 0) return (
+    <div className="glass-card p-6 animate-slide-up">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          {t("goals.goalCompletions")}
+        </h3>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">No goals configured yet. Create a goal to start tracking conversions.</p>
+      <Button size="sm" variant="outline" onClick={() => navigate("/settings?tab=general")} className="gap-1.5">
+        <Plus className="h-3.5 w-3.5" />
+        Create a New Goal
+      </Button>
+    </div>
+  );
 
   const total = results.reduce((s, r) => s + r.count, 0);
 
@@ -113,6 +130,10 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           {t("goals.goalCompletions")}
         </h3>
         <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
+        <Button size="sm" variant="ghost" onClick={() => navigate("/settings?tab=general")} className="gap-1 h-7 text-xs">
+          <Plus className="h-3 w-3" />
+          New Goal
+        </Button>
       </div>
 
       <div className="space-y-2">

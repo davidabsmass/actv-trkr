@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff } from "lucide-react";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
+import SparkleCanvas from "@/components/SparkleCanvas";
+import spaceBg from "@/assets/space-bgd-new.jpg";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -16,7 +19,6 @@ const ResetPassword = () => {
   useEffect(() => {
     let mounted = true;
 
-    // Listen for PASSWORD_RECOVERY or SIGNED_IN (recovery triggers SIGNED_IN in v2)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
@@ -24,7 +26,6 @@ const ResetPassword = () => {
       }
     });
 
-    // Also check immediately — the event may have already fired before mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (mounted && session) setReady(true);
     });
@@ -63,28 +64,35 @@ const ResetPassword = () => {
   };
 
   const inputClass =
-    "w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50";
+    "w-full pl-10 pr-10 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50";
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
-            <Zap className="h-5 w-5 text-primary" />
-          </div>
-          <span className="text-xl font-bold text-foreground tracking-tight">ACTV TRKR</span>
+    <div
+      className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
+      style={{
+        backgroundImage: `url(${spaceBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <SparkleCanvas />
+
+      <div className="w-full max-w-sm relative z-10">
+        <div className="flex items-center justify-center mb-8">
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-11 w-auto" />
         </div>
 
-        <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Set new password</h2>
-          <p className="text-sm text-muted-foreground mb-5">Enter your new password below</p>
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
+          <h2 className="text-lg font-semibold text-white mb-1">Set new password</h2>
+          <p className="text-sm text-white/60 mb-5">Enter your new password below</p>
 
           {!ready ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Verifying reset link…</p>
+            <p className="text-sm text-white/60 text-center py-4">Verifying reset link…</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="New password"
@@ -97,13 +105,13 @@ const ResetPassword = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Confirm new password"
@@ -116,10 +124,10 @@ const ResetPassword = () => {
               </div>
 
               {error && (
-                <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+                <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
               )}
               {message && (
-                <p className="text-xs text-success bg-success/10 rounded-lg px-3 py-2">{message}</p>
+                <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
               )}
 
               <button

@@ -331,10 +331,10 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
     const pfl = previousLeads.filter((l: any) => l.form_id === f.id);
     const logs = (formSubmissionLogs || []).filter((log: any) => log.form_id === f.id);
     const failedLogs = logs.filter((l: any) => l.status !== "success");
-    // CVR per form: leads from this form / sessions on pages where this form exists
-    const formPages = new Set(fl.map((l: any) => l.page_path || l.page_url || ""));
-    const formPageSessions = currentSessions.filter((s: any) => formPages.has(s.landing_page_path || "")).length;
-    const formCvr = formPageSessions > 0 ? Math.round((fl.length / formPageSessions) * 10000) / 100 : 0;
+    // CVR per form: leads from this form / total sessions for the site
+    // Using total sessions gives a meaningful site-level conversion rate
+    const totalSessionCount = currentSessions.length;
+    const formCvr = totalSessionCount > 0 ? Math.round((fl.length / totalSessionCount) * 10000) / 100 : 0;
 
     return {
       formName: f.name,

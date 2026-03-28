@@ -109,7 +109,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
           <span style="font-size:12px;color:#6b6f80;width:20px;text-align:right;flex-shrink:0">${i + 1}</span>
           <div style="position:relative;flex:1;min-width:0;height:24px;border-radius:6px;background:rgba(228,230,237,0.45);overflow:hidden">
             <div style="position:absolute;inset:0 auto 0 0;height:100%;background:${brandPrimary}26;border-radius:6px;width:${widthPct}%"></div>
-            <span style="position:relative;z-index:1;display:flex;align-items:center;padding:0 8px;font-size:12px;font-weight:500;color:#00264d;height:24px;transform:translateY(-2px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safe(item.label)}</span>
+            <span style="position:relative;z-index:1;display:flex;align-items:center;padding:0 8px;font-size:12px;font-weight:500;color:#00264d;height:24px;transform:translateY(-5px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safe(item.label)}</span>
           </div>
           <span style="font-size:12px;color:#6b6f80;flex-shrink:0;width:40px;text-align:right;font-variant-numeric:tabular-nums">${fmtNum(item.count)}</span>
             </div>

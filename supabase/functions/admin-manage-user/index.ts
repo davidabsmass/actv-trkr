@@ -176,6 +176,30 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Send welcome email with password-set link (fire-and-forget)
+      try {
+        const { data: resetData } = await adminClient.auth.admin.generateLink({
+          type: "recovery",
+          email: normalizedEmail,
+          options: { redirectTo: "https://actvtrkr.com/reset-password" },
+        });
+        const setPasswordUrl = resetData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+
+        await adminClient.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "welcome",
+            recipientEmail: normalizedEmail,
+            idempotencyKey: `welcome-${userId}`,
+            templateData: {
+              name: normalizedFullName || undefined,
+              setPasswordUrl,
+            },
+          },
+        });
+      } catch (welcomeErr) {
+        console.warn("Welcome email failed (non-fatal):", welcomeErr);
+      }
+
       return new Response(JSON.stringify({ success: true, user_id: userId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

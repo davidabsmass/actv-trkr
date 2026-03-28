@@ -100,21 +100,26 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
   const rankList = (items: Array<{ label: string; count: number }>, max = 8) => {
     const top = (items || []).slice(0, max);
     const maxCount = top[0]?.count || 1;
-    return top.map((item, i) => `
-      <div style="display:block;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0">${i + 1}</span>
+    return top
+      .map((item, i) => {
+        const widthPct = Math.max(2, Math.min(100, (item.count / maxCount) * 100));
+        return `
+      <div style="display:block;margin-bottom:16px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:11px;color:#6b6f80;width:16px;text-align:right;flex-shrink:0;line-height:1.5">${i + 1}</span>
           <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px">
-              <span style="font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.4">${safe(item.label)}</span>
-              <span style="font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.4">${fmtNum(item.count)}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;min-height:18px">
+              <span style="display:block;font-size:11px;font-weight:500;color:#00264d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;line-height:1.5;padding-bottom:1px">${safe(item.label)}</span>
+              <span style="display:block;font-size:11px;color:#6b6f80;flex-shrink:0;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.5">${fmtNum(item.count)}</span>
             </div>
-            <div style="height:4px;background:#e4e6ed;border-radius:2px;overflow:hidden">
-              <div style="height:100%;background:${brandPrimary}80;border-radius:2px;width:${(item.count / maxCount) * 100}%"></div>
+            <div style="height:6px;background:#e4e6ed;border-radius:999px;overflow:hidden">
+              <div style="height:100%;background:${brandPrimary}80;border-radius:999px;width:${widthPct}%"></div>
             </div>
           </div>
         </div>
-      </div>`).join("");
+      </div>`;
+      })
+      .join("");
   };
 
   let html = `

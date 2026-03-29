@@ -8,6 +8,7 @@ import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
+import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";

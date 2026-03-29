@@ -101,9 +101,9 @@ export default function SeoSummaryView() {
   // 4. Homepage Search Basics
   const homepageBasics = (() => {
     if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check homepage basics." };
-    const hasTitle = !issues.some(i => i.id?.includes("title") && i.severity === "critical");
-    const hasMeta = !issues.some(i => i.id?.includes("meta_desc") && i.severity === "critical");
-    const hasH1 = !issues.some(i => i.id?.includes("h1") && (i.severity === "critical" || i.severity === "high"));
+    const hasTitle = !issues.some(i => i.id?.includes("title") && i.impact === "Critical");
+    const hasMeta = !issues.some(i => i.id?.includes("meta_desc") && i.impact === "Critical");
+    const hasH1 = !issues.some(i => i.id?.includes("h1") && (i.impact === "Critical" || i.impact === "High"));
     const hasCanonical = !issues.some(i => i.id?.includes("canonical"));
     const allGood = hasTitle && hasMeta && hasH1 && hasCanonical;
     if (allGood) return { level: "healthy" as StatusLevel, label: "Present", description: "Homepage search basics are present." };

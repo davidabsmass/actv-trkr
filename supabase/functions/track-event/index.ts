@@ -72,6 +72,47 @@ interface GoalRow {
   tracking_rules: Record<string, any>;
 }
 
+function normalizeForKey(value: unknown, maxLen = 240): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, maxLen);
+}
+
+function hashString(input: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function buildDedupeKey(goalId: string, row: {
+  event_type: string;
+  session_id: string | null;
+  visitor_id: string | null;
+  page_path: string | null;
+  occurred_at: string;
+  target_text: string | null;
+  meta?: Record<string, any>;
+}) {
+  const occurredAtMs = new Date(row.occurred_at).getTime();
+  const eventSecond = Math.floor((Number.isNaN(occurredAtMs) ? Date.now() : occurredAtMs) / 1000);
+  const actorKey = row.session_id || row.visitor_id || "no-actor";
+
+  const href = normalizeForKey(row.meta?.target_href, 320);
+  const label = normalizeForKey(row.meta?.target_label, 160);
+  const text = normalizeForKey(row.target_text, 160);
+  const path = normalizeForKey(row.page_path, 240);
+  const eventType = normalizeForKey(row.event_type, 48);
+  const rawFingerprint = `${eventType}|${path}|${href || ""}|${label || ""}|${text || ""}|${eventSecond}`;
+  const fingerprint = hashString(rawFingerprint);
+
+  return `${goalId}:${actorKey}:${fingerprint}`;
+}
+
 function matchEventToGoals(
   evt: { event_type: string; target_text: string | null; page_url: string | null; page_path: string | null; meta: Record<string, any> },
   goals: GoalRow[]
@@ -241,8 +282,6 @@ Deno.serve(async (req) => {
 
         if (activeGoals && activeGoals.length > 0) {
           const completionRows: any[] = [];
-          const DEDUPE_WINDOW = 300_000; // 5 minutes
-          const timeBucket = Math.floor(Date.now() / DEDUPE_WINDOW);
 
           for (const row of rows) {
             const matchedGoalIds = matchEventToGoals(
@@ -251,8 +290,7 @@ Deno.serve(async (req) => {
             );
 
             for (const goalId of matchedGoalIds) {
-              const sessionKey = row.session_id || "no-session";
-              const dedupeKey = `${goalId}:${sessionKey}:${timeBucket}`;
+              const dedupeKey = buildDedupeKey(goalId, row);
 
               completionRows.push({
                 org_id: orgId,

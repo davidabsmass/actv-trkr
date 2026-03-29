@@ -287,17 +287,38 @@ export function useConversionMetrics(
             return true;
           };
 
-          const dedupeWindowMs = 300_000;
           const seen = new Set<string>();
           const fallbackCounts: Record<string, number> = {};
+
+          const normalizeForKey = (value: unknown, maxLen = 240) =>
+            String(value ?? "")
+              .toLowerCase()
+              .trim()
+              .replace(/\s+/g, " ")
+              .slice(0, maxLen);
+
+          const hashString = (input: string) => {
+            let hash = 2166136261;
+            for (let i = 0; i < input.length; i++) {
+              hash ^= input.charCodeAt(i);
+              hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+            }
+            return (hash >>> 0).toString(16);
+          };
 
           for (const evt of fallbackEvents) {
             for (const goal of fallbackGoals) {
               if (!matchesGoal(evt, goal)) continue;
               const occurredAtMs = new Date(evt.occurred_at).getTime();
-              const bucket = Math.floor((Number.isNaN(occurredAtMs) ? Date.now() : occurredAtMs) / dedupeWindowMs);
-              const sessionKey = evt.session_id || "no-session";
-              const dedupeKey = `${goal.id}:${sessionKey}:${bucket}`;
+              const eventSecond = Math.floor((Number.isNaN(occurredAtMs) ? Date.now() : occurredAtMs) / 1000);
+              const actorKey = evt.session_id || "no-session";
+              const href = normalizeForKey(evt.meta?.target_href, 320);
+              const label = normalizeForKey(evt.meta?.target_label, 160);
+              const text = normalizeForKey(evt.target_text, 160);
+              const path = normalizeForKey(evt.page_path, 240);
+              const eventType = normalizeForKey(evt.event_type, 48);
+              const fingerprint = hashString(`${eventType}|${path}|${href}|${label}|${text}|${eventSecond}`);
+              const dedupeKey = `${goal.id}:${actorKey}:${fingerprint}`;
               if (seen.has(dedupeKey)) continue;
               seen.add(dedupeKey);
               fallbackCounts[goal.id] = (fallbackCounts[goal.id] || 0) + 1;

@@ -284,7 +284,7 @@ const Dashboard = () => {
         .eq("org_id", orgId).eq("status", "pending").lt("created_at", oneHourAgo);
       return count || 0;
     },
-    enabled: !!orgId,
+    enabled: !!orgId && seoVisible,
   });
 
   // Pending monitoring alerts (unsent)

@@ -45,6 +45,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
+  const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { t } = useTranslation();
 
   return (

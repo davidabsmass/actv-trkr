@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.4.1: Added visitor identity tracking, goal/conversion engine, Nova AI full-context chatbot
-const LATEST_VERSION = "1.4.1";
+// v1.5.0: Critical Avada/Fusion field parsing fixes
+const LATEST_VERSION = "1.5.0";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

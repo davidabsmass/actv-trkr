@@ -1,29 +1,62 @@
-import { Check } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Mail, ArrowRight } from "lucide-react";
+import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
+import SparkleCanvas from "@/components/SparkleCanvas";
+import spaceBg from "@/assets/space-bgd-new.jpg";
 
 export default function CheckoutSuccess() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-md w-full text-center border-border">
-        <CardContent className="pt-10 pb-8 space-y-6">
-          <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <Check className="h-8 w-8 text-primary" />
+    <div
+      className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
+      style={{
+        backgroundImage: `url(${spaceBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <SparkleCanvas />
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="flex items-center justify-center mb-8">
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-11 w-auto" />
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-8 shadow-2xl text-center space-y-6">
+          <div className="mx-auto h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center">
+            <Mail className="h-8 w-8 text-primary" />
           </div>
+
           <div>
-            <h1 className="text-2xl font-bold text-foreground">You're in!</h1>
-            <p className="text-muted-foreground mt-2">
-              We'll be in touch shortly with your setup instructions.
+            <h1 className="text-2xl font-bold text-white">You're in!</h1>
+            <p className="text-white/60 mt-2 text-sm leading-relaxed">
+              Your account has been created. We just sent you an email with a link to set your password and activate your account.
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Check your email for a confirmation and next steps. If you don't see it within a few minutes, check your spam folder.
+
+          <div className="rounded-lg bg-white/5 border border-white/10 p-4 text-left space-y-3">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <ArrowRight className="h-4 w-4 text-primary" />
+              What happens next
+            </h3>
+            <ol className="text-sm text-white/60 space-y-2 list-decimal list-inside">
+              <li>Check your email for a message from ACTV TRKR</li>
+              <li>Click the link to set your password</li>
+              <li>You'll be taken straight to setup instructions</li>
+            </ol>
+          </div>
+
+          <p className="text-xs text-white/40">
+            Don't see the email? Check your spam folder. It may take a minute to arrive.
           </p>
-          <Button variant="outline" onClick={() => window.location.href = "/"}>
+
+          <a
+            href="https://actvtrkr.com"
+            className="inline-block text-sm text-primary hover:text-primary/80 transition-colors"
+          >
             Back to home
-          </Button>
-        </CardContent>
-      </Card>
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

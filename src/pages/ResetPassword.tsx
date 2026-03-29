@@ -54,8 +54,8 @@ const ResetPassword = () => {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      setMessage("Password updated successfully! Redirecting…");
-      setTimeout(() => navigate("/dashboard"), 2000);
+      setMessage("Password updated successfully! Redirecting to setup…");
+      setTimeout(() => navigate("/get-started"), 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -106,12 +106,12 @@ function CreateOrgForm({
     mutationFn: async () => {
       if (!userId) throw new Error("Not authenticated");
       const orgId = crypto.randomUUID();
-      const { error: orgErr } = await supabase
-        .from("orgs").insert({ id: orgId, name: newOrgName, timezone: newOrgTimezone });
+      const { error: orgErr } = await supabase.rpc("create_org_with_admin", {
+        p_org_id: orgId,
+        p_name: newOrgName,
+        p_timezone: newOrgTimezone,
+      });
       if (orgErr) throw orgErr;
-      const { error: ouErr } = await supabase
-        .from("org_users").insert({ org_id: orgId, user_id: userId, role: "admin" });
-      if (ouErr) throw ouErr;
       return { id: orgId, name: newOrgName };
     },
     onSuccess: (org) => {

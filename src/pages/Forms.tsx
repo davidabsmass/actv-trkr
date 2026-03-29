@@ -370,7 +370,7 @@ export default function Forms() {
       while (true) {
         const { data, error } = await supabase
           .from("leads")
-          .select("form_id, submitted_at, source, session_id")
+          .select("id, form_id, submitted_at, source, session_id, data")
           .eq("org_id", orgId)
           .neq("status", "trashed")
           .gte("submitted_at", `${startDate}T00:00:00Z`)
@@ -382,7 +382,23 @@ export default function Forms() {
         if (data.length < PAGE_SIZE) break;
         from += PAGE_SIZE;
       }
-      return allLeads;
+      // Deduplicate by external_entry_id per form to avoid counting synced duplicates
+      const seenByForm: Record<string, Set<string>> = {};
+      const deduped: any[] = [];
+      for (const lead of allLeads) {
+        const extId =
+          lead.data && typeof lead.data === "object" && !Array.isArray(lead.data)
+            ? (lead.data as Record<string, unknown>).external_entry_id
+            : null;
+        if (typeof extId === "string" && extId.trim() !== "") {
+          const key = `${lead.form_id}::${extId}`;
+          if (!seenByForm[lead.form_id]) seenByForm[lead.form_id] = new Set();
+          if (seenByForm[lead.form_id].has(extId)) continue;
+          seenByForm[lead.form_id].add(extId);
+        }
+        deduped.push(lead);
+      }
+      return deduped;
     },
     enabled: !!orgId,
   });
@@ -590,54 +606,15 @@ export default function Forms() {
   const archivedForms = forms?.filter((f) => f.archived) || [];
   const displayedForms = showArchived ? archivedForms : activeForms;
 
-  const { data: leadCounts } = useQuery({
-    queryKey: ["lead_counts_by_form_entries", orgId],
-    queryFn: async () => {
-      if (!orgId || !forms) return {};
-      const counts: Record<string, number> = {};
-
-      for (const form of forms) {
-        let from = 0;
-        const pageSize = 1000;
-        const externalIds = new Set<string>();
-        let noExternalIdCount = 0;
-
-        while (true) {
-          const { data, error } = await supabase
-            .from("leads")
-            .select("id, data")
-            .eq("org_id", orgId)
-            .eq("form_id", form.id)
-            .neq("status", "trashed")
-            .range(from, from + pageSize - 1);
-
-          if (error) break;
-          if (!data || data.length === 0) break;
-
-          for (const lead of data) {
-            const extId =
-              lead.data && typeof lead.data === "object" && !Array.isArray(lead.data)
-                ? (lead.data as Record<string, unknown>).external_entry_id
-                : null;
-
-            if (typeof extId === "string" && extId.trim() !== "") {
-              externalIds.add(extId);
-            } else {
-              noExternalIdCount += 1;
-            }
-          }
-
-          if (data.length < pageSize) break;
-          from += pageSize;
-        }
-
-        counts[form.id] = externalIds.size + noExternalIdCount;
-      }
-
-      return counts;
-    },
-    enabled: !!orgId && !!forms && forms.length > 0,
-  });
+  // Derive lead counts from the already-deduplicated leadsData
+  const leadCounts = useMemo(() => {
+    if (!leadsData) return {};
+    const counts: Record<string, number> = {};
+    for (const lead of leadsData) {
+      counts[lead.form_id] = (counts[lead.form_id] || 0) + 1;
+    }
+    return counts;
+  }, [leadsData]);
 
   if (selectedForm) {
     return (

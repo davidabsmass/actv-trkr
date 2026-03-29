@@ -733,7 +733,7 @@ export default function Forms() {
 
       {/* Form Leaderboard */}
       {forms && forms.length > 0 && (
-        <FormLeaderboard forms={forms} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} deviceData={deviceData} />
+        <FormLeaderboard forms={forms} leads={leadsData || []} sessions={realtimeData?.totalSessions || 0} deviceData={deviceData} leadCounts={leadCounts} />
       )}
     </div>
   );

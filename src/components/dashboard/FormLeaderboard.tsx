@@ -20,6 +20,7 @@ interface FormLeaderboardProps {
   leads: Array<{ form_id: string; submitted_at: string; source?: string | null; session_id?: string | null }>;
   sessions: number;
   deviceData?: DeviceData;
+  leadCounts?: Record<string, number>;
 }
 
 type SortKey = "submissions" | "cvr" | "desktop" | "mobile";
@@ -32,7 +33,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
     : <ChevronUp className="h-3 w-3 text-primary" />;
 }
 
-export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLeaderboardProps) {
+export function FormLeaderboard({ forms, leads, sessions, deviceData, leadCounts }: FormLeaderboardProps) {
   const { t } = useTranslation();
   const [sortKey, setSortKey] = useState<SortKey>("submissions");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -77,6 +78,15 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
       }
     });
 
+    // Override with deduplicated leadCounts if available
+    if (leadCounts) {
+      Object.entries(formMap).forEach(([formId, stat]) => {
+        if (leadCounts[formId] !== undefined) {
+          stat.submissions = leadCounts[formId];
+        }
+      });
+    }
+
     // Compute CVR
     Object.values(formMap).forEach((s) => {
       s.cvr = s.sessions > 0 ? (s.submissions / s.sessions) * 100 : 0;
@@ -96,7 +106,7 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData }: FormLead
     });
 
     return arr;
-  }, [forms, leads, sessions, deviceData, sortKey, sortDir]);
+  }, [forms, leads, sessions, deviceData, leadCounts, sortKey, sortDir]);
 
   if (stats.length === 0) {
     return null;

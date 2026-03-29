@@ -405,9 +405,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         const hasRealLabel = !!rawLabel && !isNumericLike(rawLabel) && rawLabel !== rawKey;
         if (isNumericLike(rawKey) && !hasRealLabel) continue;
 
-        const label = rawLabel || rawKey;
+        const label = hasRealLabel ? rawLabel : rawKey;
         const existingKey = getExistingKeyByLabel(label);
-        const key = existingKey || rawKey;
+        // For numeric keys with real labels, use a normalized label-based key to merge with JSONB fallback columns
+        const key = existingKey || (isNumericLike(rawKey) ? normalizeKey(label) || `field_${rawKey}` : rawKey);
 
         leadsWithFlatFields.add(f.lead_id);
         if (!map.has(f.lead_id)) map.set(f.lead_id, {});

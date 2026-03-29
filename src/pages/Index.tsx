@@ -438,7 +438,7 @@ const Index = () => {
               </div>
               
               <p className="text-sm text-muted-foreground mb-6">
-                Everything you need to track website activity, leads, site health, and reporting in one streamlined WordPress dashboard.
+                Everything you need to track website activity, leads, site health, and reporting in one streamlined, all-inclusive dashboard.
               </p>
               
               <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>

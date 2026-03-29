@@ -118,6 +118,11 @@ export default function AdminSetup() {
   // Owner-only: subscriber metrics
   const [subSortKey, setSubSortKey] = useState<"created_at" | "mrr" | "last_active_date" | "churn_date">("created_at");
   const [subSortAsc, setSubSortAsc] = useState(false);
+  const [managingSub, setManagingSub] = useState<string | null>(null);
+  const [billingData, setBillingData] = useState<any>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: subscribers = [] } = useQuery({
     queryKey: ["owner_subscribers"],

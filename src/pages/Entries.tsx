@@ -395,15 +395,24 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     if (leads) {
       for (const lead of leads) {
         if (leadsWithFlatFields.has(lead.id)) continue;
-        if (!lead.data || !Array.isArray(lead.data)) continue;
+        if (!lead.data) continue;
 
-        // Avada format: look for "data" and "field_types" entries
-        const dataEntry = (lead.data as any[]).find((d: any) => d.name === "data" || d.label === "data");
-        const typesEntry = (lead.data as any[]).find((d: any) => d.name === "field_types" || d.label === "field_types");
-        const labelsEntry = (lead.data as any[]).find((d: any) => d.name === "field_labels" || d.label === "field_labels");
+        // lead.data can be an object {external_entry_id, fields} or an array
+        const dataObj = lead.data as any;
+        const fieldsArray: any[] | null =
+          Array.isArray(dataObj) ? dataObj :
+          Array.isArray(dataObj?.fields) && dataObj.fields.length > 0 ? dataObj.fields :
+          null;
+
+        if (!fieldsArray || fieldsArray.length === 0) continue;
+
+        // Check for Avada comma-separated "data" field
+        const dataEntry = fieldsArray.find((d: any) => d.name === "data" || d.label === "data");
+        const typesEntry = fieldsArray.find((d: any) => d.name === "field_types" || d.label === "field_types");
 
         if (dataEntry?.value && typesEntry?.value) {
           // Parse comma-separated Avada format
+          const labelsEntry = fieldsArray.find((d: any) => d.name === "field_labels" || d.label === "field_labels");
           const values = dataEntry.value.split(", ").map((v: string) => v.trim());
           const types = typesEntry.value.split(", ").map((t: string) => t.trim());
           const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
@@ -426,10 +435,27 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             columnOrder.get(key)!.count++;
           }
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
+        } else if (dataEntry?.value && !typesEntry) {
+          // Single "data" field with comma-separated values, no types info
+          // Parse as positional values and match to existing column keys
+          const values = dataEntry.value.split(", ").map((v: string) => v.trim());
+          const fields: Record<string, string> = {};
+          // Use existing column keys if available, otherwise generate positional keys
+          const existingKeys = [...columnOrder.keys()];
+          for (let i = 0; i < values.length; i++) {
+            if (!values[i]) continue;
+            const key = existingKeys[i] || `field_${i}`;
+            fields[key] = values[i];
+            if (!columnOrder.has(key)) {
+              columnOrder.set(key, { key, label: `Field ${i + 1}`, count: 0 });
+            }
+            columnOrder.get(key)!.count++;
+          }
+          if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else {
           // Standard format: each entry is a field with name/label/value
           const fields: Record<string, string> = {};
-          for (const d of lead.data as any[]) {
+          for (const d of fieldsArray) {
             if (!d.value || (typeof d.value === "string" && d.value.trim() === "")) continue;
             const name = d.name || d.label || "unknown";
             if (SKIP_KEYS_SET.has(name)) continue;
@@ -448,7 +474,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     }
 
     if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
-    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count).slice(0, 6);
+    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count);
     return { fieldColumns: cols, leadFieldMap: map };
   }, [fieldsRaw, leads]);
 

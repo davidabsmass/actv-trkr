@@ -76,11 +76,15 @@ export default function Security() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
   });
 
-  const loginEvents = events?.filter(e =>
+  const filteredEvents = severityFilter
+    ? events?.filter(e => e.severity === severityFilter)
+    : events;
+
+  const loginEvents = filteredEvents?.filter(e =>
     ["failed_login", "brute_force", "new_ip_login"].includes(e.event_type)
   ) ?? [];
 
-  const fileEvents = events?.filter(e =>
+  const fileEvents = filteredEvents?.filter(e =>
     ["file_changed", "file_added", "file_deleted"].includes(e.event_type)
   ) ?? [];
 

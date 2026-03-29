@@ -128,15 +128,24 @@ export default function Security() {
             </div>
           )}
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <div
+              className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === null ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-primary/50"}`}
+              onClick={() => setSeverityFilter(null)}
+            >
               <p className="text-2xl font-bold text-foreground">{events?.length ?? 0}</p>
               <p className="text-xs text-muted-foreground">{t("security.totalEvents")}</p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <div
+              className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === "critical" ? "border-destructive ring-1 ring-destructive/30" : "border-border hover:border-destructive/50"}`}
+              onClick={() => setSeverityFilter(severityFilter === "critical" ? null : "critical")}
+            >
               <p className={`text-2xl font-bold ${criticalCount > 0 ? "text-destructive" : "text-foreground"}`}>{criticalCount}</p>
               <p className="text-xs text-muted-foreground">{t("security.critical")}</p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <div
+              className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === "warning" ? "border-warning ring-1 ring-warning/30" : "border-border hover:border-warning/50"}`}
+              onClick={() => setSeverityFilter(severityFilter === "warning" ? null : "warning")}
+            >
               <p className={`text-2xl font-bold ${warningCount > 0 ? "text-warning" : "text-foreground"}`}>{warningCount}</p>
               <p className="text-xs text-muted-foreground">{t("security.warnings")}</p>
             </div>

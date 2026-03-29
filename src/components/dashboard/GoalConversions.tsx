@@ -264,6 +264,42 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
         countMap[goal.id] = (countMap[goal.id] || 0) + (count || 0);
       }
 
+      // Click goals: also count from raw events when goal_completions is empty
+      const CLICK_TYPES = ["cta_click", "outbound_click", "tel_click", "mailto_click"];
+      const clickGoals = typedGoals.filter(g => CLICK_TYPES.includes(g.goal_type));
+      for (const goal of clickGoals) {
+        if ((countMap[goal.id] || 0) > 0) continue; // already have completions
+        const rules = goal.tracking_rules || {};
+        const eventTypes = CLICK_TYPES;
+        const { data: events } = await supabase
+          .from("events")
+          .select("target_text,page_url,meta")
+          .eq("org_id", orgId)
+          .in("event_type", eventTypes)
+          .gte("occurred_at", dayStart)
+          .lte("occurred_at", dayEnd)
+          .limit(1000);
+
+        if (events) {
+          const matched = (events as any[]).filter((evt) => {
+            const text = (evt.target_text || "").toLowerCase();
+            const label = String((evt.meta as any)?.target_label || "").toLowerCase();
+            const href = String((evt.meta as any)?.target_href || "").toLowerCase();
+            const url = (evt.page_url || "").toLowerCase();
+            if (rules.text_contains) {
+              const needle = String(rules.text_contains).toLowerCase();
+              if (!text.includes(needle) && !label.includes(needle)) return false;
+            }
+            if (rules.href_contains) {
+              const needle = String(rules.href_contains).toLowerCase();
+              if (!href.includes(needle) && !url.includes(needle) && !text.includes(needle)) return false;
+            }
+            return true;
+          });
+          countMap[goal.id] = (countMap[goal.id] || 0) + matched.length;
+        }
+      }
+
       // Page visit goals from pageviews
       const pvGoals = typedGoals.filter(g => g.goal_type === "page_visit");
       for (const goal of pvGoals) {

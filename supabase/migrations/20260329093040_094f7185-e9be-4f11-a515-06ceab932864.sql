@@ -1,0 +1,1 @@
+ALTER TABLE public.orgs ADD COLUMN seo_visibility_level text NOT NULL DEFAULT 'hidden' CONSTRAINT seo_visibility_level_check CHECK (seo_visibility_level IN ('hidden', 'summary', 'advanced'));

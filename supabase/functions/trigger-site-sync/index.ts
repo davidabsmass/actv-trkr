@@ -496,32 +496,6 @@ Deno.serve(async (req) => {
     }
 
     // Skip the old synchronous backfill result processing block
-    if (false) {
-      // This block is intentionally dead — kept for reference
-      const backfillRes = null as any;
-      const backfillEndpoint = "";
-      if (!backfillRes.ok) {
-        const backfillBody = await backfillRes.text();
-        avadaBackfillRouteMissing =
-          backfillRes.status === 404 && backfillBody.toLowerCase().includes("rest_no_route");
-
-        avadaBackfillError = avadaBackfillRouteMissing
-          ? "Avada reimport endpoint is missing in your WordPress plugin. Reinstall/update ACTV TRKR from this dashboard, then click Sync Entries again."
-          : `Avada backfill failed (${backfillRes.status})`;
-
-        wpWarnings.push(avadaBackfillError);
-        console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
-      } else {
-        const backfillRaw = await backfillRes.text();
-        let backfillData: Record<string, unknown> = { raw: backfillRaw };
-        try {
-          backfillData = JSON.parse(backfillRaw);
-        } catch {
-          // Keep raw string payload
-        }
-        avadaBackfillEntries = Number(backfillData.entries || 0);
-      }
-    }
 
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {

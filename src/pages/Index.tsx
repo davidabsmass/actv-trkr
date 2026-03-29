@@ -232,7 +232,7 @@ const Index = () => {
 
       {/* Section 2 — Lead Attribution */}
       <section className="relative px-6 overflow-visible landing-section" style={{ paddingTop: '120px', paddingBottom: '50px', backgroundImage: `url(${platformBg})`, backgroundSize: 'cover', backgroundPosition: 'center -40px' }}>
-        <div className="absolute inset-0 bg-black/20 pointer-events-none" style={{ zIndex: 1 }} />
+        
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 relative">
             <div className="relative">

@@ -1125,9 +1125,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         if (!f.value_text || f.value_text.trim() === "") continue;
 
         const hasRealLabel = !!rawLabel && !isNumericLike(rawLabel) && rawLabel !== rawKey;
-        if (isNumericLike(rawKey) && !hasRealLabel) continue;
 
-        const label = rawLabel || rawKey;
+        const label = hasRealLabel
+          ? rawLabel
+          : (isNumericLike(rawKey) ? `Field ${rawKey}` : (rawLabel || rawKey));
         const existingKey = getExistingKeyByLabel(label);
         const key = existingKey || rawKey;
 
@@ -1169,8 +1170,13 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             const type = types[i]?.toLowerCase();
             if (SKIP_TYPES_SET.has(type)) continue;
 
-            const val = values[valueIdx] || "";
-            valueIdx++;
+            const remainingValueSlots = types
+              .slice(i)
+              .filter((t: string) => !SKIP_TYPES_SET.has((t || "").toLowerCase())).length;
+            const val = remainingValueSlots === 1
+              ? values.slice(valueIdx).join(", ").trim()
+              : (values[valueIdx] || "").trim();
+            if (remainingValueSlots !== 1) valueIdx++;
             if (!val) continue;
 
             const rawLabel = (labels[valueIdx - 1] || "").trim();
@@ -1194,17 +1200,34 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else if (dataEntry?.value && typeof dataEntry.value === "string") {
-          const values = dataEntry.value.split(",").map((v: string) => v.trim()).filter(Boolean);
+          const rawValue = String(dataEntry.value || "").trim();
+          if (!rawValue) continue;
+
           const fields: Record<string, string> = {};
           const existingKeys = [...columnOrder.keys()];
 
-          values.forEach((val: string, idx: number) => {
-            const key = existingKeys[idx] || `field_${idx + 1}`;
-            const label = columnOrder.get(key)?.label || `Field ${idx + 1}`;
-            fields[key] = val;
-            if (!columnOrder.has(key)) columnOrder.set(key, { key, label, count: 0 });
+          if (existingKeys.length === 0) {
+            const key = "data";
+            fields[key] = rawValue;
+            if (!columnOrder.has(key)) columnOrder.set(key, { key, label: "Data", count: 0 });
             columnOrder.get(key)!.count++;
-          });
+          } else {
+            let values = rawValue.split(",").map((v: string) => v.trim()).filter(Boolean);
+            if (values.length > existingKeys.length) {
+              values = [
+                ...values.slice(0, Math.max(existingKeys.length - 1, 0)),
+                values.slice(Math.max(existingKeys.length - 1, 0)).join(", ").trim(),
+              ].filter(Boolean);
+            }
+
+            values.forEach((val: string, idx: number) => {
+              const key = existingKeys[idx] || `field_${idx + 1}`;
+              const label = columnOrder.get(key)?.label || `Field ${idx + 1}`;
+              fields[key] = val;
+              if (!columnOrder.has(key)) columnOrder.set(key, { key, label, count: 0 });
+              columnOrder.get(key)!.count++;
+            });
+          }
 
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else {

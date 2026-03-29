@@ -372,27 +372,50 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     const SKIP_TYPES_SET = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
     const SKIP_KEYS_SET = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
 
+    const isNumericLike = (value: string | null | undefined) => {
+      const v = (value || "").trim();
+      return v !== "" && /^\d+(\.\d+)?$/.test(v);
+    };
+
+    const normalizeKey = (value: string) =>
+      value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+    const getExistingKeyByLabel = (label: string) => {
+      const normalized = label.trim().toLowerCase();
+      if (!normalized) return null;
+      for (const col of columnOrder.values()) {
+        if (col.label.trim().toLowerCase() === normalized) return col.key;
+      }
+      return null;
+    };
+
     // Track which lead IDs have flat field data
     const leadsWithFlatFields = new Set<string>();
 
     if (fieldsRaw && fieldsRaw.length > 0) {
       for (const f of fieldsRaw) {
-        if (SKIP_KEYS_SET.has(f.field_key)) continue;
+        const rawKey = (f.field_key || "").trim();
+        const rawLabel = (f.field_label || "").trim();
+
+        if (!rawKey || SKIP_KEYS_SET.has(rawKey)) continue;
         if (SKIP_TYPES_SET.has((f.field_type || "").toLowerCase())) continue;
         if (!f.value_text || f.value_text.trim() === "") continue;
 
-        // Skip raw numeric field IDs (e.g. "28", "29") — internal form builder keys
-        const isNumericKey = /^\d+$/.test(f.field_key);
-        const hasRealLabel = f.field_label && !/^\d+$/.test(f.field_label) && f.field_label !== f.field_key;
-        if (isNumericKey && !hasRealLabel) continue;
+        // Skip raw numeric field IDs (e.g. "28", "29", "28.3") if they don't have a real label
+        const hasRealLabel = !!rawLabel && !isNumericLike(rawLabel) && rawLabel !== rawKey;
+        if (isNumericLike(rawKey) && !hasRealLabel) continue;
+
+        const label = rawLabel || rawKey;
+        const existingKey = getExistingKeyByLabel(label);
+        const key = existingKey || rawKey;
 
         leadsWithFlatFields.add(f.lead_id);
         if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-        map.get(f.lead_id)![f.field_key] = f.value_text;
-        if (!columnOrder.has(f.field_key)) {
-          columnOrder.set(f.field_key, { key: f.field_key, label: f.field_label || f.field_key, count: 0 });
+        map.get(f.lead_id)![key] = f.value_text;
+        if (!columnOrder.has(key)) {
+          columnOrder.set(key, { key, label, count: 0 });
         }
-        columnOrder.get(f.field_key)!.count++;
+        columnOrder.get(key)!.count++;
       }
     }
 
@@ -423,30 +446,44 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
 
           const fields: Record<string, string> = {};
+          const existingColumns = [...columnOrder.values()];
           let valueIdx = 0;
+
           for (let i = 0; i < types.length; i++) {
             const type = types[i]?.toLowerCase();
             if (SKIP_TYPES_SET.has(type)) continue;
+
             const val = values[valueIdx] || "";
             valueIdx++;
             if (!val) continue;
 
-            const label = labels[valueIdx - 1] || `Field ${i + 1}`;
-            const key = `avada_${i}`;
+            const rawLabel = (labels[valueIdx - 1] || "").trim();
+            const existingCol = existingColumns[i];
+            const hasMeaningfulLabel = rawLabel !== "" && !isNumericLike(rawLabel);
+
+            const label = hasMeaningfulLabel
+              ? rawLabel
+              : (existingCol?.label || `Field ${i + 1}`);
+
+            const existingKeyByLabel = getExistingKeyByLabel(label);
+            const generatedKey = normalizeKey(label) || `field_${i}`;
+            const key = existingKeyByLabel || existingCol?.key || `field_${generatedKey}`;
+
             fields[key] = val;
             if (!columnOrder.has(key)) {
-              columnOrder.set(key, { key, label: label || `Field ${i + 1}`, count: 0 });
+              columnOrder.set(key, { key, label, count: 0 });
             }
             columnOrder.get(key)!.count++;
           }
+
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else if (dataEntry?.value && !typesEntry) {
           // Single "data" field with comma-separated values, no types info
           // Parse as positional values and match to existing column keys
           const values = dataEntry.value.split(", ").map((v: string) => v.trim());
           const fields: Record<string, string> = {};
-          // Use existing column keys if available, otherwise generate positional keys
           const existingKeys = [...columnOrder.keys()];
+
           for (let i = 0; i < values.length; i++) {
             if (!values[i]) continue;
             const key = existingKeys[i] || `field_${i}`;
@@ -456,23 +493,37 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             }
             columnOrder.get(key)!.count++;
           }
+
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else {
           // Standard format: each entry is a field with name/label/value
           const fields: Record<string, string> = {};
+
           for (const d of fieldsArray) {
             if (!d.value || (typeof d.value === "string" && d.value.trim() === "")) continue;
-            const name = d.name || d.label || "unknown";
+
+            const rawName = String(d.name || "").trim();
+            const rawLabel = String(d.label || "").trim();
+            const name = rawName || rawLabel || "unknown";
+
             if (SKIP_KEYS_SET.has(name)) continue;
             if (SKIP_TYPES_SET.has((d.type || "").toLowerCase())) continue;
 
-            const key = name;
+            const hasMeaningfulLabel = !!rawLabel && !isNumericLike(rawLabel);
+            if (isNumericLike(name) && !hasMeaningfulLabel) continue;
+
+            const label = hasMeaningfulLabel ? rawLabel : name;
+            const existingKeyByLabel = getExistingKeyByLabel(label);
+            const generatedKey = normalizeKey(label);
+            const key = existingKeyByLabel || (isNumericLike(name) ? `field_${generatedKey || "unknown"}` : name);
+
             fields[key] = String(d.value);
             if (!columnOrder.has(key)) {
-              columnOrder.set(key, { key, label: d.label || name, count: 0 });
+              columnOrder.set(key, { key, label, count: 0 });
             }
             columnOrder.get(key)!.count++;
           }
+
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         }
       }
@@ -484,12 +535,15 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   }, [fieldsRaw, leads]);
 
   const filtered = (leads || []).filter((lead) => {
+    const fields = leadFieldMap.get(lead.id);
+    if (!fields || Object.keys(fields).length === 0) return false;
+
     if (search) {
       const q = search.toLowerCase();
-      const fields = leadFieldMap.get(lead.id);
-      const searchable = [lead.source, ...(fields ? Object.values(fields) : [])].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, ...Object.values(fields)].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
+
     return true;
   });
 

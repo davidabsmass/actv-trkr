@@ -400,7 +400,7 @@ const Dashboard = () => {
       items.push({ severity: "info", label: t("dashboard.pendingAlerts", { count: pendingAlerts }), detail: t("dashboard.alertsAwaitingDelivery"), link: "/monitoring", linkLabel: t("dashboard.view") });
     }
     return items;
-  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, t]);
+  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, seoVisible, t]);
 
   // Redirect to setup if current org has no connected sites
   useEffect(() => {

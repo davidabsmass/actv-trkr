@@ -503,14 +503,16 @@ const Dashboard = () => {
                 <p className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</p>
               )}
             </div>
-            <KPICard
-              label={t("dashboard.seoScore")}
-              value={seoMovement?.score ?? "—"}
-              trend={seoMovement?.change || undefined}
-              sub={seoMovement ? undefined : t("dashboard.noScanYet")}
-              icon={<Search className="h-4 w-4" />}
-              accent={seoMovement ? (seoMovement.change >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}
-            />
+            {seoVisible && (
+              <KPICard
+                label={t("dashboard.seoScore")}
+                value={seoMovement?.score ?? "—"}
+                trend={seoMovement?.change || undefined}
+                sub={seoMovement ? undefined : t("dashboard.noScanYet")}
+                icon={<Search className="h-4 w-4" />}
+                accent={seoMovement ? (seoMovement.change >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}
+              />
+            )}
           </div>
 
 

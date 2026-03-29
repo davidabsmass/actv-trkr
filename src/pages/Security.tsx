@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ShieldAlert, Lock, FileWarning, Info, AlertTriangle, CheckCircle, XCircle, Eye, CheckCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default function Security() {
   const { orgName, orgId } = useOrg();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [severityFilter, setSeverityFilter] = useState<string | null>(null);
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],
@@ -74,11 +76,15 @@ export default function Security() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
   });
 
-  const loginEvents = events?.filter(e =>
+  const filteredEvents = severityFilter
+    ? events?.filter(e => e.severity === severityFilter)
+    : events;
+
+  const loginEvents = filteredEvents?.filter(e =>
     ["failed_login", "brute_force", "new_ip_login"].includes(e.event_type)
   ) ?? [];
 
-  const fileEvents = events?.filter(e =>
+  const fileEvents = filteredEvents?.filter(e =>
     ["file_changed", "file_added", "file_deleted"].includes(e.event_type)
   ) ?? [];
 
@@ -122,15 +128,24 @@ export default function Security() {
             </div>
           )}
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <div
+              className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === null ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-primary/50"}`}
+              onClick={() => setSeverityFilter(null)}
+            >
               <p className="text-2xl font-bold text-foreground">{events?.length ?? 0}</p>
               <p className="text-xs text-muted-foreground">{t("security.totalEvents")}</p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <div
+              className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === "critical" ? "border-destructive ring-1 ring-destructive/30" : "border-border hover:border-destructive/50"}`}
+              onClick={() => setSeverityFilter(severityFilter === "critical" ? null : "critical")}
+            >
               <p className={`text-2xl font-bold ${criticalCount > 0 ? "text-destructive" : "text-foreground"}`}>{criticalCount}</p>
               <p className="text-xs text-muted-foreground">{t("security.critical")}</p>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <div
+              className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === "warning" ? "border-warning ring-1 ring-warning/30" : "border-border hover:border-warning/50"}`}
+              onClick={() => setSeverityFilter(severityFilter === "warning" ? null : "warning")}
+            >
               <p className={`text-2xl font-bold ${warningCount > 0 ? "text-warning" : "text-foreground"}`}>{warningCount}</p>
               <p className="text-xs text-muted-foreground">{t("security.warnings")}</p>
             </div>

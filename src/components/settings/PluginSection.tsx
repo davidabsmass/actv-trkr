@@ -28,6 +28,19 @@ export default function PluginSection() {
     enabled: !!orgId,
   });
 
+  const { data: latestVersion } = useQuery({
+    queryKey: ["latest_plugin_version"],
+    queryFn: async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=check&version=0.0.0`
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.version as string;
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
   const handleDownload = async () => {
     setDownloading(true);
     try {
@@ -60,7 +73,7 @@ export default function PluginSection() {
           <h3 className="text-sm font-semibold text-foreground">{t("settings.wordpressPlugin")}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-mono">v1.4.1</span>
+          <span className="text-xs text-muted-foreground font-mono">v{latestVersion || "—"}</span>
           <button
             onClick={handleDownload}
             disabled={downloading}

@@ -132,6 +132,9 @@ Deno.serve(async (req) => {
           supabase.from("form_submission_logs").select("*").eq("org_id", orgId).gte("occurred_at", periodStart).lte("occurred_at", periodEnd).limit(1000),
           supabase.from("broken_links").select("*").eq("org_id", orgId).order("last_seen_at", { ascending: false }).limit(50),
           supabase.from("sites").select("id, domain, status, last_heartbeat_at").eq("org_id", orgId),
+          supabase.from("conversion_goals").select("*").eq("org_id", orgId).eq("is_active", true),
+          supabase.from("goal_completions").select("goal_id,page_url,page_path,target_text,completed_at").eq("org_id", orgId).gte("completed_at", periodStart).lte("completed_at", periodEnd).order("completed_at", { ascending: false }).limit(2000),
+          supabase.from("events").select("event_type,page_url,page_path,target_text,occurred_at,meta").eq("org_id", orgId).in("event_type", ["cta_click","outbound_click","tel_click","mailto_click"]).gte("occurred_at", periodStart).lte("occurred_at", periodEnd).order("occurred_at", { ascending: false }).limit(2000),
         );
       }
 
@@ -167,11 +170,17 @@ Deno.serve(async (req) => {
       let formSubmissionLogs: any[] = [];
       let brokenLinks: any[] = [];
       let sitesData: any[] = [];
+      let conversionGoals: any[] = [];
+      let goalCompletionsRaw: any[] = [];
+      let clickEventsRaw: any[] = [];
       if (templateSlug === "monthly_performance" && extraResults.length >= 4) {
         incidents = extraResults[0]?.data || [];
         formSubmissionLogs = extraResults[1]?.data || [];
         brokenLinks = extraResults[2]?.data || [];
         sitesData = extraResults[3]?.data || [];
+        conversionGoals = extraResults[4]?.data || [];
+        goalCompletionsRaw = extraResults[5]?.data || [];
+        clickEventsRaw = extraResults[6]?.data || [];
       }
 
       const formMap: Record<string, any> = {};
@@ -186,7 +195,7 @@ Deno.serve(async (req) => {
       } else if (templateSlug === "campaign_report") {
         report = buildCampaignReport({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode });
       } else {
-        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData });
+        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw });
       }
 
       report.generatedAt = now.toISOString();
@@ -284,7 +293,7 @@ Return a JSON array of objects with "title" (short headline) and "body" (1-2 sen
 });
 
 // ── MONTHLY PERFORMANCE (full 5-section report) ──
-function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData }: any) {
+function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw }: any) {
   const totalLeads = currentLeads.length;
   const prevTotalLeads = previousLeads.length;
   const totalSessions = currentSessionCount;
@@ -446,8 +455,42 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
   if (projectedNextMonth > 0) actions.push(`Projected leads next month: ${Math.round(projectedNextMonth * 0.9)}–${Math.round(projectedNextMonth * 1.1)}.`);
   if (actions.length === 0) actions.push("Continue current strategy — performance is stable.");
 
+  // ── Goal Conversions ──
+  const CLICK_TYPES = ["cta_click", "outbound_click", "tel_click", "mailto_click"];
+  const goalConversionsData = (conversionGoals || []).map((goal: any) => {
+    const rules = goal.tracking_rules || {};
+    // Count from goal_completions first
+    let count = (goalCompletionsRaw || []).filter((gc: any) => gc.goal_id === goal.id).length;
+
+    // Fallback to events for click goals
+    if (count === 0 && CLICK_TYPES.includes(goal.goal_type)) {
+      count = (clickEventsRaw || []).filter((evt: any) => {
+        const text = (evt.target_text || "").toLowerCase();
+        const label = String((evt.meta as any)?.target_label || "").toLowerCase();
+        const href = String((evt.meta as any)?.target_href || "").toLowerCase();
+        const url = (evt.page_url || "").toLowerCase();
+        if (rules.text_contains) {
+          const needle = String(rules.text_contains).toLowerCase();
+          if (!text.includes(needle) && !label.includes(needle)) return false;
+        }
+        if (rules.href_contains) {
+          const needle = String(rules.href_contains).toLowerCase();
+          if (!href.includes(needle) && !url.includes(needle) && !text.includes(needle)) return false;
+        }
+        return true;
+      }).length;
+    }
+
+    return { name: goal.name, goalType: goal.goal_type, count };
+  }).sort((a: any, b: any) => b.count - a.count);
+
+  const goalConversions = {
+    goals: goalConversionsData,
+    totalCompletions: goalConversionsData.reduce((s: number, g: any) => s + g.count, 0),
+  };
+
   return {
-    executiveSummary, growthEngine, conversionIntelligence, userExperience, siteHealth, formHealth,
+    executiveSummary, growthEngine, conversionIntelligence, userExperience, siteHealth, formHealth, goalConversions,
     actionPlan: { recommendations: actions, contentOpportunities: opportunities.slice(0, 5), forecast: { avgDailyLeads: Math.round(avgDaily * 10) / 10, projectedNextMonth } },
   };
 }

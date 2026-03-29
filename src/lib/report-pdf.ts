@@ -304,10 +304,29 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
       }
       return s + sectionEnd;
     },
+    goalConversions: () => {
+      const gc = report.goalConversions;
+      if (!gc || !gc.goals?.length) return "";
+      let s = sectionStart("🎯", "Goal Conversions");
+      s += `<div style="font-size:11px;color:#6b6f80;margin-bottom:12px">${gc.totalCompletions} total completions across ${gc.goals.length} goal(s)</div>`;
+      s += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="border-bottom:1px solid #e4e6ed;text-align:left">
+          <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Goal</th>
+          <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Type</th>
+          <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Completions</th>
+        </tr></thead><tbody>`;
+      gc.goals.forEach((g: any) => {
+        s += `<tr style="border-bottom:1px solid rgba(228,230,237,0.5)">
+          <td style="padding:6px 8px 6px 0;font-weight:500;color:#00264d">${safe(g.name)}</td>
+          <td style="padding:6px 8px;color:#6b6f80;text-transform:capitalize">${safe(g.goalType?.replace(/_/g, " "))}</td>
+          <td style="padding:6px 8px;color:#00264d;text-align:right;font-weight:600">${g.count}</td></tr>`;
+      });
+      s += `</tbody></table>`;
+      return s + sectionEnd;
+    },
   };
-
   // Determine section order from template or use default order
-  const defaultOrder = ["aiInsights", "executiveSummary", "siteHealth", "formHealth", "growthEngine", "conversionIntelligence", "userExperience", "actionPlan"];
+  const defaultOrder = ["aiInsights", "executiveSummary", "siteHealth", "formHealth", "goalConversions", "growthEngine", "conversionIntelligence", "userExperience", "actionPlan"];
   const sectionOrder = (tpl && tpl.length > 0)
     ? tpl.filter((s) => s.enabled).map((s) => s.key)
     : defaultOrder;

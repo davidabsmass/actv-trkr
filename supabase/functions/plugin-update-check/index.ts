@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.5.0: Critical Avada/Fusion field parsing fixes
-const LATEST_VERSION = "1.5.0";
+// v1.5.1: Fix BOOK NOW CTA click capture + event batching parity
+const LATEST_VERSION = "1.5.1";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.1
+- FIX: BOOK NOW / CTA link clicks now classify as cta_click when buttons are anchors or class-based CTAs
+- FIX: Event batching uses the same 30-second cadence as the production tracker
+- FIX: Event flush uses fetch transport for improved delivery reliability
+
 ## 1.3.28
 - CRITICAL: Fixes missing Avada field data by adding wp_fusion_form_entries as a secondary data source
 - Backfill now discovers and queries entries tables (fusion_form_entries, fusionbuilder_form_entries, avada_form_entries)

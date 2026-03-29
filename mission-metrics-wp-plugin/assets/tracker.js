@@ -281,22 +281,21 @@
           return { type: 'download_click', text: getClickText(target) || href.split('/').pop(), label: getActvLabel(target), el: target };
         }
 
-        // Outbound links
+        // Check CTA indicators BEFORE outbound — a CTA that links externally is still a CTA
+        var classes = target.className || '';
+        var isCta = (typeof classes === 'string' && CTA_CLASS_PATTERN.test(classes)) ||
+                    target.getAttribute('role') === 'button';
+        if (isCta) {
+          return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
+        }
+
+        // Outbound links (non-CTA)
         try {
           var linkHost = new URL(href, window.location.origin).hostname;
           if (linkHost && linkHost !== window.location.hostname) {
             return { type: 'outbound_click', text: getClickText(target) || linkHost, label: getActvLabel(target), el: target };
           }
         } catch (e) { /* invalid URL */ }
-
-        // Internal <a> tags that look like CTA buttons
-        var classes = target.className || '';
-        if (typeof classes === 'string' && CTA_CLASS_PATTERN.test(classes)) {
-          return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
-        }
-        if (target.getAttribute('role') === 'button') {
-          return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
-        }
       }
 
       // Button elements (not inside forms — those are form_start)

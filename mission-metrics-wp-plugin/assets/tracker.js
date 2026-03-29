@@ -348,6 +348,16 @@
     if (result.label) {
       evt.target_label = result.label;
     }
+    var href = (result.el && result.el.getAttribute)
+      ? (result.el.getAttribute('href') || '')
+      : '';
+    if (href) {
+      try {
+        evt.target_href = new URL(href, window.location.origin).href;
+      } catch (err) {
+        evt.target_href = href;
+      }
+    }
     eventBatch.push(evt);
 
     // Start batch timer if not already running

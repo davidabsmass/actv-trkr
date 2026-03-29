@@ -293,7 +293,7 @@ Return a JSON array of objects with "title" (short headline) and "body" (1-2 sen
 });
 
 // ── MONTHLY PERFORMANCE (full 5-section report) ──
-function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData }: any) {
+function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw }: any) {
   const totalLeads = currentLeads.length;
   const prevTotalLeads = previousLeads.length;
   const totalSessions = currentSessionCount;

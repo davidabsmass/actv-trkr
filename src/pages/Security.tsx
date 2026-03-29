@@ -24,6 +24,7 @@ export default function Security() {
   const { orgName, orgId } = useOrg();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [severityFilter, setSeverityFilter] = useState<string | null>(null);
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],

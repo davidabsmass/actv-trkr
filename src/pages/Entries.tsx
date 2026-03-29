@@ -381,6 +381,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         if (SKIP_TYPES_SET.has((f.field_type || "").toLowerCase())) continue;
         if (!f.value_text || f.value_text.trim() === "") continue;
 
+        // Skip raw numeric field IDs (e.g. "28", "29") — internal form builder keys
+        const isNumericKey = /^\d+$/.test(f.field_key);
+        const hasRealLabel = f.field_label && !/^\d+$/.test(f.field_label) && f.field_label !== f.field_key;
+        if (isNumericKey && !hasRealLabel) continue;
+
         leadsWithFlatFields.add(f.lead_id);
         if (!map.has(f.lead_id)) map.set(f.lead_id, {});
         map.get(f.lead_id)![f.field_key] = f.value_text;

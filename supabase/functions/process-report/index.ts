@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       } else if (templateSlug === "campaign_report") {
         report = buildCampaignReport({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode });
       } else {
-        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData });
+        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw });
       }
 
       report.generatedAt = now.toISOString();

@@ -79,6 +79,7 @@ function matchEventToGoals(
   const matched: string[] = [];
   const text = (evt.target_text || "").toLowerCase();
   const label = (evt.meta?.target_label || "").toLowerCase();
+  const href = (evt.meta?.target_href || "").toLowerCase();
   const url = (evt.page_url || "").toLowerCase();
   const path = (evt.page_path || "").toLowerCase();
 
@@ -110,8 +111,17 @@ function matchEventToGoals(
     if (r.text_contains && !text.includes(r.text_contains.toLowerCase()) && !label.includes(r.text_contains.toLowerCase())) {
       passes = false;
     }
-    if (r.href_contains && !text.includes(r.href_contains.toLowerCase()) && !url.includes(r.href_contains.toLowerCase())) {
-      passes = false;
+    if (r.href_contains) {
+      const hrefNeedle = String(r.href_contains).toLowerCase();
+      const hrefMatches =
+        href.includes(hrefNeedle) ||
+        url.includes(hrefNeedle) ||
+        text.includes(hrefNeedle) ||
+        label.includes(hrefNeedle);
+      const allowLegacyNoHref = !href && !!r.text_contains;
+      if (!hrefMatches && !allowLegacyNoHref) {
+        passes = false;
+      }
     }
     if (r.page_path_contains && !path.includes(r.page_path_contains.toLowerCase())) {
       passes = false;
@@ -195,6 +205,10 @@ Deno.serve(async (req) => {
       if (isNaN(occurredAt.getTime()) || Math.abs(occurredAt.getTime() - now.getTime()) / 36e5 > 24) occurredAt = now;
 
       const targetLabel = sanitizeStr(evt.target_label, 256);
+      const targetHref = sanitizeStr(evt.target_href, 2048);
+      const eventMeta: Record<string, string> = {};
+      if (targetLabel) eventMeta.target_label = targetLabel;
+      if (targetHref) eventMeta.target_href = targetHref;
       rows.push({
         org_id: orgId,
         site_id: siteId,
@@ -205,7 +219,7 @@ Deno.serve(async (req) => {
         page_path: sanitizeStr(evt.page_path, 2048),
         target_text: sanitizeStr(evt.target_text, 256),
         occurred_at: occurredAt.toISOString(),
-        meta: targetLabel ? { target_label: targetLabel } : {},
+        meta: eventMeta,
       });
     }
 

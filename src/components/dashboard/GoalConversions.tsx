@@ -176,33 +176,36 @@ function GoalDrillDown({ goalId, orgId, startDate, endDate }: {
   return (
     <div className="pl-7 py-1.5 space-y-1 border-l-2 border-primary/20 ml-2">
       {data.map((row, i) => (
-        <div key={i} className="flex items-start gap-2 text-[11px] py-0.5">
-          <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-muted-foreground truncate">{row.sourcePage}</span>
-              <span className="text-muted-foreground">→</span>
-              {row.destination ? (
-                <a
-                  href={row.destination}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary font-medium truncate hover:underline"
-                  title={row.destination}
-                >
-                  {row.destinationLabel}
-                </a>
-              ) : (
-                <span className="text-muted-foreground italic">{row.destinationLabel}</span>
-              )}
-            </div>
+        <div key={i} className="flex flex-col gap-0.5 text-[11px] py-1">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <span className="text-muted-foreground">From:</span>
+            <span className="text-foreground font-medium truncate">{row.sourcePage}</span>
+            <span className="text-muted-foreground font-mono-data ml-auto flex-shrink-0">{row.count}×</span>
+            <span className="text-muted-foreground flex-shrink-0 flex items-center gap-0.5 whitespace-nowrap">
+              <Clock className="h-2.5 w-2.5" />
+              {format(new Date(row.lastAt), "MMM d, h:mm a")}
+            </span>
           </div>
-          <span className="text-muted-foreground font-mono-data flex-shrink-0">{row.count}×</span>
-          <span className="text-muted-foreground flex-shrink-0 flex items-center gap-0.5 whitespace-nowrap">
-            <Clock className="h-2.5 w-2.5" />
-            {format(new Date(row.lastAt), "MMM d, h:mm a")}
-          </span>
-        </div>  
+          {row.destination ? (
+            <div className="flex items-start gap-2 pl-5">
+              <span className="text-muted-foreground">→</span>
+              <a
+                href={row.destination}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline break-all"
+              >
+                {row.destination}
+              </a>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 pl-5">
+              <span className="text-muted-foreground">→</span>
+              <span className="text-muted-foreground italic">No destination captured</span>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );

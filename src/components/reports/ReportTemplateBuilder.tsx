@@ -71,6 +71,12 @@ const DEFAULT_SECTIONS: ReportSection[] = [
     ],
   },
   {
+    key: "goalConversions", label: "Goal Conversions", icon: "target", enabled: true,
+    metrics: [
+      { key: "goalsList", label: "Goals Table", enabled: true },
+    ],
+  },
+  {
     key: "growthEngine", label: "Growth Engine", icon: "globe", enabled: true,
     metrics: [
       { key: "trafficBySource", label: "Traffic by Source", enabled: true },

@@ -338,6 +338,33 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "delete_user") {
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(JSON.stringify({ error: "user_id is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Remove from org_users
+      await adminClient.from("org_users").delete().eq("user_id", user_id);
+      // Remove from profiles
+      await adminClient.from("profiles").delete().eq("user_id", user_id);
+      // Delete auth user
+      const { error: deleteErr } = await adminClient.auth.admin.deleteUser(user_id);
+      if (deleteErr) {
+        return new Response(JSON.stringify({ error: deleteErr.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

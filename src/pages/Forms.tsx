@@ -606,15 +606,55 @@ export default function Forms() {
   const archivedForms = forms?.filter((f) => f.archived) || [];
   const displayedForms = showArchived ? archivedForms : activeForms;
 
-  // Derive lead counts from the already-deduplicated leadsData
-  const leadCounts = useMemo(() => {
-    if (!leadsData) return {};
-    const counts: Record<string, number> = {};
-    for (const lead of leadsData) {
-      counts[lead.form_id] = (counts[lead.form_id] || 0) + 1;
-    }
-    return counts;
-  }, [leadsData]);
+  // All-time lead counts (no date filter) for the form list sidebar
+  const { data: leadCounts } = useQuery({
+    queryKey: ["lead_counts_by_form_entries", orgId],
+    queryFn: async () => {
+      if (!orgId || !forms) return {};
+      const counts: Record<string, number> = {};
+
+      for (const form of forms) {
+        let from = 0;
+        const pageSize = 1000;
+        const externalIds = new Set<string>();
+        let noExternalIdCount = 0;
+
+        while (true) {
+          const { data, error } = await supabase
+            .from("leads")
+            .select("id, data")
+            .eq("org_id", orgId)
+            .eq("form_id", form.id)
+            .neq("status", "trashed")
+            .range(from, from + pageSize - 1);
+
+          if (error) break;
+          if (!data || data.length === 0) break;
+
+          for (const lead of data) {
+            const extId =
+              lead.data && typeof lead.data === "object" && !Array.isArray(lead.data)
+                ? (lead.data as Record<string, unknown>).external_entry_id
+                : null;
+
+            if (typeof extId === "string" && extId.trim() !== "") {
+              externalIds.add(extId);
+            } else {
+              noExternalIdCount += 1;
+            }
+          }
+
+          if (data.length < pageSize) break;
+          from += pageSize;
+        }
+
+        counts[form.id] = externalIds.size + noExternalIdCount;
+      }
+
+      return counts;
+    },
+    enabled: !!orgId && !!forms && forms.length > 0,
+  });
 
   if (selectedForm) {
     return (

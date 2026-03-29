@@ -150,7 +150,7 @@ const Dashboard = () => {
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 
-  // SEO movement
+  // SEO movement (only fetch if SEO is visible)
   const { data: seoMovement } = useQuery({
     queryKey: ["dashboard_seo_movement", orgId],
     queryFn: async () => {
@@ -170,7 +170,7 @@ const Dashboard = () => {
         scannedAt: latest.scanned_at,
       };
     },
-    enabled: !!orgId,
+    enabled: !!orgId && seoVisible,
   });
 
   // Needs attention page (highest exit rate page from kpi_daily)

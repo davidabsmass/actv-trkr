@@ -59,7 +59,7 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 const Index = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
-  const handleSignIn = () => navigate(session ? "/dashboard" : "/auth");
+  const handleSignIn = () => navigate(session ? "/dashboard" : "/checkout");
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);
@@ -215,7 +215,7 @@ const Index = () => {
               <p className="text-lg text-muted-foreground mb-6">
                 Track trends over time, spot performance shifts earlier, and catch issues before they start costing you leads.
               </p>
-              <a href="/signup" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
+              <a href="/checkout" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
                 Get Started <ArrowRight className="h-4 w-4" />
               </a>
             </div>
@@ -472,7 +472,7 @@ const Index = () => {
                 ))}
               </div>
 
-              <Button onClick={() => navigate('/signup')} className="w-full mt-8" size="lg">
+              <Button onClick={() => navigate('/checkout')} className="w-full mt-8" size="lg">
                 Get Started <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

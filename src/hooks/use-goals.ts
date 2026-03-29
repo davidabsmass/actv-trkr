@@ -181,6 +181,137 @@ export function useConversionMetrics(
         goalCountMap[c.goal_id] = (goalCountMap[c.goal_id] || 0) + 1;
       });
 
+      // Fallback: if goal_completions are missing, derive counts from raw events
+      // so Conversion Breakdown still reflects tracked goal activity.
+      const fallbackGoals = goals.filter((g) => {
+        const current = goalCountMap[g.id] || 0;
+        return current === 0 && g.goal_type !== "form_submission" && g.goal_type !== "page_visit";
+      });
+
+      if (fallbackGoals.length > 0) {
+        const CLICK_TYPES = new Set(["cta_click", "outbound_click", "tel_click", "mailto_click"]);
+        const eventTypeSet = new Set<string>();
+
+        fallbackGoals.forEach((g) => {
+          if (g.goal_type === "custom_event") {
+            const eventName = String(g.tracking_rules?.event_name || "").trim();
+            if (eventName) eventTypeSet.add(eventName);
+            return;
+          }
+          if (g.goal_type === "tel_click" || g.goal_type === "mailto_click") {
+            eventTypeSet.add(g.goal_type);
+            return;
+          }
+          if (CLICK_TYPES.has(g.goal_type)) {
+            CLICK_TYPES.forEach((t) => eventTypeSet.add(t));
+          }
+        });
+
+        const neededTypes = Array.from(eventTypeSet);
+        if (neededTypes.length > 0) {
+          type RawEvent = {
+            event_type: string;
+            target_text: string | null;
+            page_url: string | null;
+            page_path: string | null;
+            session_id: string | null;
+            occurred_at: string;
+            meta: Record<string, any> | null;
+          };
+
+          const fallbackEvents: RawEvent[] = [];
+          const pageSize = 1000;
+          for (let from = 0; from < 5000; from += pageSize) {
+            const { data, error } = await supabase
+              .from("events")
+              .select("event_type,target_text,page_url,page_path,session_id,occurred_at,meta")
+              .eq("org_id", orgId)
+              .in("event_type", neededTypes)
+              .gte("occurred_at", dayStart)
+              .lte("occurred_at", dayEnd)
+              .order("occurred_at", { ascending: false })
+              .range(from, from + pageSize - 1);
+
+            if (error || !data || data.length === 0) break;
+            fallbackEvents.push(...(data as unknown as RawEvent[]));
+            if (data.length < pageSize) break;
+          }
+
+          const matchesGoal = (evt: RawEvent, goal: ConversionGoal) => {
+            const rules = (goal.tracking_rules || {}) as Record<string, any>;
+            const text = (evt.target_text || "").toLowerCase();
+            const label = String(evt.meta?.target_label || "").toLowerCase();
+            const href = String(evt.meta?.target_href || "").toLowerCase();
+            const url = (evt.page_url || "").toLowerCase();
+            const path = (evt.page_path || "").toLowerCase();
+
+            if (goal.goal_type === "custom_event") {
+              const eventName = String(rules.event_name || "").trim();
+              return !!eventName && eventName === evt.event_type;
+            }
+
+            const goalIsClick = CLICK_TYPES.has(goal.goal_type);
+            const evtIsClick = CLICK_TYPES.has(evt.event_type);
+            if (!goalIsClick && goal.goal_type !== evt.event_type) return false;
+            if (goalIsClick && !evtIsClick) return false;
+
+            if (
+              (goal.goal_type === "tel_click" || goal.goal_type === "mailto_click") &&
+              goal.goal_type !== evt.event_type
+            ) {
+              return false;
+            }
+
+            if (rules.text_contains) {
+              const needle = String(rules.text_contains).toLowerCase();
+              if (!text.includes(needle) && !label.includes(needle)) return false;
+            }
+
+            if (rules.href_contains) {
+              const needle = String(rules.href_contains).toLowerCase();
+              const hrefMatches =
+                href.includes(needle) ||
+                url.includes(needle) ||
+                text.includes(needle) ||
+                label.includes(needle);
+              const allowLegacyNoHref = !href && !!rules.text_contains;
+              if (!hrefMatches && !allowLegacyNoHref) return false;
+            }
+
+            if (rules.page_path_contains) {
+              const needle = String(rules.page_path_contains).toLowerCase();
+              if (!path.includes(needle)) return false;
+            }
+
+            if (rules.match === "all") return true;
+            return true;
+          };
+
+          const dedupeWindowMs = 300_000;
+          const seen = new Set<string>();
+          const fallbackCounts: Record<string, number> = {};
+
+          for (const evt of fallbackEvents) {
+            for (const goal of fallbackGoals) {
+              if (!matchesGoal(evt, goal)) continue;
+              const occurredAtMs = new Date(evt.occurred_at).getTime();
+              const bucket = Math.floor((Number.isNaN(occurredAtMs) ? Date.now() : occurredAtMs) / dedupeWindowMs);
+              const sessionKey = evt.session_id || "no-session";
+              const dedupeKey = `${goal.id}:${sessionKey}:${bucket}`;
+              if (seen.has(dedupeKey)) continue;
+              seen.add(dedupeKey);
+              fallbackCounts[goal.id] = (fallbackCounts[goal.id] || 0) + 1;
+            }
+          }
+
+          Object.entries(fallbackCounts).forEach(([goalId, count]) => {
+            if ((goalCountMap[goalId] || 0) === 0) {
+              goalCountMap[goalId] = count;
+            }
+          });
+        }
+      }
+
       // Page visit goals — compute from pageviews at query time
       const pageVisitGoals = goals.filter((g) => g.goal_type === "page_visit");
       for (const goal of pageVisitGoals) {

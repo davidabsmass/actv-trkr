@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Check, Download, Loader2 } from "lucide-react";
+import { ArrowUp, Check, Download, Loader2 } from "lucide-react";
 import pluginThumb from "@/assets/actv-trkr-plugin-thumb.jpg";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -42,6 +42,23 @@ export default function PluginSection() {
     staleTime: 1000 * 60,
   });
 
+  const { data: siteVersion } = useQuery({
+    queryKey: ["site_plugin_version", orgId],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const { data } = await supabase
+        .from("sites")
+        .select("plugin_version")
+        .eq("org_id", orgId)
+        .limit(1)
+        .single();
+      return data?.plugin_version || null;
+    },
+    enabled: !!orgId,
+  });
+
+  const needsUpdate = siteVersion && latestVersion && siteVersion !== latestVersion;
+
   const handleDownload = async () => {
     setDownloading(true);
     try {
@@ -74,7 +91,20 @@ export default function PluginSection() {
           <h3 className="text-sm font-semibold text-foreground">{t("settings.wordpressPlugin")}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-mono">v{latestVersion || "—"}</span>
+          {siteVersion && (
+            <span className="text-xs text-muted-foreground font-mono">
+              Running v{siteVersion}
+            </span>
+          )}
+          {needsUpdate && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20">
+              <ArrowUp className="h-3 w-3" />
+              v{latestVersion} available
+            </span>
+          )}
+          {!siteVersion && (
+            <span className="text-xs text-muted-foreground font-mono">v{latestVersion || "—"}</span>
+          )}
           <button
             onClick={handleDownload}
             disabled={downloading}
@@ -82,6 +112,7 @@ export default function PluginSection() {
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
             {downloading ? t("settings.downloadingPlugin") : t("settings.downloadPlugin")}
+            {needsUpdate && !downloading && ` v${latestVersion}`}
           </button>
         </div>
       </div>

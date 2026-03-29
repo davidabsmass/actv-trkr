@@ -98,9 +98,8 @@ function buildDedupeKey(goalId: string, row: {
   target_text: string | null;
   meta?: Record<string, any>;
 }) {
-  const dedupeWindowMs = 60_000; // 1 minute buckets, scoped by target fingerprint
   const occurredAtMs = new Date(row.occurred_at).getTime();
-  const bucket = Math.floor((Number.isNaN(occurredAtMs) ? Date.now() : occurredAtMs) / dedupeWindowMs);
+  const eventSecond = Math.floor((Number.isNaN(occurredAtMs) ? Date.now() : occurredAtMs) / 1000);
   const actorKey = row.session_id || row.visitor_id || "no-actor";
 
   const href = normalizeForKey(row.meta?.target_href, 320);
@@ -108,10 +107,10 @@ function buildDedupeKey(goalId: string, row: {
   const text = normalizeForKey(row.target_text, 160);
   const path = normalizeForKey(row.page_path, 240);
   const eventType = normalizeForKey(row.event_type, 48);
-  const rawFingerprint = href || `${eventType}|${path}|${label || text || "no-target"}`;
+  const rawFingerprint = `${eventType}|${path}|${href || ""}|${label || ""}|${text || ""}|${eventSecond}`;
   const fingerprint = hashString(rawFingerprint);
 
-  return `${goalId}:${actorKey}:${fingerprint}:${bucket}`;
+  return `${goalId}:${actorKey}:${fingerprint}`;
 }
 
 function matchEventToGoals(

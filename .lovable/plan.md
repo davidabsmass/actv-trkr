@@ -1,29 +1,26 @@
 
 
-## Plan: Filter out numeric-only field keys from form entries table
+## Fix: Hide misleading "No API key" warning for active accounts
 
 ### Problem
-The entries table shows both raw numeric field keys (28, 29, 30, 31, 32) from `lead_fields_flat` AND fallback "Field 1–5" columns parsed from `leads.data` JSONB. This creates duplicate data columns — the same values appear twice under different headers.
+The Website Setup page shows a scary "No API key generated yet" warning even for accounts like APYX Medical that have active sites connected and tracking data flowing. This happens because the raw API key is only shown once at generation time, and the `key_hash` record may not be visible (due to admin-only RLS) or may have been revoked and regenerated. The warning is misleading for active accounts.
 
-### Root cause
-Some leads have `lead_fields_flat` records with meaningful labels (Name, Email, etc.) while others from the same form have raw numeric keys (28, 29, 30) that are internal Gravity Forms / Avada field IDs. The fallback parser then creates additional "Field X" columns for leads without flat records, doubling the columns.
+### Solution
+Instead of showing a warning when no API key record is found, check whether the account has active connected sites. If sites are connected and sending heartbeats, the key is clearly working — show a "Key active" confirmation instead of the warning.
 
-### Fix — `src/pages/Entries.tsx`
+### Changes
 
-1. **Skip purely-numeric field keys** in the `lead_fields_flat` processing loop (line ~380). If `f.field_key` matches `/^\d+$/` and `f.field_label` is also numeric or empty, skip it — these are raw form builder IDs, not display-worthy columns.
+**1. `src/pages/WebsiteSetup.tsx`** (lines 345-355)
+- Replace the current binary logic (`apiKeyData ? show key : show warning`) with a three-state check:
+  - If `apiKeyData` exists: show the key hash display (current behavior)
+  - If no `apiKeyData` but sites are connected with heartbeats: show a green "License key is active and connected" confirmation with a note that the full key is only shown once
+  - If no `apiKeyData` AND no connected sites: show the current warning directing them to generate a key
 
-2. **Deduplicate by value**: When a lead already has flat field data with real labels, don't also parse its `leads.data` fallback. The existing `leadsWithFlatFields` check handles this, but the numeric-keyed flat fields are still being included. Filtering them at the source fixes the duplication.
+**2. `src/locales/en/common.json`** (and other locale files)
+- Add new translation keys:
+  - `websiteSetup.keyActiveConnected`: "Your license key is active and your site is connected."
+  - `websiteSetup.keyActiveConnectedDesc`: "The full API key is only shown once when generated. Your plugin is already configured and tracking data."
 
 ### Technical detail
-
-In the `useMemo` block (~line 379), add a filter:
-
-```typescript
-// Skip raw numeric field IDs (e.g. "28", "29") — these are internal form builder keys
-const isNumericKey = /^\d+$/.test(f.field_key);
-const hasRealLabel = f.field_label && !/^\d+$/.test(f.field_label) && f.field_label !== f.field_key;
-if (isNumericKey && !hasRealLabel) continue;
-```
-
-This ensures only fields with meaningful labels (Name, Email, Phone, etc.) appear as columns, eliminating the duplicate numbered columns.
+The `websiteConnected` boolean (derived from `connectedSites.length > 0`) already exists on line 91 and will be reused for this check. No new queries needed.
 

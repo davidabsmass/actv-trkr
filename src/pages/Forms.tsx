@@ -1084,21 +1084,48 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     const SKIP_TYPES_SET = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
     const SKIP_KEYS_SET = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
 
+    const isNumericLike = (value: string | null | undefined) => {
+      const v = (value || "").trim();
+      return v !== "" && /^\d+(\.\d+)?$/.test(v);
+    };
+
+    const normalizeKey = (value: string) =>
+      value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+    const getExistingKeyByLabel = (label: string) => {
+      const normalized = label.trim().toLowerCase();
+      if (!normalized) return null;
+      for (const col of columnOrder.values()) {
+        if (col.label.trim().toLowerCase() === normalized) return col.key;
+      }
+      return null;
+    };
+
     const leadsWithFlatFields = new Set<string>();
 
     if (fieldsRaw && fieldsRaw.length > 0) {
       for (const f of fieldsRaw) {
-        if (SKIP_KEYS_SET.has(f.field_key)) continue;
+        const rawKey = (f.field_key || "").trim();
+        const rawLabel = (f.field_label || "").trim();
+
+        if (!rawKey || SKIP_KEYS_SET.has(rawKey)) continue;
         if (SKIP_TYPES_SET.has((f.field_type || "").toLowerCase())) continue;
         if (!f.value_text || f.value_text.trim() === "") continue;
 
+        const hasRealLabel = !!rawLabel && !isNumericLike(rawLabel) && rawLabel !== rawKey;
+        if (isNumericLike(rawKey) && !hasRealLabel) continue;
+
+        const label = rawLabel || rawKey;
+        const existingKey = getExistingKeyByLabel(label);
+        const key = existingKey || rawKey;
+
         leadsWithFlatFields.add(f.lead_id);
         if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-        map.get(f.lead_id)![f.field_key] = f.value_text;
-        if (!columnOrder.has(f.field_key)) {
-          columnOrder.set(f.field_key, { key: f.field_key, label: f.field_label || f.field_key, count: 0 });
+        map.get(f.lead_id)![key] = f.value_text;
+        if (!columnOrder.has(key)) {
+          columnOrder.set(key, { key, label, count: 0 });
         }
-        columnOrder.get(f.field_key)!.count++;
+        columnOrder.get(key)!.count++;
       }
     }
 
@@ -1123,46 +1150,74 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
 
           const fields: Record<string, string> = {};
+          const existingColumns = [...columnOrder.values()];
           let valueIdx = 0;
+
           for (let i = 0; i < types.length; i++) {
             const type = types[i]?.toLowerCase();
             if (SKIP_TYPES_SET.has(type)) continue;
+
             const val = values[valueIdx] || "";
             valueIdx++;
             if (!val) continue;
 
-            const label = labels[valueIdx - 1] || `Field ${i + 1}`;
-            const key = `avada_${i}`;
+            const rawLabel = (labels[valueIdx - 1] || "").trim();
+            const existingCol = existingColumns[i];
+            const hasMeaningfulLabel = rawLabel !== "" && !isNumericLike(rawLabel);
+
+            const label = hasMeaningfulLabel
+              ? rawLabel
+              : (existingCol?.label || `Field ${i + 1}`);
+
+            const existingKeyByLabel = getExistingKeyByLabel(label);
+            const generatedKey = normalizeKey(label) || `field_${i}`;
+            const key = existingKeyByLabel || existingCol?.key || `field_${generatedKey}`;
+
             fields[key] = val;
             if (!columnOrder.has(key)) {
-              columnOrder.set(key, { key, label: label || `Field ${i + 1}`, count: 0 });
+              columnOrder.set(key, { key, label, count: 0 });
             }
             columnOrder.get(key)!.count++;
           }
+
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else if (dataEntry?.value && typeof dataEntry.value === "string") {
           const values = dataEntry.value.split(",").map((v: string) => v.trim()).filter(Boolean);
           const fields: Record<string, string> = {};
+          const existingKeys = [...columnOrder.keys()];
+
           values.forEach((val: string, idx: number) => {
-            const key = `field_${idx + 1}`;
-            const label = `Field ${idx + 1}`;
+            const key = existingKeys[idx] || `field_${idx + 1}`;
+            const label = columnOrder.get(key)?.label || `Field ${idx + 1}`;
             fields[key] = val;
             if (!columnOrder.has(key)) columnOrder.set(key, { key, label, count: 0 });
             columnOrder.get(key)!.count++;
           });
+
           if (Object.keys(fields).length > 0) map.set(lead.id, fields);
         } else {
           const fields: Record<string, string> = {};
           for (const d of payloadFields as any[]) {
             if (!d.value || (typeof d.value === "string" && d.value.trim() === "")) continue;
-            const name = d.name || d.label || "unknown";
+
+            const rawName = String(d.name || "").trim();
+            const rawLabel = String(d.label || "").trim();
+            const name = rawName || rawLabel || "unknown";
+
             if (SKIP_KEYS_SET.has(name)) continue;
             if (SKIP_TYPES_SET.has((d.type || "").toLowerCase())) continue;
 
-            const key = name;
+            const hasMeaningfulLabel = !!rawLabel && !isNumericLike(rawLabel);
+            if (isNumericLike(name) && !hasMeaningfulLabel) continue;
+
+            const label = hasMeaningfulLabel ? rawLabel : name;
+            const existingKeyByLabel = getExistingKeyByLabel(label);
+            const generatedKey = normalizeKey(label);
+            const key = existingKeyByLabel || (isNumericLike(name) ? `field_${generatedKey || "unknown"}` : name);
+
             fields[key] = String(d.value);
             if (!columnOrder.has(key)) {
-              columnOrder.set(key, { key, label: d.label || name, count: 0 });
+              columnOrder.set(key, { key, label, count: 0 });
             }
             columnOrder.get(key)!.count++;
           }
@@ -1172,7 +1227,32 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     }
 
     if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
-    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count);
+
+    const isGenericColumn = (col: { key: string; label: string }) => {
+      const k = col.key.trim();
+      const l = col.label.trim();
+      if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
+      if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
+      return false;
+    };
+
+    const realCols = [...columnOrder.values()].filter((c) => !isGenericColumn(c));
+    const finalCols = realCols.length > 0 ? realCols : [...columnOrder.values()];
+
+    const keptKeys = new Set(finalCols.map((c) => c.key));
+    for (const [leadId, fields] of map.entries()) {
+      const cleaned: Record<string, string> = {};
+      for (const [k, v] of Object.entries(fields)) {
+        if (keptKeys.has(k)) cleaned[k] = v;
+      }
+      if (Object.keys(cleaned).length > 0) {
+        map.set(leadId, cleaned);
+      } else {
+        map.delete(leadId);
+      }
+    }
+
+    const cols = finalCols.sort((a, b) => b.count - a.count);
     return { fieldColumns: cols, leadFieldMap: map };
   }, [fieldsRaw, dedupedLeads]);
 

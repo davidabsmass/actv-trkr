@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import Stripe from "https://esm.sh/stripe@18.5.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,8 +20,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -31,12 +31,11 @@ Deno.serve(async (req) => {
     const { data: { user: caller }, error: authError } = await anonClient.auth.getUser();
     if (authError || !caller) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check caller is admin
+    // Check caller is admin via user_roles
     const { data: roleData } = await anonClient
       .from("user_roles")
       .select("role")
@@ -46,8 +45,7 @@ Deno.serve(async (req) => {
 
     if (!roleData) {
       return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -55,6 +53,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    // ── CREATE USER ──
     if (action === "create_user") {
       const { email, password, full_name, org_id, role } = body;
       const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -63,98 +62,49 @@ Deno.serve(async (req) => {
 
       if (!normalizedEmail || !normalizedPassword || !org_id) {
         return new Response(JSON.stringify({ error: "email, password, and org_id are required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
       if (normalizedPassword.length < 6) {
         return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       // Enforce org-scoped admin permission
-      const { data: callerOrgAccess, error: callerOrgAccessError } = await adminClient
-        .from("org_users")
-        .select("role")
-        .eq("org_id", org_id)
-        .eq("user_id", caller.id)
-        .maybeSingle();
-
-      if (callerOrgAccessError) {
-        return new Response(JSON.stringify({ error: callerOrgAccessError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
+      const { data: callerOrgAccess } = await adminClient
+        .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
       if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
         return new Response(JSON.stringify({ error: "Org admin access required" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Try to create user; if already exists, look them up and set the provided password
       let userId: string;
-
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-        email: normalizedEmail,
-        password: normalizedPassword,
-        email_confirm: true,
+        email: normalizedEmail, password: normalizedPassword, email_confirm: true,
         user_metadata: { full_name: normalizedFullName },
       });
 
       if (createError) {
-        // If user already exists, find them, set the provided password, and add to org
         if (createError.message.includes("already been registered")) {
-          const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
-          if (listErr) {
-            return new Response(JSON.stringify({ error: listErr.message }), {
-              status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
+          const { data: { users } } = await adminClient.auth.admin.listUsers();
           const existing = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
           if (!existing) {
             return new Response(JSON.stringify({ error: "User not found" }), {
               status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-
-          // Prevent cross-client account linking for existing global users
-          const { data: existingMembership, error: existingMembershipError } = await adminClient
-            .from("org_users")
-            .select("id")
-            .eq("org_id", org_id)
-            .eq("user_id", existing.id)
-            .maybeSingle();
-
-          if (existingMembershipError) {
-            return new Response(JSON.stringify({ error: existingMembershipError.message }), {
-              status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-
+          const { data: existingMembership } = await adminClient
+            .from("org_users").select("id").eq("org_id", org_id).eq("user_id", existing.id).maybeSingle();
           if (!existingMembership) {
-            return new Response(JSON.stringify({ error: "Email already exists in a different client account. Use a unique email for this client." }), {
+            return new Response(JSON.stringify({ error: "Email already exists in a different client account." }), {
               status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-
-          const { error: pwErr } = await adminClient.auth.admin.updateUserById(existing.id, {
-            password: normalizedPassword,
-            email_confirm: true,
-            user_metadata: { full_name: normalizedFullName },
+          await adminClient.auth.admin.updateUserById(existing.id, {
+            password: normalizedPassword, email_confirm: true, user_metadata: { full_name: normalizedFullName },
           });
-
-          if (pwErr) {
-            return new Response(JSON.stringify({ error: pwErr.message }), {
-              status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-
           userId = existing.id;
         } else {
           return new Response(JSON.stringify({ error: createError.message }), {
@@ -165,127 +115,69 @@ Deno.serve(async (req) => {
         userId = newUser.user.id;
       }
 
-      // Add user to org (ignore if already a member)
-      const { error: orgError } = await adminClient
-        .from("org_users")
+      await adminClient.from("org_users")
         .upsert({ org_id, user_id: userId, role: role || "member" }, { onConflict: "org_id,user_id", ignoreDuplicates: true });
 
-      if (orgError) {
-        return new Response(JSON.stringify({ error: orgError.message }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Send welcome email with password-set link (fire-and-forget)
+      // Welcome email (fire-and-forget)
       try {
         const { data: resetData } = await adminClient.auth.admin.generateLink({
-          type: "recovery",
-          email: normalizedEmail,
+          type: "recovery", email: normalizedEmail,
           options: { redirectTo: "https://actvtrkr.com/reset-password" },
         });
         const setPasswordUrl = resetData?.properties?.action_link || "https://actvtrkr.com/reset-password";
-
         await adminClient.functions.invoke("send-transactional-email", {
           body: {
-            templateName: "welcome",
-            recipientEmail: normalizedEmail,
+            templateName: "welcome", recipientEmail: normalizedEmail,
             idempotencyKey: `welcome-${userId}`,
-            templateData: {
-              name: normalizedFullName || undefined,
-              setPasswordUrl,
-            },
+            templateData: { name: normalizedFullName || undefined, setPasswordUrl },
           },
         });
-      } catch (welcomeErr) {
-        console.warn("Welcome email failed (non-fatal):", welcomeErr);
-      }
+      } catch { /* non-fatal */ }
 
       return new Response(JSON.stringify({ success: true, user_id: userId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // ── RESET PASSWORD ──
     if (action === "reset_password") {
       const { email, new_password, org_id } = body;
       const normalizedEmail = String(email || "").trim().toLowerCase();
-
       if (!normalizedEmail || !org_id) {
         return new Response(JSON.stringify({ error: "email and org_id are required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Enforce org-scoped admin permission
-      const { data: callerOrgAccess, error: callerOrgAccessError } = await adminClient
-        .from("org_users")
-        .select("role")
-        .eq("org_id", org_id)
-        .eq("user_id", caller.id)
-        .maybeSingle();
-
-      if (callerOrgAccessError) {
-        return new Response(JSON.stringify({ error: callerOrgAccessError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
+      const { data: callerOrgAccess } = await adminClient
+        .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
       if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
         return new Response(JSON.stringify({ error: "Org admin access required" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Look up user by email
-      const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
-      if (listError) {
-        return new Response(JSON.stringify({ error: listError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
+      const { data: { users } } = await adminClient.auth.admin.listUsers();
       const targetUser = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
       if (!targetUser) {
         return new Response(JSON.stringify({ error: "User not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Ensure target user belongs to this org
-      const { data: targetMembership, error: targetMembershipError } = await adminClient
-        .from("org_users")
-        .select("id")
-        .eq("org_id", org_id)
-        .eq("user_id", targetUser.id)
-        .maybeSingle();
-
-      if (targetMembershipError) {
-        return new Response(JSON.stringify({ error: targetMembershipError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
+      const { data: targetMembership } = await adminClient
+        .from("org_users").select("id").eq("org_id", org_id).eq("user_id", targetUser.id).maybeSingle();
       if (!targetMembership) {
         return new Response(JSON.stringify({ error: "User does not belong to this client account" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       if (new_password) {
-        // Directly set password via admin API (no email needed)
-        const { error: updateError } = await adminClient.auth.admin.updateUserById(targetUser.id, {
-          password: new_password,
-        });
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(targetUser.id, { password: new_password });
         if (updateError) {
           return new Response(JSON.stringify({ error: updateError.message }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         return new Response(JSON.stringify({ success: true, method: "password_set" }), {
@@ -293,27 +185,61 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Fallback: generate recovery link (admin can share it manually)
       const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email: normalizedEmail,
+        type: "recovery", email: normalizedEmail,
+        options: { redirectTo: "https://actvtrkr.com/reset-password" },
       });
       if (linkError) {
         return new Response(JSON.stringify({ error: linkError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       return new Response(JSON.stringify({
-        success: true,
-        method: "recovery_link",
+        success: true, method: "recovery_link",
         link: linkData?.properties?.action_link || null,
-      }), {
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── SEND PASSWORD RESET EMAIL ──
+    if (action === "send_password_reset") {
+      const { email } = body;
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+      if (!normalizedEmail) {
+        return new Response(JSON.stringify({ error: "email is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: "recovery", email: normalizedEmail,
+        options: { redirectTo: "https://actvtrkr.com/reset-password" },
+      });
+      if (linkError) {
+        return new Response(JSON.stringify({ error: linkError.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Send the recovery email via transactional email system
+      const recoveryUrl = linkData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+      try {
+        await adminClient.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "welcome",
+            recipientEmail: normalizedEmail,
+            idempotencyKey: `admin-reset-${Date.now()}`,
+            templateData: { setPasswordUrl: recoveryUrl },
+          },
+        });
+      } catch { /* non-fatal */ }
+
+      return new Response(JSON.stringify({ success: true, sent: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // ── DELETE USER ──
     if (action === "delete_user") {
       const { user_id: targetUserId } = body;
       if (!targetUserId) {
@@ -321,58 +247,159 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      // Remove from all orgs first
       await adminClient.from("org_users").delete().eq("user_id", targetUserId);
       await adminClient.from("profiles").delete().eq("user_id", targetUserId);
-
       const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
       if (deleteError) {
         return new Response(JSON.stringify({ error: deleteError.message }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (action === "delete_user") {
-      const { user_id } = body;
-      if (!user_id) {
-        return new Response(JSON.stringify({ error: "user_id is required" }), {
-          status: 400,
+    // ── STRIPE: GET SUBSCRIBER DETAILS ──
+    if (action === "get_subscriber_billing") {
+      const { email } = body;
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+      if (!normalizedEmail) {
+        return new Response(JSON.stringify({ error: "email is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        return new Response(JSON.stringify({ error: "Stripe not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+      const customers = await stripe.customers.list({ email: normalizedEmail, limit: 1 });
+      if (customers.data.length === 0) {
+        return new Response(JSON.stringify({ customer: null, subscriptions: [], invoices: [], charges: [] }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Remove from org_users
-      await adminClient.from("org_users").delete().eq("user_id", user_id);
-      // Remove from profiles
-      await adminClient.from("profiles").delete().eq("user_id", user_id);
-      // Delete auth user
-      const { error: deleteErr } = await adminClient.auth.admin.deleteUser(user_id);
-      if (deleteErr) {
-        return new Response(JSON.stringify({ error: deleteErr.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const customer = customers.data[0];
+      const [subscriptions, invoices, charges] = await Promise.all([
+        stripe.subscriptions.list({ customer: customer.id, limit: 10 }),
+        stripe.invoices.list({ customer: customer.id, limit: 20 }),
+        stripe.charges.list({ customer: customer.id, limit: 20 }),
+      ]);
+
+      return new Response(JSON.stringify({
+        customer: {
+          id: customer.id,
+          email: customer.email,
+          name: customer.name,
+          created: customer.created,
+        },
+        subscriptions: subscriptions.data.map((s) => ({
+          id: s.id,
+          status: s.status,
+          plan: s.items.data[0]?.price?.nickname || s.items.data[0]?.price?.id || "unknown",
+          amount: (s.items.data[0]?.price?.unit_amount || 0) / 100,
+          interval: s.items.data[0]?.price?.recurring?.interval || "month",
+          current_period_start: s.current_period_start,
+          current_period_end: s.current_period_end,
+          cancel_at_period_end: s.cancel_at_period_end,
+          canceled_at: s.canceled_at,
+        })),
+        invoices: invoices.data.map((i) => ({
+          id: i.id,
+          number: i.number,
+          status: i.status,
+          amount_due: (i.amount_due || 0) / 100,
+          amount_paid: (i.amount_paid || 0) / 100,
+          currency: i.currency,
+          created: i.created,
+          hosted_invoice_url: i.hosted_invoice_url,
+          pdf: i.invoice_pdf,
+        })),
+        charges: charges.data.map((c) => ({
+          id: c.id,
+          amount: (c.amount || 0) / 100,
+          currency: c.currency,
+          status: c.status,
+          created: c.created,
+          refunded: c.refunded,
+          amount_refunded: (c.amount_refunded || 0) / 100,
+          receipt_url: c.receipt_url,
+        })),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── STRIPE: REFUND CHARGE ──
+    if (action === "refund_charge") {
+      const { charge_id, amount } = body;
+      if (!charge_id) {
+        return new Response(JSON.stringify({ error: "charge_id is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        return new Response(JSON.stringify({ error: "Stripe not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+      const refundParams: any = { charge: charge_id };
+      if (amount) refundParams.amount = Math.round(amount * 100); // partial refund in cents
+
+      const refund = await stripe.refunds.create(refundParams);
+
+      return new Response(JSON.stringify({
+        success: true,
+        refund: { id: refund.id, amount: refund.amount / 100, status: refund.status },
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── STRIPE: CANCEL SUBSCRIPTION ──
+    if (action === "cancel_subscription") {
+      const { subscription_id, immediate } = body;
+      if (!subscription_id) {
+        return new Response(JSON.stringify({ error: "subscription_id is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        return new Response(JSON.stringify({ error: "Stripe not configured" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+
+      let result;
+      if (immediate) {
+        result = await stripe.subscriptions.cancel(subscription_id);
+      } else {
+        result = await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: true });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        status: result.status,
+        cancel_at_period_end: result.cancel_at_period_end,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

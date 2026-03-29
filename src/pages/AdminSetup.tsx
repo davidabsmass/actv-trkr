@@ -1,15 +1,17 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
-import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown } from "lucide-react";
+import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
@@ -116,6 +118,11 @@ export default function AdminSetup() {
   // Owner-only: subscriber metrics
   const [subSortKey, setSubSortKey] = useState<"created_at" | "mrr" | "last_active_date" | "churn_date">("created_at");
   const [subSortAsc, setSubSortAsc] = useState(false);
+  const [managingSub, setManagingSub] = useState<string | null>(null);
+  const [billingData, setBillingData] = useState<any>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: subscribers = [] } = useQuery({
     queryKey: ["owner_subscribers"],
@@ -184,6 +191,95 @@ export default function AdminSetup() {
   const toggleSubSort = (key: "created_at" | "mrr" | "last_active_date" | "churn_date") => {
     if (subSortKey === key) setSubSortAsc(!subSortAsc);
     else { setSubSortKey(key); setSubSortAsc(false); }
+  };
+
+  const loadBilling = async (email: string) => {
+    if (managingSub === email) { setManagingSub(null); setBillingData(null); return; }
+    setManagingSub(email);
+    setBillingLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "get_subscriber_billing", email },
+      });
+      if (error) throw error;
+      setBillingData(data);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load billing");
+      setBillingData(null);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleSendPasswordReset = async (email: string) => {
+    setActionLoading("reset-" + email);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "send_password_reset", email },
+      });
+      if (error) throw error;
+      toast.success(`Password reset email sent to ${email}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reset");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRefund = async (chargeId: string) => {
+    if (!confirm("Are you sure you want to issue a full refund for this charge?")) return;
+    setActionLoading("refund-" + chargeId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "refund_charge", charge_id: chargeId },
+      });
+      if (error) throw error;
+      toast.success(`Refund processed: $${data.refund.amount}`);
+      if (managingSub) loadBilling(managingSub);
+    } catch (err: any) {
+      toast.error(err.message || "Refund failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelSub = async (subscriptionId: string, immediate: boolean) => {
+    const msg = immediate ? "Cancel immediately? The customer will lose access now." : "Cancel at end of billing period?";
+    if (!confirm(msg)) return;
+    setActionLoading("cancel-" + subscriptionId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "cancel_subscription", subscription_id: subscriptionId, immediate },
+      });
+      if (error) throw error;
+      toast.success(immediate ? "Subscription cancelled immediately" : "Subscription will cancel at period end");
+      if (managingSub) loadBilling(managingSub);
+    } catch (err: any) {
+      toast.error(err.message || "Cancel failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteUser = async (sub: any) => {
+    if (!confirm(`Permanently delete ${sub.email}? This cannot be undone.`)) return;
+    setActionLoading("delete-" + sub.email);
+    try {
+      // Find user_id from profiles
+      const { data: profile } = await supabase.from("profiles").select("user_id").eq("email", sub.email).maybeSingle();
+      if (profile?.user_id) {
+        await supabase.functions.invoke("admin-manage-user", {
+          body: { action: "delete_user", user_id: profile.user_id },
+        });
+      }
+      toast.success(`User ${sub.email} deleted`);
+      queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });
+      setManagingSub(null);
+    } catch (err: any) {
+      toast.error(err.message || "Delete failed");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const enrichedOrgs = useMemo(() => {
@@ -513,41 +609,161 @@ export default function AdminSetup() {
                     <TableHead className="cursor-pointer" onClick={() => toggleSubSort("created_at")}>
                       Signup <ArrowUpDown className="inline h-3 w-3 ml-1" />
                     </TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggleSubSort("last_active_date")}>
-                      Last Active <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                    </TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="cursor-pointer" onClick={() => toggleSubSort("mrr")}>
                       MRR <ArrowUpDown className="inline h-3 w-3 ml-1" />
                     </TableHead>
-                    <TableHead>AI/day</TableHead>
-                    <TableHead>WL</TableHead>
-                    <TableHead className="cursor-pointer" onClick={() => toggleSubSort("churn_date")}>
-                      Churn <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                    </TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sortedSubs.map((s: any) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-mono text-xs">{s.email}</TableCell>
-                      <TableCell className="text-xs max-w-[160px] truncate">{s.site_url || "—"}</TableCell>
-                      <TableCell><Badge variant="outline">{s.plan}</Badge></TableCell>
-                      <TableCell className="text-xs">{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</TableCell>
-                      <TableCell className="text-xs">{s.last_active_date ? new Date(s.last_active_date).toLocaleDateString() : "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant={s.status === "active" ? "default" : s.status === "past_due" ? "destructive" : "secondary"}>
-                          {s.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>${Number(s.mrr || 0).toFixed(0)}</TableCell>
-                      <TableCell>{Number(s.ai_calls_per_day_avg || 0).toFixed(0)}</TableCell>
-                      <TableCell>{s.white_label_enabled ? "✓" : "—"}</TableCell>
-                      <TableCell className="text-xs">
-                        {s.churn_date ? new Date(s.churn_date).toLocaleDateString() : "—"}
-                        {s.churn_reason && <span className="block text-muted-foreground">{s.churn_reason}</span>}
-                      </TableCell>
-                    </TableRow>
+                    <>
+                      <TableRow key={s.id}>
+                        <TableCell className="font-mono text-xs">{s.email}</TableCell>
+                        <TableCell className="text-xs max-w-[160px] truncate">{s.site_url || "—"}</TableCell>
+                        <TableCell><Badge variant="outline">{s.plan}</Badge></TableCell>
+                        <TableCell className="text-xs">{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={s.status === "active" ? "default" : s.status === "past_due" ? "destructive" : "secondary"}>
+                            {s.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>${Number(s.mrr || 0).toFixed(0)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => loadBilling(s.email)}>
+                              {managingSub === s.email ? "Close" : "Manage"}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {managingSub === s.email && (
+                        <TableRow key={`${s.id}-manage`}>
+                          <TableCell colSpan={7} className="bg-muted/30 p-4">
+                            {billingLoading ? (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Loading billing data…
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {/* Quick Actions */}
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    size="sm" variant="outline"
+                                    onClick={() => handleSendPasswordReset(s.email)}
+                                    disabled={actionLoading === "reset-" + s.email}
+                                  >
+                                    <KeyRound className="h-3.5 w-3.5 mr-1" />
+                                    {actionLoading === "reset-" + s.email ? "Sending…" : "Send Password Reset"}
+                                  </Button>
+                                  <Button
+                                    size="sm" variant="destructive"
+                                    onClick={() => handleDeleteUser(s)}
+                                    disabled={actionLoading === "delete-" + s.email}
+                                  >
+                                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                                    {actionLoading === "delete-" + s.email ? "Deleting…" : "Delete User"}
+                                  </Button>
+                                </div>
+
+                                {/* Subscriptions */}
+                                {billingData?.subscriptions?.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-foreground mb-2">Subscriptions</h4>
+                                    <div className="space-y-2">
+                                      {billingData.subscriptions.map((sub: any) => (
+                                        <div key={sub.id} className="flex items-center justify-between bg-background rounded-lg border border-border p-3">
+                                          <div className="space-y-0.5">
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant={sub.status === "active" ? "default" : "secondary"}>{sub.status}</Badge>
+                                              <span className="text-sm font-medium">${sub.amount}/{sub.interval}</span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                              Period: {new Date(sub.current_period_start * 1000).toLocaleDateString()} – {new Date(sub.current_period_end * 1000).toLocaleDateString()}
+                                              {sub.cancel_at_period_end && " · Cancelling at period end"}
+                                            </p>
+                                          </div>
+                                          {sub.status === "active" && !sub.cancel_at_period_end && (
+                                            <div className="flex gap-1">
+                                              <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                onClick={() => handleCancelSub(sub.id, false)}
+                                                disabled={!!actionLoading}>
+                                                Cancel at End
+                                              </Button>
+                                              <Button size="sm" variant="destructive" className="h-7 text-xs"
+                                                onClick={() => handleCancelSub(sub.id, true)}
+                                                disabled={!!actionLoading}>
+                                                Cancel Now
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Payment History */}
+                                {billingData?.charges?.length > 0 && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-foreground mb-2">Payment History</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-sm">
+                                        <thead>
+                                          <tr className="border-b border-border">
+                                            <th className="text-left py-1.5 text-xs font-medium text-muted-foreground">Date</th>
+                                            <th className="text-left py-1.5 text-xs font-medium text-muted-foreground">Amount</th>
+                                            <th className="text-left py-1.5 text-xs font-medium text-muted-foreground">Status</th>
+                                            <th className="text-right py-1.5 text-xs font-medium text-muted-foreground">Actions</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {billingData.charges.map((c: any) => (
+                                            <tr key={c.id} className="border-b border-border/50">
+                                              <td className="py-1.5 text-xs">{new Date(c.created * 1000).toLocaleDateString()}</td>
+                                              <td className="py-1.5 text-xs font-medium">${c.amount} {c.currency.toUpperCase()}</td>
+                                              <td className="py-1.5">
+                                                <Badge variant={c.status === "succeeded" ? "default" : "secondary"} className="text-[10px]">
+                                                  {c.refunded ? `Refunded $${c.amount_refunded}` : c.status}
+                                                </Badge>
+                                              </td>
+                                              <td className="py-1.5 text-right">
+                                                <div className="flex gap-1 justify-end">
+                                                  {c.receipt_url && (
+                                                    <a href={c.receipt_url} target="_blank" rel="noopener noreferrer">
+                                                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2">
+                                                        <ExternalLink className="h-3 w-3 mr-1" /> Receipt
+                                                      </Button>
+                                                    </a>
+                                                  )}
+                                                  {c.status === "succeeded" && !c.refunded && (
+                                                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                                                      onClick={() => handleRefund(c.id)}
+                                                      disabled={actionLoading === "refund-" + c.id}>
+                                                      <RotateCcw className="h-3 w-3 mr-1" />
+                                                      {actionLoading === "refund-" + c.id ? "…" : "Refund"}
+                                                    </Button>
+                                                  )}
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {!billingData?.customer && (
+                                  <p className="text-sm text-muted-foreground">No Stripe customer found for this email.</p>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   ))}
                 </TableBody>
               </Table>

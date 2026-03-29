@@ -185,7 +185,7 @@ const Index = () => {
                     View Features
                   </Button>
                   <button
-                    onClick={handleSignIn}
+                    onClick={() => navigate(session ? "/dashboard" : "/auth")}
                     className="text-base font-medium text-white/80 hover:text-white transition-colors inline-flex items-center gap-1"
                   >
                     {session ? "Dashboard" : "Sign In"} <ArrowRight className="h-4 w-4" />

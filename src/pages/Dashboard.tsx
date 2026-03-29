@@ -385,14 +385,14 @@ const Dashboard = () => {
     if (unhealthyForms && unhealthyForms.length > 0) {
       items.push({ severity: "warning", label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }), detail: t("dashboard.formsBrokenMissing"), link: "/settings?tab=forms", linkLabel: t("dashboard.check") });
     }
-    // SEO score issues
-    if (lowSeoScore) {
+    // SEO score issues (only if SEO is visible)
+    if (seoVisible && lowSeoScore) {
       items.push({ severity: "warning", label: t("dashboard.seoScoreLow", { score: seoMovement?.score }), detail: t("dashboard.reviewSeoIssues"), link: "/seo", linkLabel: t("dashboard.fix") });
-    } else if (seoScoreDrop) {
+    } else if (seoVisible && seoScoreDrop) {
       items.push({ severity: "warning", label: t("dashboard.seoScoreDropped", { points: Math.abs(seoMovement!.change) }), detail: t("dashboard.recentScanIssues"), link: "/seo", linkLabel: t("dashboard.review") });
     }
-    // Stale SEO fixes
-    if (staleSeoFixes && staleSeoFixes > 0) {
+    // Stale SEO fixes (only if SEO is visible)
+    if (seoVisible && staleSeoFixes && staleSeoFixes > 0) {
       items.push({ severity: "warning", label: t("dashboard.staleSeoFixes", { count: staleSeoFixes }), detail: t("dashboard.pluginCronStuck"), link: "/seo", linkLabel: t("dashboard.view") });
     }
     // Pending monitoring alerts

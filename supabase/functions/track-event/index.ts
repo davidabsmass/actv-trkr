@@ -82,15 +82,27 @@ function matchEventToGoals(
   const url = (evt.page_url || "").toLowerCase();
   const path = (evt.page_path || "").toLowerCase();
 
-  for (const goal of goals) {
-    if (goal.goal_type !== evt.event_type && goal.goal_type !== "custom_event") continue;
-    const r = goal.tracking_rules || {};
+  // Click-type goals can cross-match related event types
+  const CLICK_TYPES = new Set(["cta_click", "outbound_click", "tel_click", "mailto_click"]);
 
+  for (const goal of goals) {
     // Custom event matching
     if (goal.goal_type === "custom_event") {
+      const r = goal.tracking_rules || {};
       if (r.event_name && r.event_name === evt.event_type) { matched.push(goal.id); }
       continue;
     }
+
+    // Allow click-type goals to match any click-type event (e.g. cta_click goal matches outbound_click)
+    const goalIsClick = CLICK_TYPES.has(goal.goal_type);
+    const evtIsClick = CLICK_TYPES.has(evt.event_type);
+    if (!goalIsClick && goal.goal_type !== evt.event_type) continue;
+    if (goalIsClick && !evtIsClick) continue;
+
+    // If the goal type is specific (tel_click, mailto_click), require exact type match
+    if ((goal.goal_type === "tel_click" || goal.goal_type === "mailto_click") && goal.goal_type !== evt.event_type) continue;
+
+    const r = goal.tracking_rules || {};
 
     // Type-specific matching
     let passes = true;

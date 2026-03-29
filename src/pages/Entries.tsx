@@ -530,7 +530,39 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     }
 
     if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
-    const cols = [...columnOrder.values()].sort((a, b) => b.count - a.count);
+
+    // Post-filter: remove columns with numeric-only keys/labels or generic "Field N" labels
+    const isGenericColumn = (col: { key: string; label: string }) => {
+      const k = col.key.trim();
+      const l = col.label.trim();
+      // Numeric-only key like "51", "52"
+      if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
+      // Generic "field_N" key with "Field N" label
+      if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
+      return false;
+    };
+
+    const realCols = [...columnOrder.values()].filter(c => !isGenericColumn(c));
+    // Only use generic cols if there are NO real cols at all
+    const finalCols = realCols.length > 0
+      ? realCols
+      : [...columnOrder.values()];
+
+    // Also clean up leadFieldMap: remove entries for dropped column keys
+    const keptKeys = new Set(finalCols.map(c => c.key));
+    for (const [leadId, fields] of map.entries()) {
+      const cleaned: Record<string, string> = {};
+      for (const [k, v] of Object.entries(fields)) {
+        if (keptKeys.has(k)) cleaned[k] = v;
+      }
+      if (Object.keys(cleaned).length > 0) {
+        map.set(leadId, cleaned);
+      } else {
+        map.delete(leadId);
+      }
+    }
+
+    const cols = finalCols.sort((a, b) => b.count - a.count);
     return { fieldColumns: cols, leadFieldMap: map };
   }, [fieldsRaw, leads]);
 

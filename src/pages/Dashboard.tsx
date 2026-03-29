@@ -14,6 +14,7 @@ import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
 import { FunnelWidget } from "@/components/dashboard/FunnelWidget";
 import { RevenueWidget } from "@/components/dashboard/RevenueWidget";
 import { useOrg } from "@/hooks/use-org";
+import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -133,6 +134,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
   const { t } = useTranslation();
+  const { seoVisible } = useSeoVisibility();
   const { needsOnboarding, settings } = useSiteSettings();
   const { data: formsData } = useForms(orgId);
 

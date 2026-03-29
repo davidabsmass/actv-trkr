@@ -287,7 +287,6 @@ export function useConversionMetrics(
             return true;
           };
 
-          const dedupeWindowMs = 300_000;
           const seen = new Set<string>();
           const fallbackCounts: Record<string, number> = {};
 

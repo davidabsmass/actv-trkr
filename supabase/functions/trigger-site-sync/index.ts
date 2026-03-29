@@ -476,8 +476,30 @@ Deno.serve(async (req) => {
 
     if (shouldAutoBackfillAvada) {
       avadaBackfillAttempted = true;
-      const { response: backfillRes, endpoint: backfillEndpoint } = await triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash);
+      // Fire-and-forget: don't await the backfill response to avoid edge function timeout.
+      // The backfill runs on WordPress and will ingest data via the normal ingest endpoints.
+      triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash)
+        .then(async ({ response: backfillRes, endpoint: backfillEndpoint }) => {
+          if (!backfillRes.ok) {
+            const backfillBody = await backfillRes.text();
+            console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
+          } else {
+            const backfillRaw = await backfillRes.text();
+            console.log(`WP Avada backfill succeeded (${backfillEndpoint}): ${backfillRaw.slice(0, 200)}`);
+          }
+        })
+        .catch((err) => {
+          console.error("WP Avada backfill fire-and-forget error:", err);
+        });
+      // Don't set error/entries here — backfill is async now
+      console.log("Avada backfill triggered (fire-and-forget)");
+    }
 
+    // Skip the old synchronous backfill result processing block
+    if (false) {
+      // This block is intentionally dead — kept for reference
+      const backfillRes = null as any;
+      const backfillEndpoint = "";
       if (!backfillRes.ok) {
         const backfillBody = await backfillRes.text();
         avadaBackfillRouteMissing =

@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Target, Plus, ChevronDown, ChevronRight, MapPin, Clock } from "lucide-react";
-import { useTranslation, TFunction } from "react-i18next";
-import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { GOAL_TYPES, type ConversionGoal } from "@/hooks/use-goals";
 import { useState } from "react";

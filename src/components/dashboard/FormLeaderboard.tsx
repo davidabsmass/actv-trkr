@@ -106,7 +106,7 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData, leadCounts
     });
 
     return arr;
-  }, [forms, leads, sessions, deviceData, sortKey, sortDir]);
+  }, [forms, leads, sessions, deviceData, leadCounts, sortKey, sortDir]);
 
   if (stats.length === 0) {
     return null;

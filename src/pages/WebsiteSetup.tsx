@@ -343,8 +343,8 @@ export default function WebsiteSetup() {
             </p>
           </div>
         ) : websiteConnected ? (
-          <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-4 flex gap-3">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+          <div className="rounded-lg bg-success/10 border border-success/20 p-4 flex gap-3">
+            <CheckCircle className="h-4 w-4 text-success flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-medium text-foreground mb-1">{t("websiteSetup.keyActiveConnected", "Your license key is active and your site is connected.")}</p>
               <p className="text-xs text-muted-foreground">

@@ -455,8 +455,42 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
   if (projectedNextMonth > 0) actions.push(`Projected leads next month: ${Math.round(projectedNextMonth * 0.9)}–${Math.round(projectedNextMonth * 1.1)}.`);
   if (actions.length === 0) actions.push("Continue current strategy — performance is stable.");
 
+  // ── Goal Conversions ──
+  const CLICK_TYPES = ["cta_click", "outbound_click", "tel_click", "mailto_click"];
+  const goalConversionsData = (conversionGoals || []).map((goal: any) => {
+    const rules = goal.tracking_rules || {};
+    // Count from goal_completions first
+    let count = (goalCompletionsRaw || []).filter((gc: any) => gc.goal_id === goal.id).length;
+
+    // Fallback to events for click goals
+    if (count === 0 && CLICK_TYPES.includes(goal.goal_type)) {
+      count = (clickEventsRaw || []).filter((evt: any) => {
+        const text = (evt.target_text || "").toLowerCase();
+        const label = String((evt.meta as any)?.target_label || "").toLowerCase();
+        const href = String((evt.meta as any)?.target_href || "").toLowerCase();
+        const url = (evt.page_url || "").toLowerCase();
+        if (rules.text_contains) {
+          const needle = String(rules.text_contains).toLowerCase();
+          if (!text.includes(needle) && !label.includes(needle)) return false;
+        }
+        if (rules.href_contains) {
+          const needle = String(rules.href_contains).toLowerCase();
+          if (!href.includes(needle) && !url.includes(needle) && !text.includes(needle)) return false;
+        }
+        return true;
+      }).length;
+    }
+
+    return { name: goal.name, goalType: goal.goal_type, count };
+  }).sort((a: any, b: any) => b.count - a.count);
+
+  const goalConversions = {
+    goals: goalConversionsData,
+    totalCompletions: goalConversionsData.reduce((s: number, g: any) => s + g.count, 0),
+  };
+
   return {
-    executiveSummary, growthEngine, conversionIntelligence, userExperience, siteHealth, formHealth,
+    executiveSummary, growthEngine, conversionIntelligence, userExperience, siteHealth, formHealth, goalConversions,
     actionPlan: { recommendations: actions, contentOpportunities: opportunities.slice(0, 5), forecast: { avgDailyLeads: Math.round(avgDaily * 10) / 10, projectedNextMonth } },
   };
 }

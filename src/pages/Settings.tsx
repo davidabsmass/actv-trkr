@@ -6,6 +6,7 @@ import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
 import FormsSection from "@/components/settings/FormsSection";
+import SeoVisibilitySection from "@/components/settings/SeoVisibilitySection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 import GetStartedGuide from "@/components/onboarding/GetStartedGuide";
@@ -49,6 +50,7 @@ export default function SettingsPage() {
             <FormsSection />
             <NotificationsSection />
             <GoalsSection />
+            <SeoVisibilitySection />
           </div>
         </TabsContent>
 

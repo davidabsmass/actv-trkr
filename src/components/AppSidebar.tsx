@@ -8,6 +8,7 @@ import { NavLink } from "@/components/NavLink";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
+import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
@@ -44,6 +45,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { isAdmin } = useUserRole();
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
+  const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { t } = useTranslation();
 
   return (
@@ -88,22 +90,32 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {telemetryItems.map((item) => {
-                return (
-                  <SidebarMenuItem key={item.titleKey}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
-                        activeClassName="bg-white/20 text-white font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{t(item.titleKey)}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {telemetryItems
+                .filter((item) => {
+                  // Hide SEO nav item if seo is not visible for this user
+                  if (item.url === "/seo" && !seoVisible) return false;
+                  return true;
+                })
+                .map((item) => {
+                  // Relabel SEO for summary-only users
+                  const label = item.url === "/seo" && !seoAdvanced
+                    ? "Search Visibility"
+                    : t(item.titleKey);
+                  return (
+                    <SidebarMenuItem key={item.titleKey}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                          activeClassName="bg-white/20 text-white font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{label}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -14,6 +14,7 @@ import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
 import { FunnelWidget } from "@/components/dashboard/FunnelWidget";
 import { RevenueWidget } from "@/components/dashboard/RevenueWidget";
 import { useOrg } from "@/hooks/use-org";
+import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
 import { useSiteSettings } from "@/hooks/use-site-settings";
@@ -133,6 +134,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
   const { t } = useTranslation();
+  const { seoVisible } = useSeoVisibility();
   const { needsOnboarding, settings } = useSiteSettings();
   const { data: formsData } = useForms(orgId);
 
@@ -148,7 +150,7 @@ const Dashboard = () => {
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 
-  // SEO movement
+  // SEO movement (only fetch if SEO is visible)
   const { data: seoMovement } = useQuery({
     queryKey: ["dashboard_seo_movement", orgId],
     queryFn: async () => {
@@ -168,7 +170,7 @@ const Dashboard = () => {
         scannedAt: latest.scanned_at,
       };
     },
-    enabled: !!orgId,
+    enabled: !!orgId && seoVisible,
   });
 
   // Needs attention page (highest exit rate page from kpi_daily)
@@ -282,7 +284,7 @@ const Dashboard = () => {
         .eq("org_id", orgId).eq("status", "pending").lt("created_at", oneHourAgo);
       return count || 0;
     },
-    enabled: !!orgId,
+    enabled: !!orgId && seoVisible,
   });
 
   // Pending monitoring alerts (unsent)
@@ -383,14 +385,14 @@ const Dashboard = () => {
     if (unhealthyForms && unhealthyForms.length > 0) {
       items.push({ severity: "warning", label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }), detail: t("dashboard.formsBrokenMissing"), link: "/settings?tab=forms", linkLabel: t("dashboard.check") });
     }
-    // SEO score issues
-    if (lowSeoScore) {
+    // SEO score issues (only if SEO is visible)
+    if (seoVisible && lowSeoScore) {
       items.push({ severity: "warning", label: t("dashboard.seoScoreLow", { score: seoMovement?.score }), detail: t("dashboard.reviewSeoIssues"), link: "/seo", linkLabel: t("dashboard.fix") });
-    } else if (seoScoreDrop) {
+    } else if (seoVisible && seoScoreDrop) {
       items.push({ severity: "warning", label: t("dashboard.seoScoreDropped", { points: Math.abs(seoMovement!.change) }), detail: t("dashboard.recentScanIssues"), link: "/seo", linkLabel: t("dashboard.review") });
     }
-    // Stale SEO fixes
-    if (staleSeoFixes && staleSeoFixes > 0) {
+    // Stale SEO fixes (only if SEO is visible)
+    if (seoVisible && staleSeoFixes && staleSeoFixes > 0) {
       items.push({ severity: "warning", label: t("dashboard.staleSeoFixes", { count: staleSeoFixes }), detail: t("dashboard.pluginCronStuck"), link: "/seo", linkLabel: t("dashboard.view") });
     }
     // Pending monitoring alerts
@@ -398,7 +400,7 @@ const Dashboard = () => {
       items.push({ severity: "info", label: t("dashboard.pendingAlerts", { count: pendingAlerts }), detail: t("dashboard.alertsAwaitingDelivery"), link: "/monitoring", linkLabel: t("dashboard.view") });
     }
     return items;
-  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, t]);
+  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, seoVisible, t]);
 
   // Redirect to setup if current org has no connected sites
   useEffect(() => {
@@ -447,7 +449,7 @@ const Dashboard = () => {
         <div className="space-y-4">
 
           {/* Row 1 – 6 KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className={`grid grid-cols-2 md:grid-cols-3 ${seoVisible ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
             <KPICard
               label={`${t("dashboard.sessions")} (${days}d)`}
               value={periodData.sessions.current.toLocaleString()}
@@ -501,14 +503,16 @@ const Dashboard = () => {
                 <p className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</p>
               )}
             </div>
-            <KPICard
-              label={t("dashboard.seoScore")}
-              value={seoMovement?.score ?? "—"}
-              trend={seoMovement?.change || undefined}
-              sub={seoMovement ? undefined : t("dashboard.noScanYet")}
-              icon={<Search className="h-4 w-4" />}
-              accent={seoMovement ? (seoMovement.change >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}
-            />
+            {seoVisible && (
+              <KPICard
+                label={t("dashboard.seoScore")}
+                value={seoMovement?.score ?? "—"}
+                trend={seoMovement?.change || undefined}
+                sub={seoMovement ? undefined : t("dashboard.noScanYet")}
+                icon={<Search className="h-4 w-4" />}
+                accent={seoMovement ? (seoMovement.change >= 0 ? "text-success" : "text-destructive") : "text-muted-foreground"}
+              />
+            )}
           </div>
 
 

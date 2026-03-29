@@ -1998,18 +1998,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          seo_visibility_level: string
           timezone: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          seo_visibility_level?: string
           timezone?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          seo_visibility_level?: string
           timezone?: string
         }
         Relationships: []

@@ -370,7 +370,7 @@ export default function Forms() {
       while (true) {
         const { data, error } = await supabase
           .from("leads")
-          .select("id, form_id, submitted_at, source, session_id, data")
+          .select("form_id, submitted_at, source, session_id")
           .eq("org_id", orgId)
           .neq("status", "trashed")
           .gte("submitted_at", `${startDate}T00:00:00Z`)
@@ -382,23 +382,7 @@ export default function Forms() {
         if (data.length < PAGE_SIZE) break;
         from += PAGE_SIZE;
       }
-      // Deduplicate by external_entry_id per form to avoid counting synced duplicates
-      const seenByForm: Record<string, Set<string>> = {};
-      const deduped: any[] = [];
-      for (const lead of allLeads) {
-        const extId =
-          lead.data && typeof lead.data === "object" && !Array.isArray(lead.data)
-            ? (lead.data as Record<string, unknown>).external_entry_id
-            : null;
-        if (typeof extId === "string" && extId.trim() !== "") {
-          const key = `${lead.form_id}::${extId}`;
-          if (!seenByForm[lead.form_id]) seenByForm[lead.form_id] = new Set();
-          if (seenByForm[lead.form_id].has(extId)) continue;
-          seenByForm[lead.form_id].add(extId);
-        }
-        deduped.push(lead);
-      }
-      return deduped;
+      return allLeads;
     },
     enabled: !!orgId,
   });
@@ -606,7 +590,6 @@ export default function Forms() {
   const archivedForms = forms?.filter((f) => f.archived) || [];
   const displayedForms = showArchived ? archivedForms : activeForms;
 
-  // All-time lead counts (no date filter) for the form list sidebar
   const { data: leadCounts } = useQuery({
     queryKey: ["lead_counts_by_form_entries", orgId],
     queryFn: async () => {
@@ -1048,41 +1031,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
   const dedupedLeads = useMemo(() => {
     if (!leads || leads.length === 0) return [];
-
-    const skipTypes = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
-    const skipKeys = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
-
-    const scoreLeadData = (lead: any) => {
-      const raw = lead?.data;
-      if (!raw || typeof raw !== "object") return 0;
-
-      const fields = Array.isArray((raw as any).fields)
-        ? (raw as any).fields
-        : Array.isArray(raw)
-          ? raw
-          : [];
-
-      if (fields.length > 0) {
-        let score = 0;
-        for (const f of fields) {
-          const value = typeof f?.value === "string" ? f.value.trim() : String(f?.value ?? "").trim();
-          const key = String(f?.name || f?.label || "").trim().toLowerCase();
-          const type = String(f?.type || "").trim().toLowerCase();
-          if (!value) continue;
-          if (skipKeys.has(key) || skipTypes.has(type)) continue;
-          score += 1;
-        }
-        return score;
-      }
-
-      return Object.entries(raw as Record<string, unknown>).reduce((acc, [k, v]) => {
-        if (skipKeys.has(k.toLowerCase())) return acc;
-        if (v == null) return acc;
-        const txt = String(v).trim();
-        return txt ? acc + 1 : acc;
-      }, 0);
-    };
-
     const byExternalId = new Map<string, any>();
     const withoutExternalId: any[] = [];
 
@@ -1094,19 +1042,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
       if (typeof extId === "string" && extId.trim() !== "") {
         const existing = byExternalId.get(extId);
-        if (!existing) {
-          byExternalId.set(extId, lead);
-          continue;
-        }
-
-        const existingScore = scoreLeadData(existing);
-        const nextScore = scoreLeadData(lead);
-        if (nextScore > existingScore) {
-          byExternalId.set(extId, lead);
-          continue;
-        }
-
-        if (nextScore === existingScore && new Date(lead.submitted_at).getTime() > new Date(existing.submitted_at).getTime()) {
+        if (!existing || new Date(lead.submitted_at).getTime() > new Date(existing.submitted_at).getTime()) {
           byExternalId.set(extId, lead);
         }
       } else {
@@ -1136,7 +1072,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const SKIP_FIELD_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
 
   const { data: fieldsRaw } = useQuery({
-    queryKey: ["lead_fields_flat", orgId, formId, leadIds],
+    queryKey: ["lead_fields_flat", orgId, formId, leadIds.length],
     queryFn: async () => {
       if (!orgId || leadIds.length === 0) return [];
       const results: any[] = [];

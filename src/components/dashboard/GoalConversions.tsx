@@ -21,13 +21,26 @@ interface CompletionDetail {
   target_text: string | null;
   completed_at: string;
   session_id: string | null;
+  target_href: string | null;
 }
 
-function extractPageLabel(url: string | null, path: string | null): string {
-  const raw = path || url || "";
-  // Turn /physician/george-m-ballantyne-md/ → George M Ballantyne Md
+function prettifyUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    // Show host + readable path
+    const path = u.pathname.replace(/\/$/, "");
+    const slug = path.split("/").pop() || "";
+    const readable = slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    return readable || u.hostname + path;
+  } catch {
+    return raw;
+  }
+}
+
+function prettifyPath(path: string | null, url: string | null): string {
+  const raw = path || url || "Unknown page";
   const slug = raw.replace(/^.*\//, "").replace(/\/$/, "").replace(/[-_]/g, " ");
-  if (!slug) return raw || "Unknown page";
+  if (!slug) return raw;
   return slug.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -45,7 +58,7 @@ function GoalDrillDown({ goalId, orgId, startDate, endDate }: {
     queryFn: async () => {
       const { data: rows } = await supabase
         .from("goal_completions" as any)
-        .select("page_url,page_path,target_text,completed_at,session_id")
+        .select("page_url,page_path,target_text,completed_at,session_id,utm_source")
         .eq("org_id", orgId)
         .eq("goal_id", goalId)
         .gte("completed_at", dayStart)
@@ -53,80 +66,91 @@ function GoalDrillDown({ goalId, orgId, startDate, endDate }: {
         .order("completed_at", { ascending: false })
         .limit(200);
 
-      let completions = (rows || []) as unknown as CompletionDetail[];
+      // goal_completions doesn't have target_href, so always use events fallback for click goals
+      let completions: CompletionDetail[] = [];
 
-      // Fallback: if no goal_completions, derive from raw events
-      if (completions.length === 0) {
-        const { data: goal } = await supabase
-          .from("conversion_goals" as any)
-          .select("goal_type, tracking_rules")
-          .eq("id", goalId)
-          .single();
+      // Always pull from raw events so we get meta.target_href
+      const { data: goal } = await supabase
+        .from("conversion_goals" as any)
+        .select("goal_type, tracking_rules")
+        .eq("id", goalId)
+        .single();
 
-        if (goal) {
-          const g = goal as unknown as { goal_type: string; tracking_rules: Record<string, any> };
-          const CLICK_TYPES = ["cta_click", "outbound_click", "tel_click", "mailto_click"];
-          const eventTypes = CLICK_TYPES.includes(g.goal_type)
-            ? CLICK_TYPES
-            : [g.goal_type];
+      if (goal) {
+        const g = goal as unknown as { goal_type: string; tracking_rules: Record<string, any> };
+        const CLICK_TYPES = ["cta_click", "outbound_click", "tel_click", "mailto_click"];
+        const eventTypes = CLICK_TYPES.includes(g.goal_type)
+          ? CLICK_TYPES
+          : [g.goal_type];
 
-          const { data: events } = await supabase
-            .from("events")
-            .select("page_url,page_path,target_text,occurred_at,session_id,meta")
-            .eq("org_id", orgId)
-            .in("event_type", eventTypes)
-            .gte("occurred_at", dayStart)
-            .lte("occurred_at", dayEnd)
-            .order("occurred_at", { ascending: false })
-            .limit(200);
+        const { data: events } = await supabase
+          .from("events")
+          .select("page_url,page_path,target_text,occurred_at,session_id,meta")
+          .eq("org_id", orgId)
+          .in("event_type", eventTypes)
+          .gte("occurred_at", dayStart)
+          .lte("occurred_at", dayEnd)
+          .order("occurred_at", { ascending: false })
+          .limit(200);
 
-          if (events) {
-            const rules = g.tracking_rules || {};
-            completions = (events as any[])
-              .filter((evt) => {
-                const text = (evt.target_text || "").toLowerCase();
-                const label = String((evt.meta as any)?.target_label || "").toLowerCase();
-                const href = String((evt.meta as any)?.target_href || "").toLowerCase();
-                const url = (evt.page_url || "").toLowerCase();
+        if (events) {
+          const rules = g.tracking_rules || {};
+          completions = (events as any[])
+            .filter((evt) => {
+              const text = (evt.target_text || "").toLowerCase();
+              const label = String((evt.meta as any)?.target_label || "").toLowerCase();
+              const href = String((evt.meta as any)?.target_href || "").toLowerCase();
+              const url = (evt.page_url || "").toLowerCase();
 
-                if (rules.text_contains) {
-                  const needle = String(rules.text_contains).toLowerCase();
-                  if (!text.includes(needle) && !label.includes(needle)) return false;
-                }
-                if (rules.href_contains) {
-                  const needle = String(rules.href_contains).toLowerCase();
-                  if (!href.includes(needle) && !url.includes(needle) && !text.includes(needle)) return false;
-                }
-                return true;
-              })
-              .map((evt) => ({
-                page_url: evt.page_url,
-                page_path: evt.page_path,
-                target_text: evt.target_text,
-                completed_at: evt.occurred_at,
-                session_id: evt.session_id,
-              }));
-          }
+              if (rules.text_contains) {
+                const needle = String(rules.text_contains).toLowerCase();
+                if (!text.includes(needle) && !label.includes(needle)) return false;
+              }
+              if (rules.href_contains) {
+                const needle = String(rules.href_contains).toLowerCase();
+                if (!href.includes(needle) && !url.includes(needle) && !text.includes(needle)) return false;
+              }
+              return true;
+            })
+            .map((evt) => ({
+              page_url: evt.page_url,
+              page_path: evt.page_path,
+              target_text: evt.target_text,
+              completed_at: evt.occurred_at,
+              session_id: evt.session_id,
+              target_href: (evt.meta as any)?.target_href || null,
+            }));
         }
       }
 
-      // Group by page
-      const byPage: Record<string, { label: string; url: string; count: number; lastAt: string }> = {};
+      // Group by source page + destination
+      const byRow: Record<string, {
+        sourcePage: string;
+        destination: string | null;
+        destinationLabel: string;
+        count: number;
+        lastAt: string;
+      }> = {};
+
       for (const c of completions) {
-        const key = c.page_path || c.page_url || "unknown";
-        if (!byPage[key]) {
-          byPage[key] = {
-            label: extractPageLabel(c.page_url, c.page_path),
-            url: c.page_url || key,
+        const src = prettifyPath(c.page_path, c.page_url);
+        const dest = c.target_href || null;
+        const key = `${c.page_path || c.page_url || "?"}::${dest || "none"}`;
+
+        if (!byRow[key]) {
+          byRow[key] = {
+            sourcePage: src,
+            destination: dest,
+            destinationLabel: dest ? prettifyUrl(dest) : "No destination captured",
             count: 0,
             lastAt: c.completed_at,
           };
         }
-        byPage[key].count++;
-        if (c.completed_at > byPage[key].lastAt) byPage[key].lastAt = c.completed_at;
+        byRow[key].count++;
+        if (c.completed_at > byRow[key].lastAt) byRow[key].lastAt = c.completed_at;
       }
 
-      return Object.values(byPage).sort((a, b) => b.count - a.count);
+      return Object.values(byRow).sort((a, b) => b.count - a.count);
     },
     enabled: !!orgId,
     staleTime: 30_000,
@@ -151,18 +175,34 @@ function GoalDrillDown({ goalId, orgId, startDate, endDate }: {
 
   return (
     <div className="pl-7 py-1.5 space-y-1 border-l-2 border-primary/20 ml-2">
-      {data.map((page) => (
-        <div key={page.url} className="flex items-center gap-2 text-[11px]">
-          <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-          <span className="text-foreground font-medium truncate flex-1" title={page.url}>
-            {page.label}
-          </span>
-          <span className="text-muted-foreground font-mono-data flex-shrink-0">{page.count}×</span>
-          <span className="text-muted-foreground flex-shrink-0 flex items-center gap-0.5">
+      {data.map((row, i) => (
+        <div key={i} className="flex items-start gap-2 text-[11px] py-0.5">
+          <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground truncate">{row.sourcePage}</span>
+              <span className="text-muted-foreground">→</span>
+              {row.destination ? (
+                <a
+                  href={row.destination}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary font-medium truncate hover:underline"
+                  title={row.destination}
+                >
+                  {row.destinationLabel}
+                </a>
+              ) : (
+                <span className="text-muted-foreground italic">{row.destinationLabel}</span>
+              )}
+            </div>
+          </div>
+          <span className="text-muted-foreground font-mono-data flex-shrink-0">{row.count}×</span>
+          <span className="text-muted-foreground flex-shrink-0 flex items-center gap-0.5 whitespace-nowrap">
             <Clock className="h-2.5 w-2.5" />
-            {format(new Date(page.lastAt), "MMM d, h:mm a")}
+            {format(new Date(row.lastAt), "MMM d, h:mm a")}
           </span>
-        </div>
+        </div>  
       ))}
     </div>
   );

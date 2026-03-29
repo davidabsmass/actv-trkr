@@ -43,13 +43,11 @@ const Signup = () => {
       if (signInErr) throw signInErr;
 
       const orgId = crypto.randomUUID();
-      const { error: orgErr } = await supabase.from("orgs").insert({ id: orgId, name: orgName });
+      const { error: orgErr } = await supabase.rpc("create_org_with_admin", {
+        p_org_id: orgId,
+        p_name: orgName,
+      });
       if (orgErr) throw orgErr;
-
-      const { error: ouErr } = await supabase
-        .from("org_users")
-        .insert({ org_id: orgId, user_id: user.id, role: "admin" });
-      if (ouErr) throw ouErr;
 
       if (siteUrl) {
         let domain: string;

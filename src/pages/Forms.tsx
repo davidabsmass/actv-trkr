@@ -445,10 +445,10 @@ export default function Forms() {
 
     setSyncing(true);
 
-    // 30s client-side timeout
+    // 60s client-side timeout (sync involves WP round-trip + DB queries)
     const timeoutId = setTimeout(() => {
       toast.warning("Sync is taking longer than expected. The operation will continue in the background.");
-    }, 30000);
+    }, 60000);
     try {
       const results = await Promise.allSettled(
         siteIds.map((siteId) =>

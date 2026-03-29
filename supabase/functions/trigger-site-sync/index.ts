@@ -476,30 +476,26 @@ Deno.serve(async (req) => {
 
     if (shouldAutoBackfillAvada) {
       avadaBackfillAttempted = true;
-      const { response: backfillRes, endpoint: backfillEndpoint } = await triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash);
-
-      if (!backfillRes.ok) {
-        const backfillBody = await backfillRes.text();
-        avadaBackfillRouteMissing =
-          backfillRes.status === 404 && backfillBody.toLowerCase().includes("rest_no_route");
-
-        avadaBackfillError = avadaBackfillRouteMissing
-          ? "Avada reimport endpoint is missing in your WordPress plugin. Reinstall/update ACTV TRKR from this dashboard, then click Sync Entries again."
-          : `Avada backfill failed (${backfillRes.status})`;
-
-        wpWarnings.push(avadaBackfillError);
-        console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
-      } else {
-        const backfillRaw = await backfillRes.text();
-        let backfillData: Record<string, unknown> = { raw: backfillRaw };
-        try {
-          backfillData = JSON.parse(backfillRaw);
-        } catch {
-          // Keep raw string payload
-        }
-        avadaBackfillEntries = Number(backfillData.entries || 0);
-      }
+      // Fire-and-forget: don't await the backfill response to avoid edge function timeout.
+      // The backfill runs on WordPress and will ingest data via the normal ingest endpoints.
+      triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash)
+        .then(async ({ response: backfillRes, endpoint: backfillEndpoint }) => {
+          if (!backfillRes.ok) {
+            const backfillBody = await backfillRes.text();
+            console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
+          } else {
+            const backfillRaw = await backfillRes.text();
+            console.log(`WP Avada backfill succeeded (${backfillEndpoint}): ${backfillRaw.slice(0, 200)}`);
+          }
+        })
+        .catch((err) => {
+          console.error("WP Avada backfill fire-and-forget error:", err);
+        });
+      // Don't set error/entries here — backfill is async now
+      console.log("Avada backfill triggered (fire-and-forget)");
     }
+
+    // Skip the old synchronous backfill result processing block
 
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {

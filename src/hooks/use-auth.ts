@@ -45,6 +45,7 @@ export function useAuth() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    window.location.href = "/auth";
   };
 
   return { session, loading, signOut, user: session?.user };

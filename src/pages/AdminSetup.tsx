@@ -193,6 +193,95 @@ export default function AdminSetup() {
     else { setSubSortKey(key); setSubSortAsc(false); }
   };
 
+  const loadBilling = async (email: string) => {
+    if (managingSub === email) { setManagingSub(null); setBillingData(null); return; }
+    setManagingSub(email);
+    setBillingLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "get_subscriber_billing", email },
+      });
+      if (error) throw error;
+      setBillingData(data);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load billing");
+      setBillingData(null);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleSendPasswordReset = async (email: string) => {
+    setActionLoading("reset-" + email);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "send_password_reset", email },
+      });
+      if (error) throw error;
+      toast.success(`Password reset email sent to ${email}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reset");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRefund = async (chargeId: string) => {
+    if (!confirm("Are you sure you want to issue a full refund for this charge?")) return;
+    setActionLoading("refund-" + chargeId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "refund_charge", charge_id: chargeId },
+      });
+      if (error) throw error;
+      toast.success(`Refund processed: $${data.refund.amount}`);
+      if (managingSub) loadBilling(managingSub);
+    } catch (err: any) {
+      toast.error(err.message || "Refund failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelSub = async (subscriptionId: string, immediate: boolean) => {
+    const msg = immediate ? "Cancel immediately? The customer will lose access now." : "Cancel at end of billing period?";
+    if (!confirm(msg)) return;
+    setActionLoading("cancel-" + subscriptionId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "cancel_subscription", subscription_id: subscriptionId, immediate },
+      });
+      if (error) throw error;
+      toast.success(immediate ? "Subscription cancelled immediately" : "Subscription will cancel at period end");
+      if (managingSub) loadBilling(managingSub);
+    } catch (err: any) {
+      toast.error(err.message || "Cancel failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteUser = async (sub: any) => {
+    if (!confirm(`Permanently delete ${sub.email}? This cannot be undone.`)) return;
+    setActionLoading("delete-" + sub.email);
+    try {
+      // Find user_id from profiles
+      const { data: profile } = await supabase.from("profiles").select("user_id").eq("email", sub.email).maybeSingle();
+      if (profile?.user_id) {
+        await supabase.functions.invoke("admin-manage-user", {
+          body: { action: "delete_user", user_id: profile.user_id },
+        });
+      }
+      toast.success(`User ${sub.email} deleted`);
+      queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });
+      setManagingSub(null);
+    } catch (err: any) {
+      toast.error(err.message || "Delete failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const enrichedOrgs = useMemo(() => {
     if (!orgsData) return [];
     const settingsMap: Record<string, any> = {};

@@ -363,14 +363,26 @@ export default function Forms() {
     queryKey: ["leads_for_forms_page", orgId, startDate, endDate],
     queryFn: async () => {
       if (!orgId) return [];
-      const { data, error } = await supabase
-        .from("leads")
-        .select("form_id, submitted_at, source, session_id")
-        .eq("org_id", orgId)
-        .gte("submitted_at", `${startDate}T00:00:00Z`)
-        .lte("submitted_at", `${endDate}T23:59:59.999Z`);
-      if (error) throw error;
-      return data;
+      // Fetch all leads (paginate past 1000 limit) excluding trashed
+      const PAGE_SIZE = 1000;
+      let allLeads: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("leads")
+          .select("form_id, submitted_at, source, session_id")
+          .eq("org_id", orgId)
+          .neq("status", "trashed")
+          .gte("submitted_at", `${startDate}T00:00:00Z`)
+          .lte("submitted_at", `${endDate}T23:59:59.999Z`)
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allLeads = allLeads.concat(data);
+        if (data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return allLeads;
     },
     enabled: !!orgId,
   });

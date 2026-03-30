@@ -35,13 +35,56 @@ function inferAvadaFieldName(type: string, value: string, position: number): str
 /**
  * If fields array contains Avada CSV blobs (data + field_types entries),
  * parse them into individual field objects. Returns original fields if not Avada CSV.
+ * 
+ * Also handles "data-only" blobs (no field_types) by accepting an optional
+ * schema template looked up from existing lead_fields_flat for the same form.
  */
-function parseAvadaFieldsIfNeeded(fields: any[], provider: string): any[] {
+function parseAvadaFieldsIfNeeded(
+  fields: any[],
+  provider: string,
+  schemaTemplate?: { field_key: string; field_label: string }[],
+): any[] {
   if (provider !== "avada") return fields;
   
   const dataEntry = fields.find((f: any) => f.name === "data" || f.label === "data");
   const typesEntry = fields.find((f: any) => f.name === "field_types" || f.label === "field_types");
   
+  // ── Case 1: data-only blob (no field_types) — use schema template ──
+  if (dataEntry?.value && !typesEntry?.value && schemaTemplate && schemaTemplate.length > 0) {
+    const raw = dataEntry.value as string;
+    // Smart split: split by ", " but the LAST field gets all remaining text
+    const parts = raw.split(", ");
+    const expected = schemaTemplate.length;
+    const values: string[] = [];
+    
+    if (parts.length <= expected) {
+      // Exact or fewer — map 1:1
+      for (let i = 0; i < expected; i++) values.push(parts[i] || "");
+    } else {
+      // More parts than fields — first N-1 fields get one part each, last gets the rest
+      for (let i = 0; i < expected - 1; i++) values.push(parts[i] || "");
+      values.push(parts.slice(expected - 1).join(", "));
+    }
+    
+    const parsed: any[] = [];
+    for (let i = 0; i < schemaTemplate.length; i++) {
+      const val = (values[i] || "").trim();
+      if (!val || val === "Array") continue;
+      parsed.push({
+        name: schemaTemplate[i].field_key,
+        label: schemaTemplate[i].field_label,
+        type: "text",
+        value: val,
+      });
+    }
+    
+    if (parsed.length > 0) {
+      console.log(`Avada data-only parser produced ${parsed.length} fields using schema template`);
+      return parsed;
+    }
+  }
+  
+  // ── Case 2: data + field_types blobs — original CSV parsing ──
   if (!dataEntry?.value || !typesEntry?.value) return fields;
   
   const SKIP_AVADA_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page", "checkbox"]);
@@ -77,19 +120,14 @@ function parseAvadaFieldsIfNeeded(fields: any[], provider: string): any[] {
     });
   }
   
-  // If CSV parsing produced results, use them; otherwise return originals
-  // (minus the metadata fields which would be skipped anyway)
   if (parsed.length > 0) {
     console.log(`Avada CSV parser produced ${parsed.length} fields from blob`);
     return parsed;
   }
   
-  // CSV parsing failed (likely commas in values) — try to reassemble
-  // by matching field count from types to a smarter split
-  // Count non-skip types to know expected field count
+  // CSV parsing failed — try greedy reassembly
   const expectedCount = types.filter((t: string) => !SKIP_AVADA_TYPES.has(t.toLowerCase().trim())).length;
   if (expectedCount > 0 && allValues.length > expectedCount) {
-    // More values than expected = commas inside values. Try greedy reassembly.
     const reassembled: string[] = [];
     let valIdx = 0;
     for (let i = 0; i < types.length; i++) {
@@ -100,7 +138,6 @@ function parseAvadaFieldsIfNeeded(fields: any[], provider: string): any[] {
         reassembled.push(allValues[valIdx] || "");
         valIdx++;
       } else {
-        // Last field gets all remaining values joined back
         reassembled.push(allValues.slice(valIdx).join(", "));
         valIdx = allValues.length;
         break;
@@ -134,6 +171,70 @@ function parseAvadaFieldsIfNeeded(fields: any[], provider: string): any[] {
   }
   
   return fields;
+}
+
+/**
+ * Look up known field schema for a form from existing lead_fields_flat entries.
+ * Returns ordered array of {field_key, field_label} or null if none found.
+ */
+async function getFormFieldSchema(
+  supabase: any,
+  formId: string,
+  orgId: string,
+): Promise<{ field_key: string; field_label: string }[] | null> {
+  // Find a lead for this form that HAS flat fields
+  const { data: sampleLead } = await supabase
+    .from("lead_fields_flat")
+    .select("lead_id")
+    .eq("org_id", orgId)
+    .in("lead_id", 
+      supabase.from("leads").select("id").eq("form_id", formId).eq("org_id", orgId).neq("status", "trashed")
+    )
+    .limit(1);
+  
+  // Simpler approach: get all distinct field_key/field_label pairs for this form
+  const { data: fieldRows } = await supabase
+    .from("lead_fields_flat")
+    .select("field_key, field_label, lead_id")
+    .eq("org_id", orgId);
+  
+  if (!fieldRows || fieldRows.length === 0) return null;
+  
+  // Get lead IDs for this form
+  const { data: formLeads } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("form_id", formId)
+    .eq("org_id", orgId)
+    .neq("status", "trashed")
+    .limit(100);
+  
+  if (!formLeads || formLeads.length === 0) return null;
+  const formLeadIds = new Set(formLeads.map((l: any) => l.id));
+  
+  // Filter field rows to this form and deduplicate
+  const seen = new Map<string, string>();
+  const forThisForm = fieldRows.filter((r: any) => formLeadIds.has(r.lead_id));
+  
+  for (const row of forThisForm) {
+    if (!seen.has(row.field_key)) {
+      seen.set(row.field_key, row.field_label || row.field_key);
+    }
+  }
+  
+  if (seen.size === 0) return null;
+  
+  // Sort by numeric key
+  const schema = [...seen.entries()]
+    .map(([key, label]) => ({ field_key: key, field_label: label }))
+    .sort((a, b) => {
+      const aNum = parseInt(a.field_key);
+      const bNum = parseInt(b.field_key);
+      if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+      return a.field_key.localeCompare(b.field_key);
+    });
+  
+  return schema;
 }
 
 // In-memory dedup cache (survives within a single isolate lifetime)
@@ -337,8 +438,9 @@ Deno.serve(async (req) => {
         if ((existingFieldCount || 0) === 0) {
           console.log(`Enriching existing lead ${canonicalLead.id} with ${fields.length} fields (provider=${providerName})`);
           
-          // Try Avada CSV parsing first
-          const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName);
+          // Get schema template for Avada data-only blobs
+          const schemaTemplate = providerName === "avada" ? await getFormFieldSchema(supabase, formId, orgId) : null;
+          const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName, schemaTemplate || undefined);
           
           const ENRICH_SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
           const ENRICH_SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
@@ -396,7 +498,8 @@ Deno.serve(async (req) => {
 
     if (fields && Array.isArray(fields)) {
       // Parse Avada CSV blobs into individual fields if applicable
-      const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName);
+      const schemaTemplate2 = providerName === "avada" ? await getFormFieldSchema(supabase, formId, orgId) : null;
+      const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName, schemaTemplate2 || undefined);
       
       const flatRows = parsedFields
         .filter((f: any) => {

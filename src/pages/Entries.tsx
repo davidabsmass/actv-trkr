@@ -442,38 +442,58 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         columnOrder.get(key)!.count++;
       }
 
-      // Heuristic fallback: if NO real-labeled fields exist, infer labels for numeric-only fields
-      if (!hasAnyRealLabel && numericOnlyFields.length > 0) {
-        const keyToSample = new Map<string, string>();
-        for (const f of numericOnlyFields) {
-          if (!keyToSample.has(f.field_key)) keyToSample.set(f.field_key, f.value_text);
-        }
-        const sortedKeys = [...keyToSample.keys()].sort((a, b) => Number(a) - Number(b));
-        const usedLabels = new Set<string>();
-        const keyLabelMap = new Map<string, string>();
-        for (const k of sortedKeys) {
-          const sample = keyToSample.get(k) || "";
-          let inferred = inferLabelFromValue(sample);
-          if (inferred && usedLabels.has(inferred)) inferred = null;
-          if (!inferred) {
-            const idx = sortedKeys.indexOf(k);
-            const fallbacks = ["Name", "Email", "Phone", "Company", "Details"];
-            inferred = fallbacks[idx] && !usedLabels.has(fallbacks[idx]) ? fallbacks[idx] : `Field ${k}`;
+      // Process numeric-only fields: if real-labeled columns already exist, map by sorted position;
+      // otherwise use the heuristic inference fallback
+      if (numericOnlyFields.length > 0) {
+        if (hasAnyRealLabel && columnOrder.size > 0) {
+          // Map numeric keys to existing columns by sorted position
+          const existingCols = [...columnOrder.values()];
+          const sortedNumKeys = [...new Set(numericOnlyFields.map(f => f.field_key.trim()))].sort((a, b) => Number(a) - Number(b));
+          const keyToCol = new Map<string, { key: string; label: string }>();
+          for (let i = 0; i < sortedNumKeys.length && i < existingCols.length; i++) {
+            keyToCol.set(sortedNumKeys[i], existingCols[i]);
           }
-          usedLabels.add(inferred);
-          keyLabelMap.set(k, inferred);
-        }
-        for (const f of numericOnlyFields) {
-          const rawKey = f.field_key.trim();
-          const label = keyLabelMap.get(rawKey) || `Field ${rawKey}`;
-          const key = normalizeKey(label) || `field_${rawKey}`;
-          leadsWithFlatFields.add(f.lead_id);
-          if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-          map.get(f.lead_id)![key] = f.value_text;
-          if (!columnOrder.has(key)) {
-            columnOrder.set(key, { key, label, count: 0 });
+          for (const f of numericOnlyFields) {
+            const col = keyToCol.get(f.field_key.trim());
+            if (!col) continue;
+            leadsWithFlatFields.add(f.lead_id);
+            if (!map.has(f.lead_id)) map.set(f.lead_id, {});
+            map.get(f.lead_id)![col.key] = f.value_text;
+            columnOrder.get(col.key)!.count++;
           }
-          columnOrder.get(key)!.count++;
+        } else {
+          // No real labels exist at all — infer labels from values
+          const keyToSample = new Map<string, string>();
+          for (const f of numericOnlyFields) {
+            if (!keyToSample.has(f.field_key)) keyToSample.set(f.field_key, f.value_text);
+          }
+          const sortedKeys = [...keyToSample.keys()].sort((a, b) => Number(a) - Number(b));
+          const usedLabels = new Set<string>();
+          const keyLabelMap = new Map<string, string>();
+          for (const k of sortedKeys) {
+            const sample = keyToSample.get(k) || "";
+            let inferred = inferLabelFromValue(sample);
+            if (inferred && usedLabels.has(inferred)) inferred = null;
+            if (!inferred) {
+              const idx = sortedKeys.indexOf(k);
+              const fallbacks = ["Name", "Email", "Phone", "Company", "Details"];
+              inferred = fallbacks[idx] && !usedLabels.has(fallbacks[idx]) ? fallbacks[idx] : `Field ${k}`;
+            }
+            usedLabels.add(inferred);
+            keyLabelMap.set(k, inferred);
+          }
+          for (const f of numericOnlyFields) {
+            const rawKey = f.field_key.trim();
+            const label = keyLabelMap.get(rawKey) || `Field ${rawKey}`;
+            const key = normalizeKey(label) || `field_${rawKey}`;
+            leadsWithFlatFields.add(f.lead_id);
+            if (!map.has(f.lead_id)) map.set(f.lead_id, {});
+            map.get(f.lead_id)![key] = f.value_text;
+            if (!columnOrder.has(key)) {
+              columnOrder.set(key, { key, label, count: 0 });
+            }
+            columnOrder.get(key)!.count++;
+          }
         }
       }
     }

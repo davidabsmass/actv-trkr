@@ -1273,12 +1273,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   }, [fieldsRaw, dedupedLeads]);
 
   const filtered = dedupedLeads.filter((lead) => {
-    const fields = leadFieldMap.get(lead.id);
-    if (!fields || Object.keys(fields).length === 0) return false;
     if (statusFilter !== "all" && lead.status !== statusFilter) return false;
     if (search) {
+      const fields = leadFieldMap.get(lead.id);
       const q = search.toLowerCase();
-      const searchable = [lead.source, lead.status, ...Object.values(fields)].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, lead.status, ...Object.values(fields || {})].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
     return true;

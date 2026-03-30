@@ -399,7 +399,7 @@ export default function WebsiteSetup() {
               const siteStatus: "connected" | "pending" | "disconnected" = isRecent ? "connected" : (hasHeartbeat || hasPluginOrData) ? "pending" : "disconnected";
               const statusLabels = {
                 connected: t("websiteSetup.statusConnected"),
-                pending: t("websiteSetup.statusPending"),
+                pending: t("websiteSetup.statusConnectedIdle", "Connected (Idle)"),
                 disconnected: t("websiteSetup.statusAwaitingConnection"),
               };
 

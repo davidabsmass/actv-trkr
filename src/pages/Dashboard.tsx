@@ -606,15 +606,17 @@ const Dashboard = () => {
           <LatestSummary />
 
           {/* Row 4 – Key insights stacked */}
-          <FunnelWidget
-            totalSessions={realtimeData?.totalSessions || 0}
-            totalPageviews={realtimeData?.totalPageviews || 0}
-            totalLeads={realtimeData?.totalLeads || 0}
-            formStarts={formStartsCount || undefined}
-            goalConversions={goalFunnelData || undefined}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <WhatsWorking />
+            <FunnelWidget
+              totalSessions={realtimeData?.totalSessions || 0}
+              totalPageviews={realtimeData?.totalPageviews || 0}
+              totalLeads={realtimeData?.totalLeads || 0}
+              formStarts={formStartsCount || undefined}
+              goalConversions={goalFunnelData || undefined}
+            />
+          </div>
           <RevenueWidget orgId={orgId} startDate={startDate} endDate={endDate} />
-          <WhatsWorking />
           <TopPagesAndSources startDate={startDate} endDate={endDate} />
         </div>
       )}

@@ -87,11 +87,12 @@ serve(async (req) => {
 
     // Fetch enriched context: org name, site domains, top pages, top sources
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-    const [orgData, sitesData, topPagesData, topSourcesData] = await Promise.all([
+    const [orgData, sitesData, topPagesData, topSourcesData, ctaClicksData] = await Promise.all([
       adminClient.from("orgs").select("name").eq("id", orgId).single(),
       adminClient.from("sites").select("domain").eq("org_id", orgId).limit(10),
       adminClient.from("pageviews").select("page_path").eq("org_id", orgId).gte("occurred_at", thirtyDaysAgo).limit(500),
       adminClient.from("sessions").select("utm_source, landing_referrer_domain").eq("org_id", orgId).gte("started_at", thirtyDaysAgo).limit(500),
+      adminClient.from("events").select("target_text, page_path, meta").eq("org_id", orgId).eq("event_type", "cta_click").gte("occurred_at", thirtyDaysAgo).limit(500),
     ]);
 
     const orgName = orgData.data?.name || "Unknown";

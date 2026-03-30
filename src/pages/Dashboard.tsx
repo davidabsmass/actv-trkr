@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { GetStartedBanner } from "@/components/dashboard/GetStartedBanner";
@@ -95,6 +95,10 @@ function AttentionPanel({ items, t }: { items: AttentionItem[]; t: (key: string)
     info: "bg-primary",
   };
 
+  const markAttentionChecked = useCallback(() => {
+    localStorage.setItem("attention_last_checked", new Date().toISOString());
+  }, []);
+
   return (
     <div className="glass-card p-5 animate-slide-up h-full">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -114,6 +118,7 @@ function AttentionPanel({ items, t }: { items: AttentionItem[]; t: (key: string)
               </div>
               <Link
                 to={item.link}
+                onClick={markAttentionChecked}
                 className="text-xs font-medium text-primary hover:underline whitespace-nowrap ml-2"
               >
                 {item.linkLabel} →
@@ -255,18 +260,20 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
-  // Security threats (last 24h)
+  // Security threats – only show events newer than last attention check
+  const attentionLastChecked = useMemo(() => localStorage.getItem("attention_last_checked"), []);
   const { data: recentSecurityEvents } = useQuery({
-    queryKey: ["recent_security_events", orgId],
+    queryKey: ["recent_security_events", orgId, attentionLastChecked],
     queryFn: async () => {
       if (!orgId) return [];
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const sinceTime = attentionLastChecked && attentionLastChecked > since24h ? attentionLastChecked : since24h;
       const { data } = await supabase
         .from("security_events").select("id, event_type, severity, title")
         .eq("org_id", orgId)
         .is("reviewed_at", null)
         .in("severity", ["high", "critical"])
-        .gte("occurred_at", since)
+        .gte("occurred_at", sinceTime)
         .limit(10);
       return data || [];
     },

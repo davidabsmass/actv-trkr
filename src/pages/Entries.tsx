@@ -377,6 +377,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       return v !== "" && /^\d+(\.\d+)?$/.test(v);
     };
 
+    const isPlaceholderLabel = (value: string | null | undefined) => {
+      const v = (value || "").trim();
+      return /^field\s+\d+$/i.test(v);
+    };
+
     const normalizeKey = (value: string) =>
       value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
@@ -401,8 +406,12 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         if (SKIP_TYPES_SET.has((f.field_type || "").toLowerCase())) continue;
         if (!f.value_text || f.value_text.trim() === "") continue;
 
-        // Skip raw numeric field IDs (e.g. "28", "29", "28.3") if they don't have a real label
-        const hasRealLabel = !!rawLabel && !isNumericLike(rawLabel) && rawLabel !== rawKey;
+        // Skip raw numeric field IDs (e.g. "28", "29", "28.3") unless they have a real descriptive label
+        const hasRealLabel =
+          !!rawLabel &&
+          !isNumericLike(rawLabel) &&
+          !isPlaceholderLabel(rawLabel) &&
+          rawLabel !== rawKey;
         if (isNumericLike(rawKey) && !hasRealLabel) continue;
 
         const label = hasRealLabel ? rawLabel : rawKey;
@@ -460,7 +469,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
             const rawLabel = (labels[valueIdx - 1] || "").trim();
             const existingCol = existingColumns[i];
-            const hasMeaningfulLabel = rawLabel !== "" && !isNumericLike(rawLabel);
+            const hasMeaningfulLabel =
+              rawLabel !== "" &&
+              !isNumericLike(rawLabel) &&
+              !isPlaceholderLabel(rawLabel);
 
             const label = hasMeaningfulLabel
               ? rawLabel
@@ -510,7 +522,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             if (SKIP_KEYS_SET.has(name)) continue;
             if (SKIP_TYPES_SET.has((d.type || "").toLowerCase())) continue;
 
-            const hasMeaningfulLabel = !!rawLabel && !isNumericLike(rawLabel);
+            const hasMeaningfulLabel =
+              !!rawLabel &&
+              !isNumericLike(rawLabel) &&
+              !isPlaceholderLabel(rawLabel);
             if (isNumericLike(name) && !hasMeaningfulLabel) continue;
 
             const label = hasMeaningfulLabel ? rawLabel : name;
@@ -540,14 +555,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
       // Generic "field_N" key with "Field N" label
       if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
+      if (isPlaceholderLabel(l)) return true;
       return false;
     };
 
-    const realCols = [...columnOrder.values()].filter(c => !isGenericColumn(c));
-    // Only use generic cols if there are NO real cols at all
-    const finalCols = realCols.length > 0
-      ? realCols
-      : [...columnOrder.values()];
+    const finalCols = [...columnOrder.values()].filter(c => !isGenericColumn(c));
 
     // Also clean up leadFieldMap: remove entries for dropped column keys
     const keptKeys = new Set(finalCols.map(c => c.key));

@@ -1101,6 +1101,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       return v !== "" && /^\d+(\.\d+)?$/.test(v);
     };
 
+    const isPlaceholderLabel = (value: string | null | undefined) => {
+      const v = (value || "").trim();
+      return /^field\s+\d+$/i.test(v);
+    };
+
     const normalizeKey = (value: string) =>
       value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
@@ -1124,13 +1129,17 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         if (SKIP_TYPES_SET.has((f.field_type || "").toLowerCase())) continue;
         if (!f.value_text || f.value_text.trim() === "") continue;
 
-        const hasRealLabel = !!rawLabel && !isNumericLike(rawLabel) && rawLabel !== rawKey;
+        const hasRealLabel =
+          !!rawLabel &&
+          !isNumericLike(rawLabel) &&
+          !isPlaceholderLabel(rawLabel) &&
+          rawLabel !== rawKey;
 
-        const label = hasRealLabel
-          ? rawLabel
-          : (isNumericLike(rawKey) ? `Field ${rawKey}` : (rawLabel || rawKey));
+        if (isNumericLike(rawKey) && !hasRealLabel) continue;
+
+        const label = hasRealLabel ? rawLabel : rawKey;
         const existingKey = getExistingKeyByLabel(label);
-        const key = existingKey || rawKey;
+        const key = existingKey || (isNumericLike(rawKey) ? normalizeKey(label) || `field_${rawKey}` : rawKey);
 
         leadsWithFlatFields.add(f.lead_id);
         if (!map.has(f.lead_id)) map.set(f.lead_id, {});
@@ -1181,7 +1190,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
             const rawLabel = (labels[valueIdx - 1] || "").trim();
             const existingCol = existingColumns[i];
-            const hasMeaningfulLabel = rawLabel !== "" && !isNumericLike(rawLabel);
+            const hasMeaningfulLabel =
+              rawLabel !== "" &&
+              !isNumericLike(rawLabel) &&
+              !isPlaceholderLabel(rawLabel);
 
             const label = hasMeaningfulLabel
               ? rawLabel
@@ -1242,7 +1254,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
             if (SKIP_KEYS_SET.has(name)) continue;
             if (SKIP_TYPES_SET.has((d.type || "").toLowerCase())) continue;
 
-            const hasMeaningfulLabel = !!rawLabel && !isNumericLike(rawLabel);
+            const hasMeaningfulLabel =
+              !!rawLabel &&
+              !isNumericLike(rawLabel) &&
+              !isPlaceholderLabel(rawLabel);
             if (isNumericLike(name) && !hasMeaningfulLabel) continue;
 
             const label = hasMeaningfulLabel ? rawLabel : name;
@@ -1268,11 +1283,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       const l = col.label.trim();
       if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
       if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
+      if (isPlaceholderLabel(l)) return true;
       return false;
     };
 
-    const realCols = [...columnOrder.values()].filter((c) => !isGenericColumn(c));
-    const finalCols = realCols.length > 0 ? realCols : [...columnOrder.values()];
+    const finalCols = [...columnOrder.values()].filter((c) => !isGenericColumn(c));
 
     const keptKeys = new Set(finalCols.map((c) => c.key));
     for (const [leadId, fields] of map.entries()) {

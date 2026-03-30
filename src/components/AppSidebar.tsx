@@ -35,9 +35,9 @@ const telemetryItems: NavItem[] = [
   { titleKey: "sidebar.performance", url: "/performance", icon: TrendingUp },
   { titleKey: "sidebar.reports", url: "/reports", icon: FileText },
   { titleKey: "sidebar.forms", url: "/forms", icon: TableProperties },
-  { titleKey: "sidebar.seo", url: "/seo", icon: Search },
   { titleKey: "sidebar.monitoring", url: "/monitoring", icon: Activity },
   { titleKey: "sidebar.security", url: "/security", icon: ShieldAlert },
+  { titleKey: "sidebar.seo", url: "/seo", icon: Search },
 ];
 
 export function AppSidebar() {

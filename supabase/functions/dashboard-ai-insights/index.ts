@@ -87,11 +87,12 @@ serve(async (req) => {
 
     // Fetch enriched context: org name, site domains, top pages, top sources
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-    const [orgData, sitesData, topPagesData, topSourcesData] = await Promise.all([
+    const [orgData, sitesData, topPagesData, topSourcesData, ctaClicksData] = await Promise.all([
       adminClient.from("orgs").select("name").eq("id", orgId).single(),
       adminClient.from("sites").select("domain").eq("org_id", orgId).limit(10),
       adminClient.from("pageviews").select("page_path").eq("org_id", orgId).gte("occurred_at", thirtyDaysAgo).limit(500),
       adminClient.from("sessions").select("utm_source, landing_referrer_domain").eq("org_id", orgId).gte("started_at", thirtyDaysAgo).limit(500),
+      adminClient.from("events").select("target_text, page_path, meta").eq("org_id", orgId).eq("event_type", "cta_click").gte("occurred_at", thirtyDaysAgo).limit(500),
     ]);
 
     const orgName = orgData.data?.name || "Unknown";
@@ -113,6 +114,15 @@ serve(async (req) => {
     const topSourcesStr = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
       .map(([src, cnt]) => `${src} (${cnt} sessions)`).join(", ");
 
+    // Aggregate CTA clicks to know what buttons/CTAs already exist on the site
+    const ctaCounts: Record<string, number> = {};
+    (ctaClicksData.data || []).forEach((e: any) => {
+      const label = (e.target_text || "").trim();
+      if (label) ctaCounts[label] = (ctaCounts[label] || 0) + 1;
+    });
+    const topCtasStr = Object.entries(ctaCounts).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([label, cnt]) => `"${label}" (${cnt} clicks)`).join(", ");
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -122,6 +132,8 @@ CLIENT: ${orgName}
 SITES: ${siteDomains || "None"}
 TOP PAGES (30d): ${topPagesStr || "No data"}
 TOP SOURCES (30d): ${topSourcesStr || "No data"}
+EXISTING CTAs CLICKED (30d): ${topCtasStr || "No CTA click data"}
+
 
 Return a JSON object with this exact structure (no markdown, no code fences):
 {
@@ -137,7 +149,8 @@ Rules:
 - Be specific about numbers, not vague. Reference the client name, specific pages, and sources.
 - Suggestions should feel like they come from a strategist, not a chatbot.
 - If data is sparse, acknowledge the early stage and focus on setup/launch actions.
-- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words.`;
+- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words.
+- CRITICAL: Check the "EXISTING CTAs CLICKED" list before suggesting to add any button or CTA. If a CTA like "Schedule Appointment" or "Book Online" already exists and gets clicks, do NOT suggest adding it — instead suggest optimizing its placement, visibility, or the page it links to.`;
 
     const userPrompt = `Here are the current dashboard metrics for ${orgName}:
 

@@ -58,7 +58,7 @@ export default function SettingsPage() {
             <SitesSection />
             <FormsSection />
             <NotificationsSection />
-            <GoalsSection />
+            <div ref={goalsRef}><GoalsSection /></div>
             <SeoVisibilitySection />
           </div>
         </TabsContent>

@@ -1310,24 +1310,34 @@ function FormAnalytics({ orgId, formId }: { orgId: string | null; formId: string
   });
 
   const { dailyData, sourceData, statusData, totalLeads } = useMemo(() => {
-    if (!leads || leads.length === 0) return { dailyData: [], sourceData: [], statusData: [], totalLeads: 0 };
     const byDay: Record<string, number> = {};
     const bySource: Record<string, number> = {};
     const byStatus: Record<string, number> = {};
-    for (const l of leads) {
-      const day = format(new Date(l.submitted_at), "yyyy-MM-dd");
-      byDay[day] = (byDay[day] || 0) + 1;
-      const src = l.source || "direct";
-      bySource[src] = (bySource[src] || 0) + 1;
-      byStatus[l.status] = (byStatus[l.status] || 0) + 1;
+
+    // Pre-fill every day in the selected range with 0
+    const rangeStart = new Date(startDate);
+    const rangeEnd = new Date(endDate);
+    for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+      byDay[format(d, "yyyy-MM-dd")] = 0;
     }
+
+    if (leads) {
+      for (const l of leads) {
+        const day = format(new Date(l.submitted_at), "yyyy-MM-dd");
+        byDay[day] = (byDay[day] || 0) + 1;
+        const src = l.source || "direct";
+        bySource[src] = (bySource[src] || 0) + 1;
+        byStatus[l.status] = (byStatus[l.status] || 0) + 1;
+      }
+    }
+
     return {
       dailyData: Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, dateLabel: format(new Date(date), "MMM d"), leads: count })),
       sourceData: Object.entries(bySource).sort((a, b) => b[1] - a[1]).map(([source, count]) => ({ source, count })),
       statusData: Object.entries(byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => ({ status, count })),
-      totalLeads: leads.length,
+      totalLeads: leads?.length ?? 0,
     };
-  }, [leads]);
+  }, [leads, startDate, endDate]);
 
   return (
     <div className="space-y-5">

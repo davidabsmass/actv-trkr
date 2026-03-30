@@ -1093,7 +1093,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     const map = new Map<string, Record<string, string>>();
     const columnOrder = new Map<string, { key: string; label: string; count: number }>();
 
-    const SKIP_TYPES_SET = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+    const SKIP_TYPES_SET = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page", "consent", "checkbox"]);
     const SKIP_KEYS_SET = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
 
     const isNumericLike = (value: string | null | undefined) => {
@@ -1110,6 +1110,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       const v = value.trim();
       if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Email";
       if (/^[\+]?[\d\s\-\(\)\.]{7,}$/.test(v)) return "Phone";
+      if (/^\d{4,5}(-\d{4})?$/.test(v)) return "Zip Code";
+      const US_STATES = new Set(["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]);
+      if (US_STATES.has(v.toUpperCase()) || /^[A-Z][a-z]+ ?[A-Z]?[a-z]*$/.test(v) && v.length < 20 && /island|hampshire|carolina|dakota|virginia|jersey|mexico|york/i.test(v)) return "State";
       return null;
     };
 
@@ -1351,6 +1354,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
       if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
       if (isPlaceholderLabel(l)) return true;
+      if (/^consent$/i.test(l)) return true;
       return false;
     };
 

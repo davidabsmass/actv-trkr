@@ -121,7 +121,7 @@ export function ContentPerformance({ pages, opportunities }: ContentProps) {
           </span>
         </div>
         {opportunities.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("content.noOpportunities")}</p>
+          <p className="text-xs text-muted-foreground">{t("content.noOpportunities")} {t("content.performanceStable", "Current performance is stable or improving organically.")}</p>
         ) : (
           <SortableTable rows={opportunities} defaultSort="sessions" />
         )}

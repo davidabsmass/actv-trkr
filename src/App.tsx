@@ -71,12 +71,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const OWNER_EMAIL = "david@newuniformdesign.com";
+
 function AuthRoute({ children }: { children: React.ReactNode }) {
   if (isPreviewEnvironment()) return <>{children}</>;
 
   const { session, loading } = useAuth();
   if (loading) return <PageSpinner />;
-  if (session) return <Navigate to="/dashboard" replace />;
+  if (session) {
+    const dest = session.user?.email === OWNER_EMAIL ? "/admin-setup" : "/dashboard";
+    return <Navigate to={dest} replace />;
+  }
   return <>{children}</>;
 }
 

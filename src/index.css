@@ -236,3 +236,6 @@
     box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
   }
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

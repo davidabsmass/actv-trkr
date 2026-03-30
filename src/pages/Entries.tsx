@@ -394,12 +394,12 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       return /^field\s+\d+$/i.test(v);
     };
 
-    const hasMeaningfulLabel = (label: string, key: string) => {
+    const hasMeaningfulLabel = (label: string, _key: string) => {
       const trimmed = (label || "").trim();
       if (!trimmed) return false;
       if (isNumericLike(trimmed)) return false;
       if (isPlaceholderLabel(trimmed)) return false;
-      return trimmed !== (key || "").trim();
+      return true;
     };
 
     const getColumnKeyByLabel = (label: string) => {
@@ -434,6 +434,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     const leadsWithFlatFields = new Set<string>();
 
     if (fieldsRaw && fieldsRaw.length > 0) {
+      // First pass: mark all leads that have ANY flat field records
+      for (const f of fieldsRaw) {
+        leadsWithFlatFields.add(f.lead_id);
+      }
+
       for (const f of fieldsRaw) {
         const rawKey = (f.field_key || "").trim();
         const rawLabel = (f.field_label || "").trim();
@@ -451,7 +456,6 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         const columnKey = `flat:${rawKey}`;
         ensureColumn(columnKey, label, isNumericLike(rawKey) ? 0 : 1, isNumericLike(rawKey) ? Number(rawKey) : Number.MAX_SAFE_INTEGER);
 
-        leadsWithFlatFields.add(f.lead_id);
         setLeadValue(f.lead_id, columnKey, value);
       }
     }
@@ -545,12 +549,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   }, [fieldsRaw, leads]);
 
   const filtered = (leads || []).filter((lead) => {
-    const fields = leadFieldMap.get(lead.id);
-    if (!fields || Object.keys(fields).length === 0) return false;
-
     if (search) {
+      const fields = leadFieldMap.get(lead.id);
       const q = search.toLowerCase();
-      const searchable = [lead.source, ...Object.values(fields)].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, ...Object.values(fields || {})].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
 

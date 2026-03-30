@@ -397,9 +397,12 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     const hasMeaningfulLabel = (label: string, key: string) => {
       const trimmed = (label || "").trim();
       if (!trimmed) return false;
+    const hasMeaningfulLabel = (label: string, key: string) => {
+      const trimmed = (label || "").trim();
+      if (!trimmed) return false;
       if (isNumericLike(trimmed)) return false;
       if (isPlaceholderLabel(trimmed)) return false;
-      return trimmed !== (key || "").trim();
+      return true;
     };
 
     const getColumnKeyByLabel = (label: string) => {
@@ -545,12 +548,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   }, [fieldsRaw, leads]);
 
   const filtered = (leads || []).filter((lead) => {
-    const fields = leadFieldMap.get(lead.id);
-    if (!fields || Object.keys(fields).length === 0) return false;
-
     if (search) {
+      const fields = leadFieldMap.get(lead.id);
       const q = search.toLowerCase();
-      const searchable = [lead.source, ...Object.values(fields)].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, ...Object.values(fields || {})].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
 

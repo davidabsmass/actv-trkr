@@ -30,6 +30,10 @@ export default function AdminSetup() {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const LOG_PAGE_SIZE = 20;
 
+  // Client-tier orgs (no monthly charge)
+  const CLIENT_TIER_NAMES = ["new uniform", "apyx", "georgia bone"];
+  const isClientTier = (name: string) => CLIENT_TIER_NAMES.some((n) => name.toLowerCase().includes(n));
+
   const focusLabels: Record<string, string> = {
     lead_volume: t("admin.growLeadVolume"),
     marketing_impact: t("admin.marketingImpactLabel"),

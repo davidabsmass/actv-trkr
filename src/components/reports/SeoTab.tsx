@@ -328,8 +328,8 @@ export default function SeoTab() {
       {(!scanHistory || scanHistory.length === 0) && !historyLoading && (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <Search className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">{t("dashboard.seoInsightsEmpty")}</p>
-          <p className="text-xs text-muted-foreground mt-1">{t("dashboard.scanNowHint")}</p>
+          <p className="text-sm text-muted-foreground">{t("reports.seoInsightsEmpty")}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("reports.scanNowHint")}</p>
         </div>
       )}
 

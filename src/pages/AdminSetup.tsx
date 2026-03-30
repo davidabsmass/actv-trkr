@@ -30,6 +30,10 @@ export default function AdminSetup() {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const LOG_PAGE_SIZE = 20;
 
+  // Client-tier orgs (no monthly charge)
+  const CLIENT_TIER_NAMES = ["new uniform", "apyx", "georgia bone"];
+  const isClientTier = (name: string) => CLIENT_TIER_NAMES.some((n) => name.toLowerCase().includes(n));
+
   const focusLabels: Record<string, string> = {
     lead_volume: t("admin.growLeadVolume"),
     marketing_impact: t("admin.marketingImpactLabel"),
@@ -544,41 +548,50 @@ export default function AdminSetup() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.organization")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">{t("admin.domain")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.focus")}</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.onboarded")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">{t("admin.lastChange")}</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {enrichedOrgs.map((org) => (
-                  <tr key={org.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrg(org.id)}>
-                    <td className="px-4 py-3 font-medium text-foreground">{org.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{org.sites?.[0]?.domain || "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs">{focusLabels[org.settings?.primary_focus] || "—"}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {org.settings?.onboarding_completed ? (
-                        <span className="text-xs text-success">✅</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">⏳</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
-                      {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-xs text-primary">{t("admin.view")}</span>
-                    </td>
-                  </tr>
-                ))}
-                {enrichedOrgs.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("admin.noOrgsFound")}</td></tr>
-                )}
-              </tbody>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.organization")}</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Tier</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">{t("admin.domain")}</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.focus")}</th>
+                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.onboarded")}</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">{t("admin.lastChange")}</th>
+                   <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground"></th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {enrichedOrgs.map((org) => {
+                   const tier = isClientTier(org.name) ? "client" : "paid";
+                   return (
+                   <tr key={org.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrg(org.id)}>
+                     <td className="px-4 py-3 font-medium text-foreground">{org.name}</td>
+                     <td className="px-4 py-3">
+                       <Badge variant={tier === "client" ? "secondary" : "default"} className="text-[10px]">
+                         {tier === "client" ? "Client" : "Paid"}
+                       </Badge>
+                     </td>
+                     <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{org.sites?.[0]?.domain || "—"}</td>
+                     <td className="px-4 py-3">
+                       <span className="text-xs">{focusLabels[org.settings?.primary_focus] || "—"}</span>
+                     </td>
+                     <td className="px-4 py-3 text-center">
+                       {org.settings?.onboarding_completed ? (
+                         <span className="text-xs text-success">✅</span>
+                       ) : (
+                         <span className="text-xs text-muted-foreground">⏳</span>
+                       )}
+                     </td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
+                       {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
+                     </td>
+                     <td className="px-4 py-3 text-right">
+                       <span className="text-xs text-primary">{t("admin.view")}</span>
+                     </td>
+                   </tr>
+                   );
+                 })}
+                 {enrichedOrgs.length === 0 && (
+                   <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("admin.noOrgsFound")}</td></tr>
+                 )}
+               </tbody>
             </table>
           </div>
         </>
@@ -586,15 +599,98 @@ export default function AdminSetup() {
 
       {activeMainTab === "metrics" && isOwner && (
         <div className="space-y-6">
-          {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <OwnerKpiCard icon={DollarSign} label="MRR" value={`$${totalMrr.toFixed(0)}`} />
-            <OwnerKpiCard icon={Users} label="Active" value={String(activeSubs.length)} />
-            <OwnerKpiCard icon={TrendingUp} label="Churn Rate" value={`${churnRateVal}%`} />
-            <OwnerKpiCard icon={DollarSign} label="ARPU" value={`$${avgArpu.toFixed(2)}`} />
-            <OwnerKpiCard icon={Users} label="New (this mo)" value={`${signupsThisMonth} vs ${signupsLastMonth}`} />
-            <OwnerKpiCard icon={AlertTriangle} label="Failed Payments" value={String(pastDueSubs.length)} />
-          </div>
+          {/* KPIs — Top-line */}
+          {(() => {
+            const arr = totalMrr * 12;
+            const paidSubs = activeSubs.filter((s: any) => Number(s.mrr || 0) > 0);
+            const clientSubs = enrichedOrgs.filter((o) => isClientTier(o.name)).length;
+            const ltv = churnedSubs.length > 0
+              ? (activeSubs.reduce((s: number, sub: any) => s + Number(sub.mrr || 0), 0) / (churnedSubs.length / Math.max(subscribers.length, 1)))
+              : totalMrr * 24; // assume 24-month LTV if no churn
+            const revenueGrowth = signupsLastMonth > 0
+              ? (((signupsThisMonth - signupsLastMonth) / signupsLastMonth) * 100).toFixed(0)
+              : signupsThisMonth > 0 ? "∞" : "0";
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                  <OwnerKpiCard icon={DollarSign} label="MRR" value={`$${totalMrr.toFixed(0)}`} />
+                  <OwnerKpiCard icon={DollarSign} label="ARR" value={`$${arr.toFixed(0)}`} />
+                  <OwnerKpiCard icon={Users} label="Paid Customers" value={String(paidSubs.length)} />
+                  <OwnerKpiCard icon={Users} label="Client Tier" value={String(clientSubs)} />
+                  <OwnerKpiCard icon={DollarSign} label="ARPU" value={`$${avgArpu.toFixed(0)}/mo`} />
+                  <OwnerKpiCard icon={TrendingUp} label="Est. LTV" value={`$${ltv.toFixed(0)}`} />
+                  <OwnerKpiCard icon={TrendingUp} label="Churn Rate" value={`${churnRateVal}%`} />
+                  <OwnerKpiCard icon={AlertTriangle} label="Past Due" value={String(pastDueSubs.length)} />
+                </div>
+
+                {/* Growth & Valuation Context */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Growth</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">New this month</span>
+                        <span className="font-medium text-foreground">{signupsThisMonth}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">New last month</span>
+                        <span className="font-medium text-foreground">{signupsLastMonth}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">MoM Growth</span>
+                        <span className="font-medium text-foreground">{revenueGrowth}%</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total Orgs</span>
+                        <span className="font-medium text-foreground">{enrichedOrgs.length}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Valuation Multiples</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">3x ARR</span>
+                        <span className="font-medium text-foreground">${(arr * 3).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">5x ARR</span>
+                        <span className="font-medium text-foreground">${(arr * 5).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">10x ARR</span>
+                        <span className="font-medium text-foreground">${(arr * 10).toLocaleString()}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground pt-1">SaaS companies typically sell at 3–10x ARR depending on growth rate and churn.</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Unit Economics</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">ARPU</span>
+                        <span className="font-medium text-foreground">${avgArpu.toFixed(2)}/mo</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Est. LTV</span>
+                        <span className="font-medium text-foreground">${ltv.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Churned</span>
+                        <span className="font-medium text-foreground">{churnedSubs.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Failed Payments</span>
+                        <span className="font-medium text-foreground">{pastDueSubs.length}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            );
+          })()}
 
           {/* Subscriber Table */}
           <Card>

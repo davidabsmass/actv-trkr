@@ -1106,6 +1106,13 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       return /^field\s+\d+$/i.test(v);
     };
 
+    const inferLabelFromValue = (value: string): string | null => {
+      const v = value.trim();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Email";
+      if (/^[\+]?[\d\s\-\(\)\.]{7,}$/.test(v)) return "Phone";
+      return null;
+    };
+
     const normalizeKey = (value: string) =>
       value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
@@ -1119,6 +1126,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     };
 
     const leadsWithFlatFields = new Set<string>();
+    // Track numeric-only fields for heuristic fallback
+    const numericOnlyFields: typeof fieldsRaw = [];
+    let hasAnyRealLabel = false;
 
     if (fieldsRaw && fieldsRaw.length > 0) {
       for (const f of fieldsRaw) {
@@ -1135,7 +1145,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           !isPlaceholderLabel(rawLabel) &&
           rawLabel !== rawKey;
 
-        if (isNumericLike(rawKey) && !hasRealLabel) continue;
+        if (isNumericLike(rawKey) && !hasRealLabel) {
+          numericOnlyFields.push(f);
+          continue;
+        }
+        hasAnyRealLabel = true;
 
         const label = hasRealLabel ? rawLabel : rawKey;
         const existingKey = getExistingKeyByLabel(label);

@@ -11,7 +11,7 @@ import { AiInsights } from "@/components/dashboard/AiInsights";
 import { WhatsWorking } from "@/components/dashboard/WhatsWorking";
 import { TopPagesAndSources } from "@/components/dashboard/TopPagesAndSources";
 import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
-import { FunnelWidget } from "@/components/dashboard/FunnelWidget";
+import { FunnelWidget, type GoalFunnelEntry } from "@/components/dashboard/FunnelWidget";
 import { RevenueWidget } from "@/components/dashboard/RevenueWidget";
 import { useOrg } from "@/hooks/use-org";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
@@ -316,6 +316,76 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
+  // Goal conversions for funnel widget
+  const { data: goalFunnelData } = useQuery<GoalFunnelEntry[]>({
+    queryKey: ["funnel_goal_conversions", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const dayStart = `${startDate}T00:00:00Z`;
+      const dayEnd = `${endDate}T23:59:59.999Z`;
+
+      const { data: goals } = await supabase
+        .from("conversion_goals" as any)
+        .select("id,name,goal_type,tracking_rules")
+        .eq("org_id", orgId)
+        .eq("is_active", true);
+
+      if (!goals || goals.length === 0) return [];
+
+      // Count from goal_completions
+      const { data: completions } = await supabase
+        .from("goal_completions" as any)
+        .select("goal_id")
+        .eq("org_id", orgId)
+        .gte("completed_at", dayStart)
+        .lte("completed_at", dayEnd);
+
+      const countMap: Record<string, number> = {};
+      (completions || []).forEach((c: any) => {
+        countMap[c.goal_id] = (countMap[c.goal_id] || 0) + 1;
+      });
+
+      // Fallback: count click goals from raw events if no completions
+      const CLICK_TYPES = ["cta_click", "outbound_click", "tel_click", "mailto_click"];
+      const clickGoals = (goals as any[]).filter(g => CLICK_TYPES.includes(g.goal_type));
+      for (const goal of clickGoals) {
+        if ((countMap[goal.id] || 0) > 0) continue;
+        const rules = goal.tracking_rules || {};
+        const { data: events } = await supabase
+          .from("events")
+          .select("target_text,meta")
+          .eq("org_id", orgId)
+          .in("event_type", CLICK_TYPES)
+          .gte("occurred_at", dayStart)
+          .lte("occurred_at", dayEnd)
+          .limit(1000);
+        if (events) {
+          const matched = (events as any[]).filter((evt) => {
+            const text = (evt.target_text || "").toLowerCase();
+            const label = String((evt.meta as any)?.target_label || "").toLowerCase();
+            const href = String((evt.meta as any)?.target_href || "").toLowerCase();
+            if (rules.text_contains) {
+              const needle = String(rules.text_contains).toLowerCase();
+              if (!text.includes(needle) && !label.includes(needle)) return false;
+            }
+            if (rules.href_contains) {
+              const needle = String(rules.href_contains).toLowerCase();
+              if (!href.includes(needle) && !text.includes(needle)) return false;
+            }
+            return true;
+          });
+          countMap[goal.id] = matched.length;
+        }
+      }
+
+      return (goals as any[]).map(g => ({
+        name: g.name,
+        count: countMap[g.id] || 0,
+      }));
+    },
+    enabled: !!orgId,
+  });
+
   const isLoading = !realtimeData;
 
   const periodData = useMemo(() => {
@@ -541,6 +611,7 @@ const Dashboard = () => {
             totalPageviews={realtimeData?.totalPageviews || 0}
             totalLeads={realtimeData?.totalLeads || 0}
             formStarts={formStartsCount || undefined}
+            goalConversions={goalFunnelData || undefined}
           />
           <RevenueWidget orgId={orgId} startDate={startDate} endDate={endDate} />
           <WhatsWorking />

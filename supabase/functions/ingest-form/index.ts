@@ -231,17 +231,19 @@ Deno.serve(async (req) => {
           .eq("org_id", orgId);
 
         if ((existingFieldCount || 0) === 0) {
-          console.log(`Enriching existing lead ${canonicalLead.id} with ${fields.length} fields`);
-          // Fall through to field insertion logic below instead of returning
-          // We'll use a flag to skip lead creation but still insert fields
-          const SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
-          const SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
-          const flatRows = fields
+          console.log(`Enriching existing lead ${canonicalLead.id} with ${fields.length} fields (provider=${providerName})`);
+          
+          // Try Avada CSV parsing first
+          const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName);
+          
+          const ENRICH_SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
+          const ENRICH_SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+          const flatRows = parsedFields
             .filter((f: any) => {
               if (f.value === undefined || f.value === null || f.value === "") return false;
               const key = f.name || f.id?.toString() || f.label || "unknown";
-              if (SKIP_KEYS.has(key)) return false;
-              if (SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
+              if (ENRICH_SKIP_KEYS.has(key)) return false;
+              if (ENRICH_SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
               return true;
             })
             .map((f: any) => ({

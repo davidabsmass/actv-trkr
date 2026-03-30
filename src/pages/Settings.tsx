@@ -44,7 +44,7 @@ export default function SettingsPage() {
       </p>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="mb-6 w-full flex overflow-x-auto no-scrollbar">
+        <TabsList className="mb-6">
           <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.general")}</TabsTrigger>
           <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.whiteLabel")}</TabsTrigger>
           <TabsTrigger value="setup" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.websiteSetup")}</TabsTrigger>

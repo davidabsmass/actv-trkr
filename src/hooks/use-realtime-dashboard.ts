@@ -145,7 +145,7 @@ export function useRealtimeDashboard(
 
       // Fill from aggregated kpi_daily rows
       const kpiRows = kpiRes.data || [];
-      let hasAggData = kpiRows.length > 0;
+      const kpiDatesSet = new Set<string>();
       kpiRows.forEach((row: any) => {
         const d = row.date;
         if (!dailyMap[d])

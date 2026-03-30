@@ -132,6 +132,8 @@ CLIENT: ${orgName}
 SITES: ${siteDomains || "None"}
 TOP PAGES (30d): ${topPagesStr || "No data"}
 TOP SOURCES (30d): ${topSourcesStr || "No data"}
+EXISTING CTAs CLICKED (30d): ${topCtasStr || "No CTA click data"}
+
 
 Return a JSON object with this exact structure (no markdown, no code fences):
 {

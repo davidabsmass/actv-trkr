@@ -177,18 +177,42 @@ export function useRealtimeDashboard(
         };
       }
 
-      // Fallback: if no aggregated data, build from the capped session/lead rows
-      if (!hasAggData) {
-        const sessions = sessionsBreakdown.data || [];
-        const leads = leadsBreakdown.data || [];
-        sessions.forEach((s: any) => {
-          const d = s.started_at?.split("T")[0];
-          if (d && dailyMap[d]) dailyMap[d].sessions++;
-        });
-        leads.forEach((l: any) => {
-          const d = l.submitted_at?.split("T")[0];
-          if (d && dailyMap[d]) dailyMap[d].leads++;
-        });
+      // Fallback: find days with no kpi_daily data and fill from raw tables
+      // kpi_daily may only cover recent dates; raw tables have the full history.
+      const kpiDates = new Set(kpiRows.map((r: any) => r.date));
+      const missingDays = Object.keys(dailyMap).filter(
+        (d) => !kpiDates.has(d) && d !== todayStr
+      );
+
+      if (missingDays.length > 0) {
+        // Batch-count raw sessions, leads, pageviews for each missing day
+        // Group into chunks to avoid too many parallel queries
+        const CHUNK = 10;
+        for (let i = 0; i < missingDays.length; i += CHUNK) {
+          const chunk = missingDays.slice(i, i + CHUNK);
+          const results = await Promise.all(
+            chunk.flatMap((day) => {
+              const ds = `${day}T00:00:00Z`;
+              const de = `${day}T23:59:59.999Z`;
+              return [
+                supabase.from("sessions").select("*", { count: "exact", head: true })
+                  .eq("org_id", orgId).gte("started_at", ds).lte("started_at", de),
+                supabase.from("leads").select("*", { count: "exact", head: true })
+                  .eq("org_id", orgId).neq("status", "trashed")
+                  .gte("submitted_at", ds).lte("submitted_at", de),
+                supabase.from("pageviews").select("*", { count: "exact", head: true })
+                  .eq("org_id", orgId).gte("occurred_at", ds).lte("occurred_at", de),
+              ];
+            })
+          );
+          chunk.forEach((day, idx) => {
+            dailyMap[day] = {
+              sessions: results[idx * 3]?.count || 0,
+              leads: results[idx * 3 + 1]?.count || 0,
+              pageviews: results[idx * 3 + 2]?.count || 0,
+            };
+          });
+        }
       }
 
       // ── 3. Self-referral filtering ───────────────────────────────────

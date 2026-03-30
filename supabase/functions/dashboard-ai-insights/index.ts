@@ -149,7 +149,8 @@ Rules:
 - Be specific about numbers, not vague. Reference the client name, specific pages, and sources.
 - Suggestions should feel like they come from a strategist, not a chatbot.
 - If data is sparse, acknowledge the early stage and focus on setup/launch actions.
-- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words.`;
+- IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words.
+- CRITICAL: Check the "EXISTING CTAs CLICKED" list before suggesting to add any button or CTA. If a CTA like "Schedule Appointment" or "Book Online" already exists and gets clicks, do NOT suggest adding it — instead suggest optimizing its placement, visibility, or the page it links to.`;
 
     const userPrompt = `Here are the current dashboard metrics for ${orgName}:
 

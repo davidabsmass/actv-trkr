@@ -1,5 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+
+const OWNER_EMAIL = "david@newuniformdesign.com";
+function ownerDest(email: string) {
+  return email.toLowerCase() === OWNER_EMAIL ? "/admin-setup" : "/dashboard";
+}
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, Eye, EyeOff, Ticket, ShieldCheck, KeyRound } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
@@ -64,7 +69,7 @@ const Auth = () => {
         }
       }
 
-      navigate("/dashboard");
+      navigate(ownerDest(pendingEmail));
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -124,7 +129,7 @@ const Auth = () => {
             console.error("Pending invite redeem failed:", e);
           }
         }
-        navigate("/dashboard");
+        navigate(ownerDest(normalizedEmail));
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: normalizedEmail,
@@ -139,7 +144,7 @@ const Auth = () => {
           } catch (e) {
             console.error("Invite redeem failed:", e);
           }
-          navigate("/dashboard");
+          navigate(ownerDest(normalizedEmail));
           return;
         }
 

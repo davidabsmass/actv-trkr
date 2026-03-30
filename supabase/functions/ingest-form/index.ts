@@ -32,6 +32,110 @@ function inferAvadaFieldName(type: string, value: string, position: number): str
   return posMap[position] || `Field ${position}`;
 }
 
+/**
+ * If fields array contains Avada CSV blobs (data + field_types entries),
+ * parse them into individual field objects. Returns original fields if not Avada CSV.
+ */
+function parseAvadaFieldsIfNeeded(fields: any[], provider: string): any[] {
+  if (provider !== "avada") return fields;
+  
+  const dataEntry = fields.find((f: any) => f.name === "data" || f.label === "data");
+  const typesEntry = fields.find((f: any) => f.name === "field_types" || f.label === "field_types");
+  
+  if (!dataEntry?.value || !typesEntry?.value) return fields;
+  
+  const SKIP_AVADA_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page", "checkbox"]);
+  const types = typesEntry.value.split(", ").map((t: string) => t.trim());
+  const labelsEntry = fields.find((f: any) => f.name === "field_labels" || f.label === "field_labels");
+  const rawLabels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+  const allLabelsEmpty = rawLabels.every((l: string) => !l || l === "");
+  const allValues = (dataEntry.value as string).split(", ").map((v: string) => v.trim());
+
+  const parsed: any[] = [];
+  let dataFieldPos = 0;
+  for (let i = 0; i < types.length; i++) {
+    const type = types[i]?.toLowerCase() || "";
+    if (SKIP_AVADA_TYPES.has(type)) continue;
+
+    dataFieldPos++;
+    const val = allValues[i] || "";
+    if (!val || val === "Array") continue;
+
+    let label: string;
+    const rawLabel = rawLabels[i] || "";
+    if (rawLabel && !allLabelsEmpty) {
+      label = rawLabel;
+    } else {
+      label = inferAvadaFieldName(type, val, dataFieldPos);
+    }
+
+    parsed.push({
+      name: label.toLowerCase().replace(/\s+/g, "_"),
+      label: label,
+      type: type,
+      value: val,
+    });
+  }
+  
+  // If CSV parsing produced results, use them; otherwise return originals
+  // (minus the metadata fields which would be skipped anyway)
+  if (parsed.length > 0) {
+    console.log(`Avada CSV parser produced ${parsed.length} fields from blob`);
+    return parsed;
+  }
+  
+  // CSV parsing failed (likely commas in values) — try to reassemble
+  // by matching field count from types to a smarter split
+  // Count non-skip types to know expected field count
+  const expectedCount = types.filter((t: string) => !SKIP_AVADA_TYPES.has(t.toLowerCase().trim())).length;
+  if (expectedCount > 0 && allValues.length > expectedCount) {
+    // More values than expected = commas inside values. Try greedy reassembly.
+    const reassembled: string[] = [];
+    let valIdx = 0;
+    for (let i = 0; i < types.length; i++) {
+      const type = types[i]?.toLowerCase().trim() || "";
+      if (SKIP_AVADA_TYPES.has(type)) continue;
+      
+      if (reassembled.length < expectedCount - 1) {
+        reassembled.push(allValues[valIdx] || "");
+        valIdx++;
+      } else {
+        // Last field gets all remaining values joined back
+        reassembled.push(allValues.slice(valIdx).join(", "));
+        valIdx = allValues.length;
+        break;
+      }
+    }
+    
+    let pos2 = 0;
+    for (let i = 0; i < types.length; i++) {
+      const type = types[i]?.toLowerCase().trim() || "";
+      if (SKIP_AVADA_TYPES.has(type)) continue;
+      
+      const val = reassembled[pos2] || "";
+      pos2++;
+      if (!val) continue;
+      
+      const rawLabel = rawLabels[i] || "";
+      const label = (rawLabel && !allLabelsEmpty) ? rawLabel : inferAvadaFieldName(type, val, pos2);
+      
+      parsed.push({
+        name: label.toLowerCase().replace(/\s+/g, "_"),
+        label: label,
+        type: type,
+        value: val,
+      });
+    }
+    
+    if (parsed.length > 0) {
+      console.log(`Avada CSV reassembly produced ${parsed.length} fields`);
+      return parsed;
+    }
+  }
+  
+  return fields;
+}
+
 // In-memory dedup cache (survives within a single isolate lifetime)
 const recentFingerprints = new Map<string, number>();
 setInterval(() => {

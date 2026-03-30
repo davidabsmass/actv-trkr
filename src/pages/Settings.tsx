@@ -37,7 +37,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
           <TabsTrigger value="general">{t("settings.general")}</TabsTrigger>
-          {showAdminSections && <TabsTrigger value="white-label">{t("settings.whiteLabel")}</TabsTrigger>}
+          <TabsTrigger value="white-label">{t("settings.whiteLabel")}</TabsTrigger>
           <TabsTrigger value="setup">{t("settings.websiteSetup")}</TabsTrigger>
           <TabsTrigger value="guide">{t("settings.getStarted")}</TabsTrigger>
         </TabsList>
@@ -54,11 +54,9 @@ export default function SettingsPage() {
           </div>
         </TabsContent>
 
-        {showAdminSections && (
-          <TabsContent value="white-label">
-            <WhiteLabelSection />
-          </TabsContent>
-        )}
+        <TabsContent value="white-label">
+          <WhiteLabelSection />
+        </TabsContent>
 
         <TabsContent value="setup">
           <WebsiteSetup />

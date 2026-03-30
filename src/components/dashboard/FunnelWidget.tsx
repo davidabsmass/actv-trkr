@@ -53,15 +53,12 @@ export function FunnelWidget({ totalSessions, totalPageviews, totalLeads, formSt
           const dropoff = dropoffRaw !== null ? (dropoffRaw >= 99.5 && dropoffRaw < 100 ? parseFloat(dropoffRaw.toFixed(1)) : Math.round(dropoffRaw)) : null;
           return (
             <div key={step.label}>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${step.color}`} />
                   <span className="text-xs font-medium text-foreground">{step.label}</span>
-                  
                 </div>
                 <span className="text-xs font-mono-data font-semibold text-foreground">{step.value.toLocaleString()}</span>
-              </div>
-              <div className="h-6 bg-muted/30 rounded-md overflow-hidden relative">
-                <div className={`h-full ${step.color} rounded-md transition-all duration-700 ease-out`} style={{ width: `${Math.max(pct, 2)}%`, opacity: 0.7 + (0.3 * (1 - i / steps.length)) }} />
               </div>
             </div>
           );
@@ -83,12 +80,12 @@ export function FunnelWidget({ totalSessions, totalPageviews, totalLeads, formSt
               const pct = (step.value / goalMax) * 100;
               return (
                 <div key={step.label}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-foreground">{step.label}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${step.color}`} />
+                      <span className="text-xs font-medium text-foreground">{step.label}</span>
+                    </div>
                     <span className="text-xs font-mono-data font-semibold text-foreground">{step.value.toLocaleString()}</span>
-                  </div>
-                  <div className="h-5 bg-muted/30 rounded-md overflow-hidden relative">
-                    <div className={`h-full ${step.color} rounded-md transition-all duration-700 ease-out opacity-75`} style={{ width: `${Math.max(pct, 4)}%` }} />
                   </div>
                 </div>
               );

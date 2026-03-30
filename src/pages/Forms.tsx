@@ -1354,6 +1354,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
       if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
       if (isPlaceholderLabel(l)) return true;
+      if (/^consent$/i.test(l)) return true;
       return false;
     };
 

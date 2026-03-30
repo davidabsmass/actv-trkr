@@ -619,15 +619,14 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
     if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
 
-    // Post-filter: remove columns with numeric-only keys/labels or generic "Field N" labels
+    // Post-filter: remove columns with numeric-only keys/labels, generic "Field N" labels, or consent boilerplate
     const isGenericColumn = (col: { key: string; label: string }) => {
       const k = col.key.trim();
       const l = col.label.trim();
-      // Numeric-only key like "51", "52"
       if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
-      // Generic "field_N" key with "Field N" label
       if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
       if (isPlaceholderLabel(l)) return true;
+      if (/^consent$/i.test(l)) return true;
       return false;
     };
 

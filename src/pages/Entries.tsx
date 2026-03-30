@@ -394,10 +394,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       return /^field\s+\d+$/i.test(v);
     };
 
-    const hasMeaningfulLabel = (label: string, key: string) => {
-      const trimmed = (label || "").trim();
-      if (!trimmed) return false;
-    const hasMeaningfulLabel = (label: string, key: string) => {
+    const hasMeaningfulLabel = (label: string, _key: string) => {
       const trimmed = (label || "").trim();
       if (!trimmed) return false;
       if (isNumericLike(trimmed)) return false;

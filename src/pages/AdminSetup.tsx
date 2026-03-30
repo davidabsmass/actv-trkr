@@ -548,41 +548,50 @@ export default function AdminSetup() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.organization")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">{t("admin.domain")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.focus")}</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.onboarded")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">{t("admin.lastChange")}</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {enrichedOrgs.map((org) => (
-                  <tr key={org.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrg(org.id)}>
-                    <td className="px-4 py-3 font-medium text-foreground">{org.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{org.sites?.[0]?.domain || "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs">{focusLabels[org.settings?.primary_focus] || "—"}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {org.settings?.onboarding_completed ? (
-                        <span className="text-xs text-success">✅</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">⏳</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
-                      {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-xs text-primary">{t("admin.view")}</span>
-                    </td>
-                  </tr>
-                ))}
-                {enrichedOrgs.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("admin.noOrgsFound")}</td></tr>
-                )}
-              </tbody>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.organization")}</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Tier</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">{t("admin.domain")}</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.focus")}</th>
+                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.onboarded")}</th>
+                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">{t("admin.lastChange")}</th>
+                   <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground"></th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {enrichedOrgs.map((org) => {
+                   const tier = isClientTier(org.name) ? "client" : "paid";
+                   return (
+                   <tr key={org.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrg(org.id)}>
+                     <td className="px-4 py-3 font-medium text-foreground">{org.name}</td>
+                     <td className="px-4 py-3">
+                       <Badge variant={tier === "client" ? "secondary" : "default"} className="text-[10px]">
+                         {tier === "client" ? "Client" : "Paid"}
+                       </Badge>
+                     </td>
+                     <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{org.sites?.[0]?.domain || "—"}</td>
+                     <td className="px-4 py-3">
+                       <span className="text-xs">{focusLabels[org.settings?.primary_focus] || "—"}</span>
+                     </td>
+                     <td className="px-4 py-3 text-center">
+                       {org.settings?.onboarding_completed ? (
+                         <span className="text-xs text-success">✅</span>
+                       ) : (
+                         <span className="text-xs text-muted-foreground">⏳</span>
+                       )}
+                     </td>
+                     <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
+                       {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
+                     </td>
+                     <td className="px-4 py-3 text-right">
+                       <span className="text-xs text-primary">{t("admin.view")}</span>
+                     </td>
+                   </tr>
+                   );
+                 })}
+                 {enrichedOrgs.length === 0 && (
+                   <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("admin.noOrgsFound")}</td></tr>
+                 )}
+               </tbody>
             </table>
           </div>
         </>

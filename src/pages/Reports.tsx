@@ -615,10 +615,10 @@ export default function Reports() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
-          <TabsTrigger value="overview">{t("reports.overview")}</TabsTrigger>
-          <TabsTrigger value="activity">{t("reports.activityReports")}</TabsTrigger>
-          <TabsTrigger value="customize">{t("reports.customize")}</TabsTrigger>
-          <TabsTrigger value="archives">{t("reports.archives")}</TabsTrigger>
+          <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.overview")}</TabsTrigger>
+          <TabsTrigger value="activity" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.activityReports")}</TabsTrigger>
+          <TabsTrigger value="customize" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.customize")}</TabsTrigger>
+          <TabsTrigger value="archives" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>

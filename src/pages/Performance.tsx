@@ -133,8 +133,8 @@ const Performance = () => {
 
       <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="space-y-4">
         <TabsList className="mb-4">
-          <TabsTrigger value="analytics">{t("performance.analytics")}</TabsTrigger>
-          <TabsTrigger value="reports">{t("performance.reports")}</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-shrink-0 text-xs sm:text-sm">{t("performance.analytics")}</TabsTrigger>
+          <TabsTrigger value="reports" className="flex-shrink-0 text-xs sm:text-sm">{t("performance.reports")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analytics">

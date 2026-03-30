@@ -1123,7 +1123,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       if (!trimmed) return false;
       if (isNumericLike(trimmed)) return false;
       if (isPlaceholderLabel(trimmed)) return false;
-      return trimmed !== (key || "").trim();
+      return true;
     };
 
     const getColumnKeyByLabel = (label: string) => {

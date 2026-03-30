@@ -78,15 +78,13 @@ export default function WebsiteSetup() {
   });
 
   // Derive connection status
-  const connectedSites = sites?.filter(s => s.last_heartbeat_at) ?? [];
+  const connectedSites = sites?.filter(s => s.last_heartbeat_at || s.plugin_version) ?? [];
   const allSites = sites ?? [];
   const connectionStatus: ConnectionStatus = allSites.length === 0
     ? "not_connected"
     : connectedSites.length > 0
       ? "connected"
-      : allSites.some(s => !s.last_heartbeat_at)
-        ? "connecting"
-        : "error";
+      : "connecting";
 
   const websiteConnected = connectionStatus === "connected";
   const trackingVerified = connectedSites.some(s => {

@@ -465,7 +465,7 @@
     "activeIncident": "{{count}} active incident",
     "activeIncident_plural": "{{count}} active incidents",
     "noSites": "No sites connected yet. Add a site in Settings.",
-    "allSites": "← All Sites",
+    "allSites": "All Sites",
     "overview": "Overview",
     "formChecks": "Form Checks",
     "brokenLinks": "Broken Links",

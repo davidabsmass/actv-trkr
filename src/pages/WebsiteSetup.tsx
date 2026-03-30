@@ -397,7 +397,8 @@ export default function WebsiteSetup() {
             {allSites.map(site => {
               const hasHeartbeat = !!site.last_heartbeat_at;
               const isRecent = hasHeartbeat && (Date.now() - new Date(site.last_heartbeat_at!).getTime() < 30 * 60 * 1000);
-              const siteStatus: "connected" | "pending" | "disconnected" = isRecent ? "connected" : hasHeartbeat ? "pending" : "disconnected";
+              const hasPluginOrData = !!site.plugin_version;
+              const siteStatus: "connected" | "pending" | "disconnected" = isRecent ? "connected" : (hasHeartbeat || hasPluginOrData) ? "pending" : "disconnected";
               const statusLabels = {
                 connected: t("websiteSetup.statusConnected"),
                 pending: t("websiteSetup.statusPending"),

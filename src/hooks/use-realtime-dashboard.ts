@@ -148,6 +148,7 @@ export function useRealtimeDashboard(
       const kpiDatesSet = new Set<string>();
       kpiRows.forEach((row: any) => {
         const d = row.date;
+        kpiDatesSet.add(d);
         if (!dailyMap[d])
           dailyMap[d] = { sessions: 0, leads: 0, pageviews: 0 };
         if (row.metric === "sessions") dailyMap[d].sessions += Number(row.value);

@@ -438,8 +438,9 @@ Deno.serve(async (req) => {
         if ((existingFieldCount || 0) === 0) {
           console.log(`Enriching existing lead ${canonicalLead.id} with ${fields.length} fields (provider=${providerName})`);
           
-          // Try Avada CSV parsing first
-          const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName);
+          // Get schema template for Avada data-only blobs
+          const schemaTemplate = providerName === "avada" ? await getFormFieldSchema(supabase, formId, orgId) : null;
+          const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName, schemaTemplate || undefined);
           
           const ENRICH_SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
           const ENRICH_SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);

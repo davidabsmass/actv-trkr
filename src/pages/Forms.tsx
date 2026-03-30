@@ -1106,6 +1106,13 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       return /^field\s+\d+$/i.test(v);
     };
 
+    const inferLabelFromValue = (value: string): string | null => {
+      const v = value.trim();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Email";
+      if (/^[\+]?[\d\s\-\(\)\.]{7,}$/.test(v)) return "Phone";
+      return null;
+    };
+
     const normalizeKey = (value: string) =>
       value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
@@ -1119,6 +1126,9 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     };
 
     const leadsWithFlatFields = new Set<string>();
+    // Track numeric-only fields for heuristic fallback
+    const numericOnlyFields: typeof fieldsRaw = [];
+    let hasAnyRealLabel = false;
 
     if (fieldsRaw && fieldsRaw.length > 0) {
       for (const f of fieldsRaw) {
@@ -1135,7 +1145,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           !isPlaceholderLabel(rawLabel) &&
           rawLabel !== rawKey;
 
-        if (isNumericLike(rawKey) && !hasRealLabel) continue;
+        if (isNumericLike(rawKey) && !hasRealLabel) {
+          numericOnlyFields.push(f);
+          continue;
+        }
+        hasAnyRealLabel = true;
 
         const label = hasRealLabel ? rawLabel : rawKey;
         const existingKey = getExistingKeyByLabel(label);
@@ -1148,6 +1162,41 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           columnOrder.set(key, { key, label, count: 0 });
         }
         columnOrder.get(key)!.count++;
+      }
+
+      // Heuristic fallback: if NO real-labeled fields exist, infer labels for numeric-only fields
+      if (!hasAnyRealLabel && numericOnlyFields.length > 0) {
+        const keyToSample = new Map<string, string>();
+        for (const f of numericOnlyFields) {
+          if (!keyToSample.has(f.field_key)) keyToSample.set(f.field_key, f.value_text);
+        }
+        const sortedKeys = [...keyToSample.keys()].sort((a, b) => Number(a) - Number(b));
+        const usedLabels = new Set<string>();
+        const keyLabelMap = new Map<string, string>();
+        for (const k of sortedKeys) {
+          const sample = keyToSample.get(k) || "";
+          let inferred = inferLabelFromValue(sample);
+          if (inferred && usedLabels.has(inferred)) inferred = null;
+          if (!inferred) {
+            const idx = sortedKeys.indexOf(k);
+            const fallbacks = ["Name", "Email", "Phone", "Company", "Details"];
+            inferred = fallbacks[idx] && !usedLabels.has(fallbacks[idx]) ? fallbacks[idx] : `Field ${k}`;
+          }
+          usedLabels.add(inferred);
+          keyLabelMap.set(k, inferred);
+        }
+        for (const f of numericOnlyFields) {
+          const rawKey = f.field_key.trim();
+          const label = keyLabelMap.get(rawKey) || `Field ${rawKey}`;
+          const key = normalizeKey(label) || `field_${rawKey}`;
+          leadsWithFlatFields.add(f.lead_id);
+          if (!map.has(f.lead_id)) map.set(f.lead_id, {});
+          map.get(f.lead_id)![key] = f.value_text;
+          if (!columnOrder.has(key)) {
+            columnOrder.set(key, { key, label, count: 0 });
+          }
+          columnOrder.get(key)!.count++;
+        }
       }
     }
 

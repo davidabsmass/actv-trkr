@@ -180,9 +180,8 @@ export function useRealtimeDashboard(
 
       // Fallback: find days with no kpi_daily data and fill from raw tables
       // kpi_daily may only cover recent dates; raw tables have the full history.
-      const kpiDates = new Set(kpiRows.map((r: any) => r.date));
       const missingDays = Object.keys(dailyMap).filter(
-        (d) => !kpiDates.has(d) && d !== todayStr
+        (d) => !kpiDatesSet.has(d) && d !== todayStr
       );
 
       if (missingDays.length > 0) {

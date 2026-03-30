@@ -570,7 +570,7 @@ const Dashboard = () => {
               {attentionItems.length > 0 ? (
                 <div className="space-y-1.5 max-h-[80px] overflow-y-auto">
                   {attentionItems.map((item, i) => (
-                    <Link key={i} to={item.link} onClick={() => localStorage.setItem("attention_last_checked", new Date().toISOString())} className="flex items-center gap-1.5 group">
+                    <Link key={i} to={item.link} onClick={() => { const ts = new Date().toISOString(); localStorage.setItem("attention_last_checked", ts); setAttentionLastChecked(ts); }} className="flex items-center gap-1.5 group">
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${item.severity === "critical" ? "bg-destructive" : item.severity === "warning" ? "bg-warning" : "bg-primary"}`} />
                       <span className="text-xs text-foreground group-hover:text-primary truncate">{item.label}</span>
                     </Link>

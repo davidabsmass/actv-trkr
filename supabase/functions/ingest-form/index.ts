@@ -498,7 +498,8 @@ Deno.serve(async (req) => {
 
     if (fields && Array.isArray(fields)) {
       // Parse Avada CSV blobs into individual fields if applicable
-      const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName);
+      const schemaTemplate2 = providerName === "avada" ? await getFormFieldSchema(supabase, formId, orgId) : null;
+      const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName, schemaTemplate2 || undefined);
       
       const flatRows = parsedFields
         .filter((f: any) => {

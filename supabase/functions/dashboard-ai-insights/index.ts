@@ -114,6 +114,15 @@ serve(async (req) => {
     const topSourcesStr = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
       .map(([src, cnt]) => `${src} (${cnt} sessions)`).join(", ");
 
+    // Aggregate CTA clicks to know what buttons/CTAs already exist on the site
+    const ctaCounts: Record<string, number> = {};
+    (ctaClicksData.data || []).forEach((e: any) => {
+      const label = (e.target_text || "").trim();
+      if (label) ctaCounts[label] = (ctaCounts[label] || 0) + 1;
+    });
+    const topCtasStr = Object.entries(ctaCounts).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([label, cnt]) => `"${label}" (${cnt} clicks)`).join(", ");
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 

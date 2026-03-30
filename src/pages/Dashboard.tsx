@@ -261,7 +261,7 @@ const Dashboard = () => {
   });
 
   // Security threats – only show events newer than last attention check
-  const attentionLastChecked = useMemo(() => localStorage.getItem("attention_last_checked"), []);
+  const [attentionLastChecked, setAttentionLastChecked] = useState(() => localStorage.getItem("attention_last_checked"));
   const { data: recentSecurityEvents } = useQuery({
     queryKey: ["recent_security_events", orgId, attentionLastChecked],
     queryFn: async () => {

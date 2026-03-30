@@ -1175,24 +1175,36 @@ class MM_Forms {
 				);
 			}
 
-			// If parsing produced no fields, fall back to raw approach
+			// ── CRITICAL FALLBACK ──
+			// If CSV parsing produced zero fields (values contain commas causing misalignment),
+			// send the raw data/field_types/field_labels blobs so the edge function can parse server-side.
 			if ( empty( $fields ) ) {
-				foreach ( $data as $key => $value ) {
-					if ( in_array( $key, $skip_keys, true ) || 'field_labels' === $key || 'field_types' === $key || 'data' === $key ) {
-						continue;
-					}
+				$fields[] = array(
+					'name'  => 'data',
+					'label' => 'data',
+					'type'  => 'text',
+					'value' => $data['data'],
+				);
+				$fields[] = array(
+					'name'  => 'field_types',
+					'label' => 'field_types',
+					'type'  => 'text',
+					'value' => $data['field_types'],
+				);
+				if ( isset( $data['field_labels'] ) ) {
 					$fields[] = array(
-						'name'  => $key,
-						'label' => $key,
+						'name'  => 'field_labels',
+						'label' => 'field_labels',
 						'type'  => 'text',
-						'value' => is_array( $value ) ? implode( ', ', $value ) : $value,
+						'value' => $data['field_labels'],
 					);
 				}
 			}
 		} elseif ( is_array( $data ) ) {
 			// Simple key-value format (non-structured Avada or older versions)
+			// ALWAYS include data, field_types, field_labels so edge function can parse
 			foreach ( $data as $key => $value ) {
-				if ( in_array( $key, $skip_keys, true ) || 'field_labels' === $key || 'field_types' === $key ) {
+				if ( in_array( $key, $skip_keys, true ) ) {
 					continue;
 				}
 				$fields[] = array(

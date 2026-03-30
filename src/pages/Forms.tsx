@@ -1091,10 +1091,22 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
 
   const { fieldColumns, leadFieldMap } = useMemo(() => {
     const map = new Map<string, Record<string, string>>();
-    const columnOrder = new Map<string, { key: string; label: string; count: number }>();
+    type ColumnDef = {
+      key: string;
+      label: string;
+      count: number;
+      rank: number;
+      numericOrder: number;
+      firstSeen: number;
+    };
+    const columns = new Map<string, ColumnDef>();
+    let firstSeenCounter = 0;
 
     const SKIP_TYPES_SET = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page", "consent", "checkbox"]);
     const SKIP_KEYS_SET = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
+
+    const normalizeKey = (value: string) =>
+      value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
     const isNumericLike = (value: string | null | undefined) => {
       const v = (value || "").trim();
@@ -1106,118 +1118,65 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       return /^field\s+\d+$/i.test(v);
     };
 
-    const inferLabelFromValue = (value: string): string | null => {
-      const v = value.trim();
-      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Email";
-      if (/^[\+]?[\d\s\-\(\)\.]{7,}$/.test(v)) return "Phone";
-      if (/^\d{4,5}(-\d{4})?$/.test(v)) return "Zip Code";
-      const US_STATES = new Set(["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]);
-      if (US_STATES.has(v.toUpperCase()) || /^[A-Z][a-z]+ ?[A-Z]?[a-z]*$/.test(v) && v.length < 20 && /island|hampshire|carolina|dakota|virginia|jersey|mexico|york/i.test(v)) return "State";
-      return null;
+    const hasMeaningfulLabel = (label: string, key: string) => {
+      const trimmed = (label || "").trim();
+      if (!trimmed) return false;
+      if (isNumericLike(trimmed)) return false;
+      if (isPlaceholderLabel(trimmed)) return false;
+      return trimmed !== (key || "").trim();
     };
 
-    const normalizeKey = (value: string) =>
-      value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-
-    const getExistingKeyByLabel = (label: string) => {
-      const normalized = label.trim().toLowerCase();
-      if (!normalized) return null;
-      for (const col of columnOrder.values()) {
-        if (col.label.trim().toLowerCase() === normalized) return col.key;
+    const getColumnKeyByLabel = (label: string) => {
+      const target = label.trim().toLowerCase();
+      if (!target) return null;
+      for (const col of columns.values()) {
+        if (col.label.trim().toLowerCase() === target) return col.key;
       }
       return null;
     };
 
+    const ensureColumn = (key: string, label: string, rank: number, numericOrder = Number.MAX_SAFE_INTEGER) => {
+      if (!columns.has(key)) {
+        columns.set(key, {
+          key,
+          label,
+          count: 0,
+          rank,
+          numericOrder,
+          firstSeen: firstSeenCounter++,
+        });
+      }
+    };
+
+    const setLeadValue = (leadId: string, columnKey: string, value: string) => {
+      if (!map.has(leadId)) map.set(leadId, {});
+      map.get(leadId)![columnKey] = value;
+      const col = columns.get(columnKey);
+      if (col) col.count++;
+    };
+
     const leadsWithFlatFields = new Set<string>();
-    // Track numeric-only fields for heuristic fallback
-    const numericOnlyFields: typeof fieldsRaw = [];
-    let hasAnyRealLabel = false;
 
     if (fieldsRaw && fieldsRaw.length > 0) {
       for (const f of fieldsRaw) {
         const rawKey = (f.field_key || "").trim();
         const rawLabel = (f.field_label || "").trim();
+        const rawType = (f.field_type || "").toLowerCase();
+        const value = (f.value_text || "").trim();
 
-        if (!rawKey || SKIP_KEYS_SET.has(rawKey)) continue;
-        if (SKIP_TYPES_SET.has((f.field_type || "").toLowerCase())) continue;
-        if (!f.value_text || f.value_text.trim() === "") continue;
+        if (!rawKey || !value) continue;
+        if (SKIP_KEYS_SET.has(rawKey)) continue;
+        if (SKIP_TYPES_SET.has(rawType)) continue;
 
-        const hasRealLabel =
-          !!rawLabel &&
-          !isNumericLike(rawLabel) &&
-          !isPlaceholderLabel(rawLabel) &&
-          rawLabel !== rawKey;
+        const meaningfulLabel = hasMeaningfulLabel(rawLabel, rawKey);
+        if (isNumericLike(rawKey) && !meaningfulLabel) continue;
 
-        if (isNumericLike(rawKey) && !hasRealLabel) {
-          numericOnlyFields.push(f);
-          continue;
-        }
-        hasAnyRealLabel = true;
-
-        const label = hasRealLabel ? rawLabel : rawKey;
-        const existingKey = getExistingKeyByLabel(label);
-        const key = existingKey || (isNumericLike(rawKey) ? normalizeKey(label) || `field_${rawKey}` : rawKey);
+        const label = meaningfulLabel ? rawLabel : (rawLabel || rawKey);
+        const columnKey = `flat:${rawKey}`;
+        ensureColumn(columnKey, label, isNumericLike(rawKey) ? 0 : 1, isNumericLike(rawKey) ? Number(rawKey) : Number.MAX_SAFE_INTEGER);
 
         leadsWithFlatFields.add(f.lead_id);
-        if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-        map.get(f.lead_id)![key] = f.value_text;
-        if (!columnOrder.has(key)) {
-          columnOrder.set(key, { key, label, count: 0 });
-        }
-        columnOrder.get(key)!.count++;
-      }
-
-      // Process numeric-only fields: if real-labeled columns already exist, map by sorted position;
-      // otherwise use the heuristic inference fallback
-      if (numericOnlyFields.length > 0) {
-        if (hasAnyRealLabel && columnOrder.size > 0) {
-          const existingCols = [...columnOrder.values()];
-          const sortedNumKeys = [...new Set(numericOnlyFields.map(f => f.field_key.trim()))].sort((a, b) => Number(a) - Number(b));
-          const keyToCol = new Map<string, { key: string; label: string }>();
-          for (let i = 0; i < sortedNumKeys.length && i < existingCols.length; i++) {
-            keyToCol.set(sortedNumKeys[i], existingCols[i]);
-          }
-          for (const f of numericOnlyFields) {
-            const col = keyToCol.get(f.field_key.trim());
-            if (!col) continue;
-            leadsWithFlatFields.add(f.lead_id);
-            if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-            map.get(f.lead_id)![col.key] = f.value_text;
-            columnOrder.get(col.key)!.count++;
-          }
-        } else {
-          const keyToSample = new Map<string, string>();
-          for (const f of numericOnlyFields) {
-            if (!keyToSample.has(f.field_key)) keyToSample.set(f.field_key, f.value_text);
-          }
-          const sortedKeys = [...keyToSample.keys()].sort((a, b) => Number(a) - Number(b));
-          const usedLabels = new Set<string>();
-          const keyLabelMap = new Map<string, string>();
-          for (const k of sortedKeys) {
-            const sample = keyToSample.get(k) || "";
-            let inferred = inferLabelFromValue(sample);
-            if (inferred && usedLabels.has(inferred)) inferred = null;
-            if (!inferred) {
-              const idx = sortedKeys.indexOf(k);
-              const fallbacks = ["Name", "Email", "Phone", "Company", "Details"];
-              inferred = fallbacks[idx] && !usedLabels.has(fallbacks[idx]) ? fallbacks[idx] : `Field ${k}`;
-            }
-            usedLabels.add(inferred);
-            keyLabelMap.set(k, inferred);
-          }
-          for (const f of numericOnlyFields) {
-            const rawKey = f.field_key.trim();
-            const label = keyLabelMap.get(rawKey) || `Field ${rawKey}`;
-            const key = normalizeKey(label) || `field_${rawKey}`;
-            leadsWithFlatFields.add(f.lead_id);
-            if (!map.has(f.lead_id)) map.set(f.lead_id, {});
-            map.get(f.lead_id)![key] = f.value_text;
-            if (!columnOrder.has(key)) {
-              columnOrder.set(key, { key, label, count: 0 });
-            }
-            columnOrder.get(key)!.count++;
-          }
-        }
+        setLeadValue(f.lead_id, columnKey, value);
       }
     }
 
@@ -1230,135 +1189,68 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           : Array.isArray(rawData)
             ? rawData
             : [];
+
         if (!Array.isArray(payloadFields) || payloadFields.length === 0) continue;
 
-        const dataEntry = payloadFields.find((d: any) => d.name === "data" || d.label === "data");
-        const typesEntry = payloadFields.find((d: any) => d.name === "field_types" || d.label === "field_types");
-        const labelsEntry = payloadFields.find((d: any) => d.name === "field_labels" || d.label === "field_labels");
+        // Strict guard: skip malformed Avada rows that only contain one giant "data" blob.
+        if (
+          payloadFields.length === 1 &&
+          String(payloadFields[0]?.name || payloadFields[0]?.label || "").trim().toLowerCase() === "data"
+        ) {
+          continue;
+        }
 
-        if (dataEntry?.value && typesEntry?.value) {
-          const values = dataEntry.value.split(", ").map((v: string) => v.trim());
-          const types = typesEntry.value.split(", ").map((t: string) => t.trim());
-          const labels = labelsEntry?.value ? labelsEntry.value.split(", ").map((l: string) => l.trim()) : [];
+        const fields: Record<string, string> = {};
 
-          const fields: Record<string, string> = {};
-          const existingColumns = [...columnOrder.values()];
-          let valueIdx = 0;
+        for (const d of payloadFields as any[]) {
+          const rawValue = d?.value;
+          const value = rawValue === null || rawValue === undefined ? "" : String(rawValue).trim();
+          if (!value) continue;
 
-          for (let i = 0; i < types.length; i++) {
-            const type = types[i]?.toLowerCase();
-            if (SKIP_TYPES_SET.has(type)) continue;
+          const rawName = String(d?.name || "").trim();
+          const rawLabel = String(d?.label || "").trim();
+          const rawType = String(d?.type || "").toLowerCase().trim();
+          const baseKey = rawName || rawLabel;
 
-            const remainingValueSlots = types
-              .slice(i)
-              .filter((t: string) => !SKIP_TYPES_SET.has((t || "").toLowerCase())).length;
-            const val = remainingValueSlots === 1
-              ? values.slice(valueIdx).join(", ").trim()
-              : (values[valueIdx] || "").trim();
-            if (remainingValueSlots !== 1) valueIdx++;
-            if (!val) continue;
+          if (!baseKey || SKIP_KEYS_SET.has(baseKey)) continue;
+          if (SKIP_TYPES_SET.has(rawType)) continue;
 
-            const rawLabel = (labels[valueIdx - 1] || "").trim();
-            const existingCol = existingColumns[i];
-            const hasMeaningfulLabel =
-              rawLabel !== "" &&
-              !isNumericLike(rawLabel) &&
-              !isPlaceholderLabel(rawLabel);
+          const meaningfulLabel = hasMeaningfulLabel(rawLabel, rawName);
+          if (isNumericLike(rawName) && !meaningfulLabel) continue;
 
-            const label = hasMeaningfulLabel
-              ? rawLabel
-              : (existingCol?.label || `Field ${i + 1}`);
-
-            const existingKeyByLabel = getExistingKeyByLabel(label);
-            const generatedKey = normalizeKey(label) || `field_${i}`;
-            const key = existingKeyByLabel || existingCol?.key || `field_${generatedKey}`;
-
-            fields[key] = val;
-            if (!columnOrder.has(key)) {
-              columnOrder.set(key, { key, label, count: 0 });
+          const label = meaningfulLabel ? rawLabel : baseKey;
+          let columnKey = getColumnKeyByLabel(label);
+          if (!columnKey) {
+            const normalized = normalizeKey(label) || "field";
+            columnKey = `json:${normalized}`;
+            let i = 2;
+            while (columns.has(columnKey) && columns.get(columnKey)!.label.trim().toLowerCase() !== label.trim().toLowerCase()) {
+              columnKey = `json:${normalized}_${i++}`;
             }
-            columnOrder.get(key)!.count++;
+            ensureColumn(columnKey, label, 2);
           }
 
-          if (Object.keys(fields).length > 0) map.set(lead.id, fields);
-        } else if (dataEntry?.value && typeof dataEntry.value === "string") {
-          const rawValue = String(dataEntry.value || "").trim();
-          if (!rawValue) continue;
+          fields[columnKey] = value;
+          const col = columns.get(columnKey);
+          if (col) col.count++;
+        }
 
-          const fields: Record<string, string> = {};
-          const existingKeys = [...columnOrder.keys()];
-
-          if (existingKeys.length === 0) {
-            const key = "data";
-            fields[key] = rawValue;
-            if (!columnOrder.has(key)) columnOrder.set(key, { key, label: "Data", count: 0 });
-            columnOrder.get(key)!.count++;
-          } else {
-            let values = rawValue.split(",").map((v: string) => v.trim()).filter(Boolean);
-            if (values.length > existingKeys.length) {
-              values = [
-                ...values.slice(0, Math.max(existingKeys.length - 1, 0)),
-                values.slice(Math.max(existingKeys.length - 1, 0)).join(", ").trim(),
-              ].filter(Boolean);
-            }
-
-            values.forEach((val: string, idx: number) => {
-              const key = existingKeys[idx] || `field_${idx + 1}`;
-              const label = columnOrder.get(key)?.label || `Field ${idx + 1}`;
-              fields[key] = val;
-              if (!columnOrder.has(key)) columnOrder.set(key, { key, label, count: 0 });
-              columnOrder.get(key)!.count++;
-            });
-          }
-
-          if (Object.keys(fields).length > 0) map.set(lead.id, fields);
-        } else {
-          const fields: Record<string, string> = {};
-          for (const d of payloadFields as any[]) {
-            if (!d.value || (typeof d.value === "string" && d.value.trim() === "")) continue;
-
-            const rawName = String(d.name || "").trim();
-            const rawLabel = String(d.label || "").trim();
-            const name = rawName || rawLabel || "unknown";
-
-            if (SKIP_KEYS_SET.has(name)) continue;
-            if (SKIP_TYPES_SET.has((d.type || "").toLowerCase())) continue;
-
-            const hasMeaningfulLabel =
-              !!rawLabel &&
-              !isNumericLike(rawLabel) &&
-              !isPlaceholderLabel(rawLabel);
-            if (isNumericLike(name) && !hasMeaningfulLabel) continue;
-
-            const label = hasMeaningfulLabel ? rawLabel : name;
-            const existingKeyByLabel = getExistingKeyByLabel(label);
-            const generatedKey = normalizeKey(label);
-            const key = existingKeyByLabel || (isNumericLike(name) ? `field_${generatedKey || "unknown"}` : name);
-
-            fields[key] = String(d.value);
-            if (!columnOrder.has(key)) {
-              columnOrder.set(key, { key, label, count: 0 });
-            }
-            columnOrder.get(key)!.count++;
-          }
-          if (Object.keys(fields).length > 0) map.set(lead.id, fields);
+        if (Object.keys(fields).length > 0) {
+          map.set(lead.id, fields);
         }
       }
     }
 
-    if (columnOrder.size === 0) return { fieldColumns: [], leadFieldMap: map };
+    const finalCols = [...columns.values()]
+      .filter((c) => !/^consent$/i.test(c.label.trim()))
+      .sort((a, b) => {
+        if (a.rank !== b.rank) return a.rank - b.rank;
+        if (a.rank === 0 && b.rank === 0 && a.numericOrder !== b.numericOrder) return a.numericOrder - b.numericOrder;
+        return a.firstSeen - b.firstSeen;
+      })
+      .map(({ key, label, count }) => ({ key, label, count }));
 
-    const isGenericColumn = (col: { key: string; label: string }) => {
-      const k = col.key.trim();
-      const l = col.label.trim();
-      if (/^\d+(\.\d+)?$/.test(k) && (/^\d+(\.\d+)?$/.test(l) || /^Field\s+\d+$/i.test(l))) return true;
-      if (/^field_\d+$/i.test(k) && /^Field\s+\d+$/i.test(l)) return true;
-      if (isPlaceholderLabel(l)) return true;
-      if (/^consent$/i.test(l)) return true;
-      return false;
-    };
-
-    const finalCols = [...columnOrder.values()].filter((c) => !isGenericColumn(c));
+    if (finalCols.length === 0) return { fieldColumns: [], leadFieldMap: map };
 
     const keptKeys = new Set(finalCols.map((c) => c.key));
     for (const [leadId, fields] of map.entries()) {
@@ -1373,16 +1265,16 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
       }
     }
 
-    const cols = finalCols.sort((a, b) => b.count - a.count);
-    return { fieldColumns: cols, leadFieldMap: map };
+    return { fieldColumns: finalCols, leadFieldMap: map };
   }, [fieldsRaw, dedupedLeads]);
 
   const filtered = dedupedLeads.filter((lead) => {
+    const fields = leadFieldMap.get(lead.id);
+    if (!fields || Object.keys(fields).length === 0) return false;
     if (statusFilter !== "all" && lead.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      const fields = leadFieldMap.get(lead.id);
-      const searchable = [lead.source, lead.status, ...(fields ? Object.values(fields) : [])].filter(Boolean).join(" ").toLowerCase();
+      const searchable = [lead.source, lead.status, ...Object.values(fields)].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
     return true;

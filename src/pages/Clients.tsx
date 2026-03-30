@@ -230,7 +230,7 @@ function OrgDetail({ org }: { org: any }) {
 
       {isPreviewEnvironment && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
-          <p className="text-xs text-warning-foreground">
+          <p className="text-xs text-foreground">
             {t("clients.previewWarning")}
           </p>
         </div>

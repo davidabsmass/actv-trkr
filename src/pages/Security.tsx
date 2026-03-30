@@ -47,7 +47,7 @@ export default function Security() {
         .eq("org_id", orgId)
         .is("reviewed_at", null)
         .order("occurred_at", { ascending: false })
-        .limit(100);
+        .limit(1000);
       if (error) throw error;
       return data || [];
     },

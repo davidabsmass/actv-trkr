@@ -131,34 +131,42 @@ Deno.serve(async (req) => {
       for (const site of domainSites) {
         const nowIso = now.toISOString();
 
-        // Domain health: only write expiry fields when we got valid data
+        // Domain health: upsert — only overwrite expiry fields when we got valid data
+        const domainRow: Record<string, any> = {
+          site_id: site.id,
+          org_id: site.org_id,
+          domain: site.domain,
+          source: domainResult.source,
+          last_checked_at: nowIso,
+        };
         if (domainResult.expiry) {
-          await supabase.from("domain_health").upsert({
-            site_id: site.id,
-            org_id: site.org_id,
-            domain: site.domain,
-            domain_expiry_date: domainResult.expiry,
-            days_to_domain_expiry: daysToDomain,
-            source: domainResult.source,
-            last_checked_at: nowIso,
-          }, { onConflict: "site_id" });
+          domainRow.domain_expiry_date = domainResult.expiry;
+          domainRow.days_to_domain_expiry = daysToDomain;
+        }
+        // Use upsert so new sites get a row even with null expiry
+        const { data: existingDomain } = await supabase.from("domain_health").select("id").eq("site_id", site.id).maybeSingle();
+        if (existingDomain) {
+          await supabase.from("domain_health").update(domainRow).eq("site_id", site.id);
         } else {
-          // Just bump timestamp — don't overwrite good data with nulls
-          await supabase.from("domain_health").update({ last_checked_at: nowIso }).eq("site_id", site.id);
+          await supabase.from("domain_health").insert(domainRow);
         }
 
-        // SSL health: only write expiry fields when we got valid data
+        // SSL health: upsert — only overwrite expiry fields when we got valid data
+        const sslRow: Record<string, any> = {
+          site_id: site.id,
+          org_id: site.org_id,
+          last_checked_at: nowIso,
+        };
         if (sslResult.expiry) {
-          await supabase.from("ssl_health").upsert({
-            site_id: site.id,
-            org_id: site.org_id,
-            ssl_expiry_date: sslResult.expiry,
-            days_to_ssl_expiry: sslResult.daysLeft,
-            issuer: sslResult.issuer,
-            last_checked_at: nowIso,
-          }, { onConflict: "site_id" });
+          sslRow.ssl_expiry_date = sslResult.expiry;
+          sslRow.days_to_ssl_expiry = sslResult.daysLeft;
+          sslRow.issuer = sslResult.issuer;
+        }
+        const { data: existingSsl } = await supabase.from("ssl_health").select("id").eq("site_id", site.id).maybeSingle();
+        if (existingSsl) {
+          await supabase.from("ssl_health").update(sslRow).eq("site_id", site.id);
         } else {
-          await supabase.from("ssl_health").update({ last_checked_at: nowIso }).eq("site_id", site.id);
+          await supabase.from("ssl_health").insert(sslRow);
         }
 
         if (daysToDomain !== null && alertThresholds.includes(daysToDomain)) {

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { buildFieldColumns } from "@/lib/form-field-display";
-import { deduplicateLeads } from "@/lib/dedup-leads";
+
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
@@ -1031,10 +1031,10 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!orgId,
   });
 
-  const dedupedLeads = useMemo(() => deduplicateLeads(leads), [leads]);
+  const sortedLeads = useMemo(() => (leads || []).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()), [leads]);
 
   // Get site domain to detect self-referral sources
-  const siteId = dedupedLeads?.[0]?.site_id;
+  const siteId = sortedLeads?.[0]?.site_id;
   const { data: siteData } = useQuery({
     queryKey: ["site_domain", siteId],
     queryFn: async () => {
@@ -1045,7 +1045,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!siteId,
   });
 
-  const leadIds = useMemo(() => dedupedLeads.map((l) => l.id), [dedupedLeads]);
+  const leadIds = useMemo(() => sortedLeads.map((l) => l.id), [sortedLeads]);
   const leadIdsKey = useMemo(() => [...leadIds].sort().join("|"), [leadIds]);
 
   const { data: fieldsRaw, isLoading: fieldsLoading } = useQuery({
@@ -1069,11 +1069,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   });
 
   const { fieldColumns, leadFieldMap } = useMemo(
-    () => buildFieldColumns(fieldsRaw, dedupedLeads),
-    [fieldsRaw, dedupedLeads],
+    () => buildFieldColumns(fieldsRaw, sortedLeads),
+    [fieldsRaw, sortedLeads],
   );
 
-  const filtered = dedupedLeads.filter((lead) => {
+  const filtered = sortedLeads.filter((lead) => {
     if (statusFilter !== "all" && lead.status !== statusFilter) return false;
     if (search) {
       const fields = leadFieldMap.get(lead.id);
@@ -1084,7 +1084,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     return true;
   });
 
-  const statuses = [...new Set(dedupedLeads.map((l) => l.status))].sort();
+  const statuses = [...new Set(sortedLeads.map((l) => l.status))].sort();
 
   const createExport = useMutation({
     mutationFn: async () => {
@@ -1222,7 +1222,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
           <div className="p-12 text-center text-muted-foreground text-sm">Loading entries…</div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">
-            {dedupedLeads.length === 0 ? "No leads for this form yet." : "No entries match your filters."}
+            {sortedLeads.length === 0 ? "No leads for this form yet." : "No entries match your filters."}
           </div>
         ) : (
           <div className="overflow-x-auto">

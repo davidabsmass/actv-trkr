@@ -50,12 +50,31 @@ interface FlatField {
   field_label: string | null;
   field_type: string | null;
   value_text: string | null;
+  value_number?: number | null;
+  value_bool?: boolean | null;
+  value_date?: string | null;
 }
 
 interface LeadRow {
   id: string;
   data?: unknown;
 }
+
+const getFlatFieldDisplayValue = (field: FlatField): string => {
+  if (typeof field.value_text === "string" && field.value_text.trim()) {
+    return field.value_text.trim();
+  }
+  if (typeof field.value_number === "number" && Number.isFinite(field.value_number)) {
+    return String(field.value_number);
+  }
+  if (typeof field.value_bool === "boolean") {
+    return field.value_bool ? "Yes" : "No";
+  }
+  if (typeof field.value_date === "string" && field.value_date.trim()) {
+    return field.value_date.trim();
+  }
+  return "";
+};
 
 /* ── Main builder ── */
 export function buildFieldColumns(
@@ -85,11 +104,7 @@ export function buildFieldColumns(
   };
 
   /* ─── Pass 1: flat fields (preferred) ─── */
-  const leadsWithFlat = new Set<string>();
-
   if (fieldsRaw && fieldsRaw.length > 0) {
-    for (const f of fieldsRaw) leadsWithFlat.add(f.lead_id);
-
     for (const f of fieldsRaw) {
       const rawKey = (f.field_key || "").trim();
       if (!rawKey) continue;
@@ -109,18 +124,17 @@ export function buildFieldColumns(
       const finalColKey = existingColKey || colKey;
       ensureColumn(finalColKey, label, numOrd);
 
-      // Store value (even if empty — will show as "—")
-      const value = (f.value_text || "").trim();
+      const value = getFlatFieldDisplayValue(f);
       if (value) {
         setValue(f.lead_id, finalColKey, value);
       }
     }
   }
 
-  /* ─── Pass 2: JSON fallback for leads without flat fields ─── */
+  /* ─── Pass 2: JSON fallback for leads without usable flat-field values ─── */
   if (leads) {
     for (const lead of leads) {
-      if (leadsWithFlat.has(lead.id)) continue;
+      if (map.has(lead.id)) continue;
 
       const rawData = lead.data as any;
       const payloadFields: any[] = Array.isArray(rawData?.fields)

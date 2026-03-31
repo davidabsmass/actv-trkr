@@ -346,18 +346,21 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   });
 
   const dedupedLeads = useMemo(() => deduplicateLeads(leads), [leads]);
-  const leadIds = dedupedLeads.map((l) => l.id);
+  const leadIds = useMemo(() => dedupedLeads.map((l) => l.id), [dedupedLeads]);
+  const leadIdsKey = useMemo(() => [...leadIds].sort().join("|"), [leadIds]);
 
   const { data: fieldsRaw } = useQuery({
-    queryKey: ["lead_fields_flat", orgId, formId, leadIds.length],
+    queryKey: ["lead_fields_flat", orgId, formId, leadIdsKey],
     queryFn: async () => {
       if (!orgId || leadIds.length === 0) return [];
       const results: any[] = [];
       for (let i = 0; i < leadIds.length; i += 50) {
         const batch = leadIds.slice(i, i + 50);
         const { data, error } = await supabase
-          .from("lead_fields_flat").select("lead_id, field_key, field_label, field_type, value_text")
-          .eq("org_id", orgId).in("lead_id", batch);
+          .from("lead_fields_flat")
+          .select("lead_id, field_key, field_label, field_type, value_text, value_number, value_bool, value_date")
+          .eq("org_id", orgId)
+          .in("lead_id", batch);
         if (error) throw error;
         if (data) results.push(...data);
       }

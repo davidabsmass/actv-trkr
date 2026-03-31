@@ -197,7 +197,7 @@ export default function Security() {
               onClick={() => setSeverityFilter(null)}
             >
               <p className="text-2xl font-bold text-foreground">{totalEventCount ?? 0}</p>
-              <p className="text-xs text-muted-foreground">{t("security.totalEvents")}</p>
+              <p className="text-xs text-muted-foreground">Total Events (Last 30 Days)</p>
             </div>
             <div
               className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === "critical" ? "border-destructive ring-1 ring-destructive/30" : "border-border hover:border-destructive/50"}`}

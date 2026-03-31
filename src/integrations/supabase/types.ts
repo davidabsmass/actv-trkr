@@ -1452,6 +1452,7 @@ export type Database = {
           created_at: string
           data: Json | null
           engagement_score: number | null
+          external_entry_id: string | null
           form_id: string
           id: string
           lead_score: number | null
@@ -1482,6 +1483,7 @@ export type Database = {
           created_at?: string
           data?: Json | null
           engagement_score?: number | null
+          external_entry_id?: string | null
           form_id: string
           id?: string
           lead_score?: number | null
@@ -1512,6 +1514,7 @@ export type Database = {
           created_at?: string
           data?: Json | null
           engagement_score?: number | null
+          external_entry_id?: string | null
           form_id?: string
           id?: string
           lead_score?: number | null

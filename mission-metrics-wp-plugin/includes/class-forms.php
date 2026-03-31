@@ -1270,14 +1270,18 @@ class MM_Forms {
 			$form_title = $form_post->post_title ?: $form_title;
 		}
 
+		$entry_id = self::get_avada_db_entry_id( $form_post_id, $data );
+		$entry_id_type = strpos( $entry_id, 'avada_db_' ) === 0 ? 'canonical' : 'legacy_fallback';
+
 		self::send( array(
 			'provider' => 'avada',
 			'entry'    => array(
-				'form_id'      => $form_post_id,
-				'form_title'   => $form_title,
-				'entry_id'     => self::get_avada_db_entry_id( $form_post_id, $data ),
-				'source_url'   => wp_get_referer() ?: home_url(),
-				'submitted_at' => current_time( 'c' ),
+				'form_id'       => $form_post_id,
+				'form_title'    => $form_title,
+				'entry_id'      => $entry_id,
+				'entry_id_type' => $entry_id_type,
+				'source_url'    => wp_get_referer() ?: home_url(),
+				'submitted_at'  => current_time( 'c' ),
 			),
 			'context' => self::get_tracking_context(),
 			'fields'  => $fields,

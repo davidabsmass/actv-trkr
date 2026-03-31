@@ -232,8 +232,117 @@ function CreateGoalDialog({ orgId, forms }: { orgId: string; forms: any[] }) {
   );
 }
 
+/* ─── Edit Goal Dialog ─── */
+function EditGoalDialog({ goal, orgId, forms }: { goal: ConversionGoal; orgId: string; forms: any[] }) {
+  const { t } = useTranslation();
+  const updateGoal = useUpdateGoal(orgId);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(goal.name);
+  const [description, setDescription] = useState(goal.description || "");
+  const [goalType, setGoalType] = useState<GoalType>(goal.goal_type as GoalType);
+  const [rules, setRules] = useState<Record<string, any>>(goal.tracking_rules || {});
+  const [isConversion, setIsConversion] = useState(goal.is_conversion);
+  const [conversionValue, setConversionValue] = useState(goal.conversion_value?.toString() || "");
+
+  const handleOpen = (v: boolean) => {
+    if (v) {
+      setName(goal.name);
+      setDescription(goal.description || "");
+      setGoalType(goal.goal_type as GoalType);
+      setRules(goal.tracking_rules || {});
+      setIsConversion(goal.is_conversion);
+      setConversionValue(goal.conversion_value?.toString() || "");
+    }
+    setOpen(v);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    try {
+      await updateGoal.mutateAsync({
+        id: goal.id,
+        name: name.trim(),
+        description: description.trim(),
+        goal_type: goalType,
+        tracking_rules: rules,
+        is_conversion: isConversion,
+        conversion_value: conversionValue ? parseFloat(conversionValue) : null,
+      });
+      toast.success(t("goals.updated", "Goal updated"));
+      setOpen(false);
+    } catch {
+      toast.error(t("goals.updateError", "Failed to update goal"));
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title={t("common.edit", "Edit")}>
+          <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("goals.editGoal", "Edit Goal")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div>
+            <label className="text-xs font-medium text-foreground mb-1 block">{t("goals.goalType")}</label>
+            <Select value={goalType} onValueChange={(v) => { setGoalType(v as GoalType); setRules({}); }}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {GOAL_TYPES.map((gt) => (
+                  <SelectItem key={gt.value} value={gt.value}>
+                    <span className="mr-2">{gt.icon}</span> {t(gt.labelKey)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="border border-border rounded-lg p-3 bg-muted/30">
+            <p className="text-xs font-medium text-foreground mb-2">{t("goals.trackingRules")}</p>
+            <TrackingRuleFields goalType={goalType} rules={rules} onChange={setRules} forms={forms} />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-foreground mb-1 block">{t("goals.goalName")}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("goals.namePlaceholder")} />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-foreground mb-1 block">{t("goals.goalDescription")}</label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("goals.descriptionPlaceholder")} rows={2} />
+          </div>
+
+          <div className="flex items-center justify-between border border-border rounded-lg p-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">{t("goals.markAsConversion")}</p>
+              <p className="text-xs text-muted-foreground">{t("goals.conversionHelp")}</p>
+            </div>
+            <Switch checked={isConversion} onCheckedChange={setIsConversion} />
+          </div>
+
+          {isConversion && (
+            <div>
+              <label className="text-xs font-medium text-foreground mb-1 block">{t("goals.conversionValueLabel")}</label>
+              <Input type="number" value={conversionValue} onChange={(e) => setConversionValue(e.target.value)} placeholder="0.00" className="w-32" />
+              <p className="text-xs text-muted-foreground mt-1">{t("goals.conversionValueHelp")}</p>
+            </div>
+          )}
+
+          <Button onClick={handleSave} disabled={!name.trim() || updateGoal.isPending} className="w-full">
+            {updateGoal.isPending ? t("common.saving") : t("common.save", "Save")}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ─── Goal Card ─── */
-function GoalCard({ goal, orgId }: { goal: ConversionGoal; orgId: string }) {
+function GoalCard({ goal, orgId, forms }: { goal: ConversionGoal; orgId: string; forms: any[] }) {
   const { t } = useTranslation();
   const updateGoal = useUpdateGoal(orgId);
   const deleteGoal = useDeleteGoal(orgId);
@@ -280,19 +389,13 @@ function GoalCard({ goal, orgId }: { goal: ConversionGoal; orgId: string }) {
       </div>
 
       <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+        <EditGoalDialog goal={goal} orgId={orgId} forms={forms} />
         <Button
           variant="ghost" size="icon" className="h-7 w-7"
           title={goal.is_active ? t("goals.deactivate") : t("goals.activate")}
           onClick={() => updateGoal.mutate({ id: goal.id, is_active: !goal.is_active })}
         >
           <Power className={`h-3.5 w-3.5 ${goal.is_active ? "text-success" : "text-muted-foreground"}`} />
-        </Button>
-        <Button
-          variant="ghost" size="icon" className="h-7 w-7"
-          title={goal.is_conversion ? t("goals.markInformational") : t("goals.markConversion")}
-          onClick={() => updateGoal.mutate({ id: goal.id, is_conversion: !goal.is_conversion })}
-        >
-          <TrendingUp className={`h-3.5 w-3.5 ${goal.is_conversion ? "text-primary" : "text-muted-foreground"}`} />
         </Button>
         <Button
           variant="ghost" size="icon" className="h-7 w-7"
@@ -363,7 +466,7 @@ export default function GoalsSection() {
       ) : (
         <div className="space-y-2">
           {goals.map((g) => (
-            <GoalCard key={g.id} goal={g} orgId={orgId!} />
+            <GoalCard key={g.id} goal={g} orgId={orgId!} forms={forms} />
           ))}
         </div>
       )}

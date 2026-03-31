@@ -23,6 +23,42 @@ const isNumericKey = (v: string) => /^\d+(\.\d+)?$/.test(v);
 const normalizeForDedup = (v: string) =>
   v.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
+const isWeakLabel = (label: string) => {
+  const l = label.trim();
+  if (!l) return true;
+  if (isNumericKey(l)) return true;
+  if (/^field(\s+\d+)?$/i.test(l)) return true;
+  return false;
+};
+
+const shouldUpgradeLabel = (existing: string, incoming: string) => {
+  const current = existing.trim();
+  const next = incoming.trim();
+  if (!next) return false;
+  if (isWeakLabel(current) && !isWeakLabel(next)) return true;
+  return false;
+};
+
+const extractExternalEntryId = (data: unknown): string | null => {
+  if (!data || typeof data !== "object") return null;
+  const record = data as Record<string, unknown>;
+
+  const direct = typeof record.external_entry_id === "string"
+    ? record.external_entry_id.trim()
+    : "";
+  if (direct) return direct;
+
+  const nestedEntry = record.entry;
+  if (nestedEntry && typeof nestedEntry === "object") {
+    const nestedId = typeof (nestedEntry as Record<string, unknown>).entry_id === "string"
+      ? (nestedEntry as Record<string, unknown>).entry_id.trim()
+      : "";
+    if (nestedId) return nestedId;
+  }
+
+  return null;
+};
+
 /** Return a human-readable label from whatever we have */
 const pickLabel = (label: string, key: string): string => {
   const trimLabel = (label || "").trim();
@@ -91,9 +127,25 @@ export function buildFieldColumns(
   // Dedup helper: normalized-label → column key (so "First Name" and "first name" merge)
   const labelToColKey = new Map<string, string>();
 
+  // Support map to copy known values to sibling rows with same external_entry_id.
+  // This keeps duplicate WordPress rows visible while avoiding blank clones.
+  const leadExternalEntryId = new Map<string, string>();
+  const externalEntryToLeadIds = new Map<string, string[]>();
+
   const ensureColumn = (colKey: string, label: string, numericOrder: number) => {
-    if (!columns.has(colKey)) {
+    const existing = columns.get(colKey);
+    if (!existing) {
       columns.set(colKey, { key: colKey, label, numericOrder, firstSeen: seenCounter++ });
+      labelToColKey.set(normalizeForDedup(label), colKey);
+      return;
+    }
+
+    if (shouldUpgradeLabel(existing.label, label)) {
+      const prevNorm = normalizeForDedup(existing.label);
+      if (labelToColKey.get(prevNorm) === colKey) {
+        labelToColKey.delete(prevNorm);
+      }
+      existing.label = label;
       labelToColKey.set(normalizeForDedup(label), colKey);
     }
   };
@@ -102,6 +154,18 @@ export function buildFieldColumns(
     if (!map.has(leadId)) map.set(leadId, {});
     map.get(leadId)![colKey] = value;
   };
+
+  if (leads) {
+    for (const lead of leads) {
+      const externalEntryId = extractExternalEntryId(lead.data);
+      if (!externalEntryId) continue;
+      leadExternalEntryId.set(lead.id, externalEntryId);
+      if (!externalEntryToLeadIds.has(externalEntryId)) {
+        externalEntryToLeadIds.set(externalEntryId, []);
+      }
+      externalEntryToLeadIds.get(externalEntryId)!.push(lead.id);
+    }
+  }
 
   /* ─── Pass 1: flat fields (preferred) ─── */
   if (fieldsRaw && fieldsRaw.length > 0) {
@@ -185,6 +249,39 @@ export function buildFieldColumns(
 
       // Ensure lead exists in map even with no values (shows row with all "—")
       if (!map.has(lead.id)) map.set(lead.id, {});
+    }
+  }
+
+  // Pass 3: for rows with no values, borrow values from sibling rows that share
+  // the same external_entry_id (common with historical Avada backfill duplicates).
+  if (leads) {
+    for (const lead of leads) {
+      const existingValues = map.get(lead.id);
+      if (existingValues && Object.keys(existingValues).length > 0) continue;
+
+      const externalEntryId = leadExternalEntryId.get(lead.id);
+      if (!externalEntryId) {
+        if (!existingValues) map.set(lead.id, {});
+        continue;
+      }
+
+      const peerLeadIds = externalEntryToLeadIds.get(externalEntryId) || [];
+      let donorValues: Record<string, string> | null = null;
+
+      for (const peerLeadId of peerLeadIds) {
+        if (peerLeadId === lead.id) continue;
+        const peerValues = map.get(peerLeadId);
+        if (peerValues && Object.keys(peerValues).length > 0) {
+          donorValues = peerValues;
+          break;
+        }
+      }
+
+      if (donorValues) {
+        map.set(lead.id, { ...donorValues });
+      } else if (!existingValues) {
+        map.set(lead.id, {});
+      }
     }
   }
 

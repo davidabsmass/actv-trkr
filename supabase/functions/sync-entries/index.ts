@@ -33,6 +33,25 @@ function extractLeadExternalEntryId(data: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+type LeadCandidate = {
+  id: string;
+  fieldCount: number;
+  createdAt: string | null;
+};
+
+function pickBestLeadCandidate(candidates: LeadCandidate[]): LeadCandidate | null {
+  if (!candidates.length) return null;
+
+  const sorted = [...candidates].sort((a, b) => {
+    if (b.fieldCount !== a.fieldCount) return b.fieldCount - a.fieldCount;
+    const aTs = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const bTs = b.createdAt ? Date.parse(b.createdAt) : 0;
+    return bTs - aTs;
+  });
+
+  return sorted[0] || null;
+}
+
 function parseVersion(version: string | null | undefined): [number, number, number] {
   if (!version) return [0, 0, 0];
   const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
@@ -208,20 +227,43 @@ Deno.serve(async (req) => {
 
       const { data: leadRows } = await supabase
         .from("leads")
-        .select("id, submitted_at, status, data")
+        .select("id, submitted_at, status, data, created_at")
         .eq("org_id", orgId)
         .eq("form_id", formId);
 
-      const leadBuckets = new Map<string, { active: string[]; trashed: string[] }>();
-      const leadExternalIdBuckets = new Map<string, { active: string[]; trashed: string[] }>();
+      const leadIds = (leadRows || []).map((lead: any) => lead.id);
+      const leadFieldCounts = new Map<string, number>();
+
+      if (leadIds.length > 0) {
+        const { data: leadFieldRows } = await supabase
+          .from("lead_fields_flat")
+          .select("lead_id")
+          .eq("org_id", orgId)
+          .in("lead_id", leadIds);
+
+        for (const row of leadFieldRows || []) {
+          const current = leadFieldCounts.get((row as any).lead_id) || 0;
+          leadFieldCounts.set((row as any).lead_id, current + 1);
+        }
+      }
+
+      const leadBuckets = new Map<string, { active: LeadCandidate[]; trashed: LeadCandidate[] }>();
+      const leadExternalIdBuckets = new Map<string, { active: LeadCandidate[]; trashed: LeadCandidate[] }>();
       for (const lead of leadRows || []) {
         if (!lead.submitted_at) continue;
+
+        const candidate: LeadCandidate = {
+          id: lead.id,
+          fieldCount: leadFieldCounts.get(lead.id) || 0,
+          createdAt: (lead as any).created_at || null,
+        };
+
         const key = normalizeTimestampForCompare(lead.submitted_at);
         const bucket = leadBuckets.get(key) || { active: [], trashed: [] };
         if (lead.status === "trashed") {
-          bucket.trashed.push(lead.id);
+          bucket.trashed.push(candidate);
         } else {
-          bucket.active.push(lead.id);
+          bucket.active.push(candidate);
         }
         leadBuckets.set(key, bucket);
 
@@ -229,9 +271,9 @@ Deno.serve(async (req) => {
         if (externalEntryId) {
           const extBucket = leadExternalIdBuckets.get(externalEntryId) || { active: [], trashed: [] };
           if (lead.status === "trashed") {
-            extBucket.trashed.push(lead.id);
+            extBucket.trashed.push(candidate);
           } else {
-            extBucket.active.push(lead.id);
+            extBucket.active.push(candidate);
           }
           leadExternalIdBuckets.set(externalEntryId, extBucket);
         }
@@ -358,7 +400,7 @@ Deno.serve(async (req) => {
       for (const entry of toTrashEntries) {
         const extBucket = leadExternalIdBuckets.get(entry.external_entry_id);
         if (extBucket && extBucket.active.length > 0) {
-          for (const leadId of extBucket.active) leadIdsToTrash.add(leadId);
+          for (const candidate of extBucket.active) leadIdsToTrash.add(candidate.id);
           continue;
         }
 
@@ -366,14 +408,28 @@ Deno.serve(async (req) => {
         const key = normalizeTimestampForCompare(entry.submitted_at);
         const bucket = leadBuckets.get(key);
         if (!bucket) continue;
-        for (const leadId of bucket.active) leadIdsToTrash.add(leadId);
+        for (const candidate of bucket.active) leadIdsToTrash.add(candidate.id);
+      }
+
+      // If multiple active leads share one external_entry_id, keep only the best row.
+      // This prevents blank clone rows from being reactivated on each sync.
+      for (const extBucket of leadExternalIdBuckets.values()) {
+        if (extBucket.active.length <= 1) continue;
+
+        const keep = pickBestLeadCandidate(extBucket.active);
+        for (const candidate of extBucket.active) {
+          if (!keep || candidate.id !== keep.id) {
+            leadIdsToTrash.add(candidate.id);
+          }
+        }
       }
 
       const leadIdsToRestore = new Set<string>();
       for (const entry of toRestoreEntries) {
         const extBucket = leadExternalIdBuckets.get(entry.external_entry_id);
         if (extBucket && extBucket.trashed.length > 0) {
-          for (const leadId of extBucket.trashed) leadIdsToRestore.add(leadId);
+          const best = pickBestLeadCandidate(extBucket.trashed);
+          if (best) leadIdsToRestore.add(best.id);
           continue;
         }
 
@@ -381,7 +437,8 @@ Deno.serve(async (req) => {
         const key = normalizeTimestampForCompare(entry.submitted_at);
         const bucket = leadBuckets.get(key);
         if (!bucket) continue;
-        for (const leadId of bucket.trashed) leadIdsToRestore.add(leadId);
+        const best = pickBestLeadCandidate(bucket.trashed);
+        if (best) leadIdsToRestore.add(best.id);
       }
 
       // Prefer restore when a timestamp collision appears in both buckets.

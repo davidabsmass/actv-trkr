@@ -1,6 +1,7 @@
 <?php
 /**
  * Security monitoring: failed logins, brute force detection, file integrity.
+ * Only warning and critical severity events are reported to reduce noise.
  */
 class Mission_Metrics_Security {
     private $api_url;
@@ -17,8 +18,8 @@ class Mission_Metrics_Security {
         // Track failed logins
         add_action('wp_login_failed', [$this, 'on_login_failed'], 10, 2);
 
-        // Track successful logins from new IPs
-        add_action('wp_login', [$this, 'on_login_success'], 10, 2);
+        // Successful logins — only flag if suspicious (skip info-level new IP)
+        // Removed: on_login_success (was info severity, too noisy)
 
         // Schedule daily file integrity scan
         if (!wp_next_scheduled('mission_metrics_file_integrity_scan')) {
@@ -77,33 +78,8 @@ class Mission_Metrics_Security {
     }
 
     /**
-     * Track successful login from a new IP.
-     */
-    public function on_login_success($user_login, $user) {
-        $ip = $this->get_client_ip();
-        $known_ips = get_user_meta($user->ID, '_mm_known_ips', true);
-        if (!is_array($known_ips)) $known_ips = [];
-
-        if (!in_array($ip, $known_ips, true)) {
-            $this->send_event([
-                'event_type' => 'new_ip_login',
-                'severity'   => 'info',
-                'title'      => "Login from new IP for '{$user_login}'",
-                'details'    => [
-                    'username' => $user_login,
-                    'ip'       => $ip,
-                    'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field($_SERVER['HTTP_USER_AGENT']) : '',
-                ],
-            ]);
-            $known_ips[] = $ip;
-            // Keep last 50 IPs
-            $known_ips = array_slice($known_ips, -50);
-            update_user_meta($user->ID, '_mm_known_ips', $known_ips);
-        }
-    }
-
-    /**
      * File integrity scan: compare checksums of core WP files, active theme, and must-use plugins.
+     * Only reports modified (warning) and deleted (critical) files. New files (info) are skipped.
      */
     public function run_file_integrity_scan() {
         $baseline_key = '_mm_file_baseline';
@@ -117,7 +93,7 @@ class Mission_Metrics_Security {
             return;
         }
 
-        // Detect modified and deleted files
+        // Detect modified and deleted files (warning + critical only)
         foreach ($baseline as $path => $hash) {
             if (!isset($current[$path])) {
                 $events[] = [
@@ -136,17 +112,8 @@ class Mission_Metrics_Security {
             }
         }
 
-        // Detect new files
-        foreach ($current as $path => $hash) {
-            if (!isset($baseline[$path])) {
-                $events[] = [
-                    'event_type' => 'file_added',
-                    'severity'   => 'info',
-                    'title'      => "New file detected: {$path}",
-                    'details'    => ['path' => $path],
-                ];
-            }
-        }
+        // New files (info severity) — intentionally skipped to reduce noise
+        // The baseline is still updated so future deletions/changes are caught
 
         // Send events
         if (!empty($events)) {

@@ -209,6 +209,11 @@ export default function Security() {
                                   <span>{format(new Date(evt.occurred_at), "MMM d, h:mm a")}</span>
                                   {details.ip && <span>IP: {details.ip}</span>}
                                   {details.username && <span>{t("security.userLabel")}: {details.username}</span>}
+                                  {details.occurrences > 1 && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                      ×{details.occurrences}
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                               <button

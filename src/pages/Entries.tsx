@@ -349,7 +349,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const leadIds = useMemo(() => dedupedLeads.map((l) => l.id), [dedupedLeads]);
   const leadIdsKey = useMemo(() => [...leadIds].sort().join("|"), [leadIds]);
 
-  const { data: fieldsRaw } = useQuery({
+  const { data: fieldsRaw, isLoading: fieldsLoading } = useQuery({
     queryKey: ["lead_fields_flat", orgId, formId, leadIdsKey],
     queryFn: async () => {
       if (!orgId || leadIds.length === 0) return [];

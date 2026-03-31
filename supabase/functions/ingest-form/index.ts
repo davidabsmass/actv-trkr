@@ -182,25 +182,7 @@ async function getFormFieldSchema(
   formId: string,
   orgId: string,
 ): Promise<{ field_key: string; field_label: string }[] | null> {
-  // Find a lead for this form that HAS flat fields
-  const { data: sampleLead } = await supabase
-    .from("lead_fields_flat")
-    .select("lead_id")
-    .eq("org_id", orgId)
-    .in("lead_id", 
-      supabase.from("leads").select("id").eq("form_id", formId).eq("org_id", orgId).neq("status", "trashed")
-    )
-    .limit(1);
-  
-  // Simpler approach: get all distinct field_key/field_label pairs for this form
-  const { data: fieldRows } = await supabase
-    .from("lead_fields_flat")
-    .select("field_key, field_label, lead_id")
-    .eq("org_id", orgId);
-  
-  if (!fieldRows || fieldRows.length === 0) return null;
-  
-  // Get lead IDs for this form
+  // Step 1: Get lead IDs for this form
   const { data: formLeads } = await supabase
     .from("leads")
     .select("id")
@@ -210,13 +192,25 @@ async function getFormFieldSchema(
     .limit(100);
   
   if (!formLeads || formLeads.length === 0) return null;
-  const formLeadIds = new Set(formLeads.map((l: any) => l.id));
+  const formLeadIds = formLeads.map((l: any) => l.id);
   
-  // Filter field rows to this form and deduplicate
+  // Step 2: Get flat fields for those specific leads (batched)
+  const allFieldRows: any[] = [];
+  for (let i = 0; i < formLeadIds.length; i += 50) {
+    const batch = formLeadIds.slice(i, i + 50);
+    const { data: fieldRows } = await supabase
+      .from("lead_fields_flat")
+      .select("field_key, field_label, lead_id")
+      .eq("org_id", orgId)
+      .in("lead_id", batch);
+    if (fieldRows) allFieldRows.push(...fieldRows);
+  }
+  
+  if (allFieldRows.length === 0) return null;
+  
+  // Deduplicate: keep first label seen per key
   const seen = new Map<string, string>();
-  const forThisForm = fieldRows.filter((r: any) => formLeadIds.has(r.lead_id));
-  
-  for (const row of forThisForm) {
+  for (const row of allFieldRows) {
     if (!seen.has(row.field_key)) {
       seen.set(row.field_key, row.field_label || row.field_key);
     }

@@ -373,18 +373,41 @@ Deno.serve(async (req) => {
     const source = utmSource || (isSelfReferral ? "direct" : referrerDomain) || "direct";
     const medium = utmMedium || (referrerDomain && !isSelfReferral ? "referral" : "direct");
 
-    // Check for existing lead with same external_entry_id to prevent duplicates on re-backfill.
-    // Use JSONB contains for reliable matching across providers.
-    const { data: existingLeadRows, error: existingLeadError } = await supabase
+    // Check for existing lead with same external_entry_id using dedicated column first, JSONB fallback.
+    let existingLeadRows: any[] = [];
+    let existingLeadError: any = null;
+
+    // Primary lookup: dedicated column
+    const { data: colLeads, error: colErr } = await supabase
       .from("leads")
       .select("id, submitted_at, status, created_at")
       .eq("org_id", orgId)
       .eq("site_id", siteId)
       .eq("form_id", formId)
-      .contains("data", { external_entry_id: extEntryId })
+      .eq("external_entry_id", extEntryId)
       .order("submitted_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(25);
+
+    if (colErr) {
+      existingLeadError = colErr;
+    } else if (colLeads && colLeads.length > 0) {
+      existingLeadRows = colLeads;
+    } else {
+      // Fallback: JSONB contains (for rows not yet backfilled)
+      const { data: jsonLeads, error: jsonErr } = await supabase
+        .from("leads")
+        .select("id, submitted_at, status, created_at")
+        .eq("org_id", orgId)
+        .eq("site_id", siteId)
+        .eq("form_id", formId)
+        .contains("data", { external_entry_id: extEntryId })
+        .order("submitted_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(25);
+      if (jsonErr) existingLeadError = jsonErr;
+      else existingLeadRows = jsonLeads || [];
+    }
 
     if (existingLeadError) {
       console.error("Existing lead dedupe lookup failed:", existingLeadError);

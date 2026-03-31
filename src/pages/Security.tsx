@@ -26,6 +26,7 @@ export default function Security() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [severityFilter, setSeverityFilter] = useState<string | null>(null);
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],
@@ -37,26 +38,9 @@ export default function Security() {
     enabled: !!orgId,
   });
 
-  // Exact total count of unreviewed events (not capped)
-  const { data: totalEventCount } = useQuery({
-    queryKey: ["security_events_count", orgId],
-    queryFn: async () => {
-      if (!orgId) return 0;
-      const { count, error } = await supabase
-        .from("security_events")
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .is("reviewed_at", null);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!orgId,
-    refetchInterval: 30000,
-  });
-
-  // Exact counts by severity
-  const { data: criticalTotal } = useQuery({
-    queryKey: ["security_events_critical_count", orgId],
+  // Exact total count of unreviewed events (last 30 days)
+  const { data: totalEventCount, refetch: refetchTotal } = useQuery({
+    queryKey: ["security_events_count", orgId, since],
     queryFn: async () => {
       if (!orgId) return 0;
       const { count, error } = await supabase
@@ -64,6 +48,24 @@ export default function Security() {
         .select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
         .is("reviewed_at", null)
+        .gte("occurred_at", since);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
+  const { data: criticalTotal, refetch: refetchCritical } = useQuery({
+    queryKey: ["security_events_critical_count", orgId, since],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .gte("occurred_at", since)
         .eq("severity", "critical");
       if (error) throw error;
       return count ?? 0;
@@ -72,8 +74,8 @@ export default function Security() {
     refetchInterval: 30000,
   });
 
-  const { data: warningTotal } = useQuery({
-    queryKey: ["security_events_warning_count", orgId],
+  const { data: warningTotal, refetch: refetchWarning } = useQuery({
+    queryKey: ["security_events_warning_count", orgId, since],
     queryFn: async () => {
       if (!orgId) return 0;
       const { count, error } = await supabase
@@ -81,6 +83,7 @@ export default function Security() {
         .select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
         .is("reviewed_at", null)
+        .gte("occurred_at", since)
         .eq("severity", "warning");
       if (error) throw error;
       return count ?? 0;
@@ -89,8 +92,8 @@ export default function Security() {
     refetchInterval: 30000,
   });
 
-  const { data: events, isLoading } = useQuery({
-    queryKey: ["security_events", orgId],
+  const { data: events, isLoading, refetch: refetchEvents } = useQuery({
+    queryKey: ["security_events", orgId, since],
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
@@ -98,6 +101,7 @@ export default function Security() {
         .select("*")
         .eq("org_id", orgId)
         .is("reviewed_at", null)
+        .gte("occurred_at", since)
         .order("occurred_at", { ascending: false })
         .limit(1000);
       if (error) throw error;
@@ -109,23 +113,31 @@ export default function Security() {
 
   const hasSites = (sites?.length ?? 0) > 0;
 
+  const refetchAll = () => {
+    refetchTotal();
+    refetchCritical();
+    refetchWarning();
+    refetchEvents();
+  };
+
   const dismissEvent = useMutation({
     mutationFn: async (id: string) => {
       await (supabase as any).from("security_events").update({ reviewed_at: new Date().toISOString() }).eq("id", id);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
+    onSuccess: refetchAll,
   });
 
   const dismissAll = useMutation({
     mutationFn: async () => {
       if (!orgId) return;
-      const ids = events?.map(e => e.id) || [];
-      if (ids.length === 0) return;
-      for (const id of ids) {
-        await (supabase as any).from("security_events").update({ reviewed_at: new Date().toISOString() }).eq("id", id);
-      }
+      await (supabase as any)
+        .from("security_events")
+        .update({ reviewed_at: new Date().toISOString() })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .gte("occurred_at", since);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
+    onSuccess: refetchAll,
   });
 
   const filteredEvents = severityFilter
@@ -185,7 +197,7 @@ export default function Security() {
               onClick={() => setSeverityFilter(null)}
             >
               <p className="text-2xl font-bold text-foreground">{totalEventCount ?? 0}</p>
-              <p className="text-xs text-muted-foreground">{t("security.totalEvents")}</p>
+              <p className="text-xs text-muted-foreground">Total Events (Last 30 Days)</p>
             </div>
             <div
               className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === "critical" ? "border-destructive ring-1 ring-destructive/30" : "border-border hover:border-destructive/50"}`}

@@ -110,11 +110,13 @@ export default function Security() {
 
   const hasSites = (sites?.length ?? 0) > 0;
 
-  const refetchAll = () => {
-    refetchTotal();
-    refetchCritical();
-    refetchWarning();
-    refetchEvents();
+  const refetchAll = async () => {
+    await Promise.all([
+      refetchTotal(),
+      refetchCritical(),
+      refetchWarning(),
+      refetchEvents(),
+    ]);
   };
 
   const dismissEvent = useMutation({

@@ -896,19 +896,61 @@ class MM_Forms {
 	 */
 	private static function get_avada_db_entry_id( $form_post_id, $avada_data = array() ) {
 		global $wpdb;
-		$table = $wpdb->prefix . 'fusion_form_submissions';
-		if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
+
+		// Try all known Avada submission table names
+		$candidate_tables = array(
+			$wpdb->prefix . 'fusion_form_submissions',
+			$wpdb->prefix . 'fusionbuilder_form_submissions',
+			$wpdb->prefix . 'avada_form_submissions',
+		);
+
+		$table = null;
+		foreach ( $candidate_tables as $ct ) {
+			if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $ct ) ) === $ct ) {
+				$table = $ct;
+				break;
+			}
+		}
+
+		if ( ! $table ) {
 			return 'avada_' . time() . '_' . wp_rand();
 		}
 
 		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
 
+		// Strategy 1: Use submission metadata (timestamp + source_url) for precise match
 		if ( is_array( $avada_data ) && ! empty( $avada_data['submission'] ) && is_string( $avada_data['submission'] ) ) {
 			$parts = array_map( 'trim', explode( ',', $avada_data['submission'] ) );
 			$submitted_at = $parts[1] ?? '';
 			$source_url   = $parts[2] ?? '';
 
 			if ( $submitted_at ) {
+				// Try with both form_id AND timestamp for precise match
+				$form_ref_cols = array( 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id' );
+				foreach ( $form_ref_cols as $frc ) {
+					if ( ! in_array( $frc, $columns, true ) ) continue;
+
+					if ( is_array( $columns ) && in_array( 'source_url', $columns, true ) && $source_url ) {
+						$row = $wpdb->get_row( $wpdb->prepare(
+							"SELECT id FROM {$table} WHERE {$frc} = %d AND date_time = %s AND source_url = %s ORDER BY id DESC LIMIT 1",
+							intval( $form_post_id ),
+							$submitted_at,
+							$source_url
+						) );
+					} else {
+						$row = $wpdb->get_row( $wpdb->prepare(
+							"SELECT id FROM {$table} WHERE {$frc} = %d AND date_time = %s ORDER BY id DESC LIMIT 1",
+							intval( $form_post_id ),
+							$submitted_at
+						) );
+					}
+
+					if ( $row && isset( $row->id ) ) {
+						return 'avada_db_' . $row->id;
+					}
+				}
+
+				// Fallback: timestamp only (no form_id constraint)
 				if ( is_array( $columns ) && in_array( 'source_url', $columns, true ) && $source_url ) {
 					$row = $wpdb->get_row( $wpdb->prepare(
 						"SELECT id FROM {$table} WHERE date_time = %s AND source_url = %s ORDER BY id DESC LIMIT 1",
@@ -928,14 +970,20 @@ class MM_Forms {
 			}
 		}
 
-		$row = $wpdb->get_row( $wpdb->prepare(
-			"SELECT id FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 1",
-			intval( $form_post_id )
-		) );
-		if ( $row && isset( $row->id ) ) {
-			return 'avada_db_' . $row->id;
+		// Strategy 2: form_id-scoped latest entry (scoped to this form only)
+		$form_ref_cols = array( 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id' );
+		foreach ( $form_ref_cols as $frc ) {
+			if ( ! in_array( $frc, $columns, true ) ) continue;
+			$row = $wpdb->get_row( $wpdb->prepare(
+				"SELECT id FROM {$table} WHERE {$frc} = %d ORDER BY id DESC LIMIT 1",
+				intval( $form_post_id )
+			) );
+			if ( $row && isset( $row->id ) ) {
+				return 'avada_db_' . $row->id;
+			}
 		}
 
+		// Last resort: non-canonical fallback
 		return 'avada_' . time() . '_' . wp_rand();
 	}
 

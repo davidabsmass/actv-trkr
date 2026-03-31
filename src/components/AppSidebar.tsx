@@ -47,6 +47,11 @@ export function AppSidebar() {
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
   const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { t } = useTranslation();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const closeMobileNav = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar className="border-r-0 [&>[data-sidebar=sidebar]]:bg-transparent" style={{ background: "var(--sidebar-gradient)" }}>

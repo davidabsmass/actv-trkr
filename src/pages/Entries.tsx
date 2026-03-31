@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { buildFieldColumns } from "@/lib/form-field-display";
-import { deduplicateLeads } from "@/lib/dedup-leads";
+
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
@@ -345,8 +345,8 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!orgId,
   });
 
-  const dedupedLeads = useMemo(() => deduplicateLeads(leads), [leads]);
-  const leadIds = useMemo(() => dedupedLeads.map((l) => l.id), [dedupedLeads]);
+  const sortedLeads = useMemo(() => (leads || []).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()), [leads]);
+  const leadIds = useMemo(() => sortedLeads.map((l) => l.id), [sortedLeads]);
   const leadIdsKey = useMemo(() => [...leadIds].sort().join("|"), [leadIds]);
 
   const { data: fieldsRaw, isLoading: fieldsLoading } = useQuery({
@@ -370,11 +370,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   });
 
   const { fieldColumns, leadFieldMap } = useMemo(
-    () => buildFieldColumns(fieldsRaw, dedupedLeads),
-    [fieldsRaw, dedupedLeads],
+    () => buildFieldColumns(fieldsRaw, sortedLeads),
+    [fieldsRaw, sortedLeads],
   );
 
-  const filtered = dedupedLeads.filter((lead) => {
+  const filtered = sortedLeads.filter((lead) => {
     if (search) {
       const fields = leadFieldMap.get(lead.id);
       const q = search.toLowerCase();

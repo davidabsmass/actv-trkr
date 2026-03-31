@@ -39,6 +39,16 @@ function inferAvadaFieldName(type: string, value: string, position: number): str
  * Also handles "data-only" blobs (no field_types) by accepting an optional
  * schema template looked up from existing lead_fields_flat for the same form.
  */
+/**
+ * Pattern matchers for high-confidence field identification in CSV blobs.
+ * Used to pre-assign values to fields BEFORE positional mapping.
+ */
+const FIELD_PATTERNS: { labelPattern: RegExp; valueTest: (v: string) => boolean }[] = [
+  { labelPattern: /^email$/i, valueTest: (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) },
+  { labelPattern: /^phone$/i, valueTest: (v) => /^[\d\s\-\+\(\)]{7,}$/.test(v.replace(/\s/g, "")) },
+  { labelPattern: /^(zip\s*code|zip|postal)$/i, valueTest: (v) => /^\d{4,5}(-\d{4})?$/.test(v) },
+];
+
 function parseAvadaFieldsIfNeeded(
   fields: any[],
   provider: string,
@@ -52,34 +62,82 @@ function parseAvadaFieldsIfNeeded(
   // ── Case 1: data-only blob (no field_types) — use schema template ──
   if (dataEntry?.value && !typesEntry?.value && schemaTemplate && schemaTemplate.length > 0) {
     const raw = dataEntry.value as string;
-    // Smart split: split by ", " but the LAST field gets all remaining text
     const parts = raw.split(", ");
     const expected = schemaTemplate.length;
     const values: string[] = [];
     
     if (parts.length <= expected) {
-      // Exact or fewer — map 1:1
       for (let i = 0; i < expected; i++) values.push(parts[i] || "");
     } else {
-      // More parts than fields — first N-1 fields get one part each, last gets the rest
       for (let i = 0; i < expected - 1; i++) values.push(parts[i] || "");
       values.push(parts.slice(expected - 1).join(", "));
     }
     
+    // ── Pattern-based pre-assignment for high-confidence fields ──
+    // This prevents positional shifts when optional fields (like phone) appear or disappear
+    const preAssigned = new Map<number, number>(); // value_idx → schema_idx
+    const schemaUsed = new Set<number>();
+    const valueUsed = new Set<number>();
+    
+    for (const pattern of FIELD_PATTERNS) {
+      const schemaIdx = schemaTemplate.findIndex((s, i) => !schemaUsed.has(i) && pattern.labelPattern.test(s.field_label));
+      if (schemaIdx < 0) continue;
+      
+      // Find the FIRST matching value (only match if not already used)
+      const valIdx = values.findIndex((v, i) => !valueUsed.has(i) && v.trim() && pattern.valueTest(v.trim()));
+      if (valIdx < 0) continue;
+      
+      preAssigned.set(valIdx, schemaIdx);
+      schemaUsed.add(schemaIdx);
+      valueUsed.add(valIdx);
+    }
+    
+    if (preAssigned.size > 0) {
+      console.log(`Avada pattern pre-assigned ${preAssigned.size} fields: ${[...preAssigned.entries()].map(([vi, si]) => `val[${vi}]→${schemaTemplate[si].field_label}`).join(", ")}`);
+    }
+    
+    // ── Positional mapping for remaining fields ──
     const parsed: any[] = [];
-    for (let i = 0; i < schemaTemplate.length; i++) {
-      const val = (values[i] || "").trim();
-      if (!val || val === "Array") continue;
-      parsed.push({
-        name: schemaTemplate[i].field_key,
-        label: schemaTemplate[i].field_label,
-        type: "text",
-        value: val,
-      });
+    let schemaPos = 0;
+    
+    for (let valIdx = 0; valIdx < values.length; valIdx++) {
+      const val = (values[valIdx] || "").trim();
+      if (!val || val === "Array") {
+        // Skip this value, also advance schema position if not pre-assigned
+        if (!valueUsed.has(valIdx)) {
+          while (schemaPos < schemaTemplate.length && schemaUsed.has(schemaPos)) schemaPos++;
+          schemaPos++;
+        }
+        continue;
+      }
+      
+      if (preAssigned.has(valIdx)) {
+        // Use pre-assigned field
+        const si = preAssigned.get(valIdx)!;
+        parsed.push({
+          name: schemaTemplate[si].field_key,
+          label: schemaTemplate[si].field_label,
+          type: "text",
+          value: val,
+        });
+      } else {
+        // Positional: find next unused schema slot
+        while (schemaPos < schemaTemplate.length && schemaUsed.has(schemaPos)) schemaPos++;
+        if (schemaPos < schemaTemplate.length) {
+          parsed.push({
+            name: schemaTemplate[schemaPos].field_key,
+            label: schemaTemplate[schemaPos].field_label,
+            type: "text",
+            value: val,
+          });
+          schemaUsed.add(schemaPos);
+          schemaPos++;
+        }
+      }
     }
     
     if (parsed.length > 0) {
-      console.log(`Avada data-only parser produced ${parsed.length} fields using schema template`);
+      console.log(`Avada data-only parser produced ${parsed.length} fields using schema template (${preAssigned.size} pattern-matched)`);
       return parsed;
     }
   }

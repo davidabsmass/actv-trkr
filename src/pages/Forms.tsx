@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { buildFieldColumns } from "@/lib/form-field-display";
+import { deduplicateLeads } from "@/lib/dedup-leads";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
@@ -1030,31 +1031,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!orgId,
   });
 
-  const dedupedLeads = useMemo(() => {
-    if (!leads || leads.length === 0) return [];
-    const byExternalId = new Map<string, any>();
-    const withoutExternalId: any[] = [];
-
-    for (const lead of leads) {
-      const extId =
-        lead.data && typeof lead.data === "object" && !Array.isArray(lead.data)
-          ? (lead.data as Record<string, any>).external_entry_id
-          : null;
-
-      if (typeof extId === "string" && extId.trim() !== "") {
-        const existing = byExternalId.get(extId);
-        if (!existing || new Date(lead.submitted_at).getTime() > new Date(existing.submitted_at).getTime()) {
-          byExternalId.set(extId, lead);
-        }
-      } else {
-        withoutExternalId.push(lead);
-      }
-    }
-
-    return [...byExternalId.values(), ...withoutExternalId].sort(
-      (a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()
-    );
-  }, [leads]);
+  const dedupedLeads = useMemo(() => deduplicateLeads(leads), [leads]);
 
   // Get site domain to detect self-referral sources
   const siteId = dedupedLeads?.[0]?.site_id;

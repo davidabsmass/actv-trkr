@@ -13,6 +13,7 @@ import { Shield } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AiChatbot } from "@/components/AiChatbot";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
+import { CustomerProfilePrompt } from "@/components/CustomerProfilePrompt";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();

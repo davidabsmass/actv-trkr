@@ -1273,6 +1273,29 @@ class MM_Forms {
 		$entry_id = self::get_avada_db_entry_id( $form_post_id, $data );
 		$entry_id_type = strpos( $entry_id, 'avada_db_' ) === 0 ? 'canonical' : 'legacy_fallback';
 
+		// Merge secondary table fields to capture any fields missing from CSV (e.g. Phone)
+		$rid = intval( str_replace( 'avada_db_', '', $entry_id ) );
+		if ( $rid > 0 ) {
+			$secondary_fields = self::extract_avada_secondary_fields( $rid );
+			if ( ! empty( $secondary_fields ) ) {
+				if ( empty( $fields ) ) {
+					$fields = $secondary_fields;
+				} else {
+					$existing_labels = array();
+					foreach ( $fields as $f ) {
+						$existing_labels[] = strtolower( trim( $f['label'] ?? $f['name'] ?? '' ) );
+					}
+					foreach ( $secondary_fields as $sf ) {
+						$sf_label = strtolower( trim( $sf['label'] ?? $sf['name'] ?? '' ) );
+						if ( $sf_label !== '' && ! in_array( $sf_label, $existing_labels, true ) ) {
+							$fields[] = $sf;
+							$existing_labels[] = $sf_label;
+						}
+					}
+				}
+			}
+		}
+
 		self::send( array(
 			'provider' => 'avada',
 			'entry'    => array(

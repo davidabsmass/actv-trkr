@@ -389,6 +389,56 @@ export type Database = {
           },
         ]
       }
+      customer_profiles: {
+        Row: {
+          acquisition_source: string | null
+          completed_at: string | null
+          created_at: string
+          customer_type: string | null
+          dismissed_count: number
+          id: string
+          last_prompted_at: string | null
+          org_id: string
+          skipped_at: string | null
+          updated_at: string
+          website_count_range: string | null
+        }
+        Insert: {
+          acquisition_source?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_type?: string | null
+          dismissed_count?: number
+          id?: string
+          last_prompted_at?: string | null
+          org_id: string
+          skipped_at?: string | null
+          updated_at?: string
+          website_count_range?: string | null
+        }
+        Update: {
+          acquisition_source?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_type?: string | null
+          dismissed_count?: number
+          id?: string
+          last_prompted_at?: string | null
+          org_id?: string
+          skipped_at?: string | null
+          updated_at?: string
+          website_count_range?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_snapshots: {
         Row: {
           created_at: string

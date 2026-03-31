@@ -841,8 +841,8 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
       >
         <ArrowLeft className="h-4 w-4" /> Back to Forms
       </button>
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground">{form.name}</h1>
           <Badge variant="outline" className={`text-xs uppercase ${categoryColors[form.form_category] || categoryColors.other}`}>
             {form.form_category}
@@ -850,8 +850,6 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
           {form.lead_weight < 1 && (
             <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}× weight</span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
         </div>
       </div>
       <p className="text-sm text-muted-foreground mb-6">

@@ -39,6 +39,16 @@ function inferAvadaFieldName(type: string, value: string, position: number): str
  * Also handles "data-only" blobs (no field_types) by accepting an optional
  * schema template looked up from existing lead_fields_flat for the same form.
  */
+/**
+ * Pattern matchers for high-confidence field identification in CSV blobs.
+ * Used to pre-assign values to fields BEFORE positional mapping.
+ */
+const FIELD_PATTERNS: { labelPattern: RegExp; valueTest: (v: string) => boolean }[] = [
+  { labelPattern: /^email$/i, valueTest: (v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) },
+  { labelPattern: /^phone$/i, valueTest: (v) => /^[\d\s\-\+\(\)]{7,}$/.test(v.replace(/\s/g, "")) },
+  { labelPattern: /^(zip\s*code|zip|postal)$/i, valueTest: (v) => /^\d{4,5}(-\d{4})?$/.test(v) },
+];
+
 function parseAvadaFieldsIfNeeded(
   fields: any[],
   provider: string,
@@ -52,34 +62,82 @@ function parseAvadaFieldsIfNeeded(
   // ── Case 1: data-only blob (no field_types) — use schema template ──
   if (dataEntry?.value && !typesEntry?.value && schemaTemplate && schemaTemplate.length > 0) {
     const raw = dataEntry.value as string;
-    // Smart split: split by ", " but the LAST field gets all remaining text
     const parts = raw.split(", ");
     const expected = schemaTemplate.length;
     const values: string[] = [];
     
     if (parts.length <= expected) {
-      // Exact or fewer — map 1:1
       for (let i = 0; i < expected; i++) values.push(parts[i] || "");
     } else {
-      // More parts than fields — first N-1 fields get one part each, last gets the rest
       for (let i = 0; i < expected - 1; i++) values.push(parts[i] || "");
       values.push(parts.slice(expected - 1).join(", "));
     }
     
+    // ── Pattern-based pre-assignment for high-confidence fields ──
+    // This prevents positional shifts when optional fields (like phone) appear or disappear
+    const preAssigned = new Map<number, number>(); // value_idx → schema_idx
+    const schemaUsed = new Set<number>();
+    const valueUsed = new Set<number>();
+    
+    for (const pattern of FIELD_PATTERNS) {
+      const schemaIdx = schemaTemplate.findIndex((s, i) => !schemaUsed.has(i) && pattern.labelPattern.test(s.field_label));
+      if (schemaIdx < 0) continue;
+      
+      // Find the FIRST matching value (only match if not already used)
+      const valIdx = values.findIndex((v, i) => !valueUsed.has(i) && v.trim() && pattern.valueTest(v.trim()));
+      if (valIdx < 0) continue;
+      
+      preAssigned.set(valIdx, schemaIdx);
+      schemaUsed.add(schemaIdx);
+      valueUsed.add(valIdx);
+    }
+    
+    if (preAssigned.size > 0) {
+      console.log(`Avada pattern pre-assigned ${preAssigned.size} fields: ${[...preAssigned.entries()].map(([vi, si]) => `val[${vi}]→${schemaTemplate[si].field_label}`).join(", ")}`);
+    }
+    
+    // ── Positional mapping for remaining fields ──
     const parsed: any[] = [];
-    for (let i = 0; i < schemaTemplate.length; i++) {
-      const val = (values[i] || "").trim();
-      if (!val || val === "Array") continue;
-      parsed.push({
-        name: schemaTemplate[i].field_key,
-        label: schemaTemplate[i].field_label,
-        type: "text",
-        value: val,
-      });
+    let schemaPos = 0;
+    
+    for (let valIdx = 0; valIdx < values.length; valIdx++) {
+      const val = (values[valIdx] || "").trim();
+      if (!val || val === "Array") {
+        // Skip this value, also advance schema position if not pre-assigned
+        if (!valueUsed.has(valIdx)) {
+          while (schemaPos < schemaTemplate.length && schemaUsed.has(schemaPos)) schemaPos++;
+          schemaPos++;
+        }
+        continue;
+      }
+      
+      if (preAssigned.has(valIdx)) {
+        // Use pre-assigned field
+        const si = preAssigned.get(valIdx)!;
+        parsed.push({
+          name: schemaTemplate[si].field_key,
+          label: schemaTemplate[si].field_label,
+          type: "text",
+          value: val,
+        });
+      } else {
+        // Positional: find next unused schema slot
+        while (schemaPos < schemaTemplate.length && schemaUsed.has(schemaPos)) schemaPos++;
+        if (schemaPos < schemaTemplate.length) {
+          parsed.push({
+            name: schemaTemplate[schemaPos].field_key,
+            label: schemaTemplate[schemaPos].field_label,
+            type: "text",
+            value: val,
+          });
+          schemaUsed.add(schemaPos);
+          schemaPos++;
+        }
+      }
     }
     
     if (parsed.length > 0) {
-      console.log(`Avada data-only parser produced ${parsed.length} fields using schema template`);
+      console.log(`Avada data-only parser produced ${parsed.length} fields using schema template (${preAssigned.size} pattern-matched)`);
       return parsed;
     }
   }
@@ -182,7 +240,42 @@ async function getFormFieldSchema(
   formId: string,
   orgId: string,
 ): Promise<{ field_key: string; field_label: string }[] | null> {
-  // Step 1: Get lead IDs for this form
+  // Step 1: Try to get ACTUAL field order from lead_events_raw entries with proper individual fields
+  // These entries preserve the real form layout order (not numeric key order)
+  let rawFieldOrder: string[] | null = null;
+  try {
+    const { data: rawEvents } = await supabase
+      .from("lead_events_raw")
+      .select("payload")
+      .eq("form_id", formId)
+      .eq("org_id", orgId)
+      .order("submitted_at", { ascending: false })
+      .limit(30);
+
+    if (rawEvents) {
+      for (const event of rawEvents) {
+        const payload = event.payload as any;
+        const fields = payload?.fields;
+        if (Array.isArray(fields) && fields.length > 1) {
+          // This is a proper individual-fields entry (not a CSV blob)
+          const order = fields
+            .filter((f: any) => {
+              const n = (f.name || "").toString().trim();
+              return n && n !== "data" && n !== "field_types" && n !== "field_labels" && n !== "field_keys";
+            })
+            .map((f: any) => (f.name || f.label || "").toString().trim());
+          if (order.length >= 3) {
+            rawFieldOrder = order;
+            break;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Raw event field order lookup failed:", e);
+  }
+
+  // Step 2: Get all known field keys and labels from lead_fields_flat
   const { data: formLeads } = await supabase
     .from("leads")
     .select("id")
@@ -194,7 +287,6 @@ async function getFormFieldSchema(
   if (!formLeads || formLeads.length === 0) return null;
   const formLeadIds = formLeads.map((l: any) => l.id);
   
-  // Step 2: Get flat fields for those specific leads (batched)
   const allFieldRows: any[] = [];
   for (let i = 0; i < formLeadIds.length; i += 50) {
     const batch = formLeadIds.slice(i, i + 50);
@@ -217,8 +309,51 @@ async function getFormFieldSchema(
   }
   
   if (seen.size === 0) return null;
+
+  // Step 3: Build schema in the ACTUAL form field order
+  if (rawFieldOrder && rawFieldOrder.length > 0) {
+    const orderedSchema: { field_key: string; field_label: string }[] = [];
+    const usedKeys = new Set<string>();
+
+    // First, add fields in the order they appear in the raw event
+    for (const key of rawFieldOrder) {
+      if (seen.has(key) && !usedKeys.has(key)) {
+        orderedSchema.push({ field_key: key, field_label: seen.get(key)! });
+        usedKeys.add(key);
+      }
+    }
+
+    // Then, insert any remaining fields from lead_fields_flat that weren't in the raw event
+    // (these are fields that were blank in the raw event we found)
+    // Insert them by numeric position relative to their neighbors
+    const remaining = [...seen.entries()]
+      .filter(([key]) => !usedKeys.has(key))
+      .map(([key, label]) => ({ field_key: key, field_label: label, numKey: parseInt(key) }))
+      .sort((a, b) => {
+        if (!isNaN(a.numKey) && !isNaN(b.numKey)) return a.numKey - b.numKey;
+        return a.field_key.localeCompare(b.field_key);
+      });
+
+    for (const item of remaining) {
+      // Find insert position: after the last field with a lower numeric key
+      let insertIdx = orderedSchema.length;
+      if (!isNaN(item.numKey)) {
+        for (let i = 0; i < orderedSchema.length; i++) {
+          const existingNum = parseInt(orderedSchema[i].field_key);
+          if (!isNaN(existingNum) && existingNum > item.numKey) {
+            insertIdx = i;
+            break;
+          }
+        }
+      }
+      orderedSchema.splice(insertIdx, 0, { field_key: item.field_key, field_label: item.field_label });
+    }
+
+    console.log(`Schema template using raw event order: ${orderedSchema.map(s => `${s.field_key}(${s.field_label})`).join(", ")}`);
+    return orderedSchema;
+  }
   
-  // Sort by numeric key
+  // Fallback: sort by numeric key (original behavior)
   const schema = [...seen.entries()]
     .map(([key, label]) => ({ field_key: key, field_label: label }))
     .sort((a, b) => {

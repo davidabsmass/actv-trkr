@@ -37,6 +37,58 @@ export default function Security() {
     enabled: !!orgId,
   });
 
+  // Exact total count of unreviewed events (not capped)
+  const { data: totalEventCount } = useQuery({
+    queryKey: ["security_events_count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
+  // Exact counts by severity
+  const { data: criticalTotal } = useQuery({
+    queryKey: ["security_events_critical_count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .eq("severity", "critical");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
+  const { data: warningTotal } = useQuery({
+    queryKey: ["security_events_warning_count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .eq("severity", "warning");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
   const { data: events, isLoading } = useQuery({
     queryKey: ["security_events", orgId],
     queryFn: async () => {

@@ -82,6 +82,7 @@ function LayoutInner() {
             </ErrorBoundary>
           </div>
           <AiChatbot />
+          <CustomerProfilePrompt />
         </main>
       </div>
     </SidebarProvider>

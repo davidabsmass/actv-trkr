@@ -25,6 +25,14 @@ function normalizeTimestampForCompare(ts: string): string {
   return ts.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "").trim();
 }
 
+function extractLeadExternalEntryId(data: unknown): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const value = (data as Record<string, unknown>).external_entry_id;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function parseVersion(version: string | null | undefined): [number, number, number] {
   if (!version) return [0, 0, 0];
   const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
@@ -200,11 +208,12 @@ Deno.serve(async (req) => {
 
       const { data: leadRows } = await supabase
         .from("leads")
-        .select("id, submitted_at, status")
+        .select("id, submitted_at, status, data")
         .eq("org_id", orgId)
         .eq("form_id", formId);
 
       const leadBuckets = new Map<string, { active: string[]; trashed: string[] }>();
+      const leadExternalIdBuckets = new Map<string, { active: string[]; trashed: string[] }>();
       for (const lead of leadRows || []) {
         if (!lead.submitted_at) continue;
         const key = normalizeTimestampForCompare(lead.submitted_at);
@@ -215,6 +224,17 @@ Deno.serve(async (req) => {
           bucket.active.push(lead.id);
         }
         leadBuckets.set(key, bucket);
+
+        const externalEntryId = extractLeadExternalEntryId((lead as any).data);
+        if (externalEntryId) {
+          const extBucket = leadExternalIdBuckets.get(externalEntryId) || { active: [], trashed: [] };
+          if (lead.status === "trashed") {
+            extBucket.trashed.push(lead.id);
+          } else {
+            extBucket.active.push(lead.id);
+          }
+          leadExternalIdBuckets.set(externalEntryId, extBucket);
+        }
       }
 
       const activeSet = new Set(activeEntryIds);
@@ -290,7 +310,8 @@ Deno.serve(async (req) => {
             }
 
             if (canonicalId && activeSet.has(canonicalId)) {
-              toRestoreEntries.push(rawEvent);
+              // Canonical Avada DB ID is active in WordPress: legacy ID is stale and must be removed.
+              toTrashEntries.push(rawEvent);
               continue;
             }
 
@@ -335,6 +356,12 @@ Deno.serve(async (req) => {
 
       const leadIdsToTrash = new Set<string>();
       for (const entry of toTrashEntries) {
+        const extBucket = leadExternalIdBuckets.get(entry.external_entry_id);
+        if (extBucket && extBucket.active.length > 0) {
+          for (const leadId of extBucket.active) leadIdsToTrash.add(leadId);
+          continue;
+        }
+
         if (!entry.submitted_at) continue;
         const key = normalizeTimestampForCompare(entry.submitted_at);
         const bucket = leadBuckets.get(key);
@@ -344,6 +371,12 @@ Deno.serve(async (req) => {
 
       const leadIdsToRestore = new Set<string>();
       for (const entry of toRestoreEntries) {
+        const extBucket = leadExternalIdBuckets.get(entry.external_entry_id);
+        if (extBucket && extBucket.trashed.length > 0) {
+          for (const leadId of extBucket.trashed) leadIdsToRestore.add(leadId);
+          continue;
+        }
+
         if (!entry.submitted_at) continue;
         const key = normalizeTimestampForCompare(entry.submitted_at);
         const bucket = leadBuckets.get(key);

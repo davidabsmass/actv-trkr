@@ -55,26 +55,74 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     queryFn: async () => {
       if (!orgId) return null;
 
-      // Use pre-aggregated tables for speed — no raw row scanning
       const sum = (rows: any[] | null) => (rows || []).reduce((s, r) => s + Number(r.value || 0), 0);
 
+      // Helper: build set of dates that have aggregated data
+      const aggDates = (rows: any[] | null): Set<string> => {
+        const s = new Set<string>();
+        (rows || []).forEach((r: any) => { if (r.date) s.add(r.date); });
+        return s;
+      };
+
+      // Helper: enumerate all dates in a range (inclusive)
+      const allDatesInRange = (start: string, end: string): string[] => {
+        const dates: string[] = [];
+        const d = new Date(start + "T00:00:00Z");
+        const e = new Date(end + "T00:00:00Z");
+        while (d <= e) {
+          dates.push(d.toISOString().slice(0, 10));
+          d.setUTCDate(d.getUTCDate() + 1);
+        }
+        return dates;
+      };
+
       const [sessAgg, prevSessAgg, leadsAgg, prevLeadsAgg, brokenRes, incidentsRes, formsRes, formLeadsRes] = await Promise.all([
-        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
-        supabase.from("traffic_daily" as any).select("value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
-        supabase.from("kpi_daily").select("value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
+        supabase.from("traffic_daily" as any).select("date, value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
+        supabase.from("traffic_daily" as any).select("date, value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
+        supabase.from("kpi_daily").select("date, value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
+        supabase.from("kpi_daily").select("date, value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
         supabase.from("broken_links").select("id", { count: "exact", head: true }).eq("org_id", orgId),
         supabase.from("incidents").select("id", { count: "exact", head: true }).eq("org_id", orgId).is("resolved_at", null),
-        // Form list for form breakdown
         supabase.from("forms").select("id, name, external_form_id").eq("org_id", orgId).eq("archived", false),
-        // Form-level lead counts from aggregated data
         supabase.from("kpi_daily").select("dimension, value").eq("org_id", orgId).eq("metric", "leads_by_form").gte("date", startDate).lte("date", endDate),
       ]);
 
-      const currentSessions = sum(sessAgg.data);
-      const previousSessions = sum(prevSessAgg.data);
-      const currentLeads = sum(leadsAgg.data);
-      const previousLeads = sum(prevLeadsAgg.data);
+      // Gap-fill: find missing days and count from raw tables
+      const gapFill = async (
+        aggRows: any[] | null,
+        rangeStart: string,
+        rangeEnd: string,
+        table: "sessions" | "leads",
+        dateCol: string
+      ): Promise<number> => {
+        const aggTotal = sum(aggRows);
+        const haveDates = aggDates(aggRows);
+        const allDates = allDatesInRange(rangeStart, rangeEnd);
+        const missingDates = allDates.filter((d) => !haveDates.has(d));
+        if (missingDates.length === 0) return aggTotal;
+
+        // Query raw counts for each missing day in parallel (batch)
+        let rawTotal = 0;
+        // Group into a single query: count rows where date falls in missing days
+        const missingStart = missingDates[0] + "T00:00:00Z";
+        const missingEnd = missingDates[missingDates.length - 1] + "T23:59:59.999Z";
+        const { count } = await supabase
+          .from(table)
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .gte(dateCol, missingStart)
+          .lte(dateCol, missingEnd);
+        rawTotal = count || 0;
+        return aggTotal + rawTotal;
+      };
+
+      const [currentSessions, previousSessions, currentLeads, previousLeads] = await Promise.all([
+        gapFill(sessAgg.data, startDate, endDate, "sessions", "started_at"),
+        gapFill(prevSessAgg.data, prevStartDate, prevEndDate, "sessions", "started_at"),
+        gapFill(leadsAgg.data, startDate, endDate, "leads", "submitted_at"),
+        gapFill(prevLeadsAgg.data, prevStartDate, prevEndDate, "leads", "submitted_at"),
+      ]);
+
       const currentCvr = currentSessions > 0 ? Math.round((currentLeads / currentSessions) * 10000) / 100 : 0;
       const previousCvr = previousSessions > 0 ? Math.round((previousLeads / previousSessions) * 10000) / 100 : 0;
       const brokenLinks = brokenRes.count || 0;

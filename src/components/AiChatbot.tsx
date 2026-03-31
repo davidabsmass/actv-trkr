@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Send, Loader2 } from "lucide-react";
+import { X, Send, Loader2, GripVertical } from "lucide-react";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,12 @@ export function AiChatbot() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Drag state
+  const [position, setPosition] = useState({ x: 0, y: 0 }); // offset from default bottom-right
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const posAtDragStart = useRef({ x: 0, y: 0 });
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
@@ -29,6 +35,36 @@ export function AiChatbot() {
   useEffect(() => {
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
+
+  // Drag handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    posAtDragStart.current = { ...position };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }, [position]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    setPosition({
+      x: posAtDragStart.current.x + dx,
+      y: posAtDragStart.current.y + dy,
+    });
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    // If barely moved, treat as click
+    const dx = Math.abs(e.clientX - dragStart.current.x);
+    const dy = Math.abs(e.clientY - dragStart.current.y);
+    if (dx < 5 && dy < 5) {
+      setOpen((o) => !o);
+    }
+  }, []);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -124,20 +160,53 @@ export function AiChatbot() {
     }
   }, [input, isLoading, messages, i18n.language, t, orgId]);
 
+  // Compute button style with drag offset
+  const buttonStyle: React.CSSProperties = {
+    position: "fixed",
+    bottom: `${24 - position.y}px`,
+    right: `${24 - position.x}px`,
+    zIndex: 50,
+    touchAction: "none",
+  };
+
+  // Chat panel position follows the button
+  const panelStyle: React.CSSProperties = {
+    position: "fixed",
+    bottom: `${96 - position.y}px`,
+    right: `${24 - position.x}px`,
+    zIndex: 50,
+  };
+
   return (
     <>
-      {/* Floating button */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 h-[72px] w-[72px] rounded-full bg-primary/20 ring-2 ring-primary/20 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center group cursor-grab active:cursor-grabbing"
-        aria-label="Open AI assistant"
+      {/* Floating button with drag grip */}
+      <div
+        style={buttonStyle}
+        className="flex items-center gap-0"
       >
-        <img src={robotAvatar} alt="AI Assistant" className="w-[70px] h-[70px] rounded-full object-cover group-hover:scale-110 transition-transform" />
-      </button>
+        {/* Grip handle */}
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          className="flex items-center justify-center h-8 w-5 rounded-l-full bg-muted/80 border border-r-0 border-border cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity select-none"
+          aria-label="Drag to reposition"
+        >
+          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+        {/* Avatar button */}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="h-[72px] w-[72px] rounded-full bg-primary/20 ring-2 ring-primary/20 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center group"
+          aria-label="Open AI assistant"
+        >
+          <img src={robotAvatar} alt="AI Assistant" className="w-[70px] h-[70px] rounded-full object-cover group-hover:scale-110 transition-transform" />
+        </button>
+      </div>
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-[380px] max-h-[520px] rounded-2xl border border-border bg-background shadow-2xl flex flex-col animate-slide-up overflow-hidden">
+        <div style={panelStyle} className="w-[380px] max-h-[520px] rounded-2xl border border-border bg-background shadow-2xl flex flex-col animate-slide-up overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-primary/5">
             <img src={robotAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />

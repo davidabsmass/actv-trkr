@@ -558,8 +558,10 @@ function ActivityReportsTab() {
                         <IconTooltip label={t("reports.viewReport", "View report")}>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)}><Eye className="h-4 w-4" /></Button>
                         </IconTooltip>
-                        <IconTooltip label={t("reports.downloadReport", "Download report")}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)}><Download className="h-4 w-4" /></Button>
+                        <IconTooltip label={downloadingRunId === run.id ? t("reports.downloading", "Downloading…") : t("reports.downloadReport", "Download report")}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)} disabled={downloadingRunId === run.id}>
+                            {downloadingRunId === run.id ? <Download className="h-4 w-4 animate-pulse" /> : <Download className="h-4 w-4" />}
+                          </Button>
                         </IconTooltip>
                       </>
                     )}

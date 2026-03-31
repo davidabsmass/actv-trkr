@@ -364,6 +364,7 @@ function ActivityReportsTab() {
 
   const downloadReport = async (run: any) => {
     if (!run.file_path) return;
+    setDownloadingRunId(run.id);
     try {
       const { data, error } = await supabase.storage.from("reports").createSignedUrl(run.file_path, 60);
       if (error) throw error;
@@ -379,7 +380,9 @@ function ActivityReportsTab() {
       const doc = await buildReportPdf(report, run, wlResult.data, tplConfig);
       doc.save(`report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF downloaded");
-    } catch { toast.error("Failed to download"); }
+    } catch { toast.error("Failed to download"); } finally {
+      setDownloadingRunId(null);
+    }
   };
 
   const createSchedule = useMutation({
@@ -396,6 +399,7 @@ function ActivityReportsTab() {
 
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [editRunDay, setEditRunDay] = useState<number>(1);
+  const [downloadingRunId, setDownloadingRunId] = useState<string | null>(null);
 
   const toggleSchedule = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
@@ -554,8 +558,10 @@ function ActivityReportsTab() {
                         <IconTooltip label={t("reports.viewReport", "View report")}>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)}><Eye className="h-4 w-4" /></Button>
                         </IconTooltip>
-                        <IconTooltip label={t("reports.downloadReport", "Download report")}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)}><Download className="h-4 w-4" /></Button>
+                        <IconTooltip label={downloadingRunId === run.id ? t("reports.downloading", "Downloading…") : t("reports.downloadReport", "Download report")}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)} disabled={downloadingRunId === run.id}>
+                            {downloadingRunId === run.id ? <Download className="h-4 w-4 animate-pulse" /> : <Download className="h-4 w-4" />}
+                          </Button>
                         </IconTooltip>
                       </>
                     )}

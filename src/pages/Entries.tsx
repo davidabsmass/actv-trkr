@@ -345,7 +345,8 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
     enabled: !!orgId,
   });
 
-  const leadIds = (leads || []).map((l) => l.id);
+  const dedupedLeads = useMemo(() => deduplicateLeads(leads), [leads]);
+  const leadIds = dedupedLeads.map((l) => l.id);
 
   const { data: fieldsRaw } = useQuery({
     queryKey: ["lead_fields_flat", orgId, formId, leadIds.length],
@@ -366,11 +367,11 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   });
 
   const { fieldColumns, leadFieldMap } = useMemo(
-    () => buildFieldColumns(fieldsRaw, leads),
-    [fieldsRaw, leads],
+    () => buildFieldColumns(fieldsRaw, dedupedLeads),
+    [fieldsRaw, dedupedLeads],
   );
 
-  const filtered = (leads || []).filter((lead) => {
+  const filtered = dedupedLeads.filter((lead) => {
     if (search) {
       const fields = leadFieldMap.get(lead.id);
       const q = search.toLowerCase();

@@ -466,7 +466,7 @@ export default function GoalsSection() {
       ) : (
         <div className="space-y-2">
           {goals.map((g) => (
-            <GoalCard key={g.id} goal={g} orgId={orgId!} />
+            <GoalCard key={g.id} goal={g} orgId={orgId!} forms={forms} />
           ))}
         </div>
       )}

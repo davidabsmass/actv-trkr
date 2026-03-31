@@ -37,6 +37,58 @@ export default function Security() {
     enabled: !!orgId,
   });
 
+  // Exact total count of unreviewed events (not capped)
+  const { data: totalEventCount } = useQuery({
+    queryKey: ["security_events_count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
+  // Exact counts by severity
+  const { data: criticalTotal } = useQuery({
+    queryKey: ["security_events_critical_count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .eq("severity", "critical");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
+  const { data: warningTotal } = useQuery({
+    queryKey: ["security_events_warning_count", orgId],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .eq("severity", "warning");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
   const { data: events, isLoading } = useQuery({
     queryKey: ["security_events", orgId],
     queryFn: async () => {
@@ -88,8 +140,8 @@ export default function Security() {
     ["file_changed", "file_added", "file_deleted"].includes(e.event_type)
   ) ?? [];
 
-  const criticalCount = events?.filter(e => e.severity === "critical").length ?? 0;
-  const warningCount = events?.filter(e => e.severity === "warning").length ?? 0;
+  const criticalCount = criticalTotal ?? 0;
+  const warningCount = warningTotal ?? 0;
 
   return (
     <div>
@@ -113,7 +165,7 @@ export default function Security() {
       ) : (
         <>
           {/* Dismiss all + Summary strip */}
-          {(events?.length ?? 0) > 0 && (
+          {(totalEventCount ?? 0) > 0 && (
             <div className="flex justify-end mb-3">
               <Button
                 size="sm"
@@ -132,7 +184,7 @@ export default function Security() {
               className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === null ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-primary/50"}`}
               onClick={() => setSeverityFilter(null)}
             >
-              <p className="text-2xl font-bold text-foreground">{events?.length ?? 0}</p>
+              <p className="text-2xl font-bold text-foreground">{totalEventCount ?? 0}</p>
               <p className="text-xs text-muted-foreground">{t("security.totalEvents")}</p>
             </div>
             <div

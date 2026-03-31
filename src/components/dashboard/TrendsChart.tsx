@@ -67,24 +67,24 @@ export function TrendsChart({ data }: TrendsChartProps) {
 
   return (
     <div className="glass-card p-5 animate-slide-up">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <h3 className="text-sm font-semibold text-foreground">{t("dashboard.trends")}</h3>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1 bg-muted rounded-md p-0.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 bg-muted rounded-md p-0.5 overflow-x-auto">
             {granularityOptions.map((opt) => (
               <button key={opt.value} onClick={() => setGranularity(opt.value)}
-                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${granularity === opt.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap ${granularity === opt.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
                 {opt.label}
               </button>
             ))}
           </div>
           <div className="flex gap-1 bg-muted rounded-md p-0.5">
             <button onClick={() => setView("leads_sessions")}
-              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${view === "leads_sessions" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              className={`px-3 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap ${view === "leads_sessions" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
               {t("dashboard.leadsAndSessions")}
             </button>
             <button onClick={() => setView("cvr")}
-              className={`px-3 py-1 text-xs font-medium rounded transition-colors ${view === "cvr" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              className={`px-3 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap ${view === "cvr" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
               {t("dashboard.conversionRate")}
             </button>
           </div>

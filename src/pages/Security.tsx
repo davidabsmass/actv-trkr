@@ -39,6 +39,7 @@ export default function Security() {
   });
 
   // Exact total count of unreviewed events (last 30 days)
+  // Summary cards: count ALL events in last 30 days (including dismissed)
   const { data: totalEventCount, refetch: refetchTotal } = useQuery({
     queryKey: ["security_events_count", orgId, since],
     queryFn: async () => {
@@ -47,7 +48,6 @@ export default function Security() {
         .from("security_events")
         .select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
-        .is("reviewed_at", null)
         .gte("occurred_at", since);
       if (error) throw error;
       return count ?? 0;
@@ -64,7 +64,6 @@ export default function Security() {
         .from("security_events")
         .select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
-        .is("reviewed_at", null)
         .gte("occurred_at", since)
         .eq("severity", "critical");
       if (error) throw error;
@@ -82,7 +81,6 @@ export default function Security() {
         .from("security_events")
         .select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
-        .is("reviewed_at", null)
         .gte("occurred_at", since)
         .eq("severity", "warning");
       if (error) throw error;

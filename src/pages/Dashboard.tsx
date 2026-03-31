@@ -479,12 +479,13 @@ const Dashboard = () => {
     return items;
   }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, seoVisible, t]);
 
-  // Redirect to setup if current org has no connected sites
+  // Redirect to setup if current org has no connected sites (skip in preview)
+  const isPreview = typeof window !== "undefined" && (window.location.hostname.includes("lovableproject.com") || window.location.hostname.includes("id-preview--"));
   useEffect(() => {
-    if (!isLoading && sitesData && sitesData.length === 0 && orgId) {
+    if (!isPreview && !isLoading && sitesData && sitesData.length === 0 && orgId) {
       navigate("/settings?tab=setup", { replace: true });
     }
-  }, [isLoading, sitesData, orgId, navigate]);
+  }, [isPreview, isLoading, sitesData, orgId, navigate]);
 
   return (
     <div>

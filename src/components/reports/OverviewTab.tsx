@@ -297,16 +297,16 @@ export default function OverviewTab() {
     }
 
     if (period === "monthly") {
-      const monthStart = startOfMonth(subMonths(now, 1));
-      const monthEnd = endOfMonth(subMonths(now, 1));
-      const prevMonthStart = startOfMonth(subMonths(now, 2));
-      const prevMonthEnd = endOfMonth(subMonths(now, 2));
+      const monthStart = startOfMonth(now);
+      const monthEnd = now;
+      const prevMonthStart = startOfMonth(subMonths(now, 1));
+      const prevMonthEnd = endOfMonth(subMonths(now, 1));
       return {
         startDate: format(monthStart, "yyyy-MM-dd"),
         endDate: format(monthEnd, "yyyy-MM-dd"),
         prevStartDate: format(prevMonthStart, "yyyy-MM-dd"),
         prevEndDate: format(prevMonthEnd, "yyyy-MM-dd"),
-        periodLabel: "month",
+        periodLabel: format(monthStart, "MMMM"),
       };
     }
 

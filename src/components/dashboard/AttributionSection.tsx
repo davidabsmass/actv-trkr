@@ -56,7 +56,7 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
 
   return (
     <div className="glass-card p-5 animate-slide-up">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <h3 className="text-sm font-semibold text-foreground">{t("dashboard.attribution")}</h3>
         <div className="flex gap-1 bg-muted rounded-md p-0.5">
           <button

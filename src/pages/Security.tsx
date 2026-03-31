@@ -113,23 +113,31 @@ export default function Security() {
 
   const hasSites = (sites?.length ?? 0) > 0;
 
+  const refetchAll = () => {
+    refetchTotal();
+    refetchCritical();
+    refetchWarning();
+    refetchEvents();
+  };
+
   const dismissEvent = useMutation({
     mutationFn: async (id: string) => {
       await (supabase as any).from("security_events").update({ reviewed_at: new Date().toISOString() }).eq("id", id);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
+    onSuccess: refetchAll,
   });
 
   const dismissAll = useMutation({
     mutationFn: async () => {
       if (!orgId) return;
-      const ids = events?.map(e => e.id) || [];
-      if (ids.length === 0) return;
-      for (const id of ids) {
-        await (supabase as any).from("security_events").update({ reviewed_at: new Date().toISOString() }).eq("id", id);
-      }
+      await (supabase as any)
+        .from("security_events")
+        .update({ reviewed_at: new Date().toISOString() })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .gte("occurred_at", since);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["security_events", orgId] }),
+    onSuccess: refetchAll,
   });
 
   const filteredEvents = severityFilter

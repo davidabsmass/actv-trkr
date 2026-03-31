@@ -201,6 +201,7 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <NavLink
                 to="/account"
+                onClick={closeMobileNav}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
                 activeClassName="bg-white/20 text-white font-medium"
               >

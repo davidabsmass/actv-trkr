@@ -364,6 +364,7 @@ function ActivityReportsTab() {
 
   const downloadReport = async (run: any) => {
     if (!run.file_path) return;
+    setDownloadingRunId(run.id);
     try {
       const { data, error } = await supabase.storage.from("reports").createSignedUrl(run.file_path, 60);
       if (error) throw error;
@@ -379,7 +380,9 @@ function ActivityReportsTab() {
       const doc = await buildReportPdf(report, run, wlResult.data, tplConfig);
       doc.save(`report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF downloaded");
-    } catch { toast.error("Failed to download"); }
+    } catch { toast.error("Failed to download"); } finally {
+      setDownloadingRunId(null);
+    }
   };
 
   const createSchedule = useMutation({

@@ -1706,105 +1706,33 @@ class MM_Forms {
 					$submitted_at = $row->$ts_col;
 				}
 
-			$fields = array();
+		$fields = array();
 				if ( $row ) {
 					$fields = self::extract_avada_backfill_fields( $row, $columns, $has_submission_col );
 				}
 
-				// Fallback: query Avada secondary tables when primary submission row has no payload.
-				if ( empty( $fields ) && $rid > 0 ) {
-					$secondary_tables = array(
-						array(
-							'table' => $wpdb->prefix . 'fusion_form_submission_data',
-							'id_col' => 'submission_id',
-							'order_col' => 'field_id',
-							'value_col' => 'field_value',
-							'label_col' => 'field_label',
-							'type_col' => 'field_type',
-							'meta_col' => '',
-						),
-						array(
-							'table' => $wpdb->prefix . 'fusion_form_entries',
-							'id_col' => 'submission_id',
-							'order_col' => 'field_id',
-							'value_col' => 'value',
-							'label_col' => '',
-							'type_col' => '',
-							'meta_col' => 'data',
-						),
-					);
-
-					$skip_types = array( 'submit', 'notice', 'html', 'hidden', 'captcha', 'honeypot', 'section', 'page' );
-
-					foreach ( $secondary_tables as $cfg ) {
-						$secondary_table = $cfg['table'];
-						if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $secondary_table ) ) !== $secondary_table ) {
-							continue;
-						}
-
-						$secondary_columns = $wpdb->get_col( "SHOW COLUMNS FROM {$secondary_table}", 0 );
-						if ( ! is_array( $secondary_columns ) || ! in_array( $cfg['id_col'], $secondary_columns, true ) ) {
-							continue;
-						}
-
-						$order_col = in_array( $cfg['order_col'], $secondary_columns, true ) ? $cfg['order_col'] : $cfg['id_col'];
-						$sub_rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT * FROM {$secondary_table} WHERE {$cfg['id_col']} = %d ORDER BY {$order_col} ASC LIMIT 200",
-							$rid
-						) );
-
-						if ( ! is_array( $sub_rows ) || empty( $sub_rows ) ) {
-							continue;
-						}
-
-						$idx = 0;
-						foreach ( $sub_rows as $sr ) {
-							$val = '';
-							if ( ! empty( $cfg['value_col'] ) && in_array( $cfg['value_col'], $secondary_columns, true ) ) {
-								$val = trim( (string) ( $sr->{$cfg['value_col']} ?? '' ) );
+				// ALWAYS query Avada secondary tables to fill in any fields missing from primary extraction.
+				// Some fields (e.g. Phone) are stored only in secondary tables like wp_fusion_form_submission_data.
+				if ( $rid > 0 ) {
+					$secondary_fields = self::extract_avada_secondary_fields( $rid );
+					if ( ! empty( $secondary_fields ) ) {
+						if ( empty( $fields ) ) {
+							$fields = $secondary_fields;
+						} else {
+							// Merge: add any secondary fields whose labels aren't already present
+							$existing_labels = array();
+							foreach ( $fields as $f ) {
+								$existing_labels[] = strtolower( trim( $f['label'] ?? $f['name'] ?? '' ) );
 							}
-
-							$meta = null;
-							if ( ! empty( $cfg['meta_col'] ) && in_array( $cfg['meta_col'], $secondary_columns, true ) && ! empty( $sr->{$cfg['meta_col']} ) ) {
-								$meta = json_decode( (string) $sr->{$cfg['meta_col']}, true );
-								if ( ! is_array( $meta ) ) $meta = null;
+							$next_id = count( $fields );
+							foreach ( $secondary_fields as $sf ) {
+								$sf_label = strtolower( trim( $sf['label'] ?? $sf['name'] ?? '' ) );
+								if ( $sf_label !== '' && ! in_array( $sf_label, $existing_labels, true ) ) {
+									$sf['id'] = $next_id++;
+									$fields[] = $sf;
+									$existing_labels[] = $sf_label;
+								}
 							}
-
-							if ( $val === '' && is_array( $meta ) && isset( $meta['value'] ) ) {
-								$val = trim( is_scalar( $meta['value'] ) ? (string) $meta['value'] : wp_json_encode( $meta['value'] ) );
-							}
-							if ( $val === '' || strtolower( $val ) === 'array' || strtolower( $val ) === 'null' ) continue;
-
-							$type = 'text';
-							if ( ! empty( $cfg['type_col'] ) && in_array( $cfg['type_col'], $secondary_columns, true ) && ! empty( $sr->{$cfg['type_col']} ) ) {
-								$type = strtolower( trim( (string) $sr->{$cfg['type_col']} ) );
-							} elseif ( is_array( $meta ) && ! empty( $meta['type'] ) ) {
-								$type = strtolower( trim( (string) $meta['type'] ) );
-							}
-							if ( in_array( $type, $skip_types, true ) ) continue;
-
-							$label = '';
-							if ( ! empty( $cfg['label_col'] ) && in_array( $cfg['label_col'], $secondary_columns, true ) && ! empty( $sr->{$cfg['label_col']} ) ) {
-								$label = trim( (string) $sr->{$cfg['label_col']} );
-							} elseif ( is_array( $meta ) ) {
-								$label = trim( (string) ( $meta['label'] ?? ( $meta['name'] ?? '' ) ) );
-							}
-							if ( $label === '' ) {
-								$label = self::infer_avada_field_name( $type, $val, $idx + 1 );
-							}
-
-							$fields[] = array(
-								'id'    => $idx,
-								'name'  => $label,
-								'label' => $label,
-								'type'  => $type,
-								'value' => $val,
-							);
-							$idx++;
-						}
-
-						if ( ! empty( $fields ) ) {
-							break;
 						}
 					}
 				}

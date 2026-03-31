@@ -50,9 +50,8 @@ const extractExternalEntryId = (data: unknown): string | null => {
 
   const nestedEntry = record.entry;
   if (nestedEntry && typeof nestedEntry === "object") {
-    const nestedId = typeof (nestedEntry as Record<string, unknown>).entry_id === "string"
-      ? (nestedEntry as Record<string, unknown>).entry_id.trim()
-      : "";
+    const nestedEntryId = (nestedEntry as Record<string, unknown>).entry_id;
+    const nestedId = typeof nestedEntryId === "string" ? nestedEntryId.trim() : "";
     if (nestedId) return nestedId;
   }
 

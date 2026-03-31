@@ -184,7 +184,7 @@ export default function Security() {
               className={`rounded-lg border bg-card p-4 text-center cursor-pointer transition-colors ${severityFilter === null ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-primary/50"}`}
               onClick={() => setSeverityFilter(null)}
             >
-              <p className="text-2xl font-bold text-foreground">{events?.length ?? 0}</p>
+              <p className="text-2xl font-bold text-foreground">{totalEventCount ?? 0}</p>
               <p className="text-xs text-muted-foreground">{t("security.totalEvents")}</p>
             </div>
             <div

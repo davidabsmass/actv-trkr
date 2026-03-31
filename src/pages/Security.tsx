@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ShieldAlert, Lock, FileWarning, Info, AlertTriangle, CheckCircle, XCircle, Eye, CheckCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrg } from "@/hooks/use-org";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { useTranslation } from "react-i18next";
 
 const severityStyles: Record<string, string> = {
@@ -24,9 +24,8 @@ const severityIcons: Record<string, typeof AlertTriangle> = {
 export default function Security() {
   const { orgName, orgId } = useOrg();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [severityFilter, setSeverityFilter] = useState<string | null>(null);
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const since = useMemo(() => subDays(new Date(), 30).toISOString(), []);
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],
@@ -111,11 +110,13 @@ export default function Security() {
 
   const hasSites = (sites?.length ?? 0) > 0;
 
-  const refetchAll = () => {
-    refetchTotal();
-    refetchCritical();
-    refetchWarning();
-    refetchEvents();
+  const refetchAll = async () => {
+    await Promise.all([
+      refetchTotal(),
+      refetchCritical(),
+      refetchWarning(),
+      refetchEvents(),
+    ]);
   };
 
   const dismissEvent = useMutation({

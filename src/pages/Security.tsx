@@ -26,6 +26,7 @@ export default function Security() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [severityFilter, setSeverityFilter] = useState<string | null>(null);
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: sites } = useQuery({
     queryKey: ["sites_for_security", orgId],
@@ -37,26 +38,9 @@ export default function Security() {
     enabled: !!orgId,
   });
 
-  // Exact total count of unreviewed events (not capped)
-  const { data: totalEventCount } = useQuery({
-    queryKey: ["security_events_count", orgId],
-    queryFn: async () => {
-      if (!orgId) return 0;
-      const { count, error } = await supabase
-        .from("security_events")
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .is("reviewed_at", null);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!orgId,
-    refetchInterval: 30000,
-  });
-
-  // Exact counts by severity
-  const { data: criticalTotal } = useQuery({
-    queryKey: ["security_events_critical_count", orgId],
+  // Exact total count of unreviewed events (last 30 days)
+  const { data: totalEventCount, refetch: refetchTotal } = useQuery({
+    queryKey: ["security_events_count", orgId, since],
     queryFn: async () => {
       if (!orgId) return 0;
       const { count, error } = await supabase
@@ -64,6 +48,24 @@ export default function Security() {
         .select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
         .is("reviewed_at", null)
+        .gte("occurred_at", since);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!orgId,
+    refetchInterval: 30000,
+  });
+
+  const { data: criticalTotal, refetch: refetchCritical } = useQuery({
+    queryKey: ["security_events_critical_count", orgId, since],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("security_events")
+        .select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .is("reviewed_at", null)
+        .gte("occurred_at", since)
         .eq("severity", "critical");
       if (error) throw error;
       return count ?? 0;
@@ -72,8 +74,8 @@ export default function Security() {
     refetchInterval: 30000,
   });
 
-  const { data: warningTotal } = useQuery({
-    queryKey: ["security_events_warning_count", orgId],
+  const { data: warningTotal, refetch: refetchWarning } = useQuery({
+    queryKey: ["security_events_warning_count", orgId, since],
     queryFn: async () => {
       if (!orgId) return 0;
       const { count, error } = await supabase
@@ -81,6 +83,7 @@ export default function Security() {
         .select("*", { count: "exact", head: true })
         .eq("org_id", orgId)
         .is("reviewed_at", null)
+        .gte("occurred_at", since)
         .eq("severity", "warning");
       if (error) throw error;
       return count ?? 0;
@@ -89,8 +92,8 @@ export default function Security() {
     refetchInterval: 30000,
   });
 
-  const { data: events, isLoading } = useQuery({
-    queryKey: ["security_events", orgId],
+  const { data: events, isLoading, refetch: refetchEvents } = useQuery({
+    queryKey: ["security_events", orgId, since],
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
@@ -98,6 +101,7 @@ export default function Security() {
         .select("*")
         .eq("org_id", orgId)
         .is("reviewed_at", null)
+        .gte("occurred_at", since)
         .order("occurred_at", { ascending: false })
         .limit(1000);
       if (error) throw error;

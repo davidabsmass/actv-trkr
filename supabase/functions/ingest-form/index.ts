@@ -507,6 +507,7 @@ Deno.serve(async (req) => {
       source, medium, campaign: utmCampaign,
       visitor_id: context?.visitor_id, session_id: context?.session_id,
       data: { ...(fields ? { fields } : {}), external_entry_id: extEntryId },
+      external_entry_id: extEntryId,
       lead_type: providerName,
     }).select("id").single();
 

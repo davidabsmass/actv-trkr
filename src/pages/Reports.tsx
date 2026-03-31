@@ -396,6 +396,7 @@ function ActivityReportsTab() {
 
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [editRunDay, setEditRunDay] = useState<number>(1);
+  const [downloadingRunId, setDownloadingRunId] = useState<string | null>(null);
 
   const toggleSchedule = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {

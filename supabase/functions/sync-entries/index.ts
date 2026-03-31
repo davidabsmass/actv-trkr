@@ -11,47 +11,6 @@ async function hashKey(key: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function deriveAvadaCanonicalId(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const p = payload as Record<string, unknown>;
-  const entry = p.entry as Record<string, unknown> | undefined;
-  if (entry?.entry_id && typeof entry.entry_id === "string" && entry.entry_id.startsWith("avada_db_")) {
-    return entry.entry_id;
-  }
-  return null;
-}
-
-function normalizeTimestampForCompare(ts: string): string {
-  return ts.replace("T", " ").replace(/\+.*$/, "").replace(/\.\d+$/, "").trim();
-}
-
-function extractLeadExternalEntryId(data: unknown): string | null {
-  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-  const value = (data as Record<string, unknown>).external_entry_id;
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-type LeadCandidate = {
-  id: string;
-  fieldCount: number;
-  createdAt: string | null;
-};
-
-function pickBestLeadCandidate(candidates: LeadCandidate[]): LeadCandidate | null {
-  if (!candidates.length) return null;
-
-  const sorted = [...candidates].sort((a, b) => {
-    if (b.fieldCount !== a.fieldCount) return b.fieldCount - a.fieldCount;
-    const aTs = a.createdAt ? Date.parse(a.createdAt) : 0;
-    const bTs = b.createdAt ? Date.parse(b.createdAt) : 0;
-    return bTs - aTs;
-  });
-
-  return sorted[0] || null;
-}
-
 function parseVersion(version: string | null | undefined): [number, number, number] {
   if (!version) return [0, 0, 0];
   const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
@@ -67,30 +26,37 @@ function isVersionAtLeast(version: string | null | undefined, minimum: string): 
 }
 
 /**
- * Detect if multiple Avada forms in the payload share the same (or nearly identical)
- * active entry ID sets — a clear sign of the global-fallback bug.
+ * Detect if multiple Avada forms share >80% identical entry ID sets (global-fallback bug).
  */
 function detectDuplicateAvadaSets(forms: any[]): boolean {
   const avadaForms = forms.filter((f: any) => {
     const extFormId = String(f.form_id || "");
     return extFormId !== "" && (f.entry_ids || []).length > 0;
   });
-
   if (avadaForms.length < 2) return false;
-
-  // Compare entry ID sets pairwise — if any two are >80% identical, it's the bug
   for (let i = 0; i < avadaForms.length; i++) {
     for (let j = i + 1; j < avadaForms.length; j++) {
       const setA = new Set(avadaForms[i].entry_ids as string[]);
       const setB = new Set(avadaForms[j].entry_ids as string[]);
       const intersection = [...setA].filter(id => setB.has(id)).length;
       const smaller = Math.min(setA.size, setB.size);
-      if (smaller > 0 && intersection / smaller > 0.8) {
-        return true;
-      }
+      if (smaller > 0 && intersection / smaller > 0.8) return true;
     }
   }
   return false;
+}
+
+/**
+ * Extract the numeric WordPress DB ID from an entry ID string.
+ * e.g. "avada_db_42" -> "42", "avada_1234567890" -> null, "123" -> "123"
+ */
+function extractWpDbId(entryId: string): string | null {
+  // Canonical DB format: avada_db_N, ninja_db_N, cf7_db_N
+  const dbMatch = entryId.match(/^(?:avada_db_|ninja_db_|cf7_db_)(\d+)$/);
+  if (dbMatch) return dbMatch[1];
+  // Plain numeric (gravity_forms, wpforms, fluent_forms)
+  if (/^\d+$/.test(entryId)) return entryId;
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -154,9 +120,9 @@ Deno.serve(async (req) => {
     const warnings: string[] = [];
     let totalTrashed = 0;
     let totalRestored = 0;
-    let requiresAvadaReset = false;
+    const formAudit: any[] = [];
 
-    // ── SAFETY GUARD 1: All Avada forms report 0 active entries ──
+    // ── SAFETY GUARD: All Avada forms report 0 active entries ──
     const avadaFormsFromDb = await supabase
       .from("forms")
       .select("external_form_id, provider")
@@ -170,30 +136,29 @@ Deno.serve(async (req) => {
       avadaInPayload.every((f: any) => (f.entry_ids || []).length === 0);
 
     if (allAvadaEmpty) {
-      console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 active entries — skipping destructive sync`);
+      console.log(`sync-entries: ALL ${avadaInPayload.length} Avada forms report 0 entries — skipping`);
       warnings.push(
         pluginNeedsAvadaFix
-          ? `Avada entry discovery failed — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Please update the plugin to v${minimumAvadaVersion}+ and click "Sync Forms" in WordPress.`
-          : `Avada entry discovery failed on ACTV TRKR v${detectedPluginVersion} — all ${avadaInPayload.length} Avada form(s) reported 0 active entries. Run "Sync Forms" in WordPress, then re-sync entries.`
+          ? `Avada discovery failed — all ${avadaInPayload.length} form(s) reported 0 entries. Update plugin to v${minimumAvadaVersion}+.`
+          : `Avada discovery failed on v${detectedPluginVersion} — all ${avadaInPayload.length} form(s) reported 0 entries.`
       );
     }
 
-    // ── SAFETY GUARD 2: Duplicate active ID sets across Avada forms (global fallback bug) ──
+    // ── SAFETY GUARD: Duplicate active ID sets across Avada forms ──
     const avadaPayloadForms = forms.filter((f: any) => avadaFormIds.has(String(f.form_id || "")));
     const hasDuplicateAvadaSets = detectDuplicateAvadaSets(avadaPayloadForms);
     if (hasDuplicateAvadaSets) {
-      console.log(`sync-entries: Avada forms have duplicate/overlapping active ID sets — enabling safe mode (no Avada trashing)`);
+      console.log(`sync-entries: Avada duplicate ID sets detected — safe mode`);
       warnings.push(
         pluginNeedsAvadaFix
-          ? `Avada entry sync skipped — multiple forms reported identical entry lists (known issue in older plugin builds). Please update to v${minimumAvadaVersion}+ and re-sync.`
-          : `Avada returned identical active-entry lists across multiple forms on ACTV TRKR v${detectedPluginVersion}. To protect your data, Avada delete-sync is running in safe mode (no trashing) until per-form entry IDs are detected.`
+          ? `Avada sync skipped — duplicate entry lists detected. Update to v${minimumAvadaVersion}+.`
+          : `Avada duplicate entry lists on v${detectedPluginVersion} — safe mode active.`
       );
     }
 
     for (const f of forms) {
       const extFormId = String(f.form_id || "");
       const activeEntryIds: string[] = (f.entry_ids || []).map(String);
-      const entryTimestamps: Record<string, string> = f.entry_timestamps || {};
 
       if (!extFormId) continue;
 
@@ -206,299 +171,259 @@ Deno.serve(async (req) => {
       const formId = formRow.id;
       const provider = formRow.provider || "";
 
-      // ── AVADA SAFETY: all-empty payload means discovery failed, skip completely ──
+      // ── AVADA SAFETY: all-empty or duplicate-set → skip ──
       if (provider === "avada" && allAvadaEmpty) {
-        console.log(`sync-entries: form=${extFormId} provider=avada safety_guard_all_empty=true -> skipping`);
+        console.log(`sync-entries: form=${extFormId} avada all-empty → skip`);
+        continue;
+      }
+      if (provider === "avada" && hasDuplicateAvadaSets) {
+        console.log(`sync-entries: form=${extFormId} avada duplicate-set → skip`);
         continue;
       }
 
-      // Duplicate ID-set bug mode: allow restore/remap, but never trash Avada entries.
-      const avadaDuplicateProtectionMode = provider === "avada" && hasDuplicateAvadaSets;
-      if (avadaDuplicateProtectionMode) {
-        console.log(`sync-entries: form=${extFormId} provider=avada duplicate_set_safe_mode=true`);
+      // ── Safety: outdated plugin + avada + 0 entries → restore all ──
+      if (provider === "avada" && pluginOutdated && activeEntryIds.length === 0) {
+        const { data: restoredRows } = await supabase
+          .from("leads")
+          .update({ status: "new" })
+          .eq("org_id", orgId).eq("form_id", formId).eq("status", "trashed")
+          .select("id");
+        totalRestored += restoredRows?.length || 0;
+        continue;
       }
 
-      const { data: rawEvents } = await supabase
-        .from("lead_events_raw")
-        .select("external_entry_id, submitted_at, payload")
-        .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
+      // ── If plugin reports 0 active, trash all for this form ──
+      if (activeEntryIds.length === 0) {
+        const { data: trashedRows } = await supabase
+          .from("leads")
+          .update({ status: "trashed" })
+          .eq("org_id", orgId).eq("form_id", formId).neq("status", "trashed")
+          .select("id");
+        totalTrashed += trashedRows?.length || 0;
+        continue;
+      }
 
-      if (!rawEvents || rawEvents.length === 0) continue;
+      // ═══════════════════════════════════════════════════════════════
+      // STRICT AUTHORITATIVE RECONCILIATION
+      // WordPress entry IDs are the ONLY source of truth.
+      // ═══════════════════════════════════════════════════════════════
 
-      const { data: leadRows } = await supabase
+      // Build the authoritative set of WordPress DB IDs
+      const wpDbIds = new Set<string>();
+      const wpFullIds = new Set(activeEntryIds);
+      for (const id of activeEntryIds) {
+        const dbId = extractWpDbId(id);
+        if (dbId) wpDbIds.add(dbId);
+      }
+
+      console.log(`sync-entries: form=${extFormId} provider=${provider} wp_active=${activeEntryIds.length} wpDbIds=${wpDbIds.size}`);
+
+      // Get ALL leads for this form (any status)
+      const { data: allLeads } = await supabase
         .from("leads")
-        .select("id, submitted_at, status, data, created_at")
+        .select("id, status, external_entry_id, data")
         .eq("org_id", orgId)
         .eq("form_id", formId);
 
-      const leadIds = (leadRows || []).map((lead: any) => lead.id);
-      const leadFieldCounts = new Map<string, number>();
+      if (!allLeads || allLeads.length === 0) continue;
 
-      if (leadIds.length > 0) {
-        const { data: leadFieldRows } = await supabase
-          .from("lead_fields_flat")
-          .select("lead_id")
-          .eq("org_id", orgId)
-          .in("lead_id", leadIds);
+      // For each lead, determine if it matches an active WordPress entry
+      const leadsToTrash: string[] = [];
+      const leadsToRestore: string[] = [];
+      const seenWpIds = new Set<string>(); // track which WP IDs already have a lead
 
-        for (const row of leadFieldRows || []) {
-          const current = leadFieldCounts.get((row as any).lead_id) || 0;
-          leadFieldCounts.set((row as any).lead_id, current + 1);
-        }
+      // Get field counts for picking best candidate
+      const leadIds = allLeads.map((l: any) => l.id);
+      const { data: fieldCountRows } = await supabase
+        .from("lead_fields_flat")
+        .select("lead_id")
+        .eq("org_id", orgId)
+        .in("lead_id", leadIds);
+
+      const fieldCounts = new Map<string, number>();
+      for (const row of fieldCountRows || []) {
+        fieldCounts.set(row.lead_id, (fieldCounts.get(row.lead_id) || 0) + 1);
       }
 
-      const leadBuckets = new Map<string, { active: LeadCandidate[]; trashed: LeadCandidate[] }>();
-      const leadExternalIdBuckets = new Map<string, { active: LeadCandidate[]; trashed: LeadCandidate[] }>();
-      for (const lead of leadRows || []) {
-        if (!lead.submitted_at) continue;
+      // Map: wpDbId -> best lead candidate
+      const wpIdToLeads = new Map<string, { id: string; status: string; fieldCount: number; extId: string }[]>();
 
-        const candidate: LeadCandidate = {
+      for (const lead of allLeads) {
+        const extId = lead.external_entry_id || (lead.data as any)?.external_entry_id || null;
+        if (!extId) {
+          // No external_entry_id at all → cannot match, trash if active
+          if (lead.status !== "trashed") leadsToTrash.push(lead.id);
+          continue;
+        }
+
+        // Check if this lead's external_entry_id matches any WP active entry
+        const dbId = extractWpDbId(extId);
+        const isMatch = wpFullIds.has(extId) || (dbId && wpDbIds.has(dbId));
+
+        if (!isMatch) {
+          // For Avada: also check if a legacy avada_ ID maps to an active avada_db_ ID
+          if (provider === "avada" && extId.startsWith("avada_") && !extId.startsWith("avada_db_")) {
+            // Legacy ID — check if the timestamp-extracted numeric part matches
+            // No! We do NOT use timestamps. Just check if we can extract a DB ID from raw events.
+            // This legacy ID is not in the WP active set → trash it
+            if (lead.status !== "trashed") leadsToTrash.push(lead.id);
+          } else {
+            if (lead.status !== "trashed") leadsToTrash.push(lead.id);
+          }
+          continue;
+        }
+
+        // This lead matches a WP active entry
+        const matchKey = dbId || extId;
+        const existing = wpIdToLeads.get(matchKey) || [];
+        existing.push({
           id: lead.id,
-          fieldCount: leadFieldCounts.get(lead.id) || 0,
-          createdAt: (lead as any).created_at || null,
-        };
+          status: lead.status,
+          fieldCount: fieldCounts.get(lead.id) || 0,
+          extId,
+        });
+        wpIdToLeads.set(matchKey, existing);
+      }
 
-        const key = normalizeTimestampForCompare(lead.submitted_at);
-        const bucket = leadBuckets.get(key) || { active: [], trashed: [] };
-        if (lead.status === "trashed") {
-          bucket.trashed.push(candidate);
-        } else {
-          bucket.active.push(candidate);
+      // For each WP ID, pick the BEST lead (most fields), trash duplicates, restore if needed
+      for (const [wpId, candidates] of wpIdToLeads) {
+        // Sort: most fields first, then prefer non-trashed, then prefer canonical ID format
+        candidates.sort((a, b) => {
+          if (b.fieldCount !== a.fieldCount) return b.fieldCount - a.fieldCount;
+          // Prefer active over trashed
+          if (a.status === "trashed" && b.status !== "trashed") return 1;
+          if (b.status === "trashed" && a.status !== "trashed") return -1;
+          // Prefer canonical (avada_db_) over legacy (avada_)
+          const aCanon = a.extId.includes("_db_") ? 1 : 0;
+          const bCanon = b.extId.includes("_db_") ? 1 : 0;
+          return bCanon - aCanon;
+        });
+
+        const best = candidates[0];
+
+        // Keep the best one active
+        if (best.status === "trashed") {
+          leadsToRestore.push(best.id);
         }
-        leadBuckets.set(key, bucket);
+        seenWpIds.add(wpId);
 
-        const externalEntryId = extractLeadExternalEntryId((lead as any).data);
-        if (externalEntryId) {
-          const extBucket = leadExternalIdBuckets.get(externalEntryId) || { active: [], trashed: [] };
-          if (lead.status === "trashed") {
-            extBucket.trashed.push(candidate);
-          } else {
-            extBucket.active.push(candidate);
+        // Trash all other candidates for this WP ID
+        for (let i = 1; i < candidates.length; i++) {
+          if (candidates[i].status !== "trashed") {
+            leadsToTrash.push(candidates[i].id);
           }
-          leadExternalIdBuckets.set(externalEntryId, extBucket);
         }
       }
 
-      const activeSet = new Set(activeEntryIds);
+      // Remove any restore targets from the trash list
+      const restoreSet = new Set(leadsToRestore);
+      const finalTrash = leadsToTrash.filter(id => !restoreSet.has(id));
 
-      const activeTimestampSet = new Set<string>();
-      for (const ts of Object.values(entryTimestamps)) {
-        if (!ts) continue;
-        activeTimestampSet.add(normalizeTimestampForCompare(ts));
+      // ── SAFETY GUARD: Full-trash for Avada ──
+      if (provider === "avada" && finalTrash.length > 0 && leadsToRestore.length === 0) {
+        const activeCount = allLeads.filter((l: any) => l.status !== "trashed").length;
+        if (finalTrash.length >= activeCount && activeCount > 0) {
+          console.log(`sync-entries: form=${extFormId} SAFETY: would trash all ${activeCount} active leads with 0 restores → skipping`);
+          warnings.push(`Avada form ${extFormId}: sync would trash all entries with no matches — likely a discovery issue. Skipping.`);
+          continue;
+        }
       }
 
-      const hasComparableAvadaActiveIds = activeEntryIds.some((id) =>
-        id.startsWith("avada_") || id.startsWith("avada_db_"),
-      );
-
-      const toTrashEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
-      const toRestoreEntries: { external_entry_id: string; submitted_at: string | null }[] = [];
-      const remapCandidates: { legacyId: string; canonicalId: string; submittedAt: string | null }[] = [];
-
-      console.log(
-        `sync-entries: form=${extFormId} provider=${provider} active=${activeEntryIds.length} raw=${rawEvents.length} timestamps=${activeTimestampSet.size}`,
-      );
-
-      // Safety: outdated plugin versions can return empty Avada active IDs incorrectly.
-      if (provider === "avada" && pluginOutdated && activeEntryIds.length === 0) {
-        const { data: restoredRows, error: restoreLegacyError } = await supabase
-          .from("leads")
-          .update({ status: "new" })
-          .eq("org_id", orgId)
-          .eq("form_id", formId)
-          .eq("status", "trashed")
-          .select("id");
-
-        if (restoreLegacyError) throw restoreLegacyError;
-
-        const restoredNow = restoredRows?.length || 0;
-        totalRestored += restoredNow;
-        console.log(`sync-entries: form=${extFormId} provider=avada plugin_outdated=true active=0 -> restored_all=${restoredNow}`);
-        continue;
-      }
-
-      // If plugin reports ZERO active entries, trash all leads for this form.
-      if (activeEntryIds.length === 0) {
-        const { data: trashedRows, error: trashAllError } = await supabase
+      // Execute trash
+      if (finalTrash.length > 0) {
+        const { data: trashedRows } = await supabase
           .from("leads")
           .update({ status: "trashed" })
-          .eq("org_id", orgId)
-          .eq("form_id", formId)
+          .in("id", finalTrash)
           .neq("status", "trashed")
           .select("id");
+        totalTrashed += trashedRows?.length || 0;
+      }
 
-        if (trashAllError) throw trashAllError;
+      // Execute restore
+      if (leadsToRestore.length > 0) {
+        const { data: restoredRows } = await supabase
+          .from("leads")
+          .update({ status: "new" })
+          .in("id", leadsToRestore)
+          .eq("status", "trashed")
+          .select("id");
+        totalRestored += restoredRows?.length || 0;
+      }
 
-        const trashedNow = trashedRows?.length || 0;
-        totalTrashed += trashedNow;
-        console.log(`sync-entries: form=${extFormId} provider=${provider} active=0 -> trashed_all=${trashedNow}`);
-        continue;
+      // Also update external_entry_id column for any leads that have it in JSON but not in column
+      for (const lead of allLeads) {
+        if (!lead.external_entry_id && (lead.data as any)?.external_entry_id) {
+          await supabase
+            .from("leads")
+            .update({ external_entry_id: (lead.data as any).external_entry_id })
+            .eq("id", lead.id);
+        }
+      }
+
+      // ── INVARIANT CHECK ──
+      const { count: finalActiveCount } = await supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .eq("form_id", formId)
+        .neq("status", "trashed");
+
+      const wpCount = activeEntryIds.length;
+      const appCount = finalActiveCount || 0;
+      const parity = appCount === wpCount;
+
+      formAudit.push({
+        form_id: extFormId,
+        provider,
+        wp_count: wpCount,
+        app_count: appCount,
+        parity,
+        trashed: finalTrash.length,
+        restored: leadsToRestore.length,
+      });
+
+      if (!parity) {
+        console.warn(`sync-entries: MISMATCH form=${extFormId} wp=${wpCount} app=${appCount}`);
+        warnings.push(`Form ${extFormId}: count mismatch — WordPress has ${wpCount} entries, app shows ${appCount}.`);
       } else {
-        for (const rawEvent of rawEvents) {
+        console.log(`sync-entries: form=${extFormId} PARITY OK wp=${wpCount} app=${appCount}`);
+      }
+
+      // ── Remap legacy external_entry_ids in lead_events_raw to canonical ──
+      if (provider === "avada") {
+        const { data: rawEvents } = await supabase
+          .from("lead_events_raw")
+          .select("id, external_entry_id, payload")
+          .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
+
+        for (const rawEvent of rawEvents || []) {
           const eid = rawEvent.external_entry_id;
-          const submittedAt = rawEvent.submitted_at;
-
-          if (activeSet.has(eid)) {
-            toRestoreEntries.push(rawEvent);
-            continue;
-          }
-
-          // Avada legacy reconciliation
-          if (provider === "avada" && eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
-            const canonicalId = deriveAvadaCanonicalId(rawEvent.payload);
-
-            if (canonicalId && canonicalId !== eid) {
-              remapCandidates.push({ legacyId: eid, canonicalId, submittedAt });
+          if (eid.startsWith("avada_") && !eid.startsWith("avada_db_")) {
+            // Check if payload has a canonical ID
+            const payload = rawEvent.payload as any;
+            const entry = payload?.entry;
+            if (entry?.entry_id && typeof entry.entry_id === "string" && entry.entry_id.startsWith("avada_db_")) {
+              await supabase
+                .from("lead_events_raw")
+                .update({ external_entry_id: entry.entry_id })
+                .eq("id", rawEvent.id);
             }
-
-            if (canonicalId && activeSet.has(canonicalId)) {
-              // Canonical Avada DB ID is active in WordPress: legacy ID is stale and must be removed.
-              toTrashEntries.push(rawEvent);
-              continue;
-            }
-
-            if (submittedAt && activeTimestampSet.size > 0) {
-              const submittedAtNorm = normalizeTimestampForCompare(submittedAt);
-              if (activeTimestampSet.has(submittedAtNorm)) {
-                toRestoreEntries.push(rawEvent);
-              } else {
-                toTrashEntries.push(rawEvent);
-              }
-              continue;
-            }
-
-            if (hasComparableAvadaActiveIds && activeSet.size > 0) {
-              toTrashEntries.push(rawEvent);
-            }
-            continue;
-          }
-
-          // Standard matching for new-format or standard providers
-          const isNewFormat = eid.startsWith("avada_db_") || eid.startsWith("ninja_db_") || eid.startsWith("cf7_db_");
-          const isStandardProvider = provider === "gravity_forms" || provider === "wpforms" || provider === "fluent_forms";
-
-          if (isNewFormat || isStandardProvider) {
-            toTrashEntries.push(rawEvent);
           }
         }
       }
 
-      // ── SAFETY GUARD 3: Full-trash pattern for Avada ──
-      // If we would trash ALL raw events with zero restores, something is wrong
-      if (provider === "avada" && !avadaDuplicateProtectionMode && toTrashEntries.length > 0 && toRestoreEntries.length === 0 && toTrashEntries.length === rawEvents.length) {
-        console.log(`sync-entries: form=${extFormId} provider=avada full_trash_pattern=true (${toTrashEntries.length}/${rawEvents.length}) -> skipping destructive sync`);
-        warnings.push(`Avada sync for form ${extFormId} skipped — all ${toTrashEntries.length} entries would be trashed with zero matches. Likely a discovery issue.`);
-        requiresAvadaReset = true;
-        continue;
-      }
-
-      console.log(
-        `sync-entries: form=${extFormId} to_trash=${toTrashEntries.length} to_restore=${toRestoreEntries.length} remap_candidates=${remapCandidates.length}`,
-      );
-
-      const leadIdsToTrash = new Set<string>();
-      for (const entry of toTrashEntries) {
-        const extBucket = leadExternalIdBuckets.get(entry.external_entry_id);
-        if (extBucket && extBucket.active.length > 0) {
-          for (const candidate of extBucket.active) leadIdsToTrash.add(candidate.id);
-          continue;
-        }
-
-        if (!entry.submitted_at) continue;
-        const key = normalizeTimestampForCompare(entry.submitted_at);
-        const bucket = leadBuckets.get(key);
-        if (!bucket) continue;
-        for (const candidate of bucket.active) leadIdsToTrash.add(candidate.id);
-      }
-
-      // If multiple active leads share one external_entry_id, keep only the best row.
-      // This prevents blank clone rows from being reactivated on each sync.
-      for (const extBucket of leadExternalIdBuckets.values()) {
-        if (extBucket.active.length <= 1) continue;
-
-        const keep = pickBestLeadCandidate(extBucket.active);
-        for (const candidate of extBucket.active) {
-          if (!keep || candidate.id !== keep.id) {
-            leadIdsToTrash.add(candidate.id);
-          }
-        }
-      }
-
-      const leadIdsToRestore = new Set<string>();
-      for (const entry of toRestoreEntries) {
-        const extBucket = leadExternalIdBuckets.get(entry.external_entry_id);
-        if (extBucket && extBucket.trashed.length > 0) {
-          const best = pickBestLeadCandidate(extBucket.trashed);
-          if (best) leadIdsToRestore.add(best.id);
-          continue;
-        }
-
-        if (!entry.submitted_at) continue;
-        const key = normalizeTimestampForCompare(entry.submitted_at);
-        const bucket = leadBuckets.get(key);
-        if (!bucket) continue;
-        const best = pickBestLeadCandidate(bucket.trashed);
-        if (best) leadIdsToRestore.add(best.id);
-      }
-
-      // Prefer restore when a timestamp collision appears in both buckets.
-      for (const id of leadIdsToRestore) {
-        leadIdsToTrash.delete(id);
-      }
-
-      if (avadaDuplicateProtectionMode && leadIdsToTrash.size > 0) {
-        console.log(`sync-entries: form=${extFormId} provider=avada duplicate_set_safe_mode=true -> suppressing_trash=${leadIdsToTrash.size}`);
-        leadIdsToTrash.clear();
-      }
-
-      if (leadIdsToTrash.size > 0) {
-        const { data: trashedRows, error: trashError } = await supabase
-          .from("leads")
-          .update({ status: "trashed" })
-          .in("id", Array.from(leadIdsToTrash))
-          .neq("status", "trashed")
-          .select("id");
-
-        if (trashError) throw trashError;
-        totalTrashed += (trashedRows?.length || 0);
-      }
-
-      if (leadIdsToRestore.size > 0) {
-        const { data: restoredRows, error: restoreError } = await supabase
-          .from("leads")
-          .update({ status: "new" })
-          .in("id", Array.from(leadIdsToRestore))
-          .eq("status", "trashed")
-          .select("id");
-
-        if (restoreError) throw restoreError;
-        totalRestored += (restoredRows?.length || 0);
-      }
-
-      // Remap legacy external_entry_ids to stable canonical IDs
-      if (provider === "avada" && remapCandidates.length > 0) {
-        for (const remap of remapCandidates) {
-          const query = supabase
-            .from("lead_events_raw")
-            .update({ external_entry_id: remap.canonicalId })
-            .eq("org_id", orgId)
-            .eq("form_id", formId)
-            .eq("external_entry_id", remap.legacyId);
-
-          if (remap.submittedAt) {
-            await query.eq("submitted_at", remap.submittedAt);
-          } else {
-            await query;
-          }
-        }
-      }
-
-      // Positional remap fallback for ninja_forms / cf7
+      // ── Positional remap for ninja_forms / cf7 ──
       if (provider === "ninja_forms" || provider === "cf7") {
         const legacyPrefix = provider === "ninja_forms" ? "ninja_" : "cf7_";
         const newPrefix = provider === "ninja_forms" ? "ninja_db_" : "cf7_db_";
 
-        const legacyEntries = rawEvents
+        const { data: rawEvents } = await supabase
+          .from("lead_events_raw")
+          .select("external_entry_id, submitted_at")
+          .eq("org_id", orgId).eq("site_id", siteId).eq("form_id", formId);
+
+        const legacyEntries = (rawEvents || [])
           .filter(e => e.external_entry_id.startsWith(legacyPrefix) && !e.external_entry_id.startsWith(newPrefix))
           .sort((a, b) => (a.submitted_at || "").localeCompare(b.submitted_at || ""));
 
@@ -516,8 +441,7 @@ Deno.serve(async (req) => {
               await supabase
                 .from("lead_events_raw")
                 .update({ external_entry_id: activeDbIds[i] })
-                .eq("org_id", orgId)
-                .eq("form_id", formId)
+                .eq("org_id", orgId).eq("form_id", formId)
                 .eq("external_entry_id", legacyEntries[i].external_entry_id);
             }
           }
@@ -531,8 +455,7 @@ Deno.serve(async (req) => {
         trashed: totalTrashed,
         restored: totalRestored,
         warnings,
-        requires_avada_reset: requiresAvadaReset,
-        blocked_reason: requiresAvadaReset ? "legacy_id_deadlock" : null,
+        audit: formAudit,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

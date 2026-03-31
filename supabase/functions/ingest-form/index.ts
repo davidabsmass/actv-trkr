@@ -240,7 +240,42 @@ async function getFormFieldSchema(
   formId: string,
   orgId: string,
 ): Promise<{ field_key: string; field_label: string }[] | null> {
-  // Step 1: Get lead IDs for this form
+  // Step 1: Try to get ACTUAL field order from lead_events_raw entries with proper individual fields
+  // These entries preserve the real form layout order (not numeric key order)
+  let rawFieldOrder: string[] | null = null;
+  try {
+    const { data: rawEvents } = await supabase
+      .from("lead_events_raw")
+      .select("payload")
+      .eq("form_id", formId)
+      .eq("org_id", orgId)
+      .order("submitted_at", { ascending: false })
+      .limit(30);
+
+    if (rawEvents) {
+      for (const event of rawEvents) {
+        const payload = event.payload as any;
+        const fields = payload?.fields;
+        if (Array.isArray(fields) && fields.length > 1) {
+          // This is a proper individual-fields entry (not a CSV blob)
+          const order = fields
+            .filter((f: any) => {
+              const n = (f.name || "").toString().trim();
+              return n && n !== "data" && n !== "field_types" && n !== "field_labels" && n !== "field_keys";
+            })
+            .map((f: any) => (f.name || f.label || "").toString().trim());
+          if (order.length >= 3) {
+            rawFieldOrder = order;
+            break;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Raw event field order lookup failed:", e);
+  }
+
+  // Step 2: Get all known field keys and labels from lead_fields_flat
   const { data: formLeads } = await supabase
     .from("leads")
     .select("id")
@@ -252,7 +287,6 @@ async function getFormFieldSchema(
   if (!formLeads || formLeads.length === 0) return null;
   const formLeadIds = formLeads.map((l: any) => l.id);
   
-  // Step 2: Get flat fields for those specific leads (batched)
   const allFieldRows: any[] = [];
   for (let i = 0; i < formLeadIds.length; i += 50) {
     const batch = formLeadIds.slice(i, i + 50);
@@ -275,8 +309,51 @@ async function getFormFieldSchema(
   }
   
   if (seen.size === 0) return null;
+
+  // Step 3: Build schema in the ACTUAL form field order
+  if (rawFieldOrder && rawFieldOrder.length > 0) {
+    const orderedSchema: { field_key: string; field_label: string }[] = [];
+    const usedKeys = new Set<string>();
+
+    // First, add fields in the order they appear in the raw event
+    for (const key of rawFieldOrder) {
+      if (seen.has(key) && !usedKeys.has(key)) {
+        orderedSchema.push({ field_key: key, field_label: seen.get(key)! });
+        usedKeys.add(key);
+      }
+    }
+
+    // Then, insert any remaining fields from lead_fields_flat that weren't in the raw event
+    // (these are fields that were blank in the raw event we found)
+    // Insert them by numeric position relative to their neighbors
+    const remaining = [...seen.entries()]
+      .filter(([key]) => !usedKeys.has(key))
+      .map(([key, label]) => ({ field_key: key, field_label: label, numKey: parseInt(key) }))
+      .sort((a, b) => {
+        if (!isNaN(a.numKey) && !isNaN(b.numKey)) return a.numKey - b.numKey;
+        return a.field_key.localeCompare(b.field_key);
+      });
+
+    for (const item of remaining) {
+      // Find insert position: after the last field with a lower numeric key
+      let insertIdx = orderedSchema.length;
+      if (!isNaN(item.numKey)) {
+        for (let i = 0; i < orderedSchema.length; i++) {
+          const existingNum = parseInt(orderedSchema[i].field_key);
+          if (!isNaN(existingNum) && existingNum > item.numKey) {
+            insertIdx = i;
+            break;
+          }
+        }
+      }
+      orderedSchema.splice(insertIdx, 0, { field_key: item.field_key, field_label: item.field_label });
+    }
+
+    console.log(`Schema template using raw event order: ${orderedSchema.map(s => `${s.field_key}(${s.field_label})`).join(", ")}`);
+    return orderedSchema;
+  }
   
-  // Sort by numeric key
+  // Fallback: sort by numeric key (original behavior)
   const schema = [...seen.entries()]
     .map(([key, label]) => ({ field_key: key, field_label: label }))
     .sort((a, b) => {

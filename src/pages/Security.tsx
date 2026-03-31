@@ -165,7 +165,7 @@ export default function Security() {
       ) : (
         <>
           {/* Dismiss all + Summary strip */}
-          {(events?.length ?? 0) > 0 && (
+          {(totalEventCount ?? 0) > 0 && (
             <div className="flex justify-end mb-3">
               <Button
                 size="sm"

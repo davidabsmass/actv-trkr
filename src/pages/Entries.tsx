@@ -474,7 +474,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{search ? " (filtered)" : ""}
       </div>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        {leadsLoading ? (
+        {leadsLoading || fieldsLoading ? (
           <div className="p-12 text-center text-muted-foreground text-sm">Loading entries…</div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">

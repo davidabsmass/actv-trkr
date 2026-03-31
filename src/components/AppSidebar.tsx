@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarFooter, SidebarHeader,
+  SidebarFooter, SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -47,6 +47,11 @@ export function AppSidebar() {
   const { orgRole, loading: orgRoleLoading } = useOrgRole(orgId);
   const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { t } = useTranslation();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const closeMobileNav = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar className="border-r-0 [&>[data-sidebar=sidebar]]:bg-transparent" style={{ background: "var(--sidebar-gradient)" }}>
@@ -106,6 +111,7 @@ export function AppSidebar() {
                       <SidebarMenuButton asChild>
                         <NavLink
                           to={item.url}
+                          onClick={closeMobileNav}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                           activeClassName="bg-white/20 text-white font-medium"
                         >
@@ -132,6 +138,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/clients"
+                      onClick={closeMobileNav}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
@@ -144,6 +151,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/admin-setup"
+                      onClick={closeMobileNav}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
@@ -166,6 +174,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to="/settings"
+                      onClick={closeMobileNav}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
@@ -192,6 +201,7 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <NavLink
                 to="/account"
+                onClick={closeMobileNav}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
                 activeClassName="bg-white/20 text-white font-medium"
               >

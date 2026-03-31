@@ -37,60 +37,49 @@ export default function Security() {
     enabled: !!orgId,
   });
 
-  // Exact total count of unreviewed events (last 30 days)
-  // Summary cards: count ALL events in last 30 days (including dismissed)
-  const { data: totalEventCount, refetch: refetchTotal } = useQuery({
-    queryKey: ["security_events_count", orgId, since],
+  const { data: securitySummary, refetch: refetchSummary } = useQuery({
+    queryKey: ["security_events_summary_30d_v2", orgId, since],
     queryFn: async () => {
-      if (!orgId) return 0;
-      const { count, error } = await supabase
-        .from("security_events")
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .gte("occurred_at", since);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!orgId,
-    refetchInterval: 30000,
-  });
+      if (!orgId) return { total: 0, critical: 0, warning: 0 };
 
-  const { data: criticalTotal, refetch: refetchCritical } = useQuery({
-    queryKey: ["security_events_critical_count", orgId, since],
-    queryFn: async () => {
-      if (!orgId) return 0;
-      const { count, error } = await supabase
-        .from("security_events")
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .gte("occurred_at", since)
-        .eq("severity", "critical");
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!orgId,
-    refetchInterval: 30000,
-  });
+      const [totalRes, criticalRes, warningRes] = await Promise.all([
+        supabase
+          .from("security_events")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .gte("occurred_at", since),
+        supabase
+          .from("security_events")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .gte("occurred_at", since)
+          .eq("severity", "critical"),
+        supabase
+          .from("security_events")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .gte("occurred_at", since)
+          .eq("severity", "warning"),
+      ]);
 
-  const { data: warningTotal, refetch: refetchWarning } = useQuery({
-    queryKey: ["security_events_warning_count", orgId, since],
-    queryFn: async () => {
-      if (!orgId) return 0;
-      const { count, error } = await supabase
-        .from("security_events")
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .gte("occurred_at", since)
-        .eq("severity", "warning");
-      if (error) throw error;
-      return count ?? 0;
+      if (totalRes.error) throw totalRes.error;
+      if (criticalRes.error) throw criticalRes.error;
+      if (warningRes.error) throw warningRes.error;
+
+      return {
+        total: totalRes.count ?? 0,
+        critical: criticalRes.count ?? 0,
+        warning: warningRes.count ?? 0,
+      };
     },
     enabled: !!orgId,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchInterval: 30000,
   });
 
   const { data: events, isLoading, refetch: refetchEvents } = useQuery({
-    queryKey: ["security_events", orgId, since],
+    queryKey: ["security_events_list_30d_v2", orgId, since],
     queryFn: async () => {
       if (!orgId) return [];
       const { data, error } = await supabase
@@ -105,18 +94,15 @@ export default function Security() {
       return data || [];
     },
     enabled: !!orgId,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchInterval: 30000,
   });
 
   const hasSites = (sites?.length ?? 0) > 0;
 
   const refetchAll = async () => {
-    await Promise.all([
-      refetchTotal(),
-      refetchCritical(),
-      refetchWarning(),
-      refetchEvents(),
-    ]);
+    await Promise.all([refetchSummary(), refetchEvents()]);
   };
 
   const dismissEvent = useMutation({

@@ -349,7 +349,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const leadIds = useMemo(() => dedupedLeads.map((l) => l.id), [dedupedLeads]);
   const leadIdsKey = useMemo(() => [...leadIds].sort().join("|"), [leadIds]);
 
-  const { data: fieldsRaw } = useQuery({
+  const { data: fieldsRaw, isLoading: fieldsLoading } = useQuery({
     queryKey: ["lead_fields_flat", orgId, formId, leadIdsKey],
     queryFn: async () => {
       if (!orgId || leadIds.length === 0) return [];
@@ -474,7 +474,7 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
         {filtered.length} {filtered.length === 1 ? "entry" : "entries"}{search ? " (filtered)" : ""}
       </div>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        {leadsLoading ? (
+        {leadsLoading || fieldsLoading ? (
           <div className="p-12 text-center text-muted-foreground text-sm">Loading entries…</div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">

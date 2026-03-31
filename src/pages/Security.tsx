@@ -140,8 +140,8 @@ export default function Security() {
     ["file_changed", "file_added", "file_deleted"].includes(e.event_type)
   ) ?? [];
 
-  const criticalCount = events?.filter(e => e.severity === "critical").length ?? 0;
-  const warningCount = events?.filter(e => e.severity === "warning").length ?? 0;
+  const criticalCount = criticalTotal ?? 0;
+  const warningCount = warningTotal ?? 0;
 
   return (
     <div>

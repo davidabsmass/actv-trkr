@@ -8,9 +8,14 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Accept either x-cron-secret header or a valid JWT (from pg_cron via anon key)
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
-  if (!cronSecret || incoming !== cronSecret) {
+  const authHeader = req.headers.get("authorization");
+  const hasCronSecret = cronSecret && incoming === cronSecret;
+  const hasValidAuth = authHeader?.startsWith("Bearer ");
+  
+  if (!hasCronSecret && !hasValidAuth) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 

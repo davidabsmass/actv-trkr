@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Zap, Plus, Copy, Check, Download, Globe } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
 import { useAuth } from "@/hooks/use-auth";
-import { downloadPlugin } from "@/lib/plugin-download";
+import { downloadPlugin, LATEST_PLUGIN_VERSION } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
@@ -137,7 +137,7 @@ const Onboarding = () => {
                 className="w-full py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                Download Plugin v1.5.3 (.zip)
+                {`Download Plugin v${LATEST_PLUGIN_VERSION} (.zip)`}
               </button>
             </div>
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">

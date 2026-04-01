@@ -2277,133 +2277,263 @@ class MM_Forms {
 			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
 		}
 
-		$domain  = wp_parse_url( home_url(), PHP_URL_HOST );
-		$sent    = 0;
-		$errors  = 0;
-		// ── Gravity Forms ──
+		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
+		$state  = self::normalize_entries_backfill_state( $body );
+		$jobs   = self::get_entry_backfill_jobs();
+
+		if ( empty( $jobs ) ) {
+			return new \WP_REST_Response( array(
+				'ok'              => true,
+				'entries'         => 0,
+				'errors'          => 0,
+				'dispatched_next' => false,
+				'plugin_version'  => MM_PLUGIN_VERSION,
+			), 200 );
+		}
+
+		$job_index = self::find_entry_backfill_job_index( $jobs, $state['provider'], $state['form_id'] );
+		$job       = $jobs[ $job_index ];
+		$batch     = self::process_entry_backfill_job( $job, $domain, $state );
+
+		$next_state = null;
+		if ( $batch['has_more_current'] ) {
+			$next_state = array(
+				'provider'  => $job['provider'],
+				'form_id'   => $job['form_id'],
+				'offset'    => $batch['next_offset'],
+				'page'      => $batch['next_page'],
+				'page_size' => $state['page_size'],
+			);
+		} elseif ( isset( $jobs[ $job_index + 1 ] ) ) {
+			$next_state = array(
+				'provider'  => $jobs[ $job_index + 1 ]['provider'],
+				'form_id'   => $jobs[ $job_index + 1 ]['form_id'],
+				'offset'    => 0,
+				'page'      => 1,
+				'page_size' => $state['page_size'],
+			);
+		}
+
+		if ( ! empty( $next_state ) ) {
+			self::dispatch_entry_backfill_batch( $key_hash, $next_state );
+		}
+
+		return new \WP_REST_Response( array(
+			'ok'              => true,
+			'entries'         => $batch['sent'],
+			'errors'          => $batch['errors'],
+			'provider'        => $job['provider'],
+			'form_id'         => $job['form_id'],
+			'dispatched_next' => ! empty( $next_state ),
+			'plugin_version'  => MM_PLUGIN_VERSION,
+		), 200 );
+	}
+
+	private static function normalize_entries_backfill_state( $body ) {
+		$page_size = isset( $body['page_size'] ) ? intval( $body['page_size'] ) : 50;
+		$page_size = max( 10, min( 100, $page_size ) );
+
+		return array(
+			'provider'  => sanitize_key( $body['provider'] ?? 'gravity_forms' ),
+			'form_id'   => isset( $body['form_id'] ) ? (string) $body['form_id'] : null,
+			'offset'    => max( 0, intval( $body['offset'] ?? 0 ) ),
+			'page'      => max( 1, intval( $body['page'] ?? 1 ) ),
+			'page_size' => $page_size,
+		);
+	}
+
+	private static function get_entry_backfill_jobs() {
+		$jobs = array();
+
 		if ( class_exists( 'GFAPI' ) ) {
 			$gf_forms = \GFAPI::get_forms();
 			if ( is_array( $gf_forms ) ) {
 				foreach ( $gf_forms as $form ) {
-					$form_id = $form['id'] ?? '';
-					if ( ! $form_id ) continue;
-
-					$search    = array( 'status' => 'active' );
-					$page_size = 200;
-					$offset    = 0;
-
-					while ( true ) {
-						$paging  = array( 'offset' => $offset, 'page_size' => $page_size );
-						$entries = \GFAPI::get_entries( $form_id, $search, null, $paging );
-
-						if ( ! is_array( $entries ) || empty( $entries ) ) break;
-
-					foreach ( $entries as $entry ) {
-						$fields = array();
-						if ( ! empty( $form['fields'] ) ) {
-							foreach ( $form['fields'] as $field ) {
-								$fid   = $field->id;
-								$value = rgar( $entry, (string) $fid );
-								$fields[] = array(
-									'id'    => $fid,
-									'name'  => $field->label,
-									'label' => $field->label,
-									'type'  => $field->type,
-									'value' => $value,
-								);
-							}
-						}
-
-						$payload = array(
-							'provider' => 'gravity_forms',
-							'entry'    => array(
-								'form_id'      => (string) $form_id,
-								'form_title'   => $form['title'] ?? '',
-								'entry_id'     => rgar( $entry, 'id' ),
-								'source_url'   => rgar( $entry, 'source_url' ),
-								'submitted_at' => rgar( $entry, 'date_created' ),
-							),
-							'context'  => array(
-								'domain'         => $domain,
-								'plugin_version' => MM_PLUGIN_VERSION,
-								'backfill'       => true,
-							),
-							'fields'   => $fields,
-						);
-
-						self::send( $payload );
-						$sent++;
+					$form_id = (string) ( $form['id'] ?? '' );
+					if ( '' === $form_id ) {
+						continue;
 					}
 
-						$offset += count( $entries );
-						if ( count( $entries ) < $page_size ) break;
-					}
+					$jobs[] = array(
+						'provider' => 'gravity_forms',
+						'form_id'  => $form_id,
+						'form'     => $form,
+					);
 				}
 			}
 		}
 
-		// ── WPForms ──
-		if ( function_exists( 'wpforms' ) && isset( wpforms()->entry ) ) {
+		if ( function_exists( 'wpforms' ) && isset( wpforms()->form ) && isset( wpforms()->entry ) ) {
 			$wp_forms = wpforms()->form->get( '', array( 'posts_per_page' => -1 ) );
 			if ( is_array( $wp_forms ) ) {
 				foreach ( $wp_forms as $form ) {
-					$form_id   = $form->ID;
-					$page_num  = 1;
-					$per_page  = 200;
-
-					while ( true ) {
-						$entries = wpforms()->entry->get_entries( array( 'form_id' => $form_id, 'number' => $per_page, 'page' => $page_num ) );
-						if ( ! is_array( $entries ) || empty( $entries ) ) break;
-
-						foreach ( $entries as $wp_entry ) {
-							$fields_raw = json_decode( $wp_entry->fields, true );
-							$fields = array();
-							if ( is_array( $fields_raw ) ) {
-								foreach ( $fields_raw as $field ) {
-									$fields[] = array(
-										'id'    => $field['id'] ?? '',
-										'name'  => $field['name'] ?? '',
-										'label' => $field['name'] ?? '',
-										'type'  => $field['type'] ?? 'text',
-										'value' => $field['value'] ?? '',
-									);
-								}
-							}
-
-							$payload = array(
-								'provider' => 'wpforms',
-								'entry'    => array(
-									'form_id'      => (string) $form_id,
-									'form_title'   => $form->post_title ?: 'WPForm',
-									'entry_id'     => (string) $wp_entry->entry_id,
-									'source_url'   => home_url(),
-									'submitted_at' => $wp_entry->date ?? current_time( 'c' ),
-								),
-								'context'  => array(
-									'domain'         => $domain,
-									'plugin_version' => MM_PLUGIN_VERSION,
-									'backfill'       => true,
-								),
-								'fields'   => $fields,
-							);
-
-							self::send( $payload );
-							$sent++;
-						}
-
-						if ( count( $entries ) < $per_page ) break;
-						$page_num++;
+					$form_id = isset( $form->ID ) ? (string) $form->ID : '';
+					if ( '' === $form_id ) {
+						continue;
 					}
+
+					$jobs[] = array(
+						'provider' => 'wpforms',
+						'form_id'  => $form_id,
+						'form'     => $form,
+					);
 				}
 			}
 		}
 
-		return new \WP_REST_Response( array(
-			'ok'      => true,
-			'entries' => $sent,
-			'errors'  => $errors,
-			'plugin_version' => MM_PLUGIN_VERSION,
-		), 200 );
+		return array_values( $jobs );
+	}
+
+	private static function find_entry_backfill_job_index( $jobs, $provider, $form_id ) {
+		foreach ( $jobs as $index => $job ) {
+			if ( $job['provider'] === $provider && (string) $job['form_id'] === (string) $form_id ) {
+				return $index;
+			}
+		}
+
+		foreach ( $jobs as $index => $job ) {
+			if ( $job['provider'] === $provider ) {
+				return $index;
+			}
+		}
+
+		return 0;
+	}
+
+	private static function process_entry_backfill_job( $job, $domain, $state ) {
+		$sent             = 0;
+		$errors           = 0;
+		$has_more_current = false;
+		$next_offset      = 0;
+		$next_page        = 1;
+		$page_size        = intval( $state['page_size'] );
+
+		if ( 'gravity_forms' === $job['provider'] ) {
+			$form    = $job['form'];
+			$paging  = array( 'offset' => intval( $state['offset'] ), 'page_size' => $page_size );
+			$entries = \GFAPI::get_entries( $job['form_id'], array( 'status' => 'active' ), null, $paging );
+			if ( ! is_array( $entries ) ) {
+				$entries = array();
+			}
+
+			foreach ( $entries as $entry ) {
+				self::send( self::build_gravity_backfill_payload( $form, $entry, $domain ) );
+				$sent++;
+			}
+
+			$has_more_current = count( $entries ) === $page_size;
+			$next_offset      = intval( $state['offset'] ) + count( $entries );
+		} elseif ( 'wpforms' === $job['provider'] ) {
+			$form    = $job['form'];
+			$entries = wpforms()->entry->get_entries( array(
+				'form_id' => intval( $job['form_id'] ),
+				'number'  => $page_size,
+				'page'    => intval( $state['page'] ),
+			) );
+			if ( ! is_array( $entries ) ) {
+				$entries = array();
+			}
+
+			foreach ( $entries as $entry ) {
+				self::send( self::build_wpforms_backfill_payload( $form, $entry, $domain ) );
+				$sent++;
+			}
+
+			$has_more_current = count( $entries ) === $page_size;
+			$next_page        = intval( $state['page'] ) + 1;
+		}
+
+		return array(
+			'sent'             => $sent,
+			'errors'           => $errors,
+			'has_more_current' => $has_more_current,
+			'next_offset'      => $next_offset,
+			'next_page'        => $next_page,
+		);
+	}
+
+	private static function build_gravity_backfill_payload( $form, $entry, $domain ) {
+		$fields = array();
+		if ( ! empty( $form['fields'] ) ) {
+			foreach ( $form['fields'] as $field ) {
+				$fid      = $field->id;
+				$fields[] = array(
+					'id'    => $fid,
+					'name'  => $field->label,
+					'label' => $field->label,
+					'type'  => $field->type,
+					'value' => rgar( $entry, (string) $fid ),
+				);
+			}
+		}
+
+		return array(
+			'provider' => 'gravity_forms',
+			'entry'    => array(
+				'form_id'      => (string) ( $form['id'] ?? '' ),
+				'form_title'   => $form['title'] ?? '',
+				'entry_id'     => rgar( $entry, 'id' ),
+				'source_url'   => rgar( $entry, 'source_url' ),
+				'submitted_at' => rgar( $entry, 'date_created' ),
+			),
+			'context'  => array(
+				'domain'         => $domain,
+				'plugin_version' => MM_PLUGIN_VERSION,
+				'backfill'       => true,
+			),
+			'fields'   => $fields,
+		);
+	}
+
+	private static function build_wpforms_backfill_payload( $form, $entry, $domain ) {
+		$fields_raw = json_decode( $entry->fields, true );
+		$fields     = array();
+		if ( is_array( $fields_raw ) ) {
+			foreach ( $fields_raw as $field ) {
+				$fields[] = array(
+					'id'    => $field['id'] ?? '',
+					'name'  => $field['name'] ?? '',
+					'label' => $field['name'] ?? '',
+					'type'  => $field['type'] ?? 'text',
+					'value' => $field['value'] ?? '',
+				);
+			}
+		}
+
+		return array(
+			'provider' => 'wpforms',
+			'entry'    => array(
+				'form_id'      => isset( $form->ID ) ? (string) $form->ID : '',
+				'form_title'   => $form->post_title ?: 'WPForm',
+				'entry_id'     => isset( $entry->entry_id ) ? (string) $entry->entry_id : '',
+				'source_url'   => home_url(),
+				'submitted_at' => $entry->date ?? current_time( 'c' ),
+			),
+			'context'  => array(
+				'domain'         => $domain,
+				'plugin_version' => MM_PLUGIN_VERSION,
+				'backfill'       => true,
+			),
+			'fields'   => $fields,
+		);
+	}
+
+	private static function dispatch_entry_backfill_batch( $key_hash, $state ) {
+		$endpoint = rest_url( 'actv-trkr/v1/backfill-entries' );
+		$payload  = array_merge( array(
+			'triggered_from' => 'backfill_batch',
+			'key_hash'       => $key_hash,
+		), $state );
+
+		wp_remote_post( $endpoint, array(
+			'timeout'   => 0.01,
+			'blocking'  => false,
+			'sslverify' => false,
+			'headers'   => array(
+				'Content-Type' => 'application/json',
+			),
+			'body'      => wp_json_encode( $payload ),
+		) );
 	}
 
 }

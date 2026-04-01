@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Copy, Download, Globe, User, Mail, Lock, Eye, EyeOff, Zap } from "lucide-react";
-import { downloadPlugin } from "@/lib/plugin-download";
+import { downloadPlugin, LATEST_PLUGIN_VERSION } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
 import SparkleCanvas from "@/components/SparkleCanvas";
@@ -226,7 +226,7 @@ const Signup = () => {
                 className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                Download Plugin v1.5.3 (.zip)
+                {`Download Plugin v${LATEST_PLUGIN_VERSION} (.zip)`}
               </button>
             </div>
 

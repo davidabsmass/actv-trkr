@@ -546,7 +546,7 @@ Deno.serve(async (req) => {
               if (is404) {
                 // Plugin doesn't have the backfill-entries route — needs update
                 entryBackfillAttempted = false; // Don't tell user "in progress"
-                warnings.push(`Plugin v${runtimePluginVersion || "unknown"} does not support entry backfill. Please update to the latest version from Settings → Plugin.`);
+                wpWarnings.push(`Plugin v${runtimePluginVersion || "unknown"} does not support entry backfill. Please update to the latest version from Settings → Plugin.`);
               } else {
                 entryBackfillAttempted = true;
               }

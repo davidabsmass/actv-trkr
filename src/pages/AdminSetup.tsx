@@ -376,27 +376,8 @@ export default function AdminSetup() {
   const signupsThisMonth = subscribers.filter((s: any) => s.created_at?.startsWith(thisMonthStr)).length;
   const signupsLastMonth = subscribers.filter((s: any) => s.created_at?.startsWith(lastMonthStr)).length;
 
-  const featureCountsOwner = useMemo(() => {
-    const counts: Record<string, number> = {};
-    activeSubs.forEach((s: any) => {
-      const features = Array.isArray(s.features_used) ? s.features_used : [];
-      features.forEach((f: string) => { counts[f] = (counts[f] || 0) + 1; });
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [activeSubs]);
 
-  const avgAiCalls = activeSubs.length
-    ? (activeSubs.reduce((sum: number, s: any) => sum + Number(s.ai_calls_per_day_avg || 0), 0) / activeSubs.length).toFixed(1)
-    : "0";
 
-  const referralCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    subscribers.forEach((s: any) => {
-      const src = s.referral_source || "Unknown";
-      counts[src] = (counts[src] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [subscribers]);
 
   const sortedSubs = useMemo(() => {
     return [...subscribers].sort((a: any, b: any) => {

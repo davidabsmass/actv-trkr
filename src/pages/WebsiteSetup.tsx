@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useSites } from "@/hooks/use-dashboard-data";
 import { usePlanTier } from "@/hooks/use-plan-tier";
@@ -40,6 +41,8 @@ export default function WebsiteSetup() {
   const { activeTier } = usePlanTier();
   const { data: sites, isLoading: sitesLoading } = useSites(orgId);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const hasRedirected = useRef(false);
 
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -92,6 +95,21 @@ export default function WebsiteSetup() {
     const diff = Date.now() - new Date(s.last_heartbeat_at).getTime();
     return diff < 30 * 60 * 1000; // within 30 min
   });
+
+  // Auto-poll for connection every 5s while not connected, then redirect to dashboard
+  useEffect(() => {
+    if (websiteConnected && !hasRedirected.current) {
+      hasRedirected.current = true;
+      toast.success("Website connected! Redirecting to dashboard…");
+      setTimeout(() => navigate("/dashboard"), 1500);
+      return;
+    }
+    if (websiteConnected) return;
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [websiteConnected, orgId, queryClient, navigate]);
 
   // Setup step completion
   const steps = [

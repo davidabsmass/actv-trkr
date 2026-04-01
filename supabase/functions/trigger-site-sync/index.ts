@@ -523,9 +523,8 @@ Deno.serve(async (req) => {
           .in("form_id", nonAvadaFormIds)
           .neq("status", "trashed");
 
-        // If forms have WP entries but zero leads in our DB → backfill
-        const wpHasEntries = nonAvadaForms.some((f: any) => (f.entry_ids || []).length > 0);
-        if ((nonAvadaLeadCount || 0) === 0 && wpHasEntries) {
+        // If we have non-Avada forms but zero leads in our DB → backfill
+        if ((nonAvadaLeadCount || 0) === 0) {
           entryBackfillAttempted = true;
           console.log("Non-Avada entry backfill triggered (fire-and-forget)");
           triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash)

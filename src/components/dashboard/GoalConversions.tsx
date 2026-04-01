@@ -363,10 +363,7 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           {t("goals.goalCompletions")}
         </h3>
         <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
-        <Button size="sm" variant="ghost" onClick={() => navigate("/settings?tab=general&section=goals")} className="gap-1 h-7 text-xs">
-          <Plus className="h-3 w-3" />
-          New Goal
-        </Button>
+        {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}
       </div>
 
       <div className="space-y-2">

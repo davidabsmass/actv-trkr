@@ -467,7 +467,7 @@ export default function Forms() {
       const results = await Promise.allSettled(
         siteIds.map((siteId) =>
           supabase.functions.invoke("trigger-site-sync", {
-            body: { site_id: siteId },
+            body: { site_id: siteId, force_backfill: true },
           })
         )
       );

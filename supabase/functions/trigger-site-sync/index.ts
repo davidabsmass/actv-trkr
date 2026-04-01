@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { site_id } = await req.json();
+    const { site_id, force_backfill } = await req.json();
     if (!site_id) {
       return new Response(JSON.stringify({ error: "Missing site_id" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -500,7 +500,8 @@ Deno.serve(async (req) => {
     }
 
     // ── Auto-backfill non-Avada entries (Gravity Forms, WPForms, CF7, etc.) ──
-    // If any non-Avada form has zero leads, trigger backfill for the site
+    // If force_backfill is true (manual sync), always trigger backfill for ALL forms.
+    // Otherwise, only trigger when forms have zero leads.
     let entryBackfillAttempted = false;
 
     {
@@ -515,23 +516,28 @@ Deno.serve(async (req) => {
       const nonAvadaFormIds = (nonAvadaFormRows.data || []).map((f: any) => f.id);
 
       if (nonAvadaFormIds.length > 0) {
-        // Check each form individually — backfill if ANY form has zero leads
-        const leadCountsByForm = await Promise.all(
-          nonAvadaFormIds.map(async (formId: string) => {
-            const { count } = await supabase
-              .from("leads")
-              .select("id", { count: "exact", head: true })
-              .eq("form_id", formId)
-              .neq("status", "trashed");
-            return { formId, count: count || 0 };
-          })
-        );
+        let shouldBackfill = !!force_backfill;
 
-        const formsWithZeroLeads = leadCountsByForm.filter((f) => f.count === 0);
+        if (!shouldBackfill) {
+          // Check each form individually — backfill if ANY form has zero leads
+          const leadCountsByForm = await Promise.all(
+            nonAvadaFormIds.map(async (formId: string) => {
+              const { count } = await supabase
+                .from("leads")
+                .select("id", { count: "exact", head: true })
+                .eq("form_id", formId)
+                .neq("status", "trashed");
+              return { formId, count: count || 0 };
+            })
+          );
 
-        if (formsWithZeroLeads.length > 0) {
+          const formsWithZeroLeads = leadCountsByForm.filter((f) => f.count === 0);
+          shouldBackfill = formsWithZeroLeads.length > 0;
+        }
+
+        if (shouldBackfill) {
           entryBackfillAttempted = true;
-          console.log(`Entry backfill triggered: ${formsWithZeroLeads.length}/${nonAvadaFormIds.length} forms have 0 leads`);
+          console.log(`Entry backfill triggered (force=${!!force_backfill}): ${nonAvadaFormIds.length} non-Avada forms`);
           triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash)
             .then(async ({ response: bfRes, endpoint: bfEndpoint }) => {
               if (!bfRes.ok) {

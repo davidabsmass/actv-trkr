@@ -15,6 +15,7 @@ import {
   HelpCircle, Wifi, WifiOff, Activity,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { downloadPlugin } from "@/lib/plugin-download";
 
 type ConnectionStatus = "not_connected" | "connecting" | "connected" | "error";
 

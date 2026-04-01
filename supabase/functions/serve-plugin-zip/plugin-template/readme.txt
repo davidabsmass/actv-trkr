@@ -11,12 +11,16 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
 
-= 1.5.8 =
-* Fixes backfill chain breaking mid-way — uses non-blocking sends and smaller batches (10 per batch) so all forms get processed.
+= 1.6.1 =
+* Replaces fire-and-forget chained backfill with synchronous loop — guarantees ALL entries across ALL pages are processed in a single request.
+* Fixes incomplete historical imports where older entries (e.g. Jan/Feb) were silently dropped when the chain broke.
 
 = 1.6.0 =
 * Increases backfill batch size from 5 to 50 entries per request for reliable historical imports.
 * Prevents chain-break failures on large form datasets (500+ entries).
+
+= 1.5.8 =
+* Fixes backfill chain breaking mid-way — uses non-blocking sends and smaller batches (10 per batch) so all forms get processed.
 
 = 1.5.6 =
 * Fixes large Gravity Forms and WPForms backfills timing out by breaking imports into chained batches.

@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.5.5: Dispatches historical entry backfill asynchronously so large forms finish importing reliably
-const LATEST_VERSION = "1.6.0";
+const LATEST_VERSION = "1.6.1";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

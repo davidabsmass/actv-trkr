@@ -305,7 +305,7 @@ Deno.serve(async (req) => {
           name: customer.name,
           created: customer.created,
         },
-        subscriptions: subscriptions.data.map((s) => ({
+        subscriptions: orderedSubs.map((s) => ({
           id: s.id,
           status: s.status,
           plan: s.items.data[0]?.price?.nickname || s.items.data[0]?.price?.id || "unknown",

@@ -79,7 +79,7 @@ serve(async (req) => {
           email,
           password: tempPassword,
           email_confirm: true,
-          user_metadata: { full_name: "" },
+          user_metadata: { full_name: billingName },
         });
 
         let userId: string | null = null;

@@ -616,6 +616,7 @@ Deno.serve(async (req) => {
       avada_backfill_attempted: avadaBackfillAttempted,
       avada_backfill_entries: avadaBackfillEntries,
       avada_backfill_error: avadaBackfillError,
+      entry_backfill_attempted: entryBackfillAttempted,
       ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

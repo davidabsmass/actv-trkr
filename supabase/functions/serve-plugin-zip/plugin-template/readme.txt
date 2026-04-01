@@ -4,7 +4,7 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.5.9
+Stable tag: 1.6.0
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
@@ -13,6 +13,10 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 
 = 1.5.8 =
 * Fixes backfill chain breaking mid-way — uses non-blocking sends and smaller batches (10 per batch) so all forms get processed.
+
+= 1.6.0 =
+* Increases backfill batch size from 5 to 50 entries per request for reliable historical imports.
+* Prevents chain-break failures on large form datasets (500+ entries).
 
 = 1.5.6 =
 * Fixes large Gravity Forms and WPForms backfills timing out by breaking imports into chained batches.

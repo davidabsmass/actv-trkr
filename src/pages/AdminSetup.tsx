@@ -247,6 +247,9 @@ export default function AdminSetup() {
     }
   };
 
+  const [cancelDatePickerSub, setCancelDatePickerSub] = useState<string | null>(null);
+  const [cancelDate, setCancelDate] = useState<Date | undefined>(undefined);
+
   const handleCancelSub = async (subscriptionId: string, immediate: boolean) => {
     const msg = immediate ? "Cancel immediately? The customer will lose access now." : "Cancel at end of billing period?";
     if (!confirm(msg)) return;
@@ -257,6 +260,26 @@ export default function AdminSetup() {
       });
       if (error) throw error;
       toast.success(immediate ? "Subscription cancelled immediately" : "Subscription will cancel at period end");
+      if (managingSub) loadBilling(managingSub);
+    } catch (err: any) {
+      toast.error(err.message || "Cancel failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelSubOnDate = async (subscriptionId: string) => {
+    if (!cancelDate) { toast.error("Please select a date"); return; }
+    if (!confirm(`Cancel subscription on ${format(cancelDate, "PPP")}?`)) return;
+    setActionLoading("cancel-" + subscriptionId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "cancel_subscription", subscription_id: subscriptionId, cancel_at: cancelDate.toISOString() },
+      });
+      if (error) throw error;
+      toast.success(`Subscription will cancel on ${format(cancelDate, "PPP")}`);
+      setCancelDatePickerSub(null);
+      setCancelDate(undefined);
       if (managingSub) loadBilling(managingSub);
     } catch (err: any) {
       toast.error(err.message || "Cancel failed");

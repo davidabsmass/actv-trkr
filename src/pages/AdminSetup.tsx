@@ -969,11 +969,16 @@ export default function AdminSetup() {
                                               <td className="py-1.5 text-right">
                                                 <div className="flex gap-1 justify-end">
                                                   {c.receipt_url && (
-                                                    <a href={c.receipt_url} target="_blank" rel="noopener noreferrer">
-                                                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2">
+                                                    <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[10px]">
+                                                      <a
+                                                        href={c.receipt_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={(event) => event.stopPropagation()}
+                                                      >
                                                         <ExternalLink className="h-3 w-3 mr-1" /> Receipt
-                                                      </Button>
-                                                    </a>
+                                                      </a>
+                                                    </Button>
                                                   )}
                                                   {c.status === "succeeded" && !c.refunded && (
                                                     <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"

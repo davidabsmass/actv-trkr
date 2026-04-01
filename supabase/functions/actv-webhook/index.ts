@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import * as React from "npm:react@18.3.1";
+import { renderAsync } from "npm:@react-email/components@0.0.22";
+import { TEMPLATES } from "../_shared/transactional-email-templates/registry.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[ACTV-WEBHOOK] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
@@ -140,7 +143,7 @@ serve(async (req) => {
             logStep("User already has org, skipping", { orgId: existingOrg.org_id });
           }
 
-          // 4. Generate password-set link & send welcome email
+          // 4. Generate password-set link & send welcome email directly via queue
           try {
             const { data: resetData } = await supabase.auth.admin.generateLink({
               type: "recovery",
@@ -149,18 +152,87 @@ serve(async (req) => {
             });
             const setPasswordUrl = resetData?.properties?.action_link || "https://actvtrkr.com/reset-password";
 
-            await supabase.functions.invoke("send-transactional-email", {
-              body: {
-                templateName: "welcome",
-                recipientEmail: email,
-                idempotencyKey: `welcome-checkout-${session.id}`,
-                templateData: {
-                  name: undefined,
-                  setPasswordUrl,
+            // Render the welcome template directly instead of invoking another edge function
+            const welcomeTemplate = TEMPLATES["welcome"];
+            if (welcomeTemplate) {
+              const templateData = { name: undefined, setPasswordUrl };
+              const html = await renderAsync(
+                React.createElement(welcomeTemplate.component, templateData)
+              );
+              const plainText = await renderAsync(
+                React.createElement(welcomeTemplate.component, templateData),
+                { plainText: true }
+              );
+              const resolvedSubject = typeof welcomeTemplate.subject === "function"
+                ? welcomeTemplate.subject(templateData)
+                : welcomeTemplate.subject;
+
+              const messageId = crypto.randomUUID();
+              const idempotencyKey = `welcome-checkout-${session.id}`;
+
+              // Get or create unsubscribe token
+              const normalizedEmail = email.toLowerCase();
+              let unsubscribeToken: string;
+              const { data: existingToken } = await supabase
+                .from("email_unsubscribe_tokens")
+                .select("token")
+                .eq("email", normalizedEmail)
+                .maybeSingle();
+
+              if (existingToken) {
+                unsubscribeToken = existingToken.token;
+              } else {
+                const bytes = new Uint8Array(32);
+                crypto.getRandomValues(bytes);
+                unsubscribeToken = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+                await supabase.from("email_unsubscribe_tokens").upsert(
+                  { token: unsubscribeToken, email: normalizedEmail },
+                  { onConflict: "email", ignoreDuplicates: true }
+                );
+                // Re-read in case of race
+                const { data: stored } = await supabase
+                  .from("email_unsubscribe_tokens")
+                  .select("token")
+                  .eq("email", normalizedEmail)
+                  .maybeSingle();
+                if (stored) unsubscribeToken = stored.token;
+              }
+
+              // Log pending
+              await supabase.from("email_send_log").insert({
+                message_id: messageId,
+                template_name: "welcome",
+                recipient_email: email,
+                status: "pending",
+              });
+
+              // Enqueue directly to pgmq
+              const { error: enqueueErr } = await supabase.rpc("enqueue_email", {
+                queue_name: "transactional_emails",
+                payload: {
+                  message_id: messageId,
+                  to: email,
+                  from: "ACTV TRKR <noreply@actvtrkr.com>",
+                  sender_domain: "notify.actvtrkr.com",
+                  subject: resolvedSubject,
+                  html,
+                  text: plainText,
+                  purpose: "transactional",
+                  label: "welcome",
+                  idempotency_key: idempotencyKey,
+                  unsubscribe_token: unsubscribeToken,
+                  queued_at: new Date().toISOString(),
                 },
-              },
-            });
-            logStep("Welcome email queued", { email });
+              });
+
+              if (enqueueErr) {
+                logStep("Welcome email enqueue failed", { error: enqueueErr });
+              } else {
+                logStep("Welcome email enqueued", { email, messageId });
+              }
+            } else {
+              logStep("Welcome template not found in registry");
+            }
           } catch (emailErr) {
             logStep("Welcome email failed (non-fatal)", { error: String(emailErr) });
           }

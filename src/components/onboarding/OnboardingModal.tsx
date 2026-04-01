@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Target, FileCheck, Bell, Check, ChevronRight, Zap } from "lucide-react";
+import { Target, Bell, Check, ChevronRight, Zap } from "lucide-react";
 import { useUpdateSiteSettings, PrimaryFocus, logUserInputEvent } from "@/hooks/use-site-settings";
-import { useForms } from "@/hooks/use-dashboard-data";
 import { useOrg } from "@/hooks/use-org";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -30,32 +29,14 @@ export function OnboardingModal() {
     daily_digest: false,
     monitoring_alerts: true,
   });
-  const [formToggles, setFormToggles] = useState<Record<string, boolean>>({});
-  const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const { orgId } = useOrg();
-  const { data: forms } = useForms(orgId);
   const updateSettings = useUpdateSiteSettings();
 
   const handleComplete = async () => {
     setSaving(true);
     try {
-      const selectedForms: any[] = [];
-
-      // Update form settings
-      if (forms) {
-        for (const form of forms) {
-          const isPrimary = formToggles[form.id] !== undefined ? formToggles[form.id] : true;
-          const estValue = formValues[form.id] ? parseFloat(formValues[form.id]) : form.estimated_value;
-          await supabase
-            .from("forms")
-            .update({ is_primary_lead: isPrimary, estimated_value: estValue || 0 })
-            .eq("id", form.id);
-          selectedForms.push({ form_id: form.id, counts_as_lead: isPrimary, estimated_value: estValue || 0 });
-        }
-      }
-
       // Save settings + mark onboarding complete
       await updateSettings.mutateAsync({
         primary_goal: focusToGoal[focus] as any,
@@ -71,17 +52,14 @@ export function OnboardingModal() {
           org_id: orgId,
           user_id: user?.id || null,
           primary_focus: focus,
-          selected_forms_json: selectedForms,
+          selected_forms_json: [],
           notification_prefs_json: notifications,
-          raw_answers_json: { focus, formToggles, formValues, notifications },
+          raw_answers_json: { focus, notifications },
         });
 
         // Log individual events
         await logUserInputEvent(orgId, "onboarding_completed", { primary_focus: focus });
         await logUserInputEvent(orgId, "focus_changed", { new_value: focus, source: "onboarding" });
-        if (selectedForms.length > 0) {
-          await logUserInputEvent(orgId, "lead_forms_configured", { forms: selectedForms, source: "onboarding" });
-        }
         await logUserInputEvent(orgId, "notification_pref_changed", { new_value: notifications, source: "onboarding" });
       }
 
@@ -98,7 +76,7 @@ export function OnboardingModal() {
       <div className="w-full max-w-lg animate-slide-up">
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[0, 1, 2].map((i) => (
+          {[0, 1].map((i) => (
             <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i <= step ? "w-12 bg-primary" : "w-8 bg-border"}`} />
           ))}
         </div>
@@ -147,56 +125,6 @@ export function OnboardingModal() {
             <>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <FileCheck className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">Confirm Your Lead Forms</h2>
-                  <p className="text-sm text-muted-foreground">Toggle which forms count as leads and set values.</p>
-                </div>
-              </div>
-              {forms && forms.length > 0 ? (
-                <div className="space-y-3 max-h-[320px] overflow-y-auto">
-                  {forms.map((form) => {
-                    const isOn = formToggles[form.id] !== undefined ? formToggles[form.id] : true;
-                    return (
-                      <div key={form.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                        <button
-                          onClick={() => setFormToggles((p) => ({ ...p, [form.id]: !isOn }))}
-                          className={`w-10 h-6 rounded-full relative transition-colors ${isOn ? "bg-primary" : "bg-muted"}`}
-                        >
-                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${isOn ? "left-[18px]" : "left-0.5"}`} />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{form.name}</p>
-                          <p className="text-xs text-muted-foreground uppercase">{form.provider}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">$</span>
-                          <input
-                            type="number"
-                            placeholder="0"
-                            value={formValues[form.id] ?? (form.estimated_value || "")}
-                            onChange={(e) => setFormValues((p) => ({ ...p, [form.id]: e.target.value }))}
-                            className="w-20 px-2 py-1 text-xs bg-white border border-border rounded text-foreground"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">No forms detected yet.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Forms will appear once your tracking plugin sends data.</p>
-                </div>
-              )}
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Bell className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -235,7 +163,7 @@ export function OnboardingModal() {
                 Back
               </button>
             ) : <span />}
-            {step < 2 ? (
+            {step < 1 ? (
               <button
                 onClick={() => setStep((s) => s + 1)}
                 className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"

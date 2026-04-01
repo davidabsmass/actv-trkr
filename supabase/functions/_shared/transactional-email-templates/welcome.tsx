@@ -96,18 +96,11 @@ const headerSection = {
   marginBottom: '0',
 }
 
-const gradientBar = {
-  height: '4px',
-  background: 'linear-gradient(135deg, #6C5CE7, #8B7CF7)',
-  borderRadius: '4px 4px 0 0',
+const headerImg = {
+  width: '100%',
+  display: 'block' as const,
+  borderRadius: '12px 12px 0 0',
 }
-
-const logoWrap = {
-  padding: '28px 32px 20px',
-  backgroundColor: '#F8F9FC',
-}
-
-const logoImg = { margin: '0' }
 
 const contentSection = {
   padding: '32px 32px 40px',

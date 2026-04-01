@@ -4,13 +4,14 @@ import { useTranslation } from "react-i18next";
 interface KPICardProps {
   label: string;
   value: string;
-  delta: number;
+  delta: number | null;
   prefix?: string;
   suffix?: string;
   subtext?: string;
 }
 
-function humanizeDelta(delta: number, t: (key: string) => string): { text: string; className: string } {
+function humanizeDelta(delta: number | null, t: (key: string) => string): { text: string; className: string } {
+  if (delta === null) return { text: "Collecting data…", className: "text-muted-foreground italic" };
   const pct = Math.abs(delta * 100);
   if (pct < 1) return { text: t("dashboard.noChange"), className: "kpi-neutral" };
   if (delta > 0.15) return { text: t("dashboard.strongGrowth"), className: "kpi-up" };
@@ -21,8 +22,8 @@ function humanizeDelta(delta: number, t: (key: string) => string): { text: strin
 
 export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) {
   const { t } = useTranslation();
-  const isUp = delta > 0;
-  const isDown = delta < 0;
+  const isUp = delta !== null && delta > 0;
+  const isDown = delta !== null && delta < 0;
   const { text: deltaText, className: deltaClass } = humanizeDelta(delta, t);
 
   return (
@@ -39,7 +40,7 @@ export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) 
       <div className="flex items-center gap-1 mt-1">
         {isUp && <ArrowUpRight className="h-3.5 w-3.5 kpi-up" />}
         {isDown && <ArrowDownRight className="h-3.5 w-3.5 kpi-down" />}
-        {!isUp && !isDown && <Minus className="h-3.5 w-3.5 kpi-neutral" />}
+        {delta !== null && !isUp && !isDown && <Minus className="h-3.5 w-3.5 kpi-neutral" />}
         <span className={`text-xs font-medium ${deltaClass}`}>
           {deltaText}
         </span>

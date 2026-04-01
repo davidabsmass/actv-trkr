@@ -715,6 +715,9 @@ export default function AdminSetup() {
             );
           })()}
 
+          {/* Feature Usage */}
+          <FeatureUsageWidget />
+
           {/* Subscriber Table */}
           <Card>
             <CardHeader><CardTitle className="text-base">Subscribers ({subscribers.length})</CardTitle></CardHeader>

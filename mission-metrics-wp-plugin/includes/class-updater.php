@@ -23,6 +23,9 @@ class MM_Updater {
 		// Force-clear update transient when viewing the plugins page
 		add_action( 'load-plugins.php', array( __CLASS__, 'force_check' ) );
 		add_action( 'load-options-general.php', array( __CLASS__, 'force_check' ) );
+
+		// After WordPress finishes upgrading a plugin, clear stale update data
+		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 10, 2 );
 	}
 
 	/**

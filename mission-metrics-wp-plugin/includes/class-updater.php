@@ -33,6 +33,20 @@ class MM_Updater {
 	 */
 	public static function force_check() {
 		delete_transient( self::TRANSIENT );
+		// Also clear WordPress's own plugin update cache so stale "update available" notices disappear
+		delete_site_transient( 'update_plugins' );
+	}
+
+	/**
+	 * After any plugin upgrade completes, clear our cached data so the version re-checks cleanly.
+	 */
+	public static function after_upgrade( $upgrader, $options ) {
+		if ( isset( $options['plugins'] ) && is_array( $options['plugins'] ) ) {
+			if ( in_array( self::SLUG, $options['plugins'], true ) ) {
+				delete_transient( self::TRANSIENT );
+				delete_site_transient( 'update_plugins' );
+			}
+		}
 	}
 
 	/**

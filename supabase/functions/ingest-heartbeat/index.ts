@@ -51,6 +51,19 @@ Deno.serve(async (req) => {
         console.log(`Renamed org ${orgId} from "${orgRow.name}" to "${domain}"`);
       }
 
+      // Auto-populate subscriber site_url from connected domain
+      const { data: orgUsers } = await supabase.from("org_users").select("user_id").eq("org_id", orgId);
+      if (orgUsers && orgUsers.length > 0) {
+        const userIds = orgUsers.map((u: any) => u.user_id);
+        const { data: profiles } = await supabase.from("profiles").select("email").in("user_id", userIds);
+        if (profiles && profiles.length > 0) {
+          const emails = profiles.map((p: any) => p.email).filter(Boolean);
+          for (const email of emails) {
+            await supabase.from("subscribers").update({ site_url: domain }).eq("email", email).is("site_url", null);
+          }
+        }
+      }
+
       // Fire-and-forget: trigger form sync and domain/SSL check for the new site
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

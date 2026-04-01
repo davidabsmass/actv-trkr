@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { site_id } = await req.json();
+    const { site_id, force_backfill } = await req.json();
     if (!site_id) {
       return new Response(JSON.stringify({ error: "Missing site_id" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

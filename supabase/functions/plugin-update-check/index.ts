@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.5.4: Removes 500-entry backfill cap; paginates Gravity Forms + WPForms for full historical import
-const LATEST_VERSION = "1.5.4";
+// v1.5.5: Dispatches historical entry backfill asynchronously so large forms finish importing reliably
+const LATEST_VERSION = "1.5.5";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.5
+- FIX: Historical Gravity Forms backfill now dispatches asynchronously so large forms do not stall partway through
+- FIX: Prevents partial imports where WordPress has hundreds of entries but the app stops far short of parity
+
 ## 1.5.4
 - FIX: Backfill now paginates through ALL entries (removed 500-entry cap that caused count mismatches)
 - FIX: Gravity Forms and WPForms backfill fetches entries in batches of 200 until exhausted

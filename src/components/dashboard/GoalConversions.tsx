@@ -2,9 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Target, Plus, ChevronDown, ChevronRight, MapPin, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { GOAL_TYPES, type ConversionGoal } from "@/hooks/use-goals";
+import { useForms } from "@/hooks/use-dashboard-data";
+import { CreateGoalDialog } from "@/components/settings/GoalsSection";
 import { useState } from "react";
 import { format } from "date-fns";
 
@@ -213,8 +214,8 @@ function GoalDrillDown({ goalId, orgId, startDate, endDate }: {
 
 export function GoalConversions({ orgId, startDate, endDate }: { orgId: string | null; startDate: string; endDate: string }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [expandedGoal, setExpandedGoal] = useState<string | null>(null);
+  const { data: forms = [] } = useForms(orgId);
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["goal_conversions_v2", orgId, startDate, endDate],
@@ -348,10 +349,7 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
         </h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">No goals configured yet. Create a goal to start tracking conversions.</p>
-      <Button size="sm" variant="outline" onClick={() => navigate("/settings?tab=general&section=goals")} className="gap-1.5">
-        <Plus className="h-3.5 w-3.5" />
-        Create a New Goal
-      </Button>
+      {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}
     </div>
   );
 
@@ -365,10 +363,7 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           {t("goals.goalCompletions")}
         </h3>
         <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
-        <Button size="sm" variant="ghost" onClick={() => navigate("/settings?tab=general&section=goals")} className="gap-1 h-7 text-xs">
-          <Plus className="h-3 w-3" />
-          New Goal
-        </Button>
+        {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}
       </div>
 
       <div className="space-y-2">

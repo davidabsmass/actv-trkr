@@ -2280,8 +2280,6 @@ class MM_Forms {
 		$domain  = wp_parse_url( home_url(), PHP_URL_HOST );
 		$sent    = 0;
 		$errors  = 0;
-		$max_entries = 500; // Safety cap per form
-
 		// ── Gravity Forms ──
 		if ( class_exists( 'GFAPI' ) ) {
 			$gf_forms = \GFAPI::get_forms();
@@ -2290,11 +2288,15 @@ class MM_Forms {
 					$form_id = $form['id'] ?? '';
 					if ( ! $form_id ) continue;
 
-					$search = array( 'status' => 'active' );
-					$paging = array( 'offset' => 0, 'page_size' => $max_entries );
-					$entries = \GFAPI::get_entries( $form_id, $search, null, $paging );
+					$search    = array( 'status' => 'active' );
+					$page_size = 200;
+					$offset    = 0;
 
-					if ( ! is_array( $entries ) || empty( $entries ) ) continue;
+					while ( true ) {
+						$paging  = array( 'offset' => $offset, 'page_size' => $page_size );
+						$entries = \GFAPI::get_entries( $form_id, $search, null, $paging );
+
+						if ( ! is_array( $entries ) || empty( $entries ) ) break;
 
 					foreach ( $entries as $entry ) {
 						$fields = array();

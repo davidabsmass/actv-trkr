@@ -13,7 +13,7 @@ class MM_Updater {
 
 	const SLUG        = 'actv-trkr/actv-trkr.php';
 	const TRANSIENT   = 'mm_update_data';
-	const CHECK_HOURS = 1;
+	const CHECK_HOURS = 0; // Always fetch fresh — endpoint is fast and no-cache
 
 	public static function init() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
@@ -23,6 +23,9 @@ class MM_Updater {
 		// Force-clear update transient when viewing the plugins page
 		add_action( 'load-plugins.php', array( __CLASS__, 'force_check' ) );
 		add_action( 'load-options-general.php', array( __CLASS__, 'force_check' ) );
+
+		// After WordPress finishes upgrading a plugin, clear stale update data
+		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 10, 2 );
 	}
 
 	/**
@@ -30,6 +33,20 @@ class MM_Updater {
 	 */
 	public static function force_check() {
 		delete_transient( self::TRANSIENT );
+		// Also clear WordPress's own plugin update cache so stale "update available" notices disappear
+		delete_site_transient( 'update_plugins' );
+	}
+
+	/**
+	 * After any plugin upgrade completes, clear our cached data so the version re-checks cleanly.
+	 */
+	public static function after_upgrade( $upgrader, $options ) {
+		if ( isset( $options['plugins'] ) && is_array( $options['plugins'] ) ) {
+			if ( in_array( self::SLUG, $options['plugins'], true ) ) {
+				delete_transient( self::TRANSIENT );
+				delete_site_transient( 'update_plugins' );
+			}
+		}
 	}
 
 	/**

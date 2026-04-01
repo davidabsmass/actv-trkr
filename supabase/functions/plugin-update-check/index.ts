@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.5.5: Dispatches historical entry backfill asynchronously so large forms finish importing reliably
-const LATEST_VERSION = "1.5.6";
+const LATEST_VERSION = "1.5.7";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.7
+- FIX: Eliminates false "update available" notices after upgrading by clearing WordPress update caches post-upgrade
+- FIX: Update check endpoint no longer returns stale cached responses
+
 ## 1.5.6
 - FIX: Historical Gravity Forms and WPForms backfill now runs in chained batches so large imports do not timeout mid-run
 - FIX: Continues replaying entries automatically until all historical form entries are imported
@@ -216,7 +220,7 @@ Deno.serve(async (req) => {
             : "You are running the latest version.",
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-cache, no-store, must-revalidate" },
         }
       );
     }
@@ -240,7 +244,7 @@ Deno.serve(async (req) => {
           },
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-cache, no-store, must-revalidate" },
         }
       );
     }

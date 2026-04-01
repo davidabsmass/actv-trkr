@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.8
+- FIX: Backfill chain no longer breaks mid-way — uses non-blocking sends and smaller batches (10/batch) so ALL forms get their entries imported
+- FIX: Forms like "Contact Us" that were skipped during backfill now process correctly
+
 ## 1.5.7
 - FIX: Eliminates false "update available" notices after upgrading by clearing WordPress update caches post-upgrade
 - FIX: Update check endpoint no longer returns stale cached responses

@@ -13,7 +13,7 @@ class MM_Updater {
 
 	const SLUG        = 'actv-trkr/actv-trkr.php';
 	const TRANSIENT   = 'mm_update_data';
-	const CHECK_HOURS = 1;
+	const CHECK_HOURS = 0; // Always fetch fresh — endpoint is fast and no-cache
 
 	public static function init() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'check_update' ) );

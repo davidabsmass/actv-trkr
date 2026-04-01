@@ -90,9 +90,14 @@ async function checkSSLExpiry(domain: string): Promise<{ expiry: string | null; 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Allow auth via CRON_SECRET header OR service role Authorization
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
-  if (!cronSecret || incoming !== cronSecret) {
+  const authHeader = req.headers.get("authorization") || "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const isServiceRole = serviceRoleKey && authHeader === `Bearer ${serviceRoleKey}`;
+  const isCronAuth = cronSecret && incoming === cronSecret;
+  if (!isCronAuth && !isServiceRole) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 

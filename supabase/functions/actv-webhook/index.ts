@@ -276,18 +276,46 @@ serve(async (req) => {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = typeof sub.customer === "string" ? sub.customer : "";
 
-        const { error } = await supabase
-          .from("subscribers")
-          .update({
-            status: "churned",
-            churn_date: new Date().toISOString(),
-            churn_reason: sub.cancellation_details?.reason || "unknown",
-            mrr: 0,
-          })
-          .eq("stripe_customer_id", customerId);
+        // Check Stripe for any remaining active subscriptions before zeroing MRR
+        const remainingSubs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "active",
+          limit: 1,
+        });
 
-        if (error) logStep("Churn update error", { error });
-        else logStep("Subscriber churned", { customerId });
+        if (remainingSubs.data.length > 0) {
+          // Still has an active subscription — recalculate MRR from remaining sub
+          const activeSub = remainingSubs.data[0];
+          const priceAmount = activeSub.items.data[0]?.price?.unit_amount || 0;
+          const interval = activeSub.items.data[0]?.price?.recurring?.interval;
+          const recalculatedMrr = interval === "year" ? (priceAmount / 100) / 12 : priceAmount / 100;
+
+          const { error } = await supabase
+            .from("subscribers")
+            .update({
+              status: "active",
+              mrr: recalculatedMrr,
+              stripe_subscription_id: activeSub.id,
+            })
+            .eq("stripe_customer_id", customerId);
+
+          if (error) logStep("Re-derive MRR error", { error });
+          else logStep("Subscription deleted but active sub remains", { customerId, mrr: recalculatedMrr });
+        } else {
+          // No active subs remain — mark as churned
+          const { error } = await supabase
+            .from("subscribers")
+            .update({
+              status: "churned",
+              churn_date: new Date().toISOString(),
+              churn_reason: sub.cancellation_details?.reason || "unknown",
+              mrr: 0,
+            })
+            .eq("stripe_customer_id", customerId);
+
+          if (error) logStep("Churn update error", { error });
+          else logStep("Subscriber churned", { customerId });
+        }
         break;
       }
 

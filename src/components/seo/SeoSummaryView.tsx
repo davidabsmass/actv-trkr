@@ -8,6 +8,46 @@ import type { SeoIssue } from "@/lib/seo-scoring";
 
 type StatusLevel = "healthy" | "needs_review" | "issue_detected" | "good" | "warning" | "blocked" | "unknown";
 
+/** Map issue IDs / keywords to plain-language fix instructions */
+function actionForIssue(issue: SeoIssue): string | null {
+  const id = (issue.id || "").toLowerCase();
+  const title = (issue.title || "").toLowerCase();
+
+  if (id.includes("title_missing") || title.includes("missing title"))
+    return "Add a unique <title> tag to the page. In WordPress, edit the page and set the SEO title in Yoast or RankMath.";
+  if (id.includes("title_short") || title.includes("title too short"))
+    return "Expand the page title to 30–60 characters so it displays fully in search results.";
+  if (id.includes("title_long") || title.includes("title too long"))
+    return "Shorten the page title to under 60 characters to avoid truncation in search results.";
+  if (id.includes("meta_desc_missing") || title.includes("missing meta"))
+    return "Add a meta description (120–155 characters) summarizing the page. In WordPress, set it in your SEO plugin settings.";
+  if (id.includes("meta_desc_short") || title.includes("description too short"))
+    return "Expand the meta description to at least 120 characters to improve click-through from search results.";
+  if (id.includes("meta_desc_long") || title.includes("description too long"))
+    return "Shorten the meta description to under 155 characters so it isn't truncated in search results.";
+  if (id.includes("h1_missing") || title.includes("missing h1"))
+    return "Add a single H1 heading to the page. This is usually the main page title or headline.";
+  if (id.includes("h1_multiple") || title.includes("multiple h1"))
+    return "Use only one H1 tag per page. Convert extra H1 tags to H2 or H3 headings.";
+  if (id.includes("canonical") || title.includes("canonical"))
+    return "Set a canonical URL to tell search engines which version of the page is the primary one. Most SEO plugins add this automatically.";
+  if (id.includes("robots") || title.includes("noindex"))
+    return "Remove the 'noindex' directive so search engines can index the page. Check your SEO plugin's visibility settings and your robots.txt file.";
+  if (id.includes("viewport") || title.includes("viewport"))
+    return "Ensure the page includes a <meta name=\"viewport\"> tag for proper mobile rendering. Most modern themes include this by default.";
+  if (id.includes("mobile") || title.includes("mobile"))
+    return "Check that the site uses a responsive theme and fonts/buttons are sized for mobile screens.";
+  if (id.includes("og_image") || title.includes("og image") || title.includes("social image"))
+    return "Add an Open Graph image (og:image) so the page shows a preview image when shared on social media.";
+  if (id.includes("ssl") || title.includes("https") || title.includes("ssl"))
+    return "Ensure the site loads over HTTPS. Install an SSL certificate and redirect HTTP traffic to HTTPS.";
+  if (id.includes("alt") || title.includes("alt text"))
+    return "Add descriptive alt text to images so search engines and screen readers can understand them.";
+
+  // Generic fallback
+  return null;
+}
+
 interface StatusBadgeProps {
   level: StatusLevel;
   label: string;
@@ -105,39 +145,39 @@ export default function SeoSummaryView() {
 
   // 1. Search Visibility Status
   const searchVisibility = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run an initial scan to check search visibility.", reasons: [] as string[] };
-    if (score >= 80) return { level: "healthy" as StatusLevel, label: "Healthy", description: "No major visibility issues detected.", reasons: [] as string[] };
-    const reasons = issues.filter(i => i.impact === "Critical" || i.impact === "High").map(i => i.title || i.id || "");
-    if (score >= 50) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some search visibility items may need attention.", reasons };
-    return { level: "issue_detected" as StatusLevel, label: "Issue Detected", description: "Search visibility issues were found that may affect discoverability.", reasons };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run an initial scan to check search visibility.", issueObjects: [] as SeoIssue[] };
+    if (score >= 80) return { level: "healthy" as StatusLevel, label: "Healthy", description: "No major visibility issues detected.", issueObjects: [] as SeoIssue[] };
+    const matched = issues.filter(i => i.impact === "Critical" || i.impact === "High");
+    if (score >= 50) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some search visibility items may need attention.", issueObjects: matched };
+    return { level: "issue_detected" as StatusLevel, label: "Issue Detected", description: "Search visibility issues were found that may affect discoverability.", issueObjects: matched };
   })();
 
   // 2. Indexing Status
   const indexing = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check indexing status.", reasons: [] as string[] };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check indexing status.", issueObjects: [] as SeoIssue[] };
     const robotsIssues = issues.filter(i => i.id?.includes("robots") || i.title?.toLowerCase().includes("noindex"));
-    if (robotsIssues.length > 0) return { level: "blocked" as StatusLevel, label: "Blocked", description: "Search engines may be blocked from accessing the site.", reasons: robotsIssues.map(i => i.title || i.id || "") };
-    return { level: "good" as StatusLevel, label: "Accessible", description: "Search engines appear able to access the site.", reasons: [] as string[] };
+    if (robotsIssues.length > 0) return { level: "blocked" as StatusLevel, label: "Blocked", description: "Search engines may be blocked from accessing the site.", issueObjects: robotsIssues };
+    return { level: "good" as StatusLevel, label: "Accessible", description: "Search engines appear able to access the site.", issueObjects: [] as SeoIssue[] };
   })();
 
   // 3. Mobile Readiness
   const mobile = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check mobile readiness.", reasons: [] as string[] };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check mobile readiness.", issueObjects: [] as SeoIssue[] };
     const mobileIssues = issues.filter(i =>
       i.id?.includes("viewport") || i.id?.includes("mobile") || i.title?.toLowerCase().includes("viewport") || i.title?.toLowerCase().includes("mobile")
     );
-    if (mobileIssues.length > 0) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some mobile experience issues may need review.", reasons: mobileIssues.map(i => i.title || i.id || "") };
-    return { level: "good" as StatusLevel, label: "Good", description: "No mobile readiness issues detected.", reasons: [] as string[] };
+    if (mobileIssues.length > 0) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some mobile experience issues may need review.", issueObjects: mobileIssues };
+    return { level: "good" as StatusLevel, label: "Good", description: "No mobile readiness issues detected.", issueObjects: [] as SeoIssue[] };
   })();
 
   // 4. Homepage Search Basics
   const homepageBasics = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check homepage basics.", reasons: [] as string[] };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check homepage basics.", issueObjects: [] as SeoIssue[] };
     const basicIssues = issues.filter(i =>
       i.id?.includes("title") || i.id?.includes("meta_desc") || i.id?.includes("h1") || i.id?.includes("canonical")
     );
-    if (basicIssues.length === 0) return { level: "healthy" as StatusLevel, label: "Present", description: "Homepage search basics are present.", reasons: [] as string[] };
-    return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some homepage search essentials may be missing or incomplete.", reasons: basicIssues.map(i => i.title || i.id || "") };
+    if (basicIssues.length === 0) return { level: "healthy" as StatusLevel, label: "Present", description: "Homepage search basics are present.", issueObjects: [] as SeoIssue[] };
+    return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some homepage search essentials may be missing or incomplete.", issueObjects: basicIssues };
   })();
 
   const items = [
@@ -158,17 +198,27 @@ export default function SeoSummaryView() {
             </div>
             <StatusBadge level={item.level} label={item.label} />
             <p className="text-xs text-muted-foreground mt-2">{item.description}</p>
-            {item.reasons && item.reasons.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {item.reasons.slice(0, 4).map((reason, idx) => (
-                  <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-warning mt-0.5">•</span>
-                    <span>{reason}</span>
-                  </li>
-                ))}
-                {item.reasons.length > 4 && (
+            {item.issueObjects && item.issueObjects.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {item.issueObjects.slice(0, 4).map((issue, idx) => {
+                  const action = actionForIssue(issue);
+                  return (
+                    <li key={idx} className="text-xs">
+                      <div className="flex items-start gap-1.5">
+                        <span className="text-warning mt-0.5">•</span>
+                        <span className="text-foreground font-medium">{issue.title || issue.id || "Issue"}</span>
+                      </div>
+                      {action && (
+                        <p className="text-muted-foreground ml-4 mt-0.5 leading-relaxed">
+                          <span className="font-medium text-primary/80">Fix:</span> {action}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+                {item.issueObjects.length > 4 && (
                   <li className="text-xs text-muted-foreground/70 pl-3">
-                    +{item.reasons.length - 4} more
+                    +{item.issueObjects.length - 4} more
                   </li>
                 )}
               </ul>

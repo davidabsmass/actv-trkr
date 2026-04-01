@@ -2280,8 +2280,6 @@ class MM_Forms {
 		$domain  = wp_parse_url( home_url(), PHP_URL_HOST );
 		$sent    = 0;
 		$errors  = 0;
-		$max_entries = 500; // Safety cap per form
-
 		// ── Gravity Forms ──
 		if ( class_exists( 'GFAPI' ) ) {
 			$gf_forms = \GFAPI::get_forms();
@@ -2290,11 +2288,15 @@ class MM_Forms {
 					$form_id = $form['id'] ?? '';
 					if ( ! $form_id ) continue;
 
-					$search = array( 'status' => 'active' );
-					$paging = array( 'offset' => 0, 'page_size' => $max_entries );
-					$entries = \GFAPI::get_entries( $form_id, $search, null, $paging );
+					$search    = array( 'status' => 'active' );
+					$page_size = 200;
+					$offset    = 0;
 
-					if ( ! is_array( $entries ) || empty( $entries ) ) continue;
+					while ( true ) {
+						$paging  = array( 'offset' => $offset, 'page_size' => $page_size );
+						$entries = \GFAPI::get_entries( $form_id, $search, null, $paging );
+
+						if ( ! is_array( $entries ) || empty( $entries ) ) break;
 
 					foreach ( $entries as $entry ) {
 						$fields = array();
@@ -2332,6 +2334,10 @@ class MM_Forms {
 						self::send( $payload );
 						$sent++;
 					}
+
+						$offset += count( $entries );
+						if ( count( $entries ) < $page_size ) break;
+					}
 				}
 			}
 		}
@@ -2341,44 +2347,52 @@ class MM_Forms {
 			$wp_forms = wpforms()->form->get( '', array( 'posts_per_page' => -1 ) );
 			if ( is_array( $wp_forms ) ) {
 				foreach ( $wp_forms as $form ) {
-					$form_id = $form->ID;
-					$entries = wpforms()->entry->get_entries( array( 'form_id' => $form_id, 'number' => $max_entries ) );
-					if ( ! is_array( $entries ) || empty( $entries ) ) continue;
+					$form_id   = $form->ID;
+					$page_num  = 1;
+					$per_page  = 200;
 
-					foreach ( $entries as $wp_entry ) {
-						$fields_raw = json_decode( $wp_entry->fields, true );
-						$fields = array();
-						if ( is_array( $fields_raw ) ) {
-							foreach ( $fields_raw as $field ) {
-								$fields[] = array(
-									'id'    => $field['id'] ?? '',
-									'name'  => $field['name'] ?? '',
-									'label' => $field['name'] ?? '',
-									'type'  => $field['type'] ?? 'text',
-									'value' => $field['value'] ?? '',
-								);
+					while ( true ) {
+						$entries = wpforms()->entry->get_entries( array( 'form_id' => $form_id, 'number' => $per_page, 'page' => $page_num ) );
+						if ( ! is_array( $entries ) || empty( $entries ) ) break;
+
+						foreach ( $entries as $wp_entry ) {
+							$fields_raw = json_decode( $wp_entry->fields, true );
+							$fields = array();
+							if ( is_array( $fields_raw ) ) {
+								foreach ( $fields_raw as $field ) {
+									$fields[] = array(
+										'id'    => $field['id'] ?? '',
+										'name'  => $field['name'] ?? '',
+										'label' => $field['name'] ?? '',
+										'type'  => $field['type'] ?? 'text',
+										'value' => $field['value'] ?? '',
+									);
+								}
 							}
+
+							$payload = array(
+								'provider' => 'wpforms',
+								'entry'    => array(
+									'form_id'      => (string) $form_id,
+									'form_title'   => $form->post_title ?: 'WPForm',
+									'entry_id'     => (string) $wp_entry->entry_id,
+									'source_url'   => home_url(),
+									'submitted_at' => $wp_entry->date ?? current_time( 'c' ),
+								),
+								'context'  => array(
+									'domain'         => $domain,
+									'plugin_version' => MM_PLUGIN_VERSION,
+									'backfill'       => true,
+								),
+								'fields'   => $fields,
+							);
+
+							self::send( $payload );
+							$sent++;
 						}
 
-						$payload = array(
-							'provider' => 'wpforms',
-							'entry'    => array(
-								'form_id'      => (string) $form_id,
-								'form_title'   => $form->post_title ?: 'WPForm',
-								'entry_id'     => (string) $wp_entry->entry_id,
-								'source_url'   => home_url(),
-								'submitted_at' => $wp_entry->date ?? current_time( 'c' ),
-							),
-							'context'  => array(
-								'domain'         => $domain,
-								'plugin_version' => MM_PLUGIN_VERSION,
-								'backfill'       => true,
-							),
-							'fields'   => $fields,
-						);
-
-						self::send( $payload );
-						$sent++;
+						if ( count( $entries ) < $per_page ) break;
+						$page_num++;
 					}
 				}
 			}

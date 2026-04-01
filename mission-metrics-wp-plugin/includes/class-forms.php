@@ -2334,6 +2334,10 @@ class MM_Forms {
 						self::send( $payload );
 						$sent++;
 					}
+
+						$offset += count( $entries );
+						if ( count( $entries ) < $page_size ) break;
+					}
 				}
 			}
 		}

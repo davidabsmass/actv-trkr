@@ -29,8 +29,8 @@ export const MagicLinkEmail = ({
     <Preview>Your login link for ACTV TRKR</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={headerSection}>
-          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header.jpg" alt="ACTV TRKR" width="600" height="auto" style={headerImg} />
+        <Section style={logoSection}>
+          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.svg" alt="ACTV TRKR" width="180" height="auto" style={logoImg} />
         </Section>
         <Heading style={h1}>Your login link</Heading>
         <Text style={text}>

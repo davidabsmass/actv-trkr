@@ -228,7 +228,7 @@ export default function WebsiteSetup() {
             className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            {downloading ? t("websiteSetup.downloading") : t("websiteSetup.downloadPlugin")}
+            {downloading ? t("websiteSetup.downloading") : `${t("websiteSetup.downloadPlugin")}${latestVersion ? ` v${latestVersion}` : ""}`}
           </button>
         </div>
 

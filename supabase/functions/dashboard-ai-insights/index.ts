@@ -87,12 +87,17 @@ serve(async (req) => {
 
     // Fetch enriched context: org name, site domains, top pages, top sources
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-    const [orgData, sitesData, topPagesData, topSourcesData, ctaClicksData] = await Promise.all([
+    const [orgData, sitesData, topPagesData, topSourcesData, ctaClicksData, goalsData, formsData, incidentsData, brokenLinksData, domainData] = await Promise.all([
       adminClient.from("orgs").select("name").eq("id", orgId).single(),
-      adminClient.from("sites").select("domain").eq("org_id", orgId).limit(10),
+      adminClient.from("sites").select("domain, plugin_version").eq("org_id", orgId).limit(10),
       adminClient.from("pageviews").select("page_path").eq("org_id", orgId).gte("occurred_at", thirtyDaysAgo).limit(500),
       adminClient.from("sessions").select("utm_source, landing_referrer_domain").eq("org_id", orgId).gte("started_at", thirtyDaysAgo).limit(500),
       adminClient.from("events").select("target_text, page_path, meta").eq("org_id", orgId).eq("event_type", "cta_click").gte("occurred_at", thirtyDaysAgo).limit(500),
+      adminClient.from("conversion_goals").select("name, goal_type, is_active").eq("org_id", orgId).eq("is_active", true).limit(20),
+      adminClient.from("forms").select("name, form_category, provider, is_primary_lead").eq("org_id", orgId).eq("archived", false).limit(30),
+      adminClient.from("incidents").select("type, severity").eq("org_id", orgId).is("resolved_at", null).limit(10),
+      adminClient.from("broken_links").select("broken_url, source_page").eq("org_id", orgId).gte("last_seen_at", thirtyDaysAgo).limit(20),
+      adminClient.from("domain_health").select("domain, days_to_domain_expiry").eq("org_id", orgId).limit(5),
     ]);
 
     const orgName = orgData.data?.name || "Unknown";

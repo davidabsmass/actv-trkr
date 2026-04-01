@@ -7,6 +7,21 @@ import pluginThumb from "@/assets/actv-trkr-plugin-thumb.jpg";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
+function compareVersions(a: string, b: string) {
+  const aParts = a.split(".").map((part) => Number(part) || 0);
+  const bParts = b.split(".").map((part) => Number(part) || 0);
+
+  for (let i = 0; i < Math.max(aParts.length, bParts.length); i += 1) {
+    const aPart = aParts[i] ?? 0;
+    const bPart = bParts[i] ?? 0;
+
+    if (aPart > bPart) return 1;
+    if (aPart < bPart) return -1;
+  }
+
+  return 0;
+}
+
 export default function PluginSection() {
   const { t } = useTranslation();
   const { orgId } = useOrg();
@@ -42,22 +57,38 @@ export default function PluginSection() {
     staleTime: 1000 * 60,
   });
 
-  const { data: siteVersion } = useQuery({
-    queryKey: ["site_plugin_version", orgId],
+  const { data: latestReportedSite } = useQuery({
+    queryKey: ["site_plugin_status", orgId],
     queryFn: async () => {
       if (!orgId) return null;
-      const { data } = await supabase
+
+      const { data, error } = await supabase
         .from("sites")
-        .select("plugin_version")
-        .eq("org_id", orgId)
-        .limit(1)
-        .single();
-      return data?.plugin_version || null;
+        .select("domain, plugin_version, last_heartbeat_at, created_at")
+        .eq("org_id", orgId);
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .filter((site) => Boolean(site.plugin_version))
+        .sort((a, b) => {
+          const aHeartbeat = a.last_heartbeat_at ? new Date(a.last_heartbeat_at).getTime() : 0;
+          const bHeartbeat = b.last_heartbeat_at ? new Date(b.last_heartbeat_at).getTime() : 0;
+
+          if (bHeartbeat !== aHeartbeat) return bHeartbeat - aHeartbeat;
+
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        })[0] ?? null;
     },
     enabled: !!orgId,
   });
 
-  const needsUpdate = siteVersion && latestVersion && siteVersion !== latestVersion;
+  const siteVersion = latestReportedSite?.plugin_version ?? null;
+  const siteDomain = latestReportedSite?.domain ?? null;
+
+  const needsUpdate = Boolean(
+    siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
+  );
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -93,7 +124,7 @@ export default function PluginSection() {
         <div className="flex items-center gap-2">
           {siteVersion && (
             <span className="text-xs text-muted-foreground font-mono">
-              Running v{siteVersion}
+              Last reported v{siteVersion}
             </span>
           )}
           {needsUpdate && (
@@ -127,7 +158,9 @@ export default function PluginSection() {
               Plugin update available: v{siteVersion} → v{latestVersion}
             </p>
             <p className="text-muted-foreground mt-0.5">
-              Download the latest version and re-install it on your WordPress site to get the newest features and fixes.
+              {siteDomain
+                ? `${siteDomain} is still reporting v${siteVersion}. Once the updated plugin checks in, this badge will clear automatically.`
+                : "Download the latest version and re-install it on your WordPress site to get the newest features and fixes."}
             </p>
           </div>
         </div>

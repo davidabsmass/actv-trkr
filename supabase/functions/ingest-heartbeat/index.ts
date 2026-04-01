@@ -44,16 +44,22 @@ Deno.serve(async (req) => {
       site = newSite;
       console.log(`Auto-created site ${site.id} for domain ${domain}`);
 
-      // Fire-and-forget: trigger form sync for the new site
+      // Auto-rename generic org to site domain
+      const { data: orgRow } = await supabase.from("orgs").select("name").eq("id", orgId).maybeSingle();
+      if (orgRow && (orgRow.name === "My Organization" || orgRow.name === "")) {
+        await supabase.from("orgs").update({ name: domain }).eq("id", orgId);
+        console.log(`Renamed org ${orgId} from "${orgRow.name}" to "${domain}"`);
+      }
+
+      // Fire-and-forget: trigger form sync and domain/SSL check for the new site
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const cronSecret = Deno.env.get("CRON_SECRET") || "";
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         fetch(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${anonKey}`,
+            "Authorization": `Bearer ${serviceKey}`,
           },
           body: JSON.stringify({ site_id: site.id }),
         }).then(r => console.log(`Auto-sync triggered for new site ${site.id}: ${r.status}`))
@@ -64,8 +70,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${anonKey}`,
-            "x-cron-secret": cronSecret,
+            "Authorization": `Bearer ${serviceKey}`,
           },
           body: JSON.stringify({ site_id: site.id }),
         }).then(r => console.log(`Domain/SSL check triggered for new site ${site.id}: ${r.status}`))

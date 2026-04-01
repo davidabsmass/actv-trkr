@@ -214,8 +214,8 @@ function GoalDrillDown({ goalId, orgId, startDate, endDate }: {
 
 export function GoalConversions({ orgId, startDate, endDate }: { orgId: string | null; startDate: string; endDate: string }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [expandedGoal, setExpandedGoal] = useState<string | null>(null);
+  const { data: forms = [] } = useForms(orgId);
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["goal_conversions_v2", orgId, startDate, endDate],

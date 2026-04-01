@@ -143,20 +143,7 @@ export default function WebsiteSetup() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      // If there's an API key, download with it baked in
-      // We don't have the raw key here, so download without
-      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip`;
-      const response = await fetch(zipUrl);
-      if (!response.ok) throw new Error(t("websiteSetup.downloadFailed"));
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "actv-trkr.zip";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadPlugin();
       saveProgress({ downloaded: true });
       toast.success(t("websiteSetup.pluginDownloaded"));
     } catch (e: any) {

@@ -226,7 +226,7 @@ const Signup = () => {
                 className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                Download Plugin v1.5.3 (.zip)
+                {`Download Plugin v${LATEST_PLUGIN_VERSION} (.zip)`}
               </button>
             </div>
 

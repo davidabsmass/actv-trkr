@@ -29,10 +29,7 @@ const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
       <Container style={container}>
         {/* Header */}
         <Section style={headerSection}>
-          <div style={gradientBar} />
-          <Section style={logoWrap}>
-            <Img src={LOGO_URL} alt={SITE_NAME} width="180" height="auto" style={logoImg} />
-          </Section>
+          <Img src={HEADER_URL} alt={SITE_NAME} width="600" height="auto" style={headerImg} />
         </Section>
 
         <Section style={contentSection}>

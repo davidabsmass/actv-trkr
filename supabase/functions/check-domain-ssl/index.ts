@@ -99,7 +99,16 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const { data: sites } = await supabase.from("sites").select("id, org_id, domain");
+    // Support single-site mode via body param
+    let body: any = {};
+    try { body = await req.json(); } catch { /* empty body is fine */ }
+    const targetSiteId = body?.site_id;
+
+    let query = supabase.from("sites").select("id, org_id, domain");
+    if (targetSiteId) {
+      query = query.eq("id", targetSiteId);
+    }
+    const { data: sites } = await query;
     if (!sites || sites.length === 0) {
       return new Response(JSON.stringify({ status: "ok", checked: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

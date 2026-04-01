@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const cronSecret = Deno.env.get("CRON_SECRET") || "";
         fetch(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
           method: "POST",
           headers: {
@@ -57,6 +58,18 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ site_id: site.id }),
         }).then(r => console.log(`Auto-sync triggered for new site ${site.id}: ${r.status}`))
           .catch(e => console.error("Auto-sync fire-and-forget failed:", e));
+
+        // Fire-and-forget: trigger domain/SSL check for the new site
+        fetch(`${supabaseUrl}/functions/v1/check-domain-ssl`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${anonKey}`,
+            "x-cron-secret": cronSecret,
+          },
+          body: JSON.stringify({ site_id: site.id }),
+        }).then(r => console.log(`Domain/SSL check triggered for new site ${site.id}: ${r.status}`))
+          .catch(e => console.error("Domain/SSL check fire-and-forget failed:", e));
       } catch (e) {
         console.error("Failed to trigger auto-sync:", e);
       }

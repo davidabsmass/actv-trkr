@@ -1,4 +1,4 @@
-export const LATEST_PLUGIN_VERSION = "1.5.7";
+export const LATEST_PLUGIN_VERSION = "1.5.9";
 
 export async function downloadPlugin(apiKey?: string) {
   const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;

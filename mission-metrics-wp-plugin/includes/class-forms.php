@@ -2277,54 +2277,56 @@ class MM_Forms {
 			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
 		}
 
-		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
-		$state  = self::normalize_entries_backfill_state( $body );
-		$jobs   = self::get_entry_backfill_jobs();
+		$domain    = wp_parse_url( home_url(), PHP_URL_HOST );
+		$page_size = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;
+		$jobs      = self::get_entry_backfill_jobs();
 
 		if ( empty( $jobs ) ) {
 			return new \WP_REST_Response( array(
-				'ok'              => true,
-				'entries'         => 0,
-				'errors'          => 0,
-				'dispatched_next' => false,
-				'plugin_version'  => MM_PLUGIN_VERSION,
+				'ok'             => true,
+				'total_entries'  => 0,
+				'total_errors'   => 0,
+				'forms_processed'=> 0,
+				'plugin_version' => MM_PLUGIN_VERSION,
 			), 200 );
 		}
 
-		$job_index = self::find_entry_backfill_job_index( $jobs, $state['provider'], $state['form_id'] );
-		$job       = $jobs[ $job_index ];
-		$batch     = self::process_entry_backfill_job( $job, $domain, $state );
+		// Process ALL jobs and ALL pages synchronously in a single request
+		$total_sent   = 0;
+		$total_errors = 0;
+		$forms_done   = 0;
 
-		$next_state = null;
-		if ( $batch['has_more_current'] ) {
-			$next_state = array(
-				'provider'  => $job['provider'],
-				'form_id'   => $job['form_id'],
-				'offset'    => $batch['next_offset'],
-				'page'      => $batch['next_page'],
-				'page_size' => $state['page_size'],
-			);
-		} elseif ( isset( $jobs[ $job_index + 1 ] ) ) {
-			$next_state = array(
-				'provider'  => $jobs[ $job_index + 1 ]['provider'],
-				'form_id'   => $jobs[ $job_index + 1 ]['form_id'],
-				'offset'    => 0,
-				'page'      => 1,
-				'page_size' => $state['page_size'],
-			);
-		}
+		foreach ( $jobs as $job ) {
+			$offset = 0;
+			$page   = 1;
+			$has_more = true;
 
-		if ( ! empty( $next_state ) ) {
-			self::dispatch_entry_backfill_batch( $key_hash, $next_state );
+			while ( $has_more ) {
+				$state = array(
+					'provider'  => $job['provider'],
+					'form_id'   => $job['form_id'],
+					'offset'    => $offset,
+					'page'      => $page,
+					'page_size' => $page_size,
+				);
+
+				$batch = self::process_entry_backfill_job( $job, $domain, $state );
+				$total_sent   += $batch['sent'];
+				$total_errors += $batch['errors'];
+
+				$has_more = $batch['has_more_current'];
+				$offset   = $batch['next_offset'];
+				$page     = $batch['next_page'];
+			}
+
+			$forms_done++;
 		}
 
 		return new \WP_REST_Response( array(
 			'ok'              => true,
-			'entries'         => $batch['sent'],
-			'errors'          => $batch['errors'],
-			'provider'        => $job['provider'],
-			'form_id'         => $job['form_id'],
-			'dispatched_next' => ! empty( $next_state ),
+			'total_entries'   => $total_sent,
+			'total_errors'    => $total_errors,
+			'forms_processed' => $forms_done,
 			'plugin_version'  => MM_PLUGIN_VERSION,
 		), 200 );
 	}

@@ -87,7 +87,11 @@ export function useCreateGoal(orgId: string | null) {
       } as any);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversion_goals", orgId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversion_goals", orgId] });
+      qc.invalidateQueries({ queryKey: ["conversion_metrics"] });
+      qc.invalidateQueries({ queryKey: ["goal_conversions_v2"] });
+    },
   });
 }
 

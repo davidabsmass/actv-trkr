@@ -32,9 +32,12 @@ export default function SeoTab() {
     enabled: !!orgId,
   });
 
+  const { orgName } = useOrg();
   const siteDomain = sites?.[0]?.domain || "";
 
-  const homepageUrl = siteDomain ? `https://${siteDomain}` : "";
+  // Fall back to org name as domain if no sites registered yet
+  const effectiveDomain = siteDomain || (orgName && orgName !== "My Organization" && orgName.includes(".") ? orgName : "");
+  const homepageUrl = effectiveDomain ? `https://${effectiveDomain}` : "";
 
   // Fetch scan history (last 20 scans)
   const { data: scanHistory, isLoading: historyLoading } = useQuery({

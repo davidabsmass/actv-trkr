@@ -2330,8 +2330,8 @@ class MM_Forms {
 	}
 
 	private static function normalize_entries_backfill_state( $body ) {
-		$page_size = isset( $body['page_size'] ) ? intval( $body['page_size'] ) : 10;
-		$page_size = max( 5, min( 25, $page_size ) );
+		$page_size = isset( $body['page_size'] ) ? intval( $body['page_size'] ) : 5;
+		$page_size = max( 1, min( 10, $page_size ) );
 
 		return array(
 			'provider'  => sanitize_key( $body['provider'] ?? 'gravity_forms' ),

@@ -18,9 +18,21 @@ function pctChange(curr: number, prev: number): number | null {
 
 function ChangeChip({ label, current, previous, isCvr }: { label: string; current: number; previous: number; isCvr?: boolean }) {
   const change = pctChange(current, previous);
+  const displayValue = isCvr ? `${(current * 100).toFixed(1)}%` : current.toLocaleString();
+
+  // No baseline data — show value only, no trend arrow
+  if (change === null) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+        <span className="text-sm font-semibold font-mono-data text-foreground">{displayValue}</span>
+        <span className="text-xs text-muted-foreground italic">New</span>
+      </div>
+    );
+  }
+
   const isUp = change > 0;
   const isDown = change < 0;
-  const displayValue = isCvr ? `${(current * 100).toFixed(1)}%` : current.toLocaleString();
   const changeStr = `${isUp ? "+" : ""}${change.toFixed(1)}%`;
 
   return (

@@ -31,7 +31,7 @@ interface KPICardProps {
   label: string;
   value: string | number;
   sub?: string;
-  trend?: number;
+  trend?: number | null;
   icon: React.ReactNode;
   accent?: string;
   valueClassName?: string;

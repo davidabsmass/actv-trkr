@@ -544,6 +544,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fire-and-forget: check domain/SSL health if no records exist yet
+    try {
+      const { count: dhCount } = await supabase.from("domain_health").select("id", { count: "exact", head: true }).eq("site_id", site.id);
+      if ((dhCount || 0) === 0) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const srvKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        fetch(`${supabaseUrl}/functions/v1/check-domain-ssl`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${srvKey}` },
+          body: JSON.stringify({ site_id: site.id }),
+        }).then(r => console.log(`Domain/SSL check triggered for site ${site.id}: ${r.status}`))
+          .catch(e => console.error("Domain/SSL check failed:", e));
+      }
+    } catch (e) {
+      console.error("Domain/SSL check trigger error:", e);
+    }
+
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {
       await supabase.from("sites").update({ plugin_version: runtimePluginVersion }).eq("id", site.id);

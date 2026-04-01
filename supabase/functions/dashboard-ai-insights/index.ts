@@ -128,6 +128,28 @@ serve(async (req) => {
     const topCtasStr = Object.entries(ctaCounts).sort((a, b) => b[1] - a[1]).slice(0, 10)
       .map(([label, cnt]) => `"${label}" (${cnt} clicks)`).join(", ");
 
+    // Goals context
+    const activeGoals = (goalsData.data || []) as any[];
+    const goalsStr = activeGoals.length > 0
+      ? activeGoals.map((g: any) => `${g.name} (${g.goal_type})`).join(", ")
+      : "None configured";
+
+    // Forms context
+    const activeForms = (formsData.data || []) as any[];
+    const formsStr = activeForms.length > 0
+      ? activeForms.map((f: any) => `${f.name} [${f.provider}, ${f.form_category}${f.is_primary_lead ? ", primary" : ""}]`).join("; ")
+      : "None";
+
+    // Site health context
+    const openIncidents = (incidentsData.data || []) as any[];
+    const brokenLinks = (brokenLinksData.data || []) as any[];
+    const domains = (domainData.data || []) as any[];
+    const healthStr = [
+      openIncidents.length > 0 ? `${openIncidents.length} open incident(s)` : "No open incidents",
+      brokenLinks.length > 0 ? `${brokenLinks.length} broken link(s)` : "No broken links",
+      domains.length > 0 ? domains.map((d: any) => `${d.domain}: ${d.days_to_domain_expiry ?? "?"}d to expiry`).join(", ") : "",
+    ].filter(Boolean).join(". ");
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -138,7 +160,9 @@ SITES: ${siteDomains || "None"}
 TOP PAGES (30d): ${topPagesStr || "No data"}
 TOP SOURCES (30d): ${topSourcesStr || "No data"}
 EXISTING CTAs CLICKED (30d): ${topCtasStr || "No CTA click data"}
-
+ACTIVE GOALS: ${goalsStr}
+TRACKED FORMS: ${formsStr}
+SITE HEALTH: ${healthStr}
 
 Return a JSON object with this exact structure (no markdown, no code fences):
 {
@@ -155,7 +179,11 @@ Rules:
 - Suggestions should feel like they come from a strategist, not a chatbot.
 - If data is sparse, acknowledge the early stage and focus on setup/launch actions.
 - IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words.
-- CRITICAL: Check the "EXISTING CTAs CLICKED" list before suggesting to add any button or CTA. If a CTA like "Schedule Appointment" or "Book Online" already exists and gets clicks, do NOT suggest adding it — instead suggest optimizing its placement, visibility, or the page it links to.`;
+- CRITICAL: Check the "EXISTING CTAs CLICKED" list before suggesting to add any button or CTA. If a CTA already exists and gets clicks, do NOT suggest adding it — instead suggest optimizing its placement, visibility, or the page it links to.
+- CRITICAL: The user already has forms tracking set up. Do NOT suggest setting up form tracking, installing tracking, or creating forms — they are already tracked. See "TRACKED FORMS" above.
+- CRITICAL: If "ACTIVE GOALS" shows configured goals, do NOT suggest setting up goals — they already exist. Instead, suggest ways to improve the metrics those goals track.
+- CRITICAL: Do NOT repeat information already visible in the dashboard (site health status, domain expiry). Focus on strategic marketing actions the user should take.
+- Focus suggestions on content strategy, traffic growth, conversion optimization, and audience engagement — not on tool setup.`;
 
     const userPrompt = `Here are the current dashboard metrics for ${orgName}:
 

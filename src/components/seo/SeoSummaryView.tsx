@@ -168,11 +168,31 @@ export default function SeoSummaryView() {
         ))}
       </div>
 
-      {!latestScan && (
+      {/* Scan button */}
+      {effectiveDomain && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Scanning: <span className="font-medium text-foreground">{homepageUrl}</span>
+            </p>
+            <Button
+              size="sm"
+              onClick={() => runScan.mutate()}
+              disabled={runScan.isPending}
+              className="gap-1.5 shrink-0"
+            >
+              {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              {runScan.isPending ? "Scanning…" : latestScan ? "New Scan" : "Run First Scan"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!latestScan && !effectiveDomain && (
         <div className="rounded-lg border border-border bg-card p-8 text-center">
           <Search className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No scan data available yet.</p>
-          <p className="text-xs text-muted-foreground mt-1">Your team will run an initial scan to populate these statuses.</p>
+          <p className="text-xs text-muted-foreground mt-1">Connect your site to enable scanning.</p>
         </div>
       )}
     </div>

@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.7
+- FIX: Eliminates false "update available" notices after upgrading by clearing WordPress update caches post-upgrade
+- FIX: Update check endpoint no longer returns stale cached responses
+
 ## 1.5.6
 - FIX: Historical Gravity Forms and WPForms backfill now runs in chained batches so large imports do not timeout mid-run
 - FIX: Continues replaying entries automatically until all historical form entries are imported

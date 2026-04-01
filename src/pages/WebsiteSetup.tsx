@@ -437,6 +437,29 @@ export default function WebsiteSetup() {
                     </div>
                     <div className="flex items-center gap-2">
                       <button
+                        onClick={async () => {
+                          setRecheckLoading(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
+                              body: { site_id: site.id },
+                            });
+                            if (error) throw error;
+                            toast.success("Forms synced successfully!");
+                            queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
+                            queryClient.invalidateQueries({ queryKey: ["forms"] });
+                          } catch (e: any) {
+                            toast.error(e.message || "Sync failed");
+                          } finally {
+                            setRecheckLoading(false);
+                          }
+                        }}
+                        disabled={recheckLoading}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${recheckLoading ? "animate-spin" : ""}`} />
+                        {t("websiteSetup.syncForms", "Sync Forms")}
+                      </button>
+                      <button
                         onClick={() => handleDisconnect(site.id, site.domain)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-destructive hover:bg-destructive/10 transition-colors"
                       >

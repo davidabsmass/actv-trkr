@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
-import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2 } from "lucide-react";
+import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2, CalendarIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -247,6 +247,9 @@ export default function AdminSetup() {
     }
   };
 
+  const [cancelDatePickerSub, setCancelDatePickerSub] = useState<string | null>(null);
+  const [cancelDate, setCancelDate] = useState<Date | undefined>(undefined);
+
   const handleCancelSub = async (subscriptionId: string, immediate: boolean) => {
     const msg = immediate ? "Cancel immediately? The customer will lose access now." : "Cancel at end of billing period?";
     if (!confirm(msg)) return;
@@ -257,6 +260,26 @@ export default function AdminSetup() {
       });
       if (error) throw error;
       toast.success(immediate ? "Subscription cancelled immediately" : "Subscription will cancel at period end");
+      if (managingSub) loadBilling(managingSub);
+    } catch (err: any) {
+      toast.error(err.message || "Cancel failed");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelSubOnDate = async (subscriptionId: string) => {
+    if (!cancelDate) { toast.error("Please select a date"); return; }
+    if (!confirm(`Cancel subscription on ${format(cancelDate, "PPP")}?`)) return;
+    setActionLoading("cancel-" + subscriptionId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "cancel_subscription", subscription_id: subscriptionId, cancel_at: cancelDate.toISOString() },
+      });
+      if (error) throw error;
+      toast.success(`Subscription will cancel on ${format(cancelDate, "PPP")}`);
+      setCancelDatePickerSub(null);
+      setCancelDate(undefined);
       if (managingSub) loadBilling(managingSub);
     } catch (err: any) {
       toast.error(err.message || "Cancel failed");
@@ -789,20 +812,45 @@ export default function AdminSetup() {
                                                 return `${start ? start.toLocaleDateString() : "—"} – ${end ? end.toLocaleDateString() : "—"}`;
                                               })()}
                                               {sub.cancel_at_period_end && " · Cancelling at period end"}
+                                              {sub.cancel_at && !sub.cancel_at_period_end && ` · Cancelling on ${new Date(sub.cancel_at * 1000).toLocaleDateString()}`}
                                             </p>
                                           </div>
-                                          {sub.status === "active" && !sub.cancel_at_period_end && (
-                                            <div className="flex gap-1">
-                                              <Button size="sm" variant="outline" className="h-7 text-xs"
-                                                onClick={() => handleCancelSub(sub.id, false)}
-                                                disabled={!!actionLoading}>
-                                                Cancel at End
-                                              </Button>
-                                              <Button size="sm" variant="destructive" className="h-7 text-xs"
-                                                onClick={() => handleCancelSub(sub.id, true)}
-                                                disabled={!!actionLoading}>
-                                                Cancel Now
-                                              </Button>
+                                          {sub.status === "active" && !sub.cancel_at_period_end && !sub.cancel_at && (
+                                            <div className="flex flex-col gap-1.5">
+                                              <div className="flex gap-1">
+                                                <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                  onClick={() => handleCancelSub(sub.id, false)}
+                                                  disabled={!!actionLoading}>
+                                                  Cancel at End
+                                                </Button>
+                                                <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                  onClick={() => { setCancelDatePickerSub(cancelDatePickerSub === sub.id ? null : sub.id); setCancelDate(undefined); }}
+                                                  disabled={!!actionLoading}>
+                                                  <CalendarIcon className="h-3 w-3 mr-1" />
+                                                  Cancel on Date
+                                                </Button>
+                                                <Button size="sm" variant="destructive" className="h-7 text-xs"
+                                                  onClick={() => handleCancelSub(sub.id, true)}
+                                                  disabled={!!actionLoading}>
+                                                  Cancel Now
+                                                </Button>
+                                              </div>
+                                              {cancelDatePickerSub === sub.id && (
+                                                <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
+                                                  <input
+                                                    type="date"
+                                                    className="text-xs bg-background border border-border rounded px-2 py-1"
+                                                    min={format(new Date(), "yyyy-MM-dd")}
+                                                    value={cancelDate ? format(cancelDate, "yyyy-MM-dd") : ""}
+                                                    onChange={(e) => setCancelDate(e.target.value ? new Date(e.target.value + "T00:00:00") : undefined)}
+                                                  />
+                                                  <Button size="sm" className="h-7 text-xs"
+                                                    onClick={() => handleCancelSubOnDate(sub.id)}
+                                                    disabled={!cancelDate || !!actionLoading}>
+                                                    Confirm
+                                                  </Button>
+                                                </div>
+                                              )}
                                             </div>
                                           )}
                                         </div>

@@ -32,9 +32,12 @@ export default function SeoTab() {
     enabled: !!orgId,
   });
 
+  const { orgName } = useOrg();
   const siteDomain = sites?.[0]?.domain || "";
 
-  const homepageUrl = siteDomain ? `https://${siteDomain}` : "";
+  // Fall back to org name as domain if no sites registered yet
+  const effectiveDomain = siteDomain || (orgName && orgName !== "My Organization" && orgName.includes(".") ? orgName : "");
+  const homepageUrl = effectiveDomain ? `https://${effectiveDomain}` : "";
 
   // Fetch scan history (last 20 scans)
   const { data: scanHistory, isLoading: historyLoading } = useQuery({
@@ -153,11 +156,11 @@ export default function SeoTab() {
   });
 
   const validateUrl = (url: string): boolean => {
-    if (!siteDomain) return false;
+    if (!effectiveDomain) return false;
     try {
       const parsed = new URL(url);
       const normalizedInput = parsed.hostname.replace(/^www\./, "");
-      const normalizedDomain = siteDomain.replace(/^www\./, "");
+      const normalizedDomain = effectiveDomain.replace(/^www\./, "");
       return normalizedInput === normalizedDomain;
     } catch {
       return false;
@@ -166,14 +169,14 @@ export default function SeoTab() {
 
   const runScan = useMutation({
     mutationFn: async () => {
-      if (!sites?.length || !orgId) throw new Error(t("seo.noSitesConfigured", { defaultValue: "No sites configured" }));
+      if (!effectiveDomain || !orgId) throw new Error(t("seo.noSitesConfigured", { defaultValue: "No sites configured" }));
       const urlToScan = homepageUrl.trim().replace(/\/+$/, "");
       if (!validateUrl(urlToScan)) {
-        throw new Error(t("seo.urlMustBelong", { domain: siteDomain, defaultValue: `URL must belong to ${siteDomain}` }));
+        throw new Error(t("seo.urlMustBelong", { domain: effectiveDomain, defaultValue: `URL must belong to ${effectiveDomain}` }));
       }
-      const site = sites[0];
+      const siteId = sites?.[0]?.id || null;
       const { data, error } = await supabase.functions.invoke("scan-site-seo", {
-        body: { url: urlToScan, site_id: site.id, org_id: orgId },
+        body: { url: urlToScan, site_id: siteId, org_id: orgId },
       });
       if (error) throw error;
       return data;
@@ -249,10 +252,10 @@ export default function SeoTab() {
           </div>
         </div>
 
-        {sites && sites.length > 0 ? (
+        {effectiveDomain ? (
           <div className="flex items-center gap-3">
             <p className="text-xs text-muted-foreground flex-1">
-              {t("dashboard.scanning")}: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
+              {t("dashboard.scanning")}: <span className="font-medium text-foreground">{homepageUrl || effectiveDomain}</span>
             </p>
             <div className="flex items-center gap-2">
               {activeScan && issues.length > 0 && (

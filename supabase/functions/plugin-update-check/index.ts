@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.5.5: Dispatches historical entry backfill asynchronously so large forms finish importing reliably
-const LATEST_VERSION = "1.5.8";
+const LATEST_VERSION = "1.5.9";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.9
+- FIX: Backfill now uses blocking sends with response verification — entries are confirmed delivered before moving to the next batch
+- FIX: Failed sends are automatically queued for retry instead of being silently dropped
+- FIX: Smaller batch size (5) prevents PHP timeout during blocking sends
+
 ## 1.5.8
 - FIX: Backfill chain no longer breaks mid-way — uses non-blocking sends and smaller batches (10/batch) so ALL forms get their entries imported
 - FIX: Forms like "Contact Us" that were skipped during backfill now process correctly

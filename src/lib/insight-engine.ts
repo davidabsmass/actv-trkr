@@ -51,8 +51,9 @@ export interface InsightInputs {
   activeIncidents?: number;
 }
 
-function pctChange(current: number, previous: number): number {
-  if (previous === 0) return current > 0 ? 100 : 0;
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0 && current === 0) return null;
+  if (previous === 0) return null; // No baseline — suppress comparison
   return Math.round(((current - previous) / previous) * 100);
 }
 

@@ -812,20 +812,45 @@ export default function AdminSetup() {
                                                 return `${start ? start.toLocaleDateString() : "—"} – ${end ? end.toLocaleDateString() : "—"}`;
                                               })()}
                                               {sub.cancel_at_period_end && " · Cancelling at period end"}
+                                              {sub.cancel_at && !sub.cancel_at_period_end && ` · Cancelling on ${new Date(sub.cancel_at * 1000).toLocaleDateString()}`}
                                             </p>
                                           </div>
-                                          {sub.status === "active" && !sub.cancel_at_period_end && (
-                                            <div className="flex gap-1">
-                                              <Button size="sm" variant="outline" className="h-7 text-xs"
-                                                onClick={() => handleCancelSub(sub.id, false)}
-                                                disabled={!!actionLoading}>
-                                                Cancel at End
-                                              </Button>
-                                              <Button size="sm" variant="destructive" className="h-7 text-xs"
-                                                onClick={() => handleCancelSub(sub.id, true)}
-                                                disabled={!!actionLoading}>
-                                                Cancel Now
-                                              </Button>
+                                          {sub.status === "active" && !sub.cancel_at_period_end && !sub.cancel_at && (
+                                            <div className="flex flex-col gap-1.5">
+                                              <div className="flex gap-1">
+                                                <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                  onClick={() => handleCancelSub(sub.id, false)}
+                                                  disabled={!!actionLoading}>
+                                                  Cancel at End
+                                                </Button>
+                                                <Button size="sm" variant="outline" className="h-7 text-xs"
+                                                  onClick={() => { setCancelDatePickerSub(cancelDatePickerSub === sub.id ? null : sub.id); setCancelDate(undefined); }}
+                                                  disabled={!!actionLoading}>
+                                                  <CalendarIcon className="h-3 w-3 mr-1" />
+                                                  Cancel on Date
+                                                </Button>
+                                                <Button size="sm" variant="destructive" className="h-7 text-xs"
+                                                  onClick={() => handleCancelSub(sub.id, true)}
+                                                  disabled={!!actionLoading}>
+                                                  Cancel Now
+                                                </Button>
+                                              </div>
+                                              {cancelDatePickerSub === sub.id && (
+                                                <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
+                                                  <input
+                                                    type="date"
+                                                    className="text-xs bg-background border border-border rounded px-2 py-1"
+                                                    min={format(new Date(), "yyyy-MM-dd")}
+                                                    value={cancelDate ? format(cancelDate, "yyyy-MM-dd") : ""}
+                                                    onChange={(e) => setCancelDate(e.target.value ? new Date(e.target.value + "T00:00:00") : undefined)}
+                                                  />
+                                                  <Button size="sm" className="h-7 text-xs"
+                                                    onClick={() => handleCancelSubOnDate(sub.id)}
+                                                    disabled={!cancelDate || !!actionLoading}>
+                                                    Confirm
+                                                  </Button>
+                                                </div>
+                                              )}
                                             </div>
                                           )}
                                         </div>

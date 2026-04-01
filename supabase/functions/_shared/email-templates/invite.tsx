@@ -32,8 +32,8 @@ export const InviteEmail = ({
     <Preview>You've been invited to join ACTV TRKR</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={headerSection}>
-          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header.jpg" alt="ACTV TRKR" width="600" height="auto" style={headerImg} />
+        <Section style={logoSection}>
+          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.svg" alt="ACTV TRKR" width="180" height="auto" style={logoImg} />
         </Section>
         <Heading style={h1}>You've been invited</Heading>
         <Text style={text}>
@@ -54,8 +54,8 @@ export default InviteEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }
 const container = { padding: '40px 25px' }
-const headerSection = { marginBottom: '0' }
-const headerImg = { width: '100%', display: 'block' as const, borderRadius: '12px 12px 0 0' }
+const logoSection = { marginBottom: '24px' }
+const logoImg = { margin: '0' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 16px' }
 const text = { fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: '0 0 24px' }
 const link = { color: '#6C5CE7', textDecoration: 'underline' }

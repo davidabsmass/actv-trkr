@@ -116,9 +116,23 @@ export default function PluginSection() {
           </button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mb-5">
+      <p className="text-xs text-muted-foreground mb-3">
         {t("settings.pluginDownloadDesc")}
       </p>
+
+      {needsUpdate && (
+        <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 mb-5">
+          <ArrowUp className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <div className="text-xs">
+            <p className="font-medium text-foreground">
+              Plugin update available: v{siteVersion} → v{latestVersion}
+            </p>
+            <p className="text-muted-foreground mt-0.5">
+              Download the latest version and re-install it on your WordPress site to get the newest features and fixes.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">

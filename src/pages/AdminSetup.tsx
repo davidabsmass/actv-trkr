@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
-import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2, CalendarIcon } from "lucide-react";
+import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2, CalendarIcon, Activity } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -14,6 +15,71 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
+
+function FeatureUsageWidget() {
+  const { data: featureUsage } = useQuery({
+    queryKey: ["feature_usage"],
+    queryFn: async () => {
+      const [pvRes, evRes, leadsRes, blRes, fhRes, gcRes, seoRes] = await Promise.all([
+        supabase.from("pageviews").select("id", { count: "exact", head: true }),
+        supabase.from("events").select("event_type"),
+        supabase.from("leads").select("id", { count: "exact", head: true }),
+        supabase.from("broken_links").select("id", { count: "exact", head: true }),
+        supabase.from("form_health_checks").select("id", { count: "exact", head: true }),
+        supabase.from("goal_completions").select("id", { count: "exact", head: true }),
+        supabase.from("seo_fix_queue").select("id", { count: "exact", head: true }),
+      ]);
+
+      // Count events by type
+      const eventCounts: Record<string, number> = {};
+      (evRes.data || []).forEach((e: any) => {
+        eventCounts[e.event_type] = (eventCounts[e.event_type] || 0) + 1;
+      });
+
+      const features = [
+        { name: "Pageview Tracking", count: pvRes.count || 0 },
+        { name: "CTA Clicks", count: eventCounts["cta_click"] || 0 },
+        { name: "Lead Submissions", count: leadsRes.count || 0 },
+        { name: "Form Starts", count: eventCounts["form_start"] || 0 },
+        { name: "Outbound Clicks", count: eventCounts["outbound_click"] || 0 },
+        { name: "Phone Clicks", count: eventCounts["tel_click"] || 0 },
+        { name: "Email Clicks", count: eventCounts["mailto_click"] || 0 },
+        { name: "Download Clicks", count: eventCounts["download_click"] || 0 },
+        { name: "Form Health Checks", count: fhRes.count || 0 },
+        { name: "SEO Fixes", count: seoRes.count || 0 },
+        { name: "Broken Links", count: blRes.count || 0 },
+        { name: "Goal Completions", count: gcRes.count || 0 },
+      ].sort((a, b) => b.count - a.count);
+
+      return features;
+    },
+  });
+
+  const maxCount = featureUsage?.[0]?.count || 1;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Activity className="h-4 w-4" />
+          Feature Usage (All Orgs)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {featureUsage?.map((f) => (
+          <div key={f.name} className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">{f.name}</span>
+              <span className="font-mono font-medium text-foreground">{f.count.toLocaleString()}</span>
+            </div>
+            <Progress value={maxCount > 0 ? (f.count / maxCount) * 100 : 0} className="h-1.5" />
+          </div>
+        ))}
+        {!featureUsage && <p className="text-xs text-muted-foreground">Loading…</p>}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminSetup() {
   const { t } = useTranslation();
@@ -714,6 +780,9 @@ export default function AdminSetup() {
               </>
             );
           })()}
+
+          {/* Feature Usage */}
+          <FeatureUsageWidget />
 
           {/* Subscriber Table */}
           <Card>

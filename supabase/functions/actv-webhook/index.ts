@@ -143,7 +143,7 @@ serve(async (req) => {
             logStep("User already has org, skipping", { orgId: existingOrg.org_id });
           }
 
-          // 4. Generate password-set link & send welcome email
+          // 4. Generate password-set link & send welcome email directly via queue
           try {
             const { data: resetData } = await supabase.auth.admin.generateLink({
               type: "recovery",
@@ -152,18 +152,58 @@ serve(async (req) => {
             });
             const setPasswordUrl = resetData?.properties?.action_link || "https://actvtrkr.com/reset-password";
 
-            await supabase.functions.invoke("send-transactional-email", {
-              body: {
-                templateName: "welcome",
-                recipientEmail: email,
-                idempotencyKey: `welcome-checkout-${session.id}`,
-                templateData: {
-                  name: undefined,
-                  setPasswordUrl,
+            // Render the welcome template directly instead of invoking another edge function
+            const welcomeTemplate = TEMPLATES["welcome"];
+            if (welcomeTemplate) {
+              const templateData = { name: undefined, setPasswordUrl };
+              const html = await renderAsync(
+                React.createElement(welcomeTemplate.component, templateData)
+              );
+              const plainText = await renderAsync(
+                React.createElement(welcomeTemplate.component, templateData),
+                { plainText: true }
+              );
+              const resolvedSubject = typeof welcomeTemplate.subject === "function"
+                ? welcomeTemplate.subject(templateData)
+                : welcomeTemplate.subject;
+
+              const messageId = crypto.randomUUID();
+              const idempotencyKey = `welcome-checkout-${session.id}`;
+
+              // Log pending
+              await supabase.from("email_send_log").insert({
+                message_id: messageId,
+                template_name: "welcome",
+                recipient_email: email,
+                status: "pending",
+              });
+
+              // Enqueue directly to pgmq
+              const { error: enqueueErr } = await supabase.rpc("enqueue_email", {
+                queue_name: "transactional_emails",
+                payload: {
+                  message_id: messageId,
+                  to: email,
+                  from: "ACTV TRKR <noreply@actvtrkr.com>",
+                  sender_domain: "notify.actvtrkr.com",
+                  subject: resolvedSubject,
+                  html,
+                  text: plainText,
+                  purpose: "transactional",
+                  label: "welcome",
+                  idempotency_key: idempotencyKey,
+                  queued_at: new Date().toISOString(),
                 },
-              },
-            });
-            logStep("Welcome email queued", { email });
+              });
+
+              if (enqueueErr) {
+                logStep("Welcome email enqueue failed", { error: enqueueErr });
+              } else {
+                logStep("Welcome email enqueued", { email, messageId });
+              }
+            } else {
+              logStep("Welcome template not found in registry");
+            }
           } catch (emailErr) {
             logStep("Welcome email failed (non-fatal)", { error: String(emailErr) });
           }

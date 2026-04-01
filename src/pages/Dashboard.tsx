@@ -581,7 +581,7 @@ const Dashboard = () => {
                 <p className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</p>
               )}
             </div>
-            {seoVisible && (
+            {seoAdvanced && (
               <KPICard
                 label={t("dashboard.seoScore")}
                 value={seoMovement?.score ?? "—"}

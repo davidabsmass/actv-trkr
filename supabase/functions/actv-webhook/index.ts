@@ -115,7 +115,7 @@ serve(async (req) => {
 
             const { data: org, error: orgErr } = await supabase
               .from("orgs")
-              .insert({ name: orgName })
+              .insert({ name: orgName, seo_visibility_level: "summary" })
               .select("id")
               .single();
 

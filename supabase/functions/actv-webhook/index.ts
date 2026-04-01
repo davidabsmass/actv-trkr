@@ -170,6 +170,34 @@ serve(async (req) => {
               const messageId = crypto.randomUUID();
               const idempotencyKey = `welcome-checkout-${session.id}`;
 
+              // Get or create unsubscribe token
+              const normalizedEmail = email.toLowerCase();
+              let unsubscribeToken: string;
+              const { data: existingToken } = await supabase
+                .from("email_unsubscribe_tokens")
+                .select("token")
+                .eq("email", normalizedEmail)
+                .maybeSingle();
+
+              if (existingToken) {
+                unsubscribeToken = existingToken.token;
+              } else {
+                const bytes = new Uint8Array(32);
+                crypto.getRandomValues(bytes);
+                unsubscribeToken = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+                await supabase.from("email_unsubscribe_tokens").upsert(
+                  { token: unsubscribeToken, email: normalizedEmail },
+                  { onConflict: "email", ignoreDuplicates: true }
+                );
+                // Re-read in case of race
+                const { data: stored } = await supabase
+                  .from("email_unsubscribe_tokens")
+                  .select("token")
+                  .eq("email", normalizedEmail)
+                  .maybeSingle();
+                if (stored) unsubscribeToken = stored.token;
+              }
+
               // Log pending
               await supabase.from("email_send_log").insert({
                 message_id: messageId,
@@ -192,6 +220,7 @@ serve(async (req) => {
                   purpose: "transactional",
                   label: "welcome",
                   idempotency_key: idempotencyKey,
+                  unsubscribe_token: unsubscribeToken,
                   queued_at: new Date().toISOString(),
                 },
               });

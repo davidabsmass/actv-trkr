@@ -1,43 +1,24 @@
 
 
-## Problem: MRR and Paid Customers Show $0
+## Streamline the Get Started Page
 
-### Root Cause
+### Changes
 
-When you refunded 2 of the 3 subscriptions, Stripe fired `customer.subscription.deleted` events. The webhook handler sets `mrr: 0` on deletion (line 285 of `actv-webhook`). Since all 3 checkouts were for the same email, the subscriber record was being updated by whichever event arrived last — and the deletion events zeroed out MRR even though one subscription is still active.
+**1. Remove FAQ section from the page** (`src/pages/GetStarted.tsx`)
+- Remove the `FaqSection` import and its usage, leaving only `<GetStartedGuide />`.
 
-The core issue: **the webhook tracks subscriber state by `stripe_customer_id`, but the MRR value is a simple column that gets overwritten by whichever event fires last**, rather than being derived from the actual active subscription.
+**2. Remove subtitle from Step 1** (`src/components/onboarding/GetStartedGuide.tsx`)
+- Delete the paragraph on line 52-54: "Log into your ACTV TRKR account and download the WordPress plugin."
 
-### Fix (2 changes)
+**3. Show the actual API key inline in Step 2** (`src/components/onboarding/GetStartedGuide.tsx`)
+- Import `useOrg`, `useQuery`, `supabase`, and clipboard utilities.
+- Fetch the active API key hash for the current org (the raw key is only available at generation time, so we display the hash with a copy button — same pattern as WebsiteSetup).
+- Replace the first bullet "Copy your API Key from your ACTV TRKR dashboard" with:
+  - Bold text: **"Copy this API Key:"**
+  - A styled code block showing the key hash with a copy-to-clipboard button
+- Keep the remaining two bullets ("Paste it into the plugin settings" and "Click Connect").
+- If no active key exists, show a short message directing the user to Settings > API Keys to generate one.
 
-#### 1. Webhook: Re-derive MRR on deletion events
-In `actv-webhook/index.ts`, when handling `customer.subscription.deleted`:
-- After marking that specific subscription as churned, query Stripe for any **remaining active subscriptions** for that customer
-- If an active subscription still exists, keep the subscriber status as "active" and recalculate MRR from the active subscription's price
-- Only set `mrr: 0` and `status: "churned"` if there are truly zero active subscriptions remaining
-
-#### 2. Webhook: Re-derive MRR on checkout completion  
-In the `checkout.session.completed` handler, ensure the upsert always writes the current MRR based on the new subscription's plan, overriding any previously zeroed value. This is already done (line 51/69), but the timing issue means a subsequent deletion event can overwrite it.
-
-The real fix is #1 — making the deletion handler smarter about checking for remaining active subs before zeroing MRR.
-
-### Technical Detail
-
-```text
-Current flow (broken):
-  checkout A → mrr = 30, status = active
-  checkout B → mrr = 30 (upsert, same customer)
-  checkout C → mrr = 30 (upsert, same customer)
-  refund B → subscription.deleted → mrr = 0, status = churned  ← WRONG
-  refund C → subscription.deleted → mrr = 0, status = churned  ← overwrites
-
-Fixed flow:
-  refund B → subscription.deleted → check Stripe for active subs
-           → sub A still active → keep mrr = 30, status = active
-  refund C → subscription.deleted → check Stripe for active subs
-           → sub A still active → keep mrr = 30, status = active
-```
-
-### Files to Edit
-- `supabase/functions/actv-webhook/index.ts` — Update `customer.subscription.deleted` handler to check for remaining active subscriptions before zeroing MRR
+### Technical note
+The system stores only a SHA-256 hash of the API key — the raw key is shown once at creation and cannot be retrieved afterward. The key hash displayed here is what WebsiteSetup already shows. If you'd prefer users to be able to copy a usable raw key from this page, we would need to either store the raw key (security tradeoff) or add a "Generate New Key" button directly on this page. The current plan mirrors what WebsiteSetup does.
 

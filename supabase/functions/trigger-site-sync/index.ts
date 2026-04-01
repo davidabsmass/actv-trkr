@@ -263,6 +263,10 @@ async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): 
   return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 60000);
 }
 
+async function triggerWordPressEntryBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-entries", 60000);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

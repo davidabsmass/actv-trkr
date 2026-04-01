@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -140,6 +140,21 @@ export default function NotificationsPage() {
   };
   const unreadCount = inbox?.filter(n => !n.is_read).length || 0;
 
+  // Auto-mark all as read when the inbox tab is viewed
+  useEffect(() => {
+    if (unreadCount > 0 && user?.id) {
+      supabase
+        .from("notification_inbox")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["notification_inbox", user?.id] });
+          queryClient.invalidateQueries({ queryKey: ["unread_notifications"] });
+        });
+    }
+  }, [inbox]); // runs once inbox loads and has unread items
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-1">Notifications</h1>
@@ -199,7 +214,7 @@ export default function NotificationsPage() {
           <div className="glass-card p-5 space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Channel Preferences</h3>
             <p className="text-xs text-muted-foreground">Control which channels you receive notifications on. These apply globally.</p>
-            {(["in_app", "email", "sms"] as const).map(channel => {
+            {(["in_app", "email"] as const).map(channel => {
               const pref = getPref(channel);
               return (
                 <div key={channel} className="flex items-center justify-between py-2 border-b border-border last:border-0">
@@ -208,18 +223,9 @@ export default function NotificationsPage() {
                     <p className="text-xs text-muted-foreground">
                       {channel === "in_app" && "Always available"}
                       {channel === "email" && "Receive alerts via email"}
-                      {channel === "sms" && "Receive alerts via SMS (coming soon)"}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {channel === "sms" && (
-                      <Input
-                        placeholder="+1 555 0000"
-                        className="w-36 h-8 text-xs"
-                        value={pref?.phone || ""}
-                        onChange={e => updatePref.mutate({ channel, enabled: pref?.is_enabled ?? true, phone: e.target.value })}
-                      />
-                    )}
                     <Switch
                       checked={pref?.is_enabled ?? (channel === "in_app" || channel === "email")}
                       onCheckedChange={(checked) => updatePref.mutate({ channel, enabled: checked })}

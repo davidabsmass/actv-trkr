@@ -2330,8 +2330,8 @@ class MM_Forms {
 	}
 
 	private static function normalize_entries_backfill_state( $body ) {
-		$page_size = isset( $body['page_size'] ) ? intval( $body['page_size'] ) : 10;
-		$page_size = max( 5, min( 25, $page_size ) );
+		$page_size = isset( $body['page_size'] ) ? intval( $body['page_size'] ) : 5;
+		$page_size = max( 1, min( 10, $page_size ) );
 
 		return array(
 			'provider'  => sanitize_key( $body['provider'] ?? 'gravity_forms' ),
@@ -2453,15 +2453,16 @@ class MM_Forms {
 	}
 
 	/**
-	 * Non-blocking send for backfill — fire-and-forget to avoid PHP timeout.
+	 * Blocking send for backfill — waits for response to confirm delivery.
+	 * Falls back to retry queue on failure.
 	 */
 	private static function send_nonblocking( $payload ) {
 		$opts     = MM_Settings::get();
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
 
 		$response = wp_remote_post( $endpoint, array(
-			'timeout'   => 0.5,
-			'blocking'  => false,
+			'timeout'   => 10,
+			'blocking'  => true,
 			'headers'   => array(
 				'Content-Type'  => 'application/json',
 				'Authorization' => 'Bearer ' . $opts['api_key'],
@@ -2472,6 +2473,12 @@ class MM_Forms {
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Backfill send error: ' . $response->get_error_message() );
 			MM_Retry_Queue::enqueue( $endpoint, $opts['api_key'], $payload );
+		} else {
+			$code = wp_remote_retrieve_response_code( $response );
+			if ( $code >= 400 ) {
+				error_log( '[MissionMetrics] Backfill send HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
+				MM_Retry_Queue::enqueue( $endpoint, $opts['api_key'], $payload );
+			}
 		}
 	}
 

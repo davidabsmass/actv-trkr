@@ -252,10 +252,10 @@ export default function SeoTab() {
           </div>
         </div>
 
-        {sites && sites.length > 0 ? (
+        {effectiveDomain ? (
           <div className="flex items-center gap-3">
             <p className="text-xs text-muted-foreground flex-1">
-              {t("dashboard.scanning")}: <span className="font-medium text-foreground">{homepageUrl || siteDomain}</span>
+              {t("dashboard.scanning")}: <span className="font-medium text-foreground">{homepageUrl || effectiveDomain}</span>
             </p>
             <div className="flex items-center gap-2">
               {activeScan && issues.length > 0 && (

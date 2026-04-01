@@ -496,7 +496,14 @@ export default function WebsiteSetup() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t("websiteSetup.pluginVersion")}</span>
-                      <p className="font-medium text-foreground">{site.plugin_version ? `v${site.plugin_version}` : "—"}</p>
+                      <p className="font-medium text-foreground">
+                        {site.plugin_version ? `v${site.plugin_version}` : "—"}
+                        {site.plugin_version && latestVersion && site.plugin_version !== latestVersion && (
+                          <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-primary/10 text-primary border border-primary/20">
+                            v{latestVersion} available
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t("websiteSetup.tracking")}</span>

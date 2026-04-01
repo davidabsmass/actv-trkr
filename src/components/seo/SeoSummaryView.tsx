@@ -198,17 +198,27 @@ export default function SeoSummaryView() {
             </div>
             <StatusBadge level={item.level} label={item.label} />
             <p className="text-xs text-muted-foreground mt-2">{item.description}</p>
-            {item.reasons && item.reasons.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {item.reasons.slice(0, 4).map((reason, idx) => (
-                  <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-warning mt-0.5">•</span>
-                    <span>{reason}</span>
-                  </li>
-                ))}
-                {item.reasons.length > 4 && (
+            {item.issueObjects && item.issueObjects.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {item.issueObjects.slice(0, 4).map((issue, idx) => {
+                  const action = actionForIssue(issue);
+                  return (
+                    <li key={idx} className="text-xs">
+                      <div className="flex items-start gap-1.5">
+                        <span className="text-warning mt-0.5">•</span>
+                        <span className="text-foreground font-medium">{issue.title || issue.id || "Issue"}</span>
+                      </div>
+                      {action && (
+                        <p className="text-muted-foreground ml-4 mt-0.5 leading-relaxed">
+                          <span className="font-medium text-primary/80">Fix:</span> {action}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+                {item.issueObjects.length > 4 && (
                   <li className="text-xs text-muted-foreground/70 pl-3">
-                    +{item.reasons.length - 4} more
+                    +{item.issueObjects.length - 4} more
                   </li>
                 )}
               </ul>

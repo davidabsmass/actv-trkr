@@ -30,9 +30,20 @@ Deno.serve(async (req) => {
     const domain = body.domain;
     if (!domain) return new Response(JSON.stringify({ error: "Missing domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // Resolve site
-    const { data: site } = await supabase.from("sites").select("id, status").eq("org_id", orgId).eq("domain", domain).maybeSingle();
-    if (!site) return new Response(JSON.stringify({ error: "Unknown site" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Resolve or auto-create site
+    let site = (await supabase.from("sites").select("id, status").eq("org_id", orgId).eq("domain", domain).maybeSingle()).data;
+    if (!site) {
+      const pluginVer = body.plugin_version || body.pluginVersion || null;
+      const { data: newSite, error: insertErr } = await supabase.from("sites")
+        .insert({ org_id: orgId, domain, type: "wordpress", plugin_version: pluginVer, url: body.url || `https://${domain}` })
+        .select("id, status").single();
+      if (insertErr || !newSite) {
+        console.error("Failed to auto-create site:", insertErr);
+        return new Response(JSON.stringify({ error: "Could not register site" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      site = newSite;
+      console.log(`Auto-created site ${site.id} for domain ${domain}`);
+    }
 
     const now = new Date().toISOString();
 

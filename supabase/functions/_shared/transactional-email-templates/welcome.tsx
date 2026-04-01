@@ -15,7 +15,7 @@ import {
 import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'ACTV TRKR'
-const LOGO_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.svg'
+const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header.jpg'
 
 interface WelcomeEmailProps {
   name?: string
@@ -30,10 +30,7 @@ const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
       <Container style={container}>
         {/* Header */}
         <Section style={headerSection}>
-          <div style={gradientBar} />
-          <Section style={logoWrap}>
-            <Img src={LOGO_URL} alt={SITE_NAME} width="180" height="auto" style={logoImg} />
-          </Section>
+          <Img src={HEADER_URL} alt={SITE_NAME} width="600" height="auto" style={headerImg} />
         </Section>
 
         <Section style={contentSection}>
@@ -100,18 +97,11 @@ const headerSection = {
   marginBottom: '0',
 }
 
-const gradientBar = {
-  height: '4px',
-  background: 'linear-gradient(135deg, #6C5CE7, #8B7CF7)',
-  borderRadius: '4px 4px 0 0',
+const headerImg = {
+  width: '100%',
+  display: 'block' as const,
+  borderRadius: '12px 12px 0 0',
 }
-
-const logoWrap = {
-  padding: '28px 32px 20px',
-  backgroundColor: '#F8F9FC',
-}
-
-const logoImg = { margin: '0' }
 
 const contentSection = {
   padding: '32px 32px 40px',

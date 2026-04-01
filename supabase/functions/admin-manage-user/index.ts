@@ -370,7 +370,7 @@ Deno.serve(async (req) => {
 
     // ── STRIPE: CANCEL SUBSCRIPTION ──
     if (action === "cancel_subscription") {
-      const { subscription_id, immediate } = body;
+      const { subscription_id, immediate, cancel_at } = body;
       if (!subscription_id) {
         return new Response(JSON.stringify({ error: "subscription_id is required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -389,6 +389,10 @@ Deno.serve(async (req) => {
       let result;
       if (immediate) {
         result = await stripe.subscriptions.cancel(subscription_id);
+      } else if (cancel_at) {
+        // Cancel at a specific date (Unix timestamp)
+        const cancelTimestamp = Math.floor(new Date(cancel_at).getTime() / 1000);
+        result = await stripe.subscriptions.update(subscription_id, { cancel_at: cancelTimestamp });
       } else {
         result = await stripe.subscriptions.update(subscription_id, { cancel_at_period_end: true });
       }
@@ -397,6 +401,7 @@ Deno.serve(async (req) => {
         success: true,
         status: result.status,
         cancel_at_period_end: result.cancel_at_period_end,
+        cancel_at: result.cancel_at,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

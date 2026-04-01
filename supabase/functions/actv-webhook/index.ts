@@ -51,6 +51,12 @@ serve(async (req) => {
         const mrr = plan === "annual" ? 27.5 : 30;
         const siteUrl = metadata.site_url || null;
 
+        // Extract billing details from checkout session
+        const customerDetails = session.customer_details;
+        const billingName = customerDetails?.name || "";
+        const billingPhone = customerDetails?.phone || "";
+        const billingAddress = (customerDetails as any)?.address;
+
         // 1. Upsert subscriber record
         const { error } = await supabase.from("subscribers").upsert({
           email,
@@ -73,7 +79,7 @@ serve(async (req) => {
           email,
           password: tempPassword,
           email_confirm: true,
-          user_metadata: { full_name: "" },
+          user_metadata: { full_name: billingName },
         });
 
         let userId: string | null = null;
@@ -91,6 +97,29 @@ serve(async (req) => {
         } else {
           userId = newUser?.user?.id || null;
           logStep("Auth user created", { userId });
+        }
+
+        // 2b. Update profile with billing details from Stripe
+        if (userId) {
+          const profileUpdate: Record<string, any> = {};
+          if (billingName) profileUpdate.full_name = billingName;
+          if (billingPhone) profileUpdate.phone = billingPhone;
+          if (billingAddress) {
+            if (billingAddress.line1) profileUpdate.address_line1 = billingAddress.line1;
+            if (billingAddress.line2) profileUpdate.address_line2 = billingAddress.line2;
+            if (billingAddress.city) profileUpdate.city = billingAddress.city;
+            if (billingAddress.state) profileUpdate.state = billingAddress.state;
+            if (billingAddress.postal_code) profileUpdate.postal_code = billingAddress.postal_code;
+            if (billingAddress.country) profileUpdate.country = billingAddress.country;
+          }
+          if (Object.keys(profileUpdate).length > 0) {
+            const { error: profErr } = await supabase
+              .from("profiles")
+              .update(profileUpdate)
+              .eq("user_id", userId);
+            if (profErr) logStep("Profile update error", { error: profErr.message });
+            else logStep("Profile updated with billing details", { userId });
+          }
         }
 
         // 3. Create org + link user (only for new users with no org yet)

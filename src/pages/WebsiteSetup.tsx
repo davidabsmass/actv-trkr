@@ -62,6 +62,21 @@ export default function WebsiteSetup() {
     localStorage.setItem("at_setup_progress", JSON.stringify(next));
   };
 
+  // Latest plugin version
+  const { data: latestVersion } = useQuery({
+    queryKey: ["latest_plugin_version"],
+    queryFn: async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=check&version=0.0.0&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.version as string;
+    },
+    staleTime: 1000 * 60,
+  });
+
   // API key query
   const { data: apiKeyData } = useQuery({
     queryKey: ["active_api_key_setup", orgId],
@@ -228,7 +243,7 @@ export default function WebsiteSetup() {
             className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            {downloading ? t("websiteSetup.downloading") : t("websiteSetup.downloadPlugin")}
+            {downloading ? t("websiteSetup.downloading") : `${t("websiteSetup.downloadPlugin")}${latestVersion ? ` v${latestVersion}` : ""}`}
           </button>
         </div>
 
@@ -481,7 +496,14 @@ export default function WebsiteSetup() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t("websiteSetup.pluginVersion")}</span>
-                      <p className="font-medium text-foreground">{site.plugin_version ? `v${site.plugin_version}` : "—"}</p>
+                      <p className="font-medium text-foreground">
+                        {site.plugin_version ? `v${site.plugin_version}` : "—"}
+                        {site.plugin_version && latestVersion && site.plugin_version !== latestVersion && (
+                          <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-primary/10 text-primary border border-primary/20">
+                            v{latestVersion} available
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t("websiteSetup.tracking")}</span>

@@ -293,10 +293,45 @@ Deno.serve(async (req) => {
         stripe.charges.list({ customer: customer.id, limit: 20 }),
       ]);
 
-      // Show active subs first, then any non-active ones that aren't duplicates
-      const activeIds = new Set(activeSubscriptions.data.map(s => s.id));
-      const inactiveSubs = allSubscriptions.data.filter(s => !activeIds.has(s.id));
-      const orderedSubs = [...activeSubscriptions.data, ...inactiveSubs];
+      const activeIds = new Set(activeSubscriptions.data.map((s) => s.id));
+      const orderedSubs = [...activeSubscriptions.data, ...allSubscriptions.data.filter((s) => !activeIds.has(s.id))];
+
+      const detailedSubscriptions = await Promise.all(
+        orderedSubs.map(async (subscription) => {
+          const fullSubscription = await stripe.subscriptions.retrieve(subscription.id, {
+            expand: ["items.data.price.product", "latest_invoice"],
+          });
+
+          const firstItem = fullSubscription.items.data[0];
+          const price = firstItem?.price;
+          const product = price?.product && typeof price.product !== "string" ? price.product : null;
+          const latestInvoice = fullSubscription.latest_invoice && typeof fullSubscription.latest_invoice !== "string"
+            ? fullSubscription.latest_invoice
+            : null;
+
+          return {
+            id: fullSubscription.id,
+            status: fullSubscription.status,
+            plan: price?.nickname || product?.name || price?.id || "unknown",
+            product_name: product?.name || null,
+            amount: (price?.unit_amount || 0) / 100,
+            interval: price?.recurring?.interval || "month",
+            created: fullSubscription.created ?? latestInvoice?.created ?? null,
+            current_period_start: fullSubscription.current_period_start ?? null,
+            current_period_end: fullSubscription.current_period_end ?? null,
+            latest_invoice_created: latestInvoice?.created ?? null,
+            cancel_at_period_end: fullSubscription.cancel_at_period_end,
+            cancel_at: fullSubscription.cancel_at ?? null,
+            canceled_at: fullSubscription.canceled_at ?? null,
+          };
+        })
+      );
+
+      detailedSubscriptions.sort((a, b) => {
+        const activeDelta = Number(b.status === "active") - Number(a.status === "active");
+        if (activeDelta !== 0) return activeDelta;
+        return (b.created ?? 0) - (a.created ?? 0);
+      });
 
       return new Response(JSON.stringify({
         customer: {
@@ -305,20 +340,7 @@ Deno.serve(async (req) => {
           name: customer.name,
           created: customer.created,
         },
-        subscriptions: orderedSubs.map((s) => ({
-          id: s.id,
-          status: s.status,
-          plan: s.items.data[0]?.price?.nickname || s.items.data[0]?.price?.id || "unknown",
-          product_name: s.items.data[0]?.price?.product || null,
-          amount: (s.items.data[0]?.price?.unit_amount || 0) / 100,
-          interval: s.items.data[0]?.price?.recurring?.interval || "month",
-          created: s.created,
-          current_period_start: s.current_period_start,
-          current_period_end: s.current_period_end,
-          cancel_at_period_end: s.cancel_at_period_end,
-          cancel_at: s.cancel_at,
-          canceled_at: s.canceled_at,
-        })),
+        subscriptions: detailedSubscriptions,
         invoices: invoices.data.map((i) => ({
           id: i.id,
           number: i.number,

@@ -105,40 +105,39 @@ export default function SeoSummaryView() {
 
   // 1. Search Visibility Status
   const searchVisibility = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run an initial scan to check search visibility." };
-    if (score >= 80) return { level: "healthy" as StatusLevel, label: "Healthy", description: "No major visibility issues detected." };
-    if (score >= 50) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some search visibility items may need attention." };
-    return { level: "issue_detected" as StatusLevel, label: "Issue Detected", description: "Search visibility issues were found that may affect discoverability." };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run an initial scan to check search visibility.", reasons: [] as string[] };
+    if (score >= 80) return { level: "healthy" as StatusLevel, label: "Healthy", description: "No major visibility issues detected.", reasons: [] as string[] };
+    const reasons = issues.filter(i => i.impact === "Critical" || i.impact === "High").map(i => i.title || i.id || "");
+    if (score >= 50) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some search visibility items may need attention.", reasons };
+    return { level: "issue_detected" as StatusLevel, label: "Issue Detected", description: "Search visibility issues were found that may affect discoverability.", reasons };
   })();
 
   // 2. Indexing Status
   const indexing = (() => {
-    const robotsBlocked = issues.some(i => i.id?.includes("robots") || i.title?.toLowerCase().includes("noindex"));
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check indexing status." };
-    if (robotsBlocked) return { level: "blocked" as StatusLevel, label: "Blocked", description: "Search engines may be blocked from accessing the site." };
-    return { level: "good" as StatusLevel, label: "Accessible", description: "Search engines appear able to access the site." };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check indexing status.", reasons: [] as string[] };
+    const robotsIssues = issues.filter(i => i.id?.includes("robots") || i.title?.toLowerCase().includes("noindex"));
+    if (robotsIssues.length > 0) return { level: "blocked" as StatusLevel, label: "Blocked", description: "Search engines may be blocked from accessing the site.", reasons: robotsIssues.map(i => i.title || i.id || "") };
+    return { level: "good" as StatusLevel, label: "Accessible", description: "Search engines appear able to access the site.", reasons: [] as string[] };
   })();
 
   // 3. Mobile Readiness
   const mobile = (() => {
-    const mobileIssue = issues.some(i =>
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check mobile readiness.", reasons: [] as string[] };
+    const mobileIssues = issues.filter(i =>
       i.id?.includes("viewport") || i.id?.includes("mobile") || i.title?.toLowerCase().includes("viewport") || i.title?.toLowerCase().includes("mobile")
     );
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check mobile readiness." };
-    if (mobileIssue) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some mobile experience issues may need review." };
-    return { level: "good" as StatusLevel, label: "Good", description: "No mobile readiness issues detected." };
+    if (mobileIssues.length > 0) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some mobile experience issues may need review.", reasons: mobileIssues.map(i => i.title || i.id || "") };
+    return { level: "good" as StatusLevel, label: "Good", description: "No mobile readiness issues detected.", reasons: [] as string[] };
   })();
 
   // 4. Homepage Search Basics
   const homepageBasics = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check homepage basics." };
-    const hasTitle = !issues.some(i => i.id?.includes("title") && i.impact === "Critical");
-    const hasMeta = !issues.some(i => i.id?.includes("meta_desc") && i.impact === "Critical");
-    const hasH1 = !issues.some(i => i.id?.includes("h1") && (i.impact === "Critical" || i.impact === "High"));
-    const hasCanonical = !issues.some(i => i.id?.includes("canonical"));
-    const allGood = hasTitle && hasMeta && hasH1 && hasCanonical;
-    if (allGood) return { level: "healthy" as StatusLevel, label: "Present", description: "Homepage search basics are present." };
-    return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some homepage search essentials may be missing or incomplete." };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check homepage basics.", reasons: [] as string[] };
+    const basicIssues = issues.filter(i =>
+      i.id?.includes("title") || i.id?.includes("meta_desc") || i.id?.includes("h1") || i.id?.includes("canonical")
+    );
+    if (basicIssues.length === 0) return { level: "healthy" as StatusLevel, label: "Present", description: "Homepage search basics are present.", reasons: [] as string[] };
+    return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some homepage search essentials may be missing or incomplete.", reasons: basicIssues.map(i => i.title || i.id || "") };
   })();
 
   const items = [
@@ -159,6 +158,21 @@ export default function SeoSummaryView() {
             </div>
             <StatusBadge level={item.level} label={item.label} />
             <p className="text-xs text-muted-foreground mt-2">{item.description}</p>
+            {item.reasons && item.reasons.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {item.reasons.slice(0, 4).map((reason, idx) => (
+                  <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                    <span className="text-warning mt-0.5">•</span>
+                    <span>{reason}</span>
+                  </li>
+                ))}
+                {item.reasons.length > 4 && (
+                  <li className="text-xs text-muted-foreground/70 pl-3">
+                    +{item.reasons.length - 4} more
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
         ))}
       </div>

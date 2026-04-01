@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { Download, Plug, Activity, ChevronRight } from "lucide-react";
+import { Download, Plug, Activity, ChevronRight, Copy, Check } from "lucide-react";
 import { downloadPlugin } from "@/lib/plugin-download";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useOrg } from "@/hooks/use-org";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface GetStartedGuideProps {
   compact?: boolean;
@@ -10,6 +13,24 @@ interface GetStartedGuideProps {
 
 export default function GetStartedGuide({ compact = false }: GetStartedGuideProps) {
   const [downloading, setDownloading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const { orgId } = useOrg();
+
+  const { data: apiKey } = useQuery({
+    queryKey: ["api-key-for-setup", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("api_keys")
+        .select("key_hash")
+        .eq("org_id", orgId!)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      return data?.key_hash ?? null;
+    },
+  });
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -21,6 +42,14 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
     } finally {
       setDownloading(false);
     }
+  };
+
+  const handleCopy = async () => {
+    if (!apiKey) return;
+    await navigator.clipboard.writeText(apiKey);
+    setCopied(true);
+    toast.success("API Key copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -49,9 +78,6 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
                   Download & Install the Plugin
                 </h3>
               </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Log into your ACTV TRKR account and download the WordPress plugin.
-              </p>
               <p className="text-sm text-muted-foreground mb-2">In your WordPress dashboard:</p>
               <ul className="space-y-1.5 mb-4">
                 <li className="text-sm text-muted-foreground flex items-start gap-2">
@@ -96,11 +122,25 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
               <p className="text-sm text-muted-foreground mb-3">
                 After activating the plugin, you'll see the ACTV TRKR settings panel.
               </p>
+
+              {/* API Key display */}
+              <p className="text-sm font-semibold text-foreground mb-2">Copy this API Key:</p>
+              {apiKey ? (
+                <div className="flex items-center gap-2 mb-4">
+                  <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-md font-mono text-foreground break-all select-all">
+                    {apiKey}
+                  </code>
+                  <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleCopy}>
+                    {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mb-4 italic">
+                  No active API key found. Go to <strong className="text-foreground">Settings → API Keys</strong> to generate one.
+                </p>
+              )}
+
               <ul className="space-y-1.5 mb-3">
-                <li className="text-sm text-muted-foreground flex items-start gap-2">
-                  <ChevronRight className="h-3.5 w-3.5 mt-0.5 text-primary/60 flex-shrink-0" />
-                  <span>Copy your <strong className="text-foreground">API Key</strong> from your ACTV TRKR dashboard</span>
-                </li>
                 <li className="text-sm text-muted-foreground flex items-start gap-2">
                   <ChevronRight className="h-3.5 w-3.5 mt-0.5 text-primary/60 flex-shrink-0" />
                   <span>Paste it into the plugin settings</span>

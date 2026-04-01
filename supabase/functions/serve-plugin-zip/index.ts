@@ -6,30 +6,76 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PLUGIN_VERSION = "1.5.3";
+const TEMPLATE_DIR = new URL("./plugin-template/", import.meta.url);
+const ZIP_ROOT = "actv-trkr";
+const SOURCE_MAIN_FILE = "mission-metrics.php";
+const TARGET_MAIN_FILE = "actv-trkr.php";
+const textDecoder = new TextDecoder();
+const textEncoder = new TextEncoder();
 
-function patchClassFormsPhp(content: string): string {
-  return content
-    .replaceAll(
-      "if(!is_array($rows)||empty($rows))&&!empty($page_url)){",
-      "if((!is_array($rows)||empty($rows))&&!empty($page_url)){",
-    )
-    .replaceAll(
-      "if(!is_array($rows)||empty($rows))&&!empty($resolved_title)){",
-      "if((!is_array($rows)||empty($rows))&&!empty($resolved_title)){",
-    )
-    .replaceAll(
-      "if(!is_array($rows)||empty($rows))){",
-      "if(!is_array($rows)||empty($rows)){",
-    )
-    .replaceAll(
-      "foreach(array('submission','data','fields','form_data','payload','entry_data') as $pc){if(isset($row->$pc)&&is_string($row->$pc)&&$row->$pc!==''){$raw_payload=$row->$pc;break;}}",
-      "foreach(array('submission','data','fields','form_data','payload','entry_data','serialized_data','content','meta') as $pc){if(isset($row->$pc)&&$row->$pc!==null&&$row->$pc!==''){$raw_payload=is_scalar($row->$pc)?(string)$row->$pc:wp_json_encode($row->$pc);if($raw_payload!=='')break;}}if($raw_payload===''){foreach($columns as $pc){if(in_array($pc,array('id','form_id','fusion_form_id','post_id','parent_id','form_post_id','source_url','created_at','updated_at','date_time','submitted_at','date'),true))continue;if(!isset($row->$pc)||$row->$pc===null||$row->$pc==='')continue;$candidate=is_scalar($row->$pc)?(string)$row->$pc:wp_json_encode($row->$pc);if($candidate!==''){$raw_payload=$candidate;break;}}}",
-    );
+const textFileExtensions = new Set([
+  ".css",
+  ".js",
+  ".json",
+  ".md",
+  ".php",
+  ".svg",
+  ".txt",
+]);
+
+type TemplateFile = {
+  contents: Uint8Array;
+  relativePath: string;
+};
+
+function isTextFile(relativePath: string): boolean {
+  const dotIndex = relativePath.lastIndexOf(".");
+  if (dotIndex < 0) return false;
+  return textFileExtensions.has(relativePath.slice(dotIndex));
 }
 
-function assertPluginFileSafety(files: Record<string, string>): void {
-  const classForms = files["actv-trkr/includes/class-forms.php"] || "";
+function toZipPath(relativePath: string): string {
+  if (relativePath === SOURCE_MAIN_FILE) {
+    return `${ZIP_ROOT}/${TARGET_MAIN_FILE}`;
+  }
+
+  return `${ZIP_ROOT}/${relativePath}`;
+}
+
+function patchEndpointUrl(content: string, endpointBase: string): string {
+  return content.replace(
+    /(\s*'endpoint_url'\s*=>\s*)'[^']*'/,
+    `$1'${endpointBase}'`,
+  );
+}
+
+function transformTextFile(
+  relativePath: string,
+  content: string,
+  endpointBase: string,
+): string {
+  if (relativePath === "includes/class-settings.php") {
+    return patchEndpointUrl(content, endpointBase);
+  }
+
+  return content;
+}
+
+function extractPluginVersion(mainPluginFile: string): string {
+  const versionMatch =
+    mainPluginFile.match(/^\s*\*\s*Version:\s*([0-9.]+)/m) ??
+    mainPluginFile.match(/MM_PLUGIN_VERSION'\s*,\s*'([0-9.]+)'/m);
+
+  if (!versionMatch) {
+    throw new Error("Unable to determine plugin version from the packaged main file.");
+  }
+
+  return versionMatch[1];
+}
+
+function assertPluginFileSafety(files: Map<string, Uint8Array>): void {
+  const classForms = files.get(`${ZIP_ROOT}/includes/class-forms.php`);
+  const classFormsText = classForms ? textDecoder.decode(classForms) : "";
   const knownBadTokens = [
     "if(!is_array($rows)||empty($rows))&&!empty($page_url)){",
     "if(!is_array($rows)||empty($rows))&&!empty($resolved_title)){",
@@ -37,12 +83,63 @@ function assertPluginFileSafety(files: Record<string, string>): void {
   ];
 
   for (const token of knownBadTokens) {
-    if (classForms.includes(token)) {
-      throw new Error(`Refusing to build plugin ZIP: malformed class-forms.php token found: ${token}`);
+    if (classFormsText.includes(token)) {
+      throw new Error(
+        `Refusing to build plugin ZIP: malformed class-forms.php token found: ${token}`,
+      );
     }
   }
 }
 
+async function collectTemplateFiles(
+  currentDir: URL,
+  baseDir: URL,
+  files: TemplateFile[],
+): Promise<void> {
+  for await (const entry of Deno.readDir(currentDir)) {
+    const entryUrl = new URL(entry.isDirectory ? `${entry.name}/` : entry.name, currentDir);
+
+    if (entry.isDirectory) {
+      await collectTemplateFiles(entryUrl, baseDir, files);
+      continue;
+    }
+
+    files.push({
+      contents: await Deno.readFile(entryUrl),
+      relativePath: decodeURIComponent(entryUrl.href.slice(baseDir.href.length)),
+    });
+  }
+}
+
+async function buildFiles(endpointBase: string): Promise<Map<string, Uint8Array>> {
+  const templateFiles: TemplateFile[] = [];
+  await collectTemplateFiles(TEMPLATE_DIR, TEMPLATE_DIR, templateFiles);
+
+  if (templateFiles.length === 0) {
+    throw new Error("Plugin template directory is empty.");
+  }
+
+  templateFiles.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+
+  const files = new Map<string, Uint8Array>();
+
+  for (const file of templateFiles) {
+    let contents = file.contents;
+
+    if (isTextFile(file.relativePath)) {
+      const transformedText = transformTextFile(
+        file.relativePath,
+        textDecoder.decode(file.contents),
+        endpointBase,
+      );
+      contents = textEncoder.encode(transformedText);
+    }
+
+    files.set(toZipPath(file.relativePath), contents);
+  }
+
+  return files;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -51,11 +148,19 @@ Deno.serve(async (req) => {
 
   try {
     const endpointBase = `${Deno.env.get("SUPABASE_URL")!}/functions/v1`;
-    const files = buildFiles(endpointBase);
+    const files = await buildFiles(endpointBase);
+    assertPluginFileSafety(files);
 
+    const mainPluginFile = files.get(`${ZIP_ROOT}/${TARGET_MAIN_FILE}`);
+    if (!mainPluginFile) {
+      throw new Error("Packaged plugin is missing its main file.");
+    }
+
+    const pluginVersion = extractPluginVersion(textDecoder.decode(mainPluginFile));
     const zip = new JSZip();
-    for (const [path, content] of Object.entries(files)) {
-      zip.file(path, content);
+
+    for (const [path, contents] of files.entries()) {
+      zip.file(path, contents);
     }
 
     const zipData = await zip.generateAsync({ type: "uint8array" });
@@ -63,334 +168,19 @@ Deno.serve(async (req) => {
     return new Response(zipData, {
       headers: {
         ...corsHeaders,
+        "Cache-Control": "no-store",
+        "Content-Disposition": `attachment; filename="actv-trkr-${pluginVersion}.zip"`,
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="actv-trkr-${PLUGIN_VERSION}.zip"`,
       },
     });
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+      },
+    });
   }
 });
-
-function buildFiles(endpointBase: string): Record<string, string> {
-  const files: Record<string, string> = {
-    "actv-trkr/actv-trkr.php": `<?php
-/**
- * Plugin Name: ACTV TRKR
- * Plugin URI:  https://actvtrkr.com
- * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     ${PLUGIN_VERSION}
- * Author:      Absolutely Massive
- * License:     GPL-2.0-or-later
- * Text Domain: actv-trkr
- */
-if(!defined('ABSPATH'))exit;
-define('AT_PLUGIN_VERSION','${PLUGIN_VERSION}');
-define('AT_PLUGIN_DIR',plugin_dir_path(__FILE__));
-define('AT_PLUGIN_URL',plugin_dir_url(__FILE__));
-define('AT_DEFAULT_ENDPOINT','${endpointBase}');
-require_once AT_PLUGIN_DIR.'includes/class-settings.php';
-require_once AT_PLUGIN_DIR.'includes/class-tracker.php';
-require_once AT_PLUGIN_DIR.'includes/class-forms.php';
-require_once AT_PLUGIN_DIR.'includes/class-retry-queue.php';
-require_once AT_PLUGIN_DIR.'includes/class-updater.php';
-require_once AT_PLUGIN_DIR.'includes/class-heartbeat.php';
-require_once AT_PLUGIN_DIR.'includes/class-broken-links.php';
-require_once AT_PLUGIN_DIR.'includes/class-seo-fixes.php';
-require_once AT_PLUGIN_DIR.'includes/class-security.php';
-function at_activate(){
-  AT_Retry_Queue::create_table();
-  if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
-  if(!wp_next_scheduled('at_heartbeat_cron')){wp_schedule_event(time(),'at_every_5_min','at_heartbeat_cron');}
-  if(!wp_next_scheduled('at_form_probe_cron')){wp_schedule_event(time(),'hourly','at_form_probe_cron');}
-  if(!wp_next_scheduled('at_seo_fix_cron')){wp_schedule_event(time(),'at_every_5_min','at_seo_fix_cron');}
-}
-register_activation_hook(__FILE__,'at_activate');
-function at_deactivate(){wp_clear_scheduled_hook('at_retry_cron');wp_clear_scheduled_hook('at_heartbeat_cron');wp_clear_scheduled_hook('at_form_probe_cron');wp_clear_scheduled_hook('at_seo_fix_cron');}
-register_deactivation_hook(__FILE__,'at_deactivate');
-add_filter('cron_schedules',function($s){$s['at_every_5_min']=array('interval'=>300,'display'=>'Every 5 Minutes');return $s;});
-AT_Settings::init();AT_Tracker::init();AT_Forms::init();AT_Updater::init();AT_Heartbeat::init();AT_Broken_Links::init();AT_SEO_Fixes::init();
-$at_security=new AT_Security();$at_security->init();
-add_action('at_retry_cron',array('AT_Retry_Queue','process'));
-add_action('at_heartbeat_cron',array('AT_Heartbeat','send_cron_heartbeat'));
-add_action('at_form_probe_cron',array('AT_Forms','probe_form_pages'));
-add_action('at_seo_fix_cron',array('AT_SEO_Fixes','poll_fixes'));
-add_action('init',function(){
-  if(!wp_next_scheduled('at_retry_cron')){wp_schedule_event(time(),'at_every_5_min','at_retry_cron');}
-  if(!wp_next_scheduled('at_form_probe_cron')){wp_schedule_event(time(),'hourly','at_form_probe_cron');}
-  if(!wp_next_scheduled('at_seo_fix_cron')){wp_schedule_event(time(),'at_every_5_min','at_seo_fix_cron');}
-},20);
-`,
-
-    "actv-trkr/includes/class-settings.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Settings{
-const OPTION_GROUP='at_settings';const OPTION_NAME='at_options';
-public static function init(){add_action('admin_menu',array(__CLASS__,'add_menu'));add_action('admin_init',array(__CLASS__,'register_settings'));add_action('wp_ajax_at_test_connection',array(__CLASS__,'ajax_test_connection'));add_action('wp_ajax_at_sync_forms',array(__CLASS__,'ajax_sync_forms'));}
-public static function defaults(){return array('api_key'=>'','endpoint_url'=>defined('AT_DEFAULT_ENDPOINT')?AT_DEFAULT_ENDPOINT:'${endpointBase}','enable_tracking'=>'1','enable_forms'=>'1','enable_heartbeat'=>'1');}
-public static function get($key=null){$opts=wp_parse_args(get_option(self::OPTION_NAME,array()),self::defaults());return $key?($opts[$key]??null):$opts;}
-public static function add_menu(){add_options_page('ACTV TRKR','ACTV TRKR','manage_options','actv-trkr',array(__CLASS__,'render_page'));}
-public static function register_settings(){register_setting(self::OPTION_GROUP,self::OPTION_NAME,array('sanitize_callback'=>array(__CLASS__,'sanitize')));}
-public static function sanitize($input){$c=array();$c['api_key']=sanitize_text_field($input['api_key']??'');$c['endpoint_url']=esc_url_raw($input['endpoint_url']??'');$c['enable_tracking']=!empty($input['enable_tracking'])?'1':'0';$c['enable_forms']=!empty($input['enable_forms'])?'1':'0';$c['enable_heartbeat']=!empty($input['enable_heartbeat'])?'1':'0';return $c;}
-public static function render_page(){$opts=self::get();?>
-<div class="wrap"><h1>ACTV TRKR</h1>
-<form method="post" action="options.php"><?php settings_fields(self::OPTION_GROUP);?>
-<table class="form-table">
-<tr><th scope="row"><label for="at_api_key">API Key</label></th><td><input type="password" id="at_api_key" name="<?php echo self::OPTION_NAME;?>[api_key]" value="<?php echo esc_attr($opts['api_key']);?>" class="regular-text" autocomplete="off"/><p class="description">Paste the API key from your ACTV TRKR dashboard.</p></td></tr>
-<tr><th scope="row"><label for="at_endpoint">Endpoint URL</label></th><td><input type="url" id="at_endpoint" name="<?php echo self::OPTION_NAME;?>[endpoint_url]" value="<?php echo esc_attr($opts['endpoint_url']);?>" class="regular-text"/></td></tr>
-<tr><th scope="row">Enable Tracking</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_tracking]" value="1" <?php checked($opts['enable_tracking'],'1');?>/> Inject tracker.js on all front-end pages</label></td></tr>
-<tr><th scope="row">Enable Form Capture</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_forms]" value="1" <?php checked($opts['enable_forms'],'1');?>/> Capture form submissions (all form plugins)</label></td></tr>
-<tr><th scope="row">Enable Heartbeat</th><td><label><input type="checkbox" name="<?php echo self::OPTION_NAME;?>[enable_heartbeat]" value="1" <?php checked($opts['enable_heartbeat'],'1');?>/> Send uptime heartbeat (JS beacon + WP-Cron fallback)</label></td></tr>
-</table><?php submit_button();?></form>
-<hr/><h2>Test Connection</h2><p><button type="button" id="at-test-btn" class="button button-secondary">Test Connection</button></p><div id="at-test-result"></div>
-<hr/><h2>Sync Forms</h2>
-<p class="description">Scan your site for all installed form plugins and register them with ACTV TRKR — even before any submissions.</p>
-<p><button type="button" id="at-sync-btn" class="button button-secondary">Sync Forms Now</button></p><div id="at-sync-result"></div>
-<script>
-document.getElementById('at-test-btn').addEventListener('click',function(){var b=this;b.disabled=true;document.getElementById('at-test-result').textContent='Testing…';fetch(ajaxurl+'?action=at_test_connection&_wpnonce=<?php echo wp_create_nonce("at_test");?>').then(r=>r.json()).then(d=>{document.getElementById('at-test-result').textContent=d.success?'✅ Connected!':'❌ '+(d.data||'Failed');b.disabled=false;}).catch(()=>{document.getElementById('at-test-result').textContent='❌ Request failed';b.disabled=false;});});
-document.getElementById('at-sync-btn').addEventListener('click',function(){var b=this;b.disabled=true;document.getElementById('at-sync-result').textContent='Scanning…';fetch(ajaxurl+'?action=at_sync_forms&_wpnonce=<?php echo wp_create_nonce("at_sync_forms");?>').then(r=>r.json()).then(d=>{if(d.success){document.getElementById('at-sync-result').textContent='✅ Discovered '+d.data.discovered+' form(s), synced '+d.data.synced+'.';}else{document.getElementById('at-sync-result').textContent='❌ '+(d.data||'Failed');}b.disabled=false;}).catch(()=>{document.getElementById('at-sync-result').textContent='❌ Request failed';b.disabled=false;});});
-</script>
-<hr/><h2>Supported Form Plugins</h2>
-<p>Form capture works automatically with:</p>
-<ul style="list-style:disc;padding-left:20px;">
-<li><strong>Any HTML form</strong> — captured via JavaScript (universal)</li>
-<li><strong>Gravity Forms</strong> — server-side hook for rich metadata</li>
-<li><strong>Contact Form 7</strong> — server-side hook</li>
-<li><strong>WPForms</strong> — server-side hook</li>
-<li><strong>Avada / Fusion Forms</strong> — server-side hook</li>
-<li><strong>Ninja Forms</strong> — server-side hook</li>
-<li><strong>Fluent Forms</strong> — server-side hook</li>
-</ul>
-</div><?php }
-public static function ajax_test_connection(){check_ajax_referer('at_test','_wpnonce');if(!current_user_can('manage_options')){wp_send_json_error('Unauthorized');}$opts=self::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/track-pageview';$response=wp_remote_post($endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode(array('source'=>array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'type'=>'wordpress','plugin_version'=>AT_PLUGIN_VERSION),'event'=>array('page_url'=>home_url(),'event_id'=>'test_'.wp_generate_uuid4(),'session_id'=>'test','title'=>'Connection Test'),'attribution'=>new \\stdClass(),'visitor'=>array('visitor_id'=>'test')))));if(is_wp_error($response)){wp_send_json_error($response->get_error_message());}$code=wp_remote_retrieve_response_code($response);if($code>=200&&$code<300){wp_send_json_success();}else{wp_send_json_error('HTTP '.$code.': '.wp_remote_retrieve_body($response));}}
-public static function ajax_sync_forms(){check_ajax_referer('at_sync_forms','_wpnonce');if(!current_user_can('manage_options')){wp_send_json_error('Unauthorized');}$result=AT_Forms::scan_all_forms();if(!empty($result['error'])){wp_send_json_error($result['error']);}wp_send_json_success($result);}
-}`,
-
-    "actv-trkr/includes/class-tracker.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Tracker{
-public static function init(){add_action('wp_enqueue_scripts',array(__CLASS__,'enqueue'));}
-public static function enqueue(){if(is_admin())return;$opts=AT_Settings::get();if($opts['enable_tracking']!=='1'||empty($opts['api_key']))return;wp_enqueue_script('at-tracker',AT_PLUGIN_URL.'assets/tracker.js',array(),AT_PLUGIN_VERSION,true);wp_localize_script('at-tracker','atConfig',array('endpoint'=>rtrim($opts['endpoint_url'],'/').'/track-pageview','apiKey'=>$opts['api_key'],'domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'pluginVersion'=>AT_PLUGIN_VERSION));}
-}`,
-
-    "actv-trkr/includes/class-forms.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Forms{
-private static $last_avada_strategy=null;
-public static function init(){$opts=AT_Settings::get();add_action('rest_api_init',array(__CLASS__,'register_rest_routes'));if(is_admin()&&!empty($opts['api_key'])){add_action('admin_init',array(__CLASS__,'maybe_auto_sync'));}if($opts['enable_forms']!=='1'||empty($opts['api_key']))return;add_action('gform_after_submission',array(__CLASS__,'handle_gravity'),10,2);add_action('wpcf7_mail_sent',array(__CLASS__,'handle_cf7'));add_action('wpforms_process_complete',array(__CLASS__,'handle_wpforms'),10,4);add_action('fusion_form_submission_data',array(__CLASS__,'handle_avada'),10,2);add_action('ninja_forms_after_submission',array(__CLASS__,'handle_ninja'));add_action('fluentform/submission_inserted',array(__CLASS__,'handle_fluent'),10,3);}
-public static function register_rest_routes(){register_rest_route('actv-trkr/v1','/sync',array('methods'=>'POST','callback'=>array(__CLASS__,'handle_rest_sync'),'permission_callback'=>'__return_true'));register_rest_route('actv-trkr/v1','/backfill-avada',array('methods'=>'POST','callback'=>array(__CLASS__,'handle_rest_backfill_avada'),'permission_callback'=>'__return_true'));register_rest_route('actv-trkr/v1','/backfill-entries',array('methods'=>'POST','callback'=>array(__CLASS__,'handle_rest_backfill_entries'),'permission_callback'=>'__return_true'));register_rest_route('actv-trkr/v1','/avada-debug',array('methods'=>'POST','callback'=>array(__CLASS__,'handle_rest_avada_debug'),'permission_callback'=>'__return_true'));}
-public static function handle_rest_sync($request){$opts=AT_Settings::get();if(empty($opts['api_key'])){return new \\WP_REST_Response(array('error'=>'Plugin not configured'),400);} $body=$request->get_json_params();$key_hash=$body['key_hash']??'';$stored_hash=hash('sha256',$opts['api_key']);if(!$key_hash||!hash_equals($stored_hash,$key_hash)){return new \\WP_REST_Response(array('error'=>'Unauthorized'),403);} $result=self::scan_all_forms();return new \\WP_REST_Response(array('ok'=>true,'result'=>$result),200);}
-public static function handle_rest_backfill_avada($request){$opts=AT_Settings::get();if(empty($opts['api_key'])){return new \\WP_REST_Response(array('error'=>'Plugin not configured'),400);} $body=$request->get_json_params();$key_hash=$body['key_hash']??'';$stored_hash=hash('sha256',$opts['api_key']);if(!$key_hash||!hash_equals($stored_hash,$key_hash)){return new \\WP_REST_Response(array('error'=>'Unauthorized'),403);}global $wpdb;$domain=wp_parse_url(home_url(),PHP_URL_HOST);$avada_forms=get_posts(array('post_type'=>'fusion_form','post_status'=>'publish','posts_per_page'=>-1,'fields'=>'ids'));if(empty($avada_forms)){return new \\WP_REST_Response(array('ok'=>true,'entries'=>0,'plugin_version'=>AT_PLUGIN_VERSION),200);} $candidate_tables=array($wpdb->prefix.'fusion_form_submissions',$wpdb->prefix.'fusionbuilder_form_submissions',$wpdb->prefix.'avada_form_submissions');$table=null;foreach($candidate_tables as $ct){if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$ct))===$ct){$table=$ct;break;}}if(!$table){return new \\WP_REST_Response(array('ok'=>true,'entries'=>0,'error'=>'No Avada submission table found','plugin_version'=>AT_PLUGIN_VERSION),200);} $columns=$wpdb->get_col("SHOW COLUMNS FROM {$table}",0);$ts_col='id';foreach(array('time','date_time','created_at','submitted_at','date','created') as $tc){if(in_array($tc,$columns,true)){$ts_col=$tc;break;}}$has_submission_col=in_array('submission',$columns,true);$has_source_url=in_array('source_url',$columns,true);$data_table=null;$data_cands=array($wpdb->prefix.'fusion_form_submission_data',$wpdb->prefix.'fusionbuilder_form_submission_data',$wpdb->prefix.'avada_form_submission_data',$wpdb->prefix.'fusion_form_entries',$wpdb->prefix.'fusionbuilder_form_entries',$wpdb->prefix.'avada_form_entries');foreach($data_cands as $dc){if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$dc))===$dc){$data_table=$dc;break;}}$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-form';$sent=0;$debug_info=array();$forms=array();foreach($avada_forms as $fp){$forms[]=array('form_id'=>(string)$fp,'page_url'=>self::find_avada_form_page_url($fp));}foreach($forms as $form_info){$form_post_id=(string)($form_info['form_id']??'');if(!$form_post_id)continue;$form_title=get_the_title(intval($form_post_id))?:'Avada Form';$entry_refs=self::get_active_entry_ids('avada',$form_post_id,$form_info['page_url']??null,$form_title);if(!is_array($entry_refs)||empty($entry_refs))continue;$numeric_ids=array();foreach($entry_refs as $ref){if(is_array($ref)&&!empty($ref['id'])){$rid=intval(str_replace('avada_db_','',(string)$ref['id']));if($rid>0)$numeric_ids[]=$rid;}elseif(is_string($ref)){$rid=intval(str_replace('avada_db_','',$ref));if($rid>0)$numeric_ids[]=$rid;}}$numeric_ids=array_values(array_unique($numeric_ids));$rows_by_id=array();if(!empty($numeric_ids)){$placeholders=implode(',',array_fill(0,count($numeric_ids),'%d'));$query=$wpdb->prepare("SELECT * FROM {$table} WHERE id IN ({$placeholders}) ORDER BY id ASC",$numeric_ids);$rows=$wpdb->get_results($query);if(is_array($rows)){foreach($rows as $row){$rows_by_id[(string)$row->id]=$row;}}}foreach($entry_refs as $ref){$entry_id=null;$submitted_at=null;if(is_array($ref)&&!empty($ref['id'])){$entry_id=(string)$ref['id'];$submitted_at=$ref['ts']??null;}elseif(is_string($ref)){$entry_id=(string)$ref;}if(!$entry_id)continue;$rid=intval(str_replace('avada_db_','',$entry_id));$row=($rid>0&&isset($rows_by_id[(string)$rid]))?$rows_by_id[(string)$rid]:null;if(!$submitted_at&&$row&&isset($row->$ts_col)){$submitted_at=$row->$ts_col;}$fields=self::extract_backfill_fields($row,$columns,$data_table);$source_url=($row&&$has_source_url&&!empty($row->source_url))?$row->source_url:($form_info['page_url']??null);$payload=array('provider'=>'avada','entry'=>array('form_id'=>$form_post_id,'form_title'=>$form_title,'entry_id'=>$entry_id,'source_url'=>$source_url,'submitted_at'=>$submitted_at),'context'=>array('domain'=>$domain,'referrer'=>null,'visitor_id'=>null,'session_id'=>null,'utm'=>array(),'plugin_version'=>AT_PLUGIN_VERSION,'backfill'=>true),'fields'=>$fields);if(empty($debug_info)){$debug_info=array('table'=>$table,'columns'=>$columns,'sample_row_keys'=>$row?array_keys((array)$row):array(),'fields_extracted'=>count($fields));}$response=wp_remote_post($endpoint,array('timeout'=>10,'blocking'=>true,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode($payload)));if(!is_wp_error($response)&&wp_remote_retrieve_response_code($response)<400){$sent++;}}}return new \\WP_REST_Response(array('ok'=>true,'entries'=>$sent,'plugin_version'=>AT_PLUGIN_VERSION,'debug'=>$debug_info),200);}
-public static function handle_rest_backfill_entries($request){$opts=AT_Settings::get();if(empty($opts['api_key'])){return new \\WP_REST_Response(array('error'=>'Plugin not configured'),400);}$body=$request->get_json_params();$key_hash=$body['key_hash']??'';$stored_hash=hash('sha256',$opts['api_key']);if(!$key_hash||!hash_equals($stored_hash,$key_hash)){return new \\WP_REST_Response(array('error'=>'Unauthorized'),403);}$domain=wp_parse_url(home_url(),PHP_URL_HOST);$sent=0;$errors=0;$max_entries=500;$endpoint_gf=rtrim($opts['endpoint_url'],'/').'/ingest-gravity';$endpoint_gen=rtrim($opts['endpoint_url'],'/').'/ingest-form';if(class_exists('GFAPI')){$gf_forms=\\GFAPI::get_forms();if(is_array($gf_forms)){foreach($gf_forms as $form){$form_id=$form['id']??'';if(!$form_id)continue;$search=array('status'=>'active');$paging=array('offset'=>0,'page_size'=>$max_entries);$entries=\\GFAPI::get_entries($form_id,$search,null,$paging);if(!is_array($entries)||empty($entries))continue;foreach($entries as $entry){$fields=array();if(!empty($form['fields'])){foreach($form['fields'] as $field){$fid=$field->id;$value=rgar($entry,(string)$fid);$fields[]=array('id'=>$fid,'name'=>$field->label,'label'=>$field->label,'type'=>$field->type,'value'=>$value);}}$payload=array('provider'=>'gravity_forms','entry'=>array('form_id'=>(string)$form_id,'form_title'=>$form['title']??'','entry_id'=>rgar($entry,'id'),'source_url'=>rgar($entry,'source_url'),'submitted_at'=>rgar($entry,'date_created')),'context'=>array('domain'=>$domain,'plugin_version'=>AT_PLUGIN_VERSION,'backfill'=>true),'fields'=>$fields);$response=wp_remote_post($endpoint_gen,array('timeout'=>10,'blocking'=>true,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode($payload)));if(!is_wp_error($response)&&wp_remote_retrieve_response_code($response)<400){$sent++;}else{$errors++;}}}}}if(function_exists('wpforms')&&isset(wpforms()->entry)){$wp_forms=wpforms()->form->get('',array('posts_per_page'=>-1));if(is_array($wp_forms)){foreach($wp_forms as $form){$form_id=$form->ID;$wf_entries=wpforms()->entry->get_entries(array('form_id'=>$form_id,'number'=>$max_entries));if(!is_array($wf_entries)||empty($wf_entries))continue;foreach($wf_entries as $wp_entry){$fields_raw=json_decode($wp_entry->fields,true);$fields=array();if(is_array($fields_raw)){foreach($fields_raw as $fid=>$fdata){$fields[]=array('id'=>$fid,'name'=>$fdata['name']??'','label'=>$fdata['name']??'','type'=>$fdata['type']??'text','value'=>$fdata['value']??'');}}$payload=array('provider'=>'wpforms','entry'=>array('form_id'=>(string)$form_id,'form_title'=>$form->post_title??'WPForm','entry_id'=>(string)$wp_entry->entry_id,'source_url'=>'','submitted_at'=>$wp_entry->date??null),'context'=>array('domain'=>$domain,'plugin_version'=>AT_PLUGIN_VERSION,'backfill'=>true),'fields'=>$fields);$response=wp_remote_post($endpoint_gen,array('timeout'=>10,'blocking'=>true,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode($payload)));if(!is_wp_error($response)&&wp_remote_retrieve_response_code($response)<400){$sent++;}else{$errors++;}}}}}return new \\WP_REST_Response(array('ok'=>true,'entries'=>$sent,'errors'=>$errors,'plugin_version'=>AT_PLUGIN_VERSION),200);}
-public static function maybe_auto_sync(){if(get_transient('actv_trkr_last_form_sync'))return;self::scan_all_forms();set_transient('actv_trkr_last_form_sync',time(),6*HOUR_IN_SECONDS);}
-public static function scan_all_forms(){$discovered=array();
-if(class_exists('GFAPI')){$gf=\\GFAPI::get_forms();if(is_array($gf)){foreach($gf as $f){$discovered[]=array('form_id'=>(string)($f['id']??''),'form_title'=>$f['title']??'Gravity Form','provider'=>'gravity_forms');}}}
-if(class_exists('WPCF7_ContactForm')){$cf=\\WPCF7_ContactForm::find();if(is_array($cf)){foreach($cf as $f){$discovered[]=array('form_id'=>(string)$f->id(),'form_title'=>$f->title(),'provider'=>'cf7');}}}
-if(function_exists('wpforms')&&isset(wpforms()->form)){$wf=wpforms()->form->get('',array('posts_per_page'=>-1));if(is_array($wf)){foreach($wf as $f){$discovered[]=array('form_id'=>(string)$f->ID,'form_title'=>$f->post_title?:'WPForm','provider'=>'wpforms');}}}
-if(function_exists('Ninja_Forms')){try{$nf=Ninja_Forms()->form()->get_forms();if(is_array($nf)){foreach($nf as $f){$discovered[]=array('form_id'=>(string)$f->get_id(),'form_title'=>$f->get_setting('title')?:'Ninja Form','provider'=>'ninja_forms');}}}catch(\\Exception $e){error_log('[ACTV TRKR] Ninja Forms scan error: '.$e->getMessage());}}
-if(function_exists('wpFluent')){try{$ff=wpFluent()->table('fluentform_forms')->get();if(is_array($ff)||$ff instanceof \\Traversable){foreach($ff as $f){$discovered[]=array('form_id'=>(string)($f->id??''),'form_title'=>$f->title??'Fluent Form','provider'=>'fluent_forms');}}}catch(\\Exception $e){error_log('[ACTV TRKR] Fluent Forms scan error: '.$e->getMessage());}}
-$avada_forms=get_posts(array('post_type'=>'fusion_form','post_status'=>'publish','posts_per_page'=>-1,'fields'=>'ids'));if(is_array($avada_forms)&&!empty($avada_forms)){foreach($avada_forms as $fp){$title=get_the_title($fp)?:'Avada Form';$page_url=self::find_avada_form_page_url($fp);$discovered[]=array('form_id'=>(string)$fp,'form_title'=>$title,'provider'=>'avada','page_url'=>$page_url);}}
-if(empty($discovered)){return array('synced'=>0,'discovered'=>0,'trashed'=>0,'restored'=>0,'plugin_version'=>AT_PLUGIN_VERSION);}
-$opts=AT_Settings::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/sync-forms';$domain=wp_parse_url(home_url(),PHP_URL_HOST);
-$response=wp_remote_post($endpoint,array('timeout'=>15,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode(array('forms'=>$discovered,'domain'=>$domain))));
-if(is_wp_error($response)){error_log('[ACTV TRKR] Form sync error: '.$response->get_error_message());return array('synced'=>0,'discovered'=>count($discovered),'trashed'=>0,'restored'=>0,'error'=>$response->get_error_message(),'plugin_version'=>AT_PLUGIN_VERSION);}
-$body=json_decode(wp_remote_retrieve_body($response),true);$entry_result=self::sync_entry_ids($discovered,$domain,$opts);return array('synced'=>$body['synced']??0,'discovered'=>count($discovered),'trashed'=>$entry_result['trashed']??0,'restored'=>$entry_result['restored']??0,'warnings'=>$entry_result['warnings']??array(),'avada_diagnostics'=>$entry_result['avada_diagnostics']??array(),'plugin_version'=>AT_PLUGIN_VERSION);} 
-private static function find_avada_form_page_url($form_id){$posts=get_posts(array('post_type'=>array('page','post'),'post_status'=>'publish','posts_per_page'=>-1,'fields'=>'ids'));if(!is_array($posts)||empty($posts))return null;$needles=array('form_post_id="'.(string)$form_id.'"',"form_post_id='".(string)$form_id."'",'[fusion_form form_post_id="'.(string)$form_id.'"',"[fusion_form form_post_id='".(string)$form_id."'");foreach($posts as $pid){$content=get_post_field('post_content',$pid);if(empty($content))continue;foreach($needles as $needle){if(stripos($content,$needle)!==false){return get_permalink($pid);}}}return null;}
-public static function sync_entry_ids($discovered,$domain,$opts){$forms_with_entries=array();$avada_diagnostics=array();foreach($discovered as $form_info){$provider=$form_info['provider']??'';$form_id=$form_info['form_id']??'';$page_url=$form_info['page_url']??null;$form_title=$form_info['form_title']??null;if(!$form_id)continue;$entry_ids=self::get_active_entry_ids($provider,$form_id,$page_url,$form_title);if($entry_ids===null)continue;if($provider==='avada'){$diag=array('form_id'=>$form_id,'count'=>0,'strategy'=>self::$last_avada_strategy??'unknown');if(is_array($entry_ids)&&!empty($entry_ids)&&is_array($entry_ids[0])){$diag['count']=count($entry_ids);}elseif(is_array($entry_ids)){$diag['count']=count($entry_ids);}$avada_diagnostics[]=$diag;}if($provider==='avada'&&!empty($entry_ids)&&is_array($entry_ids[0])){$ids=array_map(function($e){return $e['id'];},$entry_ids);$timestamps=array();foreach($entry_ids as $e){$timestamps[$e['id']]=$e['ts'];}$forms_with_entries[]=array('form_id'=>$form_id,'provider'=>$provider,'entry_ids'=>$ids,'entry_timestamps'=>$timestamps);}else{$forms_with_entries[]=array('form_id'=>$form_id,'provider'=>$provider,'entry_ids'=>$entry_ids);}}if(empty($forms_with_entries))return array('trashed'=>0,'restored'=>0,'warnings'=>array(),'avada_diagnostics'=>$avada_diagnostics);$endpoint=rtrim($opts['endpoint_url'],'/').'/sync-entries';$response=wp_remote_post($endpoint,array('timeout'=>30,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain,'forms'=>$forms_with_entries))));if(is_wp_error($response)){error_log('[ACTV TRKR] Entry sync error: '.$response->get_error_message());return array('trashed'=>0,'restored'=>0,'error'=>$response->get_error_message(),'warnings'=>array(),'avada_diagnostics'=>$avada_diagnostics);}$body=json_decode(wp_remote_retrieve_body($response),true);return array('trashed'=>$body['trashed']??0,'restored'=>$body['restored']??0,'warnings'=>$body['warnings']??array(),'avada_diagnostics'=>$avada_diagnostics);}
-private static function get_active_entry_ids($provider,$form_id,$page_url=null,$form_title=null){global $wpdb;switch($provider){case 'gravity_forms':if(!class_exists('GFAPI'))return null;$entries=\GFAPI::get_entries($form_id,array('status'=>'active'),null,array('offset'=>0,'page_size'=>5000));if(!is_array($entries))return array();return array_map(function($e){return (string)($e['id']??'');},$entries);case 'wpforms':if(!function_exists('wpforms')||!isset(wpforms()->entry))return null;$entries=wpforms()->entry->get_entries(array('form_id'=>$form_id));if(!is_array($entries))return array();return array_map(function($e){return (string)$e->entry_id;},$entries);case 'avada':$candidate_tables=array($wpdb->prefix.'fusion_form_submissions',$wpdb->prefix.'fusionbuilder_form_submissions',$wpdb->prefix.'avada_form_submissions',$wpdb->prefix.'fusion_form_entries',$wpdb->prefix.'avada_submissions',$wpdb->prefix.'fusion_submissions');$table=null;foreach($candidate_tables as $ct){if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$ct))===$ct){$table=$ct;break;}}if(!$table){$wildcard_results=$wpdb->get_col("SHOW TABLES LIKE '%fusion%form%'");if(empty($wildcard_results)){$wildcard_results=$wpdb->get_col("SHOW TABLES LIKE '%avada%'");}if(!empty($wildcard_results)){foreach($wildcard_results as $wt){$lw=strtolower($wt);if(strpos($lw,'submission')!==false||strpos($lw,'entry')!==false||strpos($lw,'entries')!==false){$table=$wt;break;}}if(!$table)$table=$wildcard_results[0];}if(!$table){error_log('[ACTV TRKR] Avada: no table found.');self::$last_avada_strategy='no_table';return null;}}error_log('[ACTV TRKR] Avada: using table='.$table.' for form_id='.$form_id);$columns=$wpdb->get_col("SHOW COLUMNS FROM ".$table,0);if(!is_array($columns)||empty($columns)){self::$last_avada_strategy='no_columns';return null;}error_log('[ACTV TRKR] Avada: columns='.implode(',',$columns));$ts_col=null;$ts_cands=array('time','date_time','created_at','submitted_at','date','created','updated_at','timestamp','submit_date','submission_date','date_submitted','submitted_on');foreach($ts_cands as $tc){if(in_array($tc,$columns,true)){$ts_col=$tc;break;}}if(!$ts_col)$ts_col='id';$total_rows=$wpdb->get_var("SELECT COUNT(*) FROM ".$table);error_log('[ACTV TRKR] Avada: table total_rows='.$total_rows.' ts_col='.$ts_col);$form_ref_cands=array('form_id','fusion_form_id','post_id','parent_id','form_post_id','form_ref','source_id','formid','source_form_id','fusion_form');$blob_cands=array('submission','data','fields','form_data','meta','content','submission_data','form_fields','response','payload','entry_data','source_url','page_url','post_url','request_uri','referer','http_referer');$rows=array();$strategy='none';foreach($form_ref_cands as $frc){if(!in_array($frc,$columns,true))continue;$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE ".$frc."=%d ORDER BY id DESC LIMIT 5000",intval($form_id)));if(is_array($rows)&&!empty($rows)){$strategy='form_ref:'.$frc;break;}$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE ".$frc."=%s ORDER BY id DESC LIMIT 5000",(string)$form_id));if(is_array($rows)&&!empty($rows)){$strategy='form_ref_str:'.$frc;break;}}if((!is_array($rows)||empty($rows))&&in_array('form_id',$columns,true)){error_log('[ACTV TRKR] Avada: Layer 0 — resolving WP post ID '.$form_id.' to internal form_id');$form_post=get_post(intval($form_id));if($form_post){$internal_id=get_post_meta(intval($form_id),'form_id',true);if(!$internal_id)$internal_id=get_post_meta(intval($form_id),'_fusion_form_id',true);if(!$internal_id){$content=$form_post->post_content;if(preg_match('/form_id["\\s:=]+["\\x27]?(\\d+)/i',$content,$m)){$internal_id=$m[1];}}error_log('[ACTV TRKR] Avada: post meta internal_id='.($internal_id?:'(none)'));if($internal_id&&$internal_id!==$form_id){$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE form_id=%d ORDER BY id DESC LIMIT 5000",intval($internal_id)));if(is_array($rows)&&!empty($rows)){$strategy='resolved_internal_fid:'.$internal_id;}}if((!is_array($rows)||empty($rows))){$embed_pages=get_posts(array('post_type'=>array('page','post'),'post_status'=>'publish','posts_per_page'=>-1,'fields'=>'ids'));$matching_page_ids=array();$needles=array('form_post_id="'.(string)$form_id.'"',"form_post_id='".(string)$form_id."'",'[fusion_form form_post_id="'.(string)$form_id.'"');foreach($embed_pages as $pid){$pc=get_post_field('post_content',$pid);if(empty($pc))continue;foreach($needles as $needle){if(stripos($pc,$needle)!==false){$matching_page_ids[]=$pid;break;}}}error_log('[ACTV TRKR] Avada: found '.count($matching_page_ids).' pages embedding form '.$form_id);if(!empty($matching_page_ids)&&in_array('post_id',$columns,true)){$ph=implode(',',array_fill(0,count($matching_page_ids),'%d'));$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE post_id IN (".$ph.") ORDER BY id DESC LIMIT 5000",...$matching_page_ids));if(is_array($rows)&&!empty($rows)){$strategy='page_embed_post_id';}else{foreach($matching_page_ids as $mpid){$mp_url=get_permalink($mpid);if(!$mp_url)continue;error_log('[ACTV TRKR] Avada: trying source_url match for page '.$mpid.' url='.$mp_url);if(in_array('source_url',$columns,true)){$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE source_url LIKE %s ORDER BY id DESC LIMIT 5000",'%'.$wpdb->esc_like(rtrim(wp_parse_url($mp_url,PHP_URL_PATH),'/').'/').'%'));if(is_array($rows)&&!empty($rows)){$strategy='page_embed_source_url';break;}}}}}}}}if(!is_array($rows)||empty($rows)){foreach($blob_cands as $bc){if(!in_array($bc,$columns,true))continue;$like='%'.$wpdb->esc_like('"form_id":"'.$form_id.'"').'%';$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE ".$bc." LIKE %s ORDER BY id DESC LIMIT 5000",$like));if(is_array($rows)&&!empty($rows)){$strategy='blob_fid:'.$bc;break;}$like3='%form_id%'.$wpdb->esc_like($form_id).'%';$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE ".$bc." LIKE %s ORDER BY id DESC LIMIT 5000",$like3));if(is_array($rows)&&!empty($rows)){$strategy='blob_fid_loose:'.$bc;break;}}}if((!is_array($rows)||empty($rows))&&!empty($page_url)){$norm=esc_url_raw($page_url);$urls=array_values(array_unique(array_filter(array($norm,rtrim($norm,'/'),trailingslashit($norm)))));foreach($blob_cands as $bc){if(!in_array($bc,$columns,true))continue;foreach($urls as $uc){$like='%'.$wpdb->esc_like($uc).'%';$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE ".$bc." LIKE %s ORDER BY id DESC LIMIT 5000",$like));if(is_array($rows)&&!empty($rows)){$strategy='blob_url:'.$bc;break 2;}}}}if((!is_array($rows)||empty($rows))){$resolved_title=is_string($form_title)&&$form_title!==''?$form_title:get_the_title(intval($form_id));if(is_string($resolved_title)){$resolved_title=trim($resolved_title);}if(!empty($resolved_title)){$name_cands=array('form_name','name','title','form_title');foreach($name_cands as $nc){if(!in_array($nc,$columns,true))continue;$rows=$wpdb->get_results($wpdb->prepare("SELECT id,".$ts_col." AS ts FROM ".$table." WHERE ".$nc." LIKE %s ORDER BY id DESC LIMIT 5000",'%'.$wpdb->esc_like($resolved_title).'%'));if(is_array($rows)&&!empty($rows)){$strategy='name_like:'.$nc;break;}}}}if((!is_array($rows)||empty($rows))){$all_rows=$wpdb->get_results("SELECT * FROM ".$table." ORDER BY id DESC LIMIT 5000",ARRAY_A);$filtered=array();if(is_array($all_rows)&&!empty($all_rows)){$needles=array('"form_id":"'.(string)$form_id.'"','"form_id":'.intval($form_id),'"fusion_form_id":"'.(string)$form_id.'"','"form_post_id":"'.(string)$form_id.'"','"post_id":"'.(string)$form_id.'"');foreach($all_rows as $ar){$match=false;foreach($form_ref_cands as $frc){if(isset($ar[$frc])&&(string)$ar[$frc]===(string)$form_id){$match=true;break;}}if(!$match){$json=wp_json_encode($ar);foreach($needles as $needle){if($needle!==''&&strpos($json,$needle)!==false){$match=true;break;}}}if($match){$filtered[]=(object)array('id'=>$ar['id'],'ts'=>($ar[$ts_col]??null));}}}if(!empty($filtered)){$rows=$filtered;$strategy='small_table_filtered';}}self::$last_avada_strategy=$strategy;if(!is_array($rows)||empty($rows)){error_log('[ACTV TRKR] Avada: form_id='.$form_id.' 0 rows (strategy='.$strategy.' table='.$table.' cols='.implode(',',$columns).' total='.$total_rows.')');return array();}error_log('[ACTV TRKR] Avada: form_id='.$form_id.' '.count($rows).' entries (strategy='.$strategy.')');$result=array();foreach($rows as $r){$result[]=array('id'=>'avada_db_'.$r->id,'ts'=>$r->ts);}return $result;default:return null;}}
-public static function probe_form_pages(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;$pages=get_posts(array('post_type'=>array('page','post'),'post_status'=>'publish','numberposts'=>50));foreach($pages as $p){$url=get_permalink($p);$resp=wp_remote_get($url,array('timeout'=>10));if(is_wp_error($resp))continue;$body=wp_remote_retrieve_body($resp);if(stripos($body,'<form')!==false){$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-form-health';wp_remote_post($endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','x-actvtrkr-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'page_url'=>$url,'is_rendered'=>true))));}}}
-private static function get_tracking_context(){$vid=isset($_COOKIE['at_vid'])?sanitize_text_field($_COOKIE['at_vid']):null;$sid=isset($_COOKIE['at_sid'])?sanitize_text_field($_COOKIE['at_sid']):null;$utm=isset($_COOKIE['at_utm'])?json_decode(stripslashes($_COOKIE['at_utm']),true):array();if(!is_array($utm))$utm=array();return array('domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'referrer'=>wp_get_referer()?:null,'visitor_id'=>$vid,'session_id'=>$sid,'utm'=>$utm,'plugin_version'=>AT_PLUGIN_VERSION);}
-private static function send($payload){$opts=AT_Settings::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-form';$response=wp_remote_post($endpoint,array('timeout'=>10,'blocking'=>true,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$opts['api_key']),'body'=>wp_json_encode($payload)));if(is_wp_error($response)){error_log('[ACTV TRKR] Form send error: '.$response->get_error_message());AT_Retry_Queue::enqueue($endpoint,$opts['api_key'],$payload);}else{$code=wp_remote_retrieve_response_code($response);if($code>=400){error_log('[ACTV TRKR] Form send HTTP '.$code.': '.wp_remote_retrieve_body($response));}}}
-public static function handle_gravity($entry,$form){$fields=array();if(!empty($form['fields'])){foreach($form['fields'] as $field){$fid=$field->id;$value=rgar($entry,(string)$fid);$fields[]=array('id'=>$fid,'name'=>$field->label,'label'=>$field->label,'type'=>$field->type,'value'=>$value);}}self::send(array('provider'=>'gravity_forms','entry'=>array('form_id'=>rgar($entry,'form_id'),'form_title'=>$form['title']??'','entry_id'=>rgar($entry,'id'),'source_url'=>rgar($entry,'source_url'),'submitted_at'=>rgar($entry,'date_created')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
-public static function handle_cf7($cf){$sub=WPCF7_Submission::get_instance();if(!$sub)return;$posted=$sub->get_posted_data();$fields=array();foreach($posted as $k=>$v){if(strpos($k,'_wpcf7')===0)continue;$fields[]=array('name'=>$k,'label'=>$k,'type'=>'text','value'=>is_array($v)?implode(', ',$v):$v);}self::send(array('provider'=>'cf7','entry'=>array('form_id'=>$cf->id(),'form_title'=>$cf->title(),'entry_id'=>'cf7_'.time().'_'.wp_rand(),'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
-public static function handle_wpforms($fields_raw,$entry,$form_data,$entry_id){$fields=array();foreach($fields_raw as $f){$fields[]=array('id'=>$f['id']??'','name'=>$f['name']??'','label'=>$f['name']??'','type'=>$f['type']??'text','value'=>$f['value']??'');}self::send(array('provider'=>'wpforms','entry'=>array('form_id'=>$form_data['id']??'','form_title'=>$form_data['settings']['form_title']??'','entry_id'=>$entry_id,'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
-public static function handle_avada($data,$form_post_id){$fields=array();$skip_keys=array('submission','hidden_field_names','fields_holding_privacy_data','field_labels','field_types','field_keys');if(is_array($data)&&isset($data['data'])&&is_string($data['data'])&&isset($data['field_types'])&&is_string($data['field_types'])){$skip_types=array('submit','notice','html','hidden','captcha','honeypot','section','page','checkbox');$types=array_map('trim',explode(',',$data['field_types']));$labels=isset($data['field_labels'])?array_map('trim',explode(',',$data['field_labels'])):array();$real_types=array();for($ti=0;$ti<count($types);$ti++){if(!in_array(strtolower(trim($types[$ti])),$skip_types,true)){$real_types[]=array('type'=>trim($types[$ti]),'index'=>$ti);}}$remaining=trim($data['data']);$fvals=array();for($fi=0;$fi<count($real_types);$fi++){if($fi===count($real_types)-1){$fvals[]=trim($remaining);}else{$ci=strpos($remaining,', ');if($ci===false){$fvals[]=trim($remaining);$remaining='';}else{$fvals[]=trim(substr($remaining,0,$ci));$remaining=trim(substr($remaining,$ci+2));}}}$idx=0;for($fi=0;$fi<count($real_types);$fi++){$val=$fvals[$fi]??'';if($val===''||strtolower($val)==='array')continue;$rl=$labels[$real_types[$fi]['index']]??'';$label=$rl?:('Field '.($fi+1));$fields[]=array('name'=>$label,'label'=>$label,'type'=>$real_types[$fi]['type'],'value'=>$val);$idx++;}if(empty($fields)){foreach($data as $k=>$v){if(in_array($k,$skip_keys,true))continue;$fields[]=array('name'=>$k,'label'=>$k,'type'=>'text','value'=>is_array($v)?implode(', ',$v):$v);}}}elseif(is_array($data)){foreach($data as $k=>$v){if(in_array($k,$skip_keys,true))continue;$fields[]=array('name'=>$k,'label'=>$k,'type'=>'text','value'=>is_array($v)?implode(', ',$v):$v);}}$title='Avada Form';$p=get_post($form_post_id);if($p){$title=$p->post_title?:$title;}$entry_id=self::get_avada_db_entry_id($form_post_id,$data);self::send(array('provider'=>'avada','entry'=>array('form_id'=>$form_post_id,'form_title'=>$title,'entry_id'=>$entry_id,'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
-private static function get_avada_db_entry_id($form_post_id,$avada_data=array()){global $wpdb;$candidate_tables=array($wpdb->prefix.'fusion_form_submissions',$wpdb->prefix.'fusionbuilder_form_submissions',$wpdb->prefix.'avada_form_submissions');$table=null;foreach($candidate_tables as $ct){if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$ct))===$ct){$table=$ct;break;}}if(!$table)return 'avada_'.time().'_'.wp_rand();if(is_array($avada_data)&&!empty($avada_data['submission'])&&is_string($avada_data['submission'])){$parts=array_map('trim',explode(',',$avada_data['submission']));$submitted_at=$parts[1]??'';if($submitted_at){$row=$wpdb->get_row($wpdb->prepare("SELECT id FROM {$table} WHERE date_time=%s ORDER BY id DESC LIMIT 1",$submitted_at));if($row&&isset($row->id))return 'avada_db_'.$row->id;}}$row=$wpdb->get_row($wpdb->prepare("SELECT id FROM {$table} WHERE form_id=%d ORDER BY id DESC LIMIT 1",intval($form_post_id)));if($row&&isset($row->id))return 'avada_db_'.$row->id;return 'avada_'.time().'_'.wp_rand();}
-public static function handle_ninja($form_data){$fields=array();if(!empty($form_data['fields'])){foreach($form_data['fields'] as $f){$fields[]=array('id'=>$f['id']??'','name'=>$f['key']??$f['label']??'','label'=>$f['label']??'','type'=>$f['type']??'text','value'=>$f['value']??'');}}self::send(array('provider'=>'ninja_forms','entry'=>array('form_id'=>$form_data['form_id']??'','form_title'=>$form_data['settings']['title']??'Ninja Form','entry_id'=>'ninja_'.time().'_'.wp_rand(),'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
-public static function handle_fluent($entry_id,$form_data,$form){$fields=array();if(is_array($form_data)){foreach($form_data as $k=>$v){if(strpos($k,'_fluentform_')===0||$k==='__fluent_form_embded_post_id')continue;$fields[]=array('name'=>$k,'label'=>$k,'type'=>'text','value'=>is_array($v)?implode(', ',$v):$v);}}self::send(array('provider'=>'fluent_forms','entry'=>array('form_id'=>$form->id??'','form_title'=>$form->title??'Fluent Form','entry_id'=>$entry_id,'source_url'=>wp_get_referer()?:home_url(),'submitted_at'=>current_time('c')),'context'=>self::get_tracking_context(),'fields'=>$fields));}
-private static function extract_backfill_fields($row,$columns,$data_table=null){$fields=array();if(!$row)return $fields;if($data_table&&isset($row->id)){global $wpdb;$dcols=$wpdb->get_col("SHOW COLUMNS FROM {$data_table}",0);$sub_key='submission_id';foreach(array('submission_id','entry_id','parent_id','form_submission_id') as $sk){if(in_array($sk,$dcols,true)){$sub_key=$sk;break;}}$data_rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$data_table} WHERE {$sub_key}=%d ORDER BY id ASC",intval($row->id)));if(is_array($data_rows)&&!empty($data_rows)){$skip_types=array('submit','hidden','captcha','honeypot');$idx=0;foreach($data_rows as $dr){$val=isset($dr->value)?$dr->value:(isset($dr->field_value)?$dr->field_value:'');$val=is_scalar($val)?trim((string)$val):wp_json_encode($val);if($val===''||$val==='null')continue;$type=isset($dr->field_type)?$dr->field_type:(isset($dr->type)?$dr->type:'text');if(in_array(strtolower($type),$skip_types,true))continue;$label=isset($dr->field_label)?$dr->field_label:(isset($dr->label)?$dr->label:(isset($dr->field_id)?$dr->field_id:('Field '.($idx+1))));$fields[]=array('id'=>$idx,'name'=>(string)$label,'label'=>(string)$label,'type'=>$type,'value'=>$val);$idx++;}if(!empty($fields))return $fields;}}if(empty($fields)&&isset($row->id)){global $wpdb;$et_cands=array($wpdb->prefix.'fusion_form_entries',$wpdb->prefix.'fusionbuilder_form_entries',$wpdb->prefix.'avada_form_entries',$wpdb->prefix.'fusion_form_submission_data',$wpdb->prefix.'fusionbuilder_form_submission_data',$wpdb->prefix.'avada_form_submission_data');foreach($et_cands as $et){if($data_table&&$et===$data_table)continue;if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$et))!==$et)continue;$ecols=$wpdb->get_col("SHOW COLUMNS FROM {$et}",0);$ekey='submission_id';foreach(array('submission_id','entry_id','parent_id','form_submission_id') as $ek){if(in_array($ek,$ecols,true)){$ekey=$ek;break;}}$erows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$et} WHERE {$ekey}=%d ORDER BY id ASC",intval($row->id)));if(!is_array($erows)||empty($erows))continue;$eskip=array('submit','hidden','captcha','honeypot');$eidx=0;foreach($erows as $er){$eval=isset($er->value)?$er->value:(isset($er->field_value)?$er->field_value:'');$eval=is_scalar($eval)?trim((string)$eval):wp_json_encode($eval);if($eval===''||$eval==='null')continue;$etype=isset($er->field_type)?$er->field_type:(isset($er->type)?$er->type:'text');if(in_array(strtolower($etype),$eskip,true))continue;$elabel=isset($er->field_label)?$er->field_label:(isset($er->label)?$er->label:(isset($er->field_id)?$er->field_id:('Field '.($eidx+1))));$fields[]=array('id'=>$eidx,'name'=>(string)$elabel,'label'=>(string)$elabel,'type'=>$etype,'value'=>$eval);$eidx++;}if(!empty($fields))return $fields;}}$raw_payload='';foreach(array('submission','data','fields','form_data','payload','entry_data','serialized_data','content','meta') as $pc){if(!in_array($pc,$columns,true))continue;if(!isset($row->$pc)||$row->$pc===null||$row->$pc==='')continue;$raw_payload=is_scalar($row->$pc)?(string)$row->$pc:wp_json_encode($row->$pc);if($raw_payload!=='')break;}if($raw_payload===''){foreach($columns as $pc){if(in_array($pc,array('id','form_id','fusion_form_id','post_id','parent_id','form_post_id','source_url','created_at','updated_at','date_time','submitted_at','date','created','ip_address','user_id','is_read','time'),true))continue;if(!isset($row->$pc)||$row->$pc===null||$row->$pc==='')continue;$candidate=is_scalar($row->$pc)?(string)$row->$pc:wp_json_encode($row->$pc);if($candidate!==''){$raw_payload=$candidate;break;}}}if($raw_payload==='')return $fields;$decoded=json_decode($raw_payload,true);if(!is_array($decoded)){$maybe=@maybe_unserialize($raw_payload);if(is_array($maybe)){$decoded=$maybe;}}if(!is_array($decoded))return $fields;$skip_meta=array('submission','hidden_field_names','fields_holding_privacy_data','field_labels','field_types','field_keys','form_id','form_post_id','entry_id');if(isset($decoded['data'])&&is_string($decoded['data'])&&isset($decoded['field_types'])&&is_string($decoded['field_types'])){$skip_types=array('submit','notice','html','hidden','captcha','honeypot','section','page','checkbox');$types=array_map('trim',explode(',',$decoded['field_types']));$labels=isset($decoded['field_labels'])?array_map('trim',explode(',',$decoded['field_labels'])):array();$real_types=array();for($ti=0;$ti<count($types);$ti++){if(!in_array(strtolower(trim($types[$ti])),$skip_types,true)){$real_types[]=array('type'=>trim($types[$ti]),'index'=>$ti);}}$remaining=trim($decoded['data']);$fvals=array();for($fi=0;$fi<count($real_types);$fi++){if($fi===count($real_types)-1){$fvals[]=trim($remaining);}else{$ci=strpos($remaining,', ');if($ci===false){$fvals[]=trim($remaining);$remaining='';}else{$fvals[]=trim(substr($remaining,0,$ci));$remaining=trim(substr($remaining,$ci+2));}}}$idx=0;for($fi=0;$fi<count($real_types);$fi++){$val=$fvals[$fi]??'';if($val===''||strtolower($val)==='array')continue;$rl=$labels[$real_types[$fi]['index']]??'';$label=$rl?:('Field '.($fi+1));$fields[]=array('id'=>$idx,'name'=>$label,'label'=>$label,'type'=>$real_types[$fi]['type'],'value'=>$val);$idx++;}}else{if(isset($decoded['data'])&&is_array($decoded['data'])){$decoded=$decoded['data'];}$idx=0;foreach($decoded as $key=>$value){if(in_array((string)$key,$skip_meta,true))continue;if(is_array($value)&&isset($value['value'])){$value=$value['value'];}$vs=is_array($value)?wp_json_encode($value):trim((string)$value);if($vs===''||strtolower($vs)==='array'||strtolower($vs)==='null')continue;$fields[]=array('id'=>$idx,'name'=>(string)$key,'label'=>(string)$key,'type'=>'text','value'=>$vs);$idx++;}}return $fields;}
-public static function handle_rest_avada_debug($request){$opts=AT_Settings::get();if(empty($opts['api_key'])){return new \\WP_REST_Response(array('error'=>'Plugin not configured'),400);}$body=$request->get_json_params();$key_hash=$body['key_hash']??'';$stored_hash=hash('sha256',$opts['api_key']);if(!$key_hash||!hash_equals($stored_hash,$key_hash)){return new \\WP_REST_Response(array('error'=>'Unauthorized'),403);}global $wpdb;$candidate_tables=array($wpdb->prefix.'fusion_form_submissions',$wpdb->prefix.'fusionbuilder_form_submissions',$wpdb->prefix.'avada_form_submissions');$table=null;foreach($candidate_tables as $ct){if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$ct))===$ct){$table=$ct;break;}}if(!$table){return new \\WP_REST_Response(array('ok'=>false,'error'=>'No Avada submission table found','tried'=>$candidate_tables),200);}$columns=$wpdb->get_col("SHOW COLUMNS FROM {$table}",0);$total=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$table}");$sample_rows=$wpdb->get_results("SELECT * FROM {$table} ORDER BY id DESC LIMIT 3");$samples=array();if(is_array($sample_rows)){foreach($sample_rows as $row){$row_data=array();foreach((array)$row as $col=>$val){if(is_string($val)&&strlen($val)>500){$row_data[$col]=substr($val,0,500).'... [truncated, total '.strlen($val).' chars]';}else{$row_data[$col]=$val;}}$samples[]=$row_data;}}$parser_result=array();if(!empty($sample_rows)){$parser_result=self::extract_backfill_fields($sample_rows[0],$columns);}$form_summary=$wpdb->get_results("SELECT form_id, COUNT(*) as cnt, MIN(id) as min_id, MAX(id) as max_id FROM {$table} GROUP BY form_id ORDER BY form_id");$avada_posts=get_posts(array('post_type'=>'fusion_form','post_status'=>'publish','posts_per_page'=>-1));$form_posts=array();foreach($avada_posts as $ap){$meta=get_post_meta($ap->ID);$form_posts[]=array('wp_post_id'=>$ap->ID,'title'=>$ap->post_title,'slug'=>$ap->post_name,'meta_keys'=>array_keys($meta),'form_id_meta'=>isset($meta['form_id'])?$meta['form_id'][0]:null,'_fusion_form_id'=>isset($meta['_fusion_form_id'])?$meta['_fusion_form_id'][0]:null);}$data_table=null;$data_cands=array($wpdb->prefix.'fusion_form_submission_data',$wpdb->prefix.'fusionbuilder_form_submission_data',$wpdb->prefix.'avada_form_submission_data',$wpdb->prefix.'fusion_form_entries',$wpdb->prefix.'fusionbuilder_form_entries',$wpdb->prefix.'avada_form_entries');foreach($data_cands as $dc){if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$dc))===$dc){$data_table=$dc;break;}}$data_table_info=null;if($data_table){$data_cols=$wpdb->get_col("SHOW COLUMNS FROM {$data_table}",0);$data_total=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$data_table}");$data_sample=$wpdb->get_results("SELECT * FROM {$data_table} ORDER BY id DESC LIMIT 5");$data_table_info=array('table'=>$data_table,'columns'=>$data_cols,'total'=>$data_total,'samples'=>$data_sample);}$entries_table=null;$entries_cands=array($wpdb->prefix.'fusion_form_entries',$wpdb->prefix.'fusionbuilder_form_entries',$wpdb->prefix.'avada_form_entries');foreach($entries_cands as $ec){if($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s",$ec))===$ec){$entries_table=$ec;break;}}$entries_info=null;if($entries_table){$entries_cols=$wpdb->get_col("SHOW COLUMNS FROM {$entries_table}",0);$entries_total=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$entries_table}");$entries_sample=$wpdb->get_results("SELECT * FROM {$entries_table} ORDER BY id DESC LIMIT 3");$entries_info=array('table'=>$entries_table,'columns'=>$entries_cols,'total'=>$entries_total,'samples'=>$entries_sample);}return new \\WP_REST_Response(array('ok'=>true,'table'=>$table,'columns'=>$columns,'total_rows'=>$total,'sample_rows'=>$samples,'parser_output'=>$parser_result,'form_summary'=>$form_summary,'form_posts'=>$form_posts,'data_table_info'=>$data_table_info,'entries_table_info'=>$entries_info,'plugin_version'=>AT_PLUGIN_VERSION),200);}
-}`, 
-
-    "actv-trkr/includes/class-retry-queue.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Retry_Queue{
-const TABLE='at_retry_queue';const MAX_ATTEMPTS=5;
-public static function table_name(){global $wpdb;return $wpdb->prefix.self::TABLE;}
-public static function create_table(){global $wpdb;$table=self::table_name();$charset=$wpdb->get_charset_collate();$sql="CREATE TABLE IF NOT EXISTS {$table}(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,endpoint VARCHAR(500) NOT NULL,api_key VARCHAR(500) NOT NULL,payload LONGTEXT NOT NULL,attempts TINYINT UNSIGNED DEFAULT 0,last_error TEXT NULL,created_at DATETIME DEFAULT CURRENT_TIMESTAMP,next_retry_at DATETIME DEFAULT CURRENT_TIMESTAMP) {$charset};";require_once ABSPATH.'wp-admin/includes/upgrade.php';dbDelta($sql);}
-public static function enqueue($endpoint,$api_key,$payload){global $wpdb;$wpdb->insert(self::table_name(),array('endpoint'=>$endpoint,'api_key'=>$api_key,'payload'=>wp_json_encode($payload)));}
-public static function process(){global $wpdb;$table=self::table_name();$now=current_time('mysql');$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE attempts < %d AND next_retry_at <= %s ORDER BY created_at ASC LIMIT 20",self::MAX_ATTEMPTS,$now));foreach($rows as $row){$response=wp_remote_post($row->endpoint,array('timeout'=>15,'headers'=>array('Content-Type'=>'application/json','Authorization'=>'Bearer '.$row->api_key),'body'=>$row->payload));$code=is_wp_error($response)?0:wp_remote_retrieve_response_code($response);if($code>=200&&$code<300){$wpdb->delete($table,array('id'=>$row->id));}else{$attempts=(int)$row->attempts+1;$error=is_wp_error($response)?$response->get_error_message():'HTTP '.$code;$delay=min(pow(2,$attempts)*60,3600);$next=gmdate('Y-m-d H:i:s',time()+$delay);$wpdb->update($table,array('attempts'=>$attempts,'last_error'=>$error,'next_retry_at'=>$next),array('id'=>$row->id));}}$wpdb->query($wpdb->prepare("DELETE FROM {$table} WHERE attempts >= %d",self::MAX_ATTEMPTS));}
-}`,
-
-    "actv-trkr/includes/class-updater.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Updater{
-const SLUG='actv-trkr/actv-trkr.php';const TRANSIENT='at_update_data';const CHECK_HOURS=1;
-public static function init(){add_filter('pre_set_site_transient_update_plugins',array(__CLASS__,'check_update'));add_filter('plugins_api',array(__CLASS__,'plugin_info'),20,3);add_filter('plugin_row_meta',array(__CLASS__,'row_meta'),10,2);add_action('load-plugins.php',array(__CLASS__,'force_check'));add_action('load-options-general.php',array(__CLASS__,'force_check'));}
-public static function force_check(){delete_transient(self::TRANSIENT);}
-private static function endpoint(){$opts=AT_Settings::get();return rtrim($opts['endpoint_url'],'/').'/plugin-update-check';}
-public static function check_update($transient){if(empty($transient->checked))return $transient;$remote=self::get_remote_data();if(!$remote||empty($remote['has_update']))return $transient;$package=!empty($remote['download_url'])?$remote['download_url']:'';$transient->response[self::SLUG]=(object)array('slug'=>'actv-trkr','plugin'=>self::SLUG,'new_version'=>$remote['version'],'url'=>'https://actvtrkr.com','package'=>$package,'icons'=>array(),'banners'=>array(),'tested'=>$remote['tested_wp']??'6.7','requires'=>$remote['requires_wp']??'5.8');return $transient;}
-public static function plugin_info($result,$action,$args){if($action!=='plugin_information')return $result;if(!isset($args->slug)||$args->slug!=='actv-trkr')return $result;$remote=self::get_remote_info();if(!$remote)return $result;$info=new stdClass();$info->name=$remote['name']??'ACTV TRKR';$info->slug='actv-trkr';$info->version=$remote['version']??AT_PLUGIN_VERSION;$info->author=$remote['author']??'ACTV TRKR';$info->homepage=$remote['homepage']??'https://actvtrkr.com';$info->requires=$remote['requires']??'5.8';$info->tested=$remote['tested']??'6.7';$info->requires_php=$remote['requires_php']??'7.4';$info->download_link=$remote['download_url']??'';$info->sections=array('description'=>$remote['sections']['description']??'','changelog'=>nl2br(esc_html($remote['sections']['changelog']??'')));return $info;}
-public static function row_meta($links,$file){if($file!==self::SLUG)return $links;$links[]='<a href="'.esc_url(admin_url('options-general.php?page=actv-trkr')).'">Settings</a>';return $links;}
-private static function get_remote_data(){$cached=get_transient(self::TRANSIENT);if($cached!==false)return $cached;$domain=wp_parse_url(home_url(),PHP_URL_HOST);$url=self::endpoint().'?'.http_build_query(array('action'=>'check','version'=>AT_PLUGIN_VERSION,'domain'=>$domain));$response=wp_remote_get($url,array('timeout'=>10));if(is_wp_error($response))return null;$body=json_decode(wp_remote_retrieve_body($response),true);if(!is_array($body))return null;set_transient(self::TRANSIENT,$body,self::CHECK_HOURS*HOUR_IN_SECONDS);return $body;}
-private static function get_remote_info(){$url=self::endpoint().'?action=info';$response=wp_remote_get($url,array('timeout'=>10));if(is_wp_error($response))return null;return json_decode(wp_remote_retrieve_body($response),true);}
-}`,
-
-    "actv-trkr/includes/class-gravity.php": `<?php
-if(!defined('ABSPATH'))exit;
-// DEPRECATED: Form capture is now handled by class-forms.php.
-`,
-
-    "actv-trkr/assets/tracker.js": `(function(){'use strict';if(typeof window==='undefined'||typeof document==='undefined')return;if(!window.atConfig)return;var CFG=window.atConfig;var COOKIE_VID='at_vid';var COOKIE_SID='at_sid';var COOKIE_UTM='at_utm';var COOKIE_TS='at_ts';var SESSION_TIMEOUT=30*60*1000;var HEARTBEAT_INTERVAL=30000;var MAX_EVENTS_PER_SESSION=200;
-function setCookie(n,v,d){var e=new Date();e.setTime(e.getTime()+d*864e5);document.cookie=n+'='+encodeURIComponent(v)+';expires='+e.toUTCString()+';path=/;SameSite=Lax';}
-function getCookie(n){var v=document.cookie.match('(^|;)\\\\s*'+n+'=([^;]*)');return v?decodeURIComponent(v[2]):null;}
-function uuid(){if(crypto&&crypto.randomUUID)return crypto.randomUUID();return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=(Math.random()*16)|0;return(c==='x'?r:(r&0x3)|0x8).toString(16);});}
-function getUtms(){var p=new URLSearchParams(window.location.search);var keys=['utm_source','utm_medium','utm_campaign','utm_term','utm_content'];var out={};var f=false;keys.forEach(function(k){var v=p.get(k);if(v){out[k]=v;f=true;}});return f?out:null;}
-function storedUtms(){var r=getCookie(COOKIE_UTM);if(!r)return{};try{return JSON.parse(r);}catch(e){return{};}}
-function utmsChanged(nu){if(!nu)return false;var old=storedUtms();return['utm_source','utm_medium','utm_campaign'].some(function(k){return(nu[k]||'')!==(old[k]||'');});}
-function resolveSession(urlUtms){var sid=getCookie(COOKIE_SID);var lastTs=parseInt(getCookie(COOKIE_TS)||'0',10);var now=Date.now();var expired=!sid||!lastTs||(now-lastTs>SESSION_TIMEOUT);var utmSwitch=urlUtms&&utmsChanged(urlUtms);if(expired||utmSwitch){sid=uuid();}setCookie(COOKIE_SID,sid,1);setCookie(COOKIE_TS,String(now),1);return sid;}
-function deviceType(){var w=window.innerWidth;if(w<768)return'mobile';if(w<1024)return'tablet';return'desktop';}
-function send(endpoint,payload){var body=JSON.stringify(payload);fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}
-function sendBeaconSafe(endpoint,payload){var body=JSON.stringify(payload);try{if(navigator.sendBeacon){navigator.sendBeacon(endpoint,new Blob([body],{type:'application/json'}));}else{var xhr=new XMLHttpRequest();xhr.open('POST',endpoint,false);xhr.setRequestHeader('Content-Type','application/json');xhr.setRequestHeader('Authorization','Bearer '+CFG.apiKey);xhr.send(body);}}catch(e){}}
-var pageTimer={startedAt:null,activeMs:0,lastResumeAt:null,isActive:true,eventId:null,heartbeatTimer:null,start:function(eventId){this.eventId=eventId;this.startedAt=Date.now();this.lastResumeAt=Date.now();this.activeMs=0;this.isActive=true;this.startHeartbeat();},pause:function(){if(this.isActive&&this.lastResumeAt){this.activeMs+=Date.now()-this.lastResumeAt;this.isActive=false;}},resume:function(){if(!this.isActive){this.lastResumeAt=Date.now();this.isActive=true;}},getActiveSeconds:function(){var total=this.activeMs;if(this.isActive&&this.lastResumeAt){total+=Date.now()-this.lastResumeAt;}return Math.round(total/1000);},startHeartbeat:function(){var self=this;this.heartbeatTimer=setInterval(function(){if(self.isActive){self.sendTimeUpdate();}},HEARTBEAT_INTERVAL);},sendTimeUpdate:function(){if(!this.eventId)return;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);send(CFG.endpoint,{type:'time_update',api_key:CFG.apiKey,source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:this.eventId,session_id:sid,active_seconds:this.getActiveSeconds()},visitor:{visitor_id:vid}});},sendFinal:function(){if(!this.eventId)return;clearInterval(this.heartbeatTimer);var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);sendBeaconSafe(CFG.endpoint,{type:'time_update',api_key:CFG.apiKey,source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:this.eventId,session_id:sid,active_seconds:this.getActiveSeconds()},visitor:{visitor_id:vid}});}};
-document.addEventListener('visibilitychange',function(){if(document.hidden){pageTimer.pause();}else{pageTimer.resume();}});
-window.addEventListener('beforeunload',function(){pageTimer.sendFinal();flushEventBatch();});
-var eventBatch=[];var sessionEventCount=0;var batchTimer=null;
-var DOWNLOAD_EXTENSIONS=/\\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|csv|txt|rtf|mp3|mp4|avi|mov|epub)$/i;
-var CTA_CLASS_PATTERN=/\\b(btn|button|cta|book)\\b/i;
-function getActvLabel(el){if(!el||!el.getAttribute)return null;return el.getAttribute('data-actv-label')||null;}
-function classifyClick(el){if(!el)return null;var target=el;for(var i=0;i<5&&target;i++){var tag=(target.tagName||'').toLowerCase();if(target.getAttribute&&target.getAttribute('data-actv')==='cta'){return{type:'cta_click',text:getClickText(target),label:getActvLabel(target),el:target};}if(tag==='a'){var href=target.getAttribute('href')||'';if(href.indexOf('tel:')===0){return{type:'tel_click',text:href.replace('tel:',''),label:getActvLabel(target),el:target};}if(href.indexOf('mailto:')===0){return{type:'mailto_click',text:href.replace('mailto:',''),label:getActvLabel(target),el:target};}if(DOWNLOAD_EXTENSIONS.test(href)){return{type:'download_click',text:getClickText(target)||href.split('/').pop(),label:getActvLabel(target),el:target};}var classes=target.className||'';var isCta=(typeof classes==='string'&&CTA_CLASS_PATTERN.test(classes))||target.getAttribute('role')==='button';if(isCta){return{type:'cta_click',text:getClickText(target),label:getActvLabel(target),el:target};}try{var linkHost=new URL(href,window.location.origin).hostname;if(linkHost&&linkHost!==window.location.hostname){return{type:'outbound_click',text:getClickText(target)||linkHost,label:getActvLabel(target),el:target};}}catch(e){}}if(tag==='button'||(target.getAttribute&&target.getAttribute('role')==='button')){var inForm=target.closest&&target.closest('form');var btnType=(target.getAttribute('type')||'').toLowerCase();if(!inForm||btnType!=='submit'){return{type:'cta_click',text:getClickText(target),label:getActvLabel(target),el:target};}}target=target.parentElement;}return null;}
-function getClickText(el){var label=getActvLabel(el);if(label)return label;var text=(el.innerText||el.textContent||'').trim();if(text.length>100)text=text.substring(0,100);return text||el.getAttribute('aria-label')||el.getAttribute('title')||'';}
-function trackClick(e){if(sessionEventCount>=MAX_EVENTS_PER_SESSION)return;var result=classifyClick(e.target);if(!result)return;sessionEventCount++;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);var evt={event_type:result.type,target_text:result.text,page_url:window.location.href,page_path:window.location.pathname,timestamp:new Date().toISOString(),session_id:sid,visitor_id:vid};if(result.label){evt.target_label=result.label;}var href=(result.el&&result.el.getAttribute)?(result.el.getAttribute('href')||''):'';if(href){try{evt.target_href=new URL(href,window.location.origin).href;}catch(e){evt.target_href=href;}}eventBatch.push(evt);if(!batchTimer){batchTimer=setTimeout(flushEventBatch,HEARTBEAT_INTERVAL);}}
-function flushEventBatch(){clearTimeout(batchTimer);batchTimer=null;if(eventBatch.length===0)return;var events=eventBatch.splice(0);var eventEndpoint=CFG.endpoint.replace(/\\/track-pageview$/,'/track-event');send(eventEndpoint,{api_key:CFG.apiKey,source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},events:events});}
-function trackFormFocus(e){if(sessionEventCount>=MAX_EVENTS_PER_SESSION)return;var el=e.target;if(!el||!el.closest)return;var form=el.closest('form');if(!form)return;if(form._atFormStarted)return;form._atFormStarted=true;sessionEventCount++;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);eventBatch.push({event_type:'form_start',target_text:form.getAttribute('data-form-title')||form.getAttribute('aria-label')||form.getAttribute('id')||'form',page_url:window.location.href,page_path:window.location.pathname,timestamp:new Date().toISOString(),session_id:sid,visitor_id:vid});if(!batchTimer){batchTimer=setTimeout(flushEventBatch,HEARTBEAT_INTERVAL);}}
-document.addEventListener('click',trackClick,true);document.addEventListener('focusin',trackFormFocus,true);
-function track(){var vid=getCookie(COOKIE_VID);if(!vid){vid=uuid();setCookie(COOKIE_VID,vid,365);}var urlUtms=getUtms();if(urlUtms){setCookie(COOKIE_UTM,JSON.stringify(urlUtms),30);}var sid=resolveSession(urlUtms);var attribution=Object.assign({},storedUtms(),urlUtms||{});var eventId=uuid();pageTimer.start(eventId);send(CFG.endpoint,{source:{domain:CFG.domain,type:'wordpress',plugin_version:CFG.pluginVersion},event:{event_id:eventId,session_id:sid,page_url:window.location.href,page_path:window.location.pathname,title:document.title,referrer:document.referrer||null,device:deviceType(),occurred_at:new Date().toISOString()},attribution:attribution,visitor:{visitor_id:vid}});}
-var SKIP_NAMES=['_wpnonce','_wp_http_referer','_wpcf7','_wpcf7_version','_wpcf7_locale','_wpcf7_unit_tag','_wpcf7_container_post','action','gform_ajax','gform_field_values','is_submit','gform_submit','gform_unique_id','gform_target_page_number','gform_source_page_number'];
-var SKIP_PAT=[/^_/,/nonce/i,/token/i,/csrf/i,/captcha/i,/^g-recaptcha/,/^h-captcha/,/^cf-turnstile/];
-var SENS_PAT=[/password/i,/passwd/i,/cc[-_]?num/i,/card[-_]?number/i,/cvv/i,/cvc/i,/ssn/i,/social[-_]?security/i,/credit[-_]?card/i];
-function skipField(n,t){if(!n)return true;if(t==='password'||t==='hidden')return true;if(SKIP_NAMES.indexOf(n)!==-1)return true;for(var i=0;i<SKIP_PAT.length;i++){if(SKIP_PAT[i].test(n))return true;}return false;}
-function isSens(n){for(var i=0;i<SENS_PAT.length;i++){if(SENS_PAT[i].test(n))return true;}return false;}
-function captureForm(form){var fields=[];var els=form.elements;var seen={};for(var i=0;i<els.length;i++){var el=els[i];var name=el.name||el.id||'';var type=(el.type||'text').toLowerCase();if(skipField(name,type))continue;if(seen[name])continue;var value='';if(type==='checkbox'){var chk=form.querySelectorAll('input[name="'+name+'"]:checked');var vals=[];for(var j=0;j<chk.length;j++)vals.push(chk[j].value);value=vals.join(', ');}else if(type==='radio'){var sel=form.querySelector('input[name="'+name+'"]:checked');value=sel?sel.value:'';}else if(el.tagName==='SELECT'){var opts=el.selectedOptions||[];var sv=[];for(var k=0;k<opts.length;k++)sv.push(opts[k].value);value=sv.join(', ');}else{value=el.value||'';}seen[name]=true;if(isSens(name)){value='[REDACTED]';}if(value===''&&type!=='checkbox')continue;fields.push({name:name,label:el.getAttribute('aria-label')||el.getAttribute('placeholder')||name,type:type,value:value});}return fields;}
-document.addEventListener('submit',function(e){var form=e.target;if(!form||form.tagName!=='FORM')return;if(form.getAttribute('data-at-ignore')==='true')return;var role=form.getAttribute('role');if(role==='search')return;var action=(form.getAttribute('action')||'').toLowerCase();if(action.indexOf('wp-login')!==-1||action.indexOf('wp-admin')!==-1)return;var fields=captureForm(form);if(fields.length===0)return;var vid=getCookie(COOKIE_VID);var sid=getCookie(COOKIE_SID);var formEndpoint=CFG.endpoint.replace(/\\/track-pageview$/,'/ingest-form');send(formEndpoint,{provider:'js_capture',entry:{form_id:form.getAttribute('id')||form.getAttribute('data-form-id')||'dom_form',form_title:form.getAttribute('data-form-title')||form.getAttribute('aria-label')||document.title,entry_id:'js_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),source_url:window.location.href,page_url:window.location.href,submitted_at:new Date().toISOString()},context:{domain:CFG.domain,referrer:document.referrer||null,visitor_id:vid,session_id:sid,utm:storedUtms(),plugin_version:CFG.pluginVersion},fields:fields});},true);
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',track);}else{track();}})();`,
-
-    "actv-trkr/includes/class-heartbeat.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Heartbeat{
-public static function init(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;if(empty($opts['enable_heartbeat'])||$opts['enable_heartbeat']!=='1')return;add_action('wp_enqueue_scripts',array(__CLASS__,'enqueue_beacon'));}
-public static function enqueue_beacon(){if(is_admin())return;$opts=AT_Settings::get();wp_enqueue_script('at-heartbeat',AT_PLUGIN_URL.'assets/heartbeat.js',array(),AT_PLUGIN_VERSION,true);wp_localize_script('at-heartbeat','atHeartbeat',array('endpoint'=>rtrim($opts['endpoint_url'],'/').'/ingest-heartbeat','apiKey'=>$opts['api_key'],'domain'=>wp_parse_url(home_url(),PHP_URL_HOST),'interval'=>60000));}
-public static function send_cron_heartbeat(){$opts=AT_Settings::get();if(empty($opts['api_key']))return;if(empty($opts['enable_heartbeat'])||$opts['enable_heartbeat']!=='1')return;$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-heartbeat';$domain=wp_parse_url(home_url(),PHP_URL_HOST);wp_remote_post($endpoint,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','x-actvtrkr-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain,'source'=>'cron','meta'=>array('php_version'=>PHP_VERSION,'wp_version'=>get_bloginfo('version'))))));}
-}`,
-
-    "actv-trkr/includes/class-broken-links.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Broken_Links{
-const MAX_PAGES=200;
-public static function init(){add_action('wp_ajax_at_scan_broken_links',array(__CLASS__,'ajax_scan'));add_action('at_broken_links_cron',array(__CLASS__,'scan_and_report'));if(!wp_next_scheduled('at_broken_links_cron')){wp_schedule_event(time(),'weekly','at_broken_links_cron');}}
-public static function ajax_scan(){check_ajax_referer('at_scan_links','_wpnonce');if(!current_user_can('manage_options')){wp_send_json_error('Unauthorized');}$result=self::scan_and_report();if(isset($result['error'])){wp_send_json_error($result['error']);}wp_send_json_success($result);}
-public static function scan_and_report(){$pages=self::get_pages_from_sitemap();if(empty($pages)){$pages=self::get_pages_from_db();}$broken=array();$checked=0;foreach(array_slice($pages,0,self::MAX_PAGES) as $page_url){$response=wp_remote_get($page_url,array('timeout'=>10,'redirection'=>3));if(is_wp_error($response))continue;$body=wp_remote_retrieve_body($response);if(empty($body))continue;$links=self::extract_links($body,$page_url);$checked++;foreach($links as $link){$link_resp=wp_remote_head($link,array('timeout'=>5,'redirection'=>3));if(is_wp_error($link_resp)){$broken[]=array('source_page'=>$page_url,'broken_url'=>$link,'status_code'=>0);continue;}$code=wp_remote_retrieve_response_code($link_resp);if($code>=400){$broken[]=array('source_page'=>$page_url,'broken_url'=>$link,'status_code'=>$code);}}}if(empty($broken)){return array('pages_checked'=>$checked,'broken_found'=>0);}$opts=AT_Settings::get();$endpoint=rtrim($opts['endpoint_url'],'/').'/ingest-broken-links';$domain=wp_parse_url(home_url(),PHP_URL_HOST);wp_remote_post($endpoint,array('timeout'=>30,'headers'=>array('Content-Type'=>'application/json','x-actvtrkr-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain,'links'=>$broken))));return array('pages_checked'=>$checked,'broken_found'=>count($broken));}
-private static function get_pages_from_sitemap(){$sitemap_url=home_url('/sitemap.xml');$response=wp_remote_get($sitemap_url,array('timeout'=>10));if(is_wp_error($response))return array();$body=wp_remote_retrieve_body($response);preg_match_all('/<loc>(.*?)<\\/loc>/',$body,$matches);return $matches[1]??array();}
-private static function get_pages_from_db(){$posts=get_posts(array('post_type'=>array('page','post'),'post_status'=>'publish','numberposts'=>self::MAX_PAGES));return array_map(function($p){return get_permalink($p);},$posts);}
-private static function extract_links($html,$page_url){$host=wp_parse_url(home_url(),PHP_URL_HOST);preg_match_all('/href=["\\x27]([^"\\x27]+)["\\x27]/',$html,$matches);$links=array();foreach($matches[1] as $href){if(strpos($href,'#')===0||strpos($href,'mailto:')===0||strpos($href,'tel:')===0)continue;if(strpos($href,'javascript:')===0)continue;if(strpos($href,'/')===0){$href=home_url($href);}$link_host=wp_parse_url($href,PHP_URL_HOST);if($link_host&&$link_host!==$host)continue;$links[]=$href;}return array_unique(array_slice($links,0,50));}
-}`,
-
-    "actv-trkr/includes/class-seo-fixes.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_SEO_Fixes{
-const META_TITLE='_at_seo_title';const META_DESC='_at_seo_description';const META_CANONICAL='_at_seo_canonical';const META_OG='_at_seo_og';
-private static $seo_plugins=array('wordpress-seo/wp-seo.php','seo-by-rank-math/rank-math.php','all-in-one-seo-pack/all_in_one_seo_pack.php');
-public static function init(){add_action('at_seo_fix_cron',array(__CLASS__,'poll_fixes'));add_action('wp_head',array(__CLASS__,'output_meta'),1);add_filter('pre_get_document_title',array(__CLASS__,'filter_title'),999);add_filter('document_title_parts',array(__CLASS__,'filter_title_parts'),999);add_action('wp',array(__CLASS__,'maybe_remove_canonical'));add_action('shutdown',array(__CLASS__,'maybe_fallback_poll'));}
-public static function maybe_fallback_poll(){if(get_transient('at_seo_last_poll'))return;$next=wp_next_scheduled('at_seo_fix_cron');if($next&&$next>time())return;self::poll_fixes();}
-public static function poll_fixes(){set_transient('at_seo_last_poll',time(),5*MINUTE_IN_SECONDS);$opts=AT_Settings::get();if(empty($opts['api_key'])||empty($opts['endpoint_url']))return;$domain=wp_parse_url(home_url(),PHP_URL_HOST);$domain=preg_replace('/^www\\\\./','',$domain);$endpoint=rtrim($opts['endpoint_url'],'/');$base=preg_replace('#/functions/v1$#','',$endpoint);$response=wp_remote_post($base.'/functions/v1/seo-fix-poll',array('headers'=>array('Content-Type'=>'application/json','x-api-key'=>$opts['api_key']),'body'=>wp_json_encode(array('domain'=>$domain)),'timeout'=>15));if(is_wp_error($response))return;$body=json_decode(wp_remote_retrieve_body($response),true);if(empty($body['fixes'])||!is_array($body['fixes']))return;foreach($body['fixes'] as $fix){self::apply_fix($fix,$opts['api_key'],$base);}}
-private static function apply_fix($fix,$api_key,$api_url){$fix_id=$fix['id']??'';$page_url=$fix['page_url']??'';$type=$fix['fix_type']??'';$value=$fix['fix_value']??'';if(!$fix_id||!$page_url||!$type)return;if(self::has_seo_plugin()&&in_array($type,array('set_title','set_meta_desc','add_canonical','add_og_tags'),true)){self::confirm($fix_id,'skipped','Another SEO plugin is active',$api_key,$api_url);return;}$post_id=url_to_postid($page_url);if(!$post_id){$path=wp_parse_url($page_url,PHP_URL_PATH);if(empty($path)||$path==='/'){$post_id=(int)get_option('page_on_front',0);}}if(!$post_id){self::confirm($fix_id,'failed','Could not resolve post',$api_key,$api_url);return;}$status='applied';switch($type){case 'set_title':update_post_meta($post_id,self::META_TITLE,sanitize_text_field($value));break;case 'set_meta_desc':update_post_meta($post_id,self::META_DESC,sanitize_text_field($value));break;case 'add_canonical':update_post_meta($post_id,self::META_CANONICAL,esc_url_raw($value));break;case 'add_og_tags':update_post_meta($post_id,self::META_OG,sanitize_text_field($value));break;default:$status='skipped';break;}self::confirm($fix_id,$status,'',$api_key,$api_url);}
-private static function confirm($fix_id,$status,$note,$api_key,$api_url){wp_remote_post($api_url.'/functions/v1/seo-fix-confirm',array('headers'=>array('Content-Type'=>'application/json','x-api-key'=>$api_key),'body'=>wp_json_encode(array('fix_id'=>$fix_id,'status'=>$status,'note'=>$note)),'timeout'=>10));}
-private static function has_seo_plugin(){if(!function_exists('is_plugin_active')){include_once ABSPATH.'wp-admin/includes/plugin.php';}foreach(self::$seo_plugins as $plugin){if(is_plugin_active($plugin))return true;}return false;}
-public static function filter_title($title){if(!is_singular()&&!is_front_page())return $title;$post_id=self::get_current_post_id();$override=$post_id?get_post_meta($post_id,self::META_TITLE,true):'';return $override?$override:$title;}
-public static function filter_title_parts($parts){$post_id=self::get_current_post_id();$override=$post_id?get_post_meta($post_id,self::META_TITLE,true):'';if($override){$parts['title']=$override;}return $parts;}
-public static function output_meta(){$post_id=self::get_current_post_id();if(!$post_id)return;$desc=get_post_meta($post_id,self::META_DESC,true);if($desc){echo '<meta name="description" content="'.esc_attr($desc).'">'."\n";}$canonical=get_post_meta($post_id,self::META_CANONICAL,true);if($canonical){echo '<link rel="canonical" href="'.esc_url($canonical).'">'."\n";}$og_json=get_post_meta($post_id,self::META_OG,true);if($og_json){$og=json_decode($og_json,true);if(is_array($og)){if(!empty($og['title'])){echo '<meta property="og:title" content="'.esc_attr($og['title']).'">'."\n";}if(!empty($og['description'])){echo '<meta property="og:description" content="'.esc_attr($og['description']).'">'."\n";}if(!empty($og['url'])){echo '<meta property="og:url" content="'.esc_url($og['url']).'">'."\n";}if(!empty($og['image'])){echo '<meta property="og:image" content="'.esc_url($og['image']).'">'."\n";}}}}
-public static function maybe_remove_canonical(){$post_id=self::get_current_post_id();if($post_id&&get_post_meta($post_id,self::META_CANONICAL,true)){remove_action('wp_head','rel_canonical');}}
-private static function get_current_post_id(){if(is_front_page()&&get_option('page_on_front'))return(int)get_option('page_on_front');if(is_singular())return get_the_ID();return 0;}
-}`,
-
-    "actv-trkr/includes/class-security.php": `<?php
-if(!defined('ABSPATH'))exit;
-class AT_Security{
-private $api_url;private $api_key;private $site_domain;
-public function __construct(){$opts=AT_Settings::get();$this->api_key=$opts['api_key']??'';$endpoint=$opts['endpoint_url']??'';$this->api_url=preg_replace('#/functions/v1$#','',$endpoint);$this->site_domain=wp_parse_url(home_url(),PHP_URL_HOST);}
-public function init(){add_action('wp_login_failed',array($this,'on_login_failed'),10,2);add_action('wp_login',array($this,'on_login_success'),10,2);if(!wp_next_scheduled('at_file_integrity_scan')){wp_schedule_event(time(),'daily','at_file_integrity_scan');}add_action('at_file_integrity_scan',array($this,'run_file_integrity_scan'));add_action('wp_login_failed',array($this,'check_brute_force'),20,2);}
-public function on_login_failed($username,$error=null){$this->send_event(array('event_type'=>'failed_login','severity'=>'warning','title'=>"Failed login attempt for '".$username."'",'details'=>array('username'=>$username,'ip'=>$this->get_client_ip(),'user_agent'=>isset($_SERVER['HTTP_USER_AGENT'])?sanitize_text_field($_SERVER['HTTP_USER_AGENT']):'')));}
-public function check_brute_force($username,$error=null){$ip=$this->get_client_ip();$transient_key='at_failed_login_'.md5($ip);$attempts=get_transient($transient_key);if($attempts===false)$attempts=0;$attempts++;set_transient($transient_key,$attempts,10*MINUTE_IN_SECONDS);if($attempts>=5){$this->send_event(array('event_type'=>'brute_force','severity'=>'critical','title'=>"Brute force detected: ".$attempts." failed attempts from ".$ip,'details'=>array('ip'=>$ip,'attempts'=>$attempts,'username'=>$username)));delete_transient($transient_key);}}
-public function on_login_success($user_login,$user){$ip=$this->get_client_ip();$known_ips=get_user_meta($user->ID,'_at_known_ips',true);if(!is_array($known_ips))$known_ips=array();if(!in_array($ip,$known_ips,true)){$this->send_event(array('event_type'=>'new_ip_login','severity'=>'info','title'=>"Login from new IP for '".$user_login."'",'details'=>array('username'=>$user_login,'ip'=>$ip,'user_agent'=>isset($_SERVER['HTTP_USER_AGENT'])?sanitize_text_field($_SERVER['HTTP_USER_AGENT']):'')));$known_ips[]=$ip;$known_ips=array_slice($known_ips,-50);update_user_meta($user->ID,'_at_known_ips',$known_ips);}}
-public function run_file_integrity_scan(){$baseline_key='_at_file_baseline';$baseline=get_option($baseline_key,array());$current=$this->build_file_snapshot();$events=array();if(empty($baseline)){update_option($baseline_key,$current);return;}foreach($baseline as $path=>$hash){if(!isset($current[$path])){$events[]=array('event_type'=>'file_deleted','severity'=>'critical','title'=>'File deleted: '.$path,'details'=>array('path'=>$path));}elseif($current[$path]!==$hash){$events[]=array('event_type'=>'file_changed','severity'=>'warning','title'=>'File modified: '.$path,'details'=>array('path'=>$path));}}foreach($current as $path=>$hash){if(!isset($baseline[$path])){$events[]=array('event_type'=>'file_added','severity'=>'info','title'=>'New file detected: '.$path,'details'=>array('path'=>$path));}}if(!empty($events)){$this->send_events_batch($events);}update_option($baseline_key,$current);}
-private function build_file_snapshot(){$snapshot=array();foreach(array('wp-includes','wp-admin') as $dir){$full=ABSPATH.$dir;if(!is_dir($full))continue;$files=glob($full.'/*.php');if($files){foreach($files as $f){$rel=str_replace(ABSPATH,'',$f);$snapshot[$rel]=md5_file($f);}}}$root_files=glob(ABSPATH.'*.php');if($root_files){foreach($root_files as $f){$rel=basename($f);$snapshot[$rel]=md5_file($f);}}$theme_dir=get_stylesheet_directory();$theme_files=glob($theme_dir.'/*.php');if($theme_files){foreach($theme_files as $f){$rel='theme/'.basename($f);$snapshot[$rel]=md5_file($f);}}return $snapshot;}
-private function send_event($event){$this->send_events_batch(array($event));}
-private function send_events_batch($events){if(empty($this->api_url)||empty($this->api_key))return;foreach($events as &$e){if(!isset($e['occurred_at']))$e['occurred_at']=gmdate('c');}$url=rtrim($this->api_url,'/').'/functions/v1/ingest-security';wp_remote_post($url,array('timeout'=>10,'headers'=>array('Content-Type'=>'application/json','x-api-key'=>$this->api_key),'body'=>wp_json_encode(array('site_domain'=>$this->site_domain,'events'=>$events))));}
-private function get_client_ip(){$headers=array('HTTP_CF_CONNECTING_IP','HTTP_X_FORWARDED_FOR','HTTP_X_REAL_IP','REMOTE_ADDR');foreach($headers as $h){if(!empty($_SERVER[$h])){$ip=explode(',',$_SERVER[$h]);return sanitize_text_field(trim($ip[0]));}}return '0.0.0.0';}
-}`,
-
-    "actv-trkr/assets/heartbeat.js": `(function(){'use strict';if(typeof window==='undefined'||!window.atHeartbeat)return;var CFG=window.atHeartbeat;var sent=false;function sendHeartbeat(){if(sent)return;sent=true;var body=JSON.stringify({domain:CFG.domain,source:'js',meta:{user_agent:navigator.userAgent}});fetch(CFG.endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-actvtrkr-key':CFG.apiKey},body:body,keepalive:true}).catch(function(){try{navigator.sendBeacon(CFG.endpoint,new Blob([body],{type:'application/json'}));}catch(e){}});}setTimeout(sendHeartbeat,2000);})();`,
-
-    "actv-trkr/readme.txt": `=== ACTV TRKR ===
-Contributors: actvtrkr
-Tags: analytics, tracking, forms, leads, pageviews
-Requires at least: 5.8
-Tested up to: 6.7
-Requires PHP: 7.4
-Stable tag: ${PLUGIN_VERSION}
-License: GPL-2.0-or-later
-
-First-party pageview tracking and universal form capture for ACTV TRKR.
-
-== Description ==
-ACTV TRKR connects your WordPress site to your ACTV TRKR dashboard.
-Paste your API key in Settings → ACTV TRKR and tracking starts automatically.
-
-Supports all form plugins: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion Forms, Ninja Forms, Fluent Forms, and any standard HTML form.
-
-== Installation ==
-1. Upload the plugin zip to WordPress (Plugins → Add New → Upload Plugin)
-2. Activate the plugin
-3. Go to Settings → ACTV TRKR and paste your API key
-4. That's it! Tracking starts automatically.
-
-== Changelog ==
-= 1.4.1 =
-* SEO fix queue with automatic polling and fallback for stuck WP-Cron
-* Security monitoring: failed logins, brute force detection, file integrity scans
-* Retry button for stale SEO fixes in dashboard
-
-= 1.4.0 =
-* SEO meta overrides (title, description, canonical, OG tags)
-* File integrity monitoring for core WordPress files
-
-= 1.3.0 =
-* Active time-on-page tracking with focus-aware heartbeats
-* Intent-based click tracking (CTAs, downloads, outbound links)
-* Form liveness monitoring (hourly probe for rendered forms)
-* Broken link scanning improvements
-
-= 1.2.0 =
-* Added self-hosted auto-update support
-* WordPress admin will now show update notifications automatically
-
-= 1.1.0 =
-* Universal form capture (CF7, WPForms, Avada, Ninja, Fluent)
-* Retry queue for failed submissions
-* Pre-configured API key on download
-
-= 1.0.0 =
-* Initial release`,
-  };
-
-  files["actv-trkr/includes/class-forms.php"] = patchClassFormsPhp(
-    files["actv-trkr/includes/class-forms.php"],
-  );
-  assertPluginFileSafety(files);
-
-  return files;
-}
-

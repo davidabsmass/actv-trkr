@@ -61,6 +61,12 @@ class MM_Forms {
 			'permission_callback' => '__return_true',
 		) );
 
+		register_rest_route( 'actv-trkr/v1', '/backfill-entries', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'handle_rest_backfill_entries' ),
+			'permission_callback' => '__return_true',
+		) );
+
 		register_rest_route( 'actv-trkr/v1', '/avada-debug', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'handle_rest_avada_debug' ),

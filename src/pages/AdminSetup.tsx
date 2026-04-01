@@ -1158,62 +1158,13 @@ export default function AdminSetup() {
             </CardContent>
           </Card>
 
+          {/* Feature Usage — moved below subscribers */}
+          <FeatureUsageWidget />
+
           {/* Product Intelligence & Acquisition */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Feature Usage</CardTitle></CardHeader>
-              <CardContent>
-                {featureCountsOwner.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No data yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {featureCountsOwner.map(([name, count]) => (
-                      <div key={name} className="flex justify-between text-sm">
-                        <span className="text-foreground">{name}</span>
-                        <span className="text-muted-foreground">{count} sites</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-base">AI Usage</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Avg AI calls/site/day:</span>
-                  <span className="ml-2 font-mono text-foreground">{avgAiCalls}</span>
-                </div>
-                <div className="text-sm font-medium text-foreground">High usage sites:</div>
-                {activeSubs
-                  .filter((s: any) => Number(s.ai_calls_per_day_avg) > 50)
-                  .map((s: any) => (
-                    <div key={s.id} className="text-xs flex justify-between">
-                      <span className="truncate max-w-[140px]">{s.site_url || s.email}</span>
-                      <Badge variant="destructive">{Number(s.ai_calls_per_day_avg).toFixed(0)}/day</Badge>
-                    </div>
-                  ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-base">Acquisition</CardTitle></CardHeader>
-              <CardContent>
-                {referralCounts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No data yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {referralCounts.map(([src, count]) => (
-                      <div key={src} className="flex justify-between text-sm">
-                        <span className="text-foreground">{src}</span>
-                        <span className="text-muted-foreground">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid md:grid-cols-2 gap-4">
+            <AiUsageWidget />
+            <AcquisitionWidget subscribers={subscribers} />
           </div>
 
           {/* Recent Errors */}

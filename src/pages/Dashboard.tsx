@@ -139,7 +139,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
   const { t } = useTranslation();
-  const { seoVisible } = useSeoVisibility();
+  const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { needsOnboarding, settings } = useSiteSettings();
   const { data: formsData } = useForms(orgId);
 

@@ -120,7 +120,11 @@ export function useDeleteGoal(orgId: string | null) {
       const { error } = await supabase.from("conversion_goals" as any).delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["conversion_goals", orgId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversion_goals", orgId] });
+      qc.invalidateQueries({ queryKey: ["conversion_metrics"] });
+      qc.invalidateQueries({ queryKey: ["goal_conversions_v2"] });
+    },
   });
 }
 

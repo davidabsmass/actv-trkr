@@ -43,6 +43,23 @@ Deno.serve(async (req) => {
       }
       site = newSite;
       console.log(`Auto-created site ${site.id} for domain ${domain}`);
+
+      // Fire-and-forget: trigger form sync for the new site
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        fetch(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${anonKey}`,
+          },
+          body: JSON.stringify({ site_id: site.id }),
+        }).then(r => console.log(`Auto-sync triggered for new site ${site.id}: ${r.status}`))
+          .catch(e => console.error("Auto-sync fire-and-forget failed:", e));
+      } catch (e) {
+        console.error("Failed to trigger auto-sync:", e);
+      }
     }
 
     const now = new Date().toISOString();

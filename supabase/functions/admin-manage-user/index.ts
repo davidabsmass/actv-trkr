@@ -286,11 +286,17 @@ Deno.serve(async (req) => {
       }
 
       const customer = customers.data[0];
-      const [subscriptions, invoices, charges] = await Promise.all([
+      const [activeSubscriptions, allSubscriptions, invoices, charges] = await Promise.all([
+        stripe.subscriptions.list({ customer: customer.id, status: "active", limit: 10 }),
         stripe.subscriptions.list({ customer: customer.id, limit: 10 }),
         stripe.invoices.list({ customer: customer.id, limit: 20 }),
         stripe.charges.list({ customer: customer.id, limit: 20 }),
       ]);
+
+      // Show active subs first, then any non-active ones that aren't duplicates
+      const activeIds = new Set(activeSubscriptions.data.map(s => s.id));
+      const inactiveSubs = allSubscriptions.data.filter(s => !activeIds.has(s.id));
+      const orderedSubs = [...activeSubscriptions.data, ...inactiveSubs];
 
       return new Response(JSON.stringify({
         customer: {

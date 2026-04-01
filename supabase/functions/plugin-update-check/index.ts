@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.5.5: Dispatches historical entry backfill asynchronously so large forms finish importing reliably
-const LATEST_VERSION = "1.5.5";
+const LATEST_VERSION = "1.5.6";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.6
+- FIX: Historical Gravity Forms and WPForms backfill now runs in chained batches so large imports do not timeout mid-run
+- FIX: Continues replaying entries automatically until all historical form entries are imported
+
 ## 1.5.5
 - FIX: Historical Gravity Forms backfill now dispatches asynchronously so large forms do not stall partway through
 - FIX: Prevents partial imports where WordPress has hundreds of entries but the app stops far short of parity

@@ -75,6 +75,17 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ site_id: site.id }),
         }).then(r => console.log(`Domain/SSL check triggered for new site ${site.id}: ${r.status}`))
           .catch(e => console.error("Domain/SSL check fire-and-forget failed:", e));
+
+        // Fire-and-forget: trigger initial SEO scan for the new site
+        fetch(`${supabaseUrl}/functions/v1/scan-site-seo`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({ url: `https://${domain}`, site_id: site.id, org_id: orgId }),
+        }).then(r => console.log(`SEO scan triggered for new site ${site.id}: ${r.status}`))
+          .catch(e => console.error("SEO scan fire-and-forget failed:", e));
       } catch (e) {
         console.error("Failed to trigger auto-sync:", e);
       }

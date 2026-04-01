@@ -71,9 +71,6 @@ export default function SettingsPage() {
           <WebsiteSetup />
         </TabsContent>
 
-        <TabsContent value="guide">
-          <GetStartedGuide compact />
-        </TabsContent>
       </Tabs>
     </div>
   );

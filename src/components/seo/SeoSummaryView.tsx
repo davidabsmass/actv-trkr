@@ -1,7 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
-import { Search, Smartphone, Globe, FileText } from "lucide-react";
+import { Search, Smartphone, Globe, FileText, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import type { SeoIssue } from "@/lib/seo-scoring";
 
 type StatusLevel = "healthy" | "needs_review" | "issue_detected" | "good" | "warning" | "blocked" | "unknown";

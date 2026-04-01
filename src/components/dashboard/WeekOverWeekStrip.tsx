@@ -56,21 +56,23 @@ export function WeekOverWeekStrip({ data }: { data: WoWData }) {
   const hasAnomaly = useMemo(() => {
     const leadsChange = pctChange(data.leads.current, data.leads.previous);
     const sessionsChange = pctChange(data.sessions.current, data.sessions.previous);
+    if (leadsChange === null || sessionsChange === null) return false;
     return leadsChange < -20 || sessionsChange < -25;
   }, [data]);
 
   const anomalyMessage = useMemo(() => {
     const leadsChange = pctChange(data.leads.current, data.leads.previous);
     const sessionsChange = pctChange(data.sessions.current, data.sessions.previous);
-    if (leadsChange < -20) return t("anomaly.leadsDown", { pct: Math.abs(leadsChange).toFixed(0) });
-    if (sessionsChange < -25) return t("anomaly.sessionsDropped", { pct: Math.abs(sessionsChange).toFixed(0) });
+    if (leadsChange !== null && leadsChange < -20) return t("anomaly.leadsDown", { pct: Math.abs(leadsChange).toFixed(0) });
+    if (sessionsChange !== null && sessionsChange < -25) return t("anomaly.sessionsDropped", { pct: Math.abs(sessionsChange).toFixed(0) });
     return null;
   }, [data]);
 
   const isStable = useMemo(() => {
-    const sc = Math.abs(pctChange(data.sessions.current, data.sessions.previous));
-    const lc = Math.abs(pctChange(data.leads.current, data.leads.previous));
-    return sc < 5 && lc < 5;
+    const sc = pctChange(data.sessions.current, data.sessions.previous);
+    const lc = pctChange(data.leads.current, data.leads.previous);
+    if (sc === null || lc === null) return false;
+    return Math.abs(sc) < 5 && Math.abs(lc) < 5;
   }, [data]);
 
   return (

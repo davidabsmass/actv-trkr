@@ -776,7 +776,18 @@ export default function AdminSetup() {
                                               <span className="text-sm font-medium">${sub.amount}/{sub.interval}</span>
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                              Period: {new Date(sub.current_period_start * 1000).toLocaleDateString()} – {new Date(sub.current_period_end * 1000).toLocaleDateString()}
+                                              Period: {(() => {
+                                                const s = sub.current_period_start;
+                                                const e = sub.current_period_end;
+                                                const toDate = (v: any) => {
+                                                  if (!v) return null;
+                                                  const d = typeof v === "number" ? new Date(v < 1e12 ? v * 1000 : v) : new Date(v);
+                                                  return isNaN(d.getTime()) ? null : d;
+                                                };
+                                                const start = toDate(s);
+                                                const end = toDate(e);
+                                                return `${start ? start.toLocaleDateString() : "—"} – ${end ? end.toLocaleDateString() : "—"}`;
+                                              })()}
                                               {sub.cancel_at_period_end && " · Cancelling at period end"}
                                             </p>
                                           </div>

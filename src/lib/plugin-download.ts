@@ -1,9 +1,13 @@
 export const LATEST_PLUGIN_VERSION = "1.5.7";
 
-export async function downloadPlugin(_apiKey?: string) {
+export async function downloadPlugin(apiKey?: string) {
   const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
 
-  const response = await fetch(zipUrl, { cache: "no-store" });
+  const response = await fetch(zipUrl, {
+    cache: "no-store",
+    headers: apiKey ? { "x-actvtrkr-api-key": apiKey } : undefined,
+  });
+
   if (!response.ok) {
     throw new Error("Failed to download latest plugin package");
   }

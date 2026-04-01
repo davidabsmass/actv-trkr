@@ -9,13 +9,45 @@ const SITE_NAME = "ACTV TRKR";
 const SENDER_DOMAIN = "notify.actvtrkr.com";
 const FROM_DOMAIN = "actvtrkr.com";
 
+function generateToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function getOrCreateUnsubscribeToken(supabase: ReturnType<typeof createClient>, email: string): Promise<string> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const { data: existing } = await supabase
+    .from("email_unsubscribe_tokens")
+    .select("token")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (existing?.token) return existing.token;
+
+  const token = generateToken();
+  await supabase.from("email_unsubscribe_tokens").upsert(
+    { token, email: normalizedEmail },
+    { onConflict: "email", ignoreDuplicates: true }
+  );
+
+  const { data: stored } = await supabase
+    .from("email_unsubscribe_tokens")
+    .select("token")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  return stored?.token || token;
+}
+
 interface NotificationEmailRequest {
   type: "weekly_summary" | "daily_digest" | "lead_realtime" | "lead_digest";
   org_id: string;
   subject: string;
   html_body: string;
   text_body?: string;
-  recipient_user_ids?: string[]; // If empty, send to all org members with pref enabled
+  recipient_user_ids?: string[];
 }
 
 Deno.serve(async (req) => {
@@ -33,7 +65,6 @@ Deno.serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const body: NotificationEmailRequest = await req.json();
 
-    // Get org members
     const { data: members } = await supabase
       .from("org_users")
       .select("user_id")
@@ -47,7 +78,6 @@ Deno.serve(async (req) => {
       ? body.recipient_user_ids
       : members.map(m => m.user_id);
 
-    // Map notification type to the pref key in site_settings.notification_preferences
     const prefKeyMap: Record<string, string> = {
       weekly_summary: "weekly_summary",
       daily_digest: "daily_digest",
@@ -56,7 +86,6 @@ Deno.serve(async (req) => {
     };
     const prefKey = prefKeyMap[body.type];
 
-    // Get site_settings for this org to check notification_preferences
     const { data: settings } = await supabase
       .from("site_settings")
       .select("notification_preferences")
@@ -65,7 +94,6 @@ Deno.serve(async (req) => {
 
     const prefs = (settings?.notification_preferences as Record<string, boolean>) || {};
     
-    // If the preference is explicitly disabled, skip
     if (prefKey && prefs[prefKey] === false) {
       return new Response(JSON.stringify({ sent: 0, reason: "preference_disabled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -75,7 +103,6 @@ Deno.serve(async (req) => {
     let sent = 0;
 
     for (const userId of userIds) {
-      // Get user email from profiles
       const { data: profile } = await supabase
         .from("profiles")
         .select("email")
@@ -84,7 +111,6 @@ Deno.serve(async (req) => {
 
       if (!profile?.email) continue;
 
-      // Check suppression list
       const { data: suppressed } = await supabase
         .from("suppressed_emails")
         .select("id")
@@ -93,23 +119,34 @@ Deno.serve(async (req) => {
 
       if (suppressed) continue;
 
-      // Enqueue via pgmq
       const messageId = `${body.type}-${body.org_id}-${userId}-${new Date().toISOString().split("T")[0]}`;
 
       try {
-        await supabase.rpc("enqueue_email", {
-          p_queue_name: "transactional_emails",
-          p_to: profile.email,
-          p_from: `${SITE_NAME} <notifications@${FROM_DOMAIN}>`,
-          p_sender_domain: SENDER_DOMAIN,
-          p_subject: body.subject,
-          p_html: body.html_body,
-          p_text: body.text_body || "",
-          p_purpose: "transactional",
-          p_message_id: messageId,
-          p_template_name: body.type,
+        const unsubscribeToken = await getOrCreateUnsubscribeToken(supabase, profile.email);
+
+        const { error: enqueueError } = await supabase.rpc("enqueue_email", {
+          queue_name: "transactional_emails",
+          payload: {
+            to: profile.email,
+            from: `${SITE_NAME} <notifications@${FROM_DOMAIN}>`,
+            sender_domain: SENDER_DOMAIN,
+            subject: body.subject,
+            html: body.html_body,
+            text: body.text_body || "",
+            purpose: "transactional",
+            message_id: messageId,
+            label: body.type,
+            idempotency_key: messageId,
+            unsubscribe_token: unsubscribeToken,
+            queued_at: new Date().toISOString(),
+          },
         });
-        sent++;
+
+        if (enqueueError) {
+          console.error(`enqueue_email error for ${profile.email}:`, enqueueError);
+        } else {
+          sent++;
+        }
       } catch (e) {
         console.error(`Failed to enqueue email for ${profile.email}:`, e);
       }

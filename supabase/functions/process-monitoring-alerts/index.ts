@@ -9,6 +9,38 @@ const SITE_NAME = "ACTV TRKR";
 const SENDER_DOMAIN = "notify.actvtrkr.com";
 const FROM_DOMAIN = "actvtrkr.com";
 
+function generateToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function getOrCreateUnsubscribeToken(supabase: ReturnType<typeof createClient>, email: string): Promise<string> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const { data: existing } = await supabase
+    .from("email_unsubscribe_tokens")
+    .select("token")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (existing?.token) return existing.token;
+
+  const token = generateToken();
+  await supabase.from("email_unsubscribe_tokens").upsert(
+    { token, email: normalizedEmail },
+    { onConflict: "email", ignoreDuplicates: true }
+  );
+
+  const { data: stored } = await supabase
+    .from("email_unsubscribe_tokens")
+    .select("token")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  return stored?.token || token;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -25,7 +57,6 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Fetch queued alerts
     const { data: alerts } = await supabase
       .from("monitoring_alerts")
       .select("*")
@@ -41,14 +72,12 @@ Deno.serve(async (req) => {
 
     for (const alert of alerts) {
       try {
-        // Get site notification rules for this alert type
         const { data: rules } = await supabase
           .from("site_notification_rules")
           .select("channel, is_enabled")
           .eq("site_id", alert.site_id)
           .eq("alert_type", alert.alert_type);
 
-        // Get org members for this site's org
         const { data: members } = await supabase
           .from("org_users")
           .select("user_id")
@@ -61,7 +90,6 @@ Deno.serve(async (req) => {
         }
 
         for (const member of members) {
-          // Check user subscription for this site + alert type
           const { data: subs } = await supabase
             .from("user_site_subscriptions")
             .select("channel, is_enabled")
@@ -69,7 +97,6 @@ Deno.serve(async (req) => {
             .eq("site_id", alert.site_id)
             .eq("alert_type", alert.alert_type);
 
-          // Check user notification preferences
           const { data: userPrefs } = await supabase
             .from("user_notification_preferences")
             .select("channel, is_enabled")
@@ -79,15 +106,11 @@ Deno.serve(async (req) => {
           const subMap = new Map((subs || []).map(s => [s.channel, s.is_enabled]));
           const ruleMap = new Map((rules || []).map(r => [r.channel, r.is_enabled]));
 
-          // Determine which channels to send to
           const channels = ["in_app", "email"];
 
           for (const channel of channels) {
-            // Rule must be enabled (default: in_app is always on)
             const ruleEnabled = ruleMap.get(channel) ?? (channel === "in_app");
-            // User subscription must be enabled (default: true)
             const subEnabled = subMap.get(channel) ?? true;
-            // User preference must be enabled (default: true for in_app and email)
             const prefEnabled = userPrefMap.get(channel) ?? (channel === "in_app" || channel === "email");
 
             if (!ruleEnabled || !subEnabled || !prefEnabled) continue;
@@ -101,7 +124,6 @@ Deno.serve(async (req) => {
                 body: alert.message,
               });
             } else if (channel === "email") {
-              // Get user email from profiles
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("email")
@@ -109,7 +131,6 @@ Deno.serve(async (req) => {
                 .maybeSingle();
 
               if (profile?.email) {
-                // Check suppression list
                 const { data: suppressed } = await supabase
                   .from("suppressed_emails")
                   .select("id")
@@ -118,8 +139,11 @@ Deno.serve(async (req) => {
 
                 if (!suppressed) {
                   const messageId = `alert-${alert.id}-${member.user_id}`;
+                  const idempotencyKey = messageId;
                   try {
-                    await supabase.rpc("enqueue_email", {
+                    const unsubscribeToken = await getOrCreateUnsubscribeToken(supabase, profile.email);
+
+                    const { error: enqueueError } = await supabase.rpc("enqueue_email", {
                       queue_name: "transactional_emails",
                       payload: {
                         to: profile.email,
@@ -135,10 +159,18 @@ Deno.serve(async (req) => {
                         text: `${alert.subject}\n\n${alert.message}`,
                         purpose: "transactional",
                         message_id: messageId,
-                        template_name: "monitoring_alert",
+                        label: "monitoring_alert",
+                        idempotency_key: idempotencyKey,
+                        unsubscribe_token: unsubscribeToken,
+                        queued_at: new Date().toISOString(),
                       },
                     });
-                    console.log(`Enqueued alert email to ${profile.email}`);
+
+                    if (enqueueError) {
+                      console.error(`enqueue_email RPC error for ${profile.email}:`, enqueueError);
+                    } else {
+                      console.log(`Enqueued alert email to ${profile.email} for alert ${alert.id}`);
+                    }
                   } catch (e) {
                     console.error(`Failed to enqueue alert email for ${profile.email}:`, e);
                   }

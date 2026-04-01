@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.6.1
+- FIX: Replaces fire-and-forget chained backfill with synchronous loop — all entries across all pages guaranteed to process
+- FIX: Older historical entries (Jan/Feb) no longer silently dropped when chain breaks
+
 ## 1.5.9
 - FIX: Backfill now uses blocking sends with response verification — entries are confirmed delivered before moving to the next batch
 - FIX: Failed sends are automatically queued for retry instead of being silently dropped

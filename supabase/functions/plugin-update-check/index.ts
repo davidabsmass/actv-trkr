@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // Current latest plugin version — bump this when releasing updates
-// v1.5.2: Include click target href in event payload + server-side href rule matching fallback
-const LATEST_VERSION = "1.5.2";
+// v1.5.3: Adds historical entry backfill route for Gravity Forms/WPForms and related sync fixes
+const LATEST_VERSION = "1.5.3";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.5.3
+- FIX: Adds /backfill-entries REST route for historical Gravity Forms and WPForms sync
+- FIX: Improves entry backfill reliability for sites with forms discovered but no imported leads
+
 ## 1.5.2
 - FIX: CTA click events now include target_href in payload for reliable href-based goal matching
 - FIX: Goal matching tolerates legacy events without href when text rules are present

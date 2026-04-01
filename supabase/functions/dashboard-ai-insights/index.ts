@@ -183,6 +183,7 @@ Rules:
 - CRITICAL: The user already has forms tracking set up. Do NOT suggest setting up form tracking, installing tracking, or creating forms — they are already tracked. See "TRACKED FORMS" above.
 - CRITICAL: If "ACTIVE GOALS" shows configured goals, do NOT suggest setting up goals — they already exist. Instead, suggest ways to improve the metrics those goals track.
 - CRITICAL: Do NOT repeat information already visible in the dashboard (site health status, domain expiry). Focus on strategic marketing actions the user should take.
+- CRITICAL: If the previous period's value for any metric (sessions, leads, CVR) is zero, do NOT report a percentage drop or gain for that metric. Instead, note that tracking just started and there isn't enough history for a comparison yet. Only compare periods when both have real data.
 - Focus suggestions on content strategy, traffic growth, conversion optimization, and audience engagement — not on tool setup.`;
 
     const userPrompt = `Here are the current dashboard metrics for ${orgName}:

@@ -51,8 +51,9 @@ export interface InsightInputs {
   activeIncidents?: number;
 }
 
-function pctChange(current: number, previous: number): number {
-  if (previous === 0) return current > 0 ? 100 : 0;
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0 && current === 0) return null;
+  if (previous === 0) return null; // No baseline — suppress comparison
   return Math.round(((current - previous) / previous) * 100);
 }
 
@@ -61,7 +62,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
 
   // ── Traffic ──
   const sessionsPct = pctChange(inputs.currentSessions, inputs.previousSessions);
-  if (sessionsPct >= 10) {
+  if (sessionsPct !== null && sessionsPct >= 10) {
     findings.push({
       type: "traffic_up", category: "Traffic", positive: true,
       title: "Traffic is growing",
@@ -69,7 +70,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
       metric_values: { current: inputs.currentSessions, previous: inputs.previousSessions, change: sessionsPct },
       severity: "low", confidence: 0.9,
     });
-  } else if (sessionsPct <= -10) {
+  } else if (sessionsPct !== null && sessionsPct <= -10) {
     findings.push({
       type: "traffic_down", category: "Traffic", positive: false,
       title: "Traffic declined",
@@ -82,7 +83,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
 
   // ── Leads ──
   const leadsPct = pctChange(inputs.currentLeads, inputs.previousLeads);
-  if (leadsPct >= 10) {
+  if (leadsPct !== null && leadsPct >= 10) {
     findings.push({
       type: "lead_growth", category: "Lead Tracking", positive: true,
       title: "Lead volume is up",
@@ -90,7 +91,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
       metric_values: { current: inputs.currentLeads, previous: inputs.previousLeads, change: leadsPct },
       severity: "low", confidence: 0.9,
     });
-  } else if (leadsPct <= -10) {
+  } else if (leadsPct !== null && leadsPct <= -10) {
     findings.push({
       type: "lead_drop", category: "Lead Tracking", positive: false,
       title: "Leads declined",
@@ -103,7 +104,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
 
   // ── Conversion rate ──
   const cvrPct = pctChange(inputs.currentCvr, inputs.previousCvr);
-  if (cvrPct >= 10) {
+  if (cvrPct !== null && cvrPct >= 10) {
     findings.push({
       type: "conversion_gain", category: "Conversion", positive: true,
       title: "Conversion rate improved",
@@ -111,7 +112,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
       metric_values: { current: `${inputs.currentCvr}%`, previous: `${inputs.previousCvr}%`, change: cvrPct },
       severity: "low", confidence: 0.85,
     });
-  } else if (cvrPct <= -10) {
+  } else if (cvrPct !== null && cvrPct <= -10) {
     findings.push({
       type: "conversion_drop", category: "Conversion", positive: false,
       title: "Conversion rate dropped",

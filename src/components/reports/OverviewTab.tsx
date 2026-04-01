@@ -17,8 +17,8 @@ import { DateRange } from "react-day-picker";
 
 type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 
-function pctChange(current: number, previous: number): number {
-  if (previous === 0) return current > 0 ? 100 : 0;
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return null; // No baseline — suppress comparison
   return Math.round(((current - previous) / previous) * 100);
 }
 

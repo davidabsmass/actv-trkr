@@ -11,6 +11,21 @@ async function hashKey(key: string): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+function compareVersions(a: string, b: string): number {
+  const aParts = a.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  const bParts = b.split(".").map((part) => Number.parseInt(part, 10) || 0);
+
+  for (let i = 0; i < Math.max(aParts.length, bParts.length); i += 1) {
+    const aPart = aParts[i] ?? 0;
+    const bPart = bParts[i] ?? 0;
+
+    if (aPart > bPart) return 1;
+    if (aPart < bPart) return -1;
+  }
+
+  return 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -31,12 +46,12 @@ Deno.serve(async (req) => {
     if (!domain) return new Response(JSON.stringify({ error: "Missing domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     // Resolve or auto-create site
-    let site = (await supabase.from("sites").select("id, status").eq("org_id", orgId).eq("domain", domain).maybeSingle()).data;
+    let site = (await supabase.from("sites").select("id, status, plugin_version").eq("org_id", orgId).eq("domain", domain).maybeSingle()).data;
     if (!site) {
       const pluginVer = body.plugin_version || body.pluginVersion || null;
       const { data: newSite, error: insertErr } = await supabase.from("sites")
         .insert({ org_id: orgId, domain, type: "wordpress", plugin_version: pluginVer, url: body.url || `https://${domain}` })
-        .select("id, status").single();
+        .select("id, status, plugin_version").single();
       if (insertErr || !newSite) {
         console.error("Failed to auto-create site:", insertErr);
         return new Response(JSON.stringify({ error: "Could not register site" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -117,7 +132,11 @@ Deno.serve(async (req) => {
     // Update last_heartbeat_at and plugin_version on site
     const updateData: Record<string, unknown> = { last_heartbeat_at: now, status: "UP" };
     const pluginVersion = body.plugin_version || body.pluginVersion;
-    if (pluginVersion && typeof pluginVersion === "string") {
+    if (
+      pluginVersion &&
+      typeof pluginVersion === "string" &&
+      (!site.plugin_version || compareVersions(pluginVersion, site.plugin_version) > 0)
+    ) {
       updateData.plugin_version = pluginVersion;
     }
     await supabase.from("sites").update(updateData).eq("id", site.id);

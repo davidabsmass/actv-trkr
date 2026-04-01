@@ -42,8 +42,8 @@ export default ReauthenticationEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }
 const container = { padding: '40px 25px' }
-const logoSection = { marginBottom: '24px' }
-const logoImg = { margin: '0' }
+const headerSection = { marginBottom: '0' }
+const headerImg = { width: '100%', display: 'block' as const, borderRadius: '12px 12px 0 0' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 16px' }
 const text = { fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: '0 0 24px' }
 const codeStyle = { fontFamily: 'Courier, monospace', fontSize: '28px', fontWeight: 'bold' as const, color: '#6C5CE7', margin: '0 0 30px', letterSpacing: '4px' }

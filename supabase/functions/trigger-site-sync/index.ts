@@ -587,10 +587,15 @@ Deno.serve(async (req) => {
       reasonCodes.push("legacy_id_deadlock");
     }
 
-    if (wpWarnings.length > 0) {
-      const warningText = wpWarnings.map((w) => w.toLowerCase()).join("\n");
-      const avadaWarnings = wpWarnings.filter((w) => w.toLowerCase().includes("avada"));
-      const hasAllAvadaWarnings = avadaWarnings.length > 0 && avadaWarnings.length === wpWarnings.length;
+    // When backfill was just triggered, count mismatch warnings are expected — filter them out
+    const filteredWarnings = (entryBackfillAttempted || avadaBackfillAttempted)
+      ? wpWarnings.filter((w) => !w.toLowerCase().includes("count mismatch"))
+      : wpWarnings;
+
+    if (filteredWarnings.length > 0) {
+      const warningText = filteredWarnings.map((w) => w.toLowerCase()).join("\n");
+      const avadaWarnings = filteredWarnings.filter((w) => w.toLowerCase().includes("avada"));
+      const hasAllAvadaWarnings = avadaWarnings.length > 0 && avadaWarnings.length === filteredWarnings.length;
       const hasAllEmptyWarning = warningText.includes("reported 0 active entries");
       const hasDuplicateSetWarning = warningText.includes("identical entry lists") || warningText.includes("identical active-entry lists") || warningText.includes("duplicate/overlapping active id sets");
 

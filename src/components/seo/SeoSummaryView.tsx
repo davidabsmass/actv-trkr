@@ -145,39 +145,39 @@ export default function SeoSummaryView() {
 
   // 1. Search Visibility Status
   const searchVisibility = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run an initial scan to check search visibility.", reasons: [] as string[] };
-    if (score >= 80) return { level: "healthy" as StatusLevel, label: "Healthy", description: "No major visibility issues detected.", reasons: [] as string[] };
-    const reasons = issues.filter(i => i.impact === "Critical" || i.impact === "High").map(i => i.title || i.id || "");
-    if (score >= 50) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some search visibility items may need attention.", reasons };
-    return { level: "issue_detected" as StatusLevel, label: "Issue Detected", description: "Search visibility issues were found that may affect discoverability.", reasons };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run an initial scan to check search visibility.", issueObjects: [] as SeoIssue[] };
+    if (score >= 80) return { level: "healthy" as StatusLevel, label: "Healthy", description: "No major visibility issues detected.", issueObjects: [] as SeoIssue[] };
+    const matched = issues.filter(i => i.impact === "Critical" || i.impact === "High");
+    if (score >= 50) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some search visibility items may need attention.", issueObjects: matched };
+    return { level: "issue_detected" as StatusLevel, label: "Issue Detected", description: "Search visibility issues were found that may affect discoverability.", issueObjects: matched };
   })();
 
   // 2. Indexing Status
   const indexing = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check indexing status.", reasons: [] as string[] };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check indexing status.", issueObjects: [] as SeoIssue[] };
     const robotsIssues = issues.filter(i => i.id?.includes("robots") || i.title?.toLowerCase().includes("noindex"));
-    if (robotsIssues.length > 0) return { level: "blocked" as StatusLevel, label: "Blocked", description: "Search engines may be blocked from accessing the site.", reasons: robotsIssues.map(i => i.title || i.id || "") };
-    return { level: "good" as StatusLevel, label: "Accessible", description: "Search engines appear able to access the site.", reasons: [] as string[] };
+    if (robotsIssues.length > 0) return { level: "blocked" as StatusLevel, label: "Blocked", description: "Search engines may be blocked from accessing the site.", issueObjects: robotsIssues };
+    return { level: "good" as StatusLevel, label: "Accessible", description: "Search engines appear able to access the site.", issueObjects: [] as SeoIssue[] };
   })();
 
   // 3. Mobile Readiness
   const mobile = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check mobile readiness.", reasons: [] as string[] };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check mobile readiness.", issueObjects: [] as SeoIssue[] };
     const mobileIssues = issues.filter(i =>
       i.id?.includes("viewport") || i.id?.includes("mobile") || i.title?.toLowerCase().includes("viewport") || i.title?.toLowerCase().includes("mobile")
     );
-    if (mobileIssues.length > 0) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some mobile experience issues may need review.", reasons: mobileIssues.map(i => i.title || i.id || "") };
-    return { level: "good" as StatusLevel, label: "Good", description: "No mobile readiness issues detected.", reasons: [] as string[] };
+    if (mobileIssues.length > 0) return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some mobile experience issues may need review.", issueObjects: mobileIssues };
+    return { level: "good" as StatusLevel, label: "Good", description: "No mobile readiness issues detected.", issueObjects: [] as SeoIssue[] };
   })();
 
   // 4. Homepage Search Basics
   const homepageBasics = (() => {
-    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check homepage basics.", reasons: [] as string[] };
+    if (score === null) return { level: "unknown" as StatusLevel, label: "No Data", description: "Run a scan to check homepage basics.", issueObjects: [] as SeoIssue[] };
     const basicIssues = issues.filter(i =>
       i.id?.includes("title") || i.id?.includes("meta_desc") || i.id?.includes("h1") || i.id?.includes("canonical")
     );
-    if (basicIssues.length === 0) return { level: "healthy" as StatusLevel, label: "Present", description: "Homepage search basics are present.", reasons: [] as string[] };
-    return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some homepage search essentials may be missing or incomplete.", reasons: basicIssues.map(i => i.title || i.id || "") };
+    if (basicIssues.length === 0) return { level: "healthy" as StatusLevel, label: "Present", description: "Homepage search basics are present.", issueObjects: [] as SeoIssue[] };
+    return { level: "needs_review" as StatusLevel, label: "Needs Review", description: "Some homepage search essentials may be missing or incomplete.", issueObjects: basicIssues };
   })();
 
   const items = [

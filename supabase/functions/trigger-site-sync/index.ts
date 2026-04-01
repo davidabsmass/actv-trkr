@@ -500,7 +500,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Auto-backfill non-Avada entries (Gravity Forms, WPForms, CF7, etc.) ──
-    // If the site has non-Avada forms but zero leads, trigger backfill
+    // If any non-Avada form has zero leads, trigger backfill for the site
     let entryBackfillAttempted = false;
 
     {
@@ -515,18 +515,23 @@ Deno.serve(async (req) => {
       const nonAvadaFormIds = (nonAvadaFormRows.data || []).map((f: any) => f.id);
 
       if (nonAvadaFormIds.length > 0) {
-        const { count: nonAvadaLeadCount } = await supabase
-          .from("leads")
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", site.org_id)
-          .eq("site_id", site.id)
-          .in("form_id", nonAvadaFormIds)
-          .neq("status", "trashed");
+        // Check each form individually — backfill if ANY form has zero leads
+        const leadCountsByForm = await Promise.all(
+          nonAvadaFormIds.map(async (formId: string) => {
+            const { count } = await supabase
+              .from("leads")
+              .select("id", { count: "exact", head: true })
+              .eq("form_id", formId)
+              .neq("status", "trashed");
+            return { formId, count: count || 0 };
+          })
+        );
 
-        // If we have non-Avada forms but zero leads in our DB → backfill
-        if ((nonAvadaLeadCount || 0) === 0) {
+        const formsWithZeroLeads = leadCountsByForm.filter((f) => f.count === 0);
+
+        if (formsWithZeroLeads.length > 0) {
           entryBackfillAttempted = true;
-          console.log("Non-Avada entry backfill triggered (fire-and-forget)");
+          console.log(`Entry backfill triggered: ${formsWithZeroLeads.length}/${nonAvadaFormIds.length} forms have 0 leads`);
           triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash)
             .then(async ({ response: bfRes, endpoint: bfEndpoint }) => {
               if (!bfRes.ok) {

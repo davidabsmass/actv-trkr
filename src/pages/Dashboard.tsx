@@ -69,8 +69,9 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
   );
 }
 
-function pctChange(curr: number, prev: number): number {
-  if (prev === 0) return curr > 0 ? 100 : 0;
+function pctChange(curr: number, prev: number): number | null {
+  if (prev === 0 && curr === 0) return null; // no data at all
+  if (prev === 0) return null; // no baseline — don't show misleading spike
   return ((curr - prev) / prev) * 100;
 }
 

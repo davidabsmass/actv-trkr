@@ -855,7 +855,9 @@ export default function AdminSetup() {
                                             </div>
                                           )}
                                         </div>
-                                      ))}
+                                        );
+                                       })}
+
                                     </div>
                                   </div>
                                 )}

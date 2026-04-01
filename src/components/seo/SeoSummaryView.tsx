@@ -8,6 +8,46 @@ import type { SeoIssue } from "@/lib/seo-scoring";
 
 type StatusLevel = "healthy" | "needs_review" | "issue_detected" | "good" | "warning" | "blocked" | "unknown";
 
+/** Map issue IDs / keywords to plain-language fix instructions */
+function actionForIssue(issue: SeoIssue): string | null {
+  const id = (issue.id || "").toLowerCase();
+  const title = (issue.title || "").toLowerCase();
+
+  if (id.includes("title_missing") || title.includes("missing title"))
+    return "Add a unique <title> tag to the page. In WordPress, edit the page and set the SEO title in Yoast or RankMath.";
+  if (id.includes("title_short") || title.includes("title too short"))
+    return "Expand the page title to 30–60 characters so it displays fully in search results.";
+  if (id.includes("title_long") || title.includes("title too long"))
+    return "Shorten the page title to under 60 characters to avoid truncation in search results.";
+  if (id.includes("meta_desc_missing") || title.includes("missing meta"))
+    return "Add a meta description (120–155 characters) summarizing the page. In WordPress, set it in your SEO plugin settings.";
+  if (id.includes("meta_desc_short") || title.includes("description too short"))
+    return "Expand the meta description to at least 120 characters to improve click-through from search results.";
+  if (id.includes("meta_desc_long") || title.includes("description too long"))
+    return "Shorten the meta description to under 155 characters so it isn't truncated in search results.";
+  if (id.includes("h1_missing") || title.includes("missing h1"))
+    return "Add a single H1 heading to the page. This is usually the main page title or headline.";
+  if (id.includes("h1_multiple") || title.includes("multiple h1"))
+    return "Use only one H1 tag per page. Convert extra H1 tags to H2 or H3 headings.";
+  if (id.includes("canonical") || title.includes("canonical"))
+    return "Set a canonical URL to tell search engines which version of the page is the primary one. Most SEO plugins add this automatically.";
+  if (id.includes("robots") || title.includes("noindex"))
+    return "Remove the 'noindex' directive so search engines can index the page. Check your SEO plugin's visibility settings and your robots.txt file.";
+  if (id.includes("viewport") || title.includes("viewport"))
+    return "Ensure the page includes a <meta name=\"viewport\"> tag for proper mobile rendering. Most modern themes include this by default.";
+  if (id.includes("mobile") || title.includes("mobile"))
+    return "Check that the site uses a responsive theme and fonts/buttons are sized for mobile screens.";
+  if (id.includes("og_image") || title.includes("og image") || title.includes("social image"))
+    return "Add an Open Graph image (og:image) so the page shows a preview image when shared on social media.";
+  if (id.includes("ssl") || title.includes("https") || title.includes("ssl"))
+    return "Ensure the site loads over HTTPS. Install an SSL certificate and redirect HTTP traffic to HTTPS.";
+  if (id.includes("alt") || title.includes("alt text"))
+    return "Add descriptive alt text to images so search engines and screen readers can understand them.";
+
+  // Generic fallback
+  return null;
+}
+
 interface StatusBadgeProps {
   level: StatusLevel;
   label: string;

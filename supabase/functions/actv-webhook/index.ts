@@ -51,6 +51,12 @@ serve(async (req) => {
         const mrr = plan === "annual" ? 27.5 : 30;
         const siteUrl = metadata.site_url || null;
 
+        // Extract billing details from checkout session
+        const customerDetails = session.customer_details;
+        const billingName = customerDetails?.name || "";
+        const billingPhone = customerDetails?.phone || "";
+        const billingAddress = (customerDetails as any)?.address;
+
         // 1. Upsert subscriber record
         const { error } = await supabase.from("subscribers").upsert({
           email,

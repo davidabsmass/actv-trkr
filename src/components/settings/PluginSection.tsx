@@ -111,8 +111,7 @@ export default function PluginSection() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            {downloading ? t("settings.downloadingPlugin") : t("settings.downloadPlugin")}
-            {needsUpdate && !downloading && ` v${latestVersion}`}
+            {downloading ? t("settings.downloadingPlugin") : `${t("settings.downloadPlugin")}${latestVersion ? ` v${latestVersion}` : ""}`}
           </button>
         </div>
       </div>

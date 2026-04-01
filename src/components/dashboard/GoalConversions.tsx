@@ -2,9 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Target, Plus, ChevronDown, ChevronRight, MapPin, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { GOAL_TYPES, type ConversionGoal } from "@/hooks/use-goals";
+import { useForms } from "@/hooks/use-dashboard-data";
+import { CreateGoalDialog } from "@/components/settings/GoalsSection";
 import { useState } from "react";
 import { format } from "date-fns";
 

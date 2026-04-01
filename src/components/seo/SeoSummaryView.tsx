@@ -37,7 +37,23 @@ function deriveStatus(value: boolean | null | undefined, goodLabel = "Healthy", 
 }
 
 export default function SeoSummaryView() {
-  const { orgId } = useOrg();
+  const { orgId, orgName } = useOrg();
+  const queryClient = useQueryClient();
+
+  // Get sites for this org
+  const { data: sites } = useQuery({
+    queryKey: ["sites_for_seo_summary", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data } = await supabase.from("sites").select("id, domain").eq("org_id", orgId);
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const siteDomain = sites?.[0]?.domain || "";
+  const effectiveDomain = siteDomain || (orgName && orgName !== "My Organization" && orgName.includes(".") ? orgName : "");
+  const homepageUrl = effectiveDomain ? `https://${effectiveDomain}` : "";
 
   // Get latest scan for this org
   const { data: latestScan, isLoading } = useQuery({
@@ -54,6 +70,24 @@ export default function SeoSummaryView() {
       return data;
     },
     enabled: !!orgId,
+  });
+
+  const runScan = useMutation({
+    mutationFn: async () => {
+      if (!effectiveDomain || !orgId) throw new Error("No domain configured");
+      const urlToScan = homepageUrl.trim().replace(/\/+$/, "");
+      const siteId = sites?.[0]?.id || null;
+      const { data, error } = await supabase.functions.invoke("scan-site-seo", {
+        body: { url: urlToScan, site_id: siteId, org_id: orgId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seo_summary_scan", orgId] });
+      toast.success("SEO scan completed");
+    },
+    onError: (err: any) => toast.error(err.message || "Scan failed"),
   });
 
   if (isLoading) {

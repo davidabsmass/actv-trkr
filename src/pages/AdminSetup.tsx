@@ -6,7 +6,6 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2, CalendarIcon, Activity } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -30,7 +29,6 @@ function FeatureUsageWidget() {
         supabase.from("seo_fix_queue").select("id", { count: "exact", head: true }),
       ]);
 
-      // Count events by type
       const eventCounts: Record<string, number> = {};
       (evRes.data || []).forEach((e: any) => {
         eventCounts[e.event_type] = (eventCounts[e.event_type] || 0) + 1;
@@ -55,8 +53,6 @@ function FeatureUsageWidget() {
     },
   });
 
-  const maxCount = featureUsage?.[0]?.count || 1;
-
   return (
     <Card>
       <CardHeader>
@@ -65,17 +61,168 @@ function FeatureUsageWidget() {
           Feature Usage (All Orgs)
         </CardTitle>
       </CardHeader>
+      <CardContent>
+        {featureUsage && featureUsage.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">#</TableHead>
+                <TableHead className="text-xs">Feature</TableHead>
+                <TableHead className="text-xs text-right">Count</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {featureUsage.map((f, i) => (
+                <TableRow key={f.name}>
+                  <TableCell className="text-xs text-muted-foreground font-mono w-8">{i + 1}</TableCell>
+                  <TableCell className="text-sm font-medium">{f.name}</TableCell>
+                  <TableCell className="text-sm font-mono text-right">{f.count.toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-sm text-muted-foreground">No data yet</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AiUsageWidget() {
+  const { data: aiData } = useQuery({
+    queryKey: ["owner_ai_usage"],
+    queryFn: async () => {
+      // Get total calls and per-org breakdown from ai_usage_log
+      const { data: logs, error } = await supabase
+        .from("ai_usage_log")
+        .select("function_name, org_id, created_at");
+      if (error) throw error;
+
+      // Get org names
+      const { data: orgs } = await supabase.from("orgs").select("id, name");
+      const orgMap: Record<string, string> = {};
+      orgs?.forEach((o: any) => { orgMap[o.id] = o.name; });
+
+      // Per-org totals
+      const orgTotals: Record<string, number> = {};
+      const funcTotals: Record<string, number> = {};
+      (logs || []).forEach((l: any) => {
+        orgTotals[l.org_id] = (orgTotals[l.org_id] || 0) + 1;
+        funcTotals[l.function_name] = (funcTotals[l.function_name] || 0) + 1;
+      });
+
+      const totalCalls = logs?.length || 0;
+      const orgCount = Object.keys(orgTotals).length;
+      const avgPerOrg = orgCount > 0 ? (totalCalls / orgCount).toFixed(1) : "0";
+
+      const topOrgs = Object.entries(orgTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([id, count]) => ({ name: orgMap[id] || id.slice(0, 8), count }));
+
+      const topFunctions = Object.entries(funcTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, count]) => ({ name, count }));
+
+      return { totalCalls, avgPerOrg, topOrgs, topFunctions };
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">AI Usage</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        {featureUsage?.map((f) => (
-          <div key={f.name} className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">{f.name}</span>
-              <span className="font-mono font-medium text-foreground">{f.count.toLocaleString()}</span>
-            </div>
-            <Progress value={maxCount > 0 ? (f.count / maxCount) * 100 : 0} className="h-1.5" />
-          </div>
-        ))}
-        {!featureUsage && <p className="text-xs text-muted-foreground">Loading…</p>}
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Total AI calls</span>
+          <span className="font-mono font-medium text-foreground">{aiData?.totalCalls?.toLocaleString() || 0}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Avg calls/org</span>
+          <span className="font-mono font-medium text-foreground">{aiData?.avgPerOrg || "0"}</span>
+        </div>
+        {aiData?.topFunctions && aiData.topFunctions.length > 0 && (
+          <>
+            <p className="text-xs font-medium text-muted-foreground pt-1">Top Functions</p>
+            {aiData.topFunctions.map((f) => (
+              <div key={f.name} className="flex justify-between text-xs">
+                <span className="text-foreground truncate max-w-[160px]">{f.name}</span>
+                <Badge variant="outline" className="text-[10px]">{f.count}</Badge>
+              </div>
+            ))}
+          </>
+        )}
+        {aiData?.topOrgs && aiData.topOrgs.length > 0 && (
+          <>
+            <p className="text-xs font-medium text-muted-foreground pt-1">Top Orgs</p>
+            {aiData.topOrgs.map((o) => (
+              <div key={o.name} className="flex justify-between text-xs">
+                <span className="text-foreground truncate max-w-[160px]">{o.name}</span>
+                <Badge variant="secondary" className="text-[10px]">{o.count} calls</Badge>
+              </div>
+            ))}
+          </>
+        )}
+        {!aiData && <p className="text-xs text-muted-foreground">Loading…</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AcquisitionWidget({ subscribers }: { subscribers: any[] }) {
+  const referralCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    subscribers.forEach((s: any) => {
+      const src = s.referral_source || "Direct / Unknown";
+      counts[src] = (counts[src] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [subscribers]);
+
+  // Also derive from site_url domain as a secondary signal
+  const domainCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    subscribers.forEach((s: any) => {
+      if (s.site_url) {
+        try {
+          const domain = new URL(s.site_url.startsWith("http") ? s.site_url : `https://${s.site_url}`).hostname.replace(/^www\./, "");
+          counts[domain] = (counts[domain] || 0) + 1;
+        } catch { /* skip */ }
+      }
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [subscribers]);
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Acquisition</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        {referralCounts.length > 0 && (
+          <>
+            <p className="text-xs font-medium text-muted-foreground">Referral Source</p>
+            {referralCounts.map(([src, count]) => (
+              <div key={src} className="flex justify-between text-sm">
+                <span className="text-foreground">{src}</span>
+                <Badge variant="outline" className="text-[10px]">{count}</Badge>
+              </div>
+            ))}
+          </>
+        )}
+        {domainCounts.length > 0 && (
+          <>
+            <p className="text-xs font-medium text-muted-foreground pt-1">Customer Domains</p>
+            {domainCounts.map(([domain, count]) => (
+              <div key={domain} className="flex justify-between text-sm">
+                <span className="text-foreground truncate max-w-[160px]">{domain}</span>
+                <Badge variant="secondary" className="text-[10px]">{count}</Badge>
+              </div>
+            ))}
+          </>
+        )}
+        {referralCounts.length === 0 && domainCounts.length === 0 && (
+          <p className="text-sm text-muted-foreground">No data yet</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -228,27 +375,8 @@ export default function AdminSetup() {
   const signupsThisMonth = subscribers.filter((s: any) => s.created_at?.startsWith(thisMonthStr)).length;
   const signupsLastMonth = subscribers.filter((s: any) => s.created_at?.startsWith(lastMonthStr)).length;
 
-  const featureCountsOwner = useMemo(() => {
-    const counts: Record<string, number> = {};
-    activeSubs.forEach((s: any) => {
-      const features = Array.isArray(s.features_used) ? s.features_used : [];
-      features.forEach((f: string) => { counts[f] = (counts[f] || 0) + 1; });
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [activeSubs]);
 
-  const avgAiCalls = activeSubs.length
-    ? (activeSubs.reduce((sum: number, s: any) => sum + Number(s.ai_calls_per_day_avg || 0), 0) / activeSubs.length).toFixed(1)
-    : "0";
 
-  const referralCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    subscribers.forEach((s: any) => {
-      const src = s.referral_source || "Unknown";
-      counts[src] = (counts[src] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [subscribers]);
 
   const sortedSubs = useMemo(() => {
     return [...subscribers].sort((a: any, b: any) => {
@@ -781,10 +909,7 @@ export default function AdminSetup() {
             );
           })()}
 
-          {/* Feature Usage */}
-          <FeatureUsageWidget />
 
-          {/* Subscriber Table */}
           <Card>
             <CardHeader><CardTitle className="text-base">Subscribers ({subscribers.length})</CardTitle></CardHeader>
             <CardContent className="overflow-x-auto">
@@ -1013,62 +1138,13 @@ export default function AdminSetup() {
             </CardContent>
           </Card>
 
+          {/* Feature Usage — moved below subscribers */}
+          <FeatureUsageWidget />
+
           {/* Product Intelligence & Acquisition */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Feature Usage</CardTitle></CardHeader>
-              <CardContent>
-                {featureCountsOwner.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No data yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {featureCountsOwner.map(([name, count]) => (
-                      <div key={name} className="flex justify-between text-sm">
-                        <span className="text-foreground">{name}</span>
-                        <span className="text-muted-foreground">{count} sites</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-base">AI Usage</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Avg AI calls/site/day:</span>
-                  <span className="ml-2 font-mono text-foreground">{avgAiCalls}</span>
-                </div>
-                <div className="text-sm font-medium text-foreground">High usage sites:</div>
-                {activeSubs
-                  .filter((s: any) => Number(s.ai_calls_per_day_avg) > 50)
-                  .map((s: any) => (
-                    <div key={s.id} className="text-xs flex justify-between">
-                      <span className="truncate max-w-[140px]">{s.site_url || s.email}</span>
-                      <Badge variant="destructive">{Number(s.ai_calls_per_day_avg).toFixed(0)}/day</Badge>
-                    </div>
-                  ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-base">Acquisition</CardTitle></CardHeader>
-              <CardContent>
-                {referralCounts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No data yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {referralCounts.map(([src, count]) => (
-                      <div key={src} className="flex justify-between text-sm">
-                        <span className="text-foreground">{src}</span>
-                        <span className="text-muted-foreground">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid md:grid-cols-2 gap-4">
+            <AiUsageWidget />
+            <AcquisitionWidget subscribers={subscribers} />
           </div>
 
           {/* Recent Errors */}

@@ -5,10 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const SITE_NAME = "ACTV TRKR";
+const SENDER_DOMAIN = "notify.actvtrkr.com";
+const FROM_DOMAIN = "actvtrkr.com";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Accept either x-cron-secret header or a valid JWT (from pg_cron via anon key)
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
   const authHeader = req.headers.get("authorization");
@@ -98,43 +101,50 @@ Deno.serve(async (req) => {
                 body: alert.message,
               });
             } else if (channel === "email") {
-              // Send via Resend if configured
-              const resendApiKey = Deno.env.get("RESEND_API_KEY");
-              const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "alerts@actvtrkr.com";
+              // Get user email from profiles
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email")
+                .eq("user_id", member.user_id)
+                .maybeSingle();
 
-              if (resendApiKey) {
-                // Get user email
-                const { data: profile } = await supabase
-                  .from("profiles")
-                  .select("email")
-                  .eq("user_id", member.user_id)
+              if (profile?.email) {
+                // Check suppression list
+                const { data: suppressed } = await supabase
+                  .from("suppressed_emails")
+                  .select("id")
+                  .eq("email", profile.email)
                   .maybeSingle();
 
-                if (profile?.email) {
+                if (!suppressed) {
+                  const messageId = `alert-${alert.id}-${member.user_id}`;
                   try {
-                    const emailResp = await fetch("https://api.resend.com/emails", {
-                      method: "POST",
-                      headers: {
-                        "Authorization": `Bearer ${resendApiKey}`,
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        from: fromEmail,
+                    await supabase.rpc("enqueue_email", {
+                      queue_name: "transactional_emails",
+                      payload: {
                         to: profile.email,
+                        from: `${SITE_NAME} <alerts@${FROM_DOMAIN}>`,
+                        sender_domain: SENDER_DOMAIN,
                         subject: alert.subject,
-                        html: `<p>${alert.message}</p>`,
-                      }),
+                        html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+                          <h2 style="color:#333;">${alert.subject}</h2>
+                          <p style="color:#555;line-height:1.6;">${alert.message}</p>
+                          <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+                          <p style="color:#999;font-size:12px;">ACTV TRKR Alert Notification</p>
+                        </div>`,
+                        text: `${alert.subject}\n\n${alert.message}`,
+                        purpose: "transactional",
+                        message_id: messageId,
+                        template_name: "monitoring_alert",
+                      },
                     });
-                    if (!emailResp.ok) {
-                      console.error("Resend error:", await emailResp.text());
-                    }
+                    console.log(`Enqueued alert email to ${profile.email}`);
                   } catch (e) {
-                    console.error("Email send error:", e);
+                    console.error(`Failed to enqueue alert email for ${profile.email}:`, e);
                   }
                 }
               }
             }
-            // SMS: architecture-ready, no provider implemented yet
           }
         }
 

@@ -314,6 +314,7 @@ Deno.serve(async (req) => {
           current_period_start: s.current_period_start,
           current_period_end: s.current_period_end,
           cancel_at_period_end: s.cancel_at_period_end,
+          cancel_at: s.cancel_at,
           canceled_at: s.canceled_at,
         })),
         invoices: invoices.data.map((i) => ({

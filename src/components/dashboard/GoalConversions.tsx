@@ -349,10 +349,7 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
         </h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">No goals configured yet. Create a goal to start tracking conversions.</p>
-      <Button size="sm" variant="outline" onClick={() => navigate("/settings?tab=general&section=goals")} className="gap-1.5">
-        <Plus className="h-3.5 w-3.5" />
-        Create a New Goal
-      </Button>
+      {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}
     </div>
   );
 

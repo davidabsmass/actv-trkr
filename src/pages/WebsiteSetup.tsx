@@ -41,6 +41,8 @@ export default function WebsiteSetup() {
   const { activeTier } = usePlanTier();
   const { data: sites, isLoading: sitesLoading } = useSites(orgId);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const hasRedirected = useRef(false);
 
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);

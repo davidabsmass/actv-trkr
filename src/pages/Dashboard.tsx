@@ -139,7 +139,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { orgId, orgName, orgs } = useOrg();
   const { t } = useTranslation();
-  const { seoVisible } = useSeoVisibility();
+  const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { needsOnboarding, settings } = useSiteSettings();
   const { data: formsData } = useForms(orgId);
 
@@ -527,7 +527,7 @@ const Dashboard = () => {
         <div className="space-y-4">
 
           {/* Row 1 – 6 KPI Cards */}
-          <div className={`grid grid-cols-2 md:grid-cols-3 ${seoVisible ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
+          <div className={`grid grid-cols-2 md:grid-cols-3 ${seoAdvanced ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
             <KPICard
               label={`${t("dashboard.sessions")} (${days}d)`}
               value={periodData.sessions.current.toLocaleString()}
@@ -581,7 +581,7 @@ const Dashboard = () => {
                 <p className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</p>
               )}
             </div>
-            {seoVisible && (
+            {seoAdvanced && (
               <KPICard
                 label={t("dashboard.seoScore")}
                 value={seoMovement?.score ?? "—"}

@@ -553,12 +553,25 @@ export default function Forms() {
       if (restored) parts.push(`${restored} entry/entries restored`);
       if (checked) parts.push(`${checked} form check(s) completed`);
 
+      // Check if any site triggered a background backfill
+      let anyBackfillInProgress = false;
+      for (const res of results) {
+        if (res.status === "fulfilled" && res.value?.data?.backfill_in_progress) {
+          anyBackfillInProgress = true;
+          break;
+        }
+      }
+
       if (worstStatus === "blocked") {
         toast.error(getBlockedSyncMessage(blockedRuntimeVersion));
       } else if (worstStatus === "partial") {
         toast.warning(parts.length > 0 ? `Sync partially completed — ${parts.join(", ")}` : "Sync partially completed — some forms were skipped");
       } else {
         toast.success(parts.length > 0 ? `Sync complete — ${parts.join(", ")}` : "Sync complete — everything up to date");
+      }
+
+      if (anyBackfillInProgress) {
+        toast.info("Importing historical entries in the background — this may take a few minutes for large forms. Refresh the page shortly to see new entries.");
       }
 
       if (warnings.length > 0 && worstStatus !== "blocked") {

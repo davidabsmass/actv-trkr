@@ -96,6 +96,21 @@ export default function WebsiteSetup() {
     return diff < 30 * 60 * 1000; // within 30 min
   });
 
+  // Auto-poll for connection every 5s while not connected, then redirect to dashboard
+  useEffect(() => {
+    if (websiteConnected && !hasRedirected.current) {
+      hasRedirected.current = true;
+      toast.success("Website connected! Redirecting to dashboard…");
+      setTimeout(() => navigate("/dashboard"), 1500);
+      return;
+    }
+    if (websiteConnected) return;
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [websiteConnected, orgId, queryClient, navigate]);
+
   // Setup step completion
   const steps = [
     { label: t("websiteSetup.stepDownloadPlugin"), done: progress.downloaded },

@@ -7,6 +7,7 @@ import {
   GOAL_TYPES, type ConversionGoal, type GoalType,
 } from "@/hooks/use-goals";
 import { Target, Plus, Trash2, Power, TrendingUp, Edit2, X } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +16,94 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+
+/* ─── Inline help per goal type ─── */
+const GOAL_HELP: Record<string, { title: string; steps: string[]; example: string }> = {
+  form_submission: {
+    title: "Track when a visitor submits a form",
+    steps: [
+      "Choose a specific form or select \"All Forms\" to track every submission.",
+      "Forms are auto-discovered by the plugin — run Sync Forms in WordPress if yours isn't listed.",
+      "Each submission counts as one conversion, even if the same visitor submits twice.",
+    ],
+    example: "Example: Track all \"Request Appointment\" form submissions as a lead conversion worth $150.",
+  },
+  cta_click: {
+    title: "Track clicks on buttons or call-to-action links",
+    steps: [
+      "Text contains — matches the visible button label (case-insensitive). e.g. \"Book Now\", \"Get Started\".",
+      "Href contains — matches the link destination. e.g. \"calendly.com\", \"/schedule\".",
+      "Page filter (optional) — only count clicks on a specific page. e.g. \"/services\".",
+      "Fill in at least one of Text or Href. Both can be used together for tighter matching.",
+    ],
+    example: "Example: Track clicks on any button labeled \"Book Online\" that links to calendly.com.",
+  },
+  tel_click: {
+    title: "Track phone number link clicks (tel: links)",
+    steps: [
+      "Toggle \"All phone clicks\" to track every tel: link click site-wide.",
+      "Or enter a partial number to narrow it down — e.g. \"555\" to only track your main line.",
+      "The plugin automatically detects tel: links; no extra code needed.",
+    ],
+    example: "Example: Track clicks on your main office number containing \"770\" as a phone lead.",
+  },
+  mailto_click: {
+    title: "Track email link clicks (mailto: links)",
+    steps: [
+      "Toggle \"All email clicks\" to track every mailto: link click site-wide.",
+      "Or enter a partial address to narrow it — e.g. \"info@\" to only track your main inbox.",
+      "Works with any standard mailto: link on your site.",
+    ],
+    example: "Example: Track clicks on \"info@yourcompany.com\" as an email inquiry conversion.",
+  },
+  outbound_click: {
+    title: "Track clicks that leave your website",
+    steps: [
+      "Toggle \"All outbound clicks\" to count every external link click.",
+      "Or enter a domain/URL fragment to track a specific destination — e.g. \"calendly.com\".",
+      "Useful for tracking referrals to booking platforms, partner sites, or review pages.",
+    ],
+    example: "Example: Track clicks going to \"g.page\" (Google review link) as a review conversion.",
+  },
+  page_visit: {
+    title: "Track when a visitor lands on a specific page",
+    steps: [
+      "URL contains — fires when the page path includes this text. e.g. \"/thank-you\".",
+      "URL exact — fires only on an exact path match. e.g. \"/contact/success\".",
+      "Use one or both fields. \"Contains\" is more forgiving; \"Exact\" is stricter.",
+      "Great for thank-you pages, confirmation pages, or high-intent landing pages.",
+    ],
+    example: "Example: Track visits to \"/thank-you\" as proof a form or purchase completed.",
+  },
+  custom_event: {
+    title: "Track a custom JavaScript event you fire from your site",
+    steps: [
+      "Enter the exact event name your code dispatches — e.g. \"signup_complete\".",
+      "Fire it from your site with: window.actvTrkr?.track(\"signup_complete\")",
+      "This is for advanced use when none of the built-in types cover your scenario.",
+    ],
+    example: "Example: Track a \"video_watched_75pct\" event to measure video engagement.",
+  },
+};
+
+function GoalHelpBox({ goalType }: { goalType: GoalType }) {
+  const help = GOAL_HELP[goalType];
+  if (!help) return null;
+  return (
+    <div className="rounded-md border border-primary/20 bg-primary/5 p-3 mb-3">
+      <div className="flex items-start gap-2 mb-2">
+        <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+        <p className="text-xs font-medium text-foreground">{help.title}</p>
+      </div>
+      <ul className="space-y-1 ml-5 list-disc">
+        {help.steps.map((step, i) => (
+          <li key={i} className="text-xs text-muted-foreground leading-relaxed">{step}</li>
+        ))}
+      </ul>
+      <p className="text-[11px] text-primary/70 mt-2 italic">{help.example}</p>
+    </div>
+  );
+}
 
 /* ─── Goal Type Config Fields ─── */
 function TrackingRuleFields({
@@ -190,6 +279,7 @@ export function CreateGoalDialog({ orgId, forms }: { orgId: string; forms: any[]
           {/* Tracking Rules */}
           <div className="border border-border rounded-lg p-3 bg-muted/30">
             <p className="text-xs font-medium text-foreground mb-2">{t("goals.trackingRules")}</p>
+            <GoalHelpBox goalType={goalType} />
             <TrackingRuleFields goalType={goalType} rules={rules} onChange={setRules} forms={forms} />
           </div>
 
@@ -303,6 +393,7 @@ function EditGoalDialog({ goal, orgId, forms }: { goal: ConversionGoal; orgId: s
 
           <div className="border border-border rounded-lg p-3 bg-muted/30">
             <p className="text-xs font-medium text-foreground mb-2">{t("goals.trackingRules")}</p>
+            <GoalHelpBox goalType={goalType} />
             <TrackingRuleFields goalType={goalType} rules={rules} onChange={setRules} forms={forms} />
           </div>
 

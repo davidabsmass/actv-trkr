@@ -1,7 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
-import { Search, Smartphone, Globe, FileText } from "lucide-react";
+import { Search, Smartphone, Globe, FileText, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import type { SeoIssue } from "@/lib/seo-scoring";
 
 type StatusLevel = "healthy" | "needs_review" | "issue_detected" | "good" | "warning" | "blocked" | "unknown";
@@ -35,7 +37,23 @@ function deriveStatus(value: boolean | null | undefined, goodLabel = "Healthy", 
 }
 
 export default function SeoSummaryView() {
-  const { orgId } = useOrg();
+  const { orgId, orgName } = useOrg();
+  const queryClient = useQueryClient();
+
+  // Get sites for this org
+  const { data: sites } = useQuery({
+    queryKey: ["sites_for_seo_summary", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data } = await supabase.from("sites").select("id, domain").eq("org_id", orgId);
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  const siteDomain = sites?.[0]?.domain || "";
+  const effectiveDomain = siteDomain || (orgName && orgName !== "My Organization" && orgName.includes(".") ? orgName : "");
+  const homepageUrl = effectiveDomain ? `https://${effectiveDomain}` : "";
 
   // Get latest scan for this org
   const { data: latestScan, isLoading } = useQuery({
@@ -52,6 +70,24 @@ export default function SeoSummaryView() {
       return data;
     },
     enabled: !!orgId,
+  });
+
+  const runScan = useMutation({
+    mutationFn: async () => {
+      if (!effectiveDomain || !orgId) throw new Error("No domain configured");
+      const urlToScan = homepageUrl.trim().replace(/\/+$/, "");
+      const siteId = sites?.[0]?.id || null;
+      const { data, error } = await supabase.functions.invoke("scan-site-seo", {
+        body: { url: urlToScan, site_id: siteId, org_id: orgId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seo_summary_scan", orgId] });
+      toast.success("SEO scan completed");
+    },
+    onError: (err: any) => toast.error(err.message || "Scan failed"),
   });
 
   if (isLoading) {
@@ -132,11 +168,31 @@ export default function SeoSummaryView() {
         ))}
       </div>
 
-      {!latestScan && (
+      {/* Scan button */}
+      {effectiveDomain && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Scanning: <span className="font-medium text-foreground">{homepageUrl}</span>
+            </p>
+            <Button
+              size="sm"
+              onClick={() => runScan.mutate()}
+              disabled={runScan.isPending}
+              className="gap-1.5 shrink-0"
+            >
+              {runScan.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              {runScan.isPending ? "Scanning…" : latestScan ? "New Scan" : "Run First Scan"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!latestScan && !effectiveDomain && (
         <div className="rounded-lg border border-border bg-card p-8 text-center">
           <Search className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No scan data available yet.</p>
-          <p className="text-xs text-muted-foreground mt-1">Your team will run an initial scan to populate these statuses.</p>
+          <p className="text-xs text-muted-foreground mt-1">Connect your site to enable scanning.</p>
         </div>
       )}
     </div>

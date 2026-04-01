@@ -1,0 +1,1 @@
+UPDATE public.subscribers SET status = 'active', mrr = 30, churn_date = NULL, churn_reason = NULL, stripe_subscription_id = 'sub_1THJT7QXOqBVFUKWRMTbJXGj' WHERE stripe_customer_id = 'cus_UEhhK0rH272dw6';

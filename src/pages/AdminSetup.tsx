@@ -791,29 +791,30 @@ export default function AdminSetup() {
                                   <div>
                                     <h4 className="text-sm font-semibold text-foreground mb-2">Subscriptions</h4>
                                     <div className="space-y-2">
-                                      {billingData.subscriptions.map((sub: any) => (
+                                       {billingData.subscriptions.map((sub: any) => {
+                                        const toDate = (v: any) => {
+                                          if (!v) return null;
+                                          const d = typeof v === "number" ? new Date(v < 1e12 ? v * 1000 : v) : new Date(v);
+                                          return isNaN(d.getTime()) ? null : d;
+                                        };
+                                        const periodStart = toDate(sub.current_period_start);
+                                        const periodEnd = toDate(sub.current_period_end);
+                                        const createdDate = toDate(sub.created);
+                                        return (
                                         <div key={sub.id} className="flex items-center justify-between bg-background rounded-lg border border-border p-3">
                                           <div className="space-y-0.5">
                                             <div className="flex items-center gap-2">
-                                              <Badge variant={sub.status === "active" ? "default" : "secondary"}>{sub.status}</Badge>
+                                              <Badge variant={sub.status === "active" ? "default" : sub.status === "canceled" ? "destructive" : "secondary"}>{sub.status}</Badge>
                                               <span className="text-sm font-medium">${sub.amount}/{sub.interval}</span>
+                                              {createdDate && <span className="text-xs text-muted-foreground">Created {createdDate.toLocaleDateString()}</span>}
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                              Period: {(() => {
-                                                const s = sub.current_period_start;
-                                                const e = sub.current_period_end;
-                                                const toDate = (v: any) => {
-                                                  if (!v) return null;
-                                                  const d = typeof v === "number" ? new Date(v < 1e12 ? v * 1000 : v) : new Date(v);
-                                                  return isNaN(d.getTime()) ? null : d;
-                                                };
-                                                const start = toDate(s);
-                                                const end = toDate(e);
-                                                return `${start ? start.toLocaleDateString() : "—"} – ${end ? end.toLocaleDateString() : "—"}`;
-                                              })()}
+                                              Period: {periodStart ? periodStart.toLocaleDateString() : "—"} – {periodEnd ? periodEnd.toLocaleDateString() : "—"}
                                               {sub.cancel_at_period_end && " · Cancelling at period end"}
                                               {sub.cancel_at && !sub.cancel_at_period_end && ` · Cancelling on ${new Date(sub.cancel_at * 1000).toLocaleDateString()}`}
+                                              {sub.canceled_at && ` · Canceled ${new Date(sub.canceled_at * 1000).toLocaleDateString()}`}
                                             </p>
+                                            <p className="text-[10px] text-muted-foreground/60 font-mono">{sub.id}</p>
                                           </div>
                                           {sub.status === "active" && !sub.cancel_at_period_end && !sub.cancel_at && (
                                             <div className="flex flex-col gap-1.5">
@@ -854,7 +855,9 @@ export default function AdminSetup() {
                                             </div>
                                           )}
                                         </div>
-                                      ))}
+                                        );
+                                       })}
+
                                     </div>
                                   </div>
                                 )}

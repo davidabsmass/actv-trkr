@@ -263,6 +263,10 @@ async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): 
   return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 60000);
 }
 
+async function triggerWordPressEntryBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-entries", 60000);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -495,7 +499,53 @@ Deno.serve(async (req) => {
       console.log("Avada backfill triggered (fire-and-forget)");
     }
 
-    // Skip the old synchronous backfill result processing block
+    // ── Auto-backfill non-Avada entries (Gravity Forms, WPForms, CF7, etc.) ──
+    // If the sync reported forms with active entries but we have zero leads, trigger backfill
+    const nonAvadaForms = forms.filter((f: any) => !avadaFormIds.has(String(f.form_id || "")));
+    let entryBackfillAttempted = false;
+
+    if (nonAvadaForms.length > 0) {
+      // Check if we have ANY leads for non-Avada forms in this site
+      const nonAvadaFormRows = await supabase
+        .from("forms")
+        .select("id")
+        .eq("org_id", site.org_id)
+        .eq("site_id", site.id)
+        .neq("provider", "avada")
+        .eq("archived", false);
+
+      const nonAvadaFormIds = (nonAvadaFormRows.data || []).map((f: any) => f.id);
+
+      if (nonAvadaFormIds.length > 0) {
+        const { count: nonAvadaLeadCount } = await supabase
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", site.org_id)
+          .eq("site_id", site.id)
+          .in("form_id", nonAvadaFormIds)
+          .neq("status", "trashed");
+
+        // If forms have WP entries but zero leads in our DB → backfill
+        const wpHasEntries = nonAvadaForms.some((f: any) => (f.entry_ids || []).length > 0);
+        if ((nonAvadaLeadCount || 0) === 0 && wpHasEntries) {
+          entryBackfillAttempted = true;
+          console.log("Non-Avada entry backfill triggered (fire-and-forget)");
+          triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash)
+            .then(async ({ response: bfRes, endpoint: bfEndpoint }) => {
+              if (!bfRes.ok) {
+                const bfBody = await bfRes.text();
+                console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
+              } else {
+                const bfRaw = await bfRes.text();
+                console.log(`WP entry backfill succeeded (${bfEndpoint}): ${bfRaw.slice(0, 200)}`);
+              }
+            })
+            .catch((err) => {
+              console.error("WP entry backfill fire-and-forget error:", err);
+            });
+        }
+      }
+    }
 
     // Update site plugin_version if runtime version is newer
     if (runtimePluginVersion && runtimePluginVersion !== site.plugin_version) {
@@ -566,6 +616,7 @@ Deno.serve(async (req) => {
       avada_backfill_attempted: avadaBackfillAttempted,
       avada_backfill_entries: avadaBackfillEntries,
       avada_backfill_error: avadaBackfillError,
+      entry_backfill_attempted: entryBackfillAttempted,
       ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

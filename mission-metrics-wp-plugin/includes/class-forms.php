@@ -61,6 +61,12 @@ class MM_Forms {
 			'permission_callback' => '__return_true',
 		) );
 
+		register_rest_route( 'actv-trkr/v1', '/backfill-entries', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'handle_rest_backfill_entries' ),
+			'permission_callback' => '__return_true',
+		) );
+
 		register_rest_route( 'actv-trkr/v1', '/avada-debug', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'handle_rest_avada_debug' ),
@@ -2250,6 +2256,139 @@ class MM_Forms {
 			'total_rows'    => $total,
 			'sample_rows'   => $samples,
 			'parser_output' => $parser_result,
+		), 200 );
+	}
+
+	/**
+	 * Backfill historical entries for all non-Avada form providers (Gravity Forms, CF7, WPForms, etc.).
+	 * Called from the dashboard when forms are synced but no entries exist yet.
+	 */
+	public static function handle_rest_backfill_entries( $request ) {
+		$opts = MM_Settings::get();
+		if ( empty( $opts['api_key'] ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
+		}
+
+		$body     = $request->get_json_params();
+		$key_hash = $body['key_hash'] ?? '';
+
+		$stored_hash = hash( 'sha256', $opts['api_key'] );
+		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
+			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
+		}
+
+		$domain  = wp_parse_url( home_url(), PHP_URL_HOST );
+		$sent    = 0;
+		$errors  = 0;
+		$max_entries = 500; // Safety cap per form
+
+		// ── Gravity Forms ──
+		if ( class_exists( 'GFAPI' ) ) {
+			$gf_forms = \GFAPI::get_forms();
+			if ( is_array( $gf_forms ) ) {
+				foreach ( $gf_forms as $form ) {
+					$form_id = $form['id'] ?? '';
+					if ( ! $form_id ) continue;
+
+					$search = array( 'status' => 'active' );
+					$paging = array( 'offset' => 0, 'page_size' => $max_entries );
+					$entries = \GFAPI::get_entries( $form_id, $search, null, $paging );
+
+					if ( ! is_array( $entries ) || empty( $entries ) ) continue;
+
+					foreach ( $entries as $entry ) {
+						$fields = array();
+						if ( ! empty( $form['fields'] ) ) {
+							foreach ( $form['fields'] as $field ) {
+								$fid   = $field->id;
+								$value = rgar( $entry, (string) $fid );
+								$fields[] = array(
+									'id'    => $fid,
+									'name'  => $field->label,
+									'label' => $field->label,
+									'type'  => $field->type,
+									'value' => $value,
+								);
+							}
+						}
+
+						$payload = array(
+							'provider' => 'gravity_forms',
+							'entry'    => array(
+								'form_id'      => (string) $form_id,
+								'form_title'   => $form['title'] ?? '',
+								'entry_id'     => rgar( $entry, 'id' ),
+								'source_url'   => rgar( $entry, 'source_url' ),
+								'submitted_at' => rgar( $entry, 'date_created' ),
+							),
+							'context'  => array(
+								'domain'         => $domain,
+								'plugin_version' => MM_PLUGIN_VERSION,
+								'backfill'       => true,
+							),
+							'fields'   => $fields,
+						);
+
+						self::send( $payload );
+						$sent++;
+					}
+				}
+			}
+		}
+
+		// ── WPForms ──
+		if ( function_exists( 'wpforms' ) && isset( wpforms()->entry ) ) {
+			$wp_forms = wpforms()->form->get( '', array( 'posts_per_page' => -1 ) );
+			if ( is_array( $wp_forms ) ) {
+				foreach ( $wp_forms as $form ) {
+					$form_id = $form->ID;
+					$entries = wpforms()->entry->get_entries( array( 'form_id' => $form_id, 'number' => $max_entries ) );
+					if ( ! is_array( $entries ) || empty( $entries ) ) continue;
+
+					foreach ( $entries as $wp_entry ) {
+						$fields_raw = json_decode( $wp_entry->fields, true );
+						$fields = array();
+						if ( is_array( $fields_raw ) ) {
+							foreach ( $fields_raw as $field ) {
+								$fields[] = array(
+									'id'    => $field['id'] ?? '',
+									'name'  => $field['name'] ?? '',
+									'label' => $field['name'] ?? '',
+									'type'  => $field['type'] ?? 'text',
+									'value' => $field['value'] ?? '',
+								);
+							}
+						}
+
+						$payload = array(
+							'provider' => 'wpforms',
+							'entry'    => array(
+								'form_id'      => (string) $form_id,
+								'form_title'   => $form->post_title ?: 'WPForm',
+								'entry_id'     => (string) $wp_entry->entry_id,
+								'source_url'   => home_url(),
+								'submitted_at' => $wp_entry->date ?? current_time( 'c' ),
+							),
+							'context'  => array(
+								'domain'         => $domain,
+								'plugin_version' => MM_PLUGIN_VERSION,
+								'backfill'       => true,
+							),
+							'fields'   => $fields,
+						);
+
+						self::send( $payload );
+						$sent++;
+					}
+				}
+			}
+		}
+
+		return new \WP_REST_Response( array(
+			'ok'      => true,
+			'entries' => $sent,
+			'errors'  => $errors,
+			'plugin_version' => MM_PLUGIN_VERSION,
 		), 200 );
 	}
 

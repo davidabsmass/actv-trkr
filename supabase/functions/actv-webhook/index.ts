@@ -103,12 +103,14 @@ serve(async (req) => {
             .maybeSingle();
 
           if (!existingOrg) {
-            // Derive org name from email domain or site URL
-            let orgName = email.split("@")[1] || "My Organization";
+            // Derive org name from site URL or email domain (skip personal email providers)
+            const personalDomains = ["gmail.com","yahoo.com","hotmail.com","outlook.com","aol.com","icloud.com","mail.com","protonmail.com","zoho.com","yandex.com","live.com","msn.com","me.com","mac.com"];
+            const emailDomain = (email.split("@")[1] || "").toLowerCase();
+            let orgName = personalDomains.includes(emailDomain) ? "My Organization" : emailDomain;
             if (siteUrl) {
               try {
                 orgName = new URL(siteUrl).hostname.replace(/^www\./, "");
-              } catch { /* keep email domain */ }
+              } catch { /* keep fallback */ }
             }
 
             const { data: org, error: orgErr } = await supabase

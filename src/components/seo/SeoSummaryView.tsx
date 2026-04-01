@@ -31,11 +31,6 @@ function StatusBadge({ level, label }: StatusBadgeProps) {
   );
 }
 
-function deriveStatus(value: boolean | null | undefined, goodLabel = "Healthy", badLabel = "Issue Detected"): { level: StatusLevel; label: string } {
-  if (value === null || value === undefined) return { level: "unknown", label: "No Data" };
-  return value ? { level: "healthy", label: goodLabel } : { level: "issue_detected", label: badLabel };
-}
-
 export default function SeoSummaryView() {
   const { orgId, orgName } = useOrg();
   const queryClient = useQueryClient();

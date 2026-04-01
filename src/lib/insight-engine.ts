@@ -104,7 +104,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
 
   // ── Conversion rate ──
   const cvrPct = pctChange(inputs.currentCvr, inputs.previousCvr);
-  if (cvrPct >= 10) {
+  if (cvrPct !== null && cvrPct >= 10) {
     findings.push({
       type: "conversion_gain", category: "Conversion", positive: true,
       title: "Conversion rate improved",
@@ -112,7 +112,7 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
       metric_values: { current: `${inputs.currentCvr}%`, previous: `${inputs.previousCvr}%`, change: cvrPct },
       severity: "low", confidence: 0.85,
     });
-  } else if (cvrPct <= -10) {
+  } else if (cvrPct !== null && cvrPct <= -10) {
     findings.push({
       type: "conversion_drop", category: "Conversion", positive: false,
       title: "Conversion rate dropped",

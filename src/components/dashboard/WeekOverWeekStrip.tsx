@@ -10,16 +10,29 @@ interface WoWData {
   biggestDrop?: string;
 }
 
-function pctChange(curr: number, prev: number): number {
-  if (prev === 0) return curr > 0 ? 100 : 0;
+function pctChange(curr: number, prev: number): number | null {
+  if (prev === 0 && curr === 0) return null;
+  if (prev === 0) return null;
   return ((curr - prev) / prev) * 100;
 }
 
 function ChangeChip({ label, current, previous, isCvr }: { label: string; current: number; previous: number; isCvr?: boolean }) {
   const change = pctChange(current, previous);
+  const displayValue = isCvr ? `${(current * 100).toFixed(1)}%` : current.toLocaleString();
+
+  // No baseline data — show value only, no trend arrow
+  if (change === null) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+        <span className="text-sm font-semibold font-mono-data text-foreground">{displayValue}</span>
+        <span className="text-xs text-muted-foreground italic">New</span>
+      </div>
+    );
+  }
+
   const isUp = change > 0;
   const isDown = change < 0;
-  const displayValue = isCvr ? `${(current * 100).toFixed(1)}%` : current.toLocaleString();
   const changeStr = `${isUp ? "+" : ""}${change.toFixed(1)}%`;
 
   return (
@@ -43,21 +56,23 @@ export function WeekOverWeekStrip({ data }: { data: WoWData }) {
   const hasAnomaly = useMemo(() => {
     const leadsChange = pctChange(data.leads.current, data.leads.previous);
     const sessionsChange = pctChange(data.sessions.current, data.sessions.previous);
+    if (leadsChange === null || sessionsChange === null) return false;
     return leadsChange < -20 || sessionsChange < -25;
   }, [data]);
 
   const anomalyMessage = useMemo(() => {
     const leadsChange = pctChange(data.leads.current, data.leads.previous);
     const sessionsChange = pctChange(data.sessions.current, data.sessions.previous);
-    if (leadsChange < -20) return t("anomaly.leadsDown", { pct: Math.abs(leadsChange).toFixed(0) });
-    if (sessionsChange < -25) return t("anomaly.sessionsDropped", { pct: Math.abs(sessionsChange).toFixed(0) });
+    if (leadsChange !== null && leadsChange < -20) return t("anomaly.leadsDown", { pct: Math.abs(leadsChange).toFixed(0) });
+    if (sessionsChange !== null && sessionsChange < -25) return t("anomaly.sessionsDropped", { pct: Math.abs(sessionsChange).toFixed(0) });
     return null;
   }, [data]);
 
   const isStable = useMemo(() => {
-    const sc = Math.abs(pctChange(data.sessions.current, data.sessions.previous));
-    const lc = Math.abs(pctChange(data.leads.current, data.leads.previous));
-    return sc < 5 && lc < 5;
+    const sc = pctChange(data.sessions.current, data.sessions.previous);
+    const lc = pctChange(data.leads.current, data.leads.previous);
+    if (sc === null || lc === null) return false;
+    return Math.abs(sc) < 5 && Math.abs(lc) < 5;
   }, [data]);
 
   return (

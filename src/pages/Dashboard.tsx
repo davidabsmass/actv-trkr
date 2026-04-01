@@ -31,7 +31,7 @@ interface KPICardProps {
   label: string;
   value: string | number;
   sub?: string;
-  trend?: number;
+  trend?: number | null;
   icon: React.ReactNode;
   accent?: string;
   valueClassName?: string;
@@ -54,7 +54,7 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
         {value}
       </p>
       <div className="flex items-center gap-1.5 mt-1">
-        {trend !== undefined && trend !== 0 && (
+        {trend !== undefined && trend !== null && trend !== 0 && (
           <>
             {trend > 0 ? <ArrowUpRight className="h-3 w-3 kpi-up" /> : <ArrowDownRight className="h-3 w-3 kpi-down" />}
             <span className={`text-xs font-mono-data font-medium ${trend > 0 ? "kpi-up" : "kpi-down"}`}>
@@ -63,14 +63,16 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
           </>
         )}
         {trend === 0 && <Minus className="h-3 w-3 kpi-neutral" />}
+        {trend === null && <span className="text-xs text-muted-foreground italic">Collecting data…</span>}
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
       </div>
     </div>
   );
 }
 
-function pctChange(curr: number, prev: number): number {
-  if (prev === 0) return curr > 0 ? 100 : 0;
+function pctChange(curr: number, prev: number): number | null {
+  if (prev === 0 && curr === 0) return null; // no data at all
+  if (prev === 0) return null; // no baseline — don't show misleading spike
   return ((curr - prev) / prev) * 100;
 }
 

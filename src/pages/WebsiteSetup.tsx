@@ -62,6 +62,21 @@ export default function WebsiteSetup() {
     localStorage.setItem("at_setup_progress", JSON.stringify(next));
   };
 
+  // Latest plugin version
+  const { data: latestVersion } = useQuery({
+    queryKey: ["latest_plugin_version"],
+    queryFn: async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=check&version=0.0.0&t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.version as string;
+    },
+    staleTime: 1000 * 60,
+  });
+
   // API key query
   const { data: apiKeyData } = useQuery({
     queryKey: ["active_api_key_setup", orgId],

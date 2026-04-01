@@ -75,9 +75,13 @@ function assertPluginFileSafety(classFormsText: string): void {
 async function buildFiles(endpointBase: string): Promise<Map<string, string>> {
   const files = new Map<string, string>();
 
+  // Resolve the base directory of this edge function
+  const thisDir = new URL(".", import.meta.url).pathname;
+
   for (const relativePath of TEMPLATE_FILES) {
-    const fileUrl = new URL(`${TEMPLATE_BASE}${relativePath}`, import.meta.url);
-    const rawContent = await Deno.readTextFile(fileUrl);
+    const filePath = `${thisDir}plugin-template/${relativePath}`;
+    const rawBytes = await Deno.readFile(filePath);
+    const rawContent = textDecoder.decode(rawBytes);
     const content = transformFile(relativePath, rawContent, endpointBase);
     files.set(toZipPath(relativePath), content);
   }

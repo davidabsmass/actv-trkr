@@ -285,7 +285,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
 export default function OverviewTab() {
   const { t } = useTranslation();
   const now = new Date();
-  const [period, setPeriod] = useState<Period>("7d");
+  const [period, setPeriod] = useState<Period>("30d");
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined);

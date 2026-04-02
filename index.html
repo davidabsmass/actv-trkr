@@ -25,13 +25,13 @@
 
   <body>
     <script>
-      // Prevent English flash: hide body if stored language is non-English
+      // Prevent English flash: hide body completely if stored language is non-English
       (function(){
         try {
           var lang = (localStorage.getItem('at_language') || 'en').split('-')[0];
           if (lang !== 'en') {
+            document.body.style.visibility = 'hidden';
             document.body.style.opacity = '0';
-            document.body.style.transition = 'opacity 0.25s ease';
           }
         } catch(e){}
       })();

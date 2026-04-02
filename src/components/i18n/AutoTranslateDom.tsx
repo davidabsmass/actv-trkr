@@ -101,6 +101,8 @@ export default function AutoTranslateDom() {
     const fadeIn = () => {
       if (targetLanguage !== "en") {
         requestAnimationFrame(() => {
+          root.style.visibility = "visible";
+          root.style.transition = "opacity 0.3s ease";
           root.style.opacity = "1";
         });
       }

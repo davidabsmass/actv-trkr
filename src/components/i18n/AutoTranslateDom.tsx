@@ -46,7 +46,7 @@ export default function AutoTranslateDom() {
 
     // For non-English, ensure body starts hidden (covers both lang switch and page load)
     if (targetLanguage !== "en") {
-      root.style.transition = "opacity 0.25s ease";
+      root.style.visibility = "hidden";
       root.style.opacity = "0";
     }
 
@@ -101,6 +101,8 @@ export default function AutoTranslateDom() {
     const fadeIn = () => {
       if (targetLanguage !== "en") {
         requestAnimationFrame(() => {
+          root.style.visibility = "visible";
+          root.style.transition = "opacity 0.3s ease";
           root.style.opacity = "1";
         });
       }
@@ -230,6 +232,7 @@ export default function AutoTranslateDom() {
       if (scheduleTimer) window.clearTimeout(scheduleTimer);
       mutationObserver?.disconnect();
       // Ensure body is visible if effect re-runs before fade completes
+      root.style.visibility = "visible";
       root.style.opacity = "1";
     };
   }, [targetLanguage, location.pathname, location.search, location.hash]);

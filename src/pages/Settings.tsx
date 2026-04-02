@@ -5,13 +5,11 @@ import { useTranslation } from "react-i18next";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
-import FormsSection from "@/components/settings/FormsSection";
 import SeoVisibilitySection from "@/components/settings/SeoVisibilitySection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
-import GoalsSection from "@/components/settings/GoalsSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useRef } from "react";
 

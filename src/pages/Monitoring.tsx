@@ -434,7 +434,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
 
         {/* Plugin & WordPress */}
         <TabsContent value="plugin-wp" className="space-y-4">
-          <WpEnvironmentTab siteId={selectedSiteId} orgId={orgId} />
+          <WpEnvironmentTab siteId={site.id} orgId={orgId} />
         </TabsContent>
 
         {/* Notifications */}

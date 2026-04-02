@@ -2409,6 +2409,7 @@ class MM_Forms {
 		$next_offset      = 0;
 		$next_page        = 1;
 		$page_size        = intval( $state['page_size'] );
+		$payloads         = array();
 
 		if ( 'gravity_forms' === $job['provider'] ) {
 			$form    = $job['form'];
@@ -2419,8 +2420,7 @@ class MM_Forms {
 			}
 
 			foreach ( $entries as $entry ) {
-				self::send_nonblocking( self::build_gravity_backfill_payload( $form, $entry, $domain ) );
-				$sent++;
+				$payloads[] = self::build_gravity_backfill_payload( $form, $entry, $domain );
 			}
 
 			$has_more_current = count( $entries ) === $page_size;
@@ -2437,12 +2437,20 @@ class MM_Forms {
 			}
 
 			foreach ( $entries as $entry ) {
-				self::send_nonblocking( self::build_wpforms_backfill_payload( $form, $entry, $domain ) );
-				$sent++;
+				$payloads[] = self::build_wpforms_backfill_payload( $form, $entry, $domain );
 			}
 
 			$has_more_current = count( $entries ) === $page_size;
 			$next_page        = intval( $state['page'] ) + 1;
+		}
+
+		// Send payloads in batches of 25 to the batch endpoint
+		$batch_size = 25;
+		$chunks     = array_chunk( $payloads, $batch_size );
+		foreach ( $chunks as $chunk ) {
+			$result = self::send_batch( $chunk );
+			$sent   += $result['processed'];
+			$errors += $result['errors'];
 		}
 
 		return array(
@@ -2451,6 +2459,41 @@ class MM_Forms {
 			'has_more_current' => $has_more_current,
 			'next_offset'      => $next_offset,
 			'next_page'        => $next_page,
+		);
+	}
+
+	/**
+	 * Send a batch of entry payloads to the ingest-form-batch endpoint.
+	 */
+	private static function send_batch( $payloads ) {
+		$opts     = MM_Settings::get();
+		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form-batch';
+
+		$response = wp_remote_post( $endpoint, array(
+			'timeout'   => 30,
+			'blocking'  => true,
+			'headers'   => array(
+				'Content-Type'  => 'application/json',
+				'Authorization' => 'Bearer ' . $opts['api_key'],
+			),
+			'body' => wp_json_encode( array( 'entries' => $payloads ) ),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			error_log( '[MissionMetrics] Batch send error: ' . $response->get_error_message() );
+			return array( 'processed' => 0, 'errors' => count( $payloads ) );
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code >= 400 ) {
+			error_log( '[MissionMetrics] Batch send HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
+			return array( 'processed' => 0, 'errors' => count( $payloads ) );
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		return array(
+			'processed' => $body['processed'] ?? 0,
+			'errors'    => $body['errors'] ?? 0,
 		);
 	}
 

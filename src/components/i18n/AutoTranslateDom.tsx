@@ -179,10 +179,13 @@ export default function AutoTranslateDom() {
       };
 
       const cache = getCache(targetLanguage);
-      applyTranslations(cache);
 
       const missing = [...new Set(items.map((i) => i.value))].filter((text) => !cache[text]);
-      if (missing.length === 0) { fadeIn(); return; }
+      if (missing.length === 0) {
+        applyTranslations(cache);
+        fadeIn();
+        return;
+      }
 
       let updated = false;
 
@@ -202,13 +205,15 @@ export default function AutoTranslateDom() {
               Object.assign(cache, translated);
               updated = true;
             } catch {
-              // keep original text on hard failure
+              cache[text] = text;
             }
           }
         }
-
-        applyTranslations(cache);
       }
+
+      if (disposed) return;
+
+      applyTranslations(cache);
 
       if (updated) {
         setCache(targetLanguage, cache);

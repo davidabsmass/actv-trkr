@@ -53,7 +53,9 @@ function detectFormInHtml(html: string, provider: string, externalFormId: string
 
   switch (provider) {
     case "gravity_forms":
-      return new RegExp(`gform_wrapper[^"']*_${fid}|id=["']gform_${fid}["']|gform_submit_button_${fid}`, "i").test(html);
+      // Match specific form ID patterns OR generic GF AJAX placeholders (gform_wrapper_FORMID + gfield)
+      return new RegExp(`gform_wrapper[^"']*_${fid}|id=["']gform_${fid}["']|gform_submit_button_${fid}`, "i").test(html)
+        || (/gform_wrapper/i.test(html) && /gfield/i.test(html));
     case "cf7":
       return new RegExp(`wpcf7|contact-form-7|id=["']wpcf7-f${fid}`, "i").test(html);
     case "wpforms":
@@ -215,7 +217,7 @@ async function triggerWordPressRoute(
   siteUrl: string,
   keyHash: string,
   route: "sync" | "backfill-avada",
-  timeoutMs = 8000,
+  timeoutMs = 120000,
 ): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
   const endpoints = [

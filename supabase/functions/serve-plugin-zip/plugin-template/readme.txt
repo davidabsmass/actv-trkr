@@ -4,12 +4,16 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.7.0
+Stable tag: 1.7.1
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.7.1 =
+* Fixes entry sync timeout for sites with 700K+ entries by paginating Gravity Forms ID collection.
+* Increases sync-entries timeout from 30s to 120s and Edge Function sync timeout from 8s to 120s.
 
 = 1.7.0 =
 * Adds Magic Login for remote WP-Admin access from the dashboard.

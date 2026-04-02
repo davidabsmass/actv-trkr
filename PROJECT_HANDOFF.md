@@ -168,7 +168,8 @@ The "Not Found" results mean the Edge Function fetched those pages but couldn't 
 
 ## 6. Plugin Version History
 
-- **v1.7.0** (current): Magic Login support, "heartbeat" → "response" terminology cleanup
+- **v1.7.1** (current): Paginated GF entry ID collection for 700K+ entry sites, sync timeout 30s→120s, Edge Function sync timeout 8s→120s
+- **v1.7.0**: Magic Login support, "heartbeat" → "response" terminology cleanup
 - **v1.6.3**: Resumable cursor-based backfill with self-chaining
 - **v1.6.1**: Synchronous backfill loop (minimum for reliable backfill)
 - **v1.5.2**: Older version still running on apyxmedical.com
@@ -176,7 +177,7 @@ The "Not Found" results mean the Edge Function fetched those pages but couldn't 
 - **v1.3.12**: Minimum for Avada form entry discovery
 - **v1.3.4**: Minimum for reliable entry reconciliation
 
-All version strings must be updated in FOUR files when bumping:
+All version strings must be updated in FIVE files when bumping:
 1. `mission-metrics-wp-plugin/mission-metrics.php` (header + `MM_PLUGIN_VERSION`)
 2. `mission-metrics-wp-plugin/readme.txt` (Stable tag + Changelog)
 3. `supabase/functions/serve-plugin-zip/plugin-template/mission-metrics.php`
@@ -222,7 +223,7 @@ Settings page (`/settings`) has tabs: Sites, API Keys, Plugin, White Label, Noti
 
 - **Uptime**: Active HTTP pinging (HEAD with GET fallback), two-strike confirmation
 - **Domain/SSL**: Expiry checks with 30/7/5/3/1-day notification thresholds
-- **Form Liveness**: Hourly page-probe for form HTML presence
+- **Form Liveness**: Hourly page-probe for form HTML presence. Detection enhanced in v1.7.1 to handle Gravity Forms AJAX rendering (gform_wrapper + gfield fallback)
 - **WP Environment**: Plugin version, PHP version, WP version, active plugins, disk usage
 - Terminology: "response" not "heartbeat" throughout UI
 
@@ -230,11 +231,11 @@ Settings page (`/settings`) has tabs: Sites, API Keys, Plugin, White Label, Noti
 
 ## 11. Open Issues / Next Steps
 
-1. **livesinthebalance.org entry import incomplete**: Backfill ran but several forms still show low counts vs WordPress. Contact Us Form has 484K raw events but 0 active leads — needs investigation (likely reconciliation trashing them or parsing issue).
-2. **Duplicate site record**: Orphan site `c56915b0` in org `f1481904` for livesinthebalance.org should be cleaned up.
-3. **Form liveness "Not Found"**: 4 of 7 forms on livesinthebalance.org show "Not Found" — likely Gravity Forms shortcodes not rendering in server-side HTML fetch. May need to check if forms are behind AJAX loading.
-4. **Quick Contact form**: No page URL detected, 0 entries — sidebar/footer widget? Needs page_url to be manually set or auto-discovered from lead submissions.
-5. **apyxmedical.com on v1.5.2**: Should be updated to v1.7.0 for latest features.
+1. **livesinthebalance.org needs plugin update to v1.7.1**: The sync was timing out because GF entry ID collection only fetched first 5000 of 720K+ entries and Edge Function had an 8s timeout. Fixed in v1.7.1 — site needs to update plugin and re-sync.
+2. ~~**Duplicate site record**~~: ✅ RESOLVED — orphan site `c56915b0` and org `f1481904` deleted via migration.
+3. ~~**Form liveness "Not Found"**~~: ✅ RESOLVED — enhanced detection to handle GF AJAX rendering (gform_wrapper_FORMID placeholders).
+4. **Quick Contact form**: No page URL, 0 entries. Will auto-discover page_url from first submission via `hydrateMissingPageUrls`. Until then, liveness check shows "Pending".
+5. **apyxmedical.com on v1.5.2**: Needs manual update via WP admin. Can use Magic Login to access their WP admin and update.
 
 ---
 

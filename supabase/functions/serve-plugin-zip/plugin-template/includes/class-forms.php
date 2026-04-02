@@ -322,7 +322,7 @@ class MM_Forms {
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-entries';
 
 		$response = wp_remote_post( $endpoint, array(
-			'timeout'  => 30,
+			'timeout'  => 120,
 			'headers'  => array(
 				'Content-Type'  => 'application/json',
 				'Authorization' => 'Bearer ' . $opts['api_key'],
@@ -423,12 +423,22 @@ class MM_Forms {
 		global $wpdb;
 
 		switch ( $provider ) {
-			case 'gravity_forms':
-				if ( ! class_exists( 'GFAPI' ) ) return null;
+		case 'gravity_forms':
+			if ( ! class_exists( 'GFAPI' ) ) return null;
 				$search = array( 'status' => 'active' );
-				$entries = \GFAPI::get_entries( $form_id, $search, null, array( 'offset' => 0, 'page_size' => 5000 ) );
-				if ( ! is_array( $entries ) ) return array();
-				return array_map( function( $e ) { return (string) $e['id']; }, $entries );
+				$all_ids = array();
+				$page_size = 500;
+				$offset = 0;
+				while ( true ) {
+					$entries = \GFAPI::get_entries( $form_id, $search, null, array( 'offset' => $offset, 'page_size' => $page_size ) );
+					if ( ! is_array( $entries ) || empty( $entries ) ) break;
+					foreach ( $entries as $e ) {
+						$all_ids[] = (string) $e['id'];
+					}
+					if ( count( $entries ) < $page_size ) break;
+					$offset += $page_size;
+				}
+				return $all_ids;
 
 			case 'wpforms':
 				if ( ! function_exists( 'wpforms' ) || ! isset( wpforms()->entry ) ) return null;

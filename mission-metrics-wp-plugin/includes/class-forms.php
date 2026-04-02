@@ -2,9 +2,9 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Universal form capture — server-side hooks for known form plugins.
+ * Form discovery and background reconciliation for known form plugins.
  * Supports: Gravity Forms, Contact Form 7, WPForms, Avada/Fusion Forms, Ninja Forms, Fluent Forms.
- * Falls back to JS-layer capture for all others.
+ * Live submission hooks are intentionally disabled to keep client requests untouched.
  */
 class MM_Forms {
 
@@ -24,23 +24,8 @@ class MM_Forms {
 
 		if ( $opts['enable_gravity'] !== '1' || empty( $opts['api_key'] ) ) return;
 
-		// Gravity Forms
-		add_action( 'gform_after_submission', array( __CLASS__, 'handle_gravity' ), 10, 2 );
-
-		// Contact Form 7
-		add_action( 'wpcf7_mail_sent', array( __CLASS__, 'handle_cf7' ) );
-
-		// WPForms
-		add_action( 'wpforms_process_complete', array( __CLASS__, 'handle_wpforms' ), 10, 4 );
-
-		// Avada / Fusion Forms (2 args: $form_data, $form_post_id)
-		add_action( 'fusion_form_submission_data', array( __CLASS__, 'handle_avada' ), 10, 2 );
-
-		// Ninja Forms
-		add_action( 'ninja_forms_after_submission', array( __CLASS__, 'handle_ninja' ) );
-
-		// Fluent Forms
-		add_action( 'fluentform/submission_inserted', array( __CLASS__, 'handle_fluent' ), 10, 3 );
+		// Safety-first: never attach to live form submissions.
+		// Forms are reconciled through background sync/backfill only so client requests stay untouched.
 	}
 
 	// ── REST API ───────────────────────────────────────────────────

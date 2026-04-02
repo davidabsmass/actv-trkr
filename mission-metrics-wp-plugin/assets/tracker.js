@@ -385,38 +385,13 @@
     });
   }
 
-  // Form start tracking
-  function trackFormFocus(e) {
-    if (sessionEventCount >= MAX_EVENTS_PER_SESSION) return;
-    var el = e.target;
-    if (!el || !el.closest) return;
-    var form = el.closest('form');
-    if (!form) return;
-    if (form._mmFormStarted) return;
-    form._mmFormStarted = true;
-
-    sessionEventCount++;
-    var vid = getCookie(COOKIE_VID);
-    var sid = getCookie(COOKIE_SID);
-
-    eventBatch.push({
-      event_type: 'form_start',
-      target_text: form.getAttribute('data-form-title') || form.getAttribute('aria-label') || form.getAttribute('id') || 'form',
-      page_url: window.location.href,
-      page_path: window.location.pathname,
-      timestamp: new Date().toISOString(),
-      session_id: sid,
-      visitor_id: vid,
-    });
-
-    if (!batchTimer) {
-      batchTimer = setTimeout(flushEventBatch, HEARTBEAT_INTERVAL);
-    }
+  // Form listeners are intentionally disabled so the tracker stays passive.
+  function trackFormFocus() {
+    return;
   }
 
-  // Attach click and focus listeners
+  // Attach click listener only; form listeners are intentionally disabled.
   document.addEventListener('click', trackClick, true);
-  document.addEventListener('focusin', trackFormFocus, true);
 
   // ── Pageview tracking ──────────────────────────────────────────
 
@@ -549,49 +524,12 @@
     return fields;
   }
 
-  function handleFormSubmit(e) {
-    var form = e.target;
-    if (!form || form.tagName !== 'FORM') return;
-
-    if (form.getAttribute('data-mm-ignore') === 'true') return;
-
-    var role = form.getAttribute('role');
-    if (role === 'search') return;
-    var action = (form.getAttribute('action') || '').toLowerCase();
-    if (action.indexOf('wp-login') !== -1 || action.indexOf('wp-admin') !== -1) return;
-
-    var fields = captureFormFields(form);
-    if (fields.length === 0) return;
-
-    var vid = getCookie(COOKIE_VID);
-    var sid = getCookie(COOKIE_SID);
-
-    var formEndpoint = CFG.endpoint.replace(/\/track-pageview$/, '/ingest-form');
-
-    send(formEndpoint, {
-      provider: 'js_capture',
-      entry: {
-        form_id: form.getAttribute('id') || form.getAttribute('data-form-id') || 'dom_form',
-        form_title: form.getAttribute('data-form-title') || form.getAttribute('aria-label') || document.title,
-        entry_id: 'js_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-        source_url: window.location.href,
-        page_url: window.location.href,
-        submitted_at: new Date().toISOString(),
-      },
-      context: {
-        domain: CFG.domain,
-        referrer: document.referrer || null,
-        visitor_id: vid,
-        session_id: sid,
-        utm: storedUtms(),
-        plugin_version: CFG.pluginVersion,
-      },
-      fields: fields,
-    });
+  function handleFormSubmit() {
+    return;
   }
 
-  // Emergency safety: disable JS submit capture so the tracker cannot interfere
-  // with native or AJAX-powered form submissions.
+  // Safety-first: form submission capture is disabled so the plugin never runs
+  // inside a client form submission path.
 
   // ── Boot ───────────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@ const corsHeaders = {
 const ZIP_ROOT = "actv-trkr";
 const SOURCE_MAIN_FILE = "mission-metrics.php";
 const TARGET_MAIN_FILE = "actv-trkr.php";
-const CURRENT_PLUGIN_VERSION = "1.8.1";
+const CURRENT_PLUGIN_VERSION = "1.8.2";
 
 // Generated from plugin-template directory.
 // Files are embedded because edge functions cannot reliably read local subdirectories at runtime.
@@ -56,22 +56,33 @@ function patchReadmeVersion(content: string): string {
     .replace(/^(Stable tag:\s*)([0-9.]+)\s*$/m, `$1${CURRENT_PLUGIN_VERSION}`)
     .replace(
       /^== Changelog ==\s*$/m,
-      `== Changelog ==\n\n= ${CURRENT_PLUGIN_VERSION} =\n* EMERGENCY: Disables front-end JS submit capture so the plugin cannot interfere with form submissions.\n* STABILITY: Avada live submissions now avoid database lookups during submit to keep the request lightweight.`,
+      `== Changelog ==\n\n= ${CURRENT_PLUGIN_VERSION} =\n* SAFETY: Disables all live form submission hooks so the plugin never runs in a client's form request path.\n* SAFETY: Disables front-end form listeners entirely; tracking remains passive and non-invasive.`,
     );
 }
 
 function patchTrackerContent(content: string): string {
-  return content.replace(
-    /\n\s*document\.addEventListener\('submit', handleFormSubmit, true\);[\s\S]*?\n\s*\/\/ ── Boot/g,
-    "\n\n  // Emergency safety: disable JS submit capture so the tracker cannot interfere\n  // with native or AJAX-powered form submissions.\n\n  // ── Boot",
-  );
+  return content
+    .replace(
+      /\n\s*\/\/ Form start tracking[\s\S]*?\n\s*\/\/ ── Pageview tracking/g,
+      "\n\n  // Safety-first: form listeners are intentionally disabled so the tracker stays passive.\n\n  // ── Pageview tracking",
+    )
+    .replace(
+      /\n\s*function handleFormSubmit\(e\) \{[\s\S]*?\n\s*\/\/ ── Boot/g,
+      "\n\n  function handleFormSubmit() {\n    return;\n  }\n\n  // Safety-first: form submission capture is disabled so the plugin never runs\n  // inside a client form submission path.\n\n  // ── Boot",
+    )
+    .replace(/\n\s*document\.addEventListener\('submit', handleFormSubmit, true\);/g, "");
 }
 
 function patchClassFormsContent(content: string): string {
-  return content.replace(
-    /\$entry_id = self::get_avada_db_entry_id\( \$form_post_id, \$data \);\s*\$entry_id_type = strpos\( \$entry_id, 'avada_db_' \) === 0 \? 'canonical' : 'legacy_fallback';[\s\S]*?\n\s*self::send\( array\(/m,
-    "// Emergency safety: avoid live DB lookups during Avada submissions so\n\t\t// the plugin never slows or disrupts the form request.\n\t\t$entry_id = 'avada_' . time() . '_' . wp_rand();\n\t\t$entry_id_type = 'lightweight_fallback';\n\n\t\tself::send( array(",
-  );
+  return content
+    .replace(
+      /if \( \$opts\['enable_gravity'\] !== '1' \|\| empty\( \$opts\['api_key'\] \) \) return;[\s\S]*?add_action\( 'fluentform\/submission_inserted', array\( __CLASS__, 'handle_fluent' \), 10, 3 \);/m,
+      "if ( $opts['enable_gravity'] !== '1' || empty( $opts['api_key'] ) ) return;\n\n\t\t// Safety-first: never attach to live form submissions.\n\t\t// Forms are reconciled through background sync/backfill so client requests stay untouched.",
+    )
+    .replace(
+      /\$entry_id = self::get_avada_db_entry_id\( \$form_post_id, \$data \);\s*\$entry_id_type = strpos\( \$entry_id, 'avada_db_' \) === 0 \? 'canonical' : 'legacy_fallback';[\s\S]*?\n\s*self::send\( array\(/m,
+      "// Emergency safety: avoid live DB lookups during Avada submissions so\n\t\t// the plugin never slows or disrupts the form request.\n\t\t$entry_id = 'avada_' . time() . '_' . wp_rand();\n\t\t$entry_id_type = 'lightweight_fallback';\n\n\t\tself::send( array(",
+    );
 }
 
 function transformFile(relativePath: string, content: string, endpointBase: string): string {

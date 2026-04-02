@@ -1,45 +1,46 @@
 
 
-## Cancellation Email and Runtime Error Fix
+## Fix: Historical entries not backfilling for livesinthebalance.org
 
-### Problem
-1. Currently, when a subscriber cancels and the `customer.subscription.deleted` webhook fires, no email is sent — the system just updates the database status to "churned."
-2. There is a runtime error in `FeatureUsageWidget` on AdminSetup — `.length` called on undefined data before the query resolves.
+### Root cause
+
+The site is running **plugin v1.6.0**, confirmed by the database (`sites.plugin_version = '1.6.0'`). The v1.6.0 plugin uses the old "fire-and-forget chained batches" approach for backfilling entries — it sends batch 1, then makes a background HTTP request to itself for batch 2, etc. If any link in the chain breaks (which is common on shared hosting), all remaining entries are silently lost.
+
+The v1.6.1 plugin (already built and available for download) uses a **synchronous loop** that processes all entries in a single reliable request. But the site hasn't been updated yet.
+
+Current form counts for livesinthebalance.org:
+- School Discipline Survey: 945 leads (likely complete)
+- Contact Us Form: 696 leads (likely complete)
+- Bill of Rights: 67 leads
+- Become an advocator: 24 leads
+- Newletter Sign-up: 22 leads
+- 2025 Sign up for updates: **3 leads** (likely has many more in WordPress)
+- Quick Contact: 0 leads
 
 ### Plan
 
-**1. Fix runtime error in AdminSetup.tsx**
-- In `FeatureUsageWidget`, the `featureUsage.features.length` check at line 91 can crash if the query returns data in an unexpected shape. Add a safe guard so `.features` defaults properly.
+**1. Immediate fix — update plugin on the site**
+Download and install plugin v1.6.1 on livesinthebalance.org (from Settings → Plugin). Then click "Sync Entries" on the Forms page. The v1.6.1 synchronous backfill loop will pull all historical entries reliably in one pass.
 
-**2. Create a cancellation email template**
-File: `supabase/functions/_shared/transactional-email-templates/subscription-cancelled.tsx`
-- Uses the standard logo header (not the full-width astronaut banner, per branding rules).
-- Subject: "Your ACTV TRKR subscription has been cancelled"
-- Body content:
-  - "Hi {name}," (falls back to "Hi there,")
-  - Confirms the subscription has been cancelled
-  - States clearly: **"We'll keep your data for 30 days. After that, your account and all associated data will be permanently removed."**
-  - Offers a way to reactivate: "If you change your mind, simply log back in and resubscribe before the 30-day window closes."
-  - Sign-off from The ACTV TRKR Team
-- Matches existing welcome email styling (Indigo buttons, Navy headings, same font stack).
+**2. Server-side improvement — detect old plugin and warn clearly**
+In `supabase/functions/trigger-site-sync/index.ts`, after the backfill response comes back, parse the response body. If it contains the old `dispatched_next` format (indicating v1.6.0 or older), add a clear warning telling the user to update:
 
-**3. Register the template in registry.ts**
-- Import and add `'subscription-cancelled'` to the `TEMPLATES` map.
+```
+"Your site is running an older plugin version that may not complete large backfills reliably. Please update to the latest plugin version from Settings → Plugin."
+```
 
-**4. Send the email from the webhook**
-File: `supabase/functions/actv-webhook/index.ts`
-- In the `customer.subscription.deleted` handler, after marking the subscriber as "churned," look up the subscriber's email from the `subscribers` table and invoke `send-transactional-email` with:
-  - `templateName: 'subscription-cancelled'`
-  - `recipientEmail`: the subscriber's email
-  - `idempotencyKey`: `subscription-cancelled-{stripe_subscription_id}`
-  - `templateData`: `{ name }` from the subscriber/profile record
+Also add a minimum version check (v1.6.1) before attempting backfill — if the plugin is too old, skip the backfill entirely and return a clear message instead of silently failing.
 
-**5. Deploy edge functions**
-- Deploy `send-transactional-email` (picks up new template) and `actv-webhook` (picks up the send call).
+**3. Add a version guard for backfill in trigger-site-sync**
+- Before calling `triggerWordPressEntryBackfill`, check if the site's `plugin_version` is at least `1.6.1`
+- If not, skip the backfill call and add a warning: `"Plugin v{version} does not support reliable entry backfill. Please update to v1.6.1+ from Settings → Plugin."`
+- This prevents the misleading "historical data may take a while" message when the backfill will actually fail silently
 
 ### Files changed
-- `supabase/functions/_shared/transactional-email-templates/subscription-cancelled.tsx` (new)
-- `supabase/functions/_shared/transactional-email-templates/registry.ts`
-- `supabase/functions/actv-webhook/index.ts`
-- `src/pages/AdminSetup.tsx` (runtime error fix)
+- `supabase/functions/trigger-site-sync/index.ts` — add version guard and response parsing for backfill
+
+### After deploying
+1. Update livesinthebalance.org to plugin v1.6.1
+2. Click "Sync Entries" on the Forms page
+3. All historical entries should populate within a few minutes
 

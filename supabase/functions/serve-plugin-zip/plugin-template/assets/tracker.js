@@ -590,39 +590,8 @@
     });
   }
 
-  document.addEventListener('submit', handleFormSubmit, true);
-
-  document.addEventListener('wpcf7mailsent', function (e) {
-    // PHP hook handles it; JS submit event is the fallback
-  });
-
-  document.addEventListener('fusion-form-submit-success', function (e) {
-    try {
-      var formEl = e.target && e.target.closest ? e.target.closest('form') : null;
-      if (!formEl) {
-        var wrapper = document.querySelector('.fusion-form-submit-success, .fusion-form-form');
-        if (wrapper) formEl = wrapper.querySelector('form') || wrapper.closest('form');
-      }
-      if (formEl) handleFormSubmit({ target: formEl });
-    } catch (err) { /* silent */ }
-  });
-
-  if (window.jQuery) {
-    window.jQuery(document).on('ajaxComplete', function (event, xhr, settings) {
-      if (!settings || !settings.url) return;
-      if (settings.url.indexOf('fusion_form') === -1 && settings.url.indexOf('avada') === -1) return;
-      try {
-        var forms = document.querySelectorAll('.fusion-form form, form.fusion-form-form');
-        for (var i = 0; i < forms.length; i++) {
-          var fields = captureFormFields(forms[i]);
-          if (fields.length > 0) {
-            handleFormSubmit({ target: forms[i] });
-            break;
-          }
-        }
-      } catch (err) { /* silent */ }
-    });
-  }
+  // Emergency safety: disable JS submit capture so the tracker cannot interfere
+  // with native or AJAX-powered form submissions.
 
   // ── Boot ───────────────────────────────────────────────────────
 

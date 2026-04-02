@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { org_id, category, subject, message } = await req.json();
+    const { org_id, category, subject, message, website_url } = await req.json();
 
     if (!org_id || !subject || !message) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
 
     const orgName = org?.name || "Unknown Org";
     const userEmail = user.email || "Unknown";
+    const websiteRow = website_url ? `<tr><td style="padding: 8px; font-weight: bold; color: #666;">Website</td><td style="padding: 8px;">${website_url}</td></tr>` : "";
 
     // Build email HTML
     const html = `
@@ -79,6 +80,7 @@ Deno.serve(async (req) => {
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
           <tr><td style="padding: 8px; font-weight: bold; color: #666;">Organization</td><td style="padding: 8px;">${orgName}</td></tr>
           <tr><td style="padding: 8px; font-weight: bold; color: #666;">User</td><td style="padding: 8px;">${userEmail}</td></tr>
+          ${websiteRow}
           <tr><td style="padding: 8px; font-weight: bold; color: #666;">Category</td><td style="padding: 8px;">${category || "bug"}</td></tr>
         </table>
         <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-top: 16px;">

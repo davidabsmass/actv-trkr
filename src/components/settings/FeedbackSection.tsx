@@ -29,6 +29,7 @@ export default function FeedbackSection() {
   const [category, setCategory] = useState("bug");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const { data: history = [], isLoading } = useQuery({
@@ -64,13 +65,14 @@ export default function FeedbackSection() {
     setSubmitting(true);
     try {
       const { error } = await supabase.functions.invoke("submit-feedback", {
-        body: { org_id: orgId, category, subject: subject.trim(), message: message.trim() },
+        body: { org_id: orgId, category, subject: subject.trim(), message: message.trim(), website_url: websiteUrl.trim() || undefined },
       });
       if (error) throw error;
 
       toast.success(t("settings.feedbackSuccess", "Feedback submitted — thank you!"));
       setSubject("");
       setMessage("");
+      setWebsiteUrl("");
       setCategory("bug");
       queryClient.invalidateQueries({ queryKey: ["feedback", orgId] });
     } catch (err: any) {
@@ -118,6 +120,17 @@ export default function FeedbackSection() {
                   <SelectItem value="other">{t("settings.feedbackOther", "Other")}</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("settings.feedbackWebsite", "Website URL")}</Label>
+              <Input
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://www.example.com"
+                maxLength={300}
+                type="url"
+              />
             </div>
 
             <div className="space-y-2">

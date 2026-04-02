@@ -954,7 +954,9 @@ export default function AdminSetup() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Address</TableHead>
                     <TableHead>Site</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead className="cursor-pointer" onClick={() => toggleSubSort("created_at")}>
@@ -971,7 +973,18 @@ export default function AdminSetup() {
                   {sortedSubs.map((s: any) => (
                     <>
                       <TableRow key={s.id}>
+                        <TableCell className="text-xs font-medium">{s._profile?.full_name || "—"}</TableCell>
                         <TableCell className="font-mono text-xs">{s.email}</TableCell>
+                        <TableCell className="text-xs max-w-[200px]">
+                          {s._profile?.address_line1 ? (
+                            <span className="text-muted-foreground">
+                              {s._profile.address_line1}
+                              {s._profile.city && `, ${s._profile.city}`}
+                              {s._profile.state && ` ${s._profile.state}`}
+                              {s._profile.postal_code && ` ${s._profile.postal_code}`}
+                            </span>
+                          ) : "—"}
+                        </TableCell>
                         <TableCell className="text-xs max-w-[160px] truncate">{s.site_url || "—"}</TableCell>
                         <TableCell><Badge variant="outline">{s.plan}</Badge></TableCell>
                         <TableCell className="text-xs">{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</TableCell>

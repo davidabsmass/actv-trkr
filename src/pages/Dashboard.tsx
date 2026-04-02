@@ -401,14 +401,17 @@ const Dashboard = () => {
   const periodData = useMemo(() => {
     const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
     const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
-    const currCvr = curr.totalSessions > 0 ? curr.totalLeads / curr.totalSessions : 0;
+    // Include goal conversions in overall CVR
+    const goalTotal = (goalConversions || []).reduce((s: number, g: any) => s + (g.count || 0), 0);
+    const currConversions = curr.totalLeads + goalTotal;
+    const currCvr = curr.totalSessions > 0 ? currConversions / curr.totalSessions : 0;
     const prevCvr = prev.totalSessions > 0 ? prev.totalLeads / prev.totalSessions : 0;
     return {
       sessions: { current: curr.totalSessions, previous: prev.totalSessions },
       leads: { current: curr.totalLeads, previous: prev.totalLeads },
       cvr: { current: currCvr, previous: prevCvr },
     };
-  }, [realtimeData, prevPeriodData]);
+  }, [realtimeData, prevPeriodData, goalConversions]);
 
   const topSource = useMemo(() => {
     const sources = realtimeData?.sources || [];

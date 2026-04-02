@@ -123,8 +123,16 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         gapFill(prevLeadsAgg.data, prevStartDate, prevEndDate, "leads", "submitted_at"),
       ]);
 
+      // Determine if previous period has meaningful data to compare against
+      const hasPreviousData = (prevSessAgg.data && prevSessAgg.data.length > 0) || (prevLeadsAgg.data && prevLeadsAgg.data.length > 0) || previousSessions > 0 || previousLeads > 0;
+
       const currentCvr = currentSessions > 0 ? Math.round((currentLeads / currentSessions) * 10000) / 100 : 0;
       const previousCvr = previousSessions > 0 ? Math.round((previousLeads / previousSessions) * 10000) / 100 : 0;
+
+      const effectivePrevSessions = hasPreviousData ? previousSessions : 0;
+      const effectivePrevLeads = hasPreviousData ? previousLeads : 0;
+      const effectivePrevCvr = hasPreviousData ? previousCvr : 0;
+
       const brokenLinks = brokenRes.count || 0;
       const activeIncidents = incidentsRes.count || 0;
 
@@ -141,10 +149,10 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         .filter(f => f.leads > 0)
         .sort((a, b) => b.leads - a.leads);
 
-      const inputs: InsightInputs = { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinksCount: brokenLinks, activeIncidents };
+      const inputs: InsightInputs = { currentSessions, previousSessions: effectivePrevSessions, currentLeads, previousLeads: effectivePrevLeads, currentCvr, previousCvr: effectivePrevCvr, brokenLinksCount: brokenLinks, activeIncidents };
       return {
-        currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr,
-        brokenLinks, activeIncidents, formBreakdown, findings: generateFindings(inputs),
+        currentSessions, previousSessions: effectivePrevSessions, currentLeads, previousLeads: effectivePrevLeads, currentCvr, previousCvr: effectivePrevCvr,
+        brokenLinks, activeIncidents, formBreakdown, findings: generateFindings(inputs), hasPreviousData,
       };
     },
     enabled: !!orgId,

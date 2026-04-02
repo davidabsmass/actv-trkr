@@ -274,7 +274,7 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
         const eventTypes = CLICK_TYPES;
         const { data: events } = await supabase
           .from("events")
-          .select("target_text,page_url,meta")
+          .select("target_text,page_url,meta,session_id")
           .eq("org_id", orgId)
           .in("event_type", eventTypes)
           .gte("occurred_at", dayStart)
@@ -282,22 +282,24 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           .limit(1000);
 
         if (events) {
-          const matched = (events as any[]).filter((evt) => {
+          // Deduplicate: count unique sessions, not raw events
+          const matchedSessions = new Set<string>();
+          (events as any[]).forEach((evt) => {
             const text = (evt.target_text || "").toLowerCase();
             const label = String((evt.meta as any)?.target_label || "").toLowerCase();
             const href = String((evt.meta as any)?.target_href || "").toLowerCase();
             const url = (evt.page_url || "").toLowerCase();
             if (rules.text_contains) {
               const needle = String(rules.text_contains).toLowerCase();
-              if (!text.includes(needle) && !label.includes(needle)) return false;
+              if (!text.includes(needle) && !label.includes(needle)) return;
             }
             if (rules.href_contains) {
               const needle = String(rules.href_contains).toLowerCase();
-              if (!href.includes(needle) && !url.includes(needle) && !text.includes(needle)) return false;
+              if (!href.includes(needle) && !url.includes(needle) && !text.includes(needle)) return;
             }
-            return true;
+            matchedSessions.add(evt.session_id || evt.occurred_at);
           });
-          countMap[goal.id] = (countMap[goal.id] || 0) + matched.length;
+          countMap[goal.id] = (countMap[goal.id] || 0) + matchedSessions.size;
         }
       }
 

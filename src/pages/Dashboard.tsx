@@ -362,28 +362,29 @@ const Dashboard = () => {
         const rules = goal.tracking_rules || {};
         const { data: events } = await supabase
           .from("events")
-          .select("target_text,meta")
+          .select("target_text,meta,session_id")
           .eq("org_id", orgId)
           .in("event_type", CLICK_TYPES)
           .gte("occurred_at", dayStart)
           .lte("occurred_at", dayEnd)
           .limit(1000);
         if (events) {
-          const matched = (events as any[]).filter((evt) => {
+          const matchedSessions = new Set<string>();
+          (events as any[]).forEach((evt) => {
             const text = (evt.target_text || "").toLowerCase();
             const label = String((evt.meta as any)?.target_label || "").toLowerCase();
             const href = String((evt.meta as any)?.target_href || "").toLowerCase();
             if (rules.text_contains) {
               const needle = String(rules.text_contains).toLowerCase();
-              if (!text.includes(needle) && !label.includes(needle)) return false;
+              if (!text.includes(needle) && !label.includes(needle)) return;
             }
             if (rules.href_contains) {
               const needle = String(rules.href_contains).toLowerCase();
-              if (!href.includes(needle) && !text.includes(needle)) return false;
+              if (!href.includes(needle) && !text.includes(needle)) return;
             }
-            return true;
+            matchedSessions.add(evt.session_id || evt.occurred_at);
           });
-          countMap[goal.id] = matched.length;
+          countMap[goal.id] = matchedSessions.size;
         }
       }
 
@@ -400,14 +401,17 @@ const Dashboard = () => {
   const periodData = useMemo(() => {
     const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
     const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
-    const currCvr = curr.totalSessions > 0 ? curr.totalLeads / curr.totalSessions : 0;
+    // Include goal conversions in overall CVR
+    const goalTotal = (goalFunnelData || []).reduce((s: number, g: any) => s + (g.count || 0), 0);
+    const currConversions = curr.totalLeads + goalTotal;
+    const currCvr = curr.totalSessions > 0 ? currConversions / curr.totalSessions : 0;
     const prevCvr = prev.totalSessions > 0 ? prev.totalLeads / prev.totalSessions : 0;
     return {
       sessions: { current: curr.totalSessions, previous: prev.totalSessions },
       leads: { current: curr.totalLeads, previous: prev.totalLeads },
       cvr: { current: currCvr, previous: prevCvr },
     };
-  }, [realtimeData, prevPeriodData]);
+  }, [realtimeData, prevPeriodData, goalFunnelData]);
 
   const topSource = useMemo(() => {
     const sources = realtimeData?.sources || [];

@@ -35,6 +35,7 @@ import logoActvTrkrDark from "@/assets/actv-trkr-logo-dark-2.svg";
 import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";
 import spaceboy from "@/assets/astroman-2.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
+import newuniLogo from "@/assets/newuni-logo.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import FaqSection from "@/components/FaqSection";
 import { HomepageLanguageSwitcher } from "@/components/HomepageLanguageSwitcher";
@@ -522,6 +523,12 @@ const Index = () => {
                 <a href="/terms" className="cursor-pointer hover:text-foreground transition-colors">Terms</a>
                 <span className="cursor-pointer hover:text-foreground transition-colors">Contact</span>
               </div>
+            </div>
+            <div className="mt-8 pt-6 border-t border-border flex items-center justify-center gap-2">
+              <span className="text-xs text-muted-foreground">Need Help? We build websites.</span>
+              <a href="https://newuniformdesign.com" target="_blank" rel="noopener noreferrer">
+                <img src={newuniLogo} alt="New Uniform Design" className="h-5 opacity-60 hover:opacity-100 transition-opacity" />
+              </a>
             </div>
           </div>
         </div>

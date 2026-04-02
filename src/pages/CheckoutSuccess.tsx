@@ -16,7 +16,7 @@ export default function CheckoutSuccess() {
     >
       <SparkleCanvas />
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-lg relative z-10">
         <div className="flex items-center justify-center mb-8">
           <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-11 w-auto" />
         </div>

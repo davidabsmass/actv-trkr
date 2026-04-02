@@ -38,7 +38,18 @@ export default function AutoTranslateDom() {
   const location = useLocation();
   const applyingRef = useRef(false);
 
-  const targetLanguage = useMemo(() => i18n.language.split("-")[0], [i18n.language]);
+  const targetLanguage = useMemo(() => {
+    const resolved = (i18n.resolvedLanguage || i18n.language || "en").split("-")[0];
+
+    try {
+      const stored = window.localStorage.getItem("at_language")?.split("-")[0];
+      if (stored && stored !== resolved) return stored;
+    } catch {
+      // ignore storage access issues
+    }
+
+    return resolved;
+  }, [i18n.language, i18n.resolvedLanguage]);
 
   useEffect(() => {
     const root = document.body;

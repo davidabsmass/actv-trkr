@@ -538,7 +538,7 @@ Deno.serve(async (req) => {
         if (shouldBackfill) {
           // Version guard: v1.6.1+ uses a reliable synchronous loop for backfill.
           // Older versions use fire-and-forget chained batches that silently fail on large forms.
-          const minimumBackfillVersion = "1.6.1";
+          const minimumBackfillVersion = "1.6.2";
           const backfillVersionOk = isVersionAtLeast(runtimePluginVersion, minimumBackfillVersion);
 
           if (!backfillVersionOk) {

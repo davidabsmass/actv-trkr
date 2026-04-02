@@ -121,6 +121,17 @@ export default function FeedbackSection() {
             </div>
 
             <div className="space-y-2">
+              <Label>{t("settings.feedbackWebsite", "Website URL")}</Label>
+              <Input
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://www.example.com"
+                maxLength={300}
+                type="url"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>{t("settings.feedbackSubject", "Subject")}</Label>
               <Input
                 value={subject}

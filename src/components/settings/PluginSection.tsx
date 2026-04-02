@@ -6,6 +6,7 @@ import { ArrowUp, Check, Download, Loader2 } from "lucide-react";
 import pluginThumb from "@/assets/actv-trkr-plugin-thumb.jpg";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { getLatestPluginVersion } from "@/lib/plugin-download";
 
 function compareVersions(a: string, b: string) {
   const aParts = a.split(".").map((part) => Number(part) || 0);
@@ -45,15 +46,7 @@ export default function PluginSection() {
 
   const { data: latestVersion } = useQuery({
     queryKey: ["latest_plugin_version"],
-    queryFn: async () => {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=check&version=0.0.0&t=${Date.now()}`,
-        { cache: "no-store" }
-      );
-      if (!res.ok) return null;
-      const json = await res.json();
-      return json.version as string;
-    },
+    queryFn: getLatestPluginVersion,
     staleTime: 1000 * 60,
   });
 

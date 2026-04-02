@@ -1,7 +1,37 @@
-export const LATEST_PLUGIN_VERSION = "1.6.2";
+const PLUGIN_FILENAME_PATTERN = /filename="?([^";]+)"?/i;
+const PLUGIN_VERSION_PATTERN = /actv-trkr-(\d+\.\d+\.\d+)\.zip/i;
+
+function getPluginZipUrl() {
+  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
+}
+
+export function extractPluginFileName(contentDisposition?: string | null) {
+  return PLUGIN_FILENAME_PATTERN.exec(contentDisposition || "")?.[1] || null;
+}
+
+export function extractPluginVersion(contentDisposition?: string | null) {
+  const fileName = extractPluginFileName(contentDisposition);
+  return PLUGIN_VERSION_PATTERN.exec(fileName || "")?.[1] || null;
+}
+
+export async function getLatestPluginVersion() {
+  const response = await fetch(getPluginZipUrl(), {
+    method: "HEAD",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (
+    response.headers.get("x-plugin-version") ||
+    extractPluginVersion(response.headers.get("content-disposition"))
+  );
+}
 
 export async function downloadPlugin(apiKey?: string) {
-  const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
+  const zipUrl = getPluginZipUrl();
 
   const response = await fetch(zipUrl, {
     cache: "no-store",
@@ -14,9 +44,7 @@ export async function downloadPlugin(apiKey?: string) {
 
   const blob = await response.blob();
   const fileUrl = URL.createObjectURL(blob);
-  const contentDisposition = response.headers.get("content-disposition") || "";
-  const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
-  const fileName = match?.[1] || `actv-trkr-${LATEST_PLUGIN_VERSION}.zip`;
+  const fileName = extractPluginFileName(response.headers.get("content-disposition")) || "actv-trkr.zip";
 
   const link = document.createElement("a");
   link.href = fileUrl;

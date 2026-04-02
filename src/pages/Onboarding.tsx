@@ -1,14 +1,20 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { Zap, Plus, Copy, Check, Download, Globe } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
 import { useAuth } from "@/hooks/use-auth";
-import { downloadPlugin, LATEST_PLUGIN_VERSION } from "@/lib/plugin-download";
+import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { data: latestVersion } = useQuery({
+    queryKey: ["latest_plugin_version"],
+    queryFn: getLatestPluginVersion,
+    staleTime: 1000 * 60,
+  });
   const { loading: authLoading, user } = useAuth();
   const { data: orgs, status, refetch } = useOrgs();
   const [name, setName] = useState("");
@@ -137,7 +143,7 @@ const Onboarding = () => {
                 className="w-full py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                {`Download Plugin v${LATEST_PLUGIN_VERSION} (.zip)`}
+                {`Download Plugin${latestVersion ? ` v${latestVersion}` : ""} (.zip)`}
               </button>
             </div>
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">

@@ -6,10 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Current latest plugin version — bump this when releasing updates
-// v1.5.5: Dispatches historical entry backfill asynchronously so large forms finish importing reliably
-const LATEST_VERSION = "1.6.2";
-
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
@@ -198,6 +194,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
+    const latestVersion = await resolveLatestVersion(req);
 
     // WordPress-style update check
     if (action === "check") {
@@ -205,7 +202,7 @@ Deno.serve(async (req) => {
       const domain = url.searchParams.get("domain") || "";
       const slug = "actv-trkr";
 
-      const hasUpdate = compareVersions(LATEST_VERSION, currentVersion) > 0;
+      const hasUpdate = compareVersions(latestVersion, currentVersion) > 0;
 
       // Log the check for analytics (optional)
       if (domain) {
@@ -225,7 +222,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           slug,
-          version: LATEST_VERSION,
+          version: latestVersion,
           has_update: hasUpdate,
           download_url: hasUpdate ? zipUrl : null,
           changelog: CHANGELOG.trim(),
@@ -233,7 +230,7 @@ Deno.serve(async (req) => {
           requires_wp: "5.8",
           requires_php: "7.4",
           message: hasUpdate
-            ? `Version ${LATEST_VERSION} is available. Click "Update Now" in your WordPress admin.`
+            ? `Version ${latestVersion} is available. Click "Update Now" in your WordPress admin.`
             : "You are running the latest version.",
         }),
         {
@@ -248,7 +245,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           name: "ACTV TRKR",
           slug: "actv-trkr",
-          version: LATEST_VERSION,
+          version: latestVersion,
           author: "Absolutely Massive",
           homepage: "https://actvtrkr.com",
           requires: "5.8",
@@ -288,4 +285,39 @@ function compareVersions(a: string, b: string): number {
     if (na < nb) return -1;
   }
   return 0;
+}
+
+function extractVersionFromContentDisposition(contentDisposition: string | null): string | null {
+  return contentDisposition?.match(/actv-trkr-([0-9.]+)\.zip/i)?.[1] ?? null;
+}
+
+function extractLatestVersionFromChangelog(changelog: string): string {
+  const match = changelog.match(/##\s+([0-9]+\.[0-9]+\.[0-9]+)/);
+  if (!match) {
+    throw new Error("Unable to determine the latest plugin version from the changelog.");
+  }
+  return match[1];
+}
+
+async function resolveLatestVersion(req: Request): Promise<string> {
+  try {
+    const response = await fetch(getZipUrl(req), {
+      method: "HEAD",
+      headers: { "Cache-Control": "no-cache" },
+    });
+
+    if (response.ok) {
+      const headerVersion =
+        response.headers.get("x-plugin-version") ||
+        extractVersionFromContentDisposition(response.headers.get("content-disposition"));
+
+      if (headerVersion) {
+        return headerVersion;
+      }
+    }
+  } catch (_error) {
+    // Fall back to changelog parsing when the ZIP metadata request is unavailable.
+  }
+
+  return extractLatestVersionFromChangelog(CHANGELOG);
 }

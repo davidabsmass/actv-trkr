@@ -41,11 +41,11 @@ const SubscriptionCancelledEmail = ({ name }: SubscriptionCancelledProps) => (
           </Text>
 
           <Text style={textBold}>
-            We'll keep your data for 60 days. After that, your account and all associated data will be permanently removed.
+            We'll keep your data for 30 days. After that, your account and all associated data will be permanently removed.
           </Text>
 
           <Text style={text}>
-            If you change your mind, simply log back in and resubscribe before the 60-day window closes. All of your tracking data, reports, and settings will still be there.
+            If you change your mind, simply log back in and resubscribe before the 30-day window closes. All of your tracking data, reports, and settings will still be there.
           </Text>
 
           <Text style={text}>

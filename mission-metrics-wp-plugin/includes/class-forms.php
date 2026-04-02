@@ -1753,18 +1753,7 @@ class MM_Forms {
 	 * so the dashboard can reimport historical data after a reset.
 	 */
 	public static function handle_rest_backfill_avada( $request ) {
-		$opts = MM_Settings::get();
-		if ( empty( $opts['api_key'] ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
-		}
-
-		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
-
-		$stored_hash = hash( 'sha256', $opts['api_key'] );
-		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
-		}
+		// Auth already verified by permission_callback
 
 		global $wpdb;
 		$domain = wp_parse_url( home_url(), PHP_URL_HOST );

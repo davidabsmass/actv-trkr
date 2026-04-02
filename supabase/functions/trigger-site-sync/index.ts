@@ -536,28 +536,40 @@ Deno.serve(async (req) => {
         }
 
         if (shouldBackfill) {
-          console.log(`Entry backfill triggered (force=${!!force_backfill}): ${nonAvadaFormIds.length} non-Avada forms`);
-          try {
-            const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash);
-            if (!bfRes.ok) {
-              const bfBody = await bfRes.text();
-              const is404 = bfRes.status === 404;
-              console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
-              if (is404) {
-                // Plugin doesn't have the backfill-entries route — needs update
-                entryBackfillAttempted = false; // Don't tell user "in progress"
-                wpWarnings.push(`Plugin v${runtimePluginVersion || "unknown"} does not support entry backfill. Please update to the latest version from Settings → Plugin.`);
+          // Version guard: v1.6.1+ uses a reliable synchronous loop for backfill.
+          // Older versions use fire-and-forget chained batches that silently fail on large forms.
+          const minimumBackfillVersion = "1.6.1";
+          const backfillVersionOk = isVersionAtLeast(runtimePluginVersion, minimumBackfillVersion);
+
+          if (!backfillVersionOk) {
+            console.warn(`Skipping entry backfill — plugin v${runtimePluginVersion || "unknown"} < ${minimumBackfillVersion}`);
+            wpWarnings.push(
+              `Plugin v${runtimePluginVersion || "unknown"} does not support reliable entry backfill. Please update to v${minimumBackfillVersion}+ from Settings → Plugin, then sync again.`
+            );
+            entryBackfillAttempted = false;
+          } else {
+            console.log(`Entry backfill triggered (force=${!!force_backfill}): ${nonAvadaFormIds.length} non-Avada forms`);
+            try {
+              const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash);
+              if (!bfRes.ok) {
+                const bfBody = await bfRes.text();
+                const is404 = bfRes.status === 404;
+                console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
+                if (is404) {
+                  entryBackfillAttempted = false;
+                  wpWarnings.push(`Plugin v${runtimePluginVersion || "unknown"} does not support entry backfill. Please update to the latest version from Settings → Plugin.`);
+                } else {
+                  entryBackfillAttempted = true;
+                }
               } else {
                 entryBackfillAttempted = true;
+                const bfRaw = await bfRes.text();
+                console.log(`WP entry backfill succeeded (${bfEndpoint}): ${bfRaw.slice(0, 200)}`);
               }
-            } else {
-              entryBackfillAttempted = true;
-              const bfRaw = await bfRes.text();
-              console.log(`WP entry backfill succeeded (${bfEndpoint}): ${bfRaw.slice(0, 200)}`);
+            } catch (err) {
+              console.error("WP entry backfill error:", err);
+              entryBackfillAttempted = false;
             }
-          } catch (err) {
-            console.error("WP entry backfill error:", err);
-            entryBackfillAttempted = false;
           }
         }
       }

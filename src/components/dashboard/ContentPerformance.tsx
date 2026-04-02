@@ -104,28 +104,12 @@ function SortableTable<T extends PageData>({ rows, defaultSort = "sessions" }: {
   );
 }
 
-export function ContentPerformance({ pages, opportunities }: ContentProps) {
+export function ContentPerformance({ pages }: { pages: PageData[] }) {
   const { t } = useTranslation();
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-      <div className="glass-card p-5 animate-slide-up">
-        <h3 className="text-sm font-semibold text-foreground mb-4">{t("content.topPages")}</h3>
-        <SortableTable rows={pages} defaultSort="sessions" />
-      </div>
-
-      <div className="glass-card p-5 animate-slide-up">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-sm font-semibold text-foreground">{t("content.opportunities")}</h3>
-          <span className="text-xs uppercase tracking-wider font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-full">
-            {t("content.highTrafficLowCvr")}
-          </span>
-        </div>
-        {opportunities.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("content.noOpportunities")} {t("content.performanceStable", "Current performance is stable or improving organically.")}</p>
-        ) : (
-          <SortableTable rows={opportunities} defaultSort="sessions" />
-        )}
-      </div>
+    <div className="glass-card p-5 animate-slide-up">
+      <h3 className="text-sm font-semibold text-foreground mb-4">{t("content.topPages")}</h3>
+      <SortableTable rows={pages} defaultSort="sessions" />
     </div>
   );
 }

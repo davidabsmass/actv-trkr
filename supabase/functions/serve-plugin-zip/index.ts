@@ -28,3 +28,100 @@ const PLUGIN_FILES: Record<string, string> = {
   "mission-metrics.php": "<?php\n/**\n * Plugin Name: ACTV TRKR\n * Plugin URI:  https://actvtrkr.com\n * Description: First-party pageview tracking and universal form capture for ACTV TRKR.\n * Version:     1.6.2\n * Author:      Absolutely Massive\n * License:     GPL-2.0-or-later\n * Text Domain: actv-trkr\n */\n\nif ( ! defined( 'ABSPATH' ) ) {\n\texit;\n}\n\ndefine( 'MM_PLUGIN_VERSION', '1.6.2' );\ndefine( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );\ndefine( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );\n\nrequire_once MM_PLUGIN_DIR . 'includes/class-settings.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-tracker.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-forms.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-updater.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-heartbeat.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-broken-links.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';\nrequire_once MM_PLUGIN_DIR . 'includes/class-security.php';\n\n// WooCommerce integration (only load if WooCommerce is active)\nif ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {\n\trequire_once MM_PLUGIN_DIR . 'includes/class-woocommerce.php';\n\tnew MM_WooCommerce();\n}\n\n/**\n * Activation: create retry-queue table and schedule cron.\n */\nfunction mm_activate() {\n\tMM_Retry_Queue::create_table();\n\tif ( ! wp_next_scheduled( 'mm_retry_cron' ) ) {\n\t\twp_schedule_event( time(), 'mm_every_5_min', 'mm_retry_cron' );\n\t}\n\tif ( ! wp_next_scheduled( 'mm_form_probe_cron' ) ) {\n\t\twp_schedule_event( time(), 'hourly', 'mm_form_probe_cron' );\n\t}\n\tif ( ! wp_next_scheduled( 'mm_seo_fix_cron' ) ) {\n\t\twp_schedule_event( time(), 'mm_every_5_min', 'mm_seo_fix_cron' );\n\t}\n}\nregister_activation_hook( __FILE__, 'mm_activate' );\n\n/**\n * Deactivation: clear cron.\n */\nfunction mm_deactivate() {\n\twp_clear_scheduled_hook( 'mm_retry_cron' );\n\twp_clear_scheduled_hook( 'mm_form_probe_cron' );\n\twp_clear_scheduled_hook( 'mm_seo_fix_cron' );\n}\nregister_deactivation_hook( __FILE__, 'mm_deactivate' );\n\n/**\n * Custom cron interval.\n */\nadd_filter( 'cron_schedules', function ( $schedules ) {\n\t$schedules['mm_every_5_min'] = array(\n\t\t'interval' => 300,\n\t\t'display'  => __( 'Every 5 Minutes', 'actv-trkr' ),\n\t);\n\treturn $schedules;\n} );\n\n// Boot components.\nMM_Settings::init();\nMM_Tracker::init();\nMM_Forms::init();\nMM_Updater::init();\nMM_Heartbeat::init();\nMM_Broken_Links::init();\nMM_SEO_Fixes::init();\n$mm_security = new Mission_Metrics_Security();\n$mm_security->init();\n\n// Ensure crons are scheduled even after updates (activation hook only fires on first install).\nadd_action( 'init', function () {\n\tif ( ! wp_next_scheduled( 'mm_retry_cron' ) ) {\n\t\twp_schedule_event( time(), 'mm_every_5_min', 'mm_retry_cron' );\n\t}\n\tif ( ! wp_next_scheduled( 'mm_form_probe_cron' ) ) {\n\t\twp_schedule_event( time(), 'hourly', 'mm_form_probe_cron' );\n\t}\n\tif ( ! wp_next_scheduled( 'mm_seo_fix_cron' ) ) {\n\t\twp_schedule_event( time(), 'mm_every_5_min', 'mm_seo_fix_cron' );\n\t}\n}, 20 );\n\n// Cron hooks.\nadd_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );\nadd_action( 'mm_form_probe_cron', array( 'MM_Forms', 'probe_form_pages' ) );\nadd_action( 'mm_seo_fix_cron', array( 'MM_SEO_Fixes', 'poll_fixes' ) );\n",
   "readme.txt": "=== ACTV TRKR ===\nContributors: absolutelymassive\nTags: analytics, tracking, gravity forms, leads, pageviews\nRequires at least: 5.8\nTested up to: 6.7\nRequires PHP: 7.4\nStable tag: 1.6.2\nLicense: GPL-2.0-or-later\n\nFirst-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.\n...\n== Changelog ==\n\n= 1.6.2 =\n* Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions.\n\n= 1.6.1 =\n* Replaces fire-and-forget chained backfill with synchronous loop — guarantees ALL entries across ALL pages are processed in a single request.\n* Fixes incomplete historical imports where older entries (e.g. Jan/Feb) were silently dropped when the chain broke.\n\n= 1.6.0 =\n* Increases backfill batch size from 5 to 50 entries per request for reliable historical imports.\n* Prevents chain-break failures on large form datasets (500+ entries).\n\n= 1.5.8 =\n* Fixes backfill chain breaking mid-way — uses non-blocking sends and smaller batches (10 per batch) so all forms get processed.\n\n= 1.5.6 =\n* Fixes large Gravity Forms and WPForms backfills timing out by breaking imports into chained batches.\n* Continues importing automatically until every historical entry has been replayed.\n\n= 1.5.5 =\n* Fixes large Gravity Forms historical imports stalling mid-sync by dispatching backfill ingestion asynchronously.\n* Prevents partial backfills that left big forms stuck below the WordPress entry count.\n\n= 1.5.4 =\n* Removes 500-entry backfill cap — now paginates through ALL Gravity Forms and WPForms entries.\n* Fixes count mismatches for forms with more than 500 historical entries.\n\n= 1.4.2 =\n* Fixes click event delivery using fetch with proper headers instead of sendBeacon to resolve silent CORS failures on certain hosting environments.\n\n= 1.3.21 =\n* Fixes Avada backfill field extraction by parsing payloads across multiple submission columns and formats.\n* Improves Avada form discovery fallback (normalized title tokens, serialized markers, slug/blob matching) to reduce strategy:none misses.\n\n= 1.3.13 =\n* Adds Avada historical backfill endpoint (/backfill-avada) for reset-and-reimport recovery.\n* Reimports Avada submissions with stable avada_db_* IDs after legacy ID deadlocks.\n\n= 1.3.8 =\n* Expanded Avada entry discovery with multi-column form-ref matching (form_id, fusion_form_id, post_id, parent_id).\n* Searches blob/payload columns (submission, data, fields, form_data) for form_id and URL markers.\n* Per-form Avada diagnostics (strategy used, row count) returned in sync response.\n* Plugin runtime version included in sync payload for accurate update gating.\n* Warnings and avada_diagnostics surfaced through to dashboard UI.\n\n= 1.3.7 =\n* CRITICAL: Removed global Avada fallback that caused mass-trashing of all entries.\n* Each Avada form now only returns entries scoped to its own form_id.\n* Backend sync guards detect duplicate active-ID sets and full-trash patterns.\n* Prevents accidental data loss when Avada entry discovery fails.\n\n= 1.3.6 =\n* Hardened Avada entry discovery with multi-table lookup.\n* Added safety guard for all-empty Avada form payloads.\n\n= 1.3.5 =\n* Fixed Avada entry reconciliation when form IDs differ across installs.\n* Improved active-entry lookup with URL and global table fallback.\n* Fixes deleted Avada submissions still appearing after Sync Entries.\n\n= 1.3.4 =\n* Avada/Fusion Forms now included in form discovery and entry sync.\n* Avada entries use stable DB-backed IDs for reliable delete reconciliation.\n* All form providers included in discover_forms_list fallback.\n\n= 1.3.3 =\n* Fix Avada handler method structure so the plugin loads correctly and sync routes register.\n* Restores manual sync route availability for entry reconciliation.\n\n= 1.3.2 =\n* Fix manual sync route handling for WordPress REST sync endpoint.\n* Improve compatibility with sites using non-default permalink structures.\n\n= 1.0.0 =\n* Initial release\n",
 };
+
+const TEMPLATE_FILES = Object.keys(PLUGIN_FILES);
+
+function toZipPath(relativePath: string): string {
+  if (relativePath === SOURCE_MAIN_FILE) return `${ZIP_ROOT}/${TARGET_MAIN_FILE}`;
+  return `${ZIP_ROOT}/${relativePath}`;
+}
+
+function patchEndpointUrl(content: string, endpointBase: string): string {
+  return content.replace(/(\s*'endpoint_url'\s*=>\s*)'[^']*'/, `$1'${endpointBase}'`);
+}
+
+function transformFile(relativePath: string, content: string, endpointBase: string): string {
+  if (relativePath === "includes/class-settings.php") {
+    return patchEndpointUrl(content, endpointBase);
+  }
+  return content;
+}
+
+function extractPluginVersion(mainPluginFile: string): string {
+  const versionMatch =
+    mainPluginFile.match(/^\s*\*\s*Version:\s*([0-9.]+)/m) ??
+    mainPluginFile.match(/MM_PLUGIN_VERSION'\s*,\s*'([0-9.]+)'/m);
+
+  if (!versionMatch) {
+    throw new Error("Unable to determine plugin version from the packaged main file.");
+  }
+  return versionMatch[1];
+}
+
+function assertPluginFileSafety(classFormsText: string): void {
+  const knownBadTokens = [
+    "if(!is_array($rows)||empty($rows))&&!empty($page_url)){",
+    "if(!is_array($rows)||empty($rows))&&!empty($resolved_title)){",
+    "if(!is_array($rows)||empty($rows))){",
+  ];
+  for (const token of knownBadTokens) {
+    if (classFormsText.includes(token)) {
+      throw new Error(`Refusing to build plugin ZIP: malformed class-forms.php token found: ${token}`);
+    }
+  }
+}
+
+function buildFiles(endpointBase: string): Map<string, string> {
+  const files = new Map<string, string>();
+  for (const relativePath of TEMPLATE_FILES) {
+    const rawContent = PLUGIN_FILES[relativePath];
+    const content = transformFile(relativePath, rawContent, endpointBase);
+    files.set(toZipPath(relativePath), content);
+  }
+  return files;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const endpointBase = `${Deno.env.get("SUPABASE_URL")!}/functions/v1`;
+    const files = buildFiles(endpointBase);
+    const classForms = files.get(`${ZIP_ROOT}/includes/class-forms.php`) ?? "";
+    assertPluginFileSafety(classForms);
+
+    const mainPluginFile = files.get(`${ZIP_ROOT}/${TARGET_MAIN_FILE}`);
+    if (!mainPluginFile) {
+      throw new Error("Packaged plugin is missing its main file.");
+    }
+
+    const pluginVersion = extractPluginVersion(mainPluginFile);
+    const zip = new JSZip();
+
+    for (const [path, contents] of files.entries()) {
+      zip.file(path, contents);
+    }
+
+    const zipData = await zip.generateAsync({ type: "uint8array" });
+
+    return new Response(zipData, {
+      headers: {
+        ...corsHeaders,
+        "Cache-Control": "no-store",
+        "Content-Disposition": `attachment; filename="actv-trkr-${pluginVersion}.zip"`,
+        "Content-Type": "application/zip",
+      },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+      },
+    });
+  }
+});

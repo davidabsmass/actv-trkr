@@ -271,6 +271,13 @@ type EntryBackfillCursor = {
   resume_page: number;
 };
 
+type NonAvadaBackfillCandidate = {
+  id: string;
+  provider: string;
+  external_form_id: string;
+  activeLeadCount: number;
+};
+
 function isEntryBackfillCursor(value: unknown): value is EntryBackfillCursor {
   if (!value || typeof value !== "object") return false;
   const cursor = value as Record<string, unknown>;
@@ -363,6 +370,65 @@ async function scheduleEntryBackfillContinuation(params: {
   );
 }
 
+function getBackfillProviderOrder(provider: string): number {
+  switch (provider) {
+    case "gravity_forms":
+      return 0;
+    case "wpforms":
+      return 1;
+    default:
+      return 99;
+  }
+}
+
+function compareBackfillFormIds(a: string, b: string): number {
+  const aTrimmed = a.trim();
+  const bTrimmed = b.trim();
+  const aIsNumeric = /^\d+$/.test(aTrimmed);
+  const bIsNumeric = /^\d+$/.test(bTrimmed);
+
+  if (aIsNumeric && bIsNumeric) {
+    return Number.parseInt(aTrimmed, 10) - Number.parseInt(bTrimmed, 10);
+  }
+
+  if (aIsNumeric) return -1;
+  if (bIsNumeric) return 1;
+  return aTrimmed.localeCompare(bTrimmed);
+}
+
+function buildPriorityEntryBackfillCursor(forms: NonAvadaBackfillCandidate[]): EntryBackfillCursor | undefined {
+  const orderedForms = [...forms]
+    .filter((form) => getBackfillProviderOrder(form.provider) < 99)
+    .sort((a, b) => {
+      const providerDiff = getBackfillProviderOrder(a.provider) - getBackfillProviderOrder(b.provider);
+      if (providerDiff !== 0) return providerDiff;
+      return compareBackfillFormIds(a.external_form_id, b.external_form_id);
+    });
+
+  if (orderedForms.length < 2) return undefined;
+
+  const lowCountCandidates = orderedForms
+    .map((form, index) => ({ form, index }))
+    .filter(({ form, index }) => index > 0 && form.activeLeadCount <= 100)
+    .sort((a, b) => b.index - a.index || a.form.activeLeadCount - b.form.activeLeadCount);
+
+  for (const candidate of lowCountCandidates) {
+    const blockedByEarlierLargeForm = orderedForms
+      .slice(0, candidate.index)
+      .some((form) => form.activeLeadCount >= 5000);
+
+    if (blockedByEarlierLargeForm) {
+      return {
+        resume_job_index: candidate.index,
+        resume_offset: 0,
+        resume_page: 1,
+      };
+    }
+  }
+
+  return undefined;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -446,49 +512,47 @@ Deno.serve(async (req) => {
     const siteUrl = site.url || `https://${site.domain}`;
     const { response: wpRes, endpoint: wpEndpoint } = await triggerWordPressSync(siteUrl, apiKeyRow.key_hash);
 
+    let wpSyncFailed = false;
+    let wpSyncErrorText: string | null = null;
+    let wpSyncStatus: number | null = null;
+    let wpData: unknown = null;
+    let fallback = { checked: 0, updatedPageUrls: 0, alertsCreated: 0 };
+
     if (!wpRes.ok) {
-      const text = await wpRes.text();
-      console.error(`WP sync failed (${wpEndpoint}): ${wpRes.status} ${text}`);
+      wpSyncFailed = true;
+      wpSyncStatus = wpRes.status;
+      wpSyncErrorText = await wpRes.text();
+      console.error(`WP sync failed (${wpEndpoint}): ${wpRes.status} ${wpSyncErrorText}`);
 
-      const fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
-      if (fallback.checked > 0 || fallback.updatedPageUrls > 0) {
-        return new Response(JSON.stringify({
-          ok: true,
-          fallback: true,
-          reason: `WordPress sync route unavailable (${wpRes.status})`,
-          wp_error: text,
-          endpoint_attempted: wpEndpoint,
-          plugin_warning: pluginOutdated
-            ? `Detected ACTV TRKR ${site.plugin_version || "unknown"}. Please install v1.3.4 or newer for reliable entry reconciliation.`
-            : null,
-          ...fallback,
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
+      wpData = {
+        ok: false,
+        status: wpRes.status,
+        error: wpSyncErrorText,
+        endpoint: wpEndpoint,
+      };
+    } else {
+      const wpRaw = await wpRes.text();
+      wpData = { raw: wpRaw };
+      try {
+        wpData = JSON.parse(wpRaw);
+      } catch {
+        // Keep raw string
       }
-
-      return new Response(JSON.stringify({ error: `WordPress returned ${wpRes.status}`, details: text, endpoint_attempted: wpEndpoint }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
-
-    const wpRaw = await wpRes.text();
-    let wpData: unknown = { raw: wpRaw };
-    try {
-      wpData = JSON.parse(wpRaw);
-    } catch {
-      // Keep raw string
-    }
-
-    // Skip direct form checks when WP sync succeeded — it already did the work
-    const fallback = { checked: 0, updatedPageUrls: 0, alertsCreated: 0 };
 
     // Extract structured data from WP result
-    const wpResult = (wpData as Record<string, unknown>)?.result as Record<string, unknown> | undefined;
+    const wpResult = !wpSyncFailed
+      ? (wpData as Record<string, unknown>)?.result as Record<string, unknown> | undefined
+      : undefined;
     const trashed = Number(wpResult?.trashed || 0);
     const restored = Number(wpResult?.restored || 0);
-    const wpWarnings = (wpResult?.warnings as string[]) || [];
+    const wpWarnings = [
+      ...(wpSyncFailed && wpSyncStatus
+        ? [`WordPress sync returned ${wpSyncStatus}, so entry backfill is continuing separately in the background.`]
+        : []),
+      ...((wpResult?.warnings as string[]) || []),
+    ];
     const avadaDiagnostics = (wpResult?.avada_diagnostics as unknown[]) || [];
     const runtimePluginVersion = (wpResult?.plugin_version as string) || site.plugin_version || null;
     const runtimePluginOutdated = !isVersionAtLeast(runtimePluginVersion, minimumPluginVersion);
@@ -609,33 +673,37 @@ Deno.serve(async (req) => {
     {
       const nonAvadaFormRows = await supabase
         .from("forms")
-        .select("id")
+        .select("id, provider, external_form_id")
         .eq("org_id", site.org_id)
         .eq("site_id", site.id)
         .neq("provider", "avada")
         .eq("archived", false);
 
-      const nonAvadaFormIds = (nonAvadaFormRows.data || []).map((f: any) => f.id);
+      const nonAvadaForms = (nonAvadaFormRows.data || []) as Array<{
+        id: string;
+        provider: string;
+        external_form_id: string;
+      }>;
+      const nonAvadaFormIds = nonAvadaForms.map((f) => f.id);
 
       if (nonAvadaFormIds.length > 0) {
-        let shouldBackfill = !!force_backfill;
+        const leadCountsByForm = await Promise.all(
+          nonAvadaForms.map(async (form) => {
+            const { count } = await supabase
+              .from("leads")
+              .select("id", { count: "exact", head: true })
+              .eq("form_id", form.id)
+              .neq("status", "trashed");
 
-        if (!shouldBackfill) {
-          // Check each form individually — backfill if ANY form has zero leads
-          const leadCountsByForm = await Promise.all(
-            nonAvadaFormIds.map(async (formId: string) => {
-              const { count } = await supabase
-                .from("leads")
-                .select("id", { count: "exact", head: true })
-                .eq("form_id", formId)
-                .neq("status", "trashed");
-              return { formId, count: count || 0 };
-            })
-          );
+            return {
+              ...form,
+              activeLeadCount: count || 0,
+            } as NonAvadaBackfillCandidate;
+          })
+        );
 
-          const formsWithZeroLeads = leadCountsByForm.filter((f) => f.count === 0);
-          shouldBackfill = formsWithZeroLeads.length > 0;
-        }
+        const formsWithZeroLeads = leadCountsByForm.filter((form) => form.activeLeadCount === 0);
+        let shouldBackfill = !!force_backfill || wpSyncFailed || formsWithZeroLeads.length > 0;
 
         if (shouldBackfill) {
           const minimumBackfillVersion = "1.6.1";
@@ -651,10 +719,14 @@ Deno.serve(async (req) => {
             console.log(`Entry backfill triggered (force=${!!force_backfill}): ${nonAvadaFormIds.length} non-Avada forms`);
             entryBackfillAttempted = true;
 
-            const backfillPromise = (async () => {
+            const priorityCursor = !initialBackfillCursor
+              ? buildPriorityEntryBackfillCursor(leadCountsByForm)
+              : undefined;
+
+            const runBackfillWorker = async (label: string, startingCursor?: EntryBackfillCursor) => {
               const backfillStart = Date.now();
               const maxBackfillMs = 140000;
-              let cursor: EntryBackfillCursor | undefined = initialBackfillCursor;
+              let cursor: EntryBackfillCursor | undefined = startingCursor;
               let totalEntries = 0;
               let totalErrors = 0;
               let done = false;
@@ -662,7 +734,7 @@ Deno.serve(async (req) => {
 
               if (cursor) {
                 console.log(
-                  `Resuming entry backfill from cursor job=${cursor.resume_job_index} offset=${cursor.resume_offset} page=${cursor.resume_page}`,
+                  `${label}: resuming from cursor job=${cursor.resume_job_index} offset=${cursor.resume_offset} page=${cursor.resume_page}`,
                 );
               }
 
@@ -687,19 +759,19 @@ Deno.serve(async (req) => {
                   totalEntries += Number(bfData.total_entries || 0);
                   totalErrors += Number(bfData.total_errors || 0);
 
-                  console.log(`Backfill chunk: ${bfData.total_entries} entries, done=${bfData.done}, elapsed=${Date.now() - backfillStart}ms`);
+                  console.log(`${label}: chunk ${bfData.total_entries} entries, done=${bfData.done}, elapsed=${Date.now() - backfillStart}ms`);
 
                   if (bfData.done === true) {
                     done = true;
                   } else if (isEntryBackfillCursor(bfData.cursor)) {
                     cursor = bfData.cursor;
                   } else {
-                    console.warn("Backfill returned not-done but no valid cursor — breaking");
+                    console.warn(`${label}: backfill returned not-done but no valid cursor — breaking`);
                     aborted = true;
                     break;
                   }
                 } catch (err) {
-                  console.error("WP entry backfill chunk error:", err);
+                  console.error(`${label}: WP entry backfill chunk error:`, err);
                   aborted = true;
                   break;
                 }
@@ -717,14 +789,25 @@ Deno.serve(async (req) => {
                   });
                   entryBackfillContinuationScheduled = true;
                 } catch (err) {
-                  console.error("Failed to schedule entry backfill continuation:", err);
+                  console.error(`${label}: failed to schedule entry backfill continuation:`, err);
                 }
               }
 
               console.log(
-                `Entry backfill complete: ${totalEntries} entries, ${totalErrors} errors, fully_done=${done}, continuation_scheduled=${entryBackfillContinuationScheduled}, elapsed=${Date.now() - backfillStart}ms`,
+                `${label}: complete ${totalEntries} entries, ${totalErrors} errors, fully_done=${done}, continuation_scheduled=${entryBackfillContinuationScheduled}, elapsed=${Date.now() - backfillStart}ms`,
               );
-            })();
+            };
+
+            if (priorityCursor) {
+              console.log(
+                `Priority backfill worker targeting later low-count form at job=${priorityCursor.resume_job_index}`,
+              );
+            }
+
+            const backfillPromise = Promise.all([
+              runBackfillWorker("primary entry backfill", initialBackfillCursor),
+              ...(priorityCursor ? [runBackfillWorker("priority entry backfill", priorityCursor)] : []),
+            ]);
 
             try {
               (globalThis as any).EdgeRuntime?.waitUntil?.(backfillPromise);
@@ -761,6 +844,14 @@ Deno.serve(async (req) => {
     // Classify sync_status with reason codes
     let syncStatus: "ok" | "partial" | "blocked" = "ok";
     const reasonCodes: string[] = [];
+
+    if (wpSyncFailed) {
+      syncStatus = "partial";
+      reasonCodes.push("wp_sync_failed");
+      if (entryBackfillAttempted) {
+        reasonCodes.push("backfill_started_after_wp_sync_failure");
+      }
+    }
 
     // If sync-entries flagged a deadlock, force blocked
     if (requiresAvadaReset) {
@@ -829,6 +920,10 @@ Deno.serve(async (req) => {
       avada_backfill_error: avadaBackfillError,
       entry_backfill_attempted: entryBackfillAttempted,
       backfill_in_progress: entryBackfillAttempted || avadaBackfillAttempted,
+      wp_sync_failed: wpSyncFailed,
+      wp_sync_status_code: wpSyncStatus,
+      wp_sync_error: wpSyncErrorText,
+      endpoint_attempted: wpEndpoint,
       ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

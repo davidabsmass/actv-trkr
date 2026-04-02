@@ -230,7 +230,15 @@ export default function SeoTab() {
         },
         wlResult.data as any
       );
-      doc.save(`seo-report-${siteDomain || "scan"}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `seo-report-${siteDomain || "scan"}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
       toast.success(t("seo.exportSuccess", { defaultValue: "SEO report exported" }));
     } catch (err: any) {
       console.error("SEO PDF export error:", err);

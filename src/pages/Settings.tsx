@@ -39,7 +39,7 @@ export default function SettingsPage() {
           <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.general")}</TabsTrigger>
           <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.whiteLabel")}</TabsTrigger>
           <TabsTrigger value="setup" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.websiteSetup")}</TabsTrigger>
-          
+          <TabsTrigger value="feedback" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.feedback", "Feedback")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">

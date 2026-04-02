@@ -37,6 +37,7 @@ import spaceboy from "@/assets/astroman-2.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import FaqSection from "@/components/FaqSection";
+import { HomepageLanguageSwitcher } from "@/components/HomepageLanguageSwitcher";
 import helmetImg from "@/assets/helmet.png";
 import presentationBgImg from "@/assets/section-2-bgd.jpg";
 import platformBg from "@/assets/section-3-space.jpg";
@@ -116,6 +117,7 @@ const Index = () => {
               </button>
             </div>
             <div className="hidden md:flex items-center gap-4">
+              <HomepageLanguageSwitcher />
               <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleSignIn}>
                 {session ? "Dashboard" : "Get Started"}
               </Button>
@@ -123,6 +125,11 @@ const Index = () => {
           </div>
         </div>
       </nav>
+
+      {/* Floating language switcher — top-right of hero, visible before scroll */}
+      <div className="absolute top-4 right-4 z-40">
+        <HomepageLanguageSwitcher />
+      </div>
 
       {/* Hero + space background */}
       <div className="relative overflow-hidden bg-black">

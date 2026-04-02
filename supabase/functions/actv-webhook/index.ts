@@ -315,6 +315,98 @@ serve(async (req) => {
 
           if (error) logStep("Churn update error", { error });
           else logStep("Subscriber churned", { customerId });
+
+          // Send cancellation email
+          try {
+            const { data: subscriber } = await supabase
+              .from("subscribers")
+              .select("email")
+              .eq("stripe_customer_id", customerId)
+              .maybeSingle();
+
+            if (subscriber?.email) {
+              // Look up name from profiles
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("email", subscriber.email)
+                .maybeSingle();
+
+              const cancelTemplate = TEMPLATES["subscription-cancelled"];
+              if (cancelTemplate) {
+                const templateData = { name: profile?.full_name || undefined };
+                const html = await renderAsync(
+                  React.createElement(cancelTemplate.component, templateData)
+                );
+                const plainText = await renderAsync(
+                  React.createElement(cancelTemplate.component, templateData),
+                  { plainText: true }
+                );
+                const resolvedSubject = typeof cancelTemplate.subject === "function"
+                  ? cancelTemplate.subject(templateData)
+                  : cancelTemplate.subject;
+
+                const messageId = crypto.randomUUID();
+                const normalizedEmail = subscriber.email.toLowerCase();
+
+                // Get or create unsubscribe token
+                let unsubscribeToken: string;
+                const { data: existingToken } = await supabase
+                  .from("email_unsubscribe_tokens")
+                  .select("token")
+                  .eq("email", normalizedEmail)
+                  .maybeSingle();
+
+                if (existingToken) {
+                  unsubscribeToken = existingToken.token;
+                } else {
+                  const bytes = new Uint8Array(32);
+                  crypto.getRandomValues(bytes);
+                  unsubscribeToken = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+                  await supabase.from("email_unsubscribe_tokens").upsert(
+                    { token: unsubscribeToken, email: normalizedEmail },
+                    { onConflict: "email", ignoreDuplicates: true }
+                  );
+                  const { data: stored } = await supabase
+                    .from("email_unsubscribe_tokens")
+                    .select("token")
+                    .eq("email", normalizedEmail)
+                    .maybeSingle();
+                  if (stored) unsubscribeToken = stored.token;
+                }
+
+                await supabase.from("email_send_log").insert({
+                  message_id: messageId,
+                  template_name: "subscription-cancelled",
+                  recipient_email: subscriber.email,
+                  status: "pending",
+                });
+
+                const { error: enqueueErr } = await supabase.rpc("enqueue_email", {
+                  queue_name: "transactional_emails",
+                  payload: {
+                    message_id: messageId,
+                    to: subscriber.email,
+                    from: "ACTV TRKR <noreply@actvtrkr.com>",
+                    sender_domain: "notify.actvtrkr.com",
+                    subject: resolvedSubject,
+                    html,
+                    text: plainText,
+                    purpose: "transactional",
+                    label: "subscription-cancelled",
+                    idempotency_key: `subscription-cancelled-${sub.id}`,
+                    unsubscribe_token: unsubscribeToken,
+                    queued_at: new Date().toISOString(),
+                  },
+                });
+
+                if (enqueueErr) logStep("Cancellation email enqueue failed", { error: enqueueErr });
+                else logStep("Cancellation email enqueued", { email: subscriber.email });
+              }
+            }
+          } catch (emailErr) {
+            logStep("Cancellation email failed (non-fatal)", { error: String(emailErr) });
+          }
         }
         break;
       }

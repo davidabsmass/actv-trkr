@@ -8,19 +8,15 @@ import {
 const faqs = [
   {
     q: "What does ACTV TRKR actually replace?",
-    a: "ACTV TRKR consolidates several standalone tools into one platform. It replaces dedicated uptime monitors (like UptimeRobot), broken-link checkers (like Broken Link Checker plugins), form-testing tools, basic SEO auditors, and manual lead-source spreadsheets. Instead of juggling five or six subscriptions and browser tabs, you get real-time visitor analytics, form health monitoring, SEO scanning, SSL/domain expiry alerts, broken-link detection, conversion tracking, and AI-powered insights — all from a single dashboard.",
+    a: "ACTV TRKR consolidates several standalone tools into one platform. It replaces dedicated uptime monitors, broken-link checkers, form-testing tools, basic SEO auditors, and manual lead-source spreadsheets. Instead of juggling five or six subscriptions and browser tabs, you get real-time visitor analytics, form health monitoring, SEO scanning, SSL/domain expiry alerts, broken-link detection, conversion tracking, and AI-powered insights — all from a single dashboard.",
   },
   {
-    q: "How is ACTV TRKR different from Google Analytics?",
-    a: "Google Analytics gives you broad audience and acquisition data across any website. ACTV TRKR is purpose-built for WordPress and focused on what GA doesn't cover well: real-time lead attribution down to the individual form submission, automatic form health checks, broken-link detection, uptime monitoring, and plain-language AI summaries. Many teams run both side by side — GA for the big picture, ACTV TRKR for the operational detail and actionable alerts.",
+    q: "How is ACTV TRKR different from other analytics platforms?",
+    a: "Most analytics platforms give you broad audience and acquisition data across any website. ACTV TRKR is purpose-built for WordPress and focused on what other tools don't cover well: real-time lead attribution down to the individual form submission, automatic form health checks, broken-link detection, uptime monitoring, and plain-language AI summaries. Many teams run ACTV TRKR alongside their existing analytics — one for the big picture, ACTV TRKR for the operational detail and actionable alerts.",
   },
   {
     q: "What form plugins are supported?",
-    a: "ACTV TRKR supports Gravity Forms, Contact Form 7, WPForms, Avada / Fusion Forms, Ninja Forms, Formidable Forms, Elementor Forms, Fluent Forms, HappyForms, and WS Form out of the box. On top of that, our universal capture engine intercepts any standard HTML form submission event — so even custom-built or niche forms are detected automatically with no extra configuration.",
-  },
-  {
-    q: "Does it work with WooCommerce?",
-    a: "Yes. ACTV TRKR tracks WooCommerce orders automatically — capturing order totals, product details, and customer attribution data. You can see which traffic sources, landing pages, and campaigns are driving actual revenue, not just page views.",
+    a: "ACTV TRKR supports all major WordPress form plugins and is also WooCommerce compatible — tracking orders, totals, product details, and customer attribution automatically. On top of that, our universal capture engine intercepts any standard HTML form submission event — so even custom-built or niche forms are detected automatically with no extra configuration.",
   },
   {
     q: "Do I need to install a WordPress plugin?",
@@ -36,15 +32,19 @@ const faqs = [
   },
   {
     q: "Can I white-label reports for clients?",
-    a: "Yes — white-labeling is available on all plans. Upload your own logo, set custom brand colors, replace ACTV TRKR branding, and add your client's name to report headers. PDF reports automatically suppress ACTV TRKR branding when a custom logo is present, giving your clients a fully branded experience.",
+    a: "Yes — white-labeling is available on all plans. Upload your own logo, set custom brand colors, and add your client's name to report headers. PDF reports automatically use your custom branding, giving your clients a fully branded experience.",
   },
   {
     q: "Is my data private?",
-    a: "Yes. ACTV TRKR uses first-party cookies only — no third-party trackers, no Google Analytics, no Facebook Pixel. We hash IP addresses (never store raw IPs), and all data stays under your control. We do not sell, rent, or share visitor data with anyone. You are the data controller; we are the processor.",
+    a: "Yes. ACTV TRKR uses first-party cookies only — no third-party trackers. We hash IP addresses (never store raw IPs), and all data stays under your control. We do not sell, rent, or share visitor data with anyone. You are the data controller; we are the processor.",
   },
   {
-    q: "What's the difference between ACTV TRKR and PageSpeed Insights?",
-    a: "PageSpeed Insights measures how fast your pages load and scores Core Web Vitals. ACTV TRKR focuses on what happens after the page loads: are forms working, are leads converting, is the site staying online, and are there SEO issues? Think of PageSpeed as your engine diagnostic, and ACTV TRKR as your full operations dashboard.",
+    q: "Why don't my numbers match other analytics platforms?",
+    a: "Different analytics platforms often report different numbers because they track and process data in different ways. Variations can come from how each tool handles things like ad blockers, bot filtering, session definitions, attribution models, and user consent. Differences in tracking setup (such as how and when tags fire) can also impact results. Because of these factors, it's normal to see discrepancies between platforms. The most important thing is to stay consistent with one primary tool and focus on trends over time rather than exact matching numbers.",
+  },
+  {
+    q: "How is ACTV TRKR different from Google Site Kit?",
+    a: "Google Site Kit is a great tool for connecting WordPress to Google services and viewing important Google data in your dashboard. ACTV TRKR is built to complement that kind of visibility by giving you a wider view of how your website is performing, with insights into traffic, leads, site health, and other important activity in one place.",
   },
 ];
 interface FaqSectionProps {

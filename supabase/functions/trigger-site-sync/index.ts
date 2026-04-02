@@ -583,7 +583,7 @@ Deno.serve(async (req) => {
 
         if (shouldBackfill) {
           // Version guard: v1.6.3+ uses a resumable time-bounded loop for backfill.
-          const minimumBackfillVersion = "1.6.3";
+          const minimumBackfillVersion = "1.6.1";
           const backfillVersionOk = isVersionAtLeast(runtimePluginVersion, minimumBackfillVersion);
 
           if (!backfillVersionOk) {

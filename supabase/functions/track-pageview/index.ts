@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing or invalid event_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const domain = sanitizeStr(source?.domain, 253);
+    const domain = sanitizeStr(source?.domain, 253)?.replace(/^www\./i, "");
     if (!domain) return new Response(JSON.stringify({ error: "Missing source domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const now = new Date();

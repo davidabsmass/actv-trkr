@@ -30,7 +30,7 @@ class MM_Magic_Login {
 		}
 		$opts    = MM_Settings::get();
 		$api_key = $opts['api_key'] ?? '';
-		if ( empty( $api_key ) || ! hash_equals( $api_key, $token ) ) {
+		if ( empty( $api_key ) || ! hash_equals( $api_key, $auth ) ) {
 			return new WP_Error( 'forbidden', 'Invalid API key', array( 'status' => 403 ) );
 		}
 		return true;

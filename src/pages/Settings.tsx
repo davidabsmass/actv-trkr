@@ -46,9 +46,7 @@ export default function SettingsPage() {
             {showAdminSections && <PluginSection />}
             {showAdminSections && <ApiKeysSection />}
             <SitesSection />
-            <FormsSection />
             <NotificationsSection />
-            <div ref={goalsRef}><GoalsSection /></div>
             <SeoVisibilitySection />
           </div>
         </TabsContent>

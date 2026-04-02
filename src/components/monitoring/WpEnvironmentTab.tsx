@@ -177,7 +177,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
       <div className="glass-card p-4">
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <Info className="h-3 w-3 mt-0.5 shrink-0" />
-          <span>Environment data is reported via the WP-Cron heartbeat every 5 minutes. Last update: {format(new Date(envData.last_reported_at), "MMM d, yyyy 'at' h:mm a")}</span>
+          <span>Environment data is reported automatically every 5 minutes. Last update: {format(new Date(envData.last_reported_at), "MMM d, yyyy 'at' h:mm a")}</span>
         </div>
       </div>
     </>

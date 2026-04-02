@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: "Do I need to install a WordPress plugin?",
-    a: "Yes. The ACTV TRKR WordPress plugin is lightweight (under 50 KB of JavaScript) and handles visitor tracking, form capture, click events, heartbeat monitoring, and site health checks. It sends data securely to your dashboard — no code changes to your theme or templates required. It installs in under a minute.",
+    a: "Yes. The ACTV TRKR WordPress plugin is lightweight (under 50 KB of JavaScript) and handles visitor tracking, form capture, click events, uptime monitoring, and site health checks. It sends data securely to your dashboard — no code changes to your theme or templates required. It installs in under a minute.",
   },
   {
     q: "What kind of alerts will I receive?",

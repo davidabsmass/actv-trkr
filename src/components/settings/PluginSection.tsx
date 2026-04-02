@@ -44,11 +44,14 @@ export default function PluginSection() {
     enabled: !!orgId,
   });
 
-  const { data: latestVersion } = useQuery({
-    queryKey: ["latest_plugin_version"],
+  const { data: latestVersion, refetch: refetchLatestVersion } = useQuery({
+    queryKey: ["latest_plugin_version", "settings_live"],
     queryFn: getLatestPluginVersion,
     staleTime: 0,
     gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 
   const { data: latestReportedSite } = useQuery({
@@ -96,10 +99,11 @@ export default function PluginSection() {
       const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
       const fileName = match?.[1] || "actv-trkr.zip";
       const versionMatch = /actv-trkr-(\d+\.\d+\.\d+)\.zip/.exec(fileName);
-      const version = versionMatch?.[1] || "";
+      const version = response.headers.get("x-plugin-version") || versionMatch?.[1] || latestVersion || "";
       const a = document.createElement("a");
       a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
+      await refetchLatestVersion();
       toast.success(`Plugin v${version || "latest"} downloaded!`);
     } catch (e: any) {
       toast.error(e.message || t("settings.downloadFailed"));

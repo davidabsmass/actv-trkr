@@ -76,25 +76,41 @@ function FeatureUsageWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {featureUsage && featureUsage.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">#</TableHead>
-                <TableHead className="text-xs">Feature</TableHead>
-                <TableHead className="text-xs text-right">Count</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {featureUsage.map((f, i) => (
-                <TableRow key={f.name}>
-                  <TableCell className="text-xs text-muted-foreground font-mono w-8">{i + 1}</TableCell>
-                  <TableCell className="text-sm font-medium">{f.name}</TableCell>
-                  <TableCell className="text-sm font-mono text-right">{f.count.toLocaleString()}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {featureUsage ? (
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs text-muted-foreground">Active users (30d)</p>
+                <p className="text-lg font-bold">{featureUsage.uniqueUsers30d}</p>
+              </div>
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs text-muted-foreground">Total unique users</p>
+                <p className="text-lg font-bold">{featureUsage.uniqueUsersTotal}</p>
+              </div>
+            </div>
+            {featureUsage.features.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">#</TableHead>
+                    <TableHead className="text-xs">Feature</TableHead>
+                    <TableHead className="text-xs text-right">Orgs Using</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {featureUsage.features.map((f, i) => (
+                    <TableRow key={f.name}>
+                      <TableCell className="text-xs text-muted-foreground font-mono w-8">{i + 1}</TableCell>
+                      <TableCell className="text-sm font-medium">{f.name}</TableCell>
+                      <TableCell className="text-sm font-mono text-right">{f.count.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">No data yet</p>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No data yet</p>
         )}

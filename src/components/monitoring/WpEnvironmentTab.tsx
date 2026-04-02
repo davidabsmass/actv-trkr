@@ -73,7 +73,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
         <Package className="h-6 w-6 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-foreground">No environment data yet</p>
         <p className="text-xs text-muted-foreground max-w-md mx-auto">
-          WordPress environment details will appear here after the first cron heartbeat. Make sure ACTV TRKR plugin v1.6.2+ is installed and heartbeat is enabled.
+          WordPress environment details will appear here after the plugin's first sync. Make sure ACTV TRKR plugin v1.6.2+ is installed.
         </p>
       </div>
     );

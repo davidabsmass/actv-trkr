@@ -65,13 +65,14 @@ export default function FeedbackSection() {
     setSubmitting(true);
     try {
       const { error } = await supabase.functions.invoke("submit-feedback", {
-        body: { org_id: orgId, category, subject: subject.trim(), message: message.trim() },
+        body: { org_id: orgId, category, subject: subject.trim(), message: message.trim(), website_url: websiteUrl.trim() || undefined },
       });
       if (error) throw error;
 
       toast.success(t("settings.feedbackSuccess", "Feedback submitted — thank you!"));
       setSubject("");
       setMessage("");
+      setWebsiteUrl("");
       setCategory("bug");
       queryClient.invalidateQueries({ queryKey: ["feedback", orgId] });
     } catch (err: any) {

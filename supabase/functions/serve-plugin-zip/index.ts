@@ -3,6 +3,7 @@ import JSZip from "https://esm.sh/jszip@3.10.1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "content-disposition, x-plugin-version",
 };
 
 const ZIP_ROOT = "actv-trkr";
@@ -98,6 +99,18 @@ Deno.serve(async (req) => {
     }
 
     const pluginVersion = extractPluginVersion(mainPluginFile);
+    const responseHeaders = {
+      ...corsHeaders,
+      "Cache-Control": "no-store",
+      "Content-Disposition": `attachment; filename="actv-trkr-${pluginVersion}.zip"`,
+      "Content-Type": "application/zip",
+      "x-plugin-version": pluginVersion,
+    };
+
+    if (req.method === "HEAD") {
+      return new Response(null, { headers: responseHeaders });
+    }
+
     const zip = new JSZip();
 
     for (const [path, contents] of files.entries()) {
@@ -107,12 +120,7 @@ Deno.serve(async (req) => {
     const zipData = await zip.generateAsync({ type: "uint8array" });
 
     return new Response(zipData, {
-      headers: {
-        ...corsHeaders,
-        "Cache-Control": "no-store",
-        "Content-Disposition": `attachment; filename="actv-trkr-${pluginVersion}.zip"`,
-        "Content-Type": "application/zip",
-      },
+      headers: responseHeaders,
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {

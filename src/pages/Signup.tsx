@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, Download, Globe, User, Mail, Lock, Eye, EyeOff, Zap } from "lucide-react";
-import { downloadPlugin, LATEST_PLUGIN_VERSION } from "@/lib/plugin-download";
+import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
 import SparkleCanvas from "@/components/SparkleCanvas";
@@ -13,6 +14,11 @@ const inputClass =
 
 const Signup = () => {
   const navigate = useNavigate();
+  const { data: latestVersion } = useQuery({
+    queryKey: ["latest_plugin_version"],
+    queryFn: getLatestPluginVersion,
+    staleTime: 1000 * 60,
+  });
   const [done, setDone] = useState(false);
 
   const [fullName, setFullName] = useState("");
@@ -226,7 +232,7 @@ const Signup = () => {
                 className="w-full py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               >
                 <Download className="h-4 w-4" />
-                {`Download Plugin v${LATEST_PLUGIN_VERSION} (.zip)`}
+                {`Download Plugin${latestVersion ? ` v${latestVersion}` : ""} (.zip)`}
               </button>
             </div>
 

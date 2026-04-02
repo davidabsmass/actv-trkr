@@ -31,6 +31,7 @@ import {
 import { FormLeaderboard } from "@/components/dashboard/FormLeaderboard";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
+import { getLatestPluginVersion } from "@/lib/plugin-download";
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary border-primary/20",
@@ -135,14 +136,7 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
 
   const { data: latestVersion } = useQuery({
     queryKey: ["latest_plugin_version"],
-    queryFn: async () => {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=check&version=0.0.0`
-      );
-      if (!res.ok) return null;
-      const json = await res.json();
-      return json.version as string;
-    },
+    queryFn: getLatestPluginVersion,
     staleTime: 1000 * 60 * 60,
   });
 

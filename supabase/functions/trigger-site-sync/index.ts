@@ -263,10 +263,24 @@ async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): 
   return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 60000);
 }
 
+type EntryBackfillCursor = {
+  resume_job_index: number;
+  resume_offset: number;
+  resume_page: number;
+};
+
+function isEntryBackfillCursor(value: unknown): value is EntryBackfillCursor {
+  if (!value || typeof value !== "object") return false;
+  const cursor = value as Record<string, unknown>;
+  return ["resume_job_index", "resume_offset", "resume_page"].every(
+    (key) => typeof cursor[key] === "number" && Number.isFinite(cursor[key] as number),
+  );
+}
+
 async function triggerWordPressEntryBackfill(
   siteUrl: string,
   keyHash: string,
-  cursor?: { resume_job_index: number; resume_offset: number; resume_page: number },
+  cursor?: EntryBackfillCursor,
 ): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
   const endpoints = [
@@ -313,6 +327,40 @@ async function triggerWordPressEntryBackfill(
   };
 }
 
+async function scheduleEntryBackfillContinuation(params: {
+  supabaseUrl: string;
+  anonKey: string;
+  authHeader: string;
+  siteId: string;
+  cursor: EntryBackfillCursor;
+}) {
+  const { supabaseUrl, anonKey, authHeader, siteId, cursor } = params;
+  const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: authHeader,
+      apikey: anonKey,
+      "x-client-info": "actv-trkr-backfill-continuation",
+    },
+    body: JSON.stringify({
+      site_id: siteId,
+      force_backfill: true,
+      backfill_cursor: cursor,
+      continued_backfill: true,
+    }),
+  }, 5000);
+
+  const bodyText = await response.text();
+  if (!response.ok) {
+    throw new Error(`Continuation call failed (${response.status}): ${bodyText.slice(0, 300)}`);
+  }
+
+  console.log(
+    `Scheduled backfill continuation for site ${siteId} at job=${cursor.resume_job_index} offset=${cursor.resume_offset} page=${cursor.resume_page}: ${bodyText.slice(0, 160)}`,
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -333,7 +381,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { site_id, force_backfill } = await req.json();
+    const requestBody = await req.json();
+    const { site_id, force_backfill } = requestBody;
+    const initialBackfillCursor = isEntryBackfillCursor(requestBody?.backfill_cursor)
+      ? requestBody.backfill_cursor
+      : undefined;
+
     if (!site_id) {
       return new Response(JSON.stringify({ error: "Missing site_id" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -549,6 +602,7 @@ Deno.serve(async (req) => {
     // If force_backfill is true (manual sync), always trigger backfill for ALL forms.
     // Otherwise, only trigger when forms have zero leads.
     let entryBackfillAttempted = false;
+    let entryBackfillContinuationScheduled = false;
 
     {
       const nonAvadaFormRows = await supabase
@@ -582,7 +636,6 @@ Deno.serve(async (req) => {
         }
 
         if (shouldBackfill) {
-          // Version guard: v1.6.3+ uses a resumable time-bounded loop for backfill.
           const minimumBackfillVersion = "1.6.1";
           const backfillVersionOk = isVersionAtLeast(runtimePluginVersion, minimumBackfillVersion);
 
@@ -596,15 +649,20 @@ Deno.serve(async (req) => {
             console.log(`Entry backfill triggered (force=${!!force_backfill}): ${nonAvadaFormIds.length} non-Avada forms`);
             entryBackfillAttempted = true;
 
-            // Run backfill in background using EdgeRuntime.waitUntil so we can
-            // return a response immediately and keep processing for up to ~140s.
             const backfillPromise = (async () => {
               const backfillStart = Date.now();
-              const maxBackfillMs = 140000; // 140s — near the edge function wall-clock limit
-              let cursor: { resume_job_index: number; resume_offset: number; resume_page: number } | undefined;
+              const maxBackfillMs = 140000;
+              let cursor: EntryBackfillCursor | undefined = initialBackfillCursor;
               let totalEntries = 0;
               let totalErrors = 0;
               let done = false;
+              let aborted = false;
+
+              if (cursor) {
+                console.log(
+                  `Resuming entry backfill from cursor job=${cursor.resume_job_index} offset=${cursor.resume_offset} page=${cursor.resume_page}`,
+                );
+              }
 
               while (!done && (Date.now() - backfillStart) < maxBackfillMs) {
                 try {
@@ -612,41 +670,63 @@ Deno.serve(async (req) => {
                   if (!bfRes.ok) {
                     const bfBody = await bfRes.text();
                     console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
+                    aborted = true;
                     break;
                   }
 
                   const bfRaw = await bfRes.text();
                   let bfData: Record<string, unknown> = {};
-                  try { bfData = JSON.parse(bfRaw); } catch { /* skip */ }
+                  try {
+                    bfData = JSON.parse(bfRaw);
+                  } catch {
+                    // ignore malformed chunk bodies and stop safely
+                  }
 
                   totalEntries += Number(bfData.total_entries || 0);
                   totalErrors += Number(bfData.total_errors || 0);
 
                   console.log(`Backfill chunk: ${bfData.total_entries} entries, done=${bfData.done}, elapsed=${Date.now() - backfillStart}ms`);
 
-                  if (bfData.done) {
+                  if (bfData.done === true) {
                     done = true;
-                  } else if (bfData.cursor) {
-                    cursor = bfData.cursor as { resume_job_index: number; resume_offset: number; resume_page: number };
+                  } else if (isEntryBackfillCursor(bfData.cursor)) {
+                    cursor = bfData.cursor;
                   } else {
-                    console.warn("Backfill returned not-done but no cursor — breaking");
+                    console.warn("Backfill returned not-done but no valid cursor — breaking");
+                    aborted = true;
                     break;
                   }
                 } catch (err) {
                   console.error("WP entry backfill chunk error:", err);
+                  aborted = true;
                   break;
                 }
               }
 
-              console.log(`Entry backfill complete: ${totalEntries} entries, ${totalErrors} errors, fully_done=${done}, elapsed=${Date.now() - backfillStart}ms`);
+              const needsContinuation = !done && !aborted && !!cursor;
+              if (needsContinuation && cursor) {
+                try {
+                  await scheduleEntryBackfillContinuation({
+                    supabaseUrl,
+                    anonKey,
+                    authHeader,
+                    siteId: site.id,
+                    cursor,
+                  });
+                  entryBackfillContinuationScheduled = true;
+                } catch (err) {
+                  console.error("Failed to schedule entry backfill continuation:", err);
+                }
+              }
+
+              console.log(
+                `Entry backfill complete: ${totalEntries} entries, ${totalErrors} errors, fully_done=${done}, continuation_scheduled=${entryBackfillContinuationScheduled}, elapsed=${Date.now() - backfillStart}ms`,
+              );
             })();
 
-            // Use EdgeRuntime.waitUntil to keep the function alive after response
             try {
               (globalThis as any).EdgeRuntime?.waitUntil?.(backfillPromise);
             } catch {
-              // Fallback: if waitUntil isn't available, just let the promise run
-              // (it will be cancelled when the function shuts down)
               backfillPromise.catch((e) => console.error("Backfill background error:", e));
             }
           }

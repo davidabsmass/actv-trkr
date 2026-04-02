@@ -11,6 +11,10 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
 
+= 1.7.0 =
+* Adds Magic Login for remote WP-Admin access from the dashboard.
+* Removes "heartbeat" terminology from all user-facing labels.
+
 = 1.6.2 =
 * Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions.
 

@@ -117,6 +117,7 @@ const Index = () => {
               </button>
             </div>
             <div className="hidden md:flex items-center gap-4">
+              <HomepageLanguageSwitcher />
               <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleSignIn}>
                 {session ? "Dashboard" : "Get Started"}
               </Button>

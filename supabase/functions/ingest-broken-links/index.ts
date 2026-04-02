@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     const orgId = akRow.org_id;
 
     const body = await req.json();
-    const domain = body.domain;
+    const domain = (body.domain || "").replace(/^www\./i, "");
     const links = body.links;
     if (!domain || !Array.isArray(links)) return new Response(JSON.stringify({ error: "Missing domain or links" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

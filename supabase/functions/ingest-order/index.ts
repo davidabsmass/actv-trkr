@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     }
 
     const orgId = keyRow.org_id;
-    const domain = (body.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+    const domain = (body.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./i, "").toLowerCase();
 
     // Resolve site_id
     const { data: site } = await supabase

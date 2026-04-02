@@ -596,53 +596,59 @@ Deno.serve(async (req) => {
             console.log(`Entry backfill triggered (force=${!!force_backfill}): ${nonAvadaFormIds.length} non-Avada forms`);
             entryBackfillAttempted = true;
 
-            // Resumable loop: call WP in chunks until done or edge function time limit
-            const backfillStart = Date.now();
-            const maxBackfillMs = 50000; // 50s safety margin for edge function
-            let cursor: { resume_job_index: number; resume_offset: number; resume_page: number } | undefined;
-            let totalBackfillEntries = 0;
-            let totalBackfillErrors = 0;
-            let backfillDone = false;
+            // Run backfill in background using EdgeRuntime.waitUntil so we can
+            // return a response immediately and keep processing for up to ~140s.
+            const backfillPromise = (async () => {
+              const backfillStart = Date.now();
+              const maxBackfillMs = 140000; // 140s — near the edge function wall-clock limit
+              let cursor: { resume_job_index: number; resume_offset: number; resume_page: number } | undefined;
+              let totalEntries = 0;
+              let totalErrors = 0;
+              let done = false;
 
-            while (!backfillDone && (Date.now() - backfillStart) < maxBackfillMs) {
-              try {
-                const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash, cursor);
-                if (!bfRes.ok) {
-                  const bfBody = await bfRes.text();
-                  const is404 = bfRes.status === 404;
-                  console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
-                  if (is404) {
-                    entryBackfillAttempted = false;
-                    wpWarnings.push(`Plugin v${runtimePluginVersion || "unknown"} does not support entry backfill. Please update to the latest version from Settings → Plugin.`);
+              while (!done && (Date.now() - backfillStart) < maxBackfillMs) {
+                try {
+                  const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash, cursor);
+                  if (!bfRes.ok) {
+                    const bfBody = await bfRes.text();
+                    console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
+                    break;
                   }
+
+                  const bfRaw = await bfRes.text();
+                  let bfData: Record<string, unknown> = {};
+                  try { bfData = JSON.parse(bfRaw); } catch { /* skip */ }
+
+                  totalEntries += Number(bfData.total_entries || 0);
+                  totalErrors += Number(bfData.total_errors || 0);
+
+                  console.log(`Backfill chunk: ${bfData.total_entries} entries, done=${bfData.done}, elapsed=${Date.now() - backfillStart}ms`);
+
+                  if (bfData.done) {
+                    done = true;
+                  } else if (bfData.cursor) {
+                    cursor = bfData.cursor as { resume_job_index: number; resume_offset: number; resume_page: number };
+                  } else {
+                    console.warn("Backfill returned not-done but no cursor — breaking");
+                    break;
+                  }
+                } catch (err) {
+                  console.error("WP entry backfill chunk error:", err);
                   break;
                 }
-
-                const bfRaw = await bfRes.text();
-                let bfData: Record<string, unknown> = {};
-                try { bfData = JSON.parse(bfRaw); } catch { /* skip */ }
-
-                totalBackfillEntries += Number(bfData.total_entries || 0);
-                totalBackfillErrors += Number(bfData.total_errors || 0);
-
-                console.log(`Backfill chunk: ${bfData.total_entries} entries, done=${bfData.done}, cursor=${JSON.stringify(bfData.cursor || null)}`);
-
-                if (bfData.done) {
-                  backfillDone = true;
-                } else if (bfData.cursor) {
-                  cursor = bfData.cursor as { resume_job_index: number; resume_offset: number; resume_page: number };
-                } else {
-                  // No cursor and not done — shouldn't happen, break to avoid infinite loop
-                  console.warn("Backfill returned not-done but no cursor — breaking");
-                  break;
-                }
-              } catch (err) {
-                console.error("WP entry backfill chunk error:", err);
-                break;
               }
-            }
 
-            console.log(`Entry backfill complete: ${totalBackfillEntries} entries, ${totalBackfillErrors} errors, fully_done=${backfillDone}`);
+              console.log(`Entry backfill complete: ${totalEntries} entries, ${totalErrors} errors, fully_done=${done}, elapsed=${Date.now() - backfillStart}ms`);
+            })();
+
+            // Use EdgeRuntime.waitUntil to keep the function alive after response
+            try {
+              (globalThis as any).EdgeRuntime?.waitUntil?.(backfillPromise);
+            } catch {
+              // Fallback: if waitUntil isn't available, just let the promise run
+              // (it will be cancelled when the function shuts down)
+              backfillPromise.catch((e) => console.error("Backfill background error:", e));
+            }
           }
         }
       }

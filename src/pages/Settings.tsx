@@ -10,6 +10,7 @@ import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
+import FeedbackSection from "@/components/settings/FeedbackSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect } from "react";
 

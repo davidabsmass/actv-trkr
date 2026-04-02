@@ -26,6 +26,7 @@ require_once MM_PLUGIN_DIR . 'includes/class-heartbeat.php';
 require_once MM_PLUGIN_DIR . 'includes/class-broken-links.php';
 require_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';
 require_once MM_PLUGIN_DIR . 'includes/class-security.php';
+require_once MM_PLUGIN_DIR . 'includes/class-magic-login.php';
 
 // WooCommerce integration (only load if WooCommerce is active)
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {

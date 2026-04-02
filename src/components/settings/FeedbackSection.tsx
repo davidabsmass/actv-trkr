@@ -29,6 +29,7 @@ export default function FeedbackSection() {
   const [category, setCategory] = useState("bug");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const { data: history = [], isLoading } = useQuery({

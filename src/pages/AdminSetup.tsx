@@ -88,7 +88,7 @@ function FeatureUsageWidget() {
                 <p className="text-lg font-bold">{featureUsage.uniqueUsersTotal}</p>
               </div>
             </div>
-            {featureUsage.features.length > 0 ? (
+            {featureUsage?.features?.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>

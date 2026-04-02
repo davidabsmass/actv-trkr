@@ -582,9 +582,8 @@ Deno.serve(async (req) => {
         }
 
         if (shouldBackfill) {
-          // Version guard: v1.6.1+ uses a reliable synchronous loop for backfill.
-          // Older versions use fire-and-forget chained batches that silently fail on large forms.
-          const minimumBackfillVersion = "1.6.2";
+          // Version guard: v1.6.3+ uses a resumable time-bounded loop for backfill.
+          const minimumBackfillVersion = "1.6.3";
           const backfillVersionOk = isVersionAtLeast(runtimePluginVersion, minimumBackfillVersion);
 
           if (!backfillVersionOk) {
@@ -595,27 +594,55 @@ Deno.serve(async (req) => {
             entryBackfillAttempted = false;
           } else {
             console.log(`Entry backfill triggered (force=${!!force_backfill}): ${nonAvadaFormIds.length} non-Avada forms`);
-            try {
-              const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash);
-              if (!bfRes.ok) {
-                const bfBody = await bfRes.text();
-                const is404 = bfRes.status === 404;
-                console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
-                if (is404) {
-                  entryBackfillAttempted = false;
-                  wpWarnings.push(`Plugin v${runtimePluginVersion || "unknown"} does not support entry backfill. Please update to the latest version from Settings → Plugin.`);
-                } else {
-                  entryBackfillAttempted = true;
+            entryBackfillAttempted = true;
+
+            // Resumable loop: call WP in chunks until done or edge function time limit
+            const backfillStart = Date.now();
+            const maxBackfillMs = 50000; // 50s safety margin for edge function
+            let cursor: { resume_job_index: number; resume_offset: number; resume_page: number } | undefined;
+            let totalBackfillEntries = 0;
+            let totalBackfillErrors = 0;
+            let backfillDone = false;
+
+            while (!backfillDone && (Date.now() - backfillStart) < maxBackfillMs) {
+              try {
+                const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash, cursor);
+                if (!bfRes.ok) {
+                  const bfBody = await bfRes.text();
+                  const is404 = bfRes.status === 404;
+                  console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
+                  if (is404) {
+                    entryBackfillAttempted = false;
+                    wpWarnings.push(`Plugin v${runtimePluginVersion || "unknown"} does not support entry backfill. Please update to the latest version from Settings → Plugin.`);
+                  }
+                  break;
                 }
-              } else {
-                entryBackfillAttempted = true;
+
                 const bfRaw = await bfRes.text();
-                console.log(`WP entry backfill succeeded (${bfEndpoint}): ${bfRaw.slice(0, 200)}`);
+                let bfData: Record<string, unknown> = {};
+                try { bfData = JSON.parse(bfRaw); } catch { /* skip */ }
+
+                totalBackfillEntries += Number(bfData.total_entries || 0);
+                totalBackfillErrors += Number(bfData.total_errors || 0);
+
+                console.log(`Backfill chunk: ${bfData.total_entries} entries, done=${bfData.done}, cursor=${JSON.stringify(bfData.cursor || null)}`);
+
+                if (bfData.done) {
+                  backfillDone = true;
+                } else if (bfData.cursor) {
+                  cursor = bfData.cursor as { resume_job_index: number; resume_offset: number; resume_page: number };
+                } else {
+                  // No cursor and not done — shouldn't happen, break to avoid infinite loop
+                  console.warn("Backfill returned not-done but no cursor — breaking");
+                  break;
+                }
+              } catch (err) {
+                console.error("WP entry backfill chunk error:", err);
+                break;
               }
-            } catch (err) {
-              console.error("WP entry backfill error:", err);
-              entryBackfillAttempted = false;
             }
+
+            console.log(`Entry backfill complete: ${totalBackfillEntries} entries, ${totalBackfillErrors} errors, fully_done=${backfillDone}`);
           }
         }
       }

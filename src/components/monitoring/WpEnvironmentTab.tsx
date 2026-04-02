@@ -152,7 +152,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
                 {envData.core_update_available ? (
                   <Badge variant="outline" className="text-[10px] border-warning text-warning">→ {envData.core_update_available}</Badge>
                 ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                 )}
               </div>
             </div>

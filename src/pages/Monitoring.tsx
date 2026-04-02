@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import {
   Activity, Globe, Shield, Link2, RefreshCw, AlertTriangle, CheckCircle2,
   XCircle, Plus, Trash2, Bell, ChevronRight, ExternalLink, FileSearch, EyeOff,
-  Package, Info,
+  Package, Info, LogIn,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -277,6 +277,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
         <Badge variant={site.status === "UP" ? "default" : "destructive"}>
           {site.status}
         </Badge>
+        <WpAdminLoginButton siteId={site.id} domain={site.domain} />
       </div>
 
       <Tabs defaultValue={initialTab || "overview"} className="space-y-4">
@@ -699,6 +700,41 @@ function TriggerSyncButton({ siteId }: { siteId: string }) {
     <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="gap-1">
       <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
       {syncing ? "Syncing…" : "Re-check Now"}
+    </Button>
+  );
+}
+
+// ─── WP Admin Magic Login Button ──────────────────────────────
+
+function WpAdminLoginButton({ siteId, domain }: { siteId: string; domain: string }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-wp-login", {
+        body: { site_id: siteId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.login_url) {
+        window.open(data.login_url, "_blank", "noopener");
+      }
+    } catch (err: any) {
+      toast({
+        title: "WP Admin login failed",
+        description: err?.message || "Could not generate login link. Make sure the plugin is updated.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleLogin} disabled={loading} className="gap-1.5 ml-auto">
+      <LogIn className="h-3.5 w-3.5" />
+      {loading ? "Generating…" : "WP Admin"}
     </Button>
   );
 }

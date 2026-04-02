@@ -26,6 +26,7 @@ require_once MM_PLUGIN_DIR . 'includes/class-heartbeat.php';
 require_once MM_PLUGIN_DIR . 'includes/class-broken-links.php';
 require_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';
 require_once MM_PLUGIN_DIR . 'includes/class-security.php';
+require_once MM_PLUGIN_DIR . 'includes/class-magic-login.php';
 
 // WooCommerce integration (only load if WooCommerce is active)
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
@@ -81,6 +82,7 @@ MM_Broken_Links::init();
 MM_SEO_Fixes::init();
 $mm_security = new Mission_Metrics_Security();
 $mm_security->init();
+MM_Magic_Login::init();
 
 // Ensure crons are scheduled even after updates (activation hook only fires on first install).
 add_action( 'init', function () {

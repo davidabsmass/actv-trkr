@@ -126,6 +126,11 @@ const Index = () => {
         </div>
       </nav>
 
+      {/* Floating language switcher — top-right of hero, visible before scroll */}
+      <div className="absolute top-4 right-4 z-40">
+        <HomepageLanguageSwitcher />
+      </div>
+
       {/* Hero + space background */}
       <div className="relative overflow-hidden bg-black">
         <div

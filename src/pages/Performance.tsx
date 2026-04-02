@@ -107,7 +107,7 @@ const Performance = () => {
         <div id="section-map" key="map"><VisitorMapSection data={realtimeData?.countries || []} /></div>
       ),
       content: (
-        <div id="section-pages" key="content"><ContentPerformance pages={processedData.pages} opportunities={processedData.opportunities} /></div>
+        <div id="section-pages" key="content"><ContentPerformance pages={processedData.pages} /></div>
       ),
     };
 

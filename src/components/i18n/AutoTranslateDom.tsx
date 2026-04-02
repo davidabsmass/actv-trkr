@@ -51,7 +51,7 @@ export default function AutoTranslateDom() {
     return resolved;
   }, [i18n.language, i18n.resolvedLanguage]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.body;
     if (!root) return;
 

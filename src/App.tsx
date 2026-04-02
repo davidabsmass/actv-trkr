@@ -91,8 +91,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AutoTranslateDom />
         <Suspense fallback={<PageSpinner />}>
+          <AutoTranslateDom />
           <Routes>
             <Route index element={<Index />} />
             <Route

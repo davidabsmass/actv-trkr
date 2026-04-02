@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,9 +38,20 @@ export default function AutoTranslateDom() {
   const location = useLocation();
   const applyingRef = useRef(false);
 
-  const targetLanguage = useMemo(() => i18n.language.split("-")[0], [i18n.language]);
+  const targetLanguage = useMemo(() => {
+    const resolved = (i18n.resolvedLanguage || i18n.language || "en").split("-")[0];
 
-  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("at_language")?.split("-")[0];
+      if (stored && stored !== resolved) return stored;
+    } catch {
+      // ignore storage access issues
+    }
+
+    return resolved;
+  }, [i18n.language, i18n.resolvedLanguage]);
+
+  useLayoutEffect(() => {
     const root = document.body;
     if (!root) return;
 
@@ -168,10 +179,13 @@ export default function AutoTranslateDom() {
       };
 
       const cache = getCache(targetLanguage);
-      applyTranslations(cache);
 
       const missing = [...new Set(items.map((i) => i.value))].filter((text) => !cache[text]);
-      if (missing.length === 0) { fadeIn(); return; }
+      if (missing.length === 0) {
+        applyTranslations(cache);
+        fadeIn();
+        return;
+      }
 
       let updated = false;
 
@@ -191,13 +205,15 @@ export default function AutoTranslateDom() {
               Object.assign(cache, translated);
               updated = true;
             } catch {
-              // keep original text on hard failure
+              cache[text] = text;
             }
           }
         }
-
-        applyTranslations(cache);
       }
+
+      if (disposed) return;
+
+      applyTranslations(cache);
 
       if (updated) {
         setCache(targetLanguage, cache);

@@ -13,6 +13,20 @@ import ja from "./locales/ja/common.json";
 import ko from "./locales/ko/common.json";
 import ar from "./locales/ar/common.json";
 
+const supportedLanguages = new Set(["en", "es", "fr", "pt", "de", "it", "zh", "ja", "ko", "ar"]);
+
+const getInitialLanguage = () => {
+  try {
+    const stored = window.localStorage.getItem("at_language")?.split("-")[0];
+    if (stored && supportedLanguages.has(stored)) return stored;
+  } catch {
+    // ignore storage access issues
+  }
+
+  const browser = typeof navigator !== "undefined" ? navigator.language.split("-")[0] : "en";
+  return supportedLanguages.has(browser) ? browser : "en";
+};
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -29,7 +43,11 @@ i18n
       ko: { translation: ko },
       ar: { translation: ar },
     },
+    lng: getInitialLanguage(),
     fallbackLng: "en",
+    supportedLngs: [...supportedLanguages],
+    load: "languageOnly",
+    initImmediate: false,
     interpolation: { escapeValue: false },
     detection: {
       order: ["localStorage", "navigator"],

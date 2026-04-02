@@ -376,7 +376,15 @@ export default function AdminSetup() {
     queryFn: async () => {
       const { data, error } = await supabase.from("subscribers").select("*");
       if (error) throw error;
-      return data as any[];
+      // Enrich with profile data (name, address, phone)
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("email, full_name, phone, address_line1, address_line2, city, state, postal_code, country");
+      const profileMap = new Map((profiles || []).map((p: any) => [p.email, p]));
+      return (data || []).map((s: any) => ({
+        ...s,
+        _profile: profileMap.get(s.email) || null,
+      }));
     },
     enabled: isOwner,
   });

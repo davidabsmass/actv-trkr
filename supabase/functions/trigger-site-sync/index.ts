@@ -290,7 +290,7 @@ async function triggerWordPressEntryBackfill(
   const payload: Record<string, unknown> = {
     triggered_from: "dashboard",
     key_hash: keyHash,
-    max_seconds: 20,
+    max_seconds: 12,
     page_size: 50,
   };
   if (cursor) {
@@ -308,7 +308,7 @@ async function triggerWordPressEntryBackfill(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
-      }, 30000);
+      }, 25000);
 
       if (response.ok) return { response, endpoint };
 

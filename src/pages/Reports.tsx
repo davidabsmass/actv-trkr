@@ -378,7 +378,15 @@ function ActivityReportsTab() {
       const tplConfig = (tplResult.data as any)?.sections_config || null;
       const { buildReportPdf } = await import("@/lib/report-pdf");
       const doc = await buildReportPdf(report, run, wlResult.data, tplConfig);
-      doc.save(`report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`);
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report-${format(new Date(run.created_at), "yyyy-MM-dd")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
       toast.success("PDF downloaded");
     } catch { toast.error("Failed to download"); } finally {
       setDownloadingRunId(null);

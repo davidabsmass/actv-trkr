@@ -60,6 +60,10 @@ export default function SettingsPage() {
           <WebsiteSetup />
         </TabsContent>
 
+        <TabsContent value="feedback">
+          <FeedbackSection />
+        </TabsContent>
+
       </Tabs>
     </div>
   );

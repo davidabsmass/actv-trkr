@@ -1,27 +1,16 @@
 
 
-## Add "Need Help?" Callout to Homepage Footer
+## Default Reports KPI to 30-Day Comparison (Including Today)
 
-### What We're Building
-A small secondary line in the homepage footer that reads **"Need Help? We build websites."** alongside the uploaded New Uniform Design logo, which links to `newuniformdesign.com`.
+### What Changes
+One file: **`src/components/reports/OverviewTab.tsx`**
 
-### Steps
+1. **Change default period** from `"7d"` to `"30d"` (line 288)
+2. **No date-shifting needed** — keep including today as you requested
 
-1. **Copy the logo** into `src/assets/newuni-logo.png` from the uploaded file.
+That's it. The current date logic already includes today and compares current vs prior period correctly. All three KPI boxes (Traffic, Leads, CVR) share the same date parameters, so changing the default applies to all of them.
 
-2. **Update the footer** in `src/pages/Index.tsx` (lines 510-528):
-   - Add a centered row below the existing footer content
-   - Display the text "Need Help? We build websites." in small muted text
-   - Place the New Uniform Design logo (small, ~20px height) next to or near the text
-   - Wrap the logo in an `<a>` tag linking to `https://newuniformdesign.com` with `target="_blank"`
-   - Style to be subtle and not overpower the ACTV TRKR branding — small font, muted colors, separated by a thin top border or spacing
+### Technical Detail
 
-### Layout
-```text
-┌─────────────────────────────────────────────┐
-│  [ACTV TRKR logo]   © 2026...   Privacy Terms│
-│─────────────────────────────────────────────│
-│     Need Help? We build websites. [NU logo] │
-└─────────────────────────────────────────────┘
-```
+**Line 288**: `useState<Period>("7d")` → `useState<Period>("30d")`
 

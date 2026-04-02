@@ -277,6 +277,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
         <Badge variant={site.status === "UP" ? "default" : "destructive"}>
           {site.status}
         </Badge>
+        <WpAdminLoginButton siteId={site.id} domain={site.domain} />
       </div>
 
       <Tabs defaultValue={initialTab || "overview"} className="space-y-4">

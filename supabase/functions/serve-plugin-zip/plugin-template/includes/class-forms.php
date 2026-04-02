@@ -322,7 +322,7 @@ class MM_Forms {
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/sync-entries';
 
 		$response = wp_remote_post( $endpoint, array(
-			'timeout'  => 30,
+			'timeout'  => 120,
 			'headers'  => array(
 				'Content-Type'  => 'application/json',
 				'Authorization' => 'Bearer ' . $opts['api_key'],

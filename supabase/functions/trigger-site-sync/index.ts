@@ -263,8 +263,54 @@ async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): 
   return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 60000);
 }
 
-async function triggerWordPressEntryBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
-  return triggerWordPressRoute(siteUrl, keyHash, "backfill-entries", 60000);
+async function triggerWordPressEntryBackfill(
+  siteUrl: string,
+  keyHash: string,
+  cursor?: { resume_job_index: number; resume_offset: number; resume_page: number },
+): Promise<{ response: Response; endpoint: string }> {
+  const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
+  const endpoints = [
+    `${normalizedSiteUrl}/wp-json/actv-trkr/v1/backfill-entries`,
+    `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/backfill-entries`,
+  ];
+  const payload: Record<string, unknown> = {
+    triggered_from: "dashboard",
+    key_hash: keyHash,
+    max_seconds: 20,
+    page_size: 50,
+  };
+  if (cursor) {
+    payload.resume_job_index = cursor.resume_job_index;
+    payload.resume_offset = cursor.resume_offset;
+    payload.resume_page = cursor.resume_page;
+  }
+  const body = JSON.stringify(payload);
+
+  let lastFailure: { response: Response; endpoint: string } | null = null;
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`Triggering backfill-entries on ${endpoint}`, cursor ? `(cursor: job=${cursor.resume_job_index} offset=${cursor.resume_offset})` : "(fresh)");
+      const response = await fetchWithTimeout(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      }, 30000);
+
+      if (response.ok) return { response, endpoint };
+
+      const bodyPreview = await response.clone().text();
+      console.error(`WP backfill-entries failed on ${endpoint}: ${response.status} ${bodyPreview}`);
+      lastFailure = { response, endpoint };
+    } catch (err) {
+      console.error(`WP backfill-entries request failed on ${endpoint}:`, err);
+    }
+  }
+
+  if (lastFailure) return lastFailure;
+  return {
+    response: new Response("All endpoints timed out", { status: 504 }),
+    endpoint: endpoints[0],
+  };
 }
 
 Deno.serve(async (req) => {

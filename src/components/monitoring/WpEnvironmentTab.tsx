@@ -93,7 +93,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
           </h3>
           {updates.length === 0 ? (
             <div className="rounded-lg border border-border bg-muted/30 p-5 text-center">
-              <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto mb-2" />
+              <CheckCircle2 className="h-5 w-5 text-primary mx-auto mb-2" />
               <p className="text-xs font-medium text-foreground mb-1">All plugins up to date</p>
               <p className="text-xs text-muted-foreground">{plugins.length} active plugin{plugins.length !== 1 ? "s" : ""} — no updates available.</p>
             </div>

@@ -4,12 +4,15 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.6.1
+Stable tag: 1.6.2
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.6.2 =
+* Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions.
 
 = 1.6.1 =
 * Replaces fire-and-forget chained backfill with synchronous loop — guarantees ALL entries across ALL pages are processed in a single request.

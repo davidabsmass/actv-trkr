@@ -144,6 +144,26 @@ Deno.serve(async (req) => {
     }
     await supabase.from("sites").update(updateData).eq("id", site.id);
 
+    // Persist WP environment data if provided (cron heartbeat sends this)
+    const wpEnv = body.wp_environment;
+    if (wpEnv && typeof wpEnv === "object") {
+      const envRow: Record<string, unknown> = {
+        site_id: site.id,
+        org_id: orgId,
+        last_reported_at: now,
+      };
+      if (wpEnv.wp_version) envRow.wp_version = wpEnv.wp_version;
+      if (wpEnv.php_version) envRow.php_version = wpEnv.php_version;
+      if (wpEnv.theme_name) envRow.theme_name = wpEnv.theme_name;
+      if (wpEnv.theme_version) envRow.theme_version = wpEnv.theme_version;
+      if (Array.isArray(wpEnv.active_plugins)) envRow.active_plugins = wpEnv.active_plugins;
+      if (Array.isArray(wpEnv.plugin_updates)) envRow.plugin_updates = wpEnv.plugin_updates;
+      if (wpEnv.core_update_available) envRow.core_update_available = wpEnv.core_update_available;
+
+      await supabase.from("site_wp_environment")
+        .upsert(envRow, { onConflict: "site_id" });
+    }
+
     // If site was DOWN and we got a response, recover it
     if (site.status === "DOWN") {
       // Resolve open DOWNTIME incident and send recovery notification

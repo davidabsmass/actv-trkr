@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Current latest plugin version — bump this when releasing updates
 // v1.5.5: Dispatches historical entry backfill asynchronously so large forms finish importing reliably
-const LATEST_VERSION = "1.6.1";
+const LATEST_VERSION = "1.6.2";
 
 function getZipUrl(req: Request): string {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.6.2
+- Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions
+- Powers the Plugins & WordPress monitoring tab with real data
+
 ## 1.6.1
 - FIX: Replaces fire-and-forget chained backfill with synchronous loop — all entries across all pages guaranteed to process
 - FIX: Older historical entries (Jan/Feb) no longer silently dropped when chain breaks

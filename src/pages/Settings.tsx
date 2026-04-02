@@ -20,15 +20,7 @@ export default function SettingsPage() {
   const showAdminSections = isAdmin || isOrgAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "general";
-  const section = searchParams.get("section");
   const { t } = useTranslation();
-  const goalsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (section === "goals" && goalsRef.current) {
-      setTimeout(() => goalsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-    }
-  }, [section, activeTab]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });

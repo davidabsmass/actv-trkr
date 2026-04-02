@@ -703,3 +703,38 @@ function TriggerSyncButton({ siteId }: { siteId: string }) {
     </Button>
   );
 }
+
+// ─── WP Admin Magic Login Button ──────────────────────────────
+
+function WpAdminLoginButton({ siteId, domain }: { siteId: string; domain: string }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-wp-login", {
+        body: { site_id: siteId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.login_url) {
+        window.open(data.login_url, "_blank", "noopener");
+      }
+    } catch (err: any) {
+      toast({
+        title: "WP Admin login failed",
+        description: err?.message || "Could not generate login link. Make sure the plugin is updated.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleLogin} disabled={loading} className="gap-1.5 ml-auto">
+      <LogIn className="h-3.5 w-3.5" />
+      {loading ? "Generating…" : "WP Admin"}
+    </Button>
+  );
+}

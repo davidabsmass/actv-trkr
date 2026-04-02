@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
     if (body.type === "time_update") {
       const eventId = sanitizeStr(body.event?.event_id, 128);
       const activeSeconds = typeof body.event?.active_seconds === "number" ? Math.min(Math.max(0, Math.round(body.event.active_seconds)), 3600) : null;
-      const domain = sanitizeStr(body.source?.domain, 253);
+      const domain = sanitizeStr(body.source?.domain, 253)?.replace(/^www\./i, "");
 
       if (!eventId || activeSeconds === null || !domain) {
         return new Response(JSON.stringify({ error: "Missing fields for time_update" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing or invalid event_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const domain = sanitizeStr(source?.domain, 253);
+    const domain = sanitizeStr(source?.domain, 253)?.replace(/^www\./i, "");
     if (!domain) return new Response(JSON.stringify({ error: "Missing source domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const now = new Date();

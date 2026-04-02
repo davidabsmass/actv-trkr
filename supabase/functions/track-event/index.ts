@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
     }
 
     const { source, events } = body;
-    const domain = sanitizeStr(source?.domain, 253);
+    const domain = sanitizeStr(source?.domain, 253)?.replace(/^www\./i, "");
     if (!domain) return new Response(JSON.stringify({ error: "Missing source domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!Array.isArray(events) || events.length === 0) {

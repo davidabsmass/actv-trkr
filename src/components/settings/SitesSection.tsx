@@ -28,6 +28,8 @@ export default function SitesSection() {
       } catch {
         domain = siteUrl.replace(/^https?:\/\//, "").split("/")[0];
       }
+      // Normalize: strip www. so www.example.com and example.com are the same site
+      domain = domain.replace(/^www\./i, "");
       const { error } = await supabase.from("sites").insert({ org_id: orgId, domain });
       if (error) throw error;
       toast({ title: t("settings.siteAdded"), description: t("settings.siteAddedDesc", { domain }) });

@@ -5,15 +5,13 @@ import { useTranslation } from "react-i18next";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
-import FormsSection from "@/components/settings/FormsSection";
 import SeoVisibilitySection from "@/components/settings/SeoVisibilitySection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
-import GoalsSection from "@/components/settings/GoalsSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 export default function SettingsPage() {
   const { orgName, orgId } = useOrg();
@@ -22,15 +20,7 @@ export default function SettingsPage() {
   const showAdminSections = isAdmin || isOrgAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "general";
-  const section = searchParams.get("section");
   const { t } = useTranslation();
-  const goalsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (section === "goals" && goalsRef.current) {
-      setTimeout(() => goalsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-    }
-  }, [section, activeTab]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });
@@ -56,9 +46,7 @@ export default function SettingsPage() {
             {showAdminSections && <PluginSection />}
             {showAdminSections && <ApiKeysSection />}
             <SitesSection />
-            <FormsSection />
             <NotificationsSection />
-            <div ref={goalsRef}><GoalsSection /></div>
             <SeoVisibilitySection />
           </div>
         </TabsContent>

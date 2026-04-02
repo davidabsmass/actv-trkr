@@ -215,7 +215,7 @@ async function triggerWordPressRoute(
   siteUrl: string,
   keyHash: string,
   route: "sync" | "backfill-avada",
-  timeoutMs = 8000,
+  timeoutMs = 120000,
 ): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
   const endpoints = [

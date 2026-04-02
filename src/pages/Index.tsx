@@ -35,6 +35,7 @@ import logoActvTrkrDark from "@/assets/actv-trkr-logo-dark-2.svg";
 import logoMshnCtrl from "@/assets/logo-mshn-ctrl.svg";
 import spaceboy from "@/assets/astroman-2.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
+import newuniLogo from "@/assets/newuni-logo.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import FaqSection from "@/components/FaqSection";
 import { HomepageLanguageSwitcher } from "@/components/HomepageLanguageSwitcher";

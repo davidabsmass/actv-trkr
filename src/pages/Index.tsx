@@ -37,6 +37,7 @@ import spaceboy from "@/assets/astroman-2.png";
 import spaceBgd from "@/assets/space-bgd.jpg";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import FaqSection from "@/components/FaqSection";
+import { HomepageLanguageSwitcher } from "@/components/HomepageLanguageSwitcher";
 import helmetImg from "@/assets/helmet.png";
 import presentationBgImg from "@/assets/section-2-bgd.jpg";
 import platformBg from "@/assets/section-3-space.jpg";

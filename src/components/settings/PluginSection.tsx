@@ -47,7 +47,8 @@ export default function PluginSection() {
   const { data: latestVersion } = useQuery({
     queryKey: ["latest_plugin_version"],
     queryFn: getLatestPluginVersion,
-    staleTime: 1000 * 60,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const { data: latestReportedSite } = useQuery({

@@ -19,40 +19,51 @@ function FeatureUsageWidget() {
   const { data: featureUsage } = useQuery({
     queryKey: ["feature_usage"],
     queryFn: async () => {
+      // Unique users who logged in (last 30 days)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+      const { data: recentLogins } = await (supabase as any)
+        .from("login_events")
+        .select("email")
+        .gte("logged_in_at", thirtyDaysAgo);
+      const uniqueUsers30d = new Set((recentLogins || []).map((r: any) => r.email)).size;
+
+      // Total unique users ever
+      const { data: allLogins } = await (supabase as any)
+        .from("login_events")
+        .select("email");
+      const uniqueUsersTotal = new Set((allLogins || []).map((r: any) => r.email)).size;
+
+      // Feature adoption: count distinct orgs using each feature
       const [pvRes, evRes, leadsRes, blRes, fhRes, gcRes, seoRes] = await Promise.all([
-        supabase.from("pageviews").select("id", { count: "exact", head: true }),
-        supabase.from("events").select("event_type"),
-        supabase.from("leads").select("id", { count: "exact", head: true }),
-        supabase.from("broken_links").select("id", { count: "exact", head: true }),
-        supabase.from("form_health_checks").select("id", { count: "exact", head: true }),
-        supabase.from("goal_completions").select("id", { count: "exact", head: true }),
-        supabase.from("seo_fix_queue").select("id", { count: "exact", head: true }),
+        supabase.from("pageviews").select("org_id").limit(1000),
+        supabase.from("events").select("event_type, org_id").limit(1000),
+        supabase.from("leads").select("org_id").limit(1000),
+        supabase.from("broken_links").select("org_id").limit(1000),
+        supabase.from("form_health_checks").select("org_id").limit(1000),
+        supabase.from("goal_completions").select("org_id").limit(1000),
+        supabase.from("seo_fix_queue").select("org_id").limit(1000),
       ]);
 
-      const eventCounts: Record<string, number> = {};
-      (evRes.data || []).forEach((e: any) => {
-        eventCounts[e.event_type] = (eventCounts[e.event_type] || 0) + 1;
-      });
-
-      // Count unique orgs that have pageview data as a proxy for "how many clients use tracking"
-      const { count: pvOrgCount } = await supabase.from("login_events").select("id", { count: "exact", head: true });
+      const countDistinctOrgs = (rows: any[] | null) => new Set((rows || []).map((r: any) => r.org_id)).size;
+      const eventsByType = (rows: any[] | null, type: string) => 
+        new Set((rows || []).filter((r: any) => r.event_type === type).map((r: any) => r.org_id)).size;
 
       const features = [
-        { name: "Pageview Tracking (admin logins)", count: pvOrgCount || 0 },
-        { name: "CTA Clicks", count: eventCounts["cta_click"] || 0 },
-        { name: "Lead Submissions", count: leadsRes.count || 0 },
-        { name: "Form Starts", count: eventCounts["form_start"] || 0 },
-        { name: "Outbound Clicks", count: eventCounts["outbound_click"] || 0 },
-        { name: "Phone Clicks", count: eventCounts["tel_click"] || 0 },
-        { name: "Email Clicks", count: eventCounts["mailto_click"] || 0 },
-        { name: "Download Clicks", count: eventCounts["download_click"] || 0 },
-        { name: "Form Health Checks", count: fhRes.count || 0 },
-        { name: "SEO Fixes", count: seoRes.count || 0 },
-        { name: "Broken Links", count: blRes.count || 0 },
-        { name: "Goal Completions", count: gcRes.count || 0 },
+        { name: "Pageview Tracking", count: countDistinctOrgs(pvRes.data) },
+        { name: "Lead Submissions", count: countDistinctOrgs(leadsRes.data) },
+        { name: "CTA Clicks", count: eventsByType(evRes.data, "cta_click") },
+        { name: "Form Starts", count: eventsByType(evRes.data, "form_start") },
+        { name: "Outbound Clicks", count: eventsByType(evRes.data, "outbound_click") },
+        { name: "Phone Clicks", count: eventsByType(evRes.data, "tel_click") },
+        { name: "Email Clicks", count: eventsByType(evRes.data, "mailto_click") },
+        { name: "Download Clicks", count: eventsByType(evRes.data, "download_click") },
+        { name: "Form Health Checks", count: countDistinctOrgs(fhRes.data) },
+        { name: "SEO Fixes", count: countDistinctOrgs(seoRes.data) },
+        { name: "Broken Links", count: countDistinctOrgs(blRes.data) },
+        { name: "Goal Completions", count: countDistinctOrgs(gcRes.data) },
       ].sort((a, b) => b.count - a.count);
 
-      return features;
+      return { features, uniqueUsers30d, uniqueUsersTotal };
     },
   });
 
@@ -65,25 +76,41 @@ function FeatureUsageWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {featureUsage && featureUsage.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">#</TableHead>
-                <TableHead className="text-xs">Feature</TableHead>
-                <TableHead className="text-xs text-right">Count</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {featureUsage.map((f, i) => (
-                <TableRow key={f.name}>
-                  <TableCell className="text-xs text-muted-foreground font-mono w-8">{i + 1}</TableCell>
-                  <TableCell className="text-sm font-medium">{f.name}</TableCell>
-                  <TableCell className="text-sm font-mono text-right">{f.count.toLocaleString()}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {featureUsage ? (
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs text-muted-foreground">Active users (30d)</p>
+                <p className="text-lg font-bold">{featureUsage.uniqueUsers30d}</p>
+              </div>
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs text-muted-foreground">Total unique users</p>
+                <p className="text-lg font-bold">{featureUsage.uniqueUsersTotal}</p>
+              </div>
+            </div>
+            {featureUsage.features.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">#</TableHead>
+                    <TableHead className="text-xs">Feature</TableHead>
+                    <TableHead className="text-xs text-right">Orgs Using</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {featureUsage.features.map((f, i) => (
+                    <TableRow key={f.name}>
+                      <TableCell className="text-xs text-muted-foreground font-mono w-8">{i + 1}</TableCell>
+                      <TableCell className="text-sm font-medium">{f.name}</TableCell>
+                      <TableCell className="text-sm font-mono text-right">{f.count.toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">No data yet</p>
+            )}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No data yet</p>
         )}

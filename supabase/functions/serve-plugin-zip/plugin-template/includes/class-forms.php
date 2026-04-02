@@ -2206,18 +2206,7 @@ class MM_Forms {
 	 * Used to diagnose field extraction failures.
 	 */
 	public static function handle_rest_avada_debug( $request ) {
-		$opts = MM_Settings::get();
-		if ( empty( $opts['api_key'] ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
-		}
-
-		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
-
-		$stored_hash = hash( 'sha256', $opts['api_key'] );
-		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
-		}
+		// Auth already verified by permission_callback
 
 		global $wpdb;
 

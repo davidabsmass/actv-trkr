@@ -523,6 +523,12 @@ const Index = () => {
                 <span className="cursor-pointer hover:text-foreground transition-colors">Contact</span>
               </div>
             </div>
+            <div className="mt-8 pt-6 border-t border-border flex items-center justify-center gap-2">
+              <span className="text-xs text-muted-foreground">Need Help? We build websites.</span>
+              <a href="https://newuniformdesign.com" target="_blank" rel="noopener noreferrer">
+                <img src={newuniLogo} alt="New Uniform Design" className="h-5 opacity-60 hover:opacity-100 transition-opacity" />
+              </a>
+            </div>
           </div>
         </div>
       </footer>

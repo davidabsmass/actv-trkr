@@ -2279,11 +2279,13 @@ class MM_Forms {
 
 		$domain    = wp_parse_url( home_url(), PHP_URL_HOST );
 		$page_size = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;
+		$max_seconds = isset( $body['max_seconds'] ) ? max( 5, min( 55, intval( $body['max_seconds'] ) ) ) : 20;
 		$jobs      = self::get_entry_backfill_jobs();
 
 		if ( empty( $jobs ) ) {
 			return new \WP_REST_Response( array(
 				'ok'             => true,
+				'done'           => true,
 				'total_entries'  => 0,
 				'total_errors'   => 0,
 				'forms_processed'=> 0,
@@ -2291,17 +2293,39 @@ class MM_Forms {
 			), 200 );
 		}
 
-		// Process ALL jobs and ALL pages synchronously in a single request
+		// Resume from cursor if provided
+		$resume_job_index = isset( $body['resume_job_index'] ) ? intval( $body['resume_job_index'] ) : 0;
+		$resume_offset    = isset( $body['resume_offset'] ) ? intval( $body['resume_offset'] ) : 0;
+		$resume_page      = isset( $body['resume_page'] ) ? max( 1, intval( $body['resume_page'] ) ) : 1;
+
+		$start_time   = microtime( true );
 		$total_sent   = 0;
 		$total_errors = 0;
 		$forms_done   = 0;
+		$timed_out    = false;
 
-		foreach ( $jobs as $job ) {
-			$offset = 0;
-			$page   = 1;
+		// Cursor state for resume
+		$next_job_index = null;
+		$next_offset    = 0;
+		$next_page      = 1;
+
+		for ( $ji = $resume_job_index; $ji < count( $jobs ); $ji++ ) {
+			$job     = $jobs[ $ji ];
+			$offset  = ( $ji === $resume_job_index ) ? $resume_offset : 0;
+			$page    = ( $ji === $resume_job_index ) ? $resume_page : 1;
 			$has_more = true;
 
 			while ( $has_more ) {
+				// Time check before processing next batch
+				$elapsed = microtime( true ) - $start_time;
+				if ( $elapsed >= $max_seconds ) {
+					$timed_out      = true;
+					$next_job_index = $ji;
+					$next_offset    = $offset;
+					$next_page      = $page;
+					break 2; // Break out of both loops
+				}
+
 				$state = array(
 					'provider'  => $job['provider'],
 					'form_id'   => $job['form_id'],
@@ -2319,16 +2343,29 @@ class MM_Forms {
 				$page     = $batch['next_page'];
 			}
 
-			$forms_done++;
+			if ( ! $timed_out ) {
+				$forms_done++;
+			}
 		}
 
-		return new \WP_REST_Response( array(
+		$response_data = array(
 			'ok'              => true,
+			'done'            => ! $timed_out,
 			'total_entries'   => $total_sent,
 			'total_errors'    => $total_errors,
 			'forms_processed' => $forms_done,
 			'plugin_version'  => MM_PLUGIN_VERSION,
-		), 200 );
+		);
+
+		if ( $timed_out && $next_job_index !== null ) {
+			$response_data['cursor'] = array(
+				'resume_job_index' => $next_job_index,
+				'resume_offset'    => $next_offset,
+				'resume_page'      => $next_page,
+			);
+		}
+
+		return new \WP_REST_Response( $response_data, 200 );
 	}
 
 	private static function normalize_entries_backfill_state( $body ) {

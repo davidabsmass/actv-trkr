@@ -2953,6 +2953,63 @@ export type Database = {
           },
         ]
       }
+      site_wp_environment: {
+        Row: {
+          active_plugins: Json | null
+          core_update_available: string | null
+          id: string
+          last_reported_at: string
+          org_id: string
+          php_version: string | null
+          plugin_updates: Json | null
+          site_id: string
+          theme_name: string | null
+          theme_version: string | null
+          wp_version: string | null
+        }
+        Insert: {
+          active_plugins?: Json | null
+          core_update_available?: string | null
+          id?: string
+          last_reported_at?: string
+          org_id: string
+          php_version?: string | null
+          plugin_updates?: Json | null
+          site_id: string
+          theme_name?: string | null
+          theme_version?: string | null
+          wp_version?: string | null
+        }
+        Update: {
+          active_plugins?: Json | null
+          core_update_available?: string | null
+          id?: string
+          last_reported_at?: string
+          org_id?: string
+          php_version?: string | null
+          plugin_updates?: Json | null
+          site_id?: string
+          theme_name?: string | null
+          theme_version?: string | null
+          wp_version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_wp_environment_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_wp_environment_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: true
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           created_at: string

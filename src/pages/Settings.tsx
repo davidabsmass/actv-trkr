@@ -11,7 +11,7 @@ import WebsiteSetup from "@/pages/WebsiteSetup";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 export default function SettingsPage() {
   const { orgName, orgId } = useOrg();

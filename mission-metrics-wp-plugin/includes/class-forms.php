@@ -1101,8 +1101,8 @@ class MM_Forms {
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
 
 		$response = wp_remote_post( $endpoint, array(
-			'timeout'  => 10,
-			'blocking' => true,
+			'timeout'  => 1,
+			'blocking' => false,
 			'headers'  => array(
 				'Content-Type'  => 'application/json',
 				'Authorization' => 'Bearer ' . $opts['api_key'],
@@ -1113,11 +1113,6 @@ class MM_Forms {
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Form send error: ' . $response->get_error_message() );
 			MM_Retry_Queue::enqueue( $endpoint, $opts['api_key'], $payload );
-		} else {
-			$code = wp_remote_retrieve_response_code( $response );
-			if ( $code >= 400 ) {
-				error_log( '[MissionMetrics] Form send HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
-			}
 		}
 	}
 

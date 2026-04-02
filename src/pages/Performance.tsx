@@ -73,8 +73,14 @@ const Performance = () => {
       }));
 
     const sitewideCvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
+    // Use top-quartile session count as threshold so opportunities appear with real data
+    const sortedByTraffic = [...pages].sort((a, b) => b.sessions - a.sessions);
+    const topQuartileIdx = Math.max(0, Math.floor(sortedByTraffic.length * 0.25));
+    const sessionThreshold = sortedByTraffic.length > 0
+      ? Math.max(5, Math.floor(sortedByTraffic[topQuartileIdx]?.sessions * 0.5 || 5))
+      : 5;
     const opportunities = pages
-      .filter((p) => p.sessions >= 100)
+      .filter((p) => p.sessions >= sessionThreshold && p.cvr < sitewideCvr)
       .map((p) => ({ ...p, expectedLeads: Math.round(p.sessions * sitewideCvr), gap: Math.round(p.sessions * sitewideCvr) - p.leads }))
       .filter((p) => p.gap > 0).sort((a, b) => b.gap - a.gap);
 

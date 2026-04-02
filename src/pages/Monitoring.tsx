@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import {
   Activity, Globe, Shield, Link2, RefreshCw, AlertTriangle, CheckCircle2,
   XCircle, Plus, Trash2, Bell, ChevronRight, ExternalLink, FileSearch, EyeOff,
-  Package, Info,
+  Package, Info, LogIn,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

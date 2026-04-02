@@ -2276,18 +2276,8 @@ class MM_Forms {
 	 * Called from the dashboard when forms are synced but no entries exist yet.
 	 */
 	public static function handle_rest_backfill_entries( $request ) {
+		// Auth already verified by permission_callback
 		$opts = MM_Settings::get();
-		if ( empty( $opts['api_key'] ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
-		}
-
-		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
-
-		$stored_hash = hash( 'sha256', $opts['api_key'] );
-		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
-		}
 
 		$domain    = wp_parse_url( home_url(), PHP_URL_HOST );
 		$page_size = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;

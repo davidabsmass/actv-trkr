@@ -46,53 +46,82 @@ class MM_Forms {
 	// ── REST API ───────────────────────────────────────────────────
 
 	/**
+	 * Verify API key hash from request body (used as permission_callback).
+	 * Rejects requests before the callback runs, reducing attack surface.
+	 */
+	public static function verify_key_hash( $request ) {
+		$opts = MM_Settings::get();
+		if ( empty( $opts['api_key'] ) ) {
+			return new \WP_Error( 'not_configured', 'Plugin not configured', array( 'status' => 400 ) );
+		}
+
+		// Rate limit: max 10 requests per IP per minute
+		$ip = self::get_client_ip_for_rate_limit();
+		$transient_key = 'mm_rest_rl_' . md5( $ip );
+		$hits = (int) get_transient( $transient_key );
+		if ( $hits >= 10 ) {
+			return new \WP_Error( 'rate_limited', 'Too many requests', array( 'status' => 429 ) );
+		}
+		set_transient( $transient_key, $hits + 1, 60 );
+
+		$body     = $request->get_json_params();
+		$key_hash = $body['key_hash'] ?? '';
+		$stored_hash = hash( 'sha256', $opts['api_key'] );
+
+		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
+			return new \WP_Error( 'forbidden', 'Invalid key', array( 'status' => 403 ) );
+		}
+		return true;
+	}
+
+	/**
+	 * Get client IP for rate limiting.
+	 */
+	private static function get_client_ip_for_rate_limit() {
+		$headers = array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR' );
+		foreach ( $headers as $h ) {
+			if ( ! empty( $_SERVER[ $h ] ) ) {
+				$ip = explode( ',', $_SERVER[ $h ] );
+				return sanitize_text_field( trim( $ip[0] ) );
+			}
+		}
+		return '0.0.0.0';
+	}
+
+	/**
 	 * Register REST route so the dashboard can trigger a sync remotely.
 	 */
 	public static function register_rest_routes() {
 		register_rest_route( 'actv-trkr/v1', '/sync', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'handle_rest_sync' ),
-			'permission_callback' => '__return_true',
+			'permission_callback' => array( __CLASS__, 'verify_key_hash' ),
 		) );
 
 		register_rest_route( 'actv-trkr/v1', '/backfill-avada', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'handle_rest_backfill_avada' ),
-			'permission_callback' => '__return_true',
+			'permission_callback' => array( __CLASS__, 'verify_key_hash' ),
 		) );
 
 		register_rest_route( 'actv-trkr/v1', '/backfill-entries', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'handle_rest_backfill_entries' ),
-			'permission_callback' => '__return_true',
+			'permission_callback' => array( __CLASS__, 'verify_key_hash' ),
 		) );
 
 		register_rest_route( 'actv-trkr/v1', '/avada-debug', array(
 			'methods'             => 'POST',
 			'callback'            => array( __CLASS__, 'handle_rest_avada_debug' ),
-			'permission_callback' => '__return_true',
+			'permission_callback' => array( __CLASS__, 'verify_key_hash' ),
 		) );
 	}
 
 	/**
 	 * Handle the REST sync request from the dashboard.
-	 * Validates the key_hash against the stored API key hash.
+	 * Auth already verified by permission_callback.
 	 */
 	public static function handle_rest_sync( $request ) {
-		$opts = MM_Settings::get();
-		if ( empty( $opts['api_key'] ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
-		}
-
-		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
-
-		// Verify: hash the stored key and compare
-		$stored_hash = hash( 'sha256', $opts['api_key'] );
-		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
-		}
-
 		// Run the full sync
 		$result = self::scan_all_forms();
 
@@ -1072,8 +1101,8 @@ class MM_Forms {
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
 
 		$response = wp_remote_post( $endpoint, array(
-			'timeout'  => 10,
-			'blocking' => true,
+			'timeout'  => 1,
+			'blocking' => false,
 			'headers'  => array(
 				'Content-Type'  => 'application/json',
 				'Authorization' => 'Bearer ' . $opts['api_key'],
@@ -1084,11 +1113,6 @@ class MM_Forms {
 		if ( is_wp_error( $response ) ) {
 			error_log( '[MissionMetrics] Form send error: ' . $response->get_error_message() );
 			MM_Retry_Queue::enqueue( $endpoint, $opts['api_key'], $payload );
-		} else {
-			$code = wp_remote_retrieve_response_code( $response );
-			if ( $code >= 400 ) {
-				error_log( '[MissionMetrics] Form send HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
-			}
 		}
 	}
 
@@ -1729,18 +1753,7 @@ class MM_Forms {
 	 * so the dashboard can reimport historical data after a reset.
 	 */
 	public static function handle_rest_backfill_avada( $request ) {
-		$opts = MM_Settings::get();
-		if ( empty( $opts['api_key'] ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
-		}
-
-		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
-
-		$stored_hash = hash( 'sha256', $opts['api_key'] );
-		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
-		}
+		// Auth already verified by permission_callback
 
 		global $wpdb;
 		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
@@ -2193,18 +2206,7 @@ class MM_Forms {
 	 * Used to diagnose field extraction failures.
 	 */
 	public static function handle_rest_avada_debug( $request ) {
-		$opts = MM_Settings::get();
-		if ( empty( $opts['api_key'] ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
-		}
-
-		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
-
-		$stored_hash = hash( 'sha256', $opts['api_key'] );
-		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
-		}
+		// Auth already verified by permission_callback
 
 		global $wpdb;
 
@@ -2274,18 +2276,8 @@ class MM_Forms {
 	 * Called from the dashboard when forms are synced but no entries exist yet.
 	 */
 	public static function handle_rest_backfill_entries( $request ) {
+		// Auth already verified by permission_callback
 		$opts = MM_Settings::get();
-		if ( empty( $opts['api_key'] ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Plugin not configured' ), 400 );
-		}
-
-		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
-
-		$stored_hash = hash( 'sha256', $opts['api_key'] );
-		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
-			return new \WP_REST_Response( array( 'error' => 'Unauthorized' ), 403 );
-		}
 
 		$domain    = wp_parse_url( home_url(), PHP_URL_HOST );
 		$page_size = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;

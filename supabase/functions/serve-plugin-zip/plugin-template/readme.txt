@@ -4,12 +4,17 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.7.1
+Stable tag: 1.8.0
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.8.0 =
+* SECURITY: Moves REST API authentication into permission_callback to reject unauthenticated requests before callback execution.
+* SECURITY: Adds IP-based rate limiting (10 req/min) to all REST API endpoints to prevent abuse.
+* STABILITY: Form submission ingestion is now non-blocking — prevents forms from hanging if the API is slow or unreachable.
 
 = 1.7.1 =
 * Fixes entry sync timeout for sites with 700K+ entries by paginating Gravity Forms ID collection.

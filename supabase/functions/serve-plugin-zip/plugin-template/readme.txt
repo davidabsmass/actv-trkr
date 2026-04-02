@@ -4,12 +4,16 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.8.0
+Stable tag: 1.8.1
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.8.1 =
+* EMERGENCY: Disables front-end JS submit capture so the plugin cannot interfere with form submissions.
+* STABILITY: Avada live submissions now avoid database lookups during submit to keep the request lightweight.
 
 = 1.8.0 =
 * SECURITY: Moves REST API authentication into permission_callback to reject unauthenticated requests before callback execution.

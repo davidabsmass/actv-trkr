@@ -73,7 +73,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
         <Package className="h-6 w-6 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-foreground">No environment data yet</p>
         <p className="text-xs text-muted-foreground max-w-md mx-auto">
-          WordPress environment details will appear here after the first cron heartbeat. Make sure ACTV TRKR plugin v1.6.2+ is installed and heartbeat is enabled.
+          WordPress environment details will appear here after the plugin's first sync. Make sure ACTV TRKR plugin v1.6.2+ is installed.
         </p>
       </div>
     );
@@ -177,7 +177,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
       <div className="glass-card p-4">
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <Info className="h-3 w-3 mt-0.5 shrink-0" />
-          <span>Environment data is reported via the WP-Cron heartbeat every 5 minutes. Last update: {format(new Date(envData.last_reported_at), "MMM d, yyyy 'at' h:mm a")}</span>
+          <span>Environment data is reported automatically every 5 minutes. Last update: {format(new Date(envData.last_reported_at), "MMM d, yyyy 'at' h:mm a")}</span>
         </div>
       </div>
     </>

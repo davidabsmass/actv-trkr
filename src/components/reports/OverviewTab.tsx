@@ -206,10 +206,10 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     );
   }
 
-  const { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinks, activeIncidents, formBreakdown, findings } = liveData;
-  const sessionsPct = pctChange(currentSessions, previousSessions);
-  const leadsPct = pctChange(currentLeads, previousLeads);
-  const cvrPct = pctChange(currentCvr, previousCvr);
+  const { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinks, activeIncidents, formBreakdown, findings, hasPreviousData } = liveData;
+  const sessionsPct = hasPreviousData ? pctChange(currentSessions, previousSessions) : null;
+  const leadsPct = hasPreviousData ? pctChange(currentLeads, previousLeads) : null;
+  const cvrPct = hasPreviousData ? pctChange(currentCvr, previousCvr) : null;
 
   const currentRange = formatRange(startDate, endDate);
   const previousRange = formatRange(prevStartDate, prevEndDate);
@@ -223,7 +223,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       <div>
         <div className="flex items-center gap-3 mb-3">
           <span className="text-xs text-muted-foreground">
-            {currentRange} vs {previousRange}
+            {hasPreviousData ? `${currentRange} vs ${previousRange}` : currentRange}
           </span>
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/60 border border-border/50 rounded px-1.5 py-0.5">
             <Wifi className="h-2.5 w-2.5" /> {t("reports.live")}
@@ -235,9 +235,9 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <SummaryCard label={`${t("reports.traffic")} (${periodLabel})`} value={currentSessions.toLocaleString()} change={sessionsPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.traffic_up || aiSummaries.traffic_down} />
-          <SummaryCard label={`${t("reports.leads")} (${periodLabel})`} value={currentLeads.toLocaleString()} change={leadsPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.lead_growth || aiSummaries.lead_drop} />
-          <SummaryCard label={`${t("reports.cvr")} (${periodLabel})`} value={`${currentCvr}%`} change={cvrPct} changeLabel={`vs prior ${periodLabel}`} summary={aiSummaries.conversion_gain || aiSummaries.conversion_drop} />
+          <SummaryCard label={`${t("reports.traffic")} (${periodLabel})`} value={currentSessions.toLocaleString()} change={sessionsPct} changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined} summary={aiSummaries.traffic_up || aiSummaries.traffic_down} />
+          <SummaryCard label={`${t("reports.leads")} (${periodLabel})`} value={currentLeads.toLocaleString()} change={leadsPct} changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined} summary={aiSummaries.lead_growth || aiSummaries.lead_drop} />
+          <SummaryCard label={`${t("reports.cvr")} (${periodLabel})`} value={`${currentCvr}%`} change={cvrPct} changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined} summary={aiSummaries.conversion_gain || aiSummaries.conversion_drop} />
           <SummaryCard label={t("reports.siteHealth")} value={activeIncidents > 0 ? `${activeIncidents} ${t("reports.issues")}` : t("reports.sitHealthy")} summary={brokenLinks > 5 ? t("reports.brokenLinksDetected", { count: brokenLinks }) : undefined} />
         </div>
       </div>

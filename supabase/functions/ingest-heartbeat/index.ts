@@ -42,8 +42,11 @@ Deno.serve(async (req) => {
     const orgId = akRow.org_id;
 
     const body = await req.json();
-    const domain = body.domain;
-    if (!domain) return new Response(JSON.stringify({ error: "Missing domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const rawDomain = body.domain;
+    if (!rawDomain) return new Response(JSON.stringify({ error: "Missing domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Normalize domain: strip www. prefix so www.example.com and example.com are treated as the same site
+    const domain = rawDomain.replace(/^www\./i, "");
 
     // Resolve or auto-create site
     let site = (await supabase.from("sites").select("id, status, plugin_version").eq("org_id", orgId).eq("domain", domain).maybeSingle()).data;

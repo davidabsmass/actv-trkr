@@ -34,8 +34,11 @@ function FeatureUsageWidget() {
         eventCounts[e.event_type] = (eventCounts[e.event_type] || 0) + 1;
       });
 
+      // Count unique orgs that have pageview data as a proxy for "how many clients use tracking"
+      const { count: pvOrgCount } = await supabase.from("login_events").select("id", { count: "exact", head: true });
+
       const features = [
-        { name: "Pageview Tracking", count: pvRes.count || 0 },
+        { name: "Pageview Tracking (admin logins)", count: pvOrgCount || 0 },
         { name: "CTA Clicks", count: eventCounts["cta_click"] || 0 },
         { name: "Lead Submissions", count: leadsRes.count || 0 },
         { name: "Form Starts", count: eventCounts["form_start"] || 0 },

@@ -175,6 +175,73 @@ export default function Account() {
             </Button>
           </CardContent>
         </Card>
+        {/* Subscription Management */}
+        <Card className="lg:col-span-2">
+          <Collapsible>
+            <CardHeader className="pb-3">
+              <CollapsibleTrigger className="flex items-center justify-between w-full text-left group">
+                <CardTitle className="text-base">{t("account.subscriptionManagement", "Subscription")}</CardTitle>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent>
+                <CancelSubscriptionSection />
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function CancelSubscriptionSection() {
+  const { toast } = useToast();
+  const [showCancel, setShowCancel] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleOpenPortal = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      } else {
+        throw new Error("No portal URL returned");
+      }
+    } catch (e: any) {
+      toast({ title: "Unable to open billing portal", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!showCancel) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">Manage your billing and subscription details.</p>
+        <Button variant="outline" size="sm" onClick={() => setShowCancel(true)} className="text-xs text-muted-foreground">
+          Cancel subscription
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        You can manage your subscription, update payment methods, or cancel through the billing portal.
+      </p>
+      <div className="flex gap-2">
+        <Button variant="destructive" size="sm" onClick={handleOpenPortal} disabled={loading} className="gap-1.5">
+          {loading ? "Opening…" : "Open Billing Portal"}
+          <ExternalLink className="h-3 w-3" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setShowCancel(false)}>
+          Never mind
+        </Button>
       </div>
     </div>
   );

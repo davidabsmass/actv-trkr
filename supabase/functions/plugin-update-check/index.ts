@@ -16,6 +16,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.6.2
+- Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions
+- Powers the Plugins & WordPress monitoring tab with real data
+
 ## 1.6.1
 - FIX: Replaces fire-and-forget chained backfill with synchronous loop — all entries across all pages guaranteed to process
 - FIX: Older historical entries (Jan/Feb) no longer silently dropped when chain breaks

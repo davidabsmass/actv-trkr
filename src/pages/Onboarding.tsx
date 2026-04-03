@@ -77,6 +77,11 @@ const Onboarding = () => {
         .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
       if (akErr) throw akErr;
 
+      // Mark onboarding complete so the Dashboard modal doesn't re-ask
+      await supabase
+        .from("site_settings")
+        .upsert({ org_id: orgId, onboarding_completed: true }, { onConflict: "org_id" });
+
       setCreatedOrg({ id: orgId, name });
       setApiKey(rawKey);
       refetch();

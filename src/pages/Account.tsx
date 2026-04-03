@@ -235,7 +235,11 @@ function CancelSubscriptionSection() {
     setPortalLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error) throw error;
+      if (error) {
+        // Extract the real error from the response body
+        const body = error?.context?.body ? await new Response(error.context.body).json().catch(() => null) : null;
+        throw new Error(body?.error || error.message);
+      }
       if (data?.url) {
         window.open(data.url, "_blank");
       } else {

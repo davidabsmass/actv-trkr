@@ -1,18 +1,16 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -25,7 +23,7 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
     const userId = userData.user.id;
@@ -45,7 +43,7 @@ Deno.serve(async (req) => {
     if (jobErr) throw jobErr;
     if (!jobs || jobs.length === 0) {
       return new Response(JSON.stringify({ message: "No queued jobs" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -58,7 +56,7 @@ Deno.serve(async (req) => {
       .eq("org_id", orgId).eq("user_id", userId).maybeSingle();
     if (!membership || !["admin", "member"].includes(membership.role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -95,7 +93,7 @@ Deno.serve(async (req) => {
           file_path: null, error: null,
         }).eq("id", job.id);
         return new Response(JSON.stringify({ message: "No leads to export", job_id: job.id }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
@@ -172,7 +170,7 @@ Deno.serve(async (req) => {
       }).eq("id", job.id);
 
       return new Response(JSON.stringify({ message: "Export completed", job_id: job.id, rows: leads.length }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     } catch (processErr) {
       console.error("Export processing error:", processErr);
@@ -185,7 +183,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("Export error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

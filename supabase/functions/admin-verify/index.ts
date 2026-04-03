@@ -1,13 +1,11 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: appCorsHeaders(req) });
   }
 
   try {
@@ -17,17 +15,17 @@ serve(async (req) => {
     if (!adminSecret || secret !== adminSecret) {
       return new Response(JSON.stringify({ authorized: false }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify({ authorized: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch {
     return new Response(JSON.stringify({ authorized: false }), {
       status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

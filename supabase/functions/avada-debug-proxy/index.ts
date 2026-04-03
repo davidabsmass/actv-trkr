@@ -1,12 +1,10 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -15,7 +13,7 @@ Deno.serve(async (req) => {
     const { site_id } = await req.json();
     if (!site_id) {
       return new Response(JSON.stringify({ error: "Missing site_id" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -27,7 +25,7 @@ Deno.serve(async (req) => {
 
     if (!site) {
       return new Response(JSON.stringify({ error: "Site not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -38,7 +36,7 @@ Deno.serve(async (req) => {
 
     if (!apiKeyRow?.key_hash) {
       return new Response(JSON.stringify({ error: "No API key" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -59,7 +57,7 @@ Deno.serve(async (req) => {
       if (res.ok) {
         const data = await res.json();
         return new Response(JSON.stringify({ ok: true, endpoint, ...data }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
@@ -69,17 +67,17 @@ Deno.serve(async (req) => {
       if (res.status === 404 && text.toLowerCase().includes("rest_no_route")) continue;
       
       return new Response(JSON.stringify({ error: `WP returned ${res.status}`, details: text, endpoint }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 502, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify({ error: "avada-debug endpoint not found on WordPress" }), {
-      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("avada-debug-proxy error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

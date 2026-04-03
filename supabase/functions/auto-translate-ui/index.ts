@@ -1,8 +1,5 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { appCorsHeaders } from '../_shared/cors.ts'
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 const SUPPORTED = new Set(["es", "fr", "pt", "de", "it", "zh", "ja", "ko", "ar"]);
 
@@ -41,11 +38,11 @@ async function translateText(text: string, target: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
@@ -55,7 +52,7 @@ Deno.serve(async (req) => {
     if (!SUPPORTED.has(target)) {
       return new Response(JSON.stringify({ error: "Unsupported language" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -63,7 +60,7 @@ Deno.serve(async (req) => {
     const texts = [...new Set(rawTexts.map(sanitize).filter(Boolean) as string[])].slice(0, 300);
     if (texts.length === 0) {
       return new Response(JSON.stringify({ translations: {} }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -78,13 +75,13 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ translations }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("auto-translate-ui error", error);
     return new Response(JSON.stringify({ error: "Translation failed" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

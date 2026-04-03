@@ -1,10 +1,8 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 const TITLE_MIN = 30;
 const TITLE_MAX = 60;
@@ -150,20 +148,20 @@ async function runAiPrompt(apiKey: string, prompt: string): Promise<string> {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
 
   try {
     // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
     const userId = user.id;
@@ -193,7 +191,7 @@ serve(async (req) => {
       if ((count ?? 0) >= 5) {
         return new Response(
           JSON.stringify({ error: "Daily SEO suggestion limit reached. Try again tomorrow.", code: "RATE_LIMITED" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 429, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
         );
       }
     }
@@ -208,7 +206,7 @@ serve(async (req) => {
     if (fix_type === "add_canonical") {
       return new Response(
         JSON.stringify({ suggested_value: page_url }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -351,7 +349,7 @@ The title should be under 60 characters and the description under 155 characters
 
     return new Response(
       JSON.stringify({ suggested_value: suggested }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("seo-suggest-fix error:", err);
@@ -359,13 +357,13 @@ The title should be under 60 characters and the description under 155 characters
     if (err instanceof HttpError) {
       return new Response(
         JSON.stringify({ error: err.message }),
-        { status: err.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: err.status, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

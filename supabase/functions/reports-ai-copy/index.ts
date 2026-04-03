@@ -1,22 +1,20 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 const DAILY_LIMIT = 15;
 const FUNCTION_NAME = "reports-ai-copy";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
 
   try {
     // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -24,7 +22,7 @@ serve(async (req) => {
     });
     const { data, error: claimsErr } = await supabase.auth.getClaims(authHeader.replace("Bearer ", ""));
     if (claimsErr || !data?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
     const userId = data.claims.sub as string;
@@ -39,7 +37,7 @@ serve(async (req) => {
       .maybeSingle();
     const orgId = orgRow?.org_id;
     if (!orgId) {
-      return new Response(JSON.stringify({ error: "No organization found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "No organization found" }), { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
     // Rate limit check
@@ -55,7 +53,7 @@ serve(async (req) => {
     if ((count ?? 0) >= DAILY_LIMIT) {
       return new Response(
         JSON.stringify({ error: "Daily AI report summary limit reached. Try again tomorrow.", code: "RATE_LIMITED" }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -67,7 +65,7 @@ serve(async (req) => {
     if (!findings || !Array.isArray(findings) || findings.length === 0) {
       return new Response(
         JSON.stringify({ summary: "Not enough data to generate a summary yet.", insights: [] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -156,12 +154,12 @@ ${JSON.stringify(findings, null, 2)}`;
       console.error("AI gateway error:", status, errText);
       if (status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again later." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
       if (status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
       throw new Error(`AI error: ${status}`);
@@ -181,13 +179,13 @@ ${JSON.stringify(findings, null, 2)}`;
     });
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("reports-ai-copy error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

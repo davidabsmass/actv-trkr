@@ -123,7 +123,7 @@ const Onboarding = () => {
               Copy the API key below — you'll need it for the WordPress plugin. This is shown only once.
             </p>
             <div className="bg-secondary rounded-lg p-3 flex items-center gap-2 mb-4">
-              <code className="text-xs font-mono text-foreground flex-1 break-all">{apiKey}</code>
+              <code className="text-xs font-mono text-white flex-1 break-all">{apiKey}</code>
               <button onClick={copyApiKey} className="flex-shrink-0 p-1.5 rounded hover:bg-accent transition-colors">
                 {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
               </button>

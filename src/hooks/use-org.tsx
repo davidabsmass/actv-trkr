@@ -14,6 +14,7 @@ interface OrgContextValue {
 const OrgContext = createContext<OrgContextValue>({
   orgId: null,
   orgName: null,
+  orgCreatedAt: null,
   orgs: [],
   setOrgId: () => {},
   loading: true,

@@ -67,13 +67,13 @@ function ProtectedRoute({ children, requireSubscription = true }: { children: Re
   if (isPreviewEnvironment()) return <>{children}</>;
 
   const { session, loading } = useAuth();
-  const { subscribed, isLoading: subLoading } = useSubscription();
+  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription();
   if (loading || subLoading) return <PageSpinner />;
   if (!session) return <Navigate to="/auth" replace />;
 
-  // Owner bypasses subscription gate
+  // Owner and billing-exempt client orgs bypass subscription gate
   const isOwner = session.user?.email === OWNER_EMAIL;
-  if (requireSubscription && !isOwner && !subscribed) {
+  if (requireSubscription && !isOwner && !billingExempt && !subscribed) {
     return <Navigate to="/checkout" replace />;
   }
 

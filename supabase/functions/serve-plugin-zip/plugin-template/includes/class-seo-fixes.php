@@ -31,8 +31,7 @@ class MM_SEO_Fixes {
 		// Remove default canonical if we have an override.
 		add_action( 'wp', array( __CLASS__, 'maybe_remove_canonical' ) );
 
-		// Fallback: if WP-Cron hasn't fired in 10 minutes, poll on shutdown.
-		add_action( 'shutdown', array( __CLASS__, 'maybe_fallback_poll' ) );
+		// Safety-first: never poll on shutdown during a visitor request.
 	}
 
 	/**
@@ -40,17 +39,8 @@ class MM_SEO_Fixes {
 	 * Uses a transient to avoid running on every request.
 	 */
 	public static function maybe_fallback_poll() {
-		// Only run if no recent poll (transient lasts 5 minutes).
-		if ( get_transient( 'mm_seo_last_poll' ) ) {
-			return;
-		}
-		// Check if cron is actually overdue (> 10 min since last scheduled run).
-		$next = wp_next_scheduled( 'mm_seo_fix_cron' );
-		if ( $next && $next > time() ) {
-			return; // Cron is scheduled in the future, it's fine.
-		}
-		// Cron is overdue — run poll as fallback.
-		self::poll_fixes();
+		// Safety-first: fallback polling is disabled so no visitor request can be delayed.
+		return;
 	}
 
 	/* ─── Polling ─── */

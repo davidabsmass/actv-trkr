@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 interface OrgContextValue {
   orgId: string | null;
   orgName: string | null;
-  orgs: Array<{ id: string; name: string; timezone: string }>;
+  orgCreatedAt: string | null;
+  orgs: Array<{ id: string; name: string; timezone: string; created_at?: string }>;
   setOrgId: (id: string) => void;
   loading: boolean;
 }
@@ -13,6 +14,7 @@ interface OrgContextValue {
 const OrgContext = createContext<OrgContextValue>({
   orgId: null,
   orgName: null,
+  orgCreatedAt: null,
   orgs: [],
   setOrgId: () => {},
   loading: true,
@@ -28,6 +30,7 @@ const PREVIEW_FALLBACK_ORG = {
   id: "00000000-0000-0000-0000-000000000000",
   name: "Preview Workspace",
   timezone: "UTC",
+  created_at: new Date().toISOString(),
 };
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {
@@ -72,6 +75,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       value={{
         orgId,
         orgName: org?.name ?? null,
+        orgCreatedAt: org?.created_at ?? null,
         orgs: effectiveOrgs,
         setOrgId: handleSetOrg,
         loading: !isReady,

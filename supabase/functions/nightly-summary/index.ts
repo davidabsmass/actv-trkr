@@ -37,62 +37,70 @@ function generateFindings(m: {
   seoScore?: number; previousSeoScore?: number;
   brokenLinksCount?: number; activeIncidents?: number;
   organicSessions?: number; previousOrganicSessions?: number;
+  orgAgeDays?: number;
 }): Finding[] {
   const findings: Finding[] = [];
+  const orgTooNew = m.orgAgeDays !== undefined && m.orgAgeDays < 14; // need 2 weeks for nightly comparison
 
   // Traffic
-  const sessionsPct = pctChange(m.currentSessions, m.previousSessions);
-  if (sessionsPct >= 10) {
-    findings.push({ type: "traffic_up", category: "Traffic", positive: true,
-      title: "Traffic is growing",
-      explanation: `Sessions increased ${sessionsPct}% compared to the previous period.`,
-      metric_values: { current: m.currentSessions, previous: m.previousSessions, change: sessionsPct },
-      severity: "low", confidence: 0.9 });
-  } else if (sessionsPct <= -10) {
-    findings.push({ type: "traffic_down", category: "Traffic", positive: false,
-      title: "Traffic declined",
-      explanation: `Sessions dropped ${Math.abs(sessionsPct)}% compared to the previous period.`,
-      metric_values: { current: m.currentSessions, previous: m.previousSessions, change: sessionsPct },
-      severity: sessionsPct <= -25 ? "high" : "medium", confidence: 0.9,
-      recommended_action: "Review top landing pages and traffic sources for changes." });
+  if (!orgTooNew) {
+    const sessionsPct = pctChange(m.currentSessions, m.previousSessions);
+    if (sessionsPct >= 10) {
+      findings.push({ type: "traffic_up", category: "Traffic", positive: true,
+        title: "Traffic is growing",
+        explanation: `Sessions increased ${sessionsPct}% compared to the previous period.`,
+        metric_values: { current: m.currentSessions, previous: m.previousSessions, change: sessionsPct },
+        severity: "low", confidence: 0.9 });
+    } else if (sessionsPct <= -10) {
+      findings.push({ type: "traffic_down", category: "Traffic", positive: false,
+        title: "Traffic declined",
+        explanation: `Sessions dropped ${Math.abs(sessionsPct)}% compared to the previous period.`,
+        metric_values: { current: m.currentSessions, previous: m.previousSessions, change: sessionsPct },
+        severity: sessionsPct <= -25 ? "high" : "medium", confidence: 0.9,
+        recommended_action: "Review top landing pages and traffic sources for changes." });
+    }
   }
 
   // Leads
-  const leadsPct = pctChange(m.currentLeads, m.previousLeads);
-  if (leadsPct >= 10) {
-    findings.push({ type: "lead_growth", category: "Lead Tracking", positive: true,
-      title: "Lead volume is up",
-      explanation: `Leads increased ${leadsPct}% compared to the previous period.`,
-      metric_values: { current: m.currentLeads, previous: m.previousLeads, change: leadsPct },
-      severity: "low", confidence: 0.9 });
-  } else if (leadsPct <= -10) {
-    findings.push({ type: "lead_drop", category: "Lead Tracking", positive: false,
-      title: "Leads declined",
-      explanation: `Leads dropped ${Math.abs(leadsPct)}% compared to the previous period.`,
-      metric_values: { current: m.currentLeads, previous: m.previousLeads, change: leadsPct },
-      severity: leadsPct <= -25 ? "high" : "medium", confidence: 0.9,
-      recommended_action: "Check form health and top lead sources for anomalies." });
+  if (!orgTooNew) {
+    const leadsPct = pctChange(m.currentLeads, m.previousLeads);
+    if (leadsPct >= 10) {
+      findings.push({ type: "lead_growth", category: "Lead Tracking", positive: true,
+        title: "Lead volume is up",
+        explanation: `Leads increased ${leadsPct}% compared to the previous period.`,
+        metric_values: { current: m.currentLeads, previous: m.previousLeads, change: leadsPct },
+        severity: "low", confidence: 0.9 });
+    } else if (leadsPct <= -10) {
+      findings.push({ type: "lead_drop", category: "Lead Tracking", positive: false,
+        title: "Leads declined",
+        explanation: `Leads dropped ${Math.abs(leadsPct)}% compared to the previous period.`,
+        metric_values: { current: m.currentLeads, previous: m.previousLeads, change: leadsPct },
+        severity: leadsPct <= -25 ? "high" : "medium", confidence: 0.9,
+        recommended_action: "Check form health and top lead sources for anomalies." });
+    }
   }
 
   // CVR
-  const cvrPct = pctChange(m.currentCvr, m.previousCvr);
-  if (cvrPct >= 10) {
-    findings.push({ type: "conversion_gain", category: "Conversion", positive: true,
-      title: "Conversion rate improved",
-      explanation: `Conversion rate improved ${cvrPct}% compared to the previous period.`,
-      metric_values: { current: `${m.currentCvr}%`, previous: `${m.previousCvr}%`, change: cvrPct },
-      severity: "low", confidence: 0.85 });
-  } else if (cvrPct <= -10) {
-    findings.push({ type: "conversion_drop", category: "Conversion", positive: false,
-      title: "Conversion rate dropped",
-      explanation: `Conversion rate declined ${Math.abs(cvrPct)}% compared to the previous period.`,
-      metric_values: { current: `${m.currentCvr}%`, previous: `${m.previousCvr}%`, change: cvrPct },
-      severity: cvrPct <= -25 ? "high" : "medium", confidence: 0.85,
-      recommended_action: "Review landing pages and form experience for friction." });
+  if (!orgTooNew) {
+    const cvrPct = pctChange(m.currentCvr, m.previousCvr);
+    if (cvrPct >= 10) {
+      findings.push({ type: "conversion_gain", category: "Conversion", positive: true,
+        title: "Conversion rate improved",
+        explanation: `Conversion rate improved ${cvrPct}% compared to the previous period.`,
+        metric_values: { current: `${m.currentCvr}%`, previous: `${m.previousCvr}%`, change: cvrPct },
+        severity: "low", confidence: 0.85 });
+    } else if (cvrPct <= -10) {
+      findings.push({ type: "conversion_drop", category: "Conversion", positive: false,
+        title: "Conversion rate dropped",
+        explanation: `Conversion rate declined ${Math.abs(cvrPct)}% compared to the previous period.`,
+        metric_values: { current: `${m.currentCvr}%`, previous: `${m.previousCvr}%`, change: cvrPct },
+        severity: cvrPct <= -25 ? "high" : "medium", confidence: 0.85,
+        recommended_action: "Review landing pages and form experience for friction." });
+    }
   }
 
   // Organic traffic
-  if (m.organicSessions !== undefined && m.previousOrganicSessions !== undefined) {
+  if (!orgTooNew && m.organicSessions !== undefined && m.previousOrganicSessions !== undefined) {
     const orgPct = pctChange(m.organicSessions, m.previousOrganicSessions);
     if (orgPct >= 15) {
       findings.push({ type: "organic_traffic_up", category: "SEO", positive: true,
@@ -263,7 +271,7 @@ serve(async (req) => {
     const lovableKey = Deno.env.get("LOVABLE_API_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const { data: orgs } = await supabase.from("orgs").select("id, name");
+    const { data: orgs } = await supabase.from("orgs").select("id, name, created_at");
     if (!orgs || orgs.length === 0) {
       return new Response(JSON.stringify({ message: "No orgs" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -386,6 +394,9 @@ serve(async (req) => {
         const previousSeoScore = prevSeoRes.data?.[0]?.score;
 
         // ── Step 2: Generate findings ──
+        const orgAgeDays = org.created_at
+          ? Math.floor((Date.now() - new Date(org.created_at).getTime()) / (1000 * 60 * 60 * 24))
+          : undefined;
         const allFindings = generateFindings({
           currentSessions, previousSessions,
           currentLeads, previousLeads,
@@ -396,6 +407,7 @@ serve(async (req) => {
           activeIncidents: incidentsRes.count || 0,
           organicSessions: sum(orgSess?.length ? orgSess : null),
           previousOrganicSessions: sum(prevOrgSess?.length ? prevOrgSess : null),
+          orgAgeDays,
         });
 
         // ── Step 3: Rank and select top findings ──

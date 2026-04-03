@@ -139,7 +139,7 @@ function AttentionPanel({ items, t }: { items: AttentionItem[]; t: (key: string)
 const Dashboard = () => {
   const [days, setDays] = useState(30);
   const navigate = useNavigate();
-  const { orgId, orgName, orgs } = useOrg();
+  const { orgId, orgName, orgs, orgCreatedAt } = useOrg();
   const { t } = useTranslation();
   const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { needsOnboarding, settings } = useSiteSettings();
@@ -396,6 +396,13 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
+  // Calculate org age to suppress misleading comparisons for new orgs
+  const orgAgeDays = useMemo(() => {
+    if (!orgCreatedAt) return Infinity;
+    return Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24));
+  }, [orgCreatedAt]);
+  const orgTooNewForComparison = orgAgeDays < days * 2;
+
   const isLoading = !realtimeData;
 
   const periodData = useMemo(() => {
@@ -443,12 +450,14 @@ const Dashboard = () => {
         linkLabel: t("dashboard.review"),
       });
     }
-    // Conversion drops
-    const convDrops = (alertsData || []).filter(
-      (a) => a.severity === "warning" && a.title?.toLowerCase().includes("conversion")
-    );
-    if (convDrops.length > 0) {
-      items.push({ severity: "warning", label: t("dashboard.conversionDropped"), detail: convDrops[0].title, link: "/performance", linkLabel: t("dashboard.investigate") });
+    // Conversion drops (suppress for new orgs)
+    if (!orgTooNewForComparison) {
+      const convDrops = (alertsData || []).filter(
+        (a) => a.severity === "warning" && a.title?.toLowerCase().includes("conversion")
+      );
+      if (convDrops.length > 0) {
+        items.push({ severity: "warning", label: t("dashboard.conversionDropped"), detail: convDrops[0].title, link: "/performance", linkLabel: t("dashboard.investigate") });
+      }
     }
     // Broken links
     if (brokenLinksCount && brokenLinksCount > 0) {
@@ -483,7 +492,7 @@ const Dashboard = () => {
       items.push({ severity: "info", label: t("dashboard.pendingAlerts", { count: pendingAlerts }), detail: t("dashboard.alertsAwaitingDelivery"), link: "/monitoring", linkLabel: t("dashboard.view") });
     }
     return items;
-  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, seoVisible, t]);
+  }, [activeIncidents, recentSecurityEvents, alertsData, brokenLinksCount, expiringDomains, expiringSSL, unhealthyForms, lowSeoScore, seoScoreDrop, seoMovement, staleSeoFixes, pendingAlerts, seoVisible, orgTooNewForComparison, t]);
 
   // Redirect to setup if current org has no connected sites (skip in preview)
   const isPreview = typeof window !== "undefined" && (window.location.hostname.includes("lovableproject.com") || window.location.hostname.includes("id-preview--"));
@@ -537,19 +546,19 @@ const Dashboard = () => {
             <KPICard
               label={`${t("dashboard.sessions")} (${days}d)`}
               value={periodData.sessions.current.toLocaleString()}
-              trend={pctChange(periodData.sessions.current, periodData.sessions.previous)}
+              trend={orgTooNewForComparison ? null : pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
             />
             <KPICard
               label={`${t("dashboard.leads")} (${days}d)`}
               value={periodData.leads.current}
-              trend={pctChange(periodData.leads.current, periodData.leads.previous)}
+              trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <KPICard
               label={t("dashboard.conversionRate")}
               value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
-              trend={pctChange(periodData.cvr.current, periodData.cvr.previous)}
+              trend={orgTooNewForComparison ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
             />
             <KPICard

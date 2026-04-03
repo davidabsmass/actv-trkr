@@ -133,8 +133,8 @@ export function generateFindings(inputs: InsightInputs): Finding[] {
         explanation: `Conversion rate declined ${Math.abs(cvrPct)}% compared to the previous period.`,
         metric_values: { current: `${inputs.currentCvr}%`, previous: `${inputs.previousCvr}%`, change: cvrPct },
         severity: cvrPct <= -25 ? "high" : "medium", confidence: 0.85,
-        recommended_action: "Review landing pages and form experience for friction.",
-    });
+      });
+    }
   }
 
   // ── High-intent pages with low performance ──

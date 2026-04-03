@@ -30,6 +30,7 @@ const PREVIEW_FALLBACK_ORG = {
   id: "00000000-0000-0000-0000-000000000000",
   name: "Preview Workspace",
   timezone: "UTC",
+  created_at: new Date().toISOString(),
 };
 
 export function OrgProvider({ children }: { children: React.ReactNode }) {

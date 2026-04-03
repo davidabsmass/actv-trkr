@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { useSubscription } from "@/hooks/use-subscription";
 import AppLayout from "@/components/AppLayout";
 import AutoTranslateDom from "@/components/i18n/AutoTranslateDom";
 
@@ -62,12 +63,20 @@ function isPreviewEnvironment() {
   return host.includes("lovableproject.com") || host.includes("id-preview--");
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, requireSubscription = true }: { children: React.ReactNode; requireSubscription?: boolean }) {
   if (isPreviewEnvironment()) return <>{children}</>;
 
   const { session, loading } = useAuth();
-  if (loading) return <PageSpinner />;
+  const { subscribed, isLoading: subLoading } = useSubscription();
+  if (loading || subLoading) return <PageSpinner />;
   if (!session) return <Navigate to="/auth" replace />;
+
+  // Owner bypasses subscription gate
+  const isOwner = session.user?.email === OWNER_EMAIL;
+  if (requireSubscription && !isOwner && !subscribed) {
+    return <Navigate to="/checkout" replace />;
+  }
+
   return <>{children}</>;
 }
 
@@ -120,7 +129,7 @@ const App = () => (
               <Route path="get-started" element={<GetStarted />} />
               <Route path="website-setup" element={<Navigate to="/settings?tab=setup" replace />} />
             </Route>
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<ProtectedRoute requireSubscription={false}><Onboarding /></ProtectedRoute>} />
             <Route path="/snapshot/:id" element={<SnapshotView />} />
             <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />

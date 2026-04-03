@@ -172,8 +172,8 @@ const Onboarding = () => {
                 </button>
               </div>
             </div>
-            <button onClick={() => navigate("/")} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-              Go to Dashboard
+            <button onClick={() => navigate("/checkout")} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+              Continue to Checkout
             </button>
           </div>
         </div>

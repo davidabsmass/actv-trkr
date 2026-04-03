@@ -544,19 +544,19 @@ const Dashboard = () => {
             <KPICard
               label={`${t("dashboard.sessions")} (${days}d)`}
               value={periodData.sessions.current.toLocaleString()}
-              trend={pctChange(periodData.sessions.current, periodData.sessions.previous)}
+              trend={orgTooNewForComparison ? null : pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
             />
             <KPICard
               label={`${t("dashboard.leads")} (${days}d)`}
               value={periodData.leads.current}
-              trend={pctChange(periodData.leads.current, periodData.leads.previous)}
+              trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
             />
             <KPICard
               label={t("dashboard.conversionRate")}
               value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
-              trend={pctChange(periodData.cvr.current, periodData.cvr.previous)}
+              trend={orgTooNewForComparison ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
             />
             <KPICard

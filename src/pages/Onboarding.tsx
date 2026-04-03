@@ -156,7 +156,7 @@ const Onboarding = () => {
                   value={siteUrl}
                   onChange={(e) => setSiteUrl(e.target.value)}
                   disabled={siteSaved}
-                  className="flex-1 px-3 py-2 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                  className="flex-1 px-3 py-2 text-sm bg-secondary border border-border rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                 />
                 <button
                   onClick={handleAddSite}

@@ -129,7 +129,7 @@ const App = () => (
               <Route path="get-started" element={<GetStarted />} />
               <Route path="website-setup" element={<Navigate to="/settings?tab=setup" replace />} />
             </Route>
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<ProtectedRoute requireSubscription={false}><Onboarding /></ProtectedRoute>} />
             <Route path="/snapshot/:id" element={<SnapshotView />} />
             <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />

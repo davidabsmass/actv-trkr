@@ -37,8 +37,10 @@ function generateFindings(m: {
   seoScore?: number; previousSeoScore?: number;
   brokenLinksCount?: number; activeIncidents?: number;
   organicSessions?: number; previousOrganicSessions?: number;
+  orgAgeDays?: number;
 }): Finding[] {
   const findings: Finding[] = [];
+  const orgTooNew = m.orgAgeDays !== undefined && m.orgAgeDays < 14; // need 2 weeks for nightly comparison
 
   // Traffic
   const sessionsPct = pctChange(m.currentSessions, m.previousSessions);

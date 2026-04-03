@@ -226,10 +226,13 @@ export default function Account() {
 function CancelSubscriptionSection() {
   const { toast } = useToast();
   const [showCancel, setShowCancel] = useState(false);
+  const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleOpenPortal = async () => {
-    setLoading(true);
+    setPortalLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
@@ -241,6 +244,26 @@ function CancelSubscriptionSection() {
     } catch (e: any) {
       toast({ title: "Unable to open billing portal", description: e.message, variant: "destructive" });
     } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const handleCancelNow = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cancel-subscription");
+      if (error) throw error;
+      if (data?.success) {
+        toast({ title: "Subscription cancelled", description: "Your subscription has been cancelled immediately." });
+        queryClient.invalidateQueries({ queryKey: ["subscription_status"] });
+        setShowCancel(false);
+        setShowConfirmCancel(false);
+      } else {
+        throw new Error(data?.error || "Cancellation failed");
+      }
+    } catch (e: any) {
+      toast({ title: "Error cancelling subscription", description: e.message, variant: "destructive" });
+    } finally {
       setLoading(false);
     }
   };
@@ -249,27 +272,50 @@ function CancelSubscriptionSection() {
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">Manage your billing and subscription details.</p>
-        <Button variant="outline" size="sm" onClick={() => setShowCancel(true)} className="text-xs text-muted-foreground">
-          Cancel subscription
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleOpenPortal} disabled={portalLoading} className="gap-1.5">
+            {portalLoading ? "Opening…" : "Manage Billing"}
+            <ExternalLink className="h-3 w-3" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowCancel(true)} className="text-xs text-muted-foreground">
+            Cancel subscription
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        You can manage your subscription, update payment methods, or cancel through the billing portal.
-      </p>
-      <div className="flex gap-2">
-        <Button variant="destructive" size="sm" onClick={handleOpenPortal} disabled={loading} className="gap-1.5">
-          {loading ? "Opening…" : "Open Billing Portal"}
-          <ExternalLink className="h-3 w-3" />
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => setShowCancel(false)}>
-          Never mind
-        </Button>
-      </div>
+      {!showConfirmCancel ? (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to cancel? Your subscription will end immediately and your data will be retained for 30 days.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="destructive" size="sm" onClick={() => setShowConfirmCancel(true)}>
+              Cancel Now
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowCancel(false)}>
+              Never mind
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-medium text-destructive">
+            This action cannot be undone. Your subscription will be cancelled immediately.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="destructive" size="sm" onClick={handleCancelNow} disabled={loading}>
+              {loading ? "Cancelling…" : "Yes, cancel my subscription"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setShowConfirmCancel(false); setShowCancel(false); }}>
+              Keep my subscription
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

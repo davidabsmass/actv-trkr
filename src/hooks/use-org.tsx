@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/use-auth";
 interface OrgContextValue {
   orgId: string | null;
   orgName: string | null;
-  orgs: Array<{ id: string; name: string; timezone: string }>;
+  orgCreatedAt: string | null;
+  orgs: Array<{ id: string; name: string; timezone: string; created_at?: string }>;
   setOrgId: (id: string) => void;
   loading: boolean;
 }

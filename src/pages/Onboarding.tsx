@@ -38,7 +38,7 @@ const Onboarding = () => {
       }
       const { error } = await supabase
         .from("sites")
-        .insert({ org_id: createdOrg.id, domain });
+        .upsert({ org_id: createdOrg.id, domain }, { onConflict: "org_id,domain" });
       if (error) throw error;
       setSiteSaved(true);
       toast({ title: "Site registered", description: `${domain} has been added.` });

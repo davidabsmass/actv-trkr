@@ -394,6 +394,9 @@ serve(async (req) => {
         const previousSeoScore = prevSeoRes.data?.[0]?.score;
 
         // ── Step 2: Generate findings ──
+        const orgAgeDays = org.created_at
+          ? Math.floor((Date.now() - new Date(org.created_at).getTime()) / (1000 * 60 * 60 * 24))
+          : undefined;
         const allFindings = generateFindings({
           currentSessions, previousSessions,
           currentLeads, previousLeads,
@@ -404,6 +407,7 @@ serve(async (req) => {
           activeIncidents: incidentsRes.count || 0,
           organicSessions: sum(orgSess?.length ? orgSess : null),
           previousOrganicSessions: sum(prevOrgSess?.length ? prevOrgSess : null),
+          orgAgeDays,
         });
 
         // ── Step 3: Rank and select top findings ──

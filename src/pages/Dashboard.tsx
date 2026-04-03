@@ -139,7 +139,7 @@ function AttentionPanel({ items, t }: { items: AttentionItem[]; t: (key: string)
 const Dashboard = () => {
   const [days, setDays] = useState(30);
   const navigate = useNavigate();
-  const { orgId, orgName, orgs } = useOrg();
+  const { orgId, orgName, orgs, orgCreatedAt } = useOrg();
   const { t } = useTranslation();
   const { seoVisible, seoAdvanced } = useSeoVisibility();
   const { needsOnboarding, settings } = useSiteSettings();

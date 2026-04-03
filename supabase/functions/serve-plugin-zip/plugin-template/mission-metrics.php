@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.8.3
+ * Version:     1.8.5
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.8.3' );
+define( 'MM_PLUGIN_VERSION', '1.8.5' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -47,6 +47,11 @@ function mm_activate() {
 	}
 	if ( ! wp_next_scheduled( 'mm_seo_fix_cron' ) ) {
 		wp_schedule_event( time(), 'mm_every_5_min', 'mm_seo_fix_cron' );
+	}
+	// Schedule a one-time auto-sync of forms + entries 30 seconds after activation
+	// (delayed so all plugins are fully loaded)
+	if ( ! wp_next_scheduled( 'mm_first_install_sync' ) ) {
+		wp_schedule_single_event( time() + 30, 'mm_first_install_sync' );
 	}
 }
 register_activation_hook( __FILE__, 'mm_activate' );
@@ -101,3 +106,31 @@ add_action( 'init', function () {
 add_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );
 add_action( 'mm_form_probe_cron', array( 'MM_Forms', 'probe_form_pages' ) );
 add_action( 'mm_seo_fix_cron', array( 'MM_SEO_Fixes', 'poll_fixes' ) );
+
+// First-install auto-sync: discover forms + trigger entry backfill.
+add_action( 'mm_first_install_sync', function () {
+	$opts = MM_Settings::get();
+	if ( empty( $opts['api_key'] ) ) return;
+	error_log( '[ACTV TRKR] Running first-install auto-sync…' );
+	$result = MM_Forms::scan_all_forms();
+	error_log( '[ACTV TRKR] First-install sync complete: ' . wp_json_encode( $result ) );
+
+	// Now trigger a full entry backfill via the dashboard endpoint
+	$domain   = wp_parse_url( home_url(), PHP_URL_HOST );
+	$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/trigger-site-sync';
+	$key_hash = hash( 'sha256', $opts['api_key'] );
+
+	wp_remote_post( $endpoint, array(
+		'timeout'  => 10,
+		'blocking' => false,
+		'headers'  => array(
+			'Content-Type'  => 'application/json',
+			'Authorization' => 'Bearer ' . $opts['api_key'],
+		),
+		'body' => wp_json_encode( array(
+			'domain'   => $domain,
+			'key_hash' => $key_hash,
+			'action'   => 'first_install_sync',
+		) ),
+	) );
+} );

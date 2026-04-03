@@ -192,8 +192,28 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // Get ALL leads for this form (any status)
+      const { data: allLeads } = await supabase
+        .from("leads")
+        .select("id, status, external_entry_id, data")
+        .eq("org_id", orgId)
+        .eq("form_id", formId);
+
+      if (!allLeads || allLeads.length === 0) continue;
+
+      const existingStoredCount = allLeads.length;
+      const existingActiveCount = allLeads.filter((lead: any) => lead.status !== "trashed").length;
+
       // ── If plugin reports 0 active, trash all for this form ──
       if (activeEntryIds.length === 0) {
+        const protectLargeNonAvadaForm = provider !== "avada" && existingStoredCount >= 1000;
+
+        if (protectLargeNonAvadaForm) {
+          console.log(`sync-entries: form=${extFormId} provider=${provider} SAFETY: reported 0 active IDs while ${existingStoredCount} stored leads exist — skipping destructive trash`);
+          warnings.push(`Form ${extFormId}: sync reported 0 active entries while ${existingStoredCount} stored entries exist, so destructive cleanup was skipped to protect data.`);
+          continue;
+        }
+
         const { data: trashedRows } = await supabase
           .from("leads")
           .update({ status: "trashed" })
@@ -217,15 +237,6 @@ Deno.serve(async (req) => {
       }
 
       console.log(`sync-entries: form=${extFormId} provider=${provider} wp_active=${activeEntryIds.length} wpDbIds=${wpDbIds.size}`);
-
-      // Get ALL leads for this form (any status)
-      const { data: allLeads } = await supabase
-        .from("leads")
-        .select("id, status, external_entry_id, data")
-        .eq("org_id", orgId)
-        .eq("form_id", formId);
-
-      if (!allLeads || allLeads.length === 0) continue;
 
       // For each lead, determine if it matches an active WordPress entry
       const leadsToTrash: string[] = [];
@@ -319,12 +330,26 @@ Deno.serve(async (req) => {
       const restoreSet = new Set(leadsToRestore);
       const finalTrash = leadsToTrash.filter(id => !restoreSet.has(id));
 
-      // ── SAFETY GUARD: Full-trash for Avada ──
-      if (provider === "avada" && finalTrash.length > 0 && leadsToRestore.length === 0) {
-        const activeCount = allLeads.filter((l: any) => l.status !== "trashed").length;
-        if (finalTrash.length >= activeCount && activeCount > 0) {
-          console.log(`sync-entries: form=${extFormId} SAFETY: would trash all ${activeCount} active leads with 0 restores → skipping`);
-          warnings.push(`Avada form ${extFormId}: sync would trash all entries with no matches — likely a discovery issue. Skipping.`);
+      // ── SAFETY GUARD: destructive full/near-full trash on suspicious payloads ──
+      if (finalTrash.length > 0 && leadsToRestore.length === 0) {
+        if (provider === "avada") {
+          if (finalTrash.length >= existingActiveCount && existingActiveCount > 0) {
+            console.log(`sync-entries: form=${extFormId} SAFETY: would trash all ${existingActiveCount} active leads with 0 restores → skipping`);
+            warnings.push(`Avada form ${extFormId}: sync would trash all entries with no matches — likely a discovery issue. Skipping.`);
+            continue;
+          }
+        }
+
+        const suspiciousLargeNonAvadaShrink =
+          provider !== "avada" &&
+          existingStoredCount >= 1000 &&
+          activeEntryIds.length < Math.ceil(existingStoredCount * 0.5) &&
+          finalTrash.length >= Math.ceil(existingActiveCount * 0.5) &&
+          existingActiveCount > 0;
+
+        if (suspiciousLargeNonAvadaShrink) {
+          console.log(`sync-entries: form=${extFormId} provider=${provider} SAFETY: would trash ${finalTrash.length}/${existingActiveCount} active leads from a suspiciously small authoritative set (${activeEntryIds.length}/${existingStoredCount}) → skipping`);
+          warnings.push(`Form ${extFormId}: sync returned only ${activeEntryIds.length} active entries while ${existingStoredCount} stored entries exist, so destructive cleanup was skipped to protect data.`);
           continue;
         }
       }

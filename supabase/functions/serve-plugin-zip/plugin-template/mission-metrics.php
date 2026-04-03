@@ -48,6 +48,11 @@ function mm_activate() {
 	if ( ! wp_next_scheduled( 'mm_seo_fix_cron' ) ) {
 		wp_schedule_event( time(), 'mm_every_5_min', 'mm_seo_fix_cron' );
 	}
+	// Schedule a one-time auto-sync of forms + entries 30 seconds after activation
+	// (delayed so all plugins are fully loaded)
+	if ( ! wp_next_scheduled( 'mm_first_install_sync' ) ) {
+		wp_schedule_single_event( time() + 30, 'mm_first_install_sync' );
+	}
 }
 register_activation_hook( __FILE__, 'mm_activate' );
 

@@ -149,7 +149,9 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         .filter(f => f.leads > 0)
         .sort((a, b) => b.leads - a.leads);
 
-      const inputs: InsightInputs = { currentSessions, previousSessions: effectivePrevSessions, currentLeads, previousLeads: effectivePrevLeads, currentCvr, previousCvr: effectivePrevCvr, brokenLinksCount: brokenLinks, activeIncidents };
+      const orgAgeDays = orgCreatedAt ? Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24)) : undefined;
+      const rangeDays = Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
+      const inputs: InsightInputs = { currentSessions, previousSessions: effectivePrevSessions, currentLeads, previousLeads: effectivePrevLeads, currentCvr, previousCvr: effectivePrevCvr, brokenLinksCount: brokenLinks, activeIncidents, orgAgeDays, rangeDays };
       return {
         currentSessions, previousSessions: effectivePrevSessions, currentLeads, previousLeads: effectivePrevLeads, currentCvr, previousCvr: effectivePrevCvr,
         brokenLinks, activeIncidents, formBreakdown, findings: generateFindings(inputs), hasPreviousData,

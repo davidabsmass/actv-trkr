@@ -396,6 +396,13 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
+  // Calculate org age to suppress misleading comparisons for new orgs
+  const orgAgeDays = useMemo(() => {
+    if (!orgCreatedAt) return Infinity;
+    return Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24));
+  }, [orgCreatedAt]);
+  const orgTooNewForComparison = orgAgeDays < days * 2;
+
   const isLoading = !realtimeData;
 
   const periodData = useMemo(() => {

@@ -62,12 +62,20 @@ function isPreviewEnvironment() {
   return host.includes("lovableproject.com") || host.includes("id-preview--");
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, requireSubscription = true }: { children: React.ReactNode; requireSubscription?: boolean }) {
   if (isPreviewEnvironment()) return <>{children}</>;
 
   const { session, loading } = useAuth();
-  if (loading) return <PageSpinner />;
+  const { subscribed, isLoading: subLoading } = useSubscription();
+  if (loading || subLoading) return <PageSpinner />;
   if (!session) return <Navigate to="/auth" replace />;
+
+  // Owner bypasses subscription gate
+  const isOwner = session.user?.email === OWNER_EMAIL;
+  if (requireSubscription && !isOwner && !subscribed) {
+    return <Navigate to="/checkout" replace />;
+  }
+
   return <>{children}</>;
 }
 

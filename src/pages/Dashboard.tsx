@@ -450,12 +450,14 @@ const Dashboard = () => {
         linkLabel: t("dashboard.review"),
       });
     }
-    // Conversion drops
-    const convDrops = (alertsData || []).filter(
-      (a) => a.severity === "warning" && a.title?.toLowerCase().includes("conversion")
-    );
-    if (convDrops.length > 0) {
-      items.push({ severity: "warning", label: t("dashboard.conversionDropped"), detail: convDrops[0].title, link: "/performance", linkLabel: t("dashboard.investigate") });
+    // Conversion drops (suppress for new orgs)
+    if (!orgTooNewForComparison) {
+      const convDrops = (alertsData || []).filter(
+        (a) => a.severity === "warning" && a.title?.toLowerCase().includes("conversion")
+      );
+      if (convDrops.length > 0) {
+        items.push({ severity: "warning", label: t("dashboard.conversionDropped"), detail: convDrops[0].title, link: "/performance", linkLabel: t("dashboard.investigate") });
+      }
     }
     // Broken links
     if (brokenLinksCount && brokenLinksCount > 0) {

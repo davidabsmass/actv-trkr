@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Heartbeat – JS beacon + WP-Cron fallback.
+ * Heartbeat – WP-Cron only.
  */
 class MM_Heartbeat {
 
@@ -11,8 +11,7 @@ class MM_Heartbeat {
 		if ( empty( $opts['api_key'] ) ) return;
 		if ( empty( $opts['enable_heartbeat'] ) || $opts['enable_heartbeat'] !== '1' ) return;
 
-		// JS beacon (front-end, debounced per session)
-		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_beacon' ) );
+		// Front-end heartbeat is intentionally disabled so visitor requests stay untouched.
 
 		// WP-Cron fallback every 5 min
 		add_action( 'mm_heartbeat_cron', array( __CLASS__, 'send_cron_heartbeat' ) );
@@ -22,24 +21,7 @@ class MM_Heartbeat {
 	}
 
 	public static function enqueue_beacon() {
-		if ( is_admin() ) return;
-
-		$opts = MM_Settings::get();
-		wp_enqueue_script(
-			'mm-heartbeat',
-			MM_PLUGIN_URL . 'assets/heartbeat.js',
-			array(),
-			MM_PLUGIN_VERSION,
-			true
-		);
-
-		wp_localize_script( 'mm-heartbeat', 'mmHeartbeat', array(
-			'endpoint'      => rtrim( $opts['endpoint_url'], '/' ) . '/ingest-heartbeat',
-			'apiKey'         => $opts['api_key'],
-			'domain'         => wp_parse_url( home_url(), PHP_URL_HOST ),
-			'interval'       => 60000, // 60s debounce
-			'pluginVersion'  => MM_PLUGIN_VERSION,
-		) );
+		return;
 	}
 
 	/**

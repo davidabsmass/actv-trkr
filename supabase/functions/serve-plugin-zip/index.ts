@@ -9,7 +9,7 @@ const corsHeaders = {
 const ZIP_ROOT = "actv-trkr";
 const SOURCE_MAIN_FILE = "mission-metrics.php";
 const TARGET_MAIN_FILE = "actv-trkr.php";
-const CURRENT_PLUGIN_VERSION = "1.8.2";
+const CURRENT_PLUGIN_VERSION = "1.8.3";
 
 // Generated from plugin-template directory.
 // Files are embedded because edge functions cannot reliably read local subdirectories at runtime.
@@ -56,7 +56,7 @@ function patchReadmeVersion(content: string): string {
     .replace(/^(Stable tag:\s*)([0-9.]+)\s*$/m, `$1${CURRENT_PLUGIN_VERSION}`)
     .replace(
       /^== Changelog ==\s*$/m,
-      `== Changelog ==\n\n= ${CURRENT_PLUGIN_VERSION} =\n* SAFETY: Disables all live form submission hooks so the plugin never runs in a client's form request path.\n* SAFETY: Disables front-end form listeners entirely; tracking remains passive and non-invasive.`,
+      `== Changelog ==\n\n= ${CURRENT_PLUGIN_VERSION} =\n* SAFETY: Disables shutdown fallback polling so visitor and form requests are never delayed by plugin housekeeping.\n* SAFETY: Moves site heartbeat to WP-Cron only; no front-end heartbeat script runs on client pages.`,
     );
 }
 
@@ -71,6 +71,30 @@ function patchTrackerContent(content: string): string {
       "\n\n  function handleFormSubmit() {\n    return;\n  }\n\n  // Safety-first: form submission capture is disabled so the plugin never runs\n  // inside a client form submission path.\n\n  // ── Boot",
     )
     .replace(/\n\s*document\.addEventListener\('submit', handleFormSubmit, true\);/g, "");
+}
+
+function patchHeartbeatContent(content: string): string {
+  return content
+    .replace(
+      /\n\s*\/\/ JS beacon \(front-end, debounced per session\)\n\s*add_action\( 'wp_enqueue_scripts', array\( __CLASS__, 'enqueue_beacon' \) \);/m,
+      "\n\t\t// Front-end heartbeat is intentionally disabled so visitor requests stay untouched.",
+    )
+    .replace(
+      /public static function enqueue_beacon\(\) \{[\s\S]*?\n\t\}/m,
+      "public static function enqueue_beacon() {\n\t\treturn;\n\t}",
+    );
+}
+
+function patchSeoFixesContent(content: string): string {
+  return content
+    .replace(
+      /\n\s*\/\/ Fallback: if WP-Cron hasn't fired in 10 minutes, poll on shutdown\.\n\s*add_action\( 'shutdown', array\( __CLASS__, 'maybe_fallback_poll' \) \);/m,
+      "\n\t\t// Safety-first: never poll on shutdown during a visitor request.",
+    )
+    .replace(
+      /public static function maybe_fallback_poll\(\) \{[\s\S]*?\n\t\}/m,
+      "public static function maybe_fallback_poll() {\n\t\t// Safety-first: fallback polling is disabled so no visitor request can be delayed.\n\t\treturn;\n\t}",
+    );
 }
 
 function patchClassFormsContent(content: string): string {
@@ -96,6 +120,14 @@ function transformFile(relativePath: string, content: string, endpointBase: stri
 
   if (relativePath === "includes/class-settings.php") {
     return patchEndpointUrl(content, endpointBase);
+  }
+
+  if (relativePath === "includes/class-heartbeat.php") {
+    return patchHeartbeatContent(content);
+  }
+
+  if (relativePath === "includes/class-seo-fixes.php") {
+    return patchSeoFixesContent(content);
   }
 
   if (relativePath === "assets/tracker.js") {

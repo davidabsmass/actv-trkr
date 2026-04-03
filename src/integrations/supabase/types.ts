@@ -2081,6 +2081,7 @@ export type Database = {
       }
       orgs: {
         Row: {
+          billing_exempt: boolean
           created_at: string
           id: string
           name: string
@@ -2088,6 +2089,7 @@ export type Database = {
           timezone: string
         }
         Insert: {
+          billing_exempt?: boolean
           created_at?: string
           id?: string
           name: string
@@ -2095,6 +2097,7 @@ export type Database = {
           timezone?: string
         }
         Update: {
+          billing_exempt?: boolean
           created_at?: string
           id?: string
           name?: string

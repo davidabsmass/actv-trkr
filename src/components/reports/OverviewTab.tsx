@@ -45,7 +45,7 @@ function TrendBadge({ change }: { change: number | null }) {
 function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel }: {
   startDate: string; endDate: string; prevStartDate: string; prevEndDate: string; periodLabel: string;
 }) {
-  const { orgId } = useOrg();
+  const { orgId, orgCreatedAt } = useOrg();
   const { t } = useTranslation();
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [loadingAi, setLoadingAi] = useState(false);

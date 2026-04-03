@@ -74,6 +74,7 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
       value={{
         orgId,
         orgName: org?.name ?? null,
+        orgCreatedAt: org?.created_at ?? null,
         orgs: effectiveOrgs,
         setOrgId: handleSetOrg,
         loading: !isReady,

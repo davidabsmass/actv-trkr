@@ -58,17 +58,12 @@ const Onboarding = () => {
 
       const orgId = crypto.randomUUID();
 
-      // Create org (no immediate SELECT; org membership doesn't exist yet)
-      const { error: orgErr } = await supabase
-        .from("orgs")
-        .insert({ id: orgId, name });
+      // Atomically create org + admin membership via security-definer RPC
+      const { error: orgErr } = await supabase.rpc("create_org_with_admin", {
+        p_org_id: orgId,
+        p_name: name,
+      });
       if (orgErr) throw orgErr;
-
-      // Add user as admin
-      const { error: ouErr } = await supabase
-        .from("org_users")
-        .insert({ org_id: orgId, user_id: user.id, role: "admin" });
-      if (ouErr) throw ouErr;
 
       // Generate API key and store hash
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))

@@ -64,7 +64,11 @@ function pctChange(current: number, previous: number): number | null {
 export function generateFindings(inputs: InsightInputs): Finding[] {
   const findings: Finding[] = [];
 
-  // ── Traffic ──
+  // If the org hasn't been active long enough for a full comparison window,
+  // suppress all period-over-period comparison findings.
+  const rangeDays = inputs.rangeDays ?? 7;
+  const needsDoublRange = rangeDays * 2; // need current + previous period
+  const orgTooNew = inputs.orgAgeDays !== undefined && inputs.orgAgeDays < needsDoublRange;
   const sessionsPct = pctChange(inputs.currentSessions, inputs.previousSessions);
   if (sessionsPct !== null && sessionsPct >= 10) {
     findings.push({

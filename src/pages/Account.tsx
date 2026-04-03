@@ -256,7 +256,10 @@ function CancelSubscriptionSection() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("cancel-subscription");
-      if (error) throw error;
+      if (error) {
+        const body = error?.context?.body ? await new Response(error.context.body).json().catch(() => null) : null;
+        throw new Error(body?.error || error.message);
+      }
       if (data?.success) {
         toast({ title: "Subscription cancelled", description: "Your subscription has been cancelled immediately." });
         queryClient.invalidateQueries({ queryKey: ["subscription_status"] });

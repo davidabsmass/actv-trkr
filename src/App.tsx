@@ -64,17 +64,18 @@ function isPreviewEnvironment() {
 }
 
 function ProtectedRoute({ children, requireSubscription = true }: { children: React.ReactNode; requireSubscription?: boolean }) {
-  if (isPreviewEnvironment()) return <>{children}</>;
-
+  const isPreview = isPreviewEnvironment();
   const { session, loading } = useAuth();
+  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription();
+
+  if (isPreview) return <>{children}</>;
   if (loading) return <PageSpinner />;
   if (!session) return <Navigate to="/auth" replace />;
 
-  // Owner always bypasses — check before subscription loads
+  // Owner always bypasses subscription gate
   const isOwner = session.user?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
   if (isOwner) return <>{children}</>;
 
-  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription();
   if (subLoading) return <PageSpinner />;
 
   // Billing-exempt client orgs bypass subscription gate

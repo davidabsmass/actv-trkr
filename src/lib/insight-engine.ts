@@ -49,6 +49,10 @@ export interface InsightInputs {
   previousSeoScore?: number;
   brokenLinksCount?: number;
   activeIncidents?: number;
+  /** How many days the org has been active. If the selected range exceeds this, period-over-period comparisons are suppressed. */
+  orgAgeDays?: number;
+  /** The number of days in the currently selected date range (e.g. 7, 14, 30). */
+  rangeDays?: number;
 }
 
 function pctChange(current: number, previous: number): number | null {

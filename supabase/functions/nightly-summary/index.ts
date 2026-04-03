@@ -271,7 +271,7 @@ serve(async (req) => {
     const lovableKey = Deno.env.get("LOVABLE_API_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const { data: orgs } = await supabase.from("orgs").select("id, name");
+    const { data: orgs } = await supabase.from("orgs").select("id, name, created_at");
     if (!orgs || orgs.length === 0) {
       return new Response(JSON.stringify({ message: "No orgs" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

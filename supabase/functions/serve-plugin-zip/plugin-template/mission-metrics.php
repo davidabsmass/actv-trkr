@@ -106,3 +106,31 @@ add_action( 'init', function () {
 add_action( 'mm_retry_cron', array( 'MM_Retry_Queue', 'process' ) );
 add_action( 'mm_form_probe_cron', array( 'MM_Forms', 'probe_form_pages' ) );
 add_action( 'mm_seo_fix_cron', array( 'MM_SEO_Fixes', 'poll_fixes' ) );
+
+// First-install auto-sync: discover forms + trigger entry backfill.
+add_action( 'mm_first_install_sync', function () {
+	$opts = MM_Settings::get();
+	if ( empty( $opts['api_key'] ) ) return;
+	error_log( '[ACTV TRKR] Running first-install auto-sync…' );
+	$result = MM_Forms::scan_all_forms();
+	error_log( '[ACTV TRKR] First-install sync complete: ' . wp_json_encode( $result ) );
+
+	// Now trigger a full entry backfill via the dashboard endpoint
+	$domain   = wp_parse_url( home_url(), PHP_URL_HOST );
+	$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/trigger-site-sync';
+	$key_hash = hash( 'sha256', $opts['api_key'] );
+
+	wp_remote_post( $endpoint, array(
+		'timeout'  => 10,
+		'blocking' => false,
+		'headers'  => array(
+			'Content-Type'  => 'application/json',
+			'Authorization' => 'Bearer ' . $opts['api_key'],
+		),
+		'body' => wp_json_encode( array(
+			'domain'   => $domain,
+			'key_hash' => $key_hash,
+			'action'   => 'first_install_sync',
+		) ),
+	) );
+} );

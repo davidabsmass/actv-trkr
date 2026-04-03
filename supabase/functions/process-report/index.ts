@@ -1,13 +1,10 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
 
   // Accept either cron secret OR valid JWT
   const cronSecret = Deno.env.get("CRON_SECRET");
@@ -20,7 +17,7 @@ Deno.serve(async (req) => {
     // Try JWT auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
     const tempClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -29,7 +26,7 @@ Deno.serve(async (req) => {
     );
     const { data: { user }, error: userErr } = await tempClient.auth.getUser();
     if (userErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
     callerUserId = user.id;
   }
@@ -287,7 +284,7 @@ Return a JSON array of objects with "title" (short headline) and "body" (1-2 sen
     console.error("Report error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Internal error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

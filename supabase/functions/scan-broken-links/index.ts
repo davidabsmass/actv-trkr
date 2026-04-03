@@ -1,9 +1,7 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 const MAX_PAGES = 20;
 const MAX_LINKS_PER_PAGE = 50;
@@ -118,7 +116,7 @@ async function batchCheck(urls: string[]): Promise<Map<string, number>> {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
 
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
@@ -130,20 +128,20 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("authorization") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
     if (!token) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
     const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
     // Look up user's org
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: ouRow } = await svc.from("org_users").select("org_id").eq("user_id", user.id).limit(1).maybeSingle();
     if (!ouRow) {
-      return new Response(JSON.stringify({ error: "No org found" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "No org found" }), { status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
     userOrgId = ouRow.org_id;
   }
@@ -160,7 +158,7 @@ Deno.serve(async (req) => {
     const { data: sites } = await query;
 
     if (!sites || sites.length === 0) {
-      return new Response(JSON.stringify({ status: "ok", checked: 0, broken_found: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ status: "ok", checked: 0, broken_found: 0 }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
     let totalBroken = 0;
@@ -229,10 +227,10 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ status: "ok", sites_checked: sites.length, broken_found: totalBroken }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("Broken link scan error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
   }
 });

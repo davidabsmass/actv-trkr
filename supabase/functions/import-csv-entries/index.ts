@@ -1,15 +1,13 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 405, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
@@ -25,7 +23,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -35,7 +33,7 @@ Deno.serve(async (req) => {
 
     if (!form_id || !Array.isArray(rows) || rows.length === 0) {
       return new Response(JSON.stringify({ error: "Missing form_id or rows" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -44,7 +42,7 @@ Deno.serve(async (req) => {
       .from("forms").select("id, org_id, site_id, provider").eq("id", form_id).single();
     if (formErr || !form) {
       return new Response(JSON.stringify({ error: "Form not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -53,7 +51,7 @@ Deno.serve(async (req) => {
       .from("org_users").select("role").eq("org_id", form.org_id).eq("user_id", user.id).single();
     if (!membership) {
       return new Response(JSON.stringify({ error: "Access denied" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -141,13 +139,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ ok: true, imported, skipped }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("import-csv-entries error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } },
     );
   }
 });

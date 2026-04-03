@@ -1,14 +1,11 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: appCorsHeaders(req) });
   }
 
   try {
@@ -17,7 +14,7 @@ Deno.serve(async (req) => {
     if (!id || typeof id !== "string") {
       return new Response(
         JSON.stringify({ error: "Snapshot ID required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -26,7 +23,7 @@ Deno.serve(async (req) => {
     if (!uuidRegex.test(id)) {
       return new Response(
         JSON.stringify({ error: "Invalid snapshot ID" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -44,7 +41,7 @@ Deno.serve(async (req) => {
     if (error || !data) {
       return new Response(
         JSON.stringify({ error: "Snapshot not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -52,19 +49,19 @@ Deno.serve(async (req) => {
     if (new Date(data.expires_at) < new Date()) {
       return new Response(
         JSON.stringify({ error: "Snapshot expired", expires_at: data.expires_at }),
-        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 410, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
       JSON.stringify({ snapshot: data }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("get-snapshot error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

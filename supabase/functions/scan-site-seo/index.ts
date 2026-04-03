@@ -1,10 +1,8 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 interface SeoIssue {
   id: string;
@@ -135,7 +133,7 @@ function buildDeterministicIssues(ctx: {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response(null, { headers: appCorsHeaders(req) });
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -151,14 +149,14 @@ serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
     const { url, site_id, org_id } = await req.json();
     if (!url || !site_id || !org_id) {
       return new Response(JSON.stringify({ error: "url, site_id, org_id required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -171,12 +169,12 @@ serve(async (req) => {
       .maybeSingle();
     if (!roleRow || roleRow.role !== "admin") {
       return new Response(JSON.stringify({ error: "Admin access required for SEO scanning" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
     if (!url || !site_id || !org_id) {
       return new Response(JSON.stringify({ error: "url, site_id, org_id required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -186,12 +184,12 @@ serve(async (req) => {
       parsedUrl = new URL(url);
     } catch {
       return new Response(JSON.stringify({ error: "Invalid URL format" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
     if (!["http:", "https:"].includes(parsedUrl.protocol)) {
       return new Response(JSON.stringify({ error: "Only HTTP/HTTPS allowed" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -200,7 +198,7 @@ serve(async (req) => {
     const privatePatterns = [/^127\./, /^10\./, /^172\.(1[6-9]|2[0-9]|3[0-1])\./, /^192\.168\./, /^169\.254\./, /^localhost$/i];
     if (privatePatterns.some(p => p.test(hostname))) {
       return new Response(JSON.stringify({ error: "Cannot scan private addresses" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -217,7 +215,7 @@ serve(async (req) => {
     if ((usageCount ?? 0) >= 10) {
       return new Response(
         JSON.stringify({ error: "Daily SEO scan limit reached (10/day). Try again tomorrow.", code: "RATE_LIMITED" }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -258,7 +256,7 @@ serve(async (req) => {
 
     if (!html) {
       return new Response(JSON.stringify({ error: "Could not fetch website. It may block automated scanners." }), {
-        status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 422, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -379,8 +377,8 @@ HTML: ${analyzableHtml}`,
 
     if (!aiResponse.ok) {
       const s = aiResponse.status;
-      if (s === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (s === 402) return new Response(JSON.stringify({ error: "AI credits exhausted" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (s === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
+      if (s === 402) return new Response(JSON.stringify({ error: "AI credits exhausted" }), { status: 402, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
       throw new Error(`AI error: ${s}`);
     }
 
@@ -461,13 +459,13 @@ HTML: ${analyzableHtml}`,
     });
 
     return new Response(JSON.stringify({ score, issues: finalIssues, platform, url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("scan-site-seo error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

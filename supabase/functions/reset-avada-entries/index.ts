@@ -1,14 +1,11 @@
+import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: appCorsHeaders(req) });
   }
 
   try {
@@ -16,7 +13,7 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -32,7 +29,7 @@ Deno.serve(async (req) => {
     if (claimsErr || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
     const userId = claimsData.claims.sub as string;
@@ -41,7 +38,7 @@ Deno.serve(async (req) => {
     if (!org_id || !site_id) {
       return new Response(JSON.stringify({ error: "org_id and site_id are required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -57,7 +54,7 @@ Deno.serve(async (req) => {
     if (!membership || !["admin", "member"].includes(membership.role)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -73,7 +70,7 @@ Deno.serve(async (req) => {
     if (!avadaForms || avadaForms.length === 0) {
       return new Response(
         JSON.stringify({ ok: true, deleted_leads: 0, deleted_raw_events: 0, deleted_flat_fields: 0, forms_affected: 0, message: "No Avada forms found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -171,13 +168,13 @@ Deno.serve(async (req) => {
         forms_affected: formIds.length,
         errors: errors.length > 0 ? errors : undefined,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
     );
   } catch (err: any) {
     console.error("[reset-avada-entries] Error:", err);
     return new Response(JSON.stringify({ error: err.message || "Internal error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

@@ -477,37 +477,6 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     </div>
   );
 }
-
-// ─── Scan Broken Links Button ───────────────────────────────────
-
-function ScanBrokenLinksButton({ siteId }: { siteId: string }) {
-  const queryClient = useQueryClient();
-  const [scanning, setScanning] = useState(false);
-
-  const handleScan = async () => {
-    setScanning(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("scan-broken-links", {
-        body: { site_id: siteId },
-      });
-      if (error) throw error;
-      toast({ title: "Scan complete", description: `Found ${data?.broken_found || 0} broken links.` });
-      queryClient.invalidateQueries({ queryKey: ["broken_links", siteId] });
-    } catch (err: any) {
-      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  return (
-    <Button size="sm" variant="outline" onClick={handleScan} disabled={scanning} className="gap-1">
-      <RefreshCw className={`h-3.5 w-3.5 ${scanning ? "animate-spin" : ""}`} />
-      {scanning ? "Scanning…" : "Scan Now"}
-    </Button>
-  );
-}
-
 // ─── Check Domain & SSL Button ──────────────────────────────────
 
 function CheckDomainSslButton() {

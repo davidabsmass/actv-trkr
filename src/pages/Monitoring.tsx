@@ -587,7 +587,7 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <FileSearch className="h-4 w-4" /> Form Liveness Checks
         </h3>
-        <TriggerSyncButton siteId={siteId} />
+        
       </div>
 
       {(!forms || forms.length === 0) ? (

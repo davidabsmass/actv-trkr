@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
 
 export interface SubscriptionState {
   subscribed: boolean;
@@ -10,32 +9,33 @@ export interface SubscriptionState {
   isLoading: boolean;
 }
 
-export function useSubscription(): SubscriptionState {
-  const { session } = useAuth();
+export function useSubscription(userId?: string | null): SubscriptionState {
+  const isAuthenticated = Boolean(userId);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["subscription_status", session?.user?.id],
+  const { data, isLoading: subscriptionLoading } = useQuery({
+    queryKey: ["subscription_status", userId],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
       return data as { subscribed: boolean; product_id: string | null; subscription_end: string | null };
     },
-    enabled: !!session?.user,
+    enabled: isAuthenticated,
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
 
-  // Check if user belongs to any billing-exempt org
-  const { data: exemptOrgs } = useQuery({
-    queryKey: ["billing_exempt", session?.user?.id],
+  const { data: exemptOrgs, isLoading: exemptLoading } = useQuery({
+    queryKey: ["billing_exempt", userId],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("org_users")
         .select("org_id, orgs!inner(billing_exempt)")
-        .eq("user_id", session!.user.id);
+        .eq("user_id", userId!);
+
+      if (error) throw error;
       return data ?? [];
     },
-    enabled: !!session?.user,
+    enabled: isAuthenticated,
     staleTime: 5 * 60_000,
   });
 
@@ -46,6 +46,6 @@ export function useSubscription(): SubscriptionState {
     billingExempt,
     productId: data?.product_id ?? null,
     subscriptionEnd: data?.subscription_end ?? null,
-    isLoading,
+    isLoading: isAuthenticated && (subscriptionLoading || exemptLoading),
   };
 }

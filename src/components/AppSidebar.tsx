@@ -213,7 +213,7 @@ export function AppSidebar() {
         </SidebarMenu>
         <LanguageSwitcher variant="sidebar" />
         <button
-          onClick={signOut}
+          onClick={() => void signOut()}
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />

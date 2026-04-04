@@ -63,6 +63,8 @@ function isPreviewEnvironment() {
   return host.includes("lovableproject.com") || host.includes("id-preview--");
 }
 
+const OWNER_EMAIL = "david@newuniformdesign.com";
+
 function ProtectedRoute({ children, requireSubscription = true }: { children: React.ReactNode; requireSubscription?: boolean }) {
   const isPreview = isPreviewEnvironment();
   const { session, loading } = useAuth();
@@ -85,8 +87,6 @@ function ProtectedRoute({ children, requireSubscription = true }: { children: Re
 
   return <>{children}</>;
 }
-
-const OWNER_EMAIL = "david@newuniformdesign.com";
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
   if (isPreviewEnvironment()) return <>{children}</>;

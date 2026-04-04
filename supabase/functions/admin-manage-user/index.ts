@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
           .delete()
           .eq("user_id", targetUserId);
         if (orgUsersDeleteError) {
-          return new Response(JSON.stringify({ error: subscriberDeleteError.message }), {
+          return new Response(JSON.stringify({ error: orgUsersDeleteError.message }), {
             status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
           });
         }

@@ -360,10 +360,10 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Link2 className="h-4 w-4" /> Broken Links ({brokenLinks?.length || 0})
               </h3>
-              <ScanBrokenLinksButton siteId={site.id} />
+              
             </div>
             {(!brokenLinks || brokenLinks.length === 0) ? (
-              <p className="text-xs text-muted-foreground">No broken links detected. Run a scan to check.</p>
+              <p className="text-xs text-muted-foreground">No broken links detected. Scans run automatically.</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {brokenLinks.map(bl => (
@@ -477,37 +477,6 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
     </div>
   );
 }
-
-// ─── Scan Broken Links Button ───────────────────────────────────
-
-function ScanBrokenLinksButton({ siteId }: { siteId: string }) {
-  const queryClient = useQueryClient();
-  const [scanning, setScanning] = useState(false);
-
-  const handleScan = async () => {
-    setScanning(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("scan-broken-links", {
-        body: { site_id: siteId },
-      });
-      if (error) throw error;
-      toast({ title: "Scan complete", description: `Found ${data?.broken_found || 0} broken links.` });
-      queryClient.invalidateQueries({ queryKey: ["broken_links", siteId] });
-    } catch (err: any) {
-      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  return (
-    <Button size="sm" variant="outline" onClick={handleScan} disabled={scanning} className="gap-1">
-      <RefreshCw className={`h-3.5 w-3.5 ${scanning ? "animate-spin" : ""}`} />
-      {scanning ? "Scanning…" : "Scan Now"}
-    </Button>
-  );
-}
-
 // ─── Check Domain & SSL Button ──────────────────────────────────
 
 function CheckDomainSslButton() {
@@ -587,7 +556,7 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <FileSearch className="h-4 w-4" /> Form Liveness Checks
         </h3>
-        <TriggerSyncButton siteId={siteId} />
+        
       </div>
 
       {(!forms || forms.length === 0) ? (
@@ -638,69 +607,6 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
         The plugin checks each form's page hourly to verify the form HTML is still present. Forms behind logins or modals may not be detected.
       </p>
     </div>
-  );
-}
-
-// ─── Trigger Sync Button ────────────────────────────────────────
-
-function TriggerSyncButton({ siteId }: { siteId: string }) {
-  const [syncing, setSyncing] = useState(false);
-  const queryClient = useQueryClient();
-
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
-        body: { site_id: siteId },
-      });
-      if (error) throw error;
-
-      if (data?.fallback) {
-        toast({
-          title: "Form checks refreshed",
-          description: `Checked ${data.checked || 0} form(s)${data.updatedPageUrls ? ` · mapped ${data.updatedPageUrls} page URL(s)` : ""}.`,
-        });
-        queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] });
-        queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
-      } else {
-        toast({ title: "Sync triggered", description: "Form health checks will update shortly." });
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] });
-          queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
-        }, 2000);
-      }
-    } catch (err: any) {
-      let msg = err?.message || "Sync failed";
-
-      if (err?.context instanceof Response) {
-        const body = await err.context.json().catch(() => null);
-        if (body?.error) {
-          msg = body.details ? `${body.error}: ${body.details}` : body.error;
-        }
-      }
-
-      const isPluginIssue =
-        msg.includes("404") ||
-        msg.includes("rest_no_route") ||
-        msg.toLowerCase().includes("wordpress sync route unavailable");
-
-      toast({
-        title: "Sync failed",
-        description: isPluginIssue
-          ? "The WordPress plugin on this site is outdated or inactive; update/re-activate it, then retry."
-          : msg,
-        variant: "destructive",
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  return (
-    <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="gap-1">
-      <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-      {syncing ? "Syncing…" : "Re-check Now"}
-    </Button>
   );
 }
 

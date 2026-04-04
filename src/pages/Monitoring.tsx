@@ -360,7 +360,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Link2 className="h-4 w-4" /> Broken Links ({brokenLinks?.length || 0})
               </h3>
-              <ScanBrokenLinksButton siteId={site.id} />
+              
             </div>
             {(!brokenLinks || brokenLinks.length === 0) ? (
               <p className="text-xs text-muted-foreground">No broken links detected. Run a scan to check.</p>

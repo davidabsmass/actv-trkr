@@ -610,69 +610,6 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
   );
 }
 
-// ─── Trigger Sync Button ────────────────────────────────────────
-
-function TriggerSyncButton({ siteId }: { siteId: string }) {
-  const [syncing, setSyncing] = useState(false);
-  const queryClient = useQueryClient();
-
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
-        body: { site_id: siteId },
-      });
-      if (error) throw error;
-
-      if (data?.fallback) {
-        toast({
-          title: "Form checks refreshed",
-          description: `Checked ${data.checked || 0} form(s)${data.updatedPageUrls ? ` · mapped ${data.updatedPageUrls} page URL(s)` : ""}.`,
-        });
-        queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] });
-        queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
-      } else {
-        toast({ title: "Sync triggered", description: "Form health checks will update shortly." });
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] });
-          queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
-        }, 2000);
-      }
-    } catch (err: any) {
-      let msg = err?.message || "Sync failed";
-
-      if (err?.context instanceof Response) {
-        const body = await err.context.json().catch(() => null);
-        if (body?.error) {
-          msg = body.details ? `${body.error}: ${body.details}` : body.error;
-        }
-      }
-
-      const isPluginIssue =
-        msg.includes("404") ||
-        msg.includes("rest_no_route") ||
-        msg.toLowerCase().includes("wordpress sync route unavailable");
-
-      toast({
-        title: "Sync failed",
-        description: isPluginIssue
-          ? "The WordPress plugin on this site is outdated or inactive; update/re-activate it, then retry."
-          : msg,
-        variant: "destructive",
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  return (
-    <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="gap-1">
-      <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-      {syncing ? "Syncing…" : "Re-check Now"}
-    </Button>
-  );
-}
-
 // ─── WP Admin Magic Login Button ──────────────────────────────
 
 function WpAdminLoginButton({ siteId, domain }: { siteId: string; domain: string }) {

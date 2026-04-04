@@ -239,66 +239,149 @@ Deno.serve(async (req) => {
 
     // ── DELETE USER ──
     if (action === "delete_user") {
-      const { user_id: targetUserId } = body;
-      if (!targetUserId) {
-        return new Response(JSON.stringify({ error: "user_id is required" }), {
+      const rawUserId = String(body.user_id || "").trim();
+      const rawSubscriberId = String(body.subscriber_id || "").trim();
+      const rawEmail = String(body.email || "").trim().toLowerCase();
+
+      let targetUserId = rawUserId || null;
+      const targetSubscriberId = rawSubscriberId || null;
+      let targetEmail = rawEmail || null;
+
+      if (!targetUserId && !targetSubscriberId && !targetEmail) {
+        return new Response(JSON.stringify({ error: "user_id, subscriber_id, or email is required" }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
-      const { data: profileRow, error: profileLookupError } = await adminClient
-        .from("profiles")
-        .select("email")
-        .eq("user_id", targetUserId)
-        .maybeSingle();
-
-      if (profileLookupError) {
-        return new Response(JSON.stringify({ error: profileLookupError.message }), {
-          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
-
-      const targetEmail = profileRow?.email?.trim().toLowerCase() || null;
-
-      const { error: orgUsersDeleteError } = await adminClient
-        .from("org_users")
-        .delete()
-        .eq("user_id", targetUserId);
-      if (orgUsersDeleteError) {
-        return new Response(JSON.stringify({ error: orgUsersDeleteError.message }), {
-          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
-
-      if (targetEmail) {
-        const { error: subscriberDeleteError } = await adminClient
+      if (targetSubscriberId && !targetEmail) {
+        const { data: subscriberRow, error: subscriberLookupError } = await adminClient
           .from("subscribers")
+          .select("id, email")
+          .eq("id", targetSubscriberId)
+          .maybeSingle();
+
+        if (subscriberLookupError) {
+          return new Response(JSON.stringify({ error: subscriberLookupError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+
+        if (subscriberRow?.email) {
+          targetEmail = subscriberRow.email.trim().toLowerCase();
+        }
+      }
+
+      if (targetUserId && !targetEmail) {
+        const { data: profileRow, error: profileLookupError } = await adminClient
+          .from("profiles")
+          .select("email")
+          .eq("user_id", targetUserId)
+          .maybeSingle();
+
+        if (profileLookupError) {
+          return new Response(JSON.stringify({ error: profileLookupError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+
+        if (profileRow?.email) {
+          targetEmail = profileRow.email.trim().toLowerCase();
+        }
+      }
+
+      if (!targetUserId && targetEmail) {
+        const { data: profileRow, error: profileLookupError } = await adminClient
+          .from("profiles")
+          .select("user_id, email")
+          .ilike("email", targetEmail)
+          .maybeSingle();
+
+        if (profileLookupError) {
+          return new Response(JSON.stringify({ error: profileLookupError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+
+        if (profileRow?.user_id) {
+          targetUserId = profileRow.user_id;
+        }
+
+        if (profileRow?.email) {
+          targetEmail = profileRow.email.trim().toLowerCase();
+        }
+      }
+
+      if (targetUserId) {
+        const { error: orgUsersDeleteError } = await adminClient
+          .from("org_users")
           .delete()
-          .eq("email", targetEmail);
-        if (subscriberDeleteError) {
-          return new Response(JSON.stringify({ error: subscriberDeleteError.message }), {
+          .eq("user_id", targetUserId);
+        if (orgUsersDeleteError) {
+          return new Response(JSON.stringify({ error: orgUsersDeleteError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: profileDeleteError } = await adminClient
+          .from("profiles")
+          .delete()
+          .eq("user_id", targetUserId);
+        if (profileDeleteError) {
+          return new Response(JSON.stringify({ error: profileDeleteError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
+        if (deleteError && !/not found/i.test(deleteError.message)) {
+          return new Response(JSON.stringify({ error: deleteError.message }), {
             status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
           });
         }
       }
 
-      const { error: profileDeleteError } = await adminClient
-        .from("profiles")
-        .delete()
-        .eq("user_id", targetUserId);
-      if (profileDeleteError) {
-        return new Response(JSON.stringify({ error: profileDeleteError.message }), {
-          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      let deletedSubscriberCount = 0;
+
+      if (targetSubscriberId) {
+        const { count, error: subscriberDeleteError } = await adminClient
+          .from("subscribers")
+          .delete({ count: "exact" })
+          .eq("id", targetSubscriberId);
+
+        if (subscriberDeleteError) {
+          return new Response(JSON.stringify({ error: subscriberDeleteError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+
+        deletedSubscriberCount = count || 0;
+      } else if (targetEmail) {
+        const { count, error: subscriberDeleteError } = await adminClient
+          .from("subscribers")
+          .delete({ count: "exact" })
+          .ilike("email", targetEmail);
+
+        if (subscriberDeleteError) {
+          return new Response(JSON.stringify({ error: subscriberDeleteError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+
+        deletedSubscriberCount = count || 0;
+      }
+
+      if (!targetUserId && deletedSubscriberCount === 0) {
+        return new Response(JSON.stringify({ error: "No matching subscriber found" }), {
+          status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
-      const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
-      if (deleteError) {
-        return new Response(JSON.stringify({ error: deleteError.message }), {
-          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ success: true, email: targetEmail }), {
+      return new Response(JSON.stringify({
+        success: true,
+        email: targetEmail,
+        deleted_user: !!targetUserId,
+        deleted_subscriber_count: deletedSubscriberCount,
+      }), {
         headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }

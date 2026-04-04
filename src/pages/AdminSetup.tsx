@@ -524,13 +524,12 @@ export default function AdminSetup() {
     if (!confirm(`Permanently delete ${sub.email}? This cannot be undone.`)) return;
     setActionLoading("delete-" + sub.email);
     try {
-      // Find user_id from profiles
-      const { data: profile, error: profileErr } = await supabase.from("profiles").select("user_id").eq("email", sub.email).maybeSingle();
-      if (profileErr) throw new Error("Could not look up user: " + profileErr.message);
-      if (!profile?.user_id) throw new Error("No user found with that email");
-
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
-        body: { action: "delete_user", user_id: profile.user_id },
+        body: {
+          action: "delete_user",
+          subscriber_id: sub.id,
+          email: typeof sub.email === "string" ? sub.email.trim().toLowerCase() : undefined,
+        },
       });
       if (error) {
         const body = error?.context?.body
@@ -541,7 +540,7 @@ export default function AdminSetup() {
       if (data?.error) throw new Error(data.error);
 
 
-      toast.success(`User ${sub.email} deleted`);
+      toast.success(data?.deleted_user ? `User ${sub.email} deleted` : `Subscriber ${sub.email} deleted`);
       queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });
       setManagingSub(null);
     } catch (err: any) {

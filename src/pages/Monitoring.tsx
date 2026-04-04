@@ -363,7 +363,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
               
             </div>
             {(!brokenLinks || brokenLinks.length === 0) ? (
-              <p className="text-xs text-muted-foreground">No broken links detected. Run a scan to check.</p>
+              <p className="text-xs text-muted-foreground">No broken links detected. Scans run automatically.</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {brokenLinks.map(bl => (

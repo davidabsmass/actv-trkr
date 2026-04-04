@@ -245,15 +245,60 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
-      await adminClient.from("org_users").delete().eq("user_id", targetUserId);
-      await adminClient.from("profiles").delete().eq("user_id", targetUserId);
+
+      const { data: profileRow, error: profileLookupError } = await adminClient
+        .from("profiles")
+        .select("email")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+
+      if (profileLookupError) {
+        return new Response(JSON.stringify({ error: profileLookupError.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
+      const targetEmail = profileRow?.email?.trim().toLowerCase() || null;
+
+      const { error: orgUsersDeleteError } = await adminClient
+        .from("org_users")
+        .delete()
+        .eq("user_id", targetUserId);
+      if (orgUsersDeleteError) {
+        return new Response(JSON.stringify({ error: orgUsersDeleteError.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
+      if (targetEmail) {
+        const { error: subscriberDeleteError } = await adminClient
+          .from("subscribers")
+          .delete()
+          .eq("email", targetEmail);
+        if (subscriberDeleteError) {
+          return new Response(JSON.stringify({ error: subscriberDeleteError.message }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      const { error: profileDeleteError } = await adminClient
+        .from("profiles")
+        .delete()
+        .eq("user_id", targetUserId);
+      if (profileDeleteError) {
+        return new Response(JSON.stringify({ error: profileDeleteError.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
       const { error: deleteError } = await adminClient.auth.admin.deleteUser(targetUserId);
       if (deleteError) {
         return new Response(JSON.stringify({ error: deleteError.message }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, email: targetEmail }), {
         headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }

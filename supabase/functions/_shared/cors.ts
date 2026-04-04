@@ -11,6 +11,7 @@ const APP_ORIGINS: string[] = [
   "https://www.actvtrkr.com",
   "https://mshnctrl.lovable.app",
   "https://id-preview--0015e01c-8e1e-425b-884e-18051bf17654.lovable.app",
+  "https://0015e01c-8e1e-425b-884e-18051bf17654.lovableproject.com",
 ];
 
 const ALLOWED_HEADERS =
@@ -23,13 +24,17 @@ const ALLOWED_HEADERS =
  */
 export function appCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
-  const allowed = APP_ORIGINS.includes(origin) ? origin : APP_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Headers": ALLOWED_HEADERS,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Vary": "Origin",
   };
+
+  if (APP_ORIGINS.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+
+  return headers;
 }
 
 /** Wildcard CORS for WordPress-plugin-facing endpoints. */

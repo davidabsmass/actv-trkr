@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, MapPin } from "lucide-react";
+import TeamSection from "@/components/account/TeamSection";
 import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -202,6 +203,9 @@ export default function Account() {
             </Button>
           </CardContent>
         </Card>
+        {/* Team Members */}
+        <TeamSection />
+
         {/* Subscription Management */}
         <Card className="lg:col-span-2">
           <Collapsible>

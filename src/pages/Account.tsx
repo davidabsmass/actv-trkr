@@ -203,6 +203,9 @@ export default function Account() {
             </Button>
           </CardContent>
         </Card>
+        {/* Team Members */}
+        <TeamSection />
+
         {/* Subscription Management */}
         <Card className="lg:col-span-2">
           <Collapsible>

@@ -525,12 +525,24 @@ export default function AdminSetup() {
     setActionLoading("delete-" + sub.email);
     try {
       // Find user_id from profiles
-      const { data: profile } = await supabase.from("profiles").select("user_id").eq("email", sub.email).maybeSingle();
-      if (profile?.user_id) {
-        await supabase.functions.invoke("admin-manage-user", {
-          body: { action: "delete_user", user_id: profile.user_id },
-        });
+      const { data: profile, error: profileErr } = await supabase.from("profiles").select("user_id").eq("email", sub.email).maybeSingle();
+      if (profileErr) throw new Error("Could not look up user: " + profileErr.message);
+      if (!profile?.user_id) throw new Error("No user found with that email");
+
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "delete_user", user_id: profile.user_id },
+      });
+      if (error) {
+        const body = error?.context?.body
+          ? await new Response(error.context.body).json().catch(() => null)
+          : null;
+        throw new Error(body?.error || error.message || "Delete failed");
       }
+      if (data?.error) throw new Error(data.error);
+
+      // Also delete their subscriber record
+      await supabase.from("subscribers").delete().eq("user_id", profile.user_id);
+
       toast.success(`User ${sub.email} deleted`);
       queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });
       setManagingSub(null);

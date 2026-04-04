@@ -108,6 +108,12 @@ export function AiInsights({ metrics, orgId }: AiInsightsProps) {
     setError(null);
     setRateLimited(false);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        setError("Session expired – please sign in again.");
+        setIsLoading(false);
+        return false;
+      }
       const { data, error: fnError } = await supabase.functions.invoke(
         "dashboard-ai-insights",
         { body: { metrics, orgId } }

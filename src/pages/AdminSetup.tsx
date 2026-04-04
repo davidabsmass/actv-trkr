@@ -540,8 +540,6 @@ export default function AdminSetup() {
       }
       if (data?.error) throw new Error(data.error);
 
-      // Also delete their subscriber record
-      await (supabase.from("subscribers") as any).delete().eq("user_id", profile.user_id);
 
       toast.success(`User ${sub.email} deleted`);
       queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });

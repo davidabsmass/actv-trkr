@@ -68,19 +68,17 @@ const OWNER_EMAIL = "david@newuniformdesign.com";
 function ProtectedRoute({ children, requireSubscription = true }: { children: React.ReactNode; requireSubscription?: boolean }) {
   const isPreview = isPreviewEnvironment();
   const { session, loading } = useAuth();
-  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription();
+  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(session?.user?.id);
 
   if (isPreview) return <>{children}</>;
   if (loading) return <PageSpinner />;
   if (!session) return <Navigate to="/auth" replace />;
 
-  // Owner always bypasses subscription gate
   const isOwner = session.user?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
   if (isOwner) return <>{children}</>;
 
   if (subLoading) return <PageSpinner />;
 
-  // Billing-exempt client orgs bypass subscription gate
   if (requireSubscription && !billingExempt && !subscribed) {
     return <Navigate to="/checkout" replace />;
   }
@@ -94,7 +92,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   if (loading) return <PageSpinner />;
   if (session) {
-    const dest = session.user?.email === OWNER_EMAIL ? "/admin-setup" : "/dashboard";
+    const dest = session.user?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() ? "/admin-setup" : "/dashboard";
     return <Navigate to={dest} replace />;
   }
   return <>{children}</>;

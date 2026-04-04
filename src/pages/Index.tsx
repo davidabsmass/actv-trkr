@@ -60,8 +60,14 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { session } = useAuth();
-  const handleSignIn = () => navigate(session ? "/dashboard" : "/checkout");
+  const { session, loading, signOut } = useAuth();
+  const isLoggedIn = Boolean(session);
+  const handleCheckout = () => navigate("/checkout");
+  const handleDashboard = () => navigate("/dashboard");
+  const handleSignIn = () => navigate("/auth");
+  const handleLogout = () => {
+    void signOut("/");
+  };
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);
@@ -119,9 +125,25 @@ const Index = () => {
             </div>
             <div className="hidden md:flex items-center gap-4">
               <HomepageLanguageSwitcher />
-              <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleSignIn}>
-                {session ? "Dashboard" : "Get Started"}
-              </Button>
+              {!loading && isLoggedIn ? (
+                <>
+                  <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleDashboard}>
+                    Dashboard
+                  </Button>
+                  <Button variant="ghost" className="text-primary-foreground hover:bg-primary/10 hover:text-primary-foreground" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </>
+              ) : !loading ? (
+                <>
+                  <Button variant="ghost" className="text-primary-foreground hover:bg-primary/10 hover:text-primary-foreground" onClick={handleSignIn}>
+                    Sign In
+                  </Button>
+                  <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleCheckout}>
+                    Get Started
+                  </Button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -181,9 +203,11 @@ const Index = () => {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">
-                  <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={handleSignIn}>
-                    {session ? "Go to Dashboard" : "Get Started"}
-                  </Button>
+                  {!loading && (
+                    <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={isLoggedIn ? handleDashboard : handleCheckout}>
+                      {isLoggedIn ? "Go to Dashboard" : "Get Started"}
+                    </Button>
+                  )}
                   <Button 
                     size="default" 
                     variant="ghost" 
@@ -192,12 +216,14 @@ const Index = () => {
                   >
                     View Features
                   </Button>
-                  <button
-                    onClick={() => navigate(session ? "/dashboard" : "/auth")}
-                    className="text-base font-medium text-white/80 hover:text-white transition-colors inline-flex items-center gap-1"
-                  >
-                    {session ? "Dashboard" : "Sign In"} <ArrowRight className="h-4 w-4" />
-                  </button>
+                  {!loading && (
+                    <button
+                      onClick={isLoggedIn ? handleLogout : handleSignIn}
+                      className="text-base font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors inline-flex items-center gap-1"
+                    >
+                      {isLoggedIn ? "Logout" : "Sign In"} <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

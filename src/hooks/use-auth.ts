@@ -43,9 +43,9 @@ export function useAuth() {
     };
   }, [queryClient]);
 
-  const signOut = async () => {
+  const signOut = async (redirectTo = "/auth") => {
     await supabase.auth.signOut();
-    window.location.href = "/auth";
+    window.location.href = redirectTo;
   };
 
   return { session, loading, signOut, user: session?.user };

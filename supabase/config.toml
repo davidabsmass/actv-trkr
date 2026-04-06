@@ -99,5 +99,7 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.handle-email-suppression]
     verify_jwt = false
+  [functions.daily-site-sync]
+    verify_jwt = false
   [functions.submit-feedback]
     verify_jwt = false

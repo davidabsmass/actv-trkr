@@ -101,7 +101,13 @@ Deno.serve(async (req) => {
         subject: `[Feedback] ${category || "bug"}: ${subject}`,
         html,
         from: "ACTV TRKR <notifications@notify.actvtrkr.com>",
+        sender_domain: "notify.actvtrkr.com",
         unsubscribe_token: token,
+        purpose: "transactional",
+        idempotency_key: feedback.id,
+        message_id: feedback.id,
+        label: "feedback",
+        queued_at: new Date().toISOString(),
       },
     });
 

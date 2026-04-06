@@ -194,12 +194,22 @@ export default function FeedbackSection() {
                         size="icon"
                         className="h-6 w-6 text-muted-foreground hover:text-destructive"
                         onClick={async () => {
-                          const { error } = await supabase.from("feedback").delete().eq("id", item.id);
-                          if (error) {
-                            toast.error("Failed to delete feedback");
-                          } else {
-                            queryClient.invalidateQueries({ queryKey: ["feedback", orgId] });
-                            toast.success("Feedback deleted");
+                          try {
+                            const { error, count } = await supabase
+                              .from("feedback")
+                              .delete()
+                              .eq("id", item.id)
+                              .eq("org_id", orgId!);
+                            if (error) {
+                              console.error("Delete feedback error:", error);
+                              toast.error(error.message || "Failed to delete feedback");
+                            } else {
+                              queryClient.invalidateQueries({ queryKey: ["feedback", orgId] });
+                              toast.success("Feedback deleted");
+                            }
+                          } catch (err: any) {
+                            console.error("Delete feedback exception:", err);
+                            toast.error(err.message || "Failed to delete");
                           }
                         }}
                       >

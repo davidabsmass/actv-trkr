@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     // Generate unsubscribe token
     const token = crypto.randomUUID();
     await supabase.from("email_unsubscribe_tokens").insert({
-      email: "info@newuniformdesign.com",
+      email: "annie@newuniformdesign.com",
       token,
     });
 
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     await supabase.rpc("enqueue_email", {
       queue_name: "transactional_emails",
       payload: {
-        to: "info@newuniformdesign.com",
+        to: "annie@newuniformdesign.com",
         subject: `[Feedback] ${category || "bug"}: ${subject}`,
         html,
         from: "ACTV TRKR <notifications@notify.actvtrkr.com>",

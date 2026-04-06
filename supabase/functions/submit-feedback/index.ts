@@ -1,7 +1,49 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-// CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
+const FEEDBACK_RECIPIENT = "annie@newuniformdesign.com";
+
+async function getFeedbackUnsubscribeToken(supabase: any) {
+  const normalizedEmail = FEEDBACK_RECIPIENT.toLowerCase();
+
+  const { data: existingToken, error: lookupError } = await supabase
+    .from("email_unsubscribe_tokens")
+    .select("token, used_at")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw lookupError;
+  }
+
+  if (existingToken?.token && !existingToken.used_at) {
+    return existingToken.token;
+  }
+
+  const nextToken = crypto.randomUUID();
+  const { error: upsertError } = await supabase
+    .from("email_unsubscribe_tokens")
+    .upsert(
+      { email: normalizedEmail, token: nextToken, used_at: null },
+      { onConflict: "email" },
+    );
+
+  if (upsertError) {
+    throw upsertError;
+  }
+
+  const { data: storedToken, error: readBackError } = await supabase
+    .from("email_unsubscribe_tokens")
+    .select("token")
+    .eq("email", normalizedEmail)
+    .single();
+
+  if (readBackError || !storedToken?.token) {
+    throw readBackError ?? new Error("Failed to confirm unsubscribe token");
+  }
+
+  return storedToken.token;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,11 +63,11 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Verify user
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     const { data: { user }, error: authError } = await anonClient.auth.getUser(
       authHeader.replace("Bearer ", "")
     );
+
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -42,7 +84,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Insert feedback
+    const { data: membership, error: membershipError } = await supabase
+      .from("org_users")
+      .select("id")
+      .eq("org_id", org_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (membershipError) {
+      throw membershipError;
+    }
+
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     const { data: feedback, error: insertError } = await supabase
       .from("feedback")
       .insert({
@@ -55,22 +114,27 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (insertError) {
-      throw insertError;
+    if (insertError || !feedback) {
+      throw insertError ?? new Error("Failed to save feedback");
     }
 
-    // Get org name for email
-    const { data: org } = await supabase
+    const { data: org, error: orgError } = await supabase
       .from("orgs")
       .select("name")
       .eq("id", org_id)
       .single();
 
+    if (orgError) {
+      throw orgError;
+    }
+
+    const unsubscribeToken = await getFeedbackUnsubscribeToken(supabase);
     const orgName = org?.name || "Unknown Org";
     const userEmail = user.email || "Unknown";
-    const websiteRow = website_url ? `<tr><td style="padding: 8px; font-weight: bold; color: #666;">Website</td><td style="padding: 8px;">${website_url}</td></tr>` : "";
+    const websiteRow = website_url
+      ? `<tr><td style="padding: 8px; font-weight: bold; color: #666;">Website</td><td style="padding: 8px;">${website_url}</td></tr>`
+      : "";
 
-    // Build email HTML
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1a1a1a;">[Feedback] ${category || "bug"}: ${subject}</h2>
@@ -86,23 +150,15 @@ Deno.serve(async (req) => {
       </div>
     `;
 
-    // Generate unsubscribe token
-    const token = crypto.randomUUID();
-    await supabase.from("email_unsubscribe_tokens").insert({
-      email: "annie@newuniformdesign.com",
-      token,
-    });
-
-    // Enqueue email
-    await supabase.rpc("enqueue_email", {
+    const { data: queueId, error: enqueueError } = await supabase.rpc("enqueue_email", {
       queue_name: "transactional_emails",
       payload: {
-        to: "annie@newuniformdesign.com",
+        to: FEEDBACK_RECIPIENT,
         subject: `[Feedback] ${category || "bug"}: ${subject}`,
         html,
         from: "ACTV TRKR <notifications@notify.actvtrkr.com>",
         sender_domain: "notify.actvtrkr.com",
-        unsubscribe_token: token,
+        unsubscribe_token: unsubscribeToken,
         purpose: "transactional",
         idempotency_key: feedback.id,
         message_id: feedback.id,
@@ -111,11 +167,23 @@ Deno.serve(async (req) => {
       },
     });
 
+    if (enqueueError) {
+      throw enqueueError;
+    }
+
+    console.log("Queued feedback email", {
+      feedbackId: feedback.id,
+      queueId,
+      recipient: FEEDBACK_RECIPIENT,
+    });
+
     return new Response(JSON.stringify({ success: true, feedback }), {
       status: 200,
       headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("submit-feedback failed", err);
+
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },

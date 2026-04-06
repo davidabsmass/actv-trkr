@@ -131,18 +131,30 @@ Deno.serve(async (req) => {
     const unsubscribeToken = await getFeedbackUnsubscribeToken(supabase);
     const orgName = org?.name || "Unknown Org";
     const userEmail = user.email || "Unknown";
+    const feedbackLabel = category || "bug";
     const websiteRow = website_url
       ? `<tr><td style="padding: 8px; font-weight: bold; color: #666;">Website</td><td style="padding: 8px;">${website_url}</td></tr>`
       : "";
+    const text = [
+      `[Feedback] ${feedbackLabel}: ${subject}`,
+      `Organization: ${orgName}`,
+      `User: ${userEmail}`,
+      website_url ? `Website: ${website_url}` : null,
+      `Category: ${feedbackLabel}`,
+      "",
+      message,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #1a1a1a;">[Feedback] ${category || "bug"}: ${subject}</h2>
+        <h2 style="color: #1a1a1a;">[Feedback] ${feedbackLabel}: ${subject}</h2>
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
           <tr><td style="padding: 8px; font-weight: bold; color: #666;">Organization</td><td style="padding: 8px;">${orgName}</td></tr>
           <tr><td style="padding: 8px; font-weight: bold; color: #666;">User</td><td style="padding: 8px;">${userEmail}</td></tr>
           ${websiteRow}
-          <tr><td style="padding: 8px; font-weight: bold; color: #666;">Category</td><td style="padding: 8px;">${category || "bug"}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; color: #666;">Category</td><td style="padding: 8px;">${feedbackLabel}</td></tr>
         </table>
         <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-top: 16px;">
           <p style="margin: 0; white-space: pre-wrap;">${message}</p>
@@ -154,8 +166,9 @@ Deno.serve(async (req) => {
       queue_name: "transactional_emails",
       payload: {
         to: FEEDBACK_RECIPIENT,
-        subject: `[Feedback] ${category || "bug"}: ${subject}`,
+        subject: `[Feedback] ${feedbackLabel}: ${subject}`,
         html,
+        text,
         from: "ACTV TRKR <notifications@notify.actvtrkr.com>",
         sender_domain: "notify.actvtrkr.com",
         unsubscribe_token: unsubscribeToken,

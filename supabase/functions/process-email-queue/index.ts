@@ -192,6 +192,22 @@ Deno.serve(async (req) => {
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i]
       const payload = msg.message
+
+      const isTransactionalEmail = payload?.purpose === 'transactional'
+      const hasValidIdempotencyKey = typeof payload?.idempotency_key === 'string' && payload.idempotency_key.length > 0
+      const hasValidRunId = typeof payload?.run_id === 'string' && payload.run_id.length > 0
+      const hasValidRecipient = typeof payload?.to === 'string' && payload.to.length > 0
+
+      if (!hasValidRecipient || (!hasValidRunId && !(isTransactionalEmail && hasValidIdempotencyKey))) {
+        await moveToDlq(
+          supabase,
+          queue,
+          msg,
+          'Malformed queue payload: missing recipient or required email identifiers'
+        )
+        continue
+      }
+
       const failedAttempts =
         payload?.message_id && typeof payload.message_id === 'string'
           ? (failedAttemptsByMessageId.get(payload.message_id) ?? 0)

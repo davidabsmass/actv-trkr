@@ -1,7 +1,7 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const FEEDBACK_RECIPIENT = "annie@newuniformdesign.com";
+const FEEDBACK_RECIPIENT = "info@newuniformdesign.com";
 
 async function getFeedbackUnsubscribeToken(supabase: any) {
   const normalizedEmail = FEEDBACK_RECIPIENT.toLowerCase();

@@ -141,7 +141,9 @@ Deno.serve(async (req) => {
       `User: ${userEmail}`,
       website_url ? `Website: ${website_url}` : null,
       `Category: ${feedbackLabel}`,
+      `Subject: ${subject}`,
       "",
+      "Message:",
       message,
     ]
       .filter(Boolean)
@@ -155,8 +157,10 @@ Deno.serve(async (req) => {
           <tr><td style="padding: 8px; font-weight: bold; color: #666;">User</td><td style="padding: 8px;">${userEmail}</td></tr>
           ${websiteRow}
           <tr><td style="padding: 8px; font-weight: bold; color: #666;">Category</td><td style="padding: 8px;">${feedbackLabel}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; color: #666;">Subject</td><td style="padding: 8px;">${subject}</td></tr>
         </table>
         <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-top: 16px;">
+          <p style="margin: 0 0 8px 0; font-weight: bold; color: #666;">Message:</p>
           <p style="margin: 0; white-space: pre-wrap;">${message}</p>
         </div>
       </div>

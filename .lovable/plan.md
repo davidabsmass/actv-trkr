@@ -1,70 +1,55 @@
 
 
-## Add Feedback Tab to Settings Page
+## Daily Site Sync — Implementation Plan
 
-### What We're Building
-A "Feedback" tab in Settings where clients can report problems or request features. Submissions are stored in a `feedback` table and an email notification is sent to **info@newuniformdesign.com**.
+### Confirmation: Zero Risk to Existing Data
 
-### Database
-
-**Migration**: Create `feedback` table with RLS policies.
-
-```sql
-CREATE TABLE public.feedback (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  category text NOT NULL DEFAULT 'bug',
-  subject text NOT NULL,
-  message text NOT NULL,
-  status text NOT NULL DEFAULT 'open',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
-
--- Org members can insert their own feedback
-CREATE POLICY "fb_insert" ON public.feedback FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id AND is_org_member(org_id));
-
--- Org members can view their org's feedback
-CREATE POLICY "fb_select" ON public.feedback FOR SELECT TO authenticated
-  USING (is_org_member(org_id));
-
--- Admins can view all feedback
-CREATE POLICY "fb_select_admin" ON public.feedback FOR SELECT TO authenticated
-  USING (has_role(auth.uid(), 'admin'::app_role));
-```
-
-### Frontend
-
-1. **New component**: `src/components/settings/FeedbackSection.tsx`
-   - Form with: category dropdown (Bug, Feature Request, Question, Other), subject input, message textarea, submit button
-   - Below the form: list of previous feedback for the org with status badges (open/reviewed/resolved)
-   - On submit: insert into `feedback` table via Supabase client, then invoke the edge function to send email notification
-
-2. **Update `src/pages/Settings.tsx`**: Add "Feedback" tab trigger and content panel
-
-### Email Notification
-
-**New edge function**: `supabase/functions/submit-feedback/index.ts`
-- Accepts: `{ org_id, user_id, category, subject, message }`
-- Inserts into `feedback` table using service role
-- Sends email to **info@newuniformdesign.com** via existing `enqueue_email` RPC with:
-  - From: `ACTV TRKR <notifications@actvtrkr.com>`
-  - Subject: `[Feedback] {category}: {subject}`
-  - HTML body with org name, user email, category, and message
-- Returns the inserted feedback row
-
-### Translation Keys
-
-Add to `en/common.json` under `settings`:
-- `feedback`, `feedbackDesc`, `feedbackCategory`, `feedbackSubject`, `feedbackMessage`, `feedbackSubmit`, `feedbackSuccess`, `feedbackBug`, `feedbackFeature`, `feedbackQuestion`, `feedbackOther`, `feedbackHistory`, `feedbackEmpty`
+As established in the previous discussion, this implementation carries no risk:
+- Uses the exact same read-only `scan_all_forms()` code path already running on manual syncs
+- Forms are only added/updated, never deleted
+- Entry reconciliation has the existing safety guard (skips trashing if counts drop suspiciously for large forms)
+- No writes to WordPress — dashboard-side only
 
 ### Steps
-1. Create `feedback` table migration
-2. Create `submit-feedback` edge function
-3. Build `FeedbackSection.tsx` component
-4. Add Feedback tab to `Settings.tsx`
-5. Add translation keys
+
+**1. Create Edge Function `daily-site-sync`**
+- File: `supabase/functions/daily-site-sync/index.ts`
+- Authenticates via `x-cron-secret` header (same as `nightly-summary`, `daily-digest`)
+- Queries all sites with a non-null `plugin_version` and an active (non-revoked) API key
+- For each site, calls `trigger-site-sync` internally (reuses existing sync logic rather than calling WordPress directly — this handles all the backfill, safety guards, and error handling already built)
+- Logs per-site results, returns summary JSON
+
+**2. Add to `supabase/config.toml`**
+- Add `[functions.daily-site-sync]` with `verify_jwt = false`
+
+**3. Schedule pg_cron job**
+- Use the insert tool (not migration) to add a `cron.schedule` entry
+- Runs once daily at 06:00 UTC
+- Calls the edge function via `net.http_post` with the cron secret header
+- Same pattern used by existing `nightly-summary` and `daily-digest` crons
+
+### Architecture
+
+```text
+pg_cron (06:00 UTC daily)
+  └─► POST /functions/v1/daily-site-sync
+        ├─ Auth: x-cron-secret
+        ├─ Query: all sites with plugin + active API key
+        └─ For each site:
+             └─► POST /functions/v1/trigger-site-sync
+                   ├─ Scans forms (read-only)
+                   ├─ Reconciles entries (with safety guards)
+                   └─ Updates domain/SSL health
+```
+
+### What syncs daily
+- Form discovery (new forms detected, names updated)
+- Entry reconciliation (new entries pulled in, deleted entries soft-trashed with safety guards)
+- Domain/SSL health check
+- Plugin version reporting
+
+### Files touched
+1. **New**: `supabase/functions/daily-site-sync/index.ts`
+2. **Edit**: `supabase/config.toml` (add function config)
+3. **Insert**: pg_cron schedule via SQL insert
 

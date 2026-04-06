@@ -65,16 +65,21 @@ function isPreviewEnvironment() {
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
+function isOwnerEmail(email?: string | null) {
+  return email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
+}
+
 function ProtectedRoute({ children, requireSubscription = true }: { children: React.ReactNode; requireSubscription?: boolean }) {
   const isPreview = isPreviewEnvironment();
   const { session, loading } = useAuth();
-  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(session?.user?.id);
+  const isOwner = isOwnerEmail(session?.user?.email);
+  const subscriptionUserId = !isPreview && !isOwner ? session?.user?.id : undefined;
+  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(subscriptionUserId);
 
   if (isPreview) return <>{children}</>;
   if (loading) return <PageSpinner />;
   if (!session) return <Navigate to="/auth" replace />;
 
-  const isOwner = session.user?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase();
   if (isOwner) return <>{children}</>;
 
   if (subLoading) return <PageSpinner />;
@@ -87,14 +92,19 @@ function ProtectedRoute({ children, requireSubscription = true }: { children: Re
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  if (isPreviewEnvironment()) return <>{children}</>;
-
+  const isPreview = isPreviewEnvironment();
   const { session, loading } = useAuth();
+  const isOwner = isOwnerEmail(session?.user?.email);
+  const subscriptionUserId = !isPreview && !isOwner ? session?.user?.id : undefined;
+  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(subscriptionUserId);
+
+  if (isPreview) return <>{children}</>;
   if (loading) return <PageSpinner />;
-  if (session) {
-    const dest = session.user?.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() ? "/admin-setup" : "/dashboard";
-    return <Navigate to={dest} replace />;
-  }
+  if (!session) return <>{children}</>;
+  if (isOwner) return <Navigate to="/admin-setup" replace />;
+  if (subLoading) return <PageSpinner />;
+  if (billingExempt || subscribed) return <Navigate to="/dashboard" replace />;
+
   return <>{children}</>;
 }
 

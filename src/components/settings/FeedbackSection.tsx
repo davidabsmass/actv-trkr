@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MessageSquarePlus, Loader2 } from "lucide-react";
+import { MessageSquarePlus, Loader2, Trash2 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
@@ -185,9 +185,27 @@ export default function FeedbackSection() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sm">{item.subject}</span>
-                    <Badge variant="outline" className={STATUS_COLORS[item.status] || ""}>
-                      {item.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={STATUS_COLORS[item.status] || ""}>
+                        {item.status}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={async () => {
+                          const { error } = await supabase.from("feedback").delete().eq("id", item.id);
+                          if (error) {
+                            toast.error("Failed to delete feedback");
+                          } else {
+                            queryClient.invalidateQueries({ queryKey: ["feedback", orgId] });
+                            toast.success("Feedback deleted");
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>{categoryLabel(item.category)}</span>

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MessageSquarePlus, Loader2 } from "lucide-react";
+import { MessageSquarePlus, Loader2, Trash2 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   open: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",

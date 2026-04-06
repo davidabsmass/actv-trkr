@@ -52,6 +52,29 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
   }
 }
 
+function htmlToText(html?: string): string | undefined {
+  if (!html) return undefined
+
+  const text = html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, '\n')
+    .replace(/<li>/gi, '- ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+
+  return text || undefined
+}
+
 // Move a message to the dead letter queue and log the reason.
 async function moveToDlq(
   supabase: ReturnType<typeof createClient>,
@@ -261,6 +284,25 @@ Deno.serve(async (req) => {
         }
       }
 
+      const emailHtml =
+        typeof payload?.html === 'string' && payload.html.trim().length > 0
+          ? payload.html
+          : undefined
+      const emailText =
+        typeof payload?.text === 'string' && payload.text.trim().length > 0
+          ? payload.text
+          : htmlToText(emailHtml)
+
+      if (!emailText) {
+        await moveToDlq(
+          supabase,
+          queue,
+          msg,
+          'Malformed queue payload: missing email text content'
+        )
+        continue
+      }
+
       try {
         await sendLovableEmail(
           {
@@ -269,8 +311,8 @@ Deno.serve(async (req) => {
             from: payload.from,
             sender_domain: payload.sender_domain,
             subject: payload.subject,
-            html: payload.html,
-            text: payload.text,
+            html: emailHtml,
+            text: emailText,
             purpose: payload.purpose,
             label: payload.label,
             idempotency_key: payload.idempotency_key,

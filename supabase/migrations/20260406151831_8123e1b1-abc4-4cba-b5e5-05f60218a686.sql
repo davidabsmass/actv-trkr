@@ -1,0 +1,1 @@
+CREATE POLICY "fb_delete" ON public.feedback FOR DELETE TO authenticated USING (is_org_member(org_id));

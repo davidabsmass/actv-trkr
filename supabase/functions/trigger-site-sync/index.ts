@@ -438,15 +438,26 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // --- Cron-secret bypass: allow automated daily-site-sync calls ---
+    const incomingCronSecret = req.headers.get("x-cron-secret");
+    const expectedCronSecret = Deno.env.get("CRON_SECRET");
+    const isCronCall = !!(incomingCronSecret && expectedCronSecret && incomingCronSecret === expectedCronSecret);
 
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!isCronCall) {
+      // Standard user-auth path
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
       });
+
+      const { data: { user }, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Store user for org membership check below
+      (globalThis as any).__tss_user = user;
     }
 
     const requestBody = await req.json();
@@ -488,14 +499,18 @@ Deno.serve(async (req) => {
     const avadaFormIds = (avadaForms || []).map((form) => form.id);
     const hasAvadaForms = (avadaFormCount || 0) > 0;
 
-    const { data: membership } = await supabase
-      .from("org_users").select("role")
-      .eq("org_id", site.org_id).eq("user_id", user.id).maybeSingle();
+    // Skip org membership check for cron calls
+    if (!isCronCall) {
+      const user = (globalThis as any).__tss_user;
+      const { data: membership } = await supabase
+        .from("org_users").select("role")
+        .eq("org_id", site.org_id).eq("user_id", user.id).maybeSingle();
 
-    if (!membership) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (!membership) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { data: apiKeyRow } = await supabase

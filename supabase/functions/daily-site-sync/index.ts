@@ -10,7 +10,14 @@ Deno.serve(async (req) => {
 
   const cronSecret = Deno.env.get("CRON_SECRET");
   const incoming = req.headers.get("x-cron-secret");
-  if (!cronSecret || incoming !== cronSecret) {
+  const authHeader = req.headers.get("Authorization") || "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+  // Allow auth via cron secret header OR service role bearer token
+  const isCronAuth = cronSecret && incoming === cronSecret;
+  const isServiceRole = serviceKey && authHeader === `Bearer ${serviceKey}`;
+
+  if (!isCronAuth && !isServiceRole) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -22,6 +29,20 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Self-heal: ensure cron_secret exists in app_config so pg_cron schedule works
+    const { data: existingSecret } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "cron_secret")
+      .maybeSingle();
+
+    if (!existingSecret && cronSecret) {
+      await supabase
+        .from("app_config")
+        .upsert({ key: "cron_secret", value: cronSecret }, { onConflict: "key" });
+      console.log("Self-healed: inserted cron_secret into app_config");
+    }
 
     // Get all active sites with a plugin installed and an active API key
     const { data: sites, error: sitesErr } = await supabase

@@ -342,16 +342,21 @@ async function scheduleEntryBackfillContinuation(params: {
   authHeader: string;
   siteId: string;
   cursor: EntryBackfillCursor;
+  cronSecret?: string | null;
 }) {
-  const { supabaseUrl, anonKey, authHeader, siteId, cursor } = params;
+  const { supabaseUrl, anonKey, authHeader, siteId, cursor, cronSecret } = params;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: authHeader,
+    apikey: anonKey,
+    "x-client-info": "actv-trkr-backfill-continuation",
+  };
+  if (cronSecret) {
+    headers["x-cron-secret"] = cronSecret;
+  }
   const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: authHeader,
-      apikey: anonKey,
-      "x-client-info": "actv-trkr-backfill-continuation",
-    },
+    headers,
     body: JSON.stringify({
       site_id: siteId,
       force_backfill: true,
@@ -801,6 +806,7 @@ Deno.serve(async (req) => {
                     authHeader,
                     siteId: site.id,
                     cursor,
+                    cronSecret: isCronCall ? incomingCronSecret : null,
                   });
                   entryBackfillContinuationScheduled = true;
                 } catch (err) {

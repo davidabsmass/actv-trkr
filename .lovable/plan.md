@@ -1,55 +1,37 @@
 
 
-## Daily Site Sync — Implementation Plan
+## Fix Daily Sync — Two Breaks in the Chain
 
-### Confirmation: Zero Risk to Existing Data
+### Problem Summary
+Forms stopped coming in because the daily automated sync is broken at two points:
 
-As established in the previous discussion, this implementation carries no risk:
-- Uses the exact same read-only `scan_all_forms()` code path already running on manual syncs
-- Forms are only added/updated, never deleted
-- Entry reconciliation has the existing safety guard (skips trashing if counts drop suspiciously for large forms)
-- No writes to WordPress — dashboard-side only
+1. **Missing cron secret in database** — The cron job uses `call_edge_function()` which reads `cron_secret` from `app_config`. That row doesn't exist, so an empty string is sent. The `daily-site-sync` function compares it against the `CRON_SECRET` environment variable and rejects with 401.
 
-### Steps
+2. **Auth mismatch on trigger-site-sync** — Even if the first issue is fixed, `daily-site-sync` calls `trigger-site-sync` with the anon key as a Bearer token. But `trigger-site-sync` requires a real user JWT (it calls `auth.getUser()`), so it also rejects with 401.
 
-**1. Create Edge Function `daily-site-sync`**
-- File: `supabase/functions/daily-site-sync/index.ts`
-- Authenticates via `x-cron-secret` header (same as `nightly-summary`, `daily-digest`)
-- Queries all sites with a non-null `plugin_version` and an active (non-revoked) API key
-- For each site, calls `trigger-site-sync` internally (reuses existing sync logic rather than calling WordPress directly — this handles all the backfill, safety guards, and error handling already built)
-- Logs per-site results, returns summary JSON
+### Fix Plan
 
-**2. Add to `supabase/config.toml`**
-- Add `[functions.daily-site-sync]` with `verify_jwt = false`
+**Step 1: Add cron-secret bypass to `trigger-site-sync`**
+- File: `supabase/functions/trigger-site-sync/index.ts`
+- Before the `auth.getUser()` check (line 445), add logic to detect the `x-cron-secret` header
+- If the header matches the `CRON_SECRET` env var, skip user authentication and org membership checks
+- Still require a valid `site_id` and perform all the same sync logic
+- This is the same pattern used by `daily-digest`, `nightly-summary`, etc.
 
-**3. Schedule pg_cron job**
-- Use the insert tool (not migration) to add a `cron.schedule` entry
-- Runs once daily at 06:00 UTC
-- Calls the edge function via `net.http_post` with the cron secret header
-- Same pattern used by existing `nightly-summary` and `daily-digest` crons
+**Step 2: Insert `cron_secret` into `app_config`**
+- Use SQL insert to populate `app_config` with key `cron_secret` set to the value of the `CRON_SECRET` environment variable
+- This allows `call_edge_function()` to pass the correct secret in headers
 
-### Architecture
+**Step 3: Verify the fix**
+- Use the edge function testing tool to call `daily-site-sync` and confirm it completes successfully
 
-```text
-pg_cron (06:00 UTC daily)
-  └─► POST /functions/v1/daily-site-sync
-        ├─ Auth: x-cron-secret
-        ├─ Query: all sites with plugin + active API key
-        └─ For each site:
-             └─► POST /functions/v1/trigger-site-sync
-                   ├─ Scans forms (read-only)
-                   ├─ Reconciles entries (with safety guards)
-                   └─ Updates domain/SSL health
-```
+### What changes
+- `supabase/functions/trigger-site-sync/index.ts` — add cron-secret auth bypass (~15 lines)
+- `app_config` table — insert one row
 
-### What syncs daily
-- Form discovery (new forms detected, names updated)
-- Entry reconciliation (new entries pulled in, deleted entries soft-trashed with safety guards)
-- Domain/SSL health check
-- Plugin version reporting
-
-### Files touched
-1. **New**: `supabase/functions/daily-site-sync/index.ts`
-2. **Edit**: `supabase/config.toml` (add function config)
-3. **Insert**: pg_cron schedule via SQL insert
+### What does NOT change
+- No WordPress plugin changes
+- No changes to existing sync/reconciliation logic
+- No changes to how manual (user-initiated) syncs work
+- No data deletions or modifications
 

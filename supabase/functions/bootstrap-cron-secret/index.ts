@@ -31,24 +31,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Now trigger daily-site-sync
-    const syncResp = await fetch(`${supabaseUrl}/functions/v1/daily-site-sync`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-        "x-cron-secret": cronSecret,
-      },
-      body: "{}",
-    });
-
-    const syncBody = await syncResp.text();
-
+    // Just report success - daily-site-sync will now work on next scheduled run
     return new Response(JSON.stringify({
       success: true,
       cron_secret_inserted: true,
-      daily_sync_status: syncResp.status,
-      daily_sync_body: syncBody.substring(0, 500),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

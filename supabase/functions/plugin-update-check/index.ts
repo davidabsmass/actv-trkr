@@ -12,6 +12,46 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.8.8
+- FIX: Avada multi-table discovery now merges entries from ALL candidate tables instead of stopping at first match
+- FIX: Backfill REST handler variable scope error ($body undefined) that broke cursor/resume parameters
+- FIX: Avada forms (fusion_form post type) now included in historical backfill job queue
+
+## 1.8.7
+- FIX: Avada entry discovery scans fusion_form_submissions, fusion_form_db_entries, and fusion_form_submission_data
+- FIX: Deduplicates entries across multiple Avada tables to prevent double-counting
+
+## 1.8.6
+- FIX: Multi-table Avada scanning with wildcard table discovery
+- FIX: Backfill resume parameters properly forwarded
+
+## 1.8.5
+- FIX: Avada form sync improvements for sites with non-standard table naming
+
+## 1.8.4
+- FIX: Plugin activation no longer interferes with frontend form rendering
+- Zero live form hooks — strictly passive data extraction
+
+## 1.8.3
+- FIX: REST API permission callback hardened against unauthorized requests
+- IP-based rate limiting (10 req/min) via WordPress transients
+
+## 1.8.2
+- FIX: Batched extraction engine (100 entries/batch) with extended timeouts
+- Backend safety guard for large forms (>=1000 leads)
+
+## 1.8.1
+- FIX: First-install cron event for automatic form discovery and backfill
+
+## 1.8.0
+- Zero-interference mode: all frontend listeners and live form hooks removed
+- Data extraction via REST API only
+
+## 1.7.0
+- WooCommerce order tracking support
+- Broken link scanner improvements
+- SEO fix command relay
+
 ## 1.6.2
 - Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions
 - Powers the Plugins & WordPress monitoring tab with real data
@@ -60,125 +100,17 @@ const CHANGELOG = `
 
 ## 1.3.28
 - CRITICAL: Fixes missing Avada field data by adding wp_fusion_form_entries as a secondary data source
-- Backfill now discovers and queries entries tables (fusion_form_entries, fusionbuilder_form_entries, avada_form_entries)
-- extract_backfill_fields tries multiple secondary tables in sequence until fields are found
-- Fixes leads arriving with empty fields arrays despite data existing in WordPress
 
 ## 1.3.25
-- EMERGENCY: Fixes PHP syntax error (unexpected ']') that crashed WordPress sites after updating to 1.3.24
-- Root cause: JavaScript template literal was consuming PHP regex escape sequences (\\s, \\d, \\')
-- All preg_match patterns now use hex escapes (\\x27) to avoid JS/PHP escaping conflicts
-
-## 1.3.24
-- Fixed Avada field extraction: queries separate wp_fusion_form_submission_data table for actual field values
-- The main submissions table stores metadata only (data column is NULL) — fields are in a linked data table
-- Enhanced debug endpoint: discovers and reports data table structure and sample rows
-- Fixed timestamp column detection: adds 'time' as first candidate for Avada submissions
-- Improved data table foreign key detection (submission_id, entry_id, parent_id variants)
-
-## 1.3.22
-- Fixed Avada backfill parser: now correctly handles CSV format (data/field_types/field_labels columns)
-- Fixed real-time Avada handler to parse CSV fields instead of dumping raw metadata keys
-- Added avada-debug diagnostic endpoint for troubleshooting field extraction
-- Lead enrichment: existing leads with empty fields get populated on re-sync
-- Skips metadata keys (submission, field_labels, field_types, etc.) in field output
-
-## 1.3.19
-- EMERGENCY: Fixes malformed Avada conditional blocks in class-forms.php that could crash WordPress immediately after plugin update
-- Adds packaging safety guard to block publishing a ZIP if malformed PHP tokens are detected
-
-## 1.3.18
-- CRITICAL: Fixes PHP syntax error (unexpected 'foreach') in class-forms.php that crashed the WordPress sync endpoint
-- Fixes malformed conditional blocks in Avada entry discovery that prevented all entry ingestion
-- Adds duplicate-entry guard in ingest-form to prevent repeated backfill from creating duplicate leads
-
-## 1.3.17
-- Improves Avada discovery for form_post_id/fusion_form_id markers stored in submission blobs
-- Improves title fallback matching for renamed forms (hyphen/underscore/punctuation variations)
-- Improves Avada backfill field extraction from JSON and serialized payload columns
-
-## 1.3.16
-- Adds Avada title/name fallback discovery in the downloadable plugin package
-- Fixes renamed forms (e.g. "Book In-Office") not returning historical entries during sync/backfill
-
-## 1.3.14
-- Fixes Avada historical backfill when submissions are discoverable only through URL/blob matching
-- Reuses the same multi-strategy Avada discovery used by sync diagnostics before ingesting entries
-
-## 1.3.13
-- Adds /backfill-avada REST route for historical Avada reimport after ID-format resets
-- Replays Avada submission rows using stable avada_db_* IDs to rebuild lead history cleanly
-
-## 1.3.12
-- Expands Avada form-ref discovery across more schema variants (formid, source_form_id, fusion_form)
-- Adds URL-centric matching across additional columns (page_url, source_url, referer, request_uri, payload)
-- Enables filtered recent-row scanning when direct index lookups fail, improving recovery from strategy "none"
-
-## 1.3.11
-- Fixes Avada discovery on sites where submission rows do not store form_id markers
-- Adds per-form page URL detection during Sync Forms and uses it for entry scoping
-- Resolves blocked syncs showing strategy "none" with 0 active entries on every Avada form
-
-## 1.3.10
-- Fixes Avada small-table fallback returning identical entry sets for every form
-- Filters fallback rows by per-form markers (form_id, fusion_form_id, form_post_id, post_id)
-- Prevents stale deleted entries from persisting due ambiguous global entry lists
-- Improves reconciliation safety by skipping unscoped fallback rows
-
-## 1.3.9
-- Wildcard table discovery: finds Avada submission tables even with non-standard names
-- Small-table fallback: if table has ≤200 rows and no form_ref match, returns all entries
-- Enhanced diagnostics: logs table name, columns, and total row count for debugging
-- Additional candidate columns: form_ref, source_id, submission_data, form_fields, response, timestamp
-
-## 1.3.8
-- Expanded Avada entry discovery with multi-column form-ref matching (form_id, fusion_form_id, post_id, parent_id)
-- Searches blob/payload columns (submission, data, fields, form_data) for form_id and URL markers
-- Per-form Avada diagnostics (strategy used, row count) returned in sync response
-- Plugin runtime version included in sync payload for accurate update gating
-- Dashboard surfaces blocked/partial sync status with persistent warnings
-
-## 1.3.7
-- CRITICAL: Removed global Avada fallback that caused mass-trashing of all entries
-- Each Avada form now only returns entries scoped to its own form_id
-- Backend sync guards detect duplicate active-ID sets and full-trash patterns
-- Prevents accidental data loss when Avada entry discovery fails
-
-## 1.3.6
-- Hardened Avada entry discovery with multi-table lookup
-- Added safety guard for all-empty Avada form payloads
-
-## 1.3.5
-- Fixed Avada entry reconciliation when form IDs differ across installs
-- Improved Avada active-entry lookup with URL + global fallback matching
-- Resolves deleted Avada submissions persisting in Forms after sync
-
-## 1.3.4
-- Avada/Fusion Forms now included in form discovery and entry sync
-- Avada entries use stable DB-backed IDs for reliable delete reconciliation
-- All form providers (CF7, Ninja, Fluent, Avada) included in discover_forms_list
-
-## 1.3.3
-- Fix Avada handler method structure so the plugin loads correctly
-- Restores manual sync route availability for entry reconciliation
-
-## 1.3.2
-- Fixed dashboard manual sync route (/wp-json/actv-trkr/v1/sync)
-- Restored deleted-entry reconciliation via sync-entries
-
-## 1.3.1
-- Reduced heartbeat interval from 10s to 30s for lower resource usage
-- Added cache headers to plugin update checks
+- EMERGENCY: Fixes PHP syntax error that crashed WordPress sites after updating to 1.3.24
 
 ## 1.3.0
 - Active time-on-page tracking with focus-aware heartbeats
 - Intent-based click tracking (CTAs, downloads, outbound links)
-- Form liveness monitoring (hourly probe for rendered forms)
-- Broken link scanning improvements
+- Form liveness monitoring
 
 ## 1.2.0
 - Added self-hosted auto-update support
-- WordPress admin will now show update notifications automatically
 
 ## 1.1.0
 - Universal form capture (CF7, WPForms, Avada, Ninja, Fluent)

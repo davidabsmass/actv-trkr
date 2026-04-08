@@ -108,10 +108,10 @@ const Performance = () => {
 
     return {
       kpis: {
-        sessions: { value: totalSessions, delta: pctDelta(totalSessions, prevSessions) ?? 0, label: t("dashboard.sessions") },
-        leads: { value: totalLeads, delta: pctDelta(totalLeads, prevLeads) ?? 0, label: t("dashboard.leads") },
-        pageviews: { value: totalPageviews, delta: pctDelta(totalPageviews, prevPageviews) ?? 0, label: t("dashboard.pageviews") },
-        cvr: { value: cvr, delta: pctDelta(cvr, prevCvr) ?? 0, label: t("dashboard.conversionRate") },
+        sessions: { value: totalSessions, delta: pctDelta(totalSessions, prevSessions), label: t("dashboard.sessions") },
+        leads: { value: totalLeads, delta: pctDelta(totalLeads, prevLeads), label: t("dashboard.leads") },
+        pageviews: { value: totalPageviews, delta: pctDelta(totalPageviews, prevPageviews), label: t("dashboard.pageviews") },
+        cvr: { value: cvr, delta: pctDelta(cvr, prevCvr), label: t("dashboard.conversionRate") },
       },
       dailyData, sources, campaigns, pages, opportunities,
     };

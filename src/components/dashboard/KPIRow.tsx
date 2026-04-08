@@ -37,14 +37,16 @@ export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) 
           {suffix && <span className="text-sm text-muted-foreground ml-0.5">{suffix}</span>}
         </span>
       </div>
-      <div className="flex items-center gap-1 mt-1">
-        {isUp && <ArrowUpRight className="h-3.5 w-3.5 kpi-up" />}
-        {isDown && <ArrowDownRight className="h-3.5 w-3.5 kpi-down" />}
-        {delta !== null && !isUp && !isDown && <Minus className="h-3.5 w-3.5 kpi-neutral" />}
-        <span className={`text-xs font-medium ${deltaClass}`}>
-          {deltaText}
-        </span>
-      </div>
+      {delta !== null && (
+        <div className="flex items-center gap-1 mt-1">
+          {isUp && <ArrowUpRight className="h-3.5 w-3.5 kpi-up" />}
+          {isDown && <ArrowDownRight className="h-3.5 w-3.5 kpi-down" />}
+          {!isUp && !isDown && <Minus className="h-3.5 w-3.5 kpi-neutral" />}
+          <span className={`text-xs font-medium ${deltaClass}`}>
+            {deltaText}
+          </span>
+        </div>
+      )}
       {subtext && (
         <p className="text-xs text-muted-foreground mt-0.5">{subtext}</p>
       )}
@@ -54,10 +56,10 @@ export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) 
 
 interface KPIRowProps {
   kpis: {
-    sessions: { value: number; delta: number; label: string };
-    leads: { value: number; delta: number; label: string };
-    pageviews: { value: number; delta: number; label: string };
-    cvr: { value: number; delta: number; label: string };
+    sessions: { value: number; delta: number | null; label: string };
+    leads: { value: number; delta: number | null; label: string };
+    pageviews: { value: number; delta: number | null; label: string };
+    cvr: { value: number; delta: number | null; label: string };
   };
   totalSessions?: number;
   totalLeads?: number;

@@ -1,41 +1,21 @@
 
 
-## Why Forms Are Still Stale — Two Remaining Issues
+## Fix: App showing plugin v1.8.7 instead of v1.8.8
 
-The daily-site-sync fix **did work** — all 7 sites now report "synced" status. But the logs reveal two problems that are preventing actual data from flowing in:
+### Problem
+The codebase already has v1.8.8 in all source files, but the deployed edge functions are still serving the old version. The app reads the version from the `serve-plugin-zip` edge function's `x-plugin-version` response header via a HEAD request.
 
-### Issue 1: Apyx Medical returns 403 from WordPress
-
-The WordPress REST API on apyxmedical.com is rejecting all requests with `403 Unauthorized`. This means the API key stored in the plugin on that site no longer matches what the system is sending. This is a site-side configuration problem — the plugin may need its API key re-entered or the plugin may be deactivated/cached.
-
-**This requires action on the WordPress side** (re-saving the API key in the plugin settings on apyxmedical.com). No code change can fix this.
-
-### Issue 2: Backfill continuation calls fail with 401
-
-For sites that *do* respond (like livesinthebalance.org), the sync successfully pulls entries but when a large form needs multiple batches, the continuation call back to `trigger-site-sync` fails with 401. This is because `scheduleEntryBackfillContinuation` passes the original `authHeader` (which is the anon key from the cron call), but the self-call doesn't include the `x-cron-secret` header, so the auth check rejects it.
-
-**Fix**: Pass the `x-cron-secret` header in the continuation call when the original request was a cron call.
+### Root Cause
+The `serve-plugin-zip` and `plugin-update-check` edge functions were not redeployed after the last code changes. Additionally, the `plugin-update-check` changelog is outdated (tops out at v1.6.2, missing all entries from 1.7.0 through 1.8.8).
 
 ### Plan
 
-**Step 1: Fix backfill continuation auth** (code change)
-- In `supabase/functions/trigger-site-sync/index.ts`, update `scheduleEntryBackfillContinuation` to accept and forward the `x-cron-secret` header
-- Thread the `isCronCall` flag and cron secret value through to the continuation call site (~790-810)
-- This ensures multi-batch backfills complete fully for large forms
+**Step 1: Update `plugin-update-check` changelog**
+Add changelog entries for versions 1.7.0 through 1.8.8 to `supabase/functions/plugin-update-check/index.ts` so the WordPress update checker also reports the correct version.
 
-**Step 2: Re-run sync to verify**
-- Deploy the updated function and trigger `daily-site-sync` to confirm continuation works
-- Verify new leads appear for sites that respond (livesinthebalance.org, georgiaboneandjoint.org, etc.)
+**Step 2: Deploy edge functions**
+Redeploy both `serve-plugin-zip` and `plugin-update-check` edge functions so the live endpoints serve v1.8.8.
 
-**Step 3: Apyx Medical — site-side fix needed**
-- The Apyx WordPress site is returning 403 on all REST API endpoints
-- Someone with WordPress admin access to apyxmedical.com needs to verify: (a) the plugin is active, (b) the API key in the plugin settings matches the key in the dashboard
-- No dashboard code change can resolve this — it's the WordPress side blocking requests
-
-### What this means for timing
-- After Step 1 deploys: sites other than Apyx should start showing new entries within minutes
-- Apyx specifically needs WordPress admin intervention first
-
-### Files changed
-- `supabase/functions/trigger-site-sync/index.ts` — forward cron-secret header in continuation calls (~5 lines changed)
+**Step 3: Verify**
+Confirm the `serve-plugin-zip` HEAD request returns `x-plugin-version: 1.8.8` and the app displays the correct version on the Get Started page.
 

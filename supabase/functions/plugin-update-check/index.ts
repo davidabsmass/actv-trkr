@@ -236,6 +236,7 @@ async function resolveLatestVersion(req: Request): Promise<string> {
     const response = await fetch(getZipUrl(req), {
       method: "HEAD",
       headers: { "Cache-Control": "no-cache" },
+      signal: AbortSignal.timeout(1500),
     });
 
     if (response.ok) {

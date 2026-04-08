@@ -495,8 +495,7 @@ class MM_Forms {
 				$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
 				if ( ! is_array( $columns ) || empty( $columns ) ) {
 					error_log( '[MissionMetrics] Avada entry sync: could not read columns from ' . $table );
-					self::$last_avada_strategy = 'no_columns';
-					return null;
+					continue; // skip this table, try next
 				}
 
 				// Detect timestamp column

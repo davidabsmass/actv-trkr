@@ -120,17 +120,22 @@ class MM_Forms {
 
 	/**
 	 * Auto-sync forms if the cooldown has expired (every 6 hours).
+	 * Wrapped in try/catch so it NEVER crashes the WordPress admin.
 	 */
 	public static function maybe_auto_sync() {
 		if ( get_transient( 'actv_trkr_last_form_sync' ) ) return;
-		self::scan_all_forms();
+		try {
+			self::scan_all_forms( array(), /* $lightweight */ true );
+		} catch ( \Throwable $e ) {
+			error_log( '[ACTV TRKR] Auto-sync error (safe catch): ' . $e->getMessage() );
+		}
 		set_transient( 'actv_trkr_last_form_sync', time(), 6 * HOUR_IN_SECONDS );
 	}
 
 	/**
 	 * Scan all supported form plugins and return discovered forms.
 	 */
-	public static function scan_all_forms( $known_form_mappings = array() ) {
+	public static function scan_all_forms( $known_form_mappings = array(), $lightweight = false ) {
 		$discovered = array();
 
 		// Gravity Forms
@@ -234,7 +239,7 @@ class MM_Forms {
 		}
 
 		// Discover page URLs for each form by scanning post content
-		$discovered = self::enrich_with_page_urls( $discovered, $known_form_mappings );
+		$discovered = self::enrich_with_page_urls( $discovered, $known_form_mappings, $lightweight );
 
 		// Send to sync-forms endpoint
 		$opts     = MM_Settings::get();

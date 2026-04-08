@@ -12,6 +12,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.8.10
+- FIX: Avada sync now forwards backend-known page mappings to the WordPress plugin so encoded builder embeds still reconcile correctly
+- FIX: Avada entry matching now checks all known page URL candidates, recovering missing Apyx Medical submissions after April 2
+
 ## 1.8.9
 - FIX: Avada backfill now reads matching entry rows from ALL supported submission tables instead of only the first detected table
 - FIX: Prevents missing newer Avada entries on sites where submissions are split across multiple Avada tables

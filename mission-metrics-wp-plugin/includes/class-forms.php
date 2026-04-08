@@ -107,8 +107,11 @@ class MM_Forms {
 	 * Auth already verified by permission_callback.
 	 */
 	public static function handle_rest_sync( $request ) {
+		$body = $request->get_json_params();
+		$known_form_mappings = is_array( $body['known_form_mappings'] ?? null ) ? $body['known_form_mappings'] : array();
+
 		// Run the full sync
-		$result = self::scan_all_forms();
+		$result = self::scan_all_forms( $known_form_mappings );
 
 		return new \WP_REST_Response( array( 'ok' => true, 'result' => $result ), 200 );
 	}
@@ -127,7 +130,7 @@ class MM_Forms {
 	/**
 	 * Scan all supported form plugins and return discovered forms.
 	 */
-	public static function scan_all_forms() {
+	public static function scan_all_forms( $known_form_mappings = array() ) {
 		$discovered = array();
 
 		// Gravity Forms
@@ -231,7 +234,7 @@ class MM_Forms {
 		}
 
 		// Discover page URLs for each form by scanning post content
-		$discovered = self::enrich_with_page_urls( $discovered );
+		$discovered = self::enrich_with_page_urls( $discovered, $known_form_mappings );
 
 		// Send to sync-forms endpoint
 		$opts     = MM_Settings::get();
@@ -288,7 +291,7 @@ class MM_Forms {
 			$form_id  = $form_info['form_id'] ?? '';
 			if ( ! $form_id ) continue;
 
-			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null, $form_info['form_title'] ?? null );
+			$entry_ids = self::get_active_entry_ids( $provider, $form_id, $form_info['page_url'] ?? null, $form_info['form_title'] ?? null, $form_info['page_url_candidates'] ?? array() );
 			if ( $entry_ids === null ) continue;
 
 			// Collect Avada per-form diagnostics
@@ -433,7 +436,7 @@ class MM_Forms {
 	 * Get active (non-trashed) entry IDs for a given form provider + form ID.
 	 * Returns null if the provider doesn't support entry listing.
 	 */
-	private static function get_active_entry_ids( $provider, $form_id, $page_url = null, $form_title = null ) {
+	private static function get_active_entry_ids( $provider, $form_id, $page_url = null, $form_title = null, $page_url_candidates = array() ) {
 		global $wpdb;
 
 		switch ( $provider ) {
@@ -484,6 +487,8 @@ class MM_Forms {
 					self::$last_avada_strategy = 'no_table';
 					return null;
 				}
+
+				$url_candidates = self::build_page_url_candidates( $page_url, $page_url_candidates );
 
 				// Merge results from ALL existing tables
 				$all_rows = array();
@@ -542,14 +547,8 @@ class MM_Forms {
 					}
 				}
 
-				// Layer 1.5: Direct source_url column match with form's page_url
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) && in_array( 'source_url', $columns, true ) ) {
-					$normalized = esc_url_raw( $page_url );
-					$url_candidates = array_values( array_unique( array_filter( array(
-						$normalized,
-						rtrim( $normalized, '/' ),
-						trailingslashit( $normalized ),
-					) ) ) );
+				// Layer 1.5: Direct source_url column match with known page URL candidates
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $url_candidates ) && in_array( 'source_url', $columns, true ) ) {
 					foreach ( $url_candidates as $url_candidate ) {
 						$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
 						$rows = $wpdb->get_results( $wpdb->prepare(
@@ -593,14 +592,7 @@ class MM_Forms {
 				}
 
 				// Layer 3: page_url match in blob columns
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) ) {
-					$normalized = esc_url_raw( $page_url );
-					$url_candidates = array_values( array_unique( array_filter( array(
-						$normalized,
-						rtrim( $normalized, '/' ),
-						trailingslashit( $normalized ),
-					) ) ) );
-
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $url_candidates ) ) {
 					foreach ( $blob_candidates as $bc ) {
 						if ( ! in_array( $bc, $columns, true ) ) continue;
 						foreach ( $url_candidates as $url_candidate ) {
@@ -867,30 +859,120 @@ class MM_Forms {
 	}
 
 	/**
+	 * Build a deduplicated list of page URLs and normalized slash variants.
+	 */
+	private static function build_page_url_candidates( $page_url = null, $extra_candidates = array() ) {
+		$urls = array();
+
+		if ( is_string( $page_url ) && $page_url !== '' ) {
+			$urls[] = $page_url;
+		}
+
+		if ( is_array( $extra_candidates ) ) {
+			foreach ( $extra_candidates as $candidate ) {
+				if ( is_string( $candidate ) && $candidate !== '' ) {
+					$urls[] = $candidate;
+				}
+			}
+		} elseif ( is_string( $extra_candidates ) && $extra_candidates !== '' ) {
+			$urls[] = $extra_candidates;
+		}
+
+		$normalized = array();
+		foreach ( $urls as $url ) {
+			$url = trim( (string) $url );
+			if ( $url === '' ) continue;
+			$url = esc_url_raw( $url );
+			if ( $url === '' ) continue;
+			$normalized[] = $url;
+			if ( strpos( $url, '?' ) === false && strpos( $url, '#' ) === false ) {
+				$normalized[] = rtrim( $url, '/' );
+				$normalized[] = trailingslashit( $url );
+			}
+		}
+
+		return array_values( array_unique( array_filter( $normalized ) ) );
+	}
+
+	/**
+	 * Match a discovered form against backend-known form mappings.
+	 */
+	private static function get_known_form_mapping( $known_form_mappings, $form_id ) {
+		if ( ! is_array( $known_form_mappings ) ) return null;
+
+		$target = trim( (string) $form_id );
+		if ( $target === '' ) return null;
+
+		foreach ( $known_form_mappings as $mapping ) {
+			if ( ! is_array( $mapping ) ) continue;
+			foreach ( array( $mapping['form_id'] ?? '', $mapping['external_form_id'] ?? '' ) as $candidate ) {
+				if ( trim( (string) $candidate ) === $target ) {
+					return $mapping;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Detect Avada form references in raw shortcode markup or encoded builder JSON.
+	 */
+	private static function content_has_avada_form_reference( $content, $form_id ) {
+		$form_id = preg_quote( (string) $form_id, '/' );
+		$candidates = array_filter( array_unique( array(
+			(string) $content,
+			wp_specialchars_decode( (string) $content, ENT_QUOTES ),
+			html_entity_decode( (string) $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
+			stripslashes( (string) $content ),
+		) ) );
+
+		foreach ( $candidates as $candidate ) {
+			if ( preg_match( '/form_post_id\s*=\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
+			if ( preg_match( '/form_post_id\s*:\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
+			if ( preg_match( '/\[fusion_form[^\]]*form_post_id\s*=\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Look up which published page/post contains shortcodes or blocks for each form.
 	 * Appends 'page_url' to each discovered form entry.
 	 */
-	private static function enrich_with_page_urls( $discovered ) {
+	private static function enrich_with_page_urls( $discovered, $known_form_mappings = array() ) {
 		// Build shortcode patterns per provider + form_id
 		$patterns = array();
 		foreach ( $discovered as $idx => $form ) {
-			$fid      = $form['form_id'];
+			$fid      = (string) ( $form['form_id'] ?? '' );
 			$provider = $form['provider'];
 			$searches = array();
+
+			$known_mapping = self::get_known_form_mapping( $known_form_mappings, $fid );
+			if ( is_array( $known_mapping ) ) {
+				$known_candidates = self::build_page_url_candidates(
+					$known_mapping['page_url'] ?? null,
+					$known_mapping['page_url_candidates'] ?? array()
+				);
+				if ( ! empty( $known_candidates ) ) {
+					$discovered[ $idx ]['page_url'] = $known_candidates[0];
+					$discovered[ $idx ]['page_url_candidates'] = $known_candidates;
+				}
+			}
 
 			switch ( $provider ) {
 				case 'gravity_forms':
 					$searches[] = '[gravityform id="' . $fid . '"';
-					$searches[] = '[gravityform id=\'' . $fid . '\'';
+					$searches[] = '[gravityform id='' . $fid . ''';
 					$searches[] = 'wp:gravityforms/form {"formId":"' . $fid . '"';
 					break;
 				case 'cf7':
 					$searches[] = '[contact-form-7 id="' . $fid . '"';
-					$searches[] = '[contact-form-7 id=\'' . $fid . '\'';
+					$searches[] = '[contact-form-7 id='' . $fid . ''';
 					break;
 				case 'wpforms':
 					$searches[] = '[wpforms id="' . $fid . '"';
-					$searches[] = '[wpforms id=\'' . $fid . '\'';
+					$searches[] = '[wpforms id='' . $fid . ''';
 					break;
 				case 'ninja_forms':
 					$searches[] = '[ninja_form id="' . $fid . '"';
@@ -906,9 +988,6 @@ class MM_Forms {
 			}
 		}
 
-		if ( empty( $patterns ) ) return $discovered;
-
-		// Query published posts/pages in batches
 		$posts = get_posts( array(
 			'post_type'      => array( 'page', 'post' ),
 			'post_status'    => 'publish',
@@ -916,47 +995,45 @@ class MM_Forms {
 			'fields'         => 'ids',
 		) );
 
-		foreach ( $posts as $post_id ) {
-			$content = get_post_field( 'post_content', $post_id );
-			if ( empty( $content ) ) continue;
+		if ( empty( $posts ) ) return $discovered;
 
-			foreach ( $patterns as $idx => $searches ) {
-				if ( ! empty( $discovered[ $idx ]['page_url'] ) ) continue; // already found
+		if ( ! empty( $patterns ) ) {
+			foreach ( $posts as $post_id ) {
+				$content = get_post_field( 'post_content', $post_id );
+				if ( empty( $content ) ) continue;
 
-				foreach ( $searches as $needle ) {
-					if ( stripos( $content, $needle ) !== false ) {
-						$discovered[ $idx ]['page_url'] = get_permalink( $post_id );
-						break;
+				foreach ( $patterns as $idx => $searches ) {
+					if ( ! empty( $discovered[ $idx ]['page_url'] ) ) continue;
+
+					foreach ( $searches as $needle ) {
+						if ( stripos( $content, $needle ) !== false ) {
+							$discovered[ $idx ]['page_url'] = get_permalink( $post_id );
+							$discovered[ $idx ]['page_url_candidates'] = array( $discovered[ $idx ]['page_url'] );
+							break;
+						}
 					}
 				}
 			}
 		}
 
-		// Also check Avada/Fusion — scan post content for builder form elements
-		foreach ( $discovered as $idx => &$form ) {
-			if ( ! empty( $form['page_url'] ) ) continue;
+		foreach ( $discovered as $idx => $form ) {
 			if ( $form['provider'] !== 'avada' ) continue;
 
-			$fid = $form['form_id'];
-			// Avada builder embeds forms via [fusion_form form_post_id="ID"] or
-			// builder element attributes like form_post_id="ID"
+			$fid = (string) ( $form['form_id'] ?? '' );
+			$matched_urls = self::build_page_url_candidates( $form['page_url'] ?? null, $form['page_url_candidates'] ?? array() );
+
 			foreach ( $posts as $post_id ) {
 				$content = get_post_field( 'post_content', $post_id );
 				if ( empty( $content ) ) continue;
-
-				$avada_needles = array(
-					'form_post_id="' . $fid . '"',
-					"form_post_id='" . $fid . "'",
-					'[fusion_form form_post_id="' . $fid . '"',
-					"[fusion_form form_post_id='" . $fid . "'",
-				);
-
-				foreach ( $avada_needles as $needle ) {
-					if ( stripos( $content, $needle ) !== false ) {
-						$discovered[ $idx ]['page_url'] = get_permalink( $post_id );
-						break 2;
-					}
+				if ( self::content_has_avada_form_reference( $content, $fid ) ) {
+					$matched_urls[] = get_permalink( $post_id );
 				}
+			}
+
+			$matched_urls = self::build_page_url_candidates( null, $matched_urls );
+			if ( ! empty( $matched_urls ) ) {
+				$discovered[ $idx ]['page_url'] = $matched_urls[0];
+				$discovered[ $idx ]['page_url_candidates'] = $matched_urls;
 			}
 		}
 
@@ -1891,7 +1968,8 @@ class MM_Forms {
 	public static function handle_rest_backfill_avada( $request ) {
 		// Auth already verified by permission_callback
 
-		global $wpdb;
+		$body = $request->get_json_params();
+		$known_form_mappings = is_array( $body['known_form_mappings'] ?? null ) ? $body['known_form_mappings'] : array();
 		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
 
 		$avada_forms = get_posts( array(
@@ -1920,7 +1998,7 @@ class MM_Forms {
 				'provider' => 'avada',
 			);
 		}
-		$discovered = self::enrich_with_page_urls( $discovered );
+		$discovered = self::enrich_with_page_urls( $discovered, $known_form_mappings );
 
 		$sent = 0;
 
@@ -1930,8 +2008,9 @@ class MM_Forms {
 
 			$form_title = get_the_title( intval( $form_post_id ) ) ?: 'Avada Form';
 			$page_url   = $form_info['page_url'] ?? null;
+			$page_url_candidates = $form_info['page_url_candidates'] ?? array();
 
-			$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url, $form_title );
+			$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url, $form_title, $page_url_candidates );
 			if ( ! is_array( $entry_refs ) || empty( $entry_refs ) ) continue;
 
 			$numeric_ids = array();
@@ -2002,7 +2081,7 @@ class MM_Forms {
 
 				$source_url = ( $row && $has_source_url && ! empty( $row->source_url ) )
 					? $row->source_url
-					: $page_url;
+					: ( $page_url_candidates[0] ?? $page_url );
 
 				$payload = array(
 					'provider' => 'avada',

@@ -118,7 +118,12 @@ export function ClickActivity({ orgId, startDate, endDate }: { orgId: string | n
             <MousePointerClick className="h-4 w-4 text-primary" />
             {t("dashboard.clickActivity")}
           </h3>
-          <span className="text-xs font-mono-data text-muted-foreground">{totalClicks} {t("dashboard.total")}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono-data text-muted-foreground">{totalClicks} {t("dashboard.total")}</span>
+            <IconTooltip label="Breakdown of visitor clicks — buttons, links, phone calls, and other interactions.">
+              <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            </IconTooltip>
+          </div>
         </div>
 
         <div className="space-y-4">

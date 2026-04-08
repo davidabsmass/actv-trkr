@@ -57,7 +57,12 @@ export function AttributionSection({ sources, campaigns }: AttributionProps) {
   return (
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <h3 className="text-sm font-semibold text-foreground">{t("dashboard.attribution")}</h3>
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          {t("dashboard.attribution")}
+          <IconTooltip label="Where your traffic and leads come from — referral sources, UTM campaigns, and channels.">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+          </IconTooltip>
+        </h3>
         <div className="flex gap-1 bg-muted rounded-md p-0.5">
           <button
             onClick={() => setTab("source")}

@@ -81,10 +81,15 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
 
   return (
     <div className="glass-card p-6 animate-slide-up">
-      <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-        <BarChart3 className="h-4 w-4 text-primary" />
-        {t("dashboard.visitorEngagement")}
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          {t("dashboard.visitorEngagement")}
+        </h3>
+        <IconTooltip label="How visitors interact with your site — avg. pages per session, time on site, and bounce rate.">
+          <Info className="h-3.5 w-3.5 text-muted-foreground" />
+        </IconTooltip>
+      </div>
       <div className="grid grid-cols-3 gap-4 mb-4">
         {metrics.map((m) => (
           <div key={m.label} className="text-center">

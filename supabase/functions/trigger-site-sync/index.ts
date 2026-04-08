@@ -587,6 +587,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    let authenticatedUserId: string | null = null;
 
     // --- Cron-secret bypass: allow automated daily-site-sync calls ---
     const incomingCronSecret = req.headers.get("x-cron-secret");
@@ -606,8 +607,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Store user for org membership check below
-      (globalThis as any).__tss_user = user;
+      authenticatedUserId = user.id;
     }
 
     const requestBody = await req.json();
@@ -655,10 +655,9 @@ Deno.serve(async (req) => {
 
     // Skip org membership check for cron calls
     if (!isCronCall) {
-      const user = (globalThis as any).__tss_user;
       const { data: membership } = await supabase
         .from("org_users").select("role")
-        .eq("org_id", site.org_id).eq("user_id", user.id).maybeSingle();
+        .eq("org_id", site.org_id).eq("user_id", authenticatedUserId).maybeSingle();
 
       if (!membership) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
@@ -744,9 +743,9 @@ Deno.serve(async (req) => {
 
     // Auto-backfill Avada entries when the site has Avada forms but no synchronized data
     let avadaBackfillAttempted = false;
-    let avadaBackfillEntries = 0;
-    let avadaBackfillError: string | null = null;
-    let avadaBackfillRouteMissing = false;
+    const avadaBackfillEntries = 0;
+    const avadaBackfillError: string | null = null;
+    const avadaBackfillRouteMissing = false;
 
     let avadaActiveLeadCount = 0;
     let avadaRawEventCount = 0;
@@ -872,7 +871,7 @@ Deno.serve(async (req) => {
         );
 
         const formsWithZeroLeads = leadCountsByForm.filter((form) => form.activeLeadCount === 0);
-        let shouldBackfill = !!force_backfill || wpSyncFailed || formsWithZeroLeads.length > 0;
+        const shouldBackfill = !!force_backfill || wpSyncFailed || formsWithZeroLeads.length > 0;
 
         if (shouldBackfill) {
           const minimumBackfillVersion = "1.6.1";
@@ -980,7 +979,10 @@ Deno.serve(async (req) => {
             ]);
 
             try {
-              (globalThis as any).EdgeRuntime?.waitUntil?.(backfillPromise);
+              const edgeRuntime = globalThis as typeof globalThis & {
+                EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void };
+              };
+              edgeRuntime.EdgeRuntime?.waitUntil?.(backfillPromise);
             } catch {
               backfillPromise.catch((e) => console.error("Backfill background error:", e));
             }

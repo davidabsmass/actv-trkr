@@ -4,12 +4,17 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.8.3
+Stable tag: 1.8.8
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.8.8 =
+* FIX: Avada entry discovery now scans ALL existing submission tables and merges results (previously only used the first table found).
+* FIX: Backfill entries endpoint now correctly reads request body parameters (fixes cursor/resume not working).
+* FIX: Avada forms are now included in the backfill jobs list for full historical imports.
 
 = 1.8.3 =
 * SAFETY: Disables shutdown fallback polling so visitor and form requests are never delayed by plugin housekeeping.

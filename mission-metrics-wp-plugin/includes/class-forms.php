@@ -471,26 +471,31 @@ class MM_Forms {
 				$wpdb->prefix . 'avada_form_submissions',
 			);
 
-				$table = null;
+				// Find ALL existing tables (not just the first one)
+				$existing_tables = array();
 				foreach ( $candidate_tables as $candidate_table ) {
 					if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $candidate_table ) ) === $candidate_table ) {
-						$table = $candidate_table;
-						break;
+						$existing_tables[] = $candidate_table;
 					}
 				}
 
-				if ( ! $table ) {
+				if ( empty( $existing_tables ) ) {
 					error_log( '[MissionMetrics] Avada entry sync: no submission table found. Tried: ' . implode( ', ', $candidate_tables ) );
 					self::$last_avada_strategy = 'no_table';
 					return null;
 				}
 
+				// Merge results from ALL existing tables
+				$all_rows = array();
+				$all_strategies = array();
+
+				foreach ( $existing_tables as $table ) {
+
 				// Detect columns dynamically
 				$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
 				if ( ! is_array( $columns ) || empty( $columns ) ) {
 					error_log( '[MissionMetrics] Avada entry sync: could not read columns from ' . $table );
-					self::$last_avada_strategy = 'no_columns';
-					return null;
+					continue; // skip this table, try next
 				}
 
 				// Detect timestamp column
@@ -774,24 +779,41 @@ class MM_Forms {
 					}
 				}
 
-			// No global fallback — safe failure
-			self::$last_avada_strategy = $strategy_used;
-
-			if ( ! is_array( $rows ) || empty( $rows ) ) {
-				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
-				return array();
-			}
-
-				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
-
-				$result = array();
+			// Merge rows from this table into all_rows
+			if ( is_array( $rows ) && ! empty( $rows ) ) {
+				$all_strategies[] = $table . ':' . $strategy_used;
 				foreach ( $rows as $row ) {
-					$result[] = array(
+					$key = 'avada_db_' . $row->id . '_' . md5( $table );
+					$all_rows[ $key ] = array(
 						'id' => 'avada_db_' . $row->id,
 						'ts' => $row->ts,
 					);
 				}
-				return $result;
+				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
+			} else {
+				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
+			}
+
+			} // end foreach $existing_tables
+
+			self::$last_avada_strategy = implode( '+', $all_strategies ) ?: 'none';
+
+			if ( empty( $all_rows ) ) {
+				return array();
+			}
+
+			// Deduplicate by entry ID (same entry may appear in multiple tables)
+			$deduped = array();
+			$seen_ids = array();
+			foreach ( $all_rows as $entry ) {
+				if ( ! isset( $seen_ids[ $entry['id'] ] ) ) {
+					$seen_ids[ $entry['id'] ] = true;
+					$deduped[] = $entry;
+				}
+			}
+
+			error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' — total merged ' . count( $deduped ) . ' entries from ' . count( $existing_tables ) . ' tables' );
+			return $deduped;
 
 			case 'ninja_forms':
 				// Ninja Forms stores submissions in nf3_objects table (type = 'submission')
@@ -2266,6 +2288,7 @@ class MM_Forms {
 	public static function handle_rest_backfill_entries( $request ) {
 		// Auth already verified by permission_callback
 		$opts = MM_Settings::get();
+		$body = $request->get_json_params();
 
 		$domain    = wp_parse_url( home_url(), PHP_URL_HOST );
 		$page_size = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;
@@ -2407,6 +2430,24 @@ class MM_Forms {
 						'form'     => $form,
 					);
 				}
+			}
+		}
+
+		// Avada / Fusion Forms
+		$avada_forms = get_posts( array(
+			'post_type'      => 'fusion_form',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		) );
+		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
+			foreach ( $avada_forms as $form_post_id ) {
+				$title = get_the_title( $form_post_id ) ?: 'Avada Form';
+				$jobs[] = array(
+					'provider' => 'avada',
+					'form_id'  => (string) $form_post_id,
+					'form'     => array( 'id' => $form_post_id, 'title' => $title ),
+				);
 			}
 		}
 

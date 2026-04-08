@@ -463,11 +463,13 @@ class MM_Forms {
 		case 'avada':
 				// Avada stores submissions in fusion_form_submissions (or variant table names).
 				// v1.3.8: Expanded multi-strategy discovery with diagnostics.
-				$candidate_tables = array(
-					$wpdb->prefix . 'fusion_form_submissions',
-					$wpdb->prefix . 'fusionbuilder_form_submissions',
-					$wpdb->prefix . 'avada_form_submissions',
-				);
+			$candidate_tables = array(
+				$wpdb->prefix . 'fusion_form_submissions',
+				$wpdb->prefix . 'fusion_form_db_entries',
+				$wpdb->prefix . 'fusion_form_submission_data',
+				$wpdb->prefix . 'fusionbuilder_form_submissions',
+				$wpdb->prefix . 'avada_form_submissions',
+			);
 
 				$table = null;
 				foreach ( $candidate_tables as $candidate_table ) {

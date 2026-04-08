@@ -922,20 +922,40 @@ class MM_Forms {
 
 	/**
 	 * Detect Avada form references in raw shortcode markup or encoded builder JSON.
+	 * Memory-safe: avoids duplicating large post content strings.
 	 */
 	private static function content_has_avada_form_reference( $content, $form_id ) {
-		$form_id = preg_quote( (string) $form_id, '/' );
-		$candidates = array_filter( array_unique( array(
-			(string) $content,
-			wp_specialchars_decode( (string) $content, ENT_QUOTES ),
-			html_entity_decode( (string) $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
-			stripslashes( (string) $content ),
-		) ) );
+		if ( ! is_string( $content ) || $content === '' ) return false;
 
-		foreach ( $candidates as $candidate ) {
-			if ( preg_match( '/form_post_id\s*=\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
-			if ( preg_match( '/form_post_id\s*:\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
-			if ( preg_match( '/\[fusion_form[^\]]*form_post_id\s*=\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
+		$form_id_escaped = preg_quote( (string) $form_id, '/' );
+
+		// Check original content first (covers most cases)
+		$patterns = array(
+			'/form_post_id\s*=\s*["\']' . $form_id_escaped . '["\']/i',
+			'/form_post_id\s*:\s*["\']' . $form_id_escaped . '["\']/i',
+			'/\[fusion_form[^\]]*form_post_id\s*=\s*["\']' . $form_id_escaped . '["\']/i',
+		);
+
+		foreach ( $patterns as $pattern ) {
+			if ( preg_match( $pattern, $content ) ) return true;
+		}
+
+		// Only decode if content contains HTML entities (avoid unnecessary copies)
+		if ( strpos( $content, '&' ) !== false || strpos( $content, '\\' ) !== false ) {
+			// Decode once into a temporary variable, check, then free
+			$decoded = wp_specialchars_decode( $content, ENT_QUOTES );
+			if ( $decoded !== $content ) {
+				foreach ( $patterns as $pattern ) {
+					if ( preg_match( $pattern, $decoded ) ) return true;
+				}
+			}
+			unset( $decoded );
+
+			$decoded = html_entity_decode( $content, ENT_QUOTES, 'UTF-8' );
+			foreach ( $patterns as $pattern ) {
+				if ( preg_match( $pattern, $decoded ) ) return true;
+			}
+			unset( $decoded );
 		}
 
 		return false;

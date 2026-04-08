@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, Layers, Timer, BarChart3 } from "lucide-react";
+import { Clock, Layers, Timer, BarChart3, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 interface EngagementMetrics {
   avgTimeOnPage: number;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, Clock, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowUpRight, Clock, ChevronUp, ChevronDown, Info } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 interface PageData {
   path: string;

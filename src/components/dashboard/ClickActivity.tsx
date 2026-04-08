@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { MousePointerClick, Download, ExternalLink, Phone, Mail } from "lucide-react";
+import { MousePointerClick, Download, ExternalLink, Phone, Mail, Info } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { format } from "date-fns";

@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Info } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 interface FunnelStep {
   label: string;

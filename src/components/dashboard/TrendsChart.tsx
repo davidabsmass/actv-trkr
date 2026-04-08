@@ -3,7 +3,9 @@ import {
 } from "recharts";
 import { useState, useMemo } from "react";
 import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
+import { Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 interface TrendsChartProps {
   data: Array<{ date: string; dateLabel: string; sessions: number; leads: number; cvr: number; }>;

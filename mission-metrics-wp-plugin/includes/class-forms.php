@@ -779,24 +779,41 @@ class MM_Forms {
 					}
 				}
 
-			// No global fallback — safe failure
-			self::$last_avada_strategy = $strategy_used;
-
-			if ( ! is_array( $rows ) || empty( $rows ) ) {
-				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
-				return array();
-			}
-
-				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
-
-				$result = array();
+			// Merge rows from this table into all_rows
+			if ( is_array( $rows ) && ! empty( $rows ) ) {
+				$all_strategies[] = $table . ':' . $strategy_used;
 				foreach ( $rows as $row ) {
-					$result[] = array(
+					$key = 'avada_db_' . $row->id . '_' . md5( $table );
+					$all_rows[ $key ] = array(
 						'id' => 'avada_db_' . $row->id,
 						'ts' => $row->ts,
 					);
 				}
-				return $result;
+				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
+			} else {
+				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
+			}
+
+			} // end foreach $existing_tables
+
+			self::$last_avada_strategy = implode( '+', $all_strategies ) ?: 'none';
+
+			if ( empty( $all_rows ) ) {
+				return array();
+			}
+
+			// Deduplicate by entry ID (same entry may appear in multiple tables)
+			$deduped = array();
+			$seen_ids = array();
+			foreach ( $all_rows as $entry ) {
+				if ( ! isset( $seen_ids[ $entry['id'] ] ) ) {
+					$seen_ids[ $entry['id'] ] = true;
+					$deduped[] = $entry;
+				}
+			}
+
+			error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' — total merged ' . count( $deduped ) . ' entries from ' . count( $existing_tables ) . ' tables' );
+			return $deduped;
 
 			case 'ninja_forms':
 				// Ninja Forms stores submissions in nf3_objects table (type = 'submission')

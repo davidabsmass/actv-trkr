@@ -42,7 +42,7 @@ export function ConversionBreakdown({ orgId, startDate, endDate }: Props) {
           <Target className="h-4 w-4 text-primary" />
           {t("goals.conversionBreakdown")}
         </h3>
-        <IconTooltip label={t("goals.cvrTooltip")}>
+        <IconTooltip label="Overall conversion rate, form submission rate, and goal completion rate — broken down by goal type.">
           <Info className="h-3.5 w-3.5 text-muted-foreground" />
         </IconTooltip>
       </div>

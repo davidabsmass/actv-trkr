@@ -21,6 +21,19 @@ type KnownFormMapping = {
   form_title?: string | null;
 };
 
+type AvadaLeadPageUrlRow = {
+  form_id: string;
+  page_url: string | null;
+  submitted_at: string;
+};
+
+type AvadaRawEventRow = {
+  form_id: string;
+  payload: unknown;
+  context: unknown;
+  received_at: string;
+};
+
 function parseVersion(version: string | null | undefined): [number, number, number] {
   if (!version) return [0, 0, 0];
   const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
@@ -77,6 +90,121 @@ function detectFormInHtml(html: string, provider: string, externalFormId: string
     default:
       return /<form[^>]*>/i.test(html);
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function addPageUrlCandidate(
+  bucket: Map<string, { score: number; lastSeen: number }>,
+  rawUrl: string | null | undefined,
+  score: number,
+  seenAt?: string | null,
+) {
+  const normalized = normalizePageUrl(rawUrl);
+  if (!normalized) return;
+
+  const existing = bucket.get(normalized);
+  const lastSeen = seenAt ? Date.parse(seenAt) || 0 : 0;
+
+  bucket.set(normalized, {
+    score: (existing?.score || 0) + score,
+    lastSeen: Math.max(existing?.lastSeen || 0, lastSeen),
+  });
+}
+
+function extractRawEventUrlCandidates(row: Pick<AvadaRawEventRow, "payload" | "context">): string[] {
+  const payload = asRecord(row.payload);
+  const payloadEntry = asRecord(payload?.entry);
+  const payloadContext = asRecord(payload?.context);
+  const context = asRecord(row.context);
+
+  const rawCandidates = [
+    payloadEntry?.source_url,
+    payload?.source_url,
+    payloadContext?.page_url,
+    payloadContext?.referrer,
+    context?.page_url,
+    context?.referrer,
+  ];
+
+  return Array.from(new Set(
+    rawCandidates
+      .map((value) => (typeof value === "string" ? normalizePageUrl(value) : null))
+      .filter((value): value is string => Boolean(value)),
+  ));
+}
+
+async function buildKnownAvadaFormMappings(
+  supabase: ReturnType<typeof createClient>,
+  orgId: string,
+  siteId: string,
+  avadaForms: Array<Pick<FormRow, "id" | "name" | "external_form_id" | "page_url">>,
+): Promise<KnownFormMapping[]> {
+  if (!avadaForms.length) return [];
+
+  return await Promise.all(avadaForms.map(async (form) => {
+    const [leadUrlsResult, rawEventsResult] = await Promise.all([
+      supabase
+        .from("leads")
+        .select("form_id, page_url, submitted_at")
+        .eq("org_id", orgId)
+        .eq("site_id", siteId)
+        .eq("form_id", form.id)
+        .not("page_url", "is", null)
+        .order("submitted_at", { ascending: false })
+        .limit(25),
+      supabase
+        .from("lead_events_raw")
+        .select("form_id, payload, context, received_at")
+        .eq("org_id", orgId)
+        .eq("site_id", siteId)
+        .eq("form_id", form.id)
+        .order("received_at", { ascending: false })
+        .limit(25),
+    ]);
+
+    if (leadUrlsResult.error) throw leadUrlsResult.error;
+    if (rawEventsResult.error) throw rawEventsResult.error;
+
+    const candidateScores = new Map<string, { score: number; lastSeen: number }>();
+
+    for (const row of (leadUrlsResult.data || []) as AvadaLeadPageUrlRow[]) {
+      addPageUrlCandidate(candidateScores, row.page_url, 5, row.submitted_at);
+    }
+
+    for (const row of (rawEventsResult.data || []) as AvadaRawEventRow[]) {
+      for (const url of extractRawEventUrlCandidates(row)) {
+        addPageUrlCandidate(candidateScores, url, 3, row.received_at);
+      }
+    }
+
+    addPageUrlCandidate(candidateScores, form.page_url, 1);
+
+    const orderedCandidates = [...candidateScores.entries()]
+      .sort((a, b) => {
+        const scoreDiff = b[1].score - a[1].score;
+        if (scoreDiff !== 0) return scoreDiff;
+
+        const recencyDiff = b[1].lastSeen - a[1].lastSeen;
+        if (recencyDiff !== 0) return recencyDiff;
+
+        return a[0].localeCompare(b[0]);
+      })
+      .map(([url]) => url)
+      .slice(0, 10);
+
+    return {
+      form_id: form.id,
+      external_form_id: form.external_form_id,
+      form_title: form.name,
+      page_url: orderedCandidates[0] || normalizePageUrl(form.page_url),
+      page_url_candidates: orderedCandidates,
+    };
+  }));
 }
 
 async function hydrateMissingPageUrls(

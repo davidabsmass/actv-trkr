@@ -1758,6 +1758,133 @@ class MM_Forms {
 	// ── Avada Backfill ─────────────────────────────────────────────
 
 	/**
+	 * Return all existing Avada submission tables that may hold primary entry rows.
+	 */
+	private static function get_avada_submission_tables() {
+		global $wpdb;
+
+		$candidate_tables = array(
+			$wpdb->prefix . 'fusion_form_submissions',
+			$wpdb->prefix . 'fusion_form_db_entries',
+			$wpdb->prefix . 'fusion_form_submission_data',
+			$wpdb->prefix . 'fusionbuilder_form_submissions',
+			$wpdb->prefix . 'avada_form_submissions',
+		);
+
+		$existing_tables = array();
+		foreach ( $candidate_tables as $candidate_table ) {
+			if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $candidate_table ) ) === $candidate_table ) {
+				$existing_tables[] = $candidate_table;
+			}
+		}
+
+		return $existing_tables;
+	}
+
+	/**
+	 * Detect the best timestamp column for an Avada submissions table.
+	 */
+	private static function get_avada_timestamp_column( $columns ) {
+		foreach ( array( 'date_time', 'created_at', 'submitted_at', 'date', 'created', 'updated_at' ) as $tc ) {
+			if ( in_array( $tc, $columns, true ) ) {
+				return $tc;
+			}
+		}
+
+		return 'id';
+	}
+
+	/**
+	 * Load candidate Avada submission rows for a list of numeric DB IDs from all known tables.
+	 */
+	private static function get_avada_row_candidates_by_id( $numeric_ids, $existing_tables ) {
+		global $wpdb;
+
+		$rows_by_id = array();
+		if ( empty( $numeric_ids ) || empty( $existing_tables ) ) {
+			return $rows_by_id;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $numeric_ids ), '%d' ) );
+
+		foreach ( $existing_tables as $table ) {
+			$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+			if ( ! is_array( $columns ) || empty( $columns ) || ! in_array( 'id', $columns, true ) ) {
+				continue;
+			}
+
+			$query = $wpdb->prepare( "SELECT * FROM {$table} WHERE id IN ({$placeholders}) ORDER BY id ASC", $numeric_ids );
+			$rows = $wpdb->get_results( $query );
+			if ( ! is_array( $rows ) || empty( $rows ) ) {
+				continue;
+			}
+
+			$ts_col = self::get_avada_timestamp_column( $columns );
+			$has_submission_col = in_array( 'submission', $columns, true );
+			$has_source_url = in_array( 'source_url', $columns, true );
+
+			foreach ( $rows as $row ) {
+				$rid = isset( $row->id ) ? (string) $row->id : '';
+				if ( $rid === '' ) {
+					continue;
+				}
+
+				if ( ! isset( $rows_by_id[ $rid ] ) ) {
+					$rows_by_id[ $rid ] = array();
+				}
+
+				$rows_by_id[ $rid ][] = array(
+					'table'              => $table,
+					'columns'            => $columns,
+					'ts_col'             => $ts_col,
+					'has_submission_col' => $has_submission_col,
+					'has_source_url'     => $has_source_url,
+					'row'                => $row,
+				);
+			}
+		}
+
+		return $rows_by_id;
+	}
+
+	/**
+	 * Pick the richest Avada row candidate for a submission ID.
+	 */
+	private static function select_best_avada_row_candidate( $candidates ) {
+		$best = null;
+		$best_score = -1;
+
+		if ( ! is_array( $candidates ) || empty( $candidates ) ) {
+			return null;
+		}
+
+		foreach ( $candidates as $candidate ) {
+			$row = $candidate['row'] ?? null;
+			$columns = $candidate['columns'] ?? array();
+			$has_submission_col = ! empty( $candidate['has_submission_col'] );
+			$fields = $row ? self::extract_avada_backfill_fields( $row, $columns, $has_submission_col ) : array();
+			$score = count( $fields ) * 10;
+
+			if ( ! empty( $candidate['has_source_url'] ) && $row && ! empty( $row->source_url ) ) {
+				$score += 3;
+			}
+
+			$ts_col = $candidate['ts_col'] ?? null;
+			if ( $row && $ts_col && isset( $row->$ts_col ) && ! empty( $row->$ts_col ) ) {
+				$score += 1;
+			}
+
+			if ( $best === null || $score > $best_score ) {
+				$candidate['fields'] = $fields;
+				$best = $candidate;
+				$best_score = $score;
+			}
+		}
+
+		return $best;
+	}
+
+	/**
 	 * REST endpoint to export all Avada form entries with stable avada_db_* IDs
 	 * so the dashboard can reimport historical data after a reset.
 	 */
@@ -1778,35 +1905,11 @@ class MM_Forms {
 			return new \WP_REST_Response( array( 'ok' => true, 'entries' => 0 ), 200 );
 		}
 
-		$candidate_tables = array(
-			$wpdb->prefix . 'fusion_form_submissions',
-			$wpdb->prefix . 'fusionbuilder_form_submissions',
-			$wpdb->prefix . 'avada_form_submissions',
-		);
+		$existing_tables = self::get_avada_submission_tables();
 
-		$table = null;
-		foreach ( $candidate_tables as $ct ) {
-			if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $ct ) ) === $ct ) {
-				$table = $ct;
-				break;
-			}
-		}
-
-		if ( ! $table ) {
+		if ( empty( $existing_tables ) ) {
 			return new \WP_REST_Response( array( 'ok' => true, 'entries' => 0, 'error' => 'No Avada submission table found' ), 200 );
 		}
-
-		$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
-		$ts_col = 'id';
-		foreach ( array( 'date_time', 'created_at', 'submitted_at', 'date', 'created' ) as $tc ) {
-			if ( in_array( $tc, $columns, true ) ) {
-				$ts_col = $tc;
-				break;
-			}
-		}
-
-		$has_submission_col = in_array( 'submission', $columns, true );
-		$has_source_url     = in_array( 'source_url', $columns, true );
 		$opts = MM_Settings::get();
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
 
@@ -1843,17 +1946,7 @@ class MM_Forms {
 			}
 			$numeric_ids = array_values( array_unique( $numeric_ids ) );
 
-			$rows_by_id = array();
-			if ( ! empty( $numeric_ids ) ) {
-				$placeholders = implode( ',', array_fill( 0, count( $numeric_ids ), '%d' ) );
-				$query = $wpdb->prepare( "SELECT * FROM {$table} WHERE id IN ({$placeholders}) ORDER BY id ASC", $numeric_ids );
-				$rows = $wpdb->get_results( $query );
-				if ( is_array( $rows ) ) {
-					foreach ( $rows as $row ) {
-						$rows_by_id[ (string) $row->id ] = $row;
-					}
-				}
-			}
+			$row_candidates_by_id = self::get_avada_row_candidates_by_id( $numeric_ids, $existing_tables );
 
 			foreach ( $entry_refs as $entry_ref ) {
 				$entry_id = null;
@@ -1869,15 +1962,17 @@ class MM_Forms {
 				if ( ! $entry_id ) continue;
 
 				$rid = intval( str_replace( 'avada_db_', '', $entry_id ) );
-				$row = ( $rid > 0 && isset( $rows_by_id[ (string) $rid ] ) ) ? $rows_by_id[ (string) $rid ] : null;
-				if ( ! $submitted_at && $row && isset( $row->$ts_col ) ) {
+				$best_candidate = ( $rid > 0 && isset( $row_candidates_by_id[ (string) $rid ] ) )
+					? self::select_best_avada_row_candidate( $row_candidates_by_id[ (string) $rid ] )
+					: null;
+				$row = $best_candidate['row'] ?? null;
+				$ts_col = $best_candidate['ts_col'] ?? null;
+				$has_source_url = ! empty( $best_candidate['has_source_url'] );
+				if ( ! $submitted_at && $row && $ts_col && isset( $row->$ts_col ) ) {
 					$submitted_at = $row->$ts_col;
 				}
 
-		$fields = array();
-				if ( $row ) {
-					$fields = self::extract_avada_backfill_fields( $row, $columns, $has_submission_col );
-				}
+				$fields = $best_candidate['fields'] ?? array();
 
 				// ALWAYS query Avada secondary tables to fill in any fields missing from primary extraction.
 				// Some fields (e.g. Phone) are stored only in secondary tables like wp_fusion_form_submission_data.

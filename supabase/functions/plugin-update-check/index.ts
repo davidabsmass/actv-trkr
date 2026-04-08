@@ -12,6 +12,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.8.9
+- FIX: Avada backfill now reads matching entry rows from ALL supported submission tables instead of only the first detected table
+- FIX: Prevents missing newer Avada entries on sites where submissions are split across multiple Avada tables
+
 ## 1.8.8
 - FIX: Avada multi-table discovery now merges entries from ALL candidate tables instead of stopping at first match
 - FIX: Backfill REST handler variable scope error ($body undefined) that broke cursor/resume parameters

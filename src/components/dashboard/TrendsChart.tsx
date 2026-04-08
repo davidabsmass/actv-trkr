@@ -3,7 +3,9 @@ import {
 } from "recharts";
 import { useState, useMemo } from "react";
 import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
+import { Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 interface TrendsChartProps {
   data: Array<{ date: string; dateLabel: string; sessions: number; leads: number; cvr: number; }>;
@@ -68,7 +70,12 @@ export function TrendsChart({ data }: TrendsChartProps) {
   return (
     <div className="glass-card p-5 animate-slide-up">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <h3 className="text-sm font-semibold text-foreground">{t("dashboard.trends")}</h3>
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          {t("dashboard.trends")}
+          <IconTooltip label="Daily sessions, leads, and pageviews plotted over time to reveal traffic patterns.">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+          </IconTooltip>
+        </h3>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 bg-muted rounded-md p-0.5 overflow-x-auto">
             {granularityOptions.map((opt) => (

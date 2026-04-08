@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, Clock, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowUpRight, Clock, ChevronUp, ChevronDown, Info } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 interface PageData {
   path: string;
@@ -108,7 +109,12 @@ export function ContentPerformance({ pages }: { pages: PageData[] }) {
   const { t } = useTranslation();
   return (
     <div className="glass-card p-5 animate-slide-up">
-      <h3 className="text-sm font-semibold text-foreground mb-4">{t("content.topPages")}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground">{t("content.topPages")}</h3>
+        <IconTooltip label="Your highest-traffic pages ranked by sessions, with lead counts and conversion rates.">
+          <Info className="h-3.5 w-3.5 text-muted-foreground" />
+        </IconTooltip>
+      </div>
       <SortableTable rows={pages} defaultSort="sessions" />
     </div>
   );

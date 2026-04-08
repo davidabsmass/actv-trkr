@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Info } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 
 interface FunnelStep {
   label: string;
@@ -31,7 +33,12 @@ export function FunnelView({ totalPageviews, formPageViews, totalLeads, locked }
 
   return (
     <div className="glass-card p-6">
-      <h3 className="text-sm font-semibold text-foreground mb-5">{t("funnel.title")}</h3>
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-sm font-semibold text-foreground">{t("funnel.title")}</h3>
+        <IconTooltip label="Visualizes the visitor journey from pageview to form submission to lead.">
+          <Info className="h-3.5 w-3.5 text-muted-foreground" />
+        </IconTooltip>
+      </div>
       <div className="space-y-3">
         {steps.map((step, i) => {
           const widthPct = Math.max((step.value / maxVal) * 100, 8);

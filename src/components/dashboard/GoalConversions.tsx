@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Target, Plus, ChevronDown, ChevronRight, MapPin, Clock } from "lucide-react";
+import { Target, Plus, ChevronDown, ChevronRight, MapPin, Clock, Info } from "lucide-react";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { GOAL_TYPES, type ConversionGoal } from "@/hooks/use-goals";
@@ -349,6 +350,9 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           <Target className="h-4 w-4 text-primary" />
           {t("goals.goalCompletions")}
         </h3>
+        <IconTooltip label="Tracks how many times visitors complete your defined goals — page visits, button clicks, form submissions, etc.">
+          <Info className="h-3.5 w-3.5 text-muted-foreground" />
+        </IconTooltip>
       </div>
       <p className="text-xs text-muted-foreground mb-4">No goals configured yet. Create a goal to start tracking conversions.</p>
       {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}
@@ -364,7 +368,12 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           <Target className="h-4 w-4 text-primary" />
           {t("goals.goalCompletions")}
         </h3>
-        <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
+        <div className="flex items-center gap-2">
+          <IconTooltip label="Tracks how many times visitors complete your defined goals — page visits, button clicks, form submissions, etc.">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+          </IconTooltip>
+          <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
+        </div>
         {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}
       </div>
 

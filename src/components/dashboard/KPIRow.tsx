@@ -11,7 +11,7 @@ interface KPICardProps {
 }
 
 function humanizeDelta(delta: number | null, t: (key: string) => string): { text: string; className: string } {
-  if (delta === null) return { text: "Collecting data…", className: "text-muted-foreground italic" };
+  if (delta === null) return { text: "—", className: "text-muted-foreground" };
   const pct = Math.abs(delta * 100);
   if (pct < 1) return { text: t("dashboard.noChange"), className: "kpi-neutral" };
   if (delta > 0.15) return { text: t("dashboard.strongGrowth"), className: "kpi-up" };

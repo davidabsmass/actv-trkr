@@ -63,7 +63,7 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
           </>
         )}
         {trend === 0 && <Minus className="h-3 w-3 kpi-neutral" />}
-        {trend === null && <span className="text-xs text-muted-foreground italic">Collecting data…</span>}
+        {trend === null && <span className="text-xs text-muted-foreground">—</span>}
         {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
       </div>
     </div>

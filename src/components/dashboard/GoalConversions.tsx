@@ -368,7 +368,12 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           <Target className="h-4 w-4 text-primary" />
           {t("goals.goalCompletions")}
         </h3>
-        <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
+        <div className="flex items-center gap-2">
+          <IconTooltip label="Tracks how many times visitors complete your defined goals — page visits, button clicks, form submissions, etc.">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+          </IconTooltip>
+          <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
+        </div>
         {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}
       </div>
 

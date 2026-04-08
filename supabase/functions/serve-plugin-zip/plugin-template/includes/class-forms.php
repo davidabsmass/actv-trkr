@@ -965,7 +965,7 @@ class MM_Forms {
 	 * Look up which published page/post contains shortcodes or blocks for each form.
 	 * Appends 'page_url' to each discovered form entry.
 	 */
-	private static function enrich_with_page_urls( $discovered, $known_form_mappings = array() ) {
+	private static function enrich_with_page_urls( $discovered, $known_form_mappings = array(), $lightweight = false ) {
 		// Build shortcode patterns per provider + form_id
 		$patterns = array();
 		foreach ( $discovered as $idx => $form ) {
@@ -1041,24 +1041,28 @@ class MM_Forms {
 			}
 		}
 
-		foreach ( $discovered as $idx => $form ) {
-			if ( $form['provider'] !== 'avada' ) continue;
+		// In lightweight mode (admin_init), skip the heavy Avada content scanning loop
+		// to prevent memory exhaustion on sites with large Avada builder pages.
+		if ( ! $lightweight ) {
+			foreach ( $discovered as $idx => $form ) {
+				if ( $form['provider'] !== 'avada' ) continue;
 
-			$fid = (string) ( $form['form_id'] ?? '' );
-			$matched_urls = self::build_page_url_candidates( $form['page_url'] ?? null, $form['page_url_candidates'] ?? array() );
+				$fid = (string) ( $form['form_id'] ?? '' );
+				$matched_urls = self::build_page_url_candidates( $form['page_url'] ?? null, $form['page_url_candidates'] ?? array() );
 
-			foreach ( $posts as $post_id ) {
-				$content = get_post_field( 'post_content', $post_id );
-				if ( empty( $content ) ) continue;
-				if ( self::content_has_avada_form_reference( $content, $fid ) ) {
-					$matched_urls[] = get_permalink( $post_id );
+				foreach ( $posts as $post_id ) {
+					$content = get_post_field( 'post_content', $post_id );
+					if ( empty( $content ) ) continue;
+					if ( self::content_has_avada_form_reference( $content, $fid ) ) {
+						$matched_urls[] = get_permalink( $post_id );
+					}
 				}
-			}
 
-			$matched_urls = self::build_page_url_candidates( null, $matched_urls );
-			if ( ! empty( $matched_urls ) ) {
-				$discovered[ $idx ]['page_url'] = $matched_urls[0];
-				$discovered[ $idx ]['page_url_candidates'] = $matched_urls;
+				$matched_urls = self::build_page_url_candidates( null, $matched_urls );
+				if ( ! empty( $matched_urls ) ) {
+					$discovered[ $idx ]['page_url'] = $matched_urls[0];
+					$discovered[ $idx ]['page_url_candidates'] = $matched_urls;
+				}
 			}
 		}
 

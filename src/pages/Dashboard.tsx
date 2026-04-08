@@ -71,7 +71,7 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
 }
 
 function pctChange(curr: number, prev: number): number | null {
-  if (prev === 0 && curr === 0) return null; // no data at all
+  if (prev === 0 && curr === 0) return 0; // no change
   if (prev === 0) return null; // no baseline — don't show misleading spike
   return ((curr - prev) / prev) * 100;
 }
@@ -401,7 +401,9 @@ const Dashboard = () => {
     if (!orgCreatedAt) return Infinity;
     return Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24));
   }, [orgCreatedAt]);
-  const orgTooNewForComparison = orgAgeDays < days * 2;
+  // Only suppress comparisons if the org is truly too new AND the prior period has zero data
+  const prevHasData = prevPeriodData && (prevPeriodData.totalSessions > 0 || prevPeriodData.totalLeads > 0);
+  const orgTooNewForComparison = orgAgeDays < days * 2 && !prevHasData;
 
   const isLoading = !realtimeData;
 

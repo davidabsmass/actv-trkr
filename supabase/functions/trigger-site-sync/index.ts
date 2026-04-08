@@ -661,7 +661,7 @@ Deno.serve(async (req) => {
     const shouldAutoBackfillAvada =
       hasAvadaForms &&
       avadaFormIds.length > 0 &&
-      (requiresAvadaReset || (avadaActiveLeadCount === 0 && avadaRawEventCount === 0) || avadaLeadsWithEmptyFields > 0);
+      (!!force_backfill || requiresAvadaReset || (avadaActiveLeadCount === 0 && avadaRawEventCount === 0) || avadaLeadsWithEmptyFields > 0);
 
     if (shouldAutoBackfillAvada) {
       avadaBackfillAttempted = true;

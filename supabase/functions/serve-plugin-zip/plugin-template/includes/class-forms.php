@@ -535,6 +535,27 @@ class MM_Forms {
 					}
 				}
 
+				// Layer 1.5: Direct source_url column match with form's page_url
+				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $page_url ) && in_array( 'source_url', $columns, true ) ) {
+					$normalized = esc_url_raw( $page_url );
+					$url_candidates = array_values( array_unique( array_filter( array(
+						$normalized,
+						rtrim( $normalized, '/' ),
+						trailingslashit( $normalized ),
+					) ) ) );
+					foreach ( $url_candidates as $url_candidate ) {
+						$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE source_url LIKE %s ORDER BY id DESC LIMIT 5000",
+							$like
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'source_url:page_url';
+							break;
+						}
+					}
+				}
+
 				// Layer 2: Search blob/payload columns for form_id or page_url markers
 				if ( ( ! is_array( $rows ) || empty( $rows ) ) ) {
 					foreach ( $blob_candidates as $bc ) {
@@ -1762,6 +1783,7 @@ class MM_Forms {
 
 		$has_submission_col = in_array( 'submission', $columns, true );
 		$has_source_url     = in_array( 'source_url', $columns, true );
+		$opts = MM_Settings::get();
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-form';
 
 		$discovered = array();

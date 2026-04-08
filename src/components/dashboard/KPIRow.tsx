@@ -56,10 +56,10 @@ export function KPICard({ label, value, delta, suffix, subtext }: KPICardProps) 
 
 interface KPIRowProps {
   kpis: {
-    sessions: { value: number; delta: number; label: string };
-    leads: { value: number; delta: number; label: string };
-    pageviews: { value: number; delta: number; label: string };
-    cvr: { value: number; delta: number; label: string };
+    sessions: { value: number; delta: number | null; label: string };
+    leads: { value: number; delta: number | null; label: string };
+    pageviews: { value: number; delta: number | null; label: string };
+    cvr: { value: number; delta: number | null; label: string };
   };
   totalSessions?: number;
   totalLeads?: number;

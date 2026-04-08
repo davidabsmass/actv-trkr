@@ -22,6 +22,12 @@ import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 
 const Reports = lazy(() => import("./Reports"));
 
+function pctDelta(curr: number, prev: number): number | null {
+  if (prev === 0 && curr === 0) return 0;
+  if (prev === 0) return null;
+  return (curr - prev) / prev;
+}
+
 const Performance = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,15 +39,26 @@ const Performance = () => {
   const { settings } = useSiteSettings();
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
 
+  const rangeDays = days ?? 30;
+
   const endDate = customRange
     ? format(startOfDay(customRange.to), "yyyy-MM-dd")
     : format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = customRange
     ? format(startOfDay(customRange.from), "yyyy-MM-dd")
-    : format(subDays(startOfDay(new Date()), days ?? 30), "yyyy-MM-dd");
+    : format(subDays(startOfDay(new Date()), rangeDays), "yyyy-MM-dd");
+
+  // Previous period for comparison
+  const prevEndDate = customRange
+    ? format(startOfDay(customRange.from), "yyyy-MM-dd")
+    : format(subDays(startOfDay(new Date()), rangeDays), "yyyy-MM-dd");
+  const prevStartDate = customRange
+    ? format(subDays(startOfDay(customRange.from), Math.ceil((customRange.to.getTime() - customRange.from.getTime()) / (1000 * 60 * 60 * 24))), "yyyy-MM-dd")
+    : format(subDays(startOfDay(new Date()), rangeDays * 2), "yyyy-MM-dd");
 
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
   const { data: overviewData } = useDashboardOverview(orgId, startDate, endDate);
+  const { data: prevOverviewData } = useDashboardOverview(orgId, prevStartDate, prevEndDate);
 
   const isLoading = !realtimeData;
 
@@ -64,6 +81,12 @@ const Performance = () => {
     const { dailyMap, sources, campaigns, pages } = realtimeData;
     const cvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
 
+    // Previous period values
+    const prevSessions = prevOverviewData?.totalSessions ?? 0;
+    const prevLeads = prevOverviewData?.totalLeads ?? 0;
+    const prevPageviews = prevOverviewData?.totalPageviews ?? 0;
+    const prevCvr = prevSessions > 0 ? prevLeads / prevSessions : 0;
+
     const dailyData = Object.entries(dailyMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, vals]) => ({
@@ -73,7 +96,6 @@ const Performance = () => {
       }));
 
     const sitewideCvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
-    // Use top-quartile session count as threshold so opportunities appear with real data
     const sortedByTraffic = [...pages].sort((a, b) => b.sessions - a.sessions);
     const topQuartileIdx = Math.max(0, Math.floor(sortedByTraffic.length * 0.25));
     const sessionThreshold = sortedByTraffic.length > 0
@@ -86,14 +108,14 @@ const Performance = () => {
 
     return {
       kpis: {
-        sessions: { value: totalSessions, delta: 0, label: t("dashboard.sessions") },
-        leads: { value: totalLeads, delta: 0, label: t("dashboard.leads") },
-        pageviews: { value: totalPageviews, delta: 0, label: t("dashboard.pageviews") },
-        cvr: { value: cvr, delta: 0, label: t("dashboard.conversionRate") },
+        sessions: { value: totalSessions, delta: pctDelta(totalSessions, prevSessions) ?? 0, label: t("dashboard.sessions") },
+        leads: { value: totalLeads, delta: pctDelta(totalLeads, prevLeads) ?? 0, label: t("dashboard.leads") },
+        pageviews: { value: totalPageviews, delta: pctDelta(totalPageviews, prevPageviews) ?? 0, label: t("dashboard.pageviews") },
+        cvr: { value: cvr, delta: pctDelta(cvr, prevCvr) ?? 0, label: t("dashboard.conversionRate") },
       },
       dailyData, sources, campaigns, pages, opportunities,
     };
-  }, [isLoading, realtimeData, overviewData, t]);
+  }, [isLoading, realtimeData, overviewData, prevOverviewData, t]);
 
   const renderSections = () => {
     const sections = {

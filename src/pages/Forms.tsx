@@ -348,10 +348,15 @@ export default function Forms() {
     }
   };
   const [showArchived, setShowArchived] = useState(false);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState<number | null>(30);
+  const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
 
-  const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
-  const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
+  const endDate = customRange
+    ? format(startOfDay(customRange.to), "yyyy-MM-dd")
+    : format(startOfDay(new Date()), "yyyy-MM-dd");
+  const startDate = customRange
+    ? format(startOfDay(customRange.from), "yyyy-MM-dd")
+    : format(subDays(startOfDay(new Date()), days ?? 30), "yyyy-MM-dd");
 
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
 
@@ -671,7 +676,12 @@ export default function Forms() {
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? t("forms.syncingElapsed", { elapsed: syncElapsed }) : t("forms.syncEntries")}
           </Button>
-          <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+          <DateRangeSelector
+            selectedDays={days}
+            onDaysChange={(d) => { setDays(d); setCustomRange(null); }}
+            customRange={customRange}
+            onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
+          />
         </div>
       </div>
 

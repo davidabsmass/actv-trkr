@@ -120,17 +120,22 @@ class MM_Forms {
 
 	/**
 	 * Auto-sync forms if the cooldown has expired (every 6 hours).
+	 * Wrapped in try/catch so it NEVER crashes the WordPress admin.
 	 */
 	public static function maybe_auto_sync() {
 		if ( get_transient( 'actv_trkr_last_form_sync' ) ) return;
-		self::scan_all_forms();
+		try {
+			self::scan_all_forms( array(), /* $lightweight */ true );
+		} catch ( \Throwable $e ) {
+			error_log( '[ACTV TRKR] Auto-sync error (safe catch): ' . $e->getMessage() );
+		}
 		set_transient( 'actv_trkr_last_form_sync', time(), 6 * HOUR_IN_SECONDS );
 	}
 
 	/**
 	 * Scan all supported form plugins and return discovered forms.
 	 */
-	public static function scan_all_forms( $known_form_mappings = array() ) {
+	public static function scan_all_forms( $known_form_mappings = array(), $lightweight = false ) {
 		$discovered = array();
 
 		// Gravity Forms
@@ -234,7 +239,7 @@ class MM_Forms {
 		}
 
 		// Discover page URLs for each form by scanning post content
-		$discovered = self::enrich_with_page_urls( $discovered, $known_form_mappings );
+		$discovered = self::enrich_with_page_urls( $discovered, $known_form_mappings, $lightweight );
 
 		// Send to sync-forms endpoint
 		$opts     = MM_Settings::get();
@@ -917,20 +922,40 @@ class MM_Forms {
 
 	/**
 	 * Detect Avada form references in raw shortcode markup or encoded builder JSON.
+	 * Memory-safe: avoids duplicating large post content strings.
 	 */
 	private static function content_has_avada_form_reference( $content, $form_id ) {
-		$form_id = preg_quote( (string) $form_id, '/' );
-		$candidates = array_filter( array_unique( array(
-			(string) $content,
-			wp_specialchars_decode( (string) $content, ENT_QUOTES ),
-			html_entity_decode( (string) $content, ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
-			stripslashes( (string) $content ),
-		) ) );
+		if ( ! is_string( $content ) || $content === '' ) return false;
 
-		foreach ( $candidates as $candidate ) {
-			if ( preg_match( '/form_post_id\s*=\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
-			if ( preg_match( '/form_post_id\s*:\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
-			if ( preg_match( '/\[fusion_form[^\]]*form_post_id\s*=\s*["\']' . $form_id . '["\']/i', $candidate ) ) return true;
+		$form_id_escaped = preg_quote( (string) $form_id, '/' );
+
+		// Check original content first (covers most cases)
+		$patterns = array(
+			'/form_post_id\s*=\s*["\']' . $form_id_escaped . '["\']/i',
+			'/form_post_id\s*:\s*["\']' . $form_id_escaped . '["\']/i',
+			'/\[fusion_form[^\]]*form_post_id\s*=\s*["\']' . $form_id_escaped . '["\']/i',
+		);
+
+		foreach ( $patterns as $pattern ) {
+			if ( preg_match( $pattern, $content ) ) return true;
+		}
+
+		// Only decode if content contains HTML entities (avoid unnecessary copies)
+		if ( strpos( $content, '&' ) !== false || strpos( $content, '\\' ) !== false ) {
+			// Decode once into a temporary variable, check, then free
+			$decoded = wp_specialchars_decode( $content, ENT_QUOTES );
+			if ( $decoded !== $content ) {
+				foreach ( $patterns as $pattern ) {
+					if ( preg_match( $pattern, $decoded ) ) return true;
+				}
+			}
+			unset( $decoded );
+
+			$decoded = html_entity_decode( $content, ENT_QUOTES, 'UTF-8' );
+			foreach ( $patterns as $pattern ) {
+				if ( preg_match( $pattern, $decoded ) ) return true;
+			}
+			unset( $decoded );
 		}
 
 		return false;
@@ -940,7 +965,7 @@ class MM_Forms {
 	 * Look up which published page/post contains shortcodes or blocks for each form.
 	 * Appends 'page_url' to each discovered form entry.
 	 */
-	private static function enrich_with_page_urls( $discovered, $known_form_mappings = array() ) {
+	private static function enrich_with_page_urls( $discovered, $known_form_mappings = array(), $lightweight = false ) {
 		// Build shortcode patterns per provider + form_id
 		$patterns = array();
 		foreach ( $discovered as $idx => $form ) {
@@ -1016,24 +1041,28 @@ class MM_Forms {
 			}
 		}
 
-		foreach ( $discovered as $idx => $form ) {
-			if ( $form['provider'] !== 'avada' ) continue;
+		// In lightweight mode (admin_init), skip the heavy Avada content scanning loop
+		// to prevent memory exhaustion on sites with large Avada builder pages.
+		if ( ! $lightweight ) {
+			foreach ( $discovered as $idx => $form ) {
+				if ( $form['provider'] !== 'avada' ) continue;
 
-			$fid = (string) ( $form['form_id'] ?? '' );
-			$matched_urls = self::build_page_url_candidates( $form['page_url'] ?? null, $form['page_url_candidates'] ?? array() );
+				$fid = (string) ( $form['form_id'] ?? '' );
+				$matched_urls = self::build_page_url_candidates( $form['page_url'] ?? null, $form['page_url_candidates'] ?? array() );
 
-			foreach ( $posts as $post_id ) {
-				$content = get_post_field( 'post_content', $post_id );
-				if ( empty( $content ) ) continue;
-				if ( self::content_has_avada_form_reference( $content, $fid ) ) {
-					$matched_urls[] = get_permalink( $post_id );
+				foreach ( $posts as $post_id ) {
+					$content = get_post_field( 'post_content', $post_id );
+					if ( empty( $content ) ) continue;
+					if ( self::content_has_avada_form_reference( $content, $fid ) ) {
+						$matched_urls[] = get_permalink( $post_id );
+					}
 				}
-			}
 
-			$matched_urls = self::build_page_url_candidates( null, $matched_urls );
-			if ( ! empty( $matched_urls ) ) {
-				$discovered[ $idx ]['page_url'] = $matched_urls[0];
-				$discovered[ $idx ]['page_url_candidates'] = $matched_urls;
+				$matched_urls = self::build_page_url_candidates( null, $matched_urls );
+				if ( ! empty( $matched_urls ) ) {
+					$discovered[ $idx ]['page_url'] = $matched_urls[0];
+					$discovered[ $idx ]['page_url_candidates'] = $matched_urls;
+				}
 			}
 		}
 

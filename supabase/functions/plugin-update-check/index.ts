@@ -12,6 +12,12 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.8.11
+- FIX: Prevents WordPress admin crash caused by memory exhaustion during Avada form content scanning
+- FIX: Auto-sync on admin_init now wrapped in try/catch so plugin errors never break the admin
+- FIX: Heavy Avada builder content scanning skipped during lightweight admin sync (only runs via REST API)
+- FIX: content_has_avada_form_reference no longer duplicates large strings 4x in memory
+
 ## 1.8.10
 - FIX: Avada sync now forwards backend-known page mappings to the WordPress plugin so encoded builder embeds still reconcile correctly
 - FIX: Avada entry matching now checks all known page URL candidates, recovering missing Apyx Medical submissions after April 2

@@ -4,14 +4,14 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.8.10
+Stable tag: 1.8.11
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
 
-= 1.8.10 =
+= 1.8.11 =
 * FIX: Avada sync now reuses backend-known page mappings and encoded builder detection so the correct page URLs are matched during reconciliation.
 * FIX: Avada active entry matching now checks all known page URL candidates, restoring missing Apyx Medical entries without touching live form requests.
 

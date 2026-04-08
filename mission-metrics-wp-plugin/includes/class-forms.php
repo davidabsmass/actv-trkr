@@ -471,19 +471,25 @@ class MM_Forms {
 				$wpdb->prefix . 'avada_form_submissions',
 			);
 
-				$table = null;
+				// Find ALL existing tables (not just the first one)
+				$existing_tables = array();
 				foreach ( $candidate_tables as $candidate_table ) {
 					if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $candidate_table ) ) === $candidate_table ) {
-						$table = $candidate_table;
-						break;
+						$existing_tables[] = $candidate_table;
 					}
 				}
 
-				if ( ! $table ) {
+				if ( empty( $existing_tables ) ) {
 					error_log( '[MissionMetrics] Avada entry sync: no submission table found. Tried: ' . implode( ', ', $candidate_tables ) );
 					self::$last_avada_strategy = 'no_table';
 					return null;
 				}
+
+				// Merge results from ALL existing tables
+				$all_rows = array();
+				$all_strategies = array();
+
+				foreach ( $existing_tables as $table ) {
 
 				// Detect columns dynamically
 				$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
@@ -2266,6 +2272,7 @@ class MM_Forms {
 	public static function handle_rest_backfill_entries( $request ) {
 		// Auth already verified by permission_callback
 		$opts = MM_Settings::get();
+		$body = $request->get_json_params();
 
 		$domain    = wp_parse_url( home_url(), PHP_URL_HOST );
 		$page_size = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;

@@ -65,7 +65,7 @@ export default function WebsiteSetup() {
 
   // Latest plugin version
   const { data: latestVersion } = useQuery({
-    queryKey: ["latest_plugin_version"],
+    queryKey: ["latest_plugin_version", "plugin_info"],
     queryFn: getLatestPluginVersion,
     staleTime: 1000 * 60,
   });

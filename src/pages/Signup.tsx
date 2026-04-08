@@ -15,7 +15,7 @@ const inputClass =
 const Signup = () => {
   const navigate = useNavigate();
   const { data: latestVersion } = useQuery({
-    queryKey: ["latest_plugin_version"],
+    queryKey: ["latest_plugin_version", "plugin_info"],
     queryFn: getLatestPluginVersion,
     staleTime: 1000 * 60,
   });

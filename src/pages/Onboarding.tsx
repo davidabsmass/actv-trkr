@@ -11,7 +11,7 @@ import { toast } from "@/hooks/use-toast";
 const Onboarding = () => {
   const navigate = useNavigate();
   const { data: latestVersion } = useQuery({
-    queryKey: ["latest_plugin_version"],
+    queryKey: ["latest_plugin_version", "plugin_info"],
     queryFn: getLatestPluginVersion,
     staleTime: 1000 * 60,
   });

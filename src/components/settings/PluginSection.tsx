@@ -45,7 +45,7 @@ export default function PluginSection() {
   });
 
   const { data: latestVersion, refetch: refetchLatestVersion } = useQuery({
-    queryKey: ["latest_plugin_version", "settings_live"],
+    queryKey: ["latest_plugin_version", "plugin_info", "settings_live"],
     queryFn: getLatestPluginVersion,
     staleTime: 0,
     gcTime: 0,

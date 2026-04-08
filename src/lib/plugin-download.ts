@@ -5,6 +5,10 @@ function getPluginZipUrl() {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
 }
 
+function getPluginInfoUrl() {
+  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=info&t=${Date.now()}`;
+}
+
 export function extractPluginFileName(contentDisposition?: string | null) {
   return PLUGIN_FILENAME_PATTERN.exec(contentDisposition || "")?.[1] || null;
 }
@@ -15,19 +19,38 @@ export function extractPluginVersion(contentDisposition?: string | null) {
 }
 
 export async function getLatestPluginVersion() {
-  const response = await fetch(getPluginZipUrl(), {
-    method: "HEAD",
-    cache: "no-store",
-  });
+  try {
+    const infoResponse = await fetch(getPluginInfoUrl(), {
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    return null;
+    if (infoResponse.ok) {
+      const data = await infoResponse.json();
+      if (typeof data?.version === "string" && data.version) {
+        return data.version;
+      }
+    }
+  } catch {
+    // Fall back to ZIP metadata if the info endpoint is temporarily unavailable.
   }
 
-  return (
-    response.headers.get("x-plugin-version") ||
-    extractPluginVersion(response.headers.get("content-disposition"))
-  );
+  try {
+    const response = await fetch(getPluginZipUrl(), {
+      method: "HEAD",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (
+      response.headers.get("x-plugin-version") ||
+      extractPluginVersion(response.headers.get("content-disposition"))
+    );
+  } catch {
+    return null;
+  }
 }
 
 export async function downloadPlugin(apiKey?: string) {

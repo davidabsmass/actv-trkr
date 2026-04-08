@@ -13,6 +13,14 @@ type FormRow = {
   page_url: string | null;
 };
 
+type KnownFormMapping = {
+  form_id: string;
+  external_form_id: string;
+  page_url: string | null;
+  page_url_candidates: string[];
+  form_title?: string | null;
+};
+
 function parseVersion(version: string | null | undefined): [number, number, number] {
   if (!version) return [0, 0, 0];
   const parts = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
@@ -218,13 +226,14 @@ async function triggerWordPressRoute(
   keyHash: string,
   route: "sync" | "backfill-avada",
   timeoutMs = 120000,
+  extraBody: Record<string, unknown> = {},
 ): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
   const endpoints = [
     `${normalizedSiteUrl}/wp-json/actv-trkr/v1/${route}`,
     `${normalizedSiteUrl}/?rest_route=/actv-trkr/v1/${route}`,
   ];
-  const body = JSON.stringify({ triggered_from: "dashboard", key_hash: keyHash });
+  const body = JSON.stringify({ triggered_from: "dashboard", key_hash: keyHash, ...extraBody });
 
   let lastFailure: { response: Response; endpoint: string } | null = null;
   for (const endpoint of endpoints) {
@@ -257,12 +266,20 @@ async function triggerWordPressRoute(
   };
 }
 
-async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
-  return triggerWordPressRoute(siteUrl, keyHash, "sync");
+async function triggerWordPressSync(
+  siteUrl: string,
+  keyHash: string,
+  knownFormMappings: KnownFormMapping[] = [],
+): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "sync", 120000, knownFormMappings.length ? { known_form_mappings: knownFormMappings } : {});
 }
 
-async function triggerWordPressAvadaBackfill(siteUrl: string, keyHash: string): Promise<{ response: Response; endpoint: string }> {
-  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 60000);
+async function triggerWordPressAvadaBackfill(
+  siteUrl: string,
+  keyHash: string,
+  knownFormMappings: KnownFormMapping[] = [],
+): Promise<{ response: Response; endpoint: string }> {
+  return triggerWordPressRoute(siteUrl, keyHash, "backfill-avada", 60000, knownFormMappings.length ? { known_form_mappings: knownFormMappings } : {});
 }
 
 type EntryBackfillCursor = {
@@ -490,19 +507,23 @@ Deno.serve(async (req) => {
     }
 
     const minimumPluginVersion = "1.3.4";
-    const minimumAvadaPluginVersion = "1.3.12";
+    const minimumAvadaPluginVersion = "1.8.10";
     const pluginOutdated = !isVersionAtLeast(site.plugin_version, minimumPluginVersion);
 
     // Check if site has any Avada forms
     const { data: avadaForms, count: avadaFormCount } = await supabase
       .from("forms")
-      .select("id", { count: "exact" })
+      .select("id, name, external_form_id, page_url", { count: "exact" })
       .eq("org_id", site.org_id)
       .eq("site_id", site.id)
       .eq("provider", "avada")
       .eq("archived", false);
-    const avadaFormIds = (avadaForms || []).map((form) => form.id);
+    const avadaFormRows = (avadaForms || []) as Array<Pick<FormRow, "id" | "name" | "external_form_id" | "page_url">>;
+    const avadaFormIds = avadaFormRows.map((form) => form.id);
     const hasAvadaForms = (avadaFormCount || 0) > 0;
+    const knownAvadaFormMappings = hasAvadaForms
+      ? await buildKnownAvadaFormMappings(supabase, site.org_id, site.id, avadaFormRows)
+      : [];
 
     // Skip org membership check for cron calls
     if (!isCronCall) {
@@ -530,7 +551,7 @@ Deno.serve(async (req) => {
     }
 
     const siteUrl = site.url || `https://${site.domain}`;
-    const { response: wpRes, endpoint: wpEndpoint } = await triggerWordPressSync(siteUrl, apiKeyRow.key_hash);
+    const { response: wpRes, endpoint: wpEndpoint } = await triggerWordPressSync(siteUrl, apiKeyRow.key_hash, knownAvadaFormMappings);
 
     let wpSyncFailed = false;
     let wpSyncErrorText: string | null = null;
@@ -667,7 +688,7 @@ Deno.serve(async (req) => {
       avadaBackfillAttempted = true;
       // Fire-and-forget: don't await the backfill response to avoid edge function timeout.
       // The backfill runs on WordPress and will ingest data via the normal ingest endpoints.
-      triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash)
+      triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash, knownAvadaFormMappings)
         .then(async ({ response: backfillRes, endpoint: backfillEndpoint }) => {
           if (!backfillRes.ok) {
             const backfillBody = await backfillRes.text();

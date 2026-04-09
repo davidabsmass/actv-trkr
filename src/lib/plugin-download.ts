@@ -11,7 +11,7 @@ function getPluginInfoUrl() {
 }
 
 function getStaticPluginZipUrl() {
-  return `/downloads/${STATIC_PLUGIN_FILE_NAME}`;
+  return `/downloads/${STATIC_PLUGIN_FILE_NAME}?t=${Date.now()}`;
 }
 
 function triggerBrowserDownload(blobUrl: string, fileName: string) {
@@ -21,11 +21,8 @@ function triggerBrowserDownload(blobUrl: string, fileName: string) {
   link.download = fileName;
   link.rel = "noopener";
   document.body.appendChild(link);
-  // Use setTimeout to ensure the click is fully detached from the current
-  // execution context, preventing SPA navigation/remount side-effects.
   setTimeout(() => {
     link.click();
-    // Small delay before cleanup so the browser has time to start the download
     setTimeout(() => {
       document.body.removeChild(link);
     }, 200);
@@ -78,9 +75,9 @@ export async function getLatestPluginVersion() {
 
 export async function downloadPlugin(apiKey?: string) {
   if (!apiKey) {
-    // Fetch static file as blob to avoid any page navigation that could
-    // reset SPA state / drop the auth session.
-    const res = await fetch(getStaticPluginZipUrl());
+    const res = await fetch(getStaticPluginZipUrl(), {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error("Failed to download plugin package");
     const blob = await res.blob();
     const blobUrl = URL.createObjectURL(blob);

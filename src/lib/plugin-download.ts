@@ -1,5 +1,6 @@
 const PLUGIN_FILENAME_PATTERN = /filename="?([^";]+)"?/i;
 const PLUGIN_VERSION_PATTERN = /actv-trkr-(\d+\.\d+\.\d+)\.zip/i;
+const STATIC_PLUGIN_FILE_NAME = "actv-trkr-1.8.11.zip";
 
 function getPluginZipUrl() {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
@@ -7,6 +8,21 @@ function getPluginZipUrl() {
 
 function getPluginInfoUrl() {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/plugin-update-check?action=info&t=${Date.now()}`;
+}
+
+function getStaticPluginZipUrl() {
+  return `/downloads/${STATIC_PLUGIN_FILE_NAME}`;
+}
+
+function triggerBrowserDownload(url: string, fileName?: string) {
+  const link = document.createElement("a");
+  link.href = url;
+  if (fileName) {
+    link.download = fileName;
+  }
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export function extractPluginFileName(contentDisposition?: string | null) {
@@ -54,6 +70,11 @@ export async function getLatestPluginVersion() {
 }
 
 export async function downloadPlugin(apiKey?: string) {
+  if (!apiKey) {
+    triggerBrowserDownload(getStaticPluginZipUrl(), STATIC_PLUGIN_FILE_NAME);
+    return STATIC_PLUGIN_FILE_NAME;
+  }
+
   const zipUrl = getPluginZipUrl();
 
   const response = await fetch(zipUrl, {
@@ -69,12 +90,7 @@ export async function downloadPlugin(apiKey?: string) {
   const fileUrl = URL.createObjectURL(blob);
   const fileName = extractPluginFileName(response.headers.get("content-disposition")) || "actv-trkr.zip";
 
-  const link = document.createElement("a");
-  link.href = fileUrl;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  triggerBrowserDownload(fileUrl, fileName);
   URL.revokeObjectURL(fileUrl);
 
   return fileName;

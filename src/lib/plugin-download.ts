@@ -14,15 +14,22 @@ function getStaticPluginZipUrl() {
   return `/downloads/${STATIC_PLUGIN_FILE_NAME}`;
 }
 
-function triggerBrowserDownload(url: string, fileName?: string) {
+function triggerBrowserDownload(blobUrl: string, fileName: string) {
   const link = document.createElement("a");
-  link.href = url;
-  if (fileName) {
-    link.download = fileName;
-  }
+  link.style.display = "none";
+  link.href = blobUrl;
+  link.download = fileName;
+  link.rel = "noopener";
   document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  // Use setTimeout to ensure the click is fully detached from the current
+  // execution context, preventing SPA navigation/remount side-effects.
+  setTimeout(() => {
+    link.click();
+    // Small delay before cleanup so the browser has time to start the download
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 200);
+  }, 0);
 }
 
 export function extractPluginFileName(contentDisposition?: string | null) {

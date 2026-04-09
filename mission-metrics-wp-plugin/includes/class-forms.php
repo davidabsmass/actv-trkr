@@ -557,17 +557,20 @@ class MM_Forms {
 					}
 				}
 
-				// Merge results from ALL existing tables
-				$all_rows = array();
-				$all_strategies = array();
+			// ── STRICT AUTHORITATIVE DISCOVERY ──
+			// Only use Layer 0/0.5 (resolved internal ID) and Layer 1 (direct form_ref column match).
+			// Fuzzy strategies (URL matching, blob searching, title matching, slug matching) are
+			// intentionally DISABLED for counting to prevent cross-form contamination.
+			$all_rows = array();
+			$all_strategies = array();
 
-				foreach ( $existing_tables as $table ) {
+			foreach ( $existing_tables as $table ) {
 
 				// Detect columns dynamically
 				$columns = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
 				if ( ! is_array( $columns ) || empty( $columns ) ) {
 					error_log( '[MissionMetrics] Avada entry sync: could not read columns from ' . $table );
-					continue; // skip this table, try next
+					continue;
 				}
 
 				// Detect timestamp column
@@ -580,19 +583,14 @@ class MM_Forms {
 					}
 				}
 				if ( ! $ts_col ) {
-					error_log( '[MissionMetrics] Avada entry sync: no timestamp column found in ' . $table . '. Columns: ' . implode( ', ', $columns ) );
 					$ts_col = 'id';
 				}
 
-				// Expanded form-ref column candidates
 				$form_ref_candidates = array( 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id' );
-				// Expanded payload/blob column candidates for URL matching
-				$blob_candidates = array( 'submission', 'data', 'fields', 'form_data', 'meta', 'content' );
-
 				$rows = array();
 				$strategy_used = 'none';
 
-				// Layer 0.5: If we resolved an internal form_id, try it FIRST
+				// Layer 0.5: If we resolved an internal form_id, use it (highest confidence)
 				if ( $resolved_internal_id && in_array( 'form_id', $columns, true ) ) {
 					$rows = $wpdb->get_results( $wpdb->prepare(
 						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 5000",
@@ -603,31 +601,30 @@ class MM_Forms {
 					}
 				}
 
-				// Layer 1: Try all form-ref columns for direct match (using original form_id)
+				// Layer 1: Try form-ref columns for direct match (using original WP post ID)
 				if ( empty( $rows ) || ! is_array( $rows ) ) {
-				foreach ( $form_ref_candidates as $frc ) {
-					if ( ! in_array( $frc, $columns, true ) ) continue;
-					$rows = $wpdb->get_results( $wpdb->prepare(
-						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %d ORDER BY id DESC LIMIT 5000",
-						intval( $form_id )
-					) );
-					if ( is_array( $rows ) && ! empty( $rows ) ) {
-						$strategy_used = 'form_ref_col:' . $frc;
-						break;
+					foreach ( $form_ref_candidates as $frc ) {
+						if ( ! in_array( $frc, $columns, true ) ) continue;
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %d ORDER BY id DESC LIMIT 5000",
+							intval( $form_id )
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'form_ref_col:' . $frc;
+							break;
+						}
+						$rows = $wpdb->get_results( $wpdb->prepare(
+							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
+							(string) $form_id
+						) );
+						if ( is_array( $rows ) && ! empty( $rows ) ) {
+							$strategy_used = 'form_ref_col_str:' . $frc;
+							break;
+						}
 					}
-					// Also try string match (some tables store form_id as string)
-					$rows = $wpdb->get_results( $wpdb->prepare(
-						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
-						(string) $form_id
-					) );
-					if ( is_array( $rows ) && ! empty( $rows ) ) {
-						$strategy_used = 'form_ref_col_str:' . $frc;
-						break;
-					}
-				}
 				}
 
-				// Layer 1.5: Direct source_url column match with known page URL candidates
+				// Layer 1.5: Direct source_url match (still reasonably precise)
 				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $url_candidates ) && in_array( 'source_url', $columns, true ) ) {
 					foreach ( $url_candidates as $url_candidate ) {
 						$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
@@ -642,229 +639,23 @@ class MM_Forms {
 					}
 				}
 
-				// Layer 2: Search blob/payload columns for form_id or page_url markers
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) ) {
-					foreach ( $blob_candidates as $bc ) {
-						if ( ! in_array( $bc, $columns, true ) ) continue;
+				// ── STOP HERE — no fuzzy layers (2-6) for counting ──
+				// Layers 2-6 (blob searching, title matching, slug matching, token matching)
+				// are intentionally removed to prevent cross-form contamination.
 
-						// 2a: Search for form_id in blob
-						$like_fid = '%' . $wpdb->esc_like( '"form_id":"' . $form_id . '"' ) . '%';
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-							$like_fid
-						) );
-						if ( is_array( $rows ) && ! empty( $rows ) ) {
-							$strategy_used = 'blob_form_id:' . $bc;
-							break;
-						}
-
-						// 2b: Also try numeric form_id pattern in blob
-						$like_fid2 = '%form_id%' . $wpdb->esc_like( $form_id ) . '%';
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-							$like_fid2
-						) );
-						if ( is_array( $rows ) && ! empty( $rows ) ) {
-							$strategy_used = 'blob_form_id_loose:' . $bc;
-							break;
-						}
+				if ( is_array( $rows ) && ! empty( $rows ) ) {
+					$all_strategies[] = $table . ':' . $strategy_used;
+					foreach ( $rows as $row ) {
+						$key = 'avada_db_' . $row->id . '_' . md5( $table );
+						$all_rows[ $key ] = array(
+							'id' => 'avada_db_' . $row->id,
+							'ts' => $row->ts,
+						);
 					}
+					error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
+				} else {
+					error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
 				}
-
-				// Layer 3: page_url match in blob columns
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $url_candidates ) ) {
-					foreach ( $blob_candidates as $bc ) {
-						if ( ! in_array( $bc, $columns, true ) ) continue;
-						foreach ( $url_candidates as $url_candidate ) {
-							$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-								$like
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'blob_url:' . $bc;
-								break 2;
-							}
-						}
-					}
-				}
-
-				// Layer 4: Search by form title/name in form-ref columns and blob columns
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && ! empty( $form_title ) ) {
-					$form_title_clean = trim( wp_strip_all_tags( (string) $form_title ) );
-					$normalized_title = trim( preg_replace( '/\s+/', ' ', str_replace( array( '-', '_' ), ' ', strtolower( $form_title_clean ) ) ) );
-					$title_slug       = sanitize_title( $form_title_clean );
-					$title_variants   = array_values( array_unique( array_filter( array(
-						$form_title_clean,
-						$normalized_title,
-						$title_slug,
-						str_replace( ' ', '', $normalized_title ),
-					) ) ) );
-
-					// 4a: Try form-ref columns with strict and loose title matching
-					foreach ( $form_ref_candidates as $frc ) {
-						if ( ! in_array( $frc, $columns, true ) ) continue;
-						foreach ( $title_variants as $variant ) {
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s ORDER BY id DESC LIMIT 5000",
-								$variant
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'form_title_ref:' . $frc;
-								break 2;
-							}
-						}
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} LIKE %s ORDER BY id DESC LIMIT 5000",
-							'%' . $wpdb->esc_like( $form_title_clean ) . '%'
-						) );
-						if ( is_array( $rows ) && ! empty( $rows ) ) {
-							$strategy_used = 'form_title_ref_like:' . $frc;
-							break;
-						}
-					}
-
-					// 4b: Search blob columns by title variants
-					if ( ! is_array( $rows ) || empty( $rows ) ) {
-						foreach ( $blob_candidates as $bc ) {
-							if ( ! in_array( $bc, $columns, true ) ) continue;
-							foreach ( $title_variants as $variant ) {
-								$rows = $wpdb->get_results( $wpdb->prepare(
-									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-									'%' . $wpdb->esc_like( $variant ) . '%'
-								) );
-								if ( is_array( $rows ) && ! empty( $rows ) ) {
-									$strategy_used = 'blob_form_title:' . $bc;
-									break 2;
-								}
-							}
-						}
-					}
-
-					// 4c: Check name-ish columns with exact + LIKE matching
-					$name_candidates = array( 'form_name', 'name', 'title', 'form_title' );
-					if ( ! is_array( $rows ) || empty( $rows ) ) {
-						foreach ( $name_candidates as $nc ) {
-							if ( ! in_array( $nc, $columns, true ) ) continue;
-							foreach ( $title_variants as $variant ) {
-								$rows = $wpdb->get_results( $wpdb->prepare(
-									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} = %s ORDER BY id DESC LIMIT 5000",
-									$variant
-								) );
-								if ( is_array( $rows ) && ! empty( $rows ) ) {
-									$strategy_used = 'name_col:' . $nc;
-									break 2;
-								}
-							}
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$nc} LIKE %s ORDER BY id DESC LIMIT 5000",
-								'%' . $wpdb->esc_like( $form_title_clean ) . '%'
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'name_col_like:' . $nc;
-								break;
-							}
-						}
-					}
-
-					// 4d: Token-based matching for renamed forms (hyphen/space variants)
-					if ( ! is_array( $rows ) || empty( $rows ) ) {
-						$title_tokens = array_values( array_filter( preg_split( '/\s+/', $normalized_title ), function( $token ) {
-							return strlen( $token ) >= 3;
-						} ) );
-						if ( ! empty( $title_tokens ) ) {
-							$title_tokens = array_slice( $title_tokens, 0, 4 );
-							foreach ( $blob_candidates as $bc ) {
-								if ( ! in_array( $bc, $columns, true ) ) continue;
-								$where_parts = array();
-								$params = array();
-								foreach ( $title_tokens as $token ) {
-									$where_parts[] = "{$bc} LIKE %s";
-									$params[] = '%' . $wpdb->esc_like( $token ) . '%';
-								}
-								$sql = "SELECT id, {$ts_col} AS ts FROM {$table} WHERE " . implode( ' AND ', $where_parts ) . " ORDER BY id DESC LIMIT 5000";
-								$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
-								if ( is_array( $rows ) && ! empty( $rows ) ) {
-									$strategy_used = 'blob_title_tokens:' . $bc;
-									break;
-								}
-							}
-						}
-					}
-				}
-
-				// Layer 5: If form_id is numeric, scan blob columns for serialized/JSON markers
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
-					$markers = array(
-						'"form_id":"' . (string) $form_id . '"',
-						'"form_post_id":"' . (string) $form_id . '"',
-						'form_id";i:' . (string) $form_id,
-						'form_post_id";i:' . (string) $form_id,
-						'form_post_id=' . (string) $form_id,
-						'fusion_form_' . (string) $form_id,
-						(string) $form_id,
-					);
-					foreach ( $blob_candidates as $bc ) {
-						if ( ! in_array( $bc, $columns, true ) ) continue;
-						foreach ( $markers as $marker ) {
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-								'%' . $wpdb->esc_like( $marker ) . '%'
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'blob_post_id_marker:' . $bc;
-								break 2;
-							}
-						}
-					}
-				}
-
-				// Layer 6: If there's a form post slug, try matching refs and blobs
-				if ( ( ! is_array( $rows ) || empty( $rows ) ) && is_numeric( $form_id ) ) {
-					$form_post = get_post( intval( $form_id ) );
-					if ( $form_post && $form_post->post_name ) {
-						foreach ( $form_ref_candidates as $frc ) {
-							if ( ! in_array( $frc, $columns, true ) ) continue;
-							$rows = $wpdb->get_results( $wpdb->prepare(
-								"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$frc} = %s OR {$frc} LIKE %s ORDER BY id DESC LIMIT 5000",
-								$form_post->post_name,
-								'%' . $wpdb->esc_like( $form_post->post_name ) . '%'
-							) );
-							if ( is_array( $rows ) && ! empty( $rows ) ) {
-								$strategy_used = 'form_post_slug:' . $frc;
-								break;
-							}
-						}
-						if ( ! is_array( $rows ) || empty( $rows ) ) {
-							foreach ( $blob_candidates as $bc ) {
-								if ( ! in_array( $bc, $columns, true ) ) continue;
-								$rows = $wpdb->get_results( $wpdb->prepare(
-									"SELECT id, {$ts_col} AS ts FROM {$table} WHERE {$bc} LIKE %s ORDER BY id DESC LIMIT 5000",
-									'%' . $wpdb->esc_like( $form_post->post_name ) . '%'
-								) );
-								if ( is_array( $rows ) && ! empty( $rows ) ) {
-									$strategy_used = 'blob_form_slug:' . $bc;
-									break;
-								}
-							}
-						}
-					}
-				}
-
-			// Merge rows from this table into all_rows
-			if ( is_array( $rows ) && ! empty( $rows ) ) {
-				$all_strategies[] = $table . ':' . $strategy_used;
-				foreach ( $rows as $row ) {
-					$key = 'avada_db_' . $row->id . '_' . md5( $table );
-					$all_rows[ $key ] = array(
-						'id' => 'avada_db_' . $row->id,
-						'ts' => $row->ts,
-					);
-				}
-				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — found ' . count( $rows ) . ' entries (strategy=' . $strategy_used . ')' );
-			} else {
-				error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' table=' . $table . ' — 0 rows (strategy=' . $strategy_used . ', columns=' . implode( ',', $columns ) . ')' );
-			}
 
 			} // end foreach $existing_tables
 
@@ -884,7 +675,7 @@ class MM_Forms {
 				}
 			}
 
-			error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' — total merged ' . count( $deduped ) . ' entries from ' . count( $existing_tables ) . ' tables' );
+			error_log( '[MissionMetrics] Avada entry sync: form_id=' . $form_id . ' — total merged ' . count( $deduped ) . ' entries from ' . count( $existing_tables ) . ' tables (STRICT mode)' );
 			return $deduped;
 
 			case 'ninja_forms':

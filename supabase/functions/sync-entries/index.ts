@@ -256,44 +256,9 @@ Deno.serve(async (req) => {
         fieldCounts.set(row.lead_id, (fieldCounts.get(row.lead_id) || 0) + 1);
       }
 
-      // ── Build set of raw-event external IDs for providers that need hook protection ──
-      // This protection is ONLY for Avada legacy ID mismatches. Other providers must
-      // strictly reconcile to the authoritative WordPress entry list.
-      const shouldProtectRawOnlyLeads = provider === "avada";
-      const rawEntryIds = new Set<string>();
-      if (shouldProtectRawOnlyLeads) {
-        const { data: rawRows } = await supabase
-          .from("lead_events_raw")
-          .select("external_entry_id")
-          .eq("org_id", orgId)
-          .eq("form_id", formId);
-        for (const r of rawRows || []) {
-          if (r.external_entry_id) rawEntryIds.add(r.external_entry_id);
-        }
-      }
-
-      // Map: wpDbId -> best lead candidate
-      const wpIdToLeads = new Map<string, { id: string; status: string; fieldCount: number; extId: string }[]>();
-
-      for (const lead of allLeads) {
-        const extId = lead.external_entry_id || (lead.data as any)?.external_entry_id || null;
-        if (!extId) {
-          // No external_entry_id at all → cannot match, trash if active
-          if (lead.status !== "trashed") leadsToTrash.push(lead.id);
-          continue;
-        }
-
-        // Check if this lead's external_entry_id matches any WP active entry
-        const dbId = extractWpDbId(extId);
-        const isMatch = wpFullIds.has(extId) || (dbId && wpDbIds.has(dbId));
-
-        if (!isMatch) {
-          // PROTECT: if this entry exists in lead_events_raw, it's a confirmed
-          // real-time submission (e.g. Avada hook). Never trash these.
-          if (shouldProtectRawOnlyLeads && rawEntryIds.has(extId)) {
-            console.log(`sync-entries: PROTECTING lead ${lead.id} (${extId}) — exists in lead_events_raw`);
-            continue; // skip — do not trash or process further
-          }
+      // ── Legacy Avada protection REMOVED ──
+      // WordPress is now the sole source of truth. Legacy avada_* leads that
+      // don't match any canonical avada_db_* entry will be trashed.
 
           if (lead.status !== "trashed") leadsToTrash.push(lead.id);
           continue;

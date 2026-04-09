@@ -495,6 +495,68 @@ class MM_Forms {
 
 				$url_candidates = self::build_page_url_candidates( $page_url, $page_url_candidates );
 
+				// Layer 0: Resolve fusion_form post ID → Avada internal form_id
+				// Avada's fusion_form_submissions.form_id is an auto-increment ID, NOT the WP post ID.
+				// We resolve it by checking wp_postmeta or querying the submissions table for a mapping.
+				$resolved_internal_id = null;
+				if ( is_numeric( $form_id ) ) {
+					// Strategy 0a: Check if Avada stored the internal form_id in postmeta
+					$meta_candidates = array( 'form_id', '_fusion_form_id', 'fusion_form_id' );
+					foreach ( $meta_candidates as $meta_key ) {
+						$meta_val = get_post_meta( intval( $form_id ), $meta_key, true );
+						if ( ! empty( $meta_val ) && is_numeric( $meta_val ) && intval( $meta_val ) !== intval( $form_id ) ) {
+							$resolved_internal_id = intval( $meta_val );
+							error_log( '[MissionMetrics] Avada Layer 0: resolved post_id=' . $form_id . ' → internal form_id=' . $resolved_internal_id . ' via postmeta key=' . $meta_key );
+							break;
+						}
+					}
+
+					// Strategy 0b: Query submissions table for form_id values, match via page content
+					// that embeds form_post_id="X" — find which internal form_id corresponds
+					if ( ! $resolved_internal_id ) {
+						$primary_table = $existing_tables[0];
+						$test_cols = $wpdb->get_col( "SHOW COLUMNS FROM {$primary_table}", 0 );
+						if ( in_array( 'form_id', $test_cols, true ) ) {
+							// Get all distinct internal form_ids
+							$internal_ids = $wpdb->get_col( "SELECT DISTINCT form_id FROM {$primary_table}" );
+							if ( is_array( $internal_ids ) && count( $internal_ids ) > 0 ) {
+								// For each internal form_id, check if the source_url of its submissions
+								// matches pages that embed this fusion_form post
+								foreach ( $internal_ids as $iid ) {
+									$sample_url = $wpdb->get_var( $wpdb->prepare(
+										"SELECT source_url FROM {$primary_table} WHERE form_id = %d AND source_url IS NOT NULL AND source_url != '' LIMIT 1",
+										intval( $iid )
+									) );
+									if ( ! $sample_url ) continue;
+
+									// Check if any page at this URL contains this form_post_id
+									$url_path = wp_parse_url( $sample_url, PHP_URL_PATH );
+									if ( ! $url_path ) continue;
+									$url_path = trim( $url_path, '/' );
+									if ( empty( $url_path ) ) continue;
+
+									// Find the page by slug
+									$page_post = get_page_by_path( $url_path );
+									if ( ! $page_post ) continue;
+
+									$content = $page_post->post_content ?? '';
+									// Check for form_post_id references in content (both encoded and plain)
+									$decoded = html_entity_decode( $content );
+									if (
+										strpos( $decoded, 'form_post_id="' . $form_id . '"' ) !== false ||
+										strpos( $decoded, "form_post_id='" . $form_id . "'" ) !== false ||
+										strpos( $decoded, '"form_post_id":"' . $form_id . '"' ) !== false
+									) {
+										$resolved_internal_id = intval( $iid );
+										error_log( '[MissionMetrics] Avada Layer 0: resolved post_id=' . $form_id . ' → internal form_id=' . $resolved_internal_id . ' via page content scan (page=' . $url_path . ')' );
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+
 				// Merge results from ALL existing tables
 				$all_rows = array();
 				$all_strategies = array();
@@ -530,7 +592,19 @@ class MM_Forms {
 				$rows = array();
 				$strategy_used = 'none';
 
-				// Layer 1: Try all form-ref columns for direct match
+				// Layer 0.5: If we resolved an internal form_id, try it FIRST
+				if ( $resolved_internal_id && in_array( 'form_id', $columns, true ) ) {
+					$rows = $wpdb->get_results( $wpdb->prepare(
+						"SELECT id, {$ts_col} AS ts FROM {$table} WHERE form_id = %d ORDER BY id DESC LIMIT 5000",
+						$resolved_internal_id
+					) );
+					if ( is_array( $rows ) && ! empty( $rows ) ) {
+						$strategy_used = 'resolved_internal_id:' . $resolved_internal_id;
+					}
+				}
+
+				// Layer 1: Try all form-ref columns for direct match (using original form_id)
+				if ( empty( $rows ) || ! is_array( $rows ) ) {
 				foreach ( $form_ref_candidates as $frc ) {
 					if ( ! in_array( $frc, $columns, true ) ) continue;
 					$rows = $wpdb->get_results( $wpdb->prepare(
@@ -550,6 +624,7 @@ class MM_Forms {
 						$strategy_used = 'form_ref_col_str:' . $frc;
 						break;
 					}
+				}
 				}
 
 				// Layer 1.5: Direct source_url column match with known page URL candidates

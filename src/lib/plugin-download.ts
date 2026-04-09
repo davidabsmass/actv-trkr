@@ -1,6 +1,6 @@
 const PLUGIN_FILENAME_PATTERN = /filename="?([^";]+)"?/i;
 const PLUGIN_VERSION_PATTERN = /actv-trkr-(\d+\.\d+\.\d+)\.zip/i;
-const STATIC_PLUGIN_FILE_NAME = "actv-trkr-1.8.11.zip";
+const STATIC_PLUGIN_FILE_NAME = "actv-trkr-1.8.12.zip";
 
 function getPluginZipUrl() {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;

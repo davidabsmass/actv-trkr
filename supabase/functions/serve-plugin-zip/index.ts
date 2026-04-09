@@ -9,7 +9,7 @@ const corsHeaders = {
 const ZIP_ROOT = "actv-trkr";
 const SOURCE_MAIN_FILE = "mission-metrics.php";
 const TARGET_MAIN_FILE = "actv-trkr.php";
-const CURRENT_PLUGIN_VERSION = "1.8.11";
+const CURRENT_PLUGIN_VERSION = "1.8.12";
 
 // Generated from plugin-template directory.
 // Files are embedded because edge functions cannot reliably read local subdirectories at runtime.

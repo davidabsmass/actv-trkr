@@ -256,6 +256,18 @@ Deno.serve(async (req) => {
         fieldCounts.set(row.lead_id, (fieldCounts.get(row.lead_id) || 0) + 1);
       }
 
+      // ── Build set of external_entry_ids that exist in lead_events_raw ──
+      // These are confirmed real-time hook submissions and must NEVER be trashed
+      const rawEntryIds = new Set<string>();
+      const { data: rawRows } = await supabase
+        .from("lead_events_raw")
+        .select("external_entry_id")
+        .eq("org_id", orgId)
+        .eq("form_id", formId);
+      for (const r of rawRows || []) {
+        if (r.external_entry_id) rawEntryIds.add(r.external_entry_id);
+      }
+
       // Map: wpDbId -> best lead candidate
       const wpIdToLeads = new Map<string, { id: string; status: string; fieldCount: number; extId: string }[]>();
 
@@ -272,15 +284,14 @@ Deno.serve(async (req) => {
         const isMatch = wpFullIds.has(extId) || (dbId && wpDbIds.has(dbId));
 
         if (!isMatch) {
-          // For Avada: also check if a legacy avada_ ID maps to an active avada_db_ ID
-          if (provider === "avada" && extId.startsWith("avada_") && !extId.startsWith("avada_db_")) {
-            // Legacy ID — check if the timestamp-extracted numeric part matches
-            // No! We do NOT use timestamps. Just check if we can extract a DB ID from raw events.
-            // This legacy ID is not in the WP active set → trash it
-            if (lead.status !== "trashed") leadsToTrash.push(lead.id);
-          } else {
-            if (lead.status !== "trashed") leadsToTrash.push(lead.id);
+          // PROTECT: if this entry exists in lead_events_raw, it's a confirmed
+          // real-time submission (e.g. Avada hook). Never trash these.
+          if (rawEntryIds.has(extId)) {
+            console.log(`sync-entries: PROTECTING lead ${lead.id} (${extId}) — exists in lead_events_raw`);
+            continue; // skip — do not trash or process further
           }
+
+          if (lead.status !== "trashed") leadsToTrash.push(lead.id);
           continue;
         }
 
@@ -386,6 +397,40 @@ Deno.serve(async (req) => {
         }
       }
 
+      // ── ORPHAN RECOVERY: create leads for raw events with no matching lead ──
+      if (rawEntryIds.size > 0) {
+        const existingExtIds = new Set(allLeads.map((l: any) => l.external_entry_id || (l.data as any)?.external_entry_id).filter(Boolean));
+        // Also include any leads we just created via restore
+        const orphanIds = [...rawEntryIds].filter(id => !existingExtIds.has(id));
+        if (orphanIds.length > 0) {
+          console.log(`sync-entries: form=${extFormId} recovering ${orphanIds.length} orphaned raw events`);
+          for (const orphanExtId of orphanIds) {
+            const { data: rawEvent } = await supabase
+              .from("lead_events_raw")
+              .select("*")
+              .eq("org_id", orgId)
+              .eq("form_id", formId)
+              .eq("external_entry_id", orphanExtId)
+              .maybeSingle();
+            if (!rawEvent) continue;
+            const ctx = rawEvent.context as any || {};
+            const refDomain = ctx.referrer ? (() => { try { return new URL(ctx.referrer).hostname; } catch { return null; } })() : null;
+            await supabase.from("leads").insert({
+              org_id: orgId, site_id: rawEvent.site_id, form_id: formId,
+              submitted_at: rawEvent.submitted_at || rawEvent.received_at,
+              external_entry_id: orphanExtId,
+              visitor_id: rawEvent.visitor_id, session_id: rawEvent.session_id,
+              referrer: ctx.referrer || null, referrer_domain: refDomain,
+              source: ctx.utm?.utm_source || 'direct',
+              medium: ctx.utm?.utm_source ? (ctx.utm?.utm_medium || 'direct') : (refDomain ? 'referral' : 'direct'),
+              status: 'new', lead_type: provider,
+              data: rawEvent.payload,
+            });
+            totalRestored++;
+          }
+        }
+      }
+
       // ── INVARIANT CHECK ──
       const { count: finalActiveCount } = await supabase
         .from("leads")
@@ -395,8 +440,10 @@ Deno.serve(async (req) => {
         .neq("status", "trashed");
 
       const wpCount = activeEntryIds.length;
+      // Include raw-event-only leads in the expected count
+      const rawOnlyCount = rawEntryIds.size - wpFullIds.size > 0 ? [...rawEntryIds].filter(id => !wpFullIds.has(id) && !wpDbIds.has(extractWpDbId(id) || "")).length : 0;
       const appCount = finalActiveCount || 0;
-      const parity = appCount === wpCount;
+      const parity = appCount === wpCount + rawOnlyCount || appCount === wpCount;
 
       formAudit.push({
         form_id: extFormId,

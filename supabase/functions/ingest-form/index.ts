@@ -549,6 +549,39 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Avada legacy→canonical merge ──
+    // If this is a canonical avada_db_* entry with no exact match, check for a legacy
+    // avada_* lead with the same submitted_at timestamp and merge into it.
+    if (existingLeadRows.length === 0 && providerName === "avada" && extEntryId.startsWith("avada_db_")) {
+      const { data: legacyLeads } = await supabase
+        .from("leads")
+        .select("id, submitted_at, status, created_at, external_entry_id")
+        .eq("org_id", orgId)
+        .eq("site_id", siteId)
+        .eq("form_id", formId)
+        .eq("submitted_at", submittedAtIso)
+        .neq("status", "trashed")
+        .order("created_at", { ascending: true })
+        .limit(5);
+
+      const legacyMatch = (legacyLeads || []).find((l: any) =>
+        l.external_entry_id &&
+        l.external_entry_id.startsWith("avada_") &&
+        !l.external_entry_id.startsWith("avada_db_")
+      );
+
+      if (legacyMatch) {
+        // Upgrade the legacy lead to the canonical ID
+        console.log(`Avada merge: upgrading legacy lead ${legacyMatch.id} (${legacyMatch.external_entry_id}) → ${extEntryId}`);
+        await supabase
+          .from("leads")
+          .update({ external_entry_id: extEntryId })
+          .eq("id", legacyMatch.id);
+
+        existingLeadRows = [legacyMatch];
+      }
+    }
+
     const activeLeadRows = (existingLeadRows || []).filter((row: any) => row.status !== "trashed");
     let canonicalLead = (activeLeadRows[0] || existingLeadRows?.[0] || null) as any;
     const duplicateActiveLeadIds = activeLeadRows.slice(1).map((row: any) => row.id);

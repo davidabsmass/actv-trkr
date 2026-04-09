@@ -256,6 +256,18 @@ Deno.serve(async (req) => {
         fieldCounts.set(row.lead_id, (fieldCounts.get(row.lead_id) || 0) + 1);
       }
 
+      // ── Build set of external_entry_ids that exist in lead_events_raw ──
+      // These are confirmed real-time hook submissions and must NEVER be trashed
+      const rawEntryIds = new Set<string>();
+      const { data: rawRows } = await supabase
+        .from("lead_events_raw")
+        .select("external_entry_id")
+        .eq("org_id", orgId)
+        .eq("form_id", formId);
+      for (const r of rawRows || []) {
+        if (r.external_entry_id) rawEntryIds.add(r.external_entry_id);
+      }
+
       // Map: wpDbId -> best lead candidate
       const wpIdToLeads = new Map<string, { id: string; status: string; fieldCount: number; extId: string }[]>();
 
@@ -272,15 +284,14 @@ Deno.serve(async (req) => {
         const isMatch = wpFullIds.has(extId) || (dbId && wpDbIds.has(dbId));
 
         if (!isMatch) {
-          // For Avada: also check if a legacy avada_ ID maps to an active avada_db_ ID
-          if (provider === "avada" && extId.startsWith("avada_") && !extId.startsWith("avada_db_")) {
-            // Legacy ID — check if the timestamp-extracted numeric part matches
-            // No! We do NOT use timestamps. Just check if we can extract a DB ID from raw events.
-            // This legacy ID is not in the WP active set → trash it
-            if (lead.status !== "trashed") leadsToTrash.push(lead.id);
-          } else {
-            if (lead.status !== "trashed") leadsToTrash.push(lead.id);
+          // PROTECT: if this entry exists in lead_events_raw, it's a confirmed
+          // real-time submission (e.g. Avada hook). Never trash these.
+          if (rawEntryIds.has(extId)) {
+            console.log(`sync-entries: PROTECTING lead ${lead.id} (${extId}) — exists in lead_events_raw`);
+            continue; // skip — do not trash or process further
           }
+
+          if (lead.status !== "trashed") leadsToTrash.push(lead.id);
           continue;
         }
 

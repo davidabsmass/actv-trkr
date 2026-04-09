@@ -988,16 +988,16 @@ class MM_Forms {
 			switch ( $provider ) {
 				case 'gravity_forms':
 					$searches[] = '[gravityform id="' . $fid . '"';
-					$searches[] = '[gravityform id='' . $fid . ''';
+					$searches[] = "[gravityform id='" . $fid . "'";
 					$searches[] = 'wp:gravityforms/form {"formId":"' . $fid . '"';
 					break;
 				case 'cf7':
 					$searches[] = '[contact-form-7 id="' . $fid . '"';
-					$searches[] = '[contact-form-7 id='' . $fid . ''';
+					$searches[] = "[contact-form-7 id='" . $fid . "'";
 					break;
 				case 'wpforms':
 					$searches[] = '[wpforms id="' . $fid . '"';
-					$searches[] = '[wpforms id='' . $fid . ''';
+					$searches[] = "[wpforms id='" . $fid . "'";
 					break;
 				case 'ninja_forms':
 					$searches[] = '[ninja_form id="' . $fid . '"';

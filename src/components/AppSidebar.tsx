@@ -165,8 +165,8 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Settings — visible to org admins and global admins */}
-        {(isAdmin || !!orgRole) && (
+        {/* Settings — visible to org admins and global admins, or while still loading */}
+        {(isAdmin || !!orgRole || orgRoleLoading) && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>

@@ -6,7 +6,7 @@ import { ArrowUp, Check, Download, Loader2 } from "lucide-react";
 import pluginThumb from "@/assets/actv-trkr-plugin-thumb.jpg";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { getLatestPluginVersion } from "@/lib/plugin-download";
+import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 
 function compareVersions(a: string, b: string) {
   const aParts = a.split(".").map((part) => Number(part) || 0);
@@ -90,21 +90,9 @@ export default function PluginSection() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
-      const response = await fetch(zipUrl, { cache: "no-store" });
-      if (!response.ok) throw new Error("Download failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const contentDisposition = response.headers.get("content-disposition") || "";
-      const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
-      const fileName = match?.[1] || "actv-trkr.zip";
-      const versionMatch = /actv-trkr-(\d+\.\d+\.\d+)\.zip/.exec(fileName);
-      const version = response.headers.get("x-plugin-version") || versionMatch?.[1] || latestVersion || "";
-      const a = document.createElement("a");
-      a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      await downloadPlugin();
       await refetchLatestVersion();
-      toast.success(`Plugin v${version || "latest"} downloaded!`);
+      toast.success(`Plugin v${latestVersion || "latest"} download started.`);
     } catch (e: any) {
       toast.error(e.message || t("settings.downloadFailed"));
     } finally {

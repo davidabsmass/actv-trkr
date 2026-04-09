@@ -12,6 +12,11 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.8.12
+- FIX: Avada form entry counts now resolve internal submission form_id from fusion_form post ID
+- FIX: Layer 0 pre-lookup checks wp_postmeta and page content to map form_post_id → internal form_id
+- FIX: Resolves "Renew You" and other Avada forms showing drastically wrong entry counts
+
 ## 1.8.11
 - FIX: Prevents WordPress admin crash caused by memory exhaustion during Avada form content scanning
 - FIX: Auto-sync on admin_init now wrapped in try/catch so plugin errors never break the admin

@@ -256,10 +256,25 @@ Deno.serve(async (req) => {
         fieldCounts.set(row.lead_id, (fieldCounts.get(row.lead_id) || 0) + 1);
       }
 
-      // ── Legacy Avada protection REMOVED ──
-      // WordPress is now the sole source of truth. Legacy avada_* leads that
-      // don't match any canonical avada_db_* entry will be trashed.
+      // Map: wpDbId -> best lead candidate
+      const wpIdToLeads = new Map<string, { id: string; status: string; fieldCount: number; extId: string }[]>();
 
+      for (const lead of allLeads) {
+        const extId = lead.external_entry_id || (lead.data as any)?.external_entry_id || null;
+        if (!extId) {
+          // No external_entry_id at all → cannot match, trash if active
+          if (lead.status !== "trashed") leadsToTrash.push(lead.id);
+          continue;
+        }
+
+        // Check if this lead's external_entry_id matches any WP active entry
+        const dbId = extractWpDbId(extId);
+        const isMatch = wpFullIds.has(extId) || (dbId && wpDbIds.has(dbId));
+
+        if (!isMatch) {
+          // ── Legacy Avada protection REMOVED ──
+          // WordPress is now the sole source of truth. Legacy avada_* leads that
+          // don't match any canonical avada_db_* entry will be trashed.
           if (lead.status !== "trashed") leadsToTrash.push(lead.id);
           continue;
         }

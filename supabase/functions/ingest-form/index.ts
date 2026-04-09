@@ -460,7 +460,10 @@ Deno.serve(async (req) => {
     let formId: string;
     const { data: existingForm } = await supabase.from("forms")
       .select("id")
-      .eq("org_id", orgId).eq("site_id", siteId).eq("external_form_id", extFormId)
+      .eq("org_id", orgId)
+      .eq("site_id", siteId)
+      .eq("provider", providerName)
+      .eq("external_form_id", extFormId)
       .maybeSingle();
 
     if (existingForm) {

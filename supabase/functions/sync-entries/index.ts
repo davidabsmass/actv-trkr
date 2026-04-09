@@ -366,39 +366,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // ── ORPHAN RECOVERY: create leads for raw events with no matching lead ──
-      if (shouldProtectRawOnlyLeads && rawEntryIds.size > 0) {
-        const existingExtIds = new Set(allLeads.map((l: any) => l.external_entry_id || (l.data as any)?.external_entry_id).filter(Boolean));
-        // Also include any leads we just created via restore
-        const orphanIds = [...rawEntryIds].filter(id => !existingExtIds.has(id));
-        if (orphanIds.length > 0) {
-          console.log(`sync-entries: form=${extFormId} recovering ${orphanIds.length} orphaned raw events`);
-          for (const orphanExtId of orphanIds) {
-            const { data: rawEvent } = await supabase
-              .from("lead_events_raw")
-              .select("*")
-              .eq("org_id", orgId)
-              .eq("form_id", formId)
-              .eq("external_entry_id", orphanExtId)
-              .maybeSingle();
-            if (!rawEvent) continue;
-            const ctx = rawEvent.context as any || {};
-            const refDomain = ctx.referrer ? (() => { try { return new URL(ctx.referrer).hostname; } catch { return null; } })() : null;
-            await supabase.from("leads").insert({
-              org_id: orgId, site_id: rawEvent.site_id, form_id: formId,
-              submitted_at: rawEvent.submitted_at || rawEvent.received_at,
-              external_entry_id: orphanExtId,
-              visitor_id: rawEvent.visitor_id, session_id: rawEvent.session_id,
-              referrer: ctx.referrer || null, referrer_domain: refDomain,
-              source: ctx.utm?.utm_source || 'direct',
-              medium: ctx.utm?.utm_source ? (ctx.utm?.utm_medium || 'direct') : (refDomain ? 'referral' : 'direct'),
-              status: 'new', lead_type: provider,
-              data: rawEvent.payload,
-            });
-            totalRestored++;
-          }
-        }
-      }
+      // ── ORPHAN RECOVERY removed — WordPress is the sole source of truth ──
+      // Legacy raw-event-only leads are no longer protected or recovered.
 
       // ── INVARIANT CHECK ──
       const { count: finalActiveCount } = await supabase
@@ -409,12 +378,8 @@ Deno.serve(async (req) => {
         .neq("status", "trashed");
 
       const wpCount = activeEntryIds.length;
-      // Include raw-event-only leads in the expected count
-      const rawOnlyCount = shouldProtectRawOnlyLeads && rawEntryIds.size - wpFullIds.size > 0
-        ? [...rawEntryIds].filter(id => !wpFullIds.has(id) && !wpDbIds.has(extractWpDbId(id) || "")).length
-        : 0;
       const appCount = finalActiveCount || 0;
-      const parity = appCount === wpCount + rawOnlyCount || appCount === wpCount;
+      const parity = appCount === wpCount;
 
       formAudit.push({
         form_id: extFormId,

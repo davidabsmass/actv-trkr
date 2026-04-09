@@ -78,7 +78,14 @@ export async function getLatestPluginVersion() {
 
 export async function downloadPlugin(apiKey?: string) {
   if (!apiKey) {
-    triggerBrowserDownload(getStaticPluginZipUrl(), STATIC_PLUGIN_FILE_NAME);
+    // Fetch static file as blob to avoid any page navigation that could
+    // reset SPA state / drop the auth session.
+    const res = await fetch(getStaticPluginZipUrl());
+    if (!res.ok) throw new Error("Failed to download plugin package");
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    triggerBrowserDownload(blobUrl, STATIC_PLUGIN_FILE_NAME);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
     return STATIC_PLUGIN_FILE_NAME;
   }
 

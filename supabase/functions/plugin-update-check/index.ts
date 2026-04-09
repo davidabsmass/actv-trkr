@@ -11,6 +11,8 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
+const CURRENT_PLUGIN_VERSION = "1.8.13";
+
 const CHANGELOG = `
 ## 1.8.13
 - FIX: Dashboard downloads now always serve the canonical latest plugin ZIP
@@ -254,26 +256,6 @@ function extractLatestVersionFromChangelog(changelog: string): string {
   return match[1];
 }
 
-async function resolveLatestVersion(req: Request): Promise<string> {
-  try {
-    const response = await fetch(getZipUrl(req), {
-      method: "HEAD",
-      headers: { "Cache-Control": "no-cache" },
-      signal: AbortSignal.timeout(1500),
-    });
-
-    if (response.ok) {
-      const headerVersion =
-        response.headers.get("x-plugin-version") ||
-        extractVersionFromContentDisposition(response.headers.get("content-disposition"));
-
-      if (headerVersion) {
-        return headerVersion;
-      }
-    }
-  } catch (_error) {
-    // Fall back to changelog parsing when the ZIP metadata request is unavailable.
-  }
-
-  return extractLatestVersionFromChangelog(CHANGELOG);
+async function resolveLatestVersion(_req: Request): Promise<string> {
+  return CURRENT_PLUGIN_VERSION;
 }

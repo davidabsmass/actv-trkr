@@ -12,6 +12,10 @@ function getZipUrl(req: Request): string {
 }
 
 const CHANGELOG = `
+## 1.8.13
+- FIX: Dashboard downloads now always serve the canonical latest plugin ZIP
+- FIX: Keeps the downloadable package in sync with the WordPress updater build
+
 ## 1.8.12
 - FIX: Avada form entry counts now resolve internal submission form_id from fusion_form post ID
 - FIX: Layer 0 pre-lookup checks wp_postmeta and page content to map form_post_id → internal form_id

@@ -31,7 +31,7 @@ import {
 import { FormLeaderboard } from "@/components/dashboard/FormLeaderboard";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
-import { getLatestPluginVersion } from "@/lib/plugin-download";
+import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary border-primary/20",
@@ -158,21 +158,7 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const zipUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
-      const response = await fetch(zipUrl, { cache: "no-store" });
-      if (!response.ok) throw new Error("Download failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const cd = response.headers.get("content-disposition") || "";
-      const match = /filename="?([^";]+)"?/i.exec(cd);
-      const fileName = match?.[1] || "actv-trkr.zip";
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadPlugin();
       toast.success(`Plugin v${latestVersion} downloaded! Upload via WordPress → Plugins → Add New → Upload.`);
     } catch {
       toast.error("Failed to download plugin");

@@ -4,12 +4,16 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.8.11
+Stable tag: 1.8.13
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.8.13 =
+* FIX: Dashboard downloads now always serve the canonical latest plugin ZIP.
+* FIX: Keeps the downloadable package in sync with the WordPress updater build.
 
 = 1.8.11 =
 * FIX: Avada sync now reuses backend-known page mappings and encoded builder detection so the correct page URLs are matched during reconciliation.

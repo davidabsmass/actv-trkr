@@ -72,7 +72,7 @@ export function ConsentStatusIndicator() {
         </div>
         <div className="flex items-center gap-2">
           <Clock className="h-3 w-3" />
-          <span>Retention: {config?.retention_months ? `${config.retention_months} months` : "12 months (default)"}</span>
+          <span>Retention: {config?.retention_months ? `${config.retention_months} months (enforced)` : "Plan-tier default"}</span>
         </div>
       </div>
     </div>

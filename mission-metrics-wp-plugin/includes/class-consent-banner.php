@@ -99,7 +99,7 @@ class MM_Consent_Banner {
 		wp_enqueue_script(
 			'mm-consent-banner',
 			MM_PLUGIN_URL . 'assets/consent-banner.js',
-			array(), // loads before tracker.js is fine — it reads mmConsent which tracker.js defines
+			array( 'mm-tracker' ), // must load AFTER tracker.js so mmConsent API exists
 			MM_PLUGIN_VERSION,
 			true
 		);

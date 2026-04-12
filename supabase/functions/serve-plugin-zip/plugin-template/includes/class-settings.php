@@ -102,7 +102,7 @@ class MM_Settings {
 							</label>
 						</td>
 					</tr>
-				<tr>
+					<tr>
 						<th scope="row">Enable Heartbeat</th>
 						<td>
 							<label>
@@ -123,6 +123,7 @@ class MM_Settings {
 						</td>
 					</tr>
 				</table>
+				<?php MM_Consent_Banner::render_settings_section(); ?>
 				<?php submit_button(); ?>
 			</form>
 
@@ -199,7 +200,6 @@ class MM_Settings {
 			});
 			</script>
 
-			<?php MM_Consent_Banner::render_settings_section(); ?>
 		</div>
 		<?php
 	}

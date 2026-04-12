@@ -270,5 +270,11 @@ function extractLatestVersionFromChangelog(changelog: string): string {
 }
 
 async function resolveLatestVersion(_req: Request): Promise<string> {
-  return CURRENT_PLUGIN_VERSION;
+  // Derive version from changelog so it stays in sync automatically.
+  // Falls back to the hardcoded constant if parsing fails.
+  try {
+    return extractLatestVersionFromChangelog(CHANGELOG);
+  } catch {
+    return CURRENT_PLUGIN_VERSION;
+  }
 }

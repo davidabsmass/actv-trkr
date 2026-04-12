@@ -215,6 +215,8 @@ class MM_Consent_Banner {
 			'usPrivacyLabel'   => $opts['us_privacy_label'],
 			'usShowNotice'     => $opts['us_show_notice'] === '1',
 			'usNoticeText'     => $opts['us_notice_text'],
+			// External CMP info
+			'externalCmpDetected' => ! empty( self::detect_external_cmps() ),
 		);
 
 		echo '<script id="mm-consent-bootstrap">window.mmConsentBannerConfig=' . wp_json_encode( $config ) . ';</script>' . "\n";

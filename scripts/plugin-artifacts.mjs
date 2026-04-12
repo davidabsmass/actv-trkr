@@ -5,6 +5,8 @@ import JSZip from "jszip";
 
 const PLUGIN_DIR_NAME = "mission-metrics-wp-plugin";
 const ZIP_ROOT = "actv-trkr";
+const SOURCE_MAIN_FILE = "mission-metrics.php";
+const TARGET_MAIN_FILE = "actv-trkr.php";
 const LATEST_ZIP_FILE_NAME = "actv-trkr-latest.zip";
 const DOWNLOAD_RELATIVE_PATH = path.join("public", "downloads", LATEST_ZIP_FILE_NAME);
 const MANIFEST_RELATIVE_PATH = path.join("src", "generated", "plugin-manifest.ts");
@@ -88,7 +90,13 @@ export async function syncPluginArtifacts(root = process.cwd()) {
   await Promise.all(
     pluginFiles.map(async (filePath) => {
       const fileBuffer = await fs.readFile(filePath);
-      const relativePath = path.relative(pluginDirectoryPath, filePath).split(path.sep).join("/");
+      let relativePath = path.relative(pluginDirectoryPath, filePath).split(path.sep).join("/");
+
+      // WordPress expects the main file to be actv-trkr.php, not mission-metrics.php
+      if (relativePath === SOURCE_MAIN_FILE) {
+        relativePath = TARGET_MAIN_FILE;
+      }
+
       zip.file(`${ZIP_ROOT}/${relativePath}`, fileBuffer);
     }),
   );

@@ -647,6 +647,19 @@
       diag.tracker_active = state === 'analytics_consent_granted';
       diag.current_consent_state = state;
     }
+    // Consent signal status
+    if (diag.external_cmp_detected) {
+      if (diag.tracker_active) {
+        diag.consent_signal_status = 'external_cmp_signal_received';
+      } else if (diag.current_consent_state === 'pending' || diag.current_consent_state === 'unknown') {
+        diag.consent_signal_status = 'external_cmp_signal_unclear';
+      } else {
+        diag.consent_signal_status = 'external_cmp_signal_denied';
+      }
+    } else {
+      diag.consent_signal_status = diag.banner_enabled ? 'actv_trkr_banner_active' : 'no_consent_handler';
+    }
+    debugLog('Consent signal status:', diag.consent_signal_status);
   }
 
   // ── Init ────────────────────────────────────────────────────

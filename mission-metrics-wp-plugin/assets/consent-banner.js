@@ -25,7 +25,9 @@
     init_timestamp: Date.now(),
     detected_region: 'unknown',
     region_behavior: 'strict',
-    region_source: 'none'
+    region_source: 'none',
+    external_cmp_detected: false,
+    consent_signal_status: 'unknown'
   };
 
   window.__mmConsentDiag = diag;

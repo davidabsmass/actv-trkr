@@ -280,6 +280,7 @@ class MM_Consent_Banner {
 			'usPrivacyLabel'   => $opts['us_privacy_label'],
 			'usShowNotice'     => $opts['us_show_notice'] === '1',
 			'usNoticeText'     => $opts['us_notice_text'],
+			'externalCmpDetected' => ! empty( self::detect_external_cmps() ),
 		) );
 	}
 

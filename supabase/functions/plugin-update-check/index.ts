@@ -11,9 +11,14 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.1";
+const CURRENT_PLUGIN_VERSION = "1.9.2";
 
 const CHANGELOG = `
+## 1.9.2
+- FIX: Built-in consent banner now defaults to enabled on new installs
+- FIX: Consent Banner settings now save correctly in WordPress admin
+- FIX: Homepage popup now appears after installing/updating the latest plugin build
+
 ## 1.9.1
 - NEW: Built-in cookie consent banner — no third-party plugin required
 - Preferences modal with Essential (always on) and Analytics (opt-in) categories

@@ -22,7 +22,7 @@ class MM_Consent_Banner {
 
 	public static function defaults() {
 		return array(
-			'enabled'          => '0',
+			'enabled'          => '1',
 			'title'            => 'Cookie Preferences',
 			'description'      => 'We use cookies to understand how you use our site and improve your experience. Analytics cookies are optional.',
 			'accept_label'     => 'Accept',

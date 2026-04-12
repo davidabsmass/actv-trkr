@@ -24,6 +24,8 @@ class MM_Consent_Banner {
 		add_action( 'wp_footer',          array( __CLASS__, 'render_reopener' ) );
 		add_action( 'admin_init',         array( __CLASS__, 'register_settings' ) );
 		add_action( 'wp_ajax_mm_consent_diag', array( __CLASS__, 'ajax_diagnostics' ) );
+		add_action( 'admin_notices',      array( __CLASS__, 'maybe_show_compliance_nudge' ) );
+		add_action( 'wp_ajax_mm_dismiss_compliance_nudge', array( __CLASS__, 'ajax_dismiss_nudge' ) );
 	}
 
 	/* ── Defaults ──────────────────────────────────────────────── */
@@ -47,7 +49,7 @@ class MM_Consent_Banner {
 			'reopener_label'       => 'Cookie Settings',
 			'debug_mode'           => '0',
 			// Region-based privacy
-			'compliance_mode'      => 'global_strict', // global_strict | eu_us | custom
+			'compliance_mode'      => 'eu_us', // global_strict | eu_us | custom
 			'other_region_fallback'=> 'strict',        // strict | relaxed
 			'us_privacy_link'      => '1',
 			'us_privacy_label'     => 'Privacy Settings',

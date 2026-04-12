@@ -1279,6 +1279,48 @@ export type Database = {
           },
         ]
       }
+      ingestion_anomalies: {
+        Row: {
+          anomaly_type: string
+          details: Json
+          detected_at: string
+          id: string
+          org_id: string
+          site_id: string | null
+        }
+        Insert: {
+          anomaly_type: string
+          details?: Json
+          detected_at?: string
+          id?: string
+          org_id: string
+          site_id?: string | null
+        }
+        Update: {
+          anomaly_type?: string
+          details?: Json
+          detected_at?: string
+          id?: string
+          org_id?: string
+          site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingestion_anomalies_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingestion_anomalies_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invite_codes: {
         Row: {
           active: boolean
@@ -2944,6 +2986,7 @@ export type Database = {
           site_id: string
           visitor_id: string
           wp_user_email: string | null
+          wp_user_email_hash: string | null
           wp_user_id: string | null
           wp_user_name: string | null
           wp_user_role: string | null
@@ -2956,6 +2999,7 @@ export type Database = {
           site_id: string
           visitor_id: string
           wp_user_email?: string | null
+          wp_user_email_hash?: string | null
           wp_user_id?: string | null
           wp_user_name?: string | null
           wp_user_role?: string | null
@@ -2968,6 +3012,7 @@ export type Database = {
           site_id?: string
           visitor_id?: string
           wp_user_email?: string | null
+          wp_user_email_hash?: string | null
           wp_user_id?: string | null
           wp_user_name?: string | null
           wp_user_role?: string | null
@@ -3048,6 +3093,7 @@ export type Database = {
       }
       sites: {
         Row: {
+          allowed_domains: string[]
           created_at: string
           domain: string
           down_after_minutes: number
@@ -3064,6 +3110,7 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          allowed_domains?: string[]
           created_at?: string
           domain: string
           down_after_minutes?: number
@@ -3080,6 +3127,7 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          allowed_domains?: string[]
           created_at?: string
           domain?: string
           down_after_minutes?: number

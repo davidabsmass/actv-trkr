@@ -9,6 +9,7 @@
   var COOKIE_SID = 'mm_sid';
   var COOKIE_UTM = 'mm_utm';
   var COOKIE_TS  = 'mm_ts';
+  var CONSENT_KEY = 'mm_consent';
   var SESSION_TIMEOUT = 30 * 60 * 1000;
   var HEARTBEAT_INTERVAL = 20000; // 20 seconds
   var WATCHDOG_MULTIPLIER = 2;
@@ -18,6 +19,84 @@
   var FLUSH_INTERVAL = 10000; // 10 seconds batch flush
   var MAX_RETRY_DELAY = 300000; // 5 min cap
   var BASE_RETRY_DELAY = 2000;
+
+  // ── Consent Mode ──────────────────────────────────────────────
+  // CFG.consentMode: 'strict' | 'relaxed' (default: 'relaxed' for backward compat)
+  var consentMode = (CFG.consentMode || 'relaxed').toLowerCase();
+  var consentState = 'no_consent'; // no_consent | analytics_consent_granted | analytics_consent_denied
+  var trackerInitialized = false;
+
+  function getStoredConsent() {
+    try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; }
+  }
+
+  function setStoredConsent(value) {
+    try { localStorage.setItem(CONSENT_KEY, value); } catch (e) {}
+  }
+
+  function clearStoredConsent() {
+    try { localStorage.removeItem(CONSENT_KEY); } catch (e) {}
+  }
+
+  function clearAnalyticsCookies() {
+    var cookies = [COOKIE_VID, COOKIE_SID, COOKIE_UTM, COOKIE_TS];
+    for (var i = 0; i < cookies.length; i++) {
+      document.cookie = cookies[i] + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax';
+    }
+  }
+
+  function clearAnalyticsStorage() {
+    clearAnalyticsCookies();
+    try { localStorage.removeItem(QUEUE_STORAGE_KEY); } catch (e) {}
+    clearStoredConsent();
+  }
+
+  // Public API for consent management (called by CMP like Complianz)
+  window.mmConsent = {
+    grant: function () {
+      consentState = 'analytics_consent_granted';
+      setStoredConsent('granted');
+      if (!trackerInitialized) {
+        bootTracker();
+      }
+    },
+    deny: function () {
+      consentState = 'analytics_consent_denied';
+      setStoredConsent('denied');
+      shutdownTracker();
+    },
+    revoke: function () {
+      consentState = 'analytics_consent_denied';
+      clearAnalyticsStorage();
+      shutdownTracker();
+    },
+    getState: function () { return consentState; },
+  };
+
+  // Complianz integration: listen for cmplz consent events
+  document.addEventListener('cmplz_fire_categories', function (e) {
+    if (e.detail && e.detail.categories && e.detail.categories.indexOf('statistics') !== -1) {
+      window.mmConsent.grant();
+    } else {
+      window.mmConsent.deny();
+    }
+  });
+
+  // Generic CMP integration via custom event
+  document.addEventListener('mm_consent_update', function (e) {
+    if (e.detail && e.detail.analytics === true) {
+      window.mmConsent.grant();
+    } else {
+      window.mmConsent.deny();
+    }
+  });
+
+  function shutdownTracker() {
+    if (pageTimer.heartbeatTimer) clearInterval(pageTimer.heartbeatTimer);
+    if (pageTimer.watchdogTimer) clearInterval(pageTimer.watchdogTimer);
+    eventQueue = [];
+    trackerInitialized = false;
+  }
 
   // ── Tracker State ──────────────────────────────────────────────
   var trackerState = 'active'; // active | degraded | retrying | offline | stalled
@@ -764,15 +843,38 @@
 
   // ── Boot ───────────────────────────────────────────────────────
 
-  loadQueue(); // Restore any persisted events from previous page load
-  // If queue has events from last session, flush them
-  if (eventQueue.length > 0) {
-    setTimeout(flushQueue, 1000);
+  function bootTracker() {
+    if (trackerInitialized) return;
+    trackerInitialized = true;
+
+    loadQueue();
+    if (eventQueue.length > 0) {
+      setTimeout(flushQueue, 1000);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', track);
+    } else {
+      track();
+    }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', track);
+  // Consent-aware initialization
+  if (consentMode === 'strict') {
+    var stored = getStoredConsent();
+    if (stored === 'granted') {
+      consentState = 'analytics_consent_granted';
+      bootTracker();
+    } else if (stored === 'denied') {
+      consentState = 'analytics_consent_denied';
+      // Do nothing — tracker stays inert
+    } else {
+      consentState = 'no_consent';
+      // Wait for consent via mmConsent.grant() or CMP event
+    }
   } else {
-    track();
+    // Relaxed mode: boot immediately (backward compatible)
+    consentState = 'analytics_consent_granted';
+    bootTracker();
   }
 })();

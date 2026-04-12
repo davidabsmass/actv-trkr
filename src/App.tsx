@@ -36,6 +36,9 @@ const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const OwnerAdmin = lazy(() => import("./pages/OwnerAdmin"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Dpa = lazy(() => import("./pages/Dpa"));
+const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
 const queryClient = new QueryClient({
@@ -153,6 +156,8 @@ const App = () => (
             <Route path="/owner-admin" element={<OwnerAdmin />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/dpa" element={<Dpa />} />
+            <Route path="/cookie-policy" element={<CookiePolicy />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

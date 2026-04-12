@@ -179,7 +179,6 @@ Deno.serve(async (req) => {
           });
           alertsCreated++;
         }
-      }
     }
 
     return new Response(JSON.stringify({

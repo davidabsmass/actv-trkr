@@ -29,13 +29,12 @@ class MM_Tracker {
 		);
 
 		// Pass logged-in WordPress user identity for visitor tracking
+		// SECURITY: Only pass user ID and role — never expose email or name in page source
 		if ( is_user_logged_in() ) {
 			$current_user = wp_get_current_user();
 			$config['wpUser'] = array(
-				'id'    => $current_user->ID,
-				'name'  => $current_user->display_name,
-				'email' => $current_user->user_email,
-				'role'  => implode( ',', $current_user->roles ),
+				'id'   => $current_user->ID,
+				'role' => implode( ',', $current_user->roles ),
 			);
 		}
 

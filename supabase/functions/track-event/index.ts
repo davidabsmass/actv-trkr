@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  checkRateLimit, validateDomain, extractClientIp, hashIp,
+  checkPayloadSize, logAnomaly, sanitizeStr, VALID_EVENT_TYPES,
+} from "../_shared/ingestion-security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,34 +13,6 @@ async function hashKey(key: string): Promise<string> {
   const data = new TextEncoder().encode(key);
   const hash = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-function sanitizeStr(val: unknown, maxLen: number): string | null {
-  if (val === null || val === undefined) return null;
-  const s = String(val).trim();
-  if (s.length === 0) return null;
-  return s.slice(0, maxLen);
-}
-
-const VALID_EVENT_TYPES = new Set([
-  "cta_click", "download_click", "outbound_click",
-  "tel_click", "mailto_click", "form_start",
-]);
-
-// Rate limiting
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
-const RATE_WINDOW_MS = 60_000;
-const RATE_LIMIT = 120;
-
-function checkRate(orgId: string): boolean {
-  const now = Date.now();
-  const bucket = rateBuckets.get(orgId);
-  if (!bucket || now > bucket.resetAt) {
-    rateBuckets.set(orgId, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return true;
-  }
-  bucket.count++;
-  return bucket.count <= RATE_LIMIT;
 }
 
 // Bot detection
@@ -124,29 +100,23 @@ function matchEventToGoals(
   const url = (evt.page_url || "").toLowerCase();
   const path = (evt.page_path || "").toLowerCase();
 
-  // Click-type goals can cross-match related event types
   const CLICK_TYPES = new Set(["cta_click", "outbound_click", "tel_click", "mailto_click"]);
 
   for (const goal of goals) {
-    // Custom event matching
     if (goal.goal_type === "custom_event") {
       const r = goal.tracking_rules || {};
       if (r.event_name && r.event_name === evt.event_type) { matched.push(goal.id); }
       continue;
     }
 
-    // Allow click-type goals to match any click-type event (e.g. cta_click goal matches outbound_click)
     const goalIsClick = CLICK_TYPES.has(goal.goal_type);
     const evtIsClick = CLICK_TYPES.has(evt.event_type);
     if (!goalIsClick && goal.goal_type !== evt.event_type) continue;
     if (goalIsClick && !evtIsClick) continue;
 
-    // If the goal type is specific (tel_click, mailto_click), require exact type match
     if ((goal.goal_type === "tel_click" || goal.goal_type === "mailto_click") && goal.goal_type !== evt.event_type) continue;
 
     const r = goal.tracking_rules || {};
-
-    // Type-specific matching
     let passes = true;
 
     if (r.text_contains && !text.includes(r.text_contains.toLowerCase()) && !label.includes(r.text_contains.toLowerCase())) {
@@ -167,7 +137,6 @@ function matchEventToGoals(
     if (r.page_path_contains && !path.includes(r.page_path_contains.toLowerCase())) {
       passes = false;
     }
-    // "match all" — no filters, just match by event type
     if (r.match === "all") {
       passes = true;
     }
@@ -178,6 +147,8 @@ function matchEventToGoals(
   return matched;
 }
 
+const MAX_EVENTS_PER_BATCH = 50;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -187,15 +158,13 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ status: "ok", filtered: "bot" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  try {
-    const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
-    if (contentLength > 51200) {
-      return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+  const clientIp = extractClientIp(req);
 
+  try {
     const rawBody = await req.text();
-    if (rawBody.length > 51200) {
-      return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const sizeErr = checkPayloadSize(req, rawBody);
+    if (sizeErr) {
+      return new Response(JSON.stringify({ error: sizeErr }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let body: any;
@@ -217,7 +186,10 @@ Deno.serve(async (req) => {
     if (!akRow) return new Response(JSON.stringify({ error: "Invalid API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const orgId = akRow.org_id;
 
-    if (!checkRate(orgId)) {
+    // ── Rate limiting ──
+    const rateCheck = checkRateLimit(clientIp, null, orgId);
+    if (!rateCheck.allowed) {
+      logAnomaly(supabase, orgId, null, "rate_limit_exceeded", { endpoint: "track-event", reason: rateCheck.reason });
       return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
     }
 
@@ -229,17 +201,37 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No events" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: site } = await supabase.from("sites").select("id").eq("org_id", orgId).eq("domain", domain).maybeSingle();
+    const { data: site } = await supabase.from("sites").select("id, allowed_domains").eq("org_id", orgId).eq("domain", domain).maybeSingle();
     if (!site) return new Response(JSON.stringify({ error: "Unknown site" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const siteId = site.id;
 
-    // Process events (max 50 per batch)
+    // ── Domain validation ──
+    const origin = req.headers.get("origin");
+    if (site.allowed_domains && site.allowed_domains.length > 0) {
+      if (!validateDomain(domain, domain, site.allowed_domains, origin)) {
+        logAnomaly(supabase, orgId, siteId, "domain_mismatch", { endpoint: "track-event", request_domain: domain, origin });
+        return new Response(JSON.stringify({ error: "Domain not authorized" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // ── Site-level rate limit ──
+    const siteRate = checkRateLimit(null, siteId, orgId);
+    if (!siteRate.allowed) {
+      logAnomaly(supabase, orgId, siteId, "site_rate_limit", { endpoint: "track-event" });
+      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
+    }
+
+    // Process events (max per batch)
     const rows: any[] = [];
-    const maxEvents = Math.min(events.length, 50);
+    const skipped: number[] = [];
+    const maxEvents = Math.min(events.length, MAX_EVENTS_PER_BATCH);
     for (let i = 0; i < maxEvents; i++) {
       const evt = events[i];
       const eventType = sanitizeStr(evt.event_type, 32);
-      if (!eventType || !VALID_EVENT_TYPES.has(eventType)) continue;
+      if (!eventType || !VALID_EVENT_TYPES.has(eventType)) {
+        skipped.push(i);
+        continue;
+      }
 
       const now = new Date();
       let occurredAt = evt.timestamp ? new Date(evt.timestamp) : now;
@@ -264,6 +256,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (skipped.length > 0) {
+      logAnomaly(supabase, orgId, siteId, "invalid_event_types", { skipped_count: skipped.length, total: events.length });
+    }
+
     if (rows.length > 0) {
       const { error: insertError } = await supabase.from("events").insert(rows);
       if (insertError) {
@@ -271,7 +267,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Failed to store events" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // ── Goal Matching ──────────────────────────────────────────────
+      // ── Goal Matching ──
       try {
         const { data: activeGoals } = await supabase
           .from("conversion_goals")
@@ -309,14 +305,12 @@ Deno.serve(async (req) => {
           }
 
           if (completionRows.length > 0) {
-            // Use upsert with ON CONFLICT to handle deduplication
             const { error: compError } = await supabase
               .from("goal_completions")
               .upsert(completionRows, { onConflict: "org_id,dedupe_key", ignoreDuplicates: true });
 
             if (compError) {
               console.error("Goal completion insert error:", compError);
-              // Non-fatal — events are already stored
             }
           }
         }
@@ -325,7 +319,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ status: "ok", stored: rows.length }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ status: "ok", stored: rows.length, skipped: skipped.length }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Event tracking error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

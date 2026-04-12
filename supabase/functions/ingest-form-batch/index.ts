@@ -2,13 +2,19 @@
  * Batch form ingestion endpoint.
  * Accepts an array of entry payloads and processes them sequentially within a single request.
  * Used by the WP plugin backfill to drastically reduce HTTP round-trips.
+ * 
+ * Security: max 100 entries per batch, payload size capped at 2MB.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, extractClientIp, logAnomaly } from "../_shared/ingestion-security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const MAX_BATCH_SIZE = 100;
+const MAX_BATCH_PAYLOAD_BYTES = 2_097_152; // 2MB
 
 async function hashKey(key: string): Promise<string> {
   const data = new TextEncoder().encode(key);
@@ -20,10 +26,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+  const clientIp = extractClientIp(req);
+
   try {
     const authHeader = req.headers.get("authorization") || "";
     const apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!apiKey) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!apiKey || apiKey.length > 256) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -32,19 +40,39 @@ Deno.serve(async (req) => {
     if (!akRow) return new Response(JSON.stringify({ error: "Invalid API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const orgId = akRow.org_id;
 
-    const body = await req.json();
+    // ── Rate limiting ──
+    const rateCheck = checkRateLimit(clientIp, null, orgId);
+    if (!rateCheck.allowed) {
+      logAnomaly(supabase, orgId, null, "rate_limit_exceeded", { endpoint: "ingest-form-batch", reason: rateCheck.reason });
+      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
+    }
+
+    // ── Payload size check ──
+    const rawBody = await req.text();
+    if (rawBody.length > MAX_BATCH_PAYLOAD_BYTES) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let body: any;
+    try { body = JSON.parse(rawBody); } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const entries = body.entries;
     if (!Array.isArray(entries) || entries.length === 0) {
       return new Response(JSON.stringify({ error: "Missing or empty entries array" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Process all entries provided in the batch
+    // ── Enforce max batch size ──
+    if (entries.length > MAX_BATCH_SIZE) {
+      return new Response(JSON.stringify({ error: `Batch too large, max ${MAX_BATCH_SIZE} entries` }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const batch = entries;
 
     // Forward each entry to the ingest-form function internally
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const ingestUrl = `${supabaseUrl}/functions/v1/ingest-form`;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     let processed = 0;
     let errors = 0;
@@ -80,6 +108,10 @@ Deno.serve(async (req) => {
       });
 
       await Promise.all(promises);
+    }
+
+    if (errors > batch.length / 2) {
+      logAnomaly(supabase, orgId, null, "batch_high_error_rate", { processed, errors, total: batch.length });
     }
 
     console.log(`Batch ingest: ${processed} processed, ${errors} errors out of ${batch.length} entries`);

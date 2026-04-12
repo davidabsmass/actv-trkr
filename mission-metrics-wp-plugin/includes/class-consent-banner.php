@@ -32,7 +32,7 @@ class MM_Consent_Banner {
 		return array(
 			'enabled'              => '1',
 			'title'                => 'Cookie Preferences',
-			'description'          => 'We use cookies to understand how you use our site and improve your experience. Analytics cookies are optional.',
+			'description'          => 'We use optional analytics cookies to understand how you use our site and improve your experience. You can accept or reject them — the site works either way.',
 			'accept_label'         => 'Accept',
 			'reject_label'         => 'Reject',
 			'prefs_label'          => 'Manage Preferences',
@@ -52,7 +52,7 @@ class MM_Consent_Banner {
 			'us_privacy_link'      => '1',
 			'us_privacy_label'     => 'Privacy Settings',
 			'us_show_notice'       => '0',
-			'us_notice_text'       => 'We use analytics cookies to improve your experience. You can opt out anytime via Privacy Settings.',
+			'us_notice_text'       => 'This site uses analytics cookies to improve your experience. You can opt out anytime.',
 			'region_debug_override'=> '',              // '' | eu | us | other (admin testing only)
 		);
 	}

@@ -11,9 +11,19 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.4";
+const CURRENT_PLUGIN_VERSION = "1.9.5";
 
 const CHANGELOG = `
+## 1.9.5
+- IMPROVED: Clearer admin settings copy for region-based privacy
+- NEW: "What Should Happen Right Now" status summary in diagnostics
+- NEW: Quick region testing buttons in admin panel
+- NEW: Built-in help section with collapsible how-it-works guides
+- NEW: Known limitations section for transparency
+- IMPROVED: Polished visitor-facing banner and modal copy
+- IMPROVED: Migration guidance for existing installs switching modes
+- IMPROVED: Better labels and descriptions for all compliance settings
+
 ## 1.9.4
 - NEW: Region-based privacy — EU/UK strict opt-in, US opt-out, configurable fallback
 - NEW: Server-side region detection via CDN headers (Cloudflare, Vercel, etc.)

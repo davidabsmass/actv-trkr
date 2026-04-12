@@ -32,7 +32,7 @@ class MM_Consent_Banner {
 		return array(
 			'enabled'              => '1',
 			'title'                => 'Cookie Preferences',
-			'description'          => 'We use cookies to understand how you use our site and improve your experience. Analytics cookies are optional.',
+			'description'          => 'We use optional analytics cookies to understand how you use our site and improve your experience. You can accept or reject them — the site works either way.',
 			'accept_label'         => 'Accept',
 			'reject_label'         => 'Reject',
 			'prefs_label'          => 'Manage Preferences',
@@ -52,7 +52,7 @@ class MM_Consent_Banner {
 			'us_privacy_link'      => '1',
 			'us_privacy_label'     => 'Privacy Settings',
 			'us_show_notice'       => '0',
-			'us_notice_text'       => 'We use analytics cookies to improve your experience. You can opt out anytime via Privacy Settings.',
+			'us_notice_text'       => 'This site uses analytics cookies to improve your experience. You can opt out anytime.',
 			'region_debug_override'=> '',              // '' | eu | us | other (admin testing only)
 		);
 	}
@@ -408,10 +408,17 @@ class MM_Consent_Banner {
 		$main_opts = MM_Settings::get();
 		$name = self::OPTION_NAME;
 		$diag = self::build_diagnostics( $opts, $main_opts );
+
+		// Compute "What should happen right now" summary
+		$status_summary = self::build_status_summary( $diag );
 		?>
 		<hr />
 		<h2>Consent Banner</h2>
-		<p class="description">Built-in cookie consent banner. When enabled, visitors see an accept/reject prompt — no third-party consent plugin needed.</p>
+		<p class="description">Built-in cookie consent banner for ACTV TRKR analytics. When enabled, visitors see an accept/reject prompt — no third-party consent plugin needed.</p>
+
+		<div class="notice notice-info inline" style="max-width:700px;margin:12px 0">
+			<p><strong>ℹ️ This controls ACTV TRKR analytics only.</strong> Third-party tracking from other plugins, ad networks, or embedded services requires separate consent/privacy handling.</p>
+		</div>
 
 		<table class="form-table">
 			<tr>
@@ -427,26 +434,31 @@ class MM_Consent_Banner {
 
 		<hr />
 		<h2>Region-Based Privacy</h2>
-		<p class="description">
-			Control how ACTV TRKR analytics consent behaves for visitors from different regions.<br>
-			<strong>EU/UK</strong> = opt-in (consent banner blocks analytics until accepted).<br>
-			<strong>US</strong> = opt-out (analytics run, visitor can opt out anytime via Privacy Settings).<br>
-			This controls <strong>ACTV TRKR analytics only</strong> — not third-party tracking from other plugins.
+		<p class="description" style="max-width:700px">
+			Choose how ACTV TRKR analytics consent behaves for visitors from different regions:
 		</p>
+		<ul style="max-width:700px;list-style:disc;padding-left:20px;margin:8px 0 16px">
+			<li><strong>EU/UK visitors</strong> — see a consent banner. Analytics are completely blocked until accepted (GDPR opt-in).</li>
+			<li><strong>US visitors</strong> — analytics run by default. A visible "Privacy Settings" link lets them opt out at any time (CCPA-style).</li>
+			<li><strong>Other regions</strong> — follow your chosen fallback behavior (strict or relaxed).</li>
+		</ul>
+		<div class="notice notice-info inline" style="max-width:700px;margin:0 0 16px">
+			<p><strong>ℹ️ Existing installs:</strong> If you were previously using Global Strict mode, your settings are preserved. Switching to "EU/UK Strict + US Opt-Out" will only change behavior for US visitors — EU/UK visitors will continue to see the consent banner exactly as before.</p>
+		</div>
 
 		<table class="form-table">
 			<tr>
 				<th scope="row"><label for="mm_compliance_mode">Compliance Mode</label></th>
 				<td>
 					<select id="mm_compliance_mode" name="<?php echo $name; ?>[compliance_mode]">
-						<option value="global_strict" <?php selected( $opts['compliance_mode'], 'global_strict' ); ?>>Global Strict — banner for all visitors</option>
+						<option value="global_strict" <?php selected( $opts['compliance_mode'], 'global_strict' ); ?>>Global Strict — consent banner for all visitors</option>
 						<option value="eu_us" <?php selected( $opts['compliance_mode'], 'eu_us' ); ?>>EU/UK Strict + US Opt-Out (Recommended)</option>
 						<option value="custom" <?php selected( $opts['compliance_mode'], 'custom' ); ?>>Custom Region Rules</option>
 					</select>
 					<p class="description">
-						<strong>Global Strict:</strong> All visitors see consent banner; analytics blocked until accepted.<br>
-						<strong>EU/UK Strict + US Opt-Out:</strong> EU/UK visitors must opt in; US visitors can opt out. Other regions follow fallback.<br>
-						<strong>Custom:</strong> Same as EU/UK + US but lets you control Other region behavior explicitly.
+						<strong>Global Strict:</strong> Every visitor sees a consent banner. Analytics stay fully blocked until accepted. Safest default.<br>
+						<strong>EU/UK Strict + US Opt-Out:</strong> EU/UK visitors must opt in. US visitors can opt out via Privacy Settings. Other regions follow the fallback below.<br>
+						<strong>Custom:</strong> Same as above but lets you explicitly control the Other-region fallback.
 					</p>
 				</td>
 			</tr>
@@ -454,10 +466,10 @@ class MM_Consent_Banner {
 				<th scope="row"><label>Other Regions Fallback</label></th>
 				<td>
 					<select name="<?php echo $name; ?>[other_region_fallback]">
-						<option value="strict" <?php selected( $opts['other_region_fallback'], 'strict' ); ?>>Strict (show banner, block until consent)</option>
-						<option value="relaxed" <?php selected( $opts['other_region_fallback'], 'relaxed' ); ?>>Relaxed (allow tracking, provide opt-out)</option>
+						<option value="strict" <?php selected( $opts['other_region_fallback'], 'strict' ); ?>>Strict — show banner, block analytics until consent</option>
+						<option value="relaxed" <?php selected( $opts['other_region_fallback'], 'relaxed' ); ?>>Relaxed — allow analytics, provide opt-out</option>
 					</select>
-					<p class="description">Applied to visitors from regions other than EU/UK or US when using EU/UK + US or Custom mode.</p>
+					<p class="description">Applied to visitors outside EU/UK and US when using EU/UK + US or Custom mode.</p>
 				</td>
 			</tr>
 		</table>
@@ -471,6 +483,7 @@ class MM_Consent_Banner {
 						<input type="checkbox" name="<?php echo $name; ?>[us_privacy_link]" value="1" <?php checked( $opts['us_privacy_link'], '1' ); ?> />
 						Show a "Privacy Settings" link for US visitors to opt out of ACTV TRKR analytics
 					</label>
+					<p class="description">Adds a visible link in the page footer. Clicking it opens the preferences modal where visitors can disable analytics.</p>
 				</td>
 			</tr>
 			<tr>
@@ -485,8 +498,9 @@ class MM_Consent_Banner {
 				<td>
 					<label>
 						<input type="checkbox" name="<?php echo $name; ?>[us_show_notice]" value="1" <?php checked( $opts['us_show_notice'], '1' ); ?> />
-						Show a brief, non-blocking notice to US visitors about analytics cookies
+						Show a brief, non-blocking notice to US visitors about analytics
 					</label>
+					<p class="description">A small, dismissible bar that informs US visitors analytics are active. This is <strong>not</strong> a blocking banner.</p>
 				</td>
 			</tr>
 			<tr>
@@ -554,14 +568,16 @@ class MM_Consent_Banner {
 		</table>
 
 		<h3>Debug &amp; Testing</h3>
+		<p class="description" style="max-width:700px">Use these tools to verify banner behavior before going live. Debug mode and region overrides are <strong>admin-only</strong> and do not affect other visitors.</p>
 		<table class="form-table">
 			<tr>
 				<th scope="row">Debug Mode (admin only)</th>
 				<td>
 					<label>
 						<input type="checkbox" name="<?php echo $name; ?>[debug_mode]" value="1" <?php checked( $opts['debug_mode'] ?? '0', '1' ); ?> />
-						Show banner diagnostics in browser console (only for logged-in admins)
+						Log banner lifecycle to browser console (only for logged-in admins)
 					</label>
+					<p class="description">When enabled, open your site in a browser, open Developer Tools → Console, and look for <code>[ACTV TRKR Consent]</code> messages. You'll see which region was detected, which behavior is active, and whether the tracker is blocked or running.</p>
 				</td>
 			</tr>
 			<tr>
@@ -569,91 +585,133 @@ class MM_Consent_Banner {
 				<td>
 					<select name="<?php echo $name; ?>[region_debug_override]">
 						<option value="" <?php selected( $opts['region_debug_override'], '' ); ?>>Auto-detect (production)</option>
-						<option value="eu" <?php selected( $opts['region_debug_override'], 'eu' ); ?>>Force EU/UK</option>
-						<option value="us" <?php selected( $opts['region_debug_override'], 'us' ); ?>>Force US</option>
-						<option value="other" <?php selected( $opts['region_debug_override'], 'other' ); ?>>Force Other</option>
+						<option value="eu" <?php selected( $opts['region_debug_override'], 'eu' ); ?>>Test as EU/UK visitor</option>
+						<option value="us" <?php selected( $opts['region_debug_override'], 'us' ); ?>>Test as US visitor</option>
+						<option value="other" <?php selected( $opts['region_debug_override'], 'other' ); ?>>Test as Other region visitor</option>
 					</select>
-					<p class="description">Admin-only region override for testing. Only applies when Debug Mode is on and you are logged in as admin. Does <strong>not</strong> affect other visitors.</p>
+					<p class="description">Temporarily forces a region for your admin session. Only works when Debug Mode is on. <strong>Does not affect other visitors.</strong> Remember to set back to "Auto-detect" before going live.</p>
 				</td>
 			</tr>
 		</table>
 
 		<hr />
-		<h2>Consent Banner Diagnostics</h2>
-		<table class="widefat" style="max-width:700px">
-			<tbody>
-				<tr>
-					<td><strong>Built-in Banner</strong></td>
-					<td><?php echo $diag['banner_enabled'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Compliance Mode</strong></td>
-					<td><code><?php echo esc_html( $diag['compliance_mode'] ); ?></code></td>
-				</tr>
-				<tr>
-					<td><strong>Detected Region (this request)</strong></td>
-					<td><code><?php echo esc_html( $diag['detected_region'] ); ?></code>
-						<?php if ( $diag['detected_region'] === 'unknown' ) echo ' — <em>no server header; frontend timezone fallback will be used</em>'; ?>
-					</td>
-				</tr>
-				<tr>
-					<td><strong>Active Behavior</strong></td>
-					<td>
-						<code><?php echo esc_html( $diag['region_behavior'] ); ?></code>
-						<?php
-						if ( $diag['region_behavior'] === 'strict' ) echo ' — banner shown, analytics blocked until consent';
-						elseif ( $diag['region_behavior'] === 'us_optout' ) echo ' — analytics allowed, opt-out available';
-						elseif ( $diag['region_behavior'] === 'relaxed' ) echo ' — analytics allowed, no banner';
-						?>
-					</td>
-				</tr>
-				<tr>
-					<td><strong>Other Region Fallback</strong></td>
-					<td><code><?php echo esc_html( $diag['other_fallback'] ); ?></code></td>
-				</tr>
-				<tr>
-					<td><strong>US Privacy Link</strong></td>
-					<td><?php echo $diag['us_privacy_link'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>US Notice</strong></td>
-					<td><?php echo $diag['us_show_notice'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
-				</tr>
-				<?php if ( $diag['region_debug_override'] ) : ?>
-				<tr>
-					<td><strong>⚠️ Region Override Active</strong></td>
-					<td><code><?php echo esc_html( $diag['region_debug_override'] ); ?></code> — admin testing only</td>
-				</tr>
-				<?php endif; ?>
-				<tr>
-					<td><strong>Consent Mode (legacy)</strong></td>
-					<td><code><?php echo esc_html( $diag['consent_mode'] ); ?></code></td>
-				</tr>
-				<tr>
-					<td><strong>API Key Present</strong></td>
-					<td><?php echo $diag['api_key_present'] ? '✅ Yes' : '❌ No — banner will not render'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Frontend CSS Registered</strong></td>
-					<td><?php echo $diag['css_registered'] ? '✅ Yes' : '⚠️ Not yet'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Frontend JS Registered</strong></td>
-					<td><?php echo $diag['js_registered'] ? '✅ Yes' : '⚠️ Not yet'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Footer Reopener</strong></td>
-					<td><?php echo $diag['footer_reopener'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Plugin Version</strong></td>
-					<td><code><?php echo esc_html( $diag['plugin_version'] ); ?></code></td>
-				</tr>
-			</tbody>
-		</table>
+		<h2>Status &amp; Diagnostics</h2>
+
+		<!-- What Should Happen Right Now -->
+		<div style="max-width:700px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;margin-bottom:20px">
+			<h3 style="margin:0 0 8px;font-size:15px">🔍 What Should Happen Right Now</h3>
+			<table style="width:100%;border-collapse:collapse">
+				<tr><td style="padding:4px 8px"><strong>Effective mode:</strong></td><td style="padding:4px 8px"><?php echo esc_html( $status_summary['mode_label'] ); ?></td></tr>
+				<tr><td style="padding:4px 8px"><strong>Detected region:</strong></td><td style="padding:4px 8px"><?php echo esc_html( $status_summary['region_label'] ); ?></td></tr>
+				<tr><td style="padding:4px 8px"><strong>Expected behavior:</strong></td><td style="padding:4px 8px"><?php echo esc_html( $status_summary['behavior_label'] ); ?></td></tr>
+				<tr><td style="padding:4px 8px"><strong>Banner should show?</strong></td><td style="padding:4px 8px"><?php echo $status_summary['banner_should_show'] ? '✅ Yes' : '❌ No'; ?></td></tr>
+				<tr><td style="padding:4px 8px"><strong>Tracker blocked before consent?</strong></td><td style="padding:4px 8px"><?php echo $status_summary['tracker_blocked'] ? '✅ Yes — blocked' : '⚡ No — tracking allowed'; ?></td></tr>
+				<tr><td style="padding:4px 8px"><strong>Opt-out link should show?</strong></td><td style="padding:4px 8px"><?php echo $status_summary['optout_link_show'] ? '✅ Yes' : '—'; ?></td></tr>
+			</table>
+			<?php if ( $diag['region_debug_override'] ) : ?>
+				<p style="margin:8px 0 0;color:#b45309"><strong>⚠️ Region override is active (<?php echo esc_html( $diag['region_debug_override'] ); ?>).</strong> This only affects your admin session.</p>
+			<?php endif; ?>
+		</div>
+
+		<!-- Quick Test Buttons -->
+		<div style="max-width:700px;margin-bottom:20px">
+			<h3 style="margin:0 0 8px;font-size:15px">🧪 Quick Region Testing</h3>
+			<p class="description" style="margin-bottom:8px">Save settings after changing, then visit your site in a private/incognito window to see the visitor experience.</p>
+			<div style="display:flex;gap:8px;flex-wrap:wrap">
+				<button type="button" class="button button-secondary mm-test-region" data-region="eu">🇪🇺 Test as EU/UK</button>
+				<button type="button" class="button button-secondary mm-test-region" data-region="us">🇺🇸 Test as US</button>
+				<button type="button" class="button button-secondary mm-test-region" data-region="other">🌍 Test as Other</button>
+				<button type="button" class="button button-secondary mm-test-region" data-region="">✅ Reset to Auto-detect</button>
+			</div>
+			<p id="mm-test-feedback" class="description" style="margin-top:8px;display:none"></p>
+		</div>
+
+		<!-- Diagnostics Table -->
+		<details style="max-width:700px">
+			<summary style="cursor:pointer;font-weight:600;margin-bottom:8px">📊 Full Diagnostics</summary>
+			<table class="widefat" style="max-width:700px">
+				<tbody>
+					<tr>
+						<td><strong>Built-in Banner</strong></td>
+						<td><?php echo $diag['banner_enabled'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
+					</tr>
+					<tr>
+						<td><strong>Compliance Mode</strong></td>
+						<td>
+							<code><?php echo esc_html( $diag['compliance_mode'] ); ?></code>
+							<?php
+							$mode_labels = array( 'global_strict' => 'Global Strict', 'eu_us' => 'EU/UK Strict + US Opt-Out', 'custom' => 'Custom Region Rules' );
+							echo ' — ' . esc_html( $mode_labels[ $diag['compliance_mode'] ] ?? $diag['compliance_mode'] );
+							?>
+						</td>
+					</tr>
+					<tr>
+						<td><strong>Detected Region (this request)</strong></td>
+						<td><code><?php echo esc_html( $diag['detected_region'] ); ?></code>
+							<?php if ( $diag['detected_region'] === 'unknown' ) echo ' — <em>no server header found; frontend will use timezone-based detection</em>'; ?>
+						</td>
+					</tr>
+					<tr>
+						<td><strong>Active Behavior</strong></td>
+						<td>
+							<code><?php echo esc_html( $diag['region_behavior'] ); ?></code>
+							<?php
+							if ( $diag['region_behavior'] === 'strict' ) echo ' — consent banner shown, analytics blocked until accepted';
+							elseif ( $diag['region_behavior'] === 'us_optout' ) echo ' — analytics allowed by default, opt-out via Privacy Settings';
+							elseif ( $diag['region_behavior'] === 'relaxed' ) echo ' — analytics allowed, no blocking banner';
+							?>
+						</td>
+					</tr>
+					<tr>
+						<td><strong>Other Region Fallback</strong></td>
+						<td><code><?php echo esc_html( $diag['other_fallback'] ); ?></code>
+							<?php echo $diag['other_fallback'] === 'strict' ? ' — show banner, block analytics' : ' — allow analytics, provide opt-out'; ?>
+						</td>
+					</tr>
+					<tr>
+						<td><strong>US Privacy Link</strong></td>
+						<td><?php echo $diag['us_privacy_link'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
+					</tr>
+					<tr>
+						<td><strong>US Notice</strong></td>
+						<td><?php echo $diag['us_show_notice'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
+					</tr>
+					<?php if ( $diag['region_debug_override'] ) : ?>
+					<tr>
+						<td><strong>⚠️ Region Override Active</strong></td>
+						<td><code><?php echo esc_html( $diag['region_debug_override'] ); ?></code> — admin testing only</td>
+					</tr>
+					<?php endif; ?>
+					<tr>
+						<td><strong>Consent Mode (legacy setting)</strong></td>
+						<td><code><?php echo esc_html( $diag['consent_mode'] ); ?></code></td>
+					</tr>
+					<tr>
+						<td><strong>API Key Present</strong></td>
+						<td><?php echo $diag['api_key_present'] ? '✅ Yes' : '❌ No — banner will not render'; ?></td>
+					</tr>
+					<tr>
+						<td><strong>Frontend CSS Registered</strong></td>
+						<td><?php echo $diag['css_registered'] ? '✅ Yes' : '⚠️ Not yet (normal on admin pages)'; ?></td>
+					</tr>
+					<tr>
+						<td><strong>Frontend JS Registered</strong></td>
+						<td><?php echo $diag['js_registered'] ? '✅ Yes' : '⚠️ Not yet (normal on admin pages)'; ?></td>
+					</tr>
+					<tr>
+						<td><strong>Footer Reopener</strong></td>
+						<td><?php echo $diag['footer_reopener'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
+					</tr>
+					<tr>
+						<td><strong>Plugin Version</strong></td>
+						<td><code><?php echo esc_html( $diag['plugin_version'] ); ?></code></td>
+					</tr>
+				</tbody>
+			</table>
+		</details>
 
 		<?php if ( ! empty( $diag['conflict_hints'] ) ) : ?>
-		<h3 style="margin-top:16px">⚠️ Conflict Hints</h3>
+		<h3 style="margin-top:16px">⚠️ Potential Issues</h3>
 		<ul style="max-width:700px;list-style:disc;padding-left:20px">
 			<?php foreach ( $diag['conflict_hints'] as $hint ) : ?>
 				<li style="margin-bottom:4px"><?php echo esc_html( $hint ); ?></li>
@@ -662,35 +720,87 @@ class MM_Consent_Banner {
 		<?php endif; ?>
 
 		<p style="margin-top:12px">
-			<button type="button" id="mm-copy-diag" class="button button-secondary" style="margin-right:8px">📋 Copy Diagnostics</button>
+			<button type="button" id="mm-copy-diag" class="button button-secondary">📋 Copy Diagnostics</button>
 		</p>
 
 		<hr />
-		<h2>Verification Checklist</h2>
+		<h2>⚠️ Known Limitations</h2>
+		<ul style="max-width:700px;list-style:disc;padding-left:20px;margin-bottom:16px">
+			<li><strong>Region detection accuracy:</strong> Best when your hosting/CDN provides country headers (e.g. Cloudflare <code>CF-IPCountry</code>). Without server headers, the system falls back to browser timezone, which is approximate — a VPN user may appear as a different region.</li>
+			<li><strong>ACTV TRKR only:</strong> This banner controls ACTV TRKR analytics cookies only. If you use Google Analytics, Meta Pixel, or other third-party tracking, those require their own consent handling.</li>
+			<li><strong>US opt-out is not retroactive:</strong> When a US visitor opts out, analytics stop going forward. Events already sent before the opt-out are not removed.</li>
+			<li><strong>Caching:</strong> Full-page caches may serve the same banner config to all visitors. If you use aggressive caching, consider excluding the consent banner script or using cache-splitting by region header.</li>
+		</ul>
+
+		<hr />
+		<h2>📖 How It Works</h2>
+		<div style="max-width:700px">
+			<details style="margin-bottom:8px">
+				<summary style="cursor:pointer;font-weight:600">EU/UK Strict Mode</summary>
+				<p style="padding:8px 0 0 16px">EU/EEA and UK visitors see a consent banner. ACTV TRKR analytics are completely blocked — no cookies (<code>mm_vid</code>, <code>mm_sid</code>, <code>mm_ts</code>), no events, no localStorage queue — until the visitor clicks Accept. If they reject, analytics never start. A "Cookie Settings" link in the footer allows them to change their mind later.</p>
+			</details>
+			<details style="margin-bottom:8px">
+				<summary style="cursor:pointer;font-weight:600">US Opt-Out Mode</summary>
+				<p style="padding:8px 0 0 16px">US visitors see no blocking banner by default. ACTV TRKR analytics run immediately. A visible "Privacy Settings" link (configurable label) in the footer gives them access to a preferences modal where they can turn analytics off. On opt-out, all ACTV TRKR cookies and identifiers are cleared and tracking stops. The site continues to work normally.</p>
+			</details>
+			<details style="margin-bottom:8px">
+				<summary style="cursor:pointer;font-weight:600">Other Region Fallback</summary>
+				<p style="padding:8px 0 0 16px">Visitors from regions outside EU/UK and US follow the fallback you choose — either "Strict" (same as EU/UK) or "Relaxed" (same as US opt-out behavior). If region detection fails entirely, the fallback applies.</p>
+			</details>
+			<details style="margin-bottom:8px">
+				<summary style="cursor:pointer;font-weight:600">How to Test Safely</summary>
+				<ol style="padding:8px 0 0 32px">
+					<li>Enable <strong>Debug Mode</strong> above.</li>
+					<li>Set <strong>Region Override</strong> to the region you want to test.</li>
+					<li>Click <strong>Save Changes</strong>.</li>
+					<li>Open your site in a <strong>private/incognito window</strong> (so no existing cookies interfere).</li>
+					<li>Open <strong>Developer Tools → Console</strong> and look for <code>[ACTV TRKR Consent]</code> messages.</li>
+					<li>Check <strong>Application → Cookies</strong> in DevTools to confirm no <code>mm_vid</code> or <code>mm_sid</code> exist before consent (EU/UK strict).</li>
+					<li>Test Accept, Reject, and the footer settings link.</li>
+					<li><strong>Remember to set Region Override back to "Auto-detect" when done.</strong></li>
+				</ol>
+			</details>
+			<details style="margin-bottom:8px">
+				<summary style="cursor:pointer;font-weight:600">Cookies &amp; Identifiers Reference</summary>
+				<p style="padding:8px 0 0 16px">In strict mode, <strong>none</strong> of these should exist before consent:</p>
+				<ul style="padding:4px 0 0 32px;list-style:disc">
+					<li><code>mm_vid</code> — visitor identifier</li>
+					<li><code>mm_sid</code> — session identifier</li>
+					<li><code>mm_ts</code> — timestamp</li>
+					<li><code>mm_utm</code> — campaign attribution</li>
+					<li><code>mm_consent_decision</code> — only set after Accept or Reject</li>
+				</ul>
+			</details>
+		</div>
+
+		<hr />
+		<h2>✅ Verification Checklist</h2>
 		<ol style="max-width:700px;padding-left:20px">
-			<li><strong>EU/UK visitor test:</strong> Open your site in a private window (or use region override). Confirm consent banner appears. Confirm no <code>mm_vid</code> or <code>mm_sid</code> cookies before consent. Accept → tracking starts. Reject → no tracking cookies.</li>
-			<li><strong>US visitor test:</strong> Open your site with US region (or override). Confirm <strong>no blocking banner</strong> appears. Confirm a "Privacy Settings" link is visible. Click it → preferences modal opens. Toggle analytics off → tracking stops and cookies clear.</li>
-			<li><strong>Other/unknown visitor test:</strong> Use region override to force "Other." Confirm behavior matches your configured fallback (strict or relaxed).</li>
-			<li>Look for a <strong>Cookie Settings</strong> or <strong>Privacy Settings</strong> link in the footer</li>
-			<li>If Debug Mode is on, check browser console for <code>[ACTV TRKR Consent]</code> log messages</li>
+			<li><strong>EU/UK test:</strong> Set region override to EU/UK. Open site in private window. Confirm banner appears. Check DevTools → Cookies — no <code>mm_vid</code> or <code>mm_sid</code> before consent. Accept → tracking starts. Reject → no tracking cookies remain.</li>
+			<li><strong>US test:</strong> Set region override to US. Open site in private window. Confirm <strong>no blocking banner</strong>. Confirm "Privacy Settings" link is visible in footer. Click it → preferences modal opens. Toggle analytics off → cookies clear, tracking stops.</li>
+			<li><strong>Other test:</strong> Set region override to Other. Confirm behavior matches your fallback setting (strict = banner, relaxed = no banner).</li>
+			<li><strong>Footer links:</strong> Look for "Cookie Settings" (EU/UK) or "Privacy Settings" (US) in footer.</li>
+			<li><strong>Console:</strong> With Debug Mode on, confirm <code>[ACTV TRKR Consent]</code> messages show the correct region and behavior.</li>
 		</ol>
 
 		<script>
 		document.getElementById('mm-copy-diag').addEventListener('click', function() {
 			var diag = <?php echo wp_json_encode( $diag ); ?>;
+			var summary = <?php echo wp_json_encode( $status_summary ); ?>;
 			var text = 'ACTV TRKR Consent Banner Diagnostics\n';
 			text += '=====================================\n';
+			text += 'Status Summary:\n';
+			for (var sk in summary) { text += '  ' + sk + ': ' + summary[sk] + '\n'; }
+			text += '\nFull Diagnostics:\n';
 			for (var key in diag) {
 				if (key === 'conflict_hints') {
-					text += 'conflict_hints: ' + (diag[key].length ? diag[key].join('; ') : 'none') + '\n';
+					text += '  conflict_hints: ' + (diag[key].length ? diag[key].join('; ') : 'none') + '\n';
 				} else {
-					text += key + ': ' + diag[key] + '\n';
+					text += '  ' + key + ': ' + diag[key] + '\n';
 				}
 			}
 			if (navigator.clipboard) {
-				navigator.clipboard.writeText(text).then(function() {
-					alert('Diagnostics copied to clipboard!');
-				});
+				navigator.clipboard.writeText(text).then(function() { alert('Diagnostics copied to clipboard!'); });
 			} else {
 				var ta = document.createElement('textarea');
 				ta.value = text;
@@ -701,6 +811,7 @@ class MM_Consent_Banner {
 				alert('Diagnostics copied to clipboard!');
 			}
 		});
+
 		// Show/hide Other Fallback row based on compliance mode
 		(function() {
 			var modeSelect = document.getElementById('mm_compliance_mode');
@@ -712,8 +823,66 @@ class MM_Consent_Banner {
 			toggle();
 			if (modeSelect) modeSelect.addEventListener('change', toggle);
 		})();
+
+		// Quick region test buttons
+		(function() {
+			var btns = document.querySelectorAll('.mm-test-region');
+			var feedback = document.getElementById('mm-test-feedback');
+			var overrideSelect = document.querySelector('select[name="<?php echo $name; ?>[region_debug_override]"]');
+			var debugCheckbox = document.querySelector('input[name="<?php echo $name; ?>[debug_mode]"]');
+			for (var i = 0; i < btns.length; i++) {
+				btns[i].addEventListener('click', function() {
+					var region = this.getAttribute('data-region');
+					if (overrideSelect) overrideSelect.value = region;
+					if (region && debugCheckbox) debugCheckbox.checked = true;
+					if (feedback) {
+						if (region) {
+							feedback.textContent = '✅ Region override set to "' + (region || 'auto') + '". Click Save Changes, then open your site in a private window to test.';
+						} else {
+							feedback.textContent = '✅ Region override cleared. Click Save Changes to return to production auto-detect.';
+						}
+						feedback.style.display = '';
+					}
+				});
+			}
+		})();
 		</script>
 		<?php
+	}
+
+	/* ── Build status summary ─────────────────────────────────── */
+
+	private static function build_status_summary( $diag ) {
+		$mode_labels = array(
+			'global_strict' => 'Global Strict — consent banner for all visitors',
+			'eu_us'         => 'EU/UK Strict + US Opt-Out (Recommended)',
+			'custom'        => 'Custom Region Rules',
+		);
+		$region_labels = array(
+			'eu'      => 'EU/EEA or UK',
+			'us'      => 'United States',
+			'other'   => 'Other region',
+			'unknown' => 'Unknown (no server header — frontend timezone fallback will be used)',
+		);
+		$behavior_labels = array(
+			'strict'    => 'Strict — consent banner shown, analytics blocked until accepted',
+			'us_optout' => 'US Opt-Out — analytics allowed by default, opt-out via Privacy Settings',
+			'relaxed'   => 'Relaxed — analytics allowed, no blocking banner',
+		);
+
+		$behavior = $diag['region_behavior'];
+		$banner_should_show = ( $behavior === 'strict' );
+		$tracker_blocked = ( $behavior === 'strict' );
+		$optout_link_show = ( $behavior === 'us_optout' && $diag['us_privacy_link'] );
+
+		return array(
+			'mode_label'         => $mode_labels[ $diag['compliance_mode'] ] ?? $diag['compliance_mode'],
+			'region_label'       => $region_labels[ $diag['detected_region'] ] ?? $diag['detected_region'],
+			'behavior_label'     => $behavior_labels[ $behavior ] ?? $behavior,
+			'banner_should_show' => $banner_should_show,
+			'tracker_blocked'    => $tracker_blocked,
+			'optout_link_show'   => $optout_link_show,
+		);
 	}
 }
 

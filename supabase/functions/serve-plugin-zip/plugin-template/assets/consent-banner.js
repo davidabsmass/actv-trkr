@@ -259,7 +259,8 @@
       links += '<a href="' + esc(CFG.cookieUrl) + '" target="_blank" rel="noopener">' + esc(CFG.cookieLabel || 'Cookie Policy') + '</a>';
     }
 
-    var desc = esc(CFG.description || 'We use cookies to understand how you use our site and improve your experience. Analytics cookies are optional.');
+    var defaultDesc = 'We use optional analytics cookies to understand how you use our site and improve your experience. You can accept or reject them — the site works either way.';
+    var desc = esc(CFG.description || defaultDesc);
     if (links) desc += '<br>' + links;
 
     bannerEl = el('div', {
@@ -306,7 +307,7 @@
   function buildUsNotice() {
     if (!CFG.usShowNotice) return null;
 
-    var text = CFG.usNoticeText || 'We use analytics cookies to improve your experience. You can opt out anytime via Privacy Settings.';
+    var text = CFG.usNoticeText || 'This site uses analytics cookies to improve your experience. You can opt out anytime.';
     var privacyLabel = CFG.usPrivacyLabel || 'Privacy Settings';
 
     usNoticeEl = el('div', {
@@ -325,7 +326,7 @@
           }),
           el('button', {
             className: 'mm-cb-btn mm-cb-btn-dismiss',
-            textContent: 'OK',
+            textContent: 'Dismiss',
             type: 'button',
             onClick: function () { hideUsNotice(); },
           }),
@@ -384,7 +385,7 @@
           el('span', { className: 'mm-cb-cat-title', textContent: 'Essential Cookies' }),
           el('span', { className: 'mm-cb-cat-badge', textContent: 'Always Active' }),
         ]),
-        el('p', { className: 'mm-cb-cat-desc', textContent: 'Required for the website to function. These cannot be disabled.' }),
+        el('p', { className: 'mm-cb-cat-desc', textContent: 'Required for the website to function properly. These cannot be disabled.' }),
       ]),
 
       // Analytics
@@ -396,20 +397,20 @@
             el('span', { className: 'mm-cb-toggle-slider' }),
           ]),
         ]),
-        el('p', { className: 'mm-cb-cat-desc', textContent: 'Help us understand how visitors interact with our website. All data is anonymous.' }),
+        el('p', { className: 'mm-cb-cat-desc', textContent: 'Help us understand how visitors use our website so we can improve it. All data is anonymous. Disabling these does not affect how the site works for you.' }),
       ]),
 
       // Actions
       el('div', { className: 'mm-cb-modal-actions' }, [
         el('button', {
           className: 'mm-cb-btn mm-cb-btn-reject',
-          textContent: regionBehavior === 'us_optout' ? 'Opt Out' : 'Reject All',
+          textContent: regionBehavior === 'us_optout' ? 'Opt Out of Analytics' : 'Reject All',
           type: 'button',
           onClick: function () { doDecision(false); closeModal(); },
         }),
         el('button', {
           className: 'mm-cb-btn mm-cb-btn-accept',
-          textContent: regionBehavior === 'us_optout' ? 'Keep Enabled' : 'Accept All',
+          textContent: regionBehavior === 'us_optout' ? 'Keep Analytics On' : 'Accept All',
           type: 'button',
           onClick: function () { doDecision(true); closeModal(); },
         }),

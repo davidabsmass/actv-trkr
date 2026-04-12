@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import WpEnvironmentTab from "@/components/monitoring/WpEnvironmentTab";
+import { TrackingStatusCard, TrackingAlertsPanel, TrackingInterruptionsTable, SiteHealthBanner } from "@/components/monitoring/TrackingHealthPanel";
 
 export default function MonitoringPage() {
   const { orgId } = useOrg();
@@ -292,7 +293,9 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
 
         {/* Overview */}
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <SiteHealthBanner siteId={site.id} />
+          <div className="grid gap-4 md:grid-cols-4">
+            <TrackingStatusCard siteId={site.id} />
             <div className="glass-card p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <Activity className="h-4 w-4" /> Last Confirmation
@@ -317,6 +320,11 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
                 {sslHealth?.days_to_ssl_expiry != null ? `${sslHealth.days_to_ssl_expiry} days` : "Unknown"}
               </p>
             </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <TrackingAlertsPanel siteId={site.id} />
+            <TrackingInterruptionsTable siteId={site.id} />
           </div>
 
           {/* Incidents */}

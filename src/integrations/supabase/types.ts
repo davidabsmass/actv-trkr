@@ -2977,6 +2977,60 @@ export type Database = {
           },
         ]
       }
+      site_tracking_status: {
+        Row: {
+          events_last_hour: number
+          heartbeats_last_hour: number
+          id: string
+          last_event_at: string | null
+          last_heartbeat_at: string | null
+          last_page_view_at: string | null
+          org_id: string
+          site_id: string
+          tracker_status: string
+          updated_at: string
+        }
+        Insert: {
+          events_last_hour?: number
+          heartbeats_last_hour?: number
+          id?: string
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          last_page_view_at?: string | null
+          org_id: string
+          site_id: string
+          tracker_status?: string
+          updated_at?: string
+        }
+        Update: {
+          events_last_hour?: number
+          heartbeats_last_hour?: number
+          id?: string
+          last_event_at?: string | null
+          last_heartbeat_at?: string | null
+          last_page_view_at?: string | null
+          org_id?: string
+          site_id?: string
+          tracker_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_tracking_status_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_tracking_status_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_visitors: {
         Row: {
           first_seen_at: string
@@ -3319,6 +3373,108 @@ export type Database = {
           reason?: string
         }
         Relationships: []
+      }
+      tracker_alerts: {
+        Row: {
+          acknowledged: boolean
+          alert_type: string
+          created_at: string
+          details: Json
+          id: string
+          message: string
+          org_id: string
+          severity: string
+          site_id: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          alert_type: string
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string
+          org_id: string
+          severity?: string
+          site_id: string
+        }
+        Update: {
+          acknowledged?: boolean
+          alert_type?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          message?: string
+          org_id?: string
+          severity?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracker_alerts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracker_alerts_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracking_interruptions: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          org_id: string
+          resolved: boolean
+          site_id: string
+          started_at: string
+          trigger_reason: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          org_id: string
+          resolved?: boolean
+          site_id: string
+          started_at?: string
+          trigger_reason?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          org_id?: string
+          resolved?: boolean
+          site_id?: string
+          started_at?: string
+          trigger_reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_interruptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracking_interruptions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       traffic_daily: {
         Row: {

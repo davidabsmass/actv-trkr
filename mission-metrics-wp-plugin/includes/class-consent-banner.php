@@ -450,8 +450,9 @@ class MM_Consent_Banner {
 			</tr>
 		</table>
 
+		<?php self::render_external_cmp_section( $diag ); ?>
+
 		<hr />
-		<h2>Region-Based Privacy</h2>
 		<p class="description" style="max-width:700px">
 			Choose how ACTV TRKR analytics consent behaves for visitors from different regions:
 		</p>

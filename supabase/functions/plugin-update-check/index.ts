@@ -11,9 +11,15 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.6";
+const CURRENT_PLUGIN_VERSION = "1.9.7";
 
 const CHANGELOG = `
+## 1.9.7
+- NEW: Admin warning that ACTV TRKR controls its own analytics only
+- NEW: Lightweight detection of Meta Pixel, Google Analytics, GTM on frontend
+- NEW: External Tracking Notice section in diagnostics panel
+- NEW: Help tooltip near compliance settings
+
 ## 1.9.6
 - NEW: External consent plugin detection (Complianz, CookieYes, Cookiebot, Real Cookie Banner, etc.)
 - NEW: External Consent Plugin Setup section with setup instructions and copy-to-clipboard blocks

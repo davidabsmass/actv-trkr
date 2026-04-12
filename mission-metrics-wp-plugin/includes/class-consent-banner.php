@@ -435,7 +435,8 @@ class MM_Consent_Banner {
 		?>
 		<hr />
 		<h2>Consent Banner</h2>
-		<p class="description">Built-in cookie consent banner for ACTV TRKR analytics. When enabled, visitors see an accept/reject prompt — no third-party consent plugin needed.</p>
+		<p class="description">Built-in cookie consent banner for ACTV TRKR analytics. When enabled, visitors see an accept/reject prompt — no third-party consent plugin needed.
+		<span class="dashicons dashicons-editor-help" style="vertical-align:middle;cursor:help;color:#999" title="ACTV TRKR ensures its own analytics respect consent. Other plugins and tracking tools must be configured separately."></span></p>
 
 		<div class="notice notice-info inline" style="max-width:700px;margin:12px 0">
 			<p><strong>ℹ️ This controls ACTV TRKR analytics only.</strong> Third-party tracking from other plugins, ad networks, or embedded services requires separate consent/privacy handling.</p>
@@ -619,6 +620,14 @@ class MM_Consent_Banner {
 		<hr />
 		<h2>Status &amp; Diagnostics</h2>
 
+		<!-- External Tracking Notice -->
+		<div style="max-width:700px;background:#fefce8;border:1px solid #facc15;border-radius:8px;padding:16px;margin-bottom:20px">
+			<h3 style="margin:0 0 8px;font-size:15px">📡 External Tracking Notice</h3>
+			<p style="margin:0 0 8px;font-size:13px"><strong>ACTV TRKR manages consent for ACTV TRKR analytics only.</strong> Other plugins or scripts on your site (such as analytics, advertising, or tracking tools) may require separate configuration.</p>
+			<p style="margin:0;font-size:13px;color:#666">For full-site compliance, ensure any other tracking tools are configured to respect user consent.</p>
+			<p style="margin:8px 0 0;font-size:12px;color:#888">The diagnostics below will show if common third-party tracking scripts (Meta Pixel, Google Analytics, GTM) are detected on your frontend. This detection is informational only — ACTV TRKR does not block or control them.</p>
+		</div>
+
 		<!-- What Should Happen Right Now -->
 		<div style="max-width:700px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;margin-bottom:20px">
 			<h3 style="margin:0 0 8px;font-size:15px">🔍 What Should Happen Right Now</h3>
@@ -720,16 +729,21 @@ class MM_Consent_Banner {
 						<td><strong>Frontend JS Registered</strong></td>
 						<td><?php echo $diag['js_registered'] ? '✅ Yes' : '⚠️ Not yet (normal on admin pages)'; ?></td>
 					</tr>
-					<tr>
-						<td><strong>Footer Reopener</strong></td>
-						<td><?php echo $diag['footer_reopener'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
-					</tr>
-					<tr>
-						<td><strong>Plugin Version</strong></td>
-						<td><code><?php echo esc_html( $diag['plugin_version'] ); ?></code></td>
-					</tr>
-				</tbody>
-			</table>
+				<tr>
+					<td><strong>Footer Reopener</strong></td>
+					<td><?php echo $diag['footer_reopener'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
+				</tr>
+				<tr>
+					<td><strong>Plugin Version</strong></td>
+					<td><code><?php echo esc_html( $diag['plugin_version'] ); ?></code></td>
+				</tr>
+				<tr>
+					<td><strong>External Tracking Scripts</strong></td>
+					<td><em>Check browser console for <code>[ACTV TRKR Consent] ⚠️ Additional tracking scripts detected</code> messages after visiting a front-end page with Debug Mode on.</em>
+					<br><span style="font-size:12px;color:#888">Detects: Meta Pixel (fbq), Google Analytics (gtag), Google Tag Manager (dataLayer). ACTV TRKR does not control third-party tracking scripts.</span></td>
+				</tr>
+			</tbody>
+		</table>
 		</details>
 
 		<?php if ( ! empty( $diag['conflict_hints'] ) ) : ?>

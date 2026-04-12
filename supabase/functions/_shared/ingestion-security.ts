@@ -106,6 +106,8 @@ export const VALID_PAGEVIEW_TYPES = new Set(["pageview", "time_update"]);
 export const VALID_EVENT_TYPES = new Set([
   "cta_click", "download_click", "outbound_click",
   "tel_click", "mailto_click", "form_start",
+  "session_resume", "session_gap_detected",
+  "visibility_change", "route_change",
 ]);
 
 // ── PII Redaction for form fields ───────────────────────────────

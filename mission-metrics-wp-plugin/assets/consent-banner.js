@@ -27,7 +27,8 @@
     region_behavior: 'strict',
     region_source: 'none',
     external_cmp_detected: false,
-    consent_signal_status: 'unknown'
+    consent_signal_status: 'unknown',
+    external_tracking_scripts: []
   };
 
   window.__mmConsentDiag = diag;
@@ -725,7 +726,22 @@
     }
 
     updateTrackerDiag();
+    detectExternalTrackingScripts();
     debugLog('Diagnostics:', diag);
+  }
+
+  // ── External tracking script detection (lightweight) ───────
+  function detectExternalTrackingScripts() {
+    var detected = [];
+    try {
+      if (window.fbq) detected.push('Meta Pixel (fbq)');
+      if (window.gtag) detected.push('Google Analytics (gtag)');
+      if (window.dataLayer && window.dataLayer.length > 0) detected.push('Google Tag Manager (dataLayer)');
+    } catch (e) {}
+    diag.external_tracking_scripts = detected;
+    if (detected.length > 0) {
+      debugLog('⚠️ Additional tracking scripts detected:', detected.join(', '));
+    }
   }
 
   // ── Boot ────────────────────────────────────────────────────

@@ -10,8 +10,20 @@
   var COOKIE_UTM = 'mm_utm';
   var COOKIE_TS  = 'mm_ts';
   var SESSION_TIMEOUT = 30 * 60 * 1000;
-  var HEARTBEAT_INTERVAL = 30000; // 30 seconds
+  var HEARTBEAT_INTERVAL = 20000; // 20 seconds
+  var WATCHDOG_MULTIPLIER = 2;
   var MAX_EVENTS_PER_SESSION = 200;
+  var MAX_QUEUE_SIZE = 500;
+  var QUEUE_STORAGE_KEY = 'mm_event_queue';
+  var FLUSH_INTERVAL = 10000; // 10 seconds batch flush
+  var MAX_RETRY_DELAY = 300000; // 5 min cap
+  var BASE_RETRY_DELAY = 2000;
+
+  // ── Tracker State ──────────────────────────────────────────────
+  var trackerState = 'active'; // active | degraded | retrying | offline | stalled
+  var retryCount = 0;
+  var lastSuccessfulSend = Date.now();
+  var lastHeartbeatAttempt = 0;
 
   // ── Cookie helpers ──────────────────────────────────────────────
 
@@ -98,17 +110,144 @@
   function buildVisitor(vid) {
     var v = { visitor_id: vid };
     if (CFG.wpUser) {
-      v.wp_user_id = CFG.wpUser.id;
-      v.wp_user_name = CFG.wpUser.name;
-      v.wp_user_email = CFG.wpUser.email;
+      v.wp_user_id = String(CFG.wpUser.id);
       v.wp_user_role = CFG.wpUser.role;
     }
     return v;
   }
 
-  // ── Send ────────────────────────────────────────────────────────
+  // ── Event Queue System ─────────────────────────────────────────
 
-  function send(endpoint, payload) {
+  var eventQueue = [];
+
+  function loadQueue() {
+    try {
+      var stored = localStorage.getItem(QUEUE_STORAGE_KEY);
+      if (stored) {
+        var parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          eventQueue = parsed;
+        }
+      }
+    } catch (e) { /* localStorage unavailable */ }
+  }
+
+  function saveQueue() {
+    try {
+      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(eventQueue));
+    } catch (e) { /* quota exceeded or unavailable */ }
+  }
+
+  function clearSavedQueue() {
+    try { localStorage.removeItem(QUEUE_STORAGE_KEY); } catch (e) {}
+  }
+
+  // Priority: page_view > click events > heartbeat
+  function eventPriority(type) {
+    if (type === 'page_view') return 3;
+    if (type === 'form_submit') return 3;
+    if (type === 'heartbeat' || type === 'time_update') return 0;
+    return 1;
+  }
+
+  function trimQueue() {
+    if (eventQueue.length <= MAX_QUEUE_SIZE) return;
+    // Sort by priority ascending (lowest priority first), then oldest first
+    eventQueue.sort(function (a, b) {
+      var pa = eventPriority(a.event_type);
+      var pb = eventPriority(b.event_type);
+      if (pa !== pb) return pa - pb;
+      return (new Date(a.timestamp)).getTime() - (new Date(b.timestamp)).getTime();
+    });
+    // Remove lowest priority (first items) until under limit
+    eventQueue = eventQueue.slice(eventQueue.length - MAX_QUEUE_SIZE);
+    saveQueue();
+  }
+
+  function enqueueEvent(evt) {
+    evt.event_uuid = evt.event_uuid || uuid();
+    evt.timestamp = evt.timestamp || new Date().toISOString();
+    eventQueue.push(evt);
+    trimQueue();
+    saveQueue();
+  }
+
+  // ── Transport ──────────────────────────────────────────────────
+
+  function getEventEndpoint() {
+    return CFG.endpoint.replace(/\/track-pageview$/, '/track-event');
+  }
+
+  function flushQueue() {
+    if (eventQueue.length === 0) return;
+    if (!navigator.onLine) {
+      setTrackerState('offline');
+      return;
+    }
+
+    // Split queue: pageview events go to track-pageview, rest to track-event
+    var pageviewEvents = [];
+    var otherEvents = [];
+    for (var i = 0; i < eventQueue.length; i++) {
+      if (eventQueue[i].event_type === 'page_view') {
+        pageviewEvents.push(eventQueue[i]);
+      } else {
+        otherEvents.push(eventQueue[i]);
+      }
+    }
+
+    // For now, send everything via track-event batch endpoint
+    // (page_view events still use their original endpoint for compatibility)
+    if (otherEvents.length > 0) {
+      var batch = otherEvents.splice(0, 50); // max 50 per batch
+      var vid = getCookie(COOKIE_VID);
+      var sid = getCookie(COOKIE_SID);
+
+      var payload = {
+        api_key: CFG.apiKey,
+        source: {
+          domain: CFG.domain,
+          type: 'wordpress',
+          plugin_version: CFG.pluginVersion,
+        },
+        events: batch.map(function (e) {
+          return {
+            event_type: e.event_type,
+            event_uuid: e.event_uuid,
+            target_text: e.target_text,
+            page_url: e.page_url || window.location.href,
+            page_path: e.page_path || window.location.pathname,
+            timestamp: e.timestamp,
+            session_id: e.session_id || sid,
+            visitor_id: e.visitor_id || vid,
+            target_label: e.target_label,
+            target_href: e.target_href,
+            meta: e.meta,
+          };
+        }),
+      };
+
+      sendWithRetry(getEventEndpoint(), payload, function onSuccess() {
+        // Remove sent events from queue
+        var sentUuids = {};
+        for (var j = 0; j < batch.length; j++) {
+          sentUuids[batch[j].event_uuid] = true;
+        }
+        eventQueue = eventQueue.filter(function (e) {
+          return !sentUuids[e.event_uuid];
+        });
+        saveQueue();
+        retryCount = 0;
+        lastSuccessfulSend = Date.now();
+        setTrackerState('active');
+      }, function onFailure() {
+        // Events stay in queue for next retry
+        setTrackerState('retrying');
+      });
+    }
+  }
+
+  function sendWithRetry(endpoint, payload, onSuccess, onFailure) {
     var body = JSON.stringify(payload);
     fetch(endpoint, {
       method: 'POST',
@@ -118,11 +257,29 @@
       },
       body: body,
       keepalive: true,
+    }).then(function (resp) {
+      if (resp.ok || resp.status === 200) {
+        if (onSuccess) onSuccess();
+      } else {
+        retryCount++;
+        if (onFailure) onFailure();
+        scheduleRetry();
+      }
     }).catch(function () {
-      try {
-        navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
-      } catch (e) { /* silent */ }
+      retryCount++;
+      if (onFailure) onFailure();
+      scheduleRetry();
     });
+  }
+
+  var retryTimer = null;
+  function scheduleRetry() {
+    if (retryTimer) return;
+    var delay = Math.min(BASE_RETRY_DELAY * Math.pow(2, retryCount - 1), MAX_RETRY_DELAY);
+    retryTimer = setTimeout(function () {
+      retryTimer = null;
+      flushQueue();
+    }, delay);
   }
 
   function sendBeaconSafe(endpoint, payload) {
@@ -140,6 +297,37 @@
     } catch (e) { /* silent */ }
   }
 
+  // Legacy send function for pageview endpoint (backward compat)
+  function send(endpoint, payload) {
+    var body = JSON.stringify(payload);
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + CFG.apiKey,
+      },
+      body: body,
+      keepalive: true,
+    }).then(function (resp) {
+      if (resp.ok) {
+        lastSuccessfulSend = Date.now();
+        setTrackerState('active');
+      }
+    }).catch(function () {
+      // Pageview sends are critical — try beacon as fallback
+      try {
+        navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
+      } catch (e) { /* silent */ }
+    });
+  }
+
+  // ── Tracker State Management ──────────────────────────────────
+
+  function setTrackerState(newState) {
+    if (trackerState === newState) return;
+    trackerState = newState;
+  }
+
   // ── Time-on-Page Tracking ─────────────────────────────────────
 
   var pageTimer = {
@@ -149,6 +337,7 @@
     isActive: true,
     eventId: null,
     heartbeatTimer: null,
+    watchdogTimer: null,
 
     start: function (eventId) {
       this.eventId = eventId;
@@ -157,6 +346,7 @@
       this.activeMs = 0;
       this.isActive = true;
       this.startHeartbeat();
+      this.startWatchdog();
     },
 
     pause: function () {
@@ -183,11 +373,35 @@
 
     startHeartbeat: function () {
       var self = this;
+      if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = setInterval(function () {
         if (self.isActive) {
           self.sendTimeUpdate();
+          lastHeartbeatAttempt = Date.now();
         }
       }, HEARTBEAT_INTERVAL);
+    },
+
+    // Watchdog: restart heartbeat if no attempt in 2x interval
+    startWatchdog: function () {
+      var self = this;
+      if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+      lastHeartbeatAttempt = Date.now();
+      this.watchdogTimer = setInterval(function () {
+        var elapsed = Date.now() - lastHeartbeatAttempt;
+        if (elapsed > HEARTBEAT_INTERVAL * WATCHDOG_MULTIPLIER) {
+          // Heartbeat loop died — restart it
+          self.startHeartbeat();
+          setTrackerState('degraded');
+          // Queue a session_gap_detected event
+          enqueueEvent({
+            event_type: 'session_gap_detected',
+            page_url: window.location.href,
+            page_path: window.location.pathname,
+            meta: { gap_ms: elapsed, reason: 'watchdog_restart' },
+          });
+        }
+      }, HEARTBEAT_INTERVAL * WATCHDOG_MULTIPLIER + 5000);
     },
 
     sendTimeUpdate: function () {
@@ -210,6 +424,7 @@
     sendFinal: function () {
       if (!this.eventId) return;
       clearInterval(this.heartbeatTimer);
+      clearInterval(this.watchdogTimer);
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
       sendBeaconSafe(CFG.endpoint, {
@@ -226,25 +441,94 @@
     },
   };
 
-  // Visibility change handlers
+  // ── Visibility & Focus Handlers ───────────────────────────────
+
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       pageTimer.pause();
+      // Flush queue when tab goes hidden
+      flushQueue();
     } else {
       pageTimer.resume();
+      // Re-check session on return
+      var sid = getCookie(COOKIE_SID);
+      var lastTs = parseInt(getCookie(COOKIE_TS) || '0', 10);
+      var now = Date.now();
+      if (!sid || (now - lastTs > SESSION_TIMEOUT)) {
+        // Session expired while hidden — queue session_resume
+        enqueueEvent({
+          event_type: 'session_resume',
+          page_url: window.location.href,
+          page_path: window.location.pathname,
+          meta: { gap_ms: now - lastTs },
+        });
+        resolveSession(null);
+      }
+      setCookie(COOKIE_TS, String(now), 1);
+      // Ensure heartbeat is running
+      pageTimer.startHeartbeat();
+      flushQueue();
     }
+  });
+
+  window.addEventListener('focus', function () {
+    pageTimer.resume();
+    // Restart heartbeat on focus return
+    pageTimer.startHeartbeat();
+    flushQueue();
+  });
+
+  window.addEventListener('blur', function () {
+    pageTimer.pause();
   });
 
   window.addEventListener('beforeunload', function () {
     pageTimer.sendFinal();
-    flushEventBatch();
+    // Flush remaining events via beacon
+    if (eventQueue.length > 0) {
+      var vid = getCookie(COOKIE_VID);
+      var sid = getCookie(COOKIE_SID);
+      var batch = eventQueue.splice(0, 50);
+      sendBeaconSafe(getEventEndpoint(), {
+        api_key: CFG.apiKey,
+        source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
+        events: batch.map(function (e) {
+          return {
+            event_type: e.event_type,
+            event_uuid: e.event_uuid,
+            target_text: e.target_text,
+            page_url: e.page_url || window.location.href,
+            page_path: e.page_path || window.location.pathname,
+            timestamp: e.timestamp,
+            session_id: e.session_id || sid,
+            visitor_id: e.visitor_id || vid,
+            target_label: e.target_label,
+            target_href: e.target_href,
+            meta: e.meta,
+          };
+        }),
+      });
+      saveQueue(); // Save any remaining
+    }
+  });
+
+  window.addEventListener('pagehide', function () {
+    pageTimer.sendFinal();
+  });
+
+  // Online/offline handlers
+  window.addEventListener('online', function () {
+    setTrackerState('active');
+    flushQueue();
+  });
+
+  window.addEventListener('offline', function () {
+    setTrackerState('offline');
   });
 
   // ── Intent-Based Click Tracking ───────────────────────────────
 
-  var eventBatch = [];
   var sessionEventCount = 0;
-  var batchTimer = null;
 
   var DOWNLOAD_EXTENSIONS = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|csv|txt|rtf|mp3|mp4|avi|mov|epub)$/i;
 
@@ -253,52 +537,32 @@
   function classifyClick(el) {
     if (!el) return null;
 
-    // Walk up to find meaningful element
     var target = el;
     for (var i = 0; i < 5 && target; i++) {
       var tag = (target.tagName || '').toLowerCase();
 
-      // Check for data-actv="cta" attribute (explicit tagging)
       if (target.getAttribute && target.getAttribute('data-actv') === 'cta') {
         return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
       }
 
       if (tag === 'a') {
         var href = target.getAttribute('href') || '';
+        if (href.indexOf('tel:') === 0) return { type: 'tel_click', text: href.replace('tel:', ''), label: getActvLabel(target), el: target };
+        if (href.indexOf('mailto:') === 0) return { type: 'mailto_click', text: href.replace('mailto:', ''), label: getActvLabel(target), el: target };
+        if (DOWNLOAD_EXTENSIONS.test(href)) return { type: 'download_click', text: getClickText(target) || href.split('/').pop(), label: getActvLabel(target), el: target };
 
-        // tel: links
-        if (href.indexOf('tel:') === 0) {
-          return { type: 'tel_click', text: href.replace('tel:', ''), label: getActvLabel(target), el: target };
-        }
-
-        // mailto: links
-        if (href.indexOf('mailto:') === 0) {
-          return { type: 'mailto_click', text: href.replace('mailto:', ''), label: getActvLabel(target), el: target };
-        }
-
-        // Download links
-        if (DOWNLOAD_EXTENSIONS.test(href)) {
-          return { type: 'download_click', text: getClickText(target) || href.split('/').pop(), label: getActvLabel(target), el: target };
-        }
-
-        // Check CTA indicators BEFORE outbound — a CTA that links externally is still a CTA
         var classes = target.className || '';
-        var isCta = (typeof classes === 'string' && CTA_CLASS_PATTERN.test(classes)) ||
-                    target.getAttribute('role') === 'button';
-        if (isCta) {
-          return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
-        }
+        var isCta = (typeof classes === 'string' && CTA_CLASS_PATTERN.test(classes)) || target.getAttribute('role') === 'button';
+        if (isCta) return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
 
-        // Outbound links (non-CTA)
         try {
           var linkHost = new URL(href, window.location.origin).hostname;
           if (linkHost && linkHost !== window.location.hostname) {
             return { type: 'outbound_click', text: getClickText(target) || linkHost, label: getActvLabel(target), el: target };
           }
-        } catch (e) { /* invalid URL */ }
+        } catch (e) {}
       }
 
-      // Button elements (not inside forms — those are form_start)
       if (tag === 'button' || (target.getAttribute && target.getAttribute('role') === 'button')) {
         var inForm = target.closest && target.closest('form');
         var btnType = (target.getAttribute('type') || '').toLowerCase();
@@ -319,7 +583,6 @@
   }
 
   function getClickText(el) {
-    // Prefer data-actv-label if present
     var label = getActvLabel(el);
     if (label) return label;
     var text = (el.innerText || el.textContent || '').trim();
@@ -341,57 +604,28 @@
       target_text: result.text,
       page_url: window.location.href,
       page_path: window.location.pathname,
-      timestamp: new Date().toISOString(),
       session_id: sid,
       visitor_id: vid,
     };
-    if (result.label) {
-      evt.target_label = result.label;
-    }
-    var href = (result.el && result.el.getAttribute)
-      ? (result.el.getAttribute('href') || '')
-      : '';
+    if (result.label) evt.target_label = result.label;
+    var href = (result.el && result.el.getAttribute) ? (result.el.getAttribute('href') || '') : '';
     if (href) {
-      try {
-        evt.target_href = new URL(href, window.location.origin).href;
-      } catch (err) {
-        evt.target_href = href;
-      }
+      try { evt.target_href = new URL(href, window.location.origin).href; } catch (err) { evt.target_href = href; }
     }
-    eventBatch.push(evt);
-
-    // Start batch timer if not already running
-    if (!batchTimer) {
-      batchTimer = setTimeout(flushEventBatch, HEARTBEAT_INTERVAL);
-    }
-  }
-
-  function flushEventBatch() {
-    clearTimeout(batchTimer);
-    batchTimer = null;
-    if (eventBatch.length === 0) return;
-
-    var events = eventBatch.splice(0);
-    var eventEndpoint = CFG.endpoint.replace(/\/track-pageview$/, '/track-event');
-
-    send(eventEndpoint, {
-      api_key: CFG.apiKey,
-      source: {
-        domain: CFG.domain,
-        type: 'wordpress',
-        plugin_version: CFG.pluginVersion,
-      },
-      events: events,
-    });
+    enqueueEvent(evt);
   }
 
   // Form listeners are intentionally disabled so the tracker stays passive.
-  function trackFormFocus() {
-    return;
-  }
+  function trackFormFocus() { return; }
+  function handleFormSubmit() { return; }
 
-  // Attach click listener only; form listeners are intentionally disabled.
   document.addEventListener('click', trackClick, true);
+
+  // ── Periodic Queue Flush ──────────────────────────────────────
+
+  setInterval(function () {
+    flushQueue();
+  }, FLUSH_INTERVAL);
 
   // ── Pageview tracking ──────────────────────────────────────────
 
@@ -414,6 +648,7 @@
     // Start time-on-page tracking
     pageTimer.start(eventId);
 
+    // Pageview still goes via dedicated endpoint for backward compatibility
     send(CFG.endpoint, {
       source: {
         domain: CFG.domain,
@@ -524,14 +759,16 @@
     return fields;
   }
 
-  function handleFormSubmit() {
-    return;
-  }
-
   // Safety-first: form submission capture is disabled so the plugin never runs
   // inside a client form submission path.
 
   // ── Boot ───────────────────────────────────────────────────────
+
+  loadQueue(); // Restore any persisted events from previous page load
+  // If queue has events from last session, flush them
+  if (eventQueue.length > 0) {
+    setTimeout(flushQueue, 1000);
+  }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', track);

@@ -38,6 +38,7 @@ const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Dpa = lazy(() => import("./pages/Dpa"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const ComplianceSetup = lazy(() => import("./pages/ComplianceSetup"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
 const queryClient = new QueryClient({
@@ -143,6 +144,7 @@ const App = () => (
               <Route path="admin-setup" element={<AdminSetup />} />
               <Route path="account" element={<Account />} />
               <Route path="get-started" element={<GetStarted />} />
+              <Route path="compliance-setup" element={<ComplianceSetup />} />
               <Route path="website-setup" element={<Navigate to="/settings?tab=setup" replace />} />
             </Route>
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />

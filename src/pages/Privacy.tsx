@@ -120,7 +120,7 @@ export default function Privacy() {
               Our tracking plugin uses <strong className="text-foreground">first-party cookies only</strong>. No third-party cookies, advertising trackers, or cross-site tracking pixels are used. For full details on specific cookies and localStorage keys used, see our <Link to="/cookie-policy" className="text-primary underline">Cookie Policy</Link>.
             </p>
             <p className="text-muted-foreground leading-relaxed mt-2">
-              Our tracker supports a configurable <strong className="text-foreground">consent mode</strong>. In strict mode (GDPR default), no cookies are set and no tracking occurs until the End User grants analytics consent. See our <Link to="/cookie-policy" className="text-primary underline">Cookie Policy</Link> for details.
+              Our tracker supports a configurable <strong className="text-foreground">consent mode</strong>. In strict mode (GDPR default), no cookies are set and no tracking occurs until the End User grants analytics consent. See our <Link to="/cookie-policy" className="text-primary underline">Cookie Policy</Link> and <Link to="/compliance-setup" className="text-primary underline">Compliance Setup Guide</Link> for details.
             </p>
           </section>
 

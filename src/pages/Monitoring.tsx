@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import WpEnvironmentTab from "@/components/monitoring/WpEnvironmentTab";
 import { TrackingStatusCard, TrackingAlertsPanel, TrackingInterruptionsTable, SiteHealthBanner } from "@/components/monitoring/TrackingHealthPanel";
-import { ConsentStatusIndicator, DataIntegrityNotice } from "@/components/monitoring/ComplianceStatusPanel";
+import { ConsentStatusIndicator, DataIntegrityNotice, ComplianceWarnings } from "@/components/monitoring/ComplianceStatusPanel";
 
 export default function MonitoringPage() {
   const { orgId } = useOrg();
@@ -294,6 +294,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
 
         {/* Overview */}
         <TabsContent value="overview" className="space-y-4">
+          <ComplianceWarnings />
           <SiteHealthBanner siteId={site.id} />
           <DataIntegrityNotice siteId={site.id} />
            <div className="grid gap-4 md:grid-cols-4">

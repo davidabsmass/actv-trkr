@@ -14,6 +14,19 @@ function getZipUrl(req: Request): string {
 const CURRENT_PLUGIN_VERSION = "1.9.1";
 
 const CHANGELOG = `
+## 1.9.1
+- NEW: Built-in cookie consent banner — no third-party plugin required
+- Preferences modal with Essential (always on) and Analytics (opt-in) categories
+- Admin settings for banner text, button labels, policy URLs, position, and expiry
+- Footer "Cookie Settings" reopener link
+- Consent debug panel in WP admin
+- Full integration with existing mmConsent API and strict/relaxed modes
+
+## 1.9.0
+- NEW: Background import engine with adaptive batching
+- Resumable cursor-based imports for 10k+ entry forms
+- Import progress visible in dashboard
+
 ## 1.8.13
 - FIX: Dashboard downloads now always serve the canonical latest plugin ZIP
 - FIX: Keeps the downloadable package in sync with the WordPress updater build

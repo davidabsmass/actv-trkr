@@ -1,9 +1,7 @@
 <?php
 /**
  * Built-in cookie/consent banner for ACTV TRKR.
- * Renders a lightweight, accessible consent UI on the front-end and
- * provides WP-admin settings for customisation.
- * v2 — conflict-resistant, fail-closed, with diagnostics.
+ * v3 — region-based privacy behavior (EU strict, US opt-out).
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
@@ -11,12 +9,19 @@ class MM_Consent_Banner {
 
 	const OPTION_NAME = 'mm_consent_banner';
 
-	public static function init() {
-		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_front' ), 5 ); // Priority 5 = load early
-		add_action( 'wp_head',            array( __CLASS__, 'inline_bootstrap' ), 1 ); // Very early inline config
-		add_action( 'wp_footer',          array( __CLASS__, 'render_reopener' ) );
+	/* ── EU/EEA + UK country codes ──────────────────────────────── */
+	private static $eu_eea_countries = array(
+		'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU',
+		'IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES',
+		'SE','IS','LI','NO',
+	);
+	private static $uk_countries = array( 'GB' );
+	private static $us_countries = array( 'US' );
 
-		// Admin
+	public static function init() {
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_front' ), 5 );
+		add_action( 'wp_head',            array( __CLASS__, 'inline_bootstrap' ), 1 );
+		add_action( 'wp_footer',          array( __CLASS__, 'render_reopener' ) );
 		add_action( 'admin_init',         array( __CLASS__, 'register_settings' ) );
 		add_action( 'wp_ajax_mm_consent_diag', array( __CLASS__, 'ajax_diagnostics' ) );
 	}
@@ -25,22 +30,30 @@ class MM_Consent_Banner {
 
 	public static function defaults() {
 		return array(
-			'enabled'          => '1',
-			'title'            => 'Cookie Preferences',
-			'description'      => 'We use cookies to understand how you use our site and improve your experience. Analytics cookies are optional.',
-			'accept_label'     => 'Accept',
-			'reject_label'     => 'Reject',
-			'prefs_label'      => 'Manage Preferences',
-			'prefs_title'      => 'Cookie Preferences',
-			'privacy_url'      => '',
-			'privacy_label'    => 'Privacy Policy',
-			'cookie_url'       => '',
-			'cookie_label'     => 'Cookie Policy',
-			'position'         => 'bottom',       // bottom | top
-			'expiry_days'      => '365',
-			'show_reopener'    => '1',
-			'reopener_label'   => 'Cookie Settings',
-			'debug_mode'       => '0',
+			'enabled'              => '1',
+			'title'                => 'Cookie Preferences',
+			'description'          => 'We use cookies to understand how you use our site and improve your experience. Analytics cookies are optional.',
+			'accept_label'         => 'Accept',
+			'reject_label'         => 'Reject',
+			'prefs_label'          => 'Manage Preferences',
+			'prefs_title'          => 'Cookie Preferences',
+			'privacy_url'          => '',
+			'privacy_label'        => 'Privacy Policy',
+			'cookie_url'           => '',
+			'cookie_label'         => 'Cookie Policy',
+			'position'             => 'bottom',
+			'expiry_days'          => '365',
+			'show_reopener'        => '1',
+			'reopener_label'       => 'Cookie Settings',
+			'debug_mode'           => '0',
+			// Region-based privacy
+			'compliance_mode'      => 'global_strict', // global_strict | eu_us | custom
+			'other_region_fallback'=> 'strict',        // strict | relaxed
+			'us_privacy_link'      => '1',
+			'us_privacy_label'     => 'Privacy Settings',
+			'us_show_notice'       => '0',
+			'us_notice_text'       => 'We use analytics cookies to improve your experience. You can opt out anytime via Privacy Settings.',
+			'region_debug_override'=> '',              // '' | eu | us | other (admin testing only)
 		);
 	}
 
@@ -72,6 +85,21 @@ class MM_Consent_Banner {
 		$clean['reopener_label'] = sanitize_text_field( $input['reopener_label'] ?? $d['reopener_label'] );
 		$clean['debug_mode']     = ! empty( $input['debug_mode'] ) ? '1' : '0';
 
+		// Region settings
+		$valid_modes = array( 'global_strict', 'eu_us', 'custom' );
+		$clean['compliance_mode'] = in_array( ( $input['compliance_mode'] ?? '' ), $valid_modes, true )
+			? $input['compliance_mode'] : 'global_strict';
+		$clean['other_region_fallback'] = in_array( ( $input['other_region_fallback'] ?? '' ), array( 'strict', 'relaxed' ), true )
+			? $input['other_region_fallback'] : 'strict';
+		$clean['us_privacy_link']  = ! empty( $input['us_privacy_link'] ) ? '1' : '0';
+		$clean['us_privacy_label'] = sanitize_text_field( $input['us_privacy_label'] ?? $d['us_privacy_label'] );
+		$clean['us_show_notice']   = ! empty( $input['us_show_notice'] ) ? '1' : '0';
+		$clean['us_notice_text']   = sanitize_text_field( $input['us_notice_text'] ?? $d['us_notice_text'] );
+
+		$valid_overrides = array( '', 'eu', 'us', 'other' );
+		$clean['region_debug_override'] = in_array( ( $input['region_debug_override'] ?? '' ), $valid_overrides, true )
+			? $input['region_debug_override'] : '';
+
 		return $clean;
 	}
 
@@ -81,6 +109,62 @@ class MM_Consent_Banner {
 		register_setting( MM_Settings::OPTION_GROUP, self::OPTION_NAME, array(
 			'sanitize_callback' => array( __CLASS__, 'sanitize' ),
 		) );
+	}
+
+	/* ── Server-side region detection ────────────────────────────
+	 * Checks CDN/proxy headers. Returns 'eu', 'us', 'uk', or 'other'.
+	 * Falls back to 'unknown' if no header is found (client JS handles timezone fallback).
+	 */
+	public static function detect_region() {
+		$country = '';
+
+		// Check common CDN/proxy country headers
+		$headers = array(
+			'HTTP_CF_IPCOUNTRY',     // Cloudflare
+			'HTTP_X_VERCEL_IP_COUNTRY', // Vercel
+			'HTTP_X_COUNTRY_CODE',   // Generic
+			'HTTP_X_GEO_COUNTRY',    // Some CDNs
+			'GEOIP_COUNTRY_CODE',    // MaxMind / Apache mod_geoip
+		);
+		foreach ( $headers as $h ) {
+			if ( ! empty( $_SERVER[ $h ] ) ) {
+				$country = strtoupper( trim( $_SERVER[ $h ] ) );
+				break;
+			}
+		}
+
+		if ( ! $country ) return 'unknown';
+		if ( in_array( $country, self::$eu_eea_countries, true ) ) return 'eu';
+		if ( in_array( $country, self::$uk_countries, true ) ) return 'eu'; // UK = same strict treatment
+		if ( in_array( $country, self::$us_countries, true ) ) return 'us';
+		return 'other';
+	}
+
+	/* ── Compute effective consent behavior for a region ────────── */
+
+	public static function get_region_behavior( $region, $opts = null ) {
+		if ( ! $opts ) $opts = self::get();
+		$mode = $opts['compliance_mode'];
+
+		if ( $mode === 'global_strict' ) {
+			return 'strict'; // all regions get strict banner
+		}
+
+		if ( $mode === 'eu_us' ) {
+			if ( $region === 'eu' ) return 'strict';
+			if ( $region === 'us' ) return 'us_optout';
+			// Other/unknown → fallback
+			return $opts['other_region_fallback'] === 'relaxed' ? 'relaxed' : 'strict';
+		}
+
+		if ( $mode === 'custom' ) {
+			// Custom follows the same pattern but is explicit per the other_region_fallback
+			if ( $region === 'eu' ) return 'strict';
+			if ( $region === 'us' ) return 'us_optout';
+			return $opts['other_region_fallback'] === 'relaxed' ? 'relaxed' : 'strict';
+		}
+
+		return 'strict'; // safe default
 	}
 
 	/* ── Inline bootstrap config (wp_head, priority 1) ────────── */
@@ -94,29 +178,45 @@ class MM_Consent_Banner {
 		$main_opts = MM_Settings::get();
 		if ( empty( $main_opts['api_key'] ) ) return;
 
-		// Determine if debug mode should be active
 		$debug_mode = ( $opts['debug_mode'] === '1' && current_user_can( 'manage_options' ) );
 
+		// Region detection
+		$detected_region = self::detect_region();
+
+		// Admin debug override (only for logged-in admins)
+		if ( $debug_mode && ! empty( $opts['region_debug_override'] ) && current_user_can( 'manage_options' ) ) {
+			$detected_region = $opts['region_debug_override'];
+		}
+
+		$behavior = self::get_region_behavior( $detected_region, $opts );
+
 		$config = array(
-			'enabled'       => true,
-			'title'         => $opts['title'],
-			'description'   => $opts['description'],
-			'acceptLabel'   => $opts['accept_label'],
-			'rejectLabel'   => $opts['reject_label'],
-			'prefsLabel'    => $opts['prefs_label'],
-			'prefsTitle'    => $opts['prefs_title'],
-			'privacyUrl'    => $opts['privacy_url'],
-			'privacyLabel'  => $opts['privacy_label'],
-			'cookieUrl'     => $opts['cookie_url'],
-			'cookieLabel'   => $opts['cookie_label'],
-			'position'      => $opts['position'],
-			'expiryDays'    => intval( $opts['expiry_days'] ),
-			'showReopener'  => $opts['show_reopener'] === '1',
-			'consentMode'   => $main_opts['consent_mode'] ?? 'strict',
-			'debugMode'     => $debug_mode,
+			'enabled'          => true,
+			'title'            => $opts['title'],
+			'description'      => $opts['description'],
+			'acceptLabel'      => $opts['accept_label'],
+			'rejectLabel'      => $opts['reject_label'],
+			'prefsLabel'       => $opts['prefs_label'],
+			'prefsTitle'       => $opts['prefs_title'],
+			'privacyUrl'       => $opts['privacy_url'],
+			'privacyLabel'     => $opts['privacy_label'],
+			'cookieUrl'        => $opts['cookie_url'],
+			'cookieLabel'      => $opts['cookie_label'],
+			'position'         => $opts['position'],
+			'expiryDays'       => intval( $opts['expiry_days'] ),
+			'showReopener'     => $opts['show_reopener'] === '1',
+			'consentMode'      => $main_opts['consent_mode'] ?? 'strict',
+			'debugMode'        => $debug_mode,
+			// Region data
+			'complianceMode'   => $opts['compliance_mode'],
+			'detectedRegion'   => $detected_region,
+			'regionBehavior'   => $behavior,
+			'usPrivacyLink'    => $opts['us_privacy_link'] === '1',
+			'usPrivacyLabel'   => $opts['us_privacy_label'],
+			'usShowNotice'     => $opts['us_show_notice'] === '1',
+			'usNoticeText'     => $opts['us_notice_text'],
 		);
 
-		// Output inline bootstrap BEFORE any script loads
 		echo '<script id="mm-consent-bootstrap">window.mmConsentBannerConfig=' . wp_json_encode( $config ) . ';</script>' . "\n";
 	}
 
@@ -141,32 +241,43 @@ class MM_Consent_Banner {
 		wp_enqueue_script(
 			'mm-consent-banner',
 			MM_PLUGIN_URL . 'assets/consent-banner.js',
-			array( 'mm-tracker' ), // must load AFTER tracker.js so mmConsent API exists
+			array( 'mm-tracker' ),
 			MM_PLUGIN_VERSION,
 			true
 		);
 
-		// Config is already set via inline_bootstrap in wp_head.
-		// wp_localize_script kept as a secondary fallback in case inline bootstrap is stripped.
+		// Fallback localize
 		$debug_mode = ( $opts['debug_mode'] === '1' && current_user_can( 'manage_options' ) );
+		$detected_region = self::detect_region();
+		if ( $debug_mode && ! empty( $opts['region_debug_override'] ) && current_user_can( 'manage_options' ) ) {
+			$detected_region = $opts['region_debug_override'];
+		}
+		$behavior = self::get_region_behavior( $detected_region, $opts );
 
 		wp_localize_script( 'mm-consent-banner', 'mmConsentBannerConfig', array(
-			'enabled'       => true,
-			'title'         => $opts['title'],
-			'description'   => $opts['description'],
-			'acceptLabel'   => $opts['accept_label'],
-			'rejectLabel'   => $opts['reject_label'],
-			'prefsLabel'    => $opts['prefs_label'],
-			'prefsTitle'    => $opts['prefs_title'],
-			'privacyUrl'    => $opts['privacy_url'],
-			'privacyLabel'  => $opts['privacy_label'],
-			'cookieUrl'     => $opts['cookie_url'],
-			'cookieLabel'   => $opts['cookie_label'],
-			'position'      => $opts['position'],
-			'expiryDays'    => intval( $opts['expiry_days'] ),
-			'showReopener'  => $opts['show_reopener'] === '1',
-			'consentMode'   => $main_opts['consent_mode'] ?? 'strict',
-			'debugMode'     => $debug_mode,
+			'enabled'          => true,
+			'title'            => $opts['title'],
+			'description'      => $opts['description'],
+			'acceptLabel'      => $opts['accept_label'],
+			'rejectLabel'      => $opts['reject_label'],
+			'prefsLabel'       => $opts['prefs_label'],
+			'prefsTitle'       => $opts['prefs_title'],
+			'privacyUrl'       => $opts['privacy_url'],
+			'privacyLabel'     => $opts['privacy_label'],
+			'cookieUrl'        => $opts['cookie_url'],
+			'cookieLabel'      => $opts['cookie_label'],
+			'position'         => $opts['position'],
+			'expiryDays'       => intval( $opts['expiry_days'] ),
+			'showReopener'     => $opts['show_reopener'] === '1',
+			'consentMode'      => $main_opts['consent_mode'] ?? 'strict',
+			'debugMode'        => $debug_mode,
+			'complianceMode'   => $opts['compliance_mode'],
+			'detectedRegion'   => $detected_region,
+			'regionBehavior'   => $behavior,
+			'usPrivacyLink'    => $opts['us_privacy_link'] === '1',
+			'usPrivacyLabel'   => $opts['us_privacy_label'],
+			'usShowNotice'     => $opts['us_show_notice'] === '1',
+			'usNoticeText'     => $opts['us_notice_text'],
 		) );
 	}
 
@@ -174,10 +285,25 @@ class MM_Consent_Banner {
 
 	public static function render_reopener() {
 		$opts = self::get();
-		if ( $opts['enabled'] !== '1' || $opts['show_reopener'] !== '1' ) return;
+		if ( $opts['enabled'] !== '1' ) return;
 
-		$label = esc_html( $opts['reopener_label'] ?: 'Cookie Settings' );
-		echo '<div style="text-align:center;padding:8px 0;"><a href="#" id="mm-cookie-settings" class="mm-cb-reopen" role="button" tabindex="0">' . $label . '</a></div>';
+		// Always render the reopener container — JS will control visibility based on region
+		$cookie_label = esc_html( $opts['reopener_label'] ?: 'Cookie Settings' );
+		$privacy_label = esc_html( $opts['us_privacy_label'] ?: 'Privacy Settings' );
+
+		echo '<div id="mm-cb-footer-links" style="text-align:center;padding:8px 0;">';
+
+		// Cookie settings link (EU/strict regions)
+		if ( $opts['show_reopener'] === '1' ) {
+			echo '<a href="#" id="mm-cookie-settings" class="mm-cb-reopen" role="button" tabindex="0" style="display:none;">' . $cookie_label . '</a>';
+		}
+
+		// US privacy settings link
+		if ( $opts['us_privacy_link'] === '1' ) {
+			echo '<a href="#" id="mm-privacy-settings" class="mm-cb-reopen mm-cb-privacy-link" role="button" tabindex="0" style="display:none;">' . $privacy_label . '</a>';
+		}
+
+		echo '</div>';
 	}
 
 	/* ── AJAX diagnostics endpoint ─────────────────────────────── */
@@ -190,7 +316,6 @@ class MM_Consent_Banner {
 
 		$opts      = self::get();
 		$main_opts = MM_Settings::get();
-
 		$diag = self::build_diagnostics( $opts, $main_opts );
 		wp_send_json_success( $diag );
 	}
@@ -204,9 +329,11 @@ class MM_Consent_Banner {
 		$css_registered = wp_style_is( 'mm-consent-banner', 'registered' ) || wp_style_is( 'mm-consent-banner', 'enqueued' );
 		$js_registered  = wp_script_is( 'mm-consent-banner', 'registered' ) || wp_script_is( 'mm-consent-banner', 'enqueued' );
 
+		$detected_region = self::detect_region();
+		$behavior = self::get_region_behavior( $detected_region, $opts );
+
 		$conflict_hints = array();
 
-		// Check for common consent/cookie plugins
 		$consent_plugins = array(
 			'complianz-gdpr/complianz-gpdr.php',
 			'cookie-law-info/cookie-law-info.php',
@@ -222,7 +349,6 @@ class MM_Consent_Banner {
 			}
 		}
 
-		// Check for optimization plugins that may defer/delay JS
 		$optim_plugins = array(
 			'autoptimize/autoptimize.php',
 			'wp-rocket/wp-rocket.php',
@@ -234,26 +360,33 @@ class MM_Consent_Banner {
 		);
 		foreach ( $optim_plugins as $op ) {
 			if ( in_array( $op, $active_plugins, true ) ) {
-				$conflict_hints[] = 'Optimization plugin detected: ' . dirname( $op ) . '. JS defer/delay settings may prevent the consent banner from loading. Exclude mm-consent-banner.js and mm-tracker.js from optimization.';
+				$conflict_hints[] = 'Optimization plugin detected: ' . dirname( $op ) . '. JS defer/delay may block the consent banner. Exclude mm-consent-banner.js and mm-tracker.js from optimization.';
 			}
 		}
 
-		// Check for missing policy URLs
 		if ( empty( $opts['privacy_url'] ) ) {
 			$conflict_hints[] = 'No Privacy Policy URL configured. Consider adding one for GDPR compliance.';
 		}
 		if ( empty( $opts['cookie_url'] ) ) {
 			$conflict_hints[] = 'No Cookie Policy URL configured.';
 		}
-
-		// Check API key
 		if ( empty( $main_opts['api_key'] ) ) {
 			$conflict_hints[] = 'No API key configured — banner will not render without a valid API key.';
+		}
+		if ( $detected_region === 'unknown' ) {
+			$conflict_hints[] = 'Could not detect visitor region from server headers. The frontend will use timezone-based detection as a fallback. For best accuracy, use a CDN like Cloudflare that provides country headers.';
 		}
 
 		return array(
 			'banner_enabled'         => $opts['enabled'] === '1',
 			'consent_mode'           => $main_opts['consent_mode'] ?? 'strict',
+			'compliance_mode'        => $opts['compliance_mode'],
+			'detected_region'        => $detected_region,
+			'region_behavior'        => $behavior,
+			'other_fallback'         => $opts['other_region_fallback'],
+			'us_privacy_link'        => $opts['us_privacy_link'] === '1',
+			'us_show_notice'         => $opts['us_show_notice'] === '1',
+			'region_debug_override'  => $opts['region_debug_override'],
 			'js_registered'          => $js_registered,
 			'css_registered'         => $css_registered,
 			'footer_reopener'        => $opts['show_reopener'] === '1',
@@ -268,7 +401,7 @@ class MM_Consent_Banner {
 		);
 	}
 
-	/* ── Admin settings UI (rendered inside the existing ACTV TRKR settings page) ── */
+	/* ── Admin settings UI ────────────────────────────────────── */
 
 	public static function render_settings_section() {
 		$opts = self::get();
@@ -290,6 +423,82 @@ class MM_Consent_Banner {
 					</label>
 				</td>
 			</tr>
+		</table>
+
+		<hr />
+		<h2>Region-Based Privacy</h2>
+		<p class="description">
+			Control how ACTV TRKR analytics consent behaves for visitors from different regions.<br>
+			<strong>EU/UK</strong> = opt-in (consent banner blocks analytics until accepted).<br>
+			<strong>US</strong> = opt-out (analytics run, visitor can opt out anytime via Privacy Settings).<br>
+			This controls <strong>ACTV TRKR analytics only</strong> — not third-party tracking from other plugins.
+		</p>
+
+		<table class="form-table">
+			<tr>
+				<th scope="row"><label for="mm_compliance_mode">Compliance Mode</label></th>
+				<td>
+					<select id="mm_compliance_mode" name="<?php echo $name; ?>[compliance_mode]">
+						<option value="global_strict" <?php selected( $opts['compliance_mode'], 'global_strict' ); ?>>Global Strict — banner for all visitors</option>
+						<option value="eu_us" <?php selected( $opts['compliance_mode'], 'eu_us' ); ?>>EU/UK Strict + US Opt-Out (Recommended)</option>
+						<option value="custom" <?php selected( $opts['compliance_mode'], 'custom' ); ?>>Custom Region Rules</option>
+					</select>
+					<p class="description">
+						<strong>Global Strict:</strong> All visitors see consent banner; analytics blocked until accepted.<br>
+						<strong>EU/UK Strict + US Opt-Out:</strong> EU/UK visitors must opt in; US visitors can opt out. Other regions follow fallback.<br>
+						<strong>Custom:</strong> Same as EU/UK + US but lets you control Other region behavior explicitly.
+					</p>
+				</td>
+			</tr>
+			<tr id="mm-other-fallback-row">
+				<th scope="row"><label>Other Regions Fallback</label></th>
+				<td>
+					<select name="<?php echo $name; ?>[other_region_fallback]">
+						<option value="strict" <?php selected( $opts['other_region_fallback'], 'strict' ); ?>>Strict (show banner, block until consent)</option>
+						<option value="relaxed" <?php selected( $opts['other_region_fallback'], 'relaxed' ); ?>>Relaxed (allow tracking, provide opt-out)</option>
+					</select>
+					<p class="description">Applied to visitors from regions other than EU/UK or US when using EU/UK + US or Custom mode.</p>
+				</td>
+			</tr>
+		</table>
+
+		<h3>US Privacy Controls</h3>
+		<table class="form-table">
+			<tr>
+				<th scope="row">Privacy Settings Link</th>
+				<td>
+					<label>
+						<input type="checkbox" name="<?php echo $name; ?>[us_privacy_link]" value="1" <?php checked( $opts['us_privacy_link'], '1' ); ?> />
+						Show a "Privacy Settings" link for US visitors to opt out of ACTV TRKR analytics
+					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label>Link Label</label></th>
+				<td>
+					<input type="text" name="<?php echo $name; ?>[us_privacy_label]" value="<?php echo esc_attr( $opts['us_privacy_label'] ); ?>" class="regular-text" />
+					<p class="description">e.g. "Privacy Settings" or "Do Not Sell or Share My Data"</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row">Show US Notice</th>
+				<td>
+					<label>
+						<input type="checkbox" name="<?php echo $name; ?>[us_show_notice]" value="1" <?php checked( $opts['us_show_notice'], '1' ); ?> />
+						Show a brief, non-blocking notice to US visitors about analytics cookies
+					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label>Notice Text</label></th>
+				<td>
+					<input type="text" name="<?php echo $name; ?>[us_notice_text]" value="<?php echo esc_attr( $opts['us_notice_text'] ); ?>" class="large-text" />
+				</td>
+			</tr>
+		</table>
+
+		<h3>Banner Appearance</h3>
+		<table class="form-table">
 			<tr>
 				<th scope="row"><label>Banner Title</label></th>
 				<td><input type="text" name="<?php echo $name; ?>[title]" value="<?php echo esc_attr( $opts['title'] ); ?>" class="regular-text" /></td>
@@ -336,12 +545,16 @@ class MM_Consent_Banner {
 				<td>
 					<label>
 						<input type="checkbox" name="<?php echo $name; ?>[show_reopener]" value="1" <?php checked( $opts['show_reopener'], '1' ); ?> />
-						Show "Cookie Settings" link in footer
+						Show "Cookie Settings" link in footer (for EU/UK strict visitors)
 					</label>
 					<br>
 					<input type="text" name="<?php echo $name; ?>[reopener_label]" value="<?php echo esc_attr( $opts['reopener_label'] ); ?>" class="regular-text" style="margin-top:4px" placeholder="Cookie Settings" />
 				</td>
 			</tr>
+		</table>
+
+		<h3>Debug &amp; Testing</h3>
+		<table class="form-table">
 			<tr>
 				<th scope="row">Debug Mode (admin only)</th>
 				<td>
@@ -349,6 +562,18 @@ class MM_Consent_Banner {
 						<input type="checkbox" name="<?php echo $name; ?>[debug_mode]" value="1" <?php checked( $opts['debug_mode'] ?? '0', '1' ); ?> />
 						Show banner diagnostics in browser console (only for logged-in admins)
 					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label>Region Override (testing)</label></th>
+				<td>
+					<select name="<?php echo $name; ?>[region_debug_override]">
+						<option value="" <?php selected( $opts['region_debug_override'], '' ); ?>>Auto-detect (production)</option>
+						<option value="eu" <?php selected( $opts['region_debug_override'], 'eu' ); ?>>Force EU/UK</option>
+						<option value="us" <?php selected( $opts['region_debug_override'], 'us' ); ?>>Force US</option>
+						<option value="other" <?php selected( $opts['region_debug_override'], 'other' ); ?>>Force Other</option>
+					</select>
+					<p class="description">Admin-only region override for testing. Only applies when Debug Mode is on and you are logged in as admin. Does <strong>not</strong> affect other visitors.</p>
 				</td>
 			</tr>
 		</table>
@@ -362,12 +587,47 @@ class MM_Consent_Banner {
 					<td><?php echo $diag['banner_enabled'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
 				</tr>
 				<tr>
-					<td><strong>Consent Mode</strong></td>
-					<td><code><?php echo esc_html( $diag['consent_mode'] ); ?></code></td>
+					<td><strong>Compliance Mode</strong></td>
+					<td><code><?php echo esc_html( $diag['compliance_mode'] ); ?></code></td>
 				</tr>
 				<tr>
-					<td><strong>Analytics Blocked Until Consent</strong></td>
-					<td><?php echo $diag['consent_mode'] === 'strict' ? '✅ Yes — strict mode active' : '⚠️ No — relaxed mode (tracking starts immediately)'; ?></td>
+					<td><strong>Detected Region (this request)</strong></td>
+					<td><code><?php echo esc_html( $diag['detected_region'] ); ?></code>
+						<?php if ( $diag['detected_region'] === 'unknown' ) echo ' — <em>no server header; frontend timezone fallback will be used</em>'; ?>
+					</td>
+				</tr>
+				<tr>
+					<td><strong>Active Behavior</strong></td>
+					<td>
+						<code><?php echo esc_html( $diag['region_behavior'] ); ?></code>
+						<?php
+						if ( $diag['region_behavior'] === 'strict' ) echo ' — banner shown, analytics blocked until consent';
+						elseif ( $diag['region_behavior'] === 'us_optout' ) echo ' — analytics allowed, opt-out available';
+						elseif ( $diag['region_behavior'] === 'relaxed' ) echo ' — analytics allowed, no banner';
+						?>
+					</td>
+				</tr>
+				<tr>
+					<td><strong>Other Region Fallback</strong></td>
+					<td><code><?php echo esc_html( $diag['other_fallback'] ); ?></code></td>
+				</tr>
+				<tr>
+					<td><strong>US Privacy Link</strong></td>
+					<td><?php echo $diag['us_privacy_link'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
+				</tr>
+				<tr>
+					<td><strong>US Notice</strong></td>
+					<td><?php echo $diag['us_show_notice'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
+				</tr>
+				<?php if ( $diag['region_debug_override'] ) : ?>
+				<tr>
+					<td><strong>⚠️ Region Override Active</strong></td>
+					<td><code><?php echo esc_html( $diag['region_debug_override'] ); ?></code> — admin testing only</td>
+				</tr>
+				<?php endif; ?>
+				<tr>
+					<td><strong>Consent Mode (legacy)</strong></td>
+					<td><code><?php echo esc_html( $diag['consent_mode'] ); ?></code></td>
 				</tr>
 				<tr>
 					<td><strong>API Key Present</strong></td>
@@ -375,35 +635,15 @@ class MM_Consent_Banner {
 				</tr>
 				<tr>
 					<td><strong>Frontend CSS Registered</strong></td>
-					<td><?php echo $diag['css_registered'] ? '✅ Yes' : '⚠️ Not yet (check on front-end page load)'; ?></td>
+					<td><?php echo $diag['css_registered'] ? '✅ Yes' : '⚠️ Not yet'; ?></td>
 				</tr>
 				<tr>
 					<td><strong>Frontend JS Registered</strong></td>
-					<td><?php echo $diag['js_registered'] ? '✅ Yes' : '⚠️ Not yet (check on front-end page load)'; ?></td>
+					<td><?php echo $diag['js_registered'] ? '✅ Yes' : '⚠️ Not yet'; ?></td>
 				</tr>
 				<tr>
 					<td><strong>Footer Reopener</strong></td>
 					<td><?php echo $diag['footer_reopener'] ? '✅ Enabled' : '❌ Disabled'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Debug Mode</strong></td>
-					<td><?php echo $diag['debug_mode'] ? '🔧 Active (admin only)' : '❌ Off'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Privacy Policy URL</strong></td>
-					<td><?php echo $diag['privacy_url_set'] ? '✅ Set' : '⚠️ Not configured'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Cookie Policy URL</strong></td>
-					<td><?php echo $diag['cookie_url_set'] ? '✅ Set' : '⚠️ Not configured'; ?></td>
-				</tr>
-				<tr>
-					<td><strong>Banner Position</strong></td>
-					<td><code><?php echo esc_html( $diag['position'] ); ?></code></td>
-				</tr>
-				<tr>
-					<td><strong>Consent Cookie</strong></td>
-					<td><code>mm_consent_decision</code> — expires after <?php echo esc_html( $diag['expiry_days'] ); ?> days</td>
 				</tr>
 				<tr>
 					<td><strong>Plugin Version</strong></td>
@@ -428,12 +668,10 @@ class MM_Consent_Banner {
 		<hr />
 		<h2>Verification Checklist</h2>
 		<ol style="max-width:700px;padding-left:20px">
-			<li>Open your site homepage in a <strong>private/incognito window</strong></li>
-			<li>Confirm the consent banner appears at the bottom (or top) of the page</li>
-			<li>Open DevTools → Application → Cookies — confirm <strong>no mm_vid or mm_sid</strong> cookies exist before consent</li>
-			<li>Click <strong>Accept</strong> — confirm tracking starts (mm_vid cookie appears)</li>
-			<li>Clear cookies and reload — click <strong>Reject</strong> — confirm no tracking cookies appear</li>
-			<li>Look for a <strong>Cookie Settings</strong> link in the footer — click it to reopen the preferences modal</li>
+			<li><strong>EU/UK visitor test:</strong> Open your site in a private window (or use region override). Confirm consent banner appears. Confirm no <code>mm_vid</code> or <code>mm_sid</code> cookies before consent. Accept → tracking starts. Reject → no tracking cookies.</li>
+			<li><strong>US visitor test:</strong> Open your site with US region (or override). Confirm <strong>no blocking banner</strong> appears. Confirm a "Privacy Settings" link is visible. Click it → preferences modal opens. Toggle analytics off → tracking stops and cookies clear.</li>
+			<li><strong>Other/unknown visitor test:</strong> Use region override to force "Other." Confirm behavior matches your configured fallback (strict or relaxed).</li>
+			<li>Look for a <strong>Cookie Settings</strong> or <strong>Privacy Settings</strong> link in the footer</li>
 			<li>If Debug Mode is on, check browser console for <code>[ACTV TRKR Consent]</code> log messages</li>
 		</ol>
 
@@ -463,7 +701,20 @@ class MM_Consent_Banner {
 				alert('Diagnostics copied to clipboard!');
 			}
 		});
+		// Show/hide Other Fallback row based on compliance mode
+		(function() {
+			var modeSelect = document.getElementById('mm_compliance_mode');
+			var fallbackRow = document.getElementById('mm-other-fallback-row');
+			function toggle() {
+				if (!modeSelect || !fallbackRow) return;
+				fallbackRow.style.display = modeSelect.value === 'global_strict' ? 'none' : '';
+			}
+			toggle();
+			if (modeSelect) modeSelect.addEventListener('change', toggle);
+		})();
 		</script>
 		<?php
 	}
 }
+
+?>

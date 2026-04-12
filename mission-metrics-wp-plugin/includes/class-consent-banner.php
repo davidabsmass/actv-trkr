@@ -333,20 +333,10 @@ class MM_Consent_Banner {
 		$behavior = self::get_region_behavior( $detected_region, $opts );
 
 		$conflict_hints = array();
+		$external_cmps  = self::detect_external_cmps();
 
-		$consent_plugins = array(
-			'complianz-gdpr/complianz-gpdr.php',
-			'cookie-law-info/cookie-law-info.php',
-			'cookiebot/cookiebot.php',
-			'real-cookie-banner/index.php',
-			'gdpr-cookie-compliance/moove-gdpr.php',
-			'cookie-notice/cookie-notice.php',
-		);
-		$active_plugins = apply_filters( 'active_plugins', get_option( 'active_plugins' ) );
-		foreach ( $consent_plugins as $cp ) {
-			if ( in_array( $cp, $active_plugins, true ) ) {
-				$conflict_hints[] = 'Another consent/cookie plugin is active: ' . dirname( $cp ) . '. This may conflict with the built-in banner.';
-			}
+		foreach ( $external_cmps as $cmp ) {
+			$conflict_hints[] = 'External consent plugin detected: ' . $cmp['name'] . '. Consider disabling the ACTV TRKR banner and classifying ACTV TRKR under Analytics/Statistics in your existing tool.';
 		}
 
 		$optim_plugins = array(
@@ -358,6 +348,7 @@ class MM_Consent_Banner {
 			'flying-scripts/flying-scripts.php',
 			'async-javascript/async-javascript.php',
 		);
+		$active_plugins = apply_filters( 'active_plugins', get_option( 'active_plugins' ) );
 		foreach ( $optim_plugins as $op ) {
 			if ( in_array( $op, $active_plugins, true ) ) {
 				$conflict_hints[] = 'Optimization plugin detected: ' . dirname( $op ) . '. JS defer/delay may block the consent banner. Exclude mm-consent-banner.js and mm-tracker.js from optimization.';
@@ -396,9 +387,36 @@ class MM_Consent_Banner {
 			'api_key_present'        => ! empty( $main_opts['api_key'] ),
 			'privacy_url_set'        => ! empty( $opts['privacy_url'] ),
 			'cookie_url_set'         => ! empty( $opts['cookie_url'] ),
+			'external_cmps'          => $external_cmps,
 			'conflict_hints'         => $conflict_hints,
 			'plugin_version'         => defined( 'MM_PLUGIN_VERSION' ) ? MM_PLUGIN_VERSION : 'unknown',
 		);
+	}
+
+	/* ── Detect external consent/CMP plugins ──────────────────── */
+
+	private static function detect_external_cmps() {
+		$known_cmps = array(
+			'complianz-gdpr/complianz-gpdr.php'       => array( 'name' => 'Complianz', 'slug' => 'complianz', 'category_hint' => 'Statistics' ),
+			'cookie-law-info/cookie-law-info.php'     => array( 'name' => 'CookieYes', 'slug' => 'cookieyes', 'category_hint' => 'Analytics' ),
+			'cookiebot/cookiebot.php'                  => array( 'name' => 'Cookiebot / Usercentrics', 'slug' => 'cookiebot', 'category_hint' => 'Statistics' ),
+			'real-cookie-banner/index.php'             => array( 'name' => 'Real Cookie Banner', 'slug' => 'real-cookie-banner', 'category_hint' => 'Statistics' ),
+			'gdpr-cookie-compliance/moove-gdpr.php'   => array( 'name' => 'GDPR Cookie Compliance', 'slug' => 'moove-gdpr', 'category_hint' => 'Analytics' ),
+			'cookie-notice/cookie-notice.php'          => array( 'name' => 'Cookie Notice & Compliance', 'slug' => 'cookie-notice', 'category_hint' => 'Analytics' ),
+			'iubenda-cookie-law-solution/iubenda_cookie_solution.php' => array( 'name' => 'iubenda', 'slug' => 'iubenda', 'category_hint' => 'Experience / Analytics' ),
+			'cookie-script-com/cookie-script.php'      => array( 'name' => 'CookieScript', 'slug' => 'cookie-script', 'category_hint' => 'Analytics' ),
+		);
+
+		$active_plugins = apply_filters( 'active_plugins', get_option( 'active_plugins' ) );
+		$detected = array();
+
+		foreach ( $known_cmps as $file => $info ) {
+			if ( in_array( $file, $active_plugins, true ) ) {
+				$detected[] = $info;
+			}
+		}
+
+		return $detected;
 	}
 
 	/* ── Admin settings UI ────────────────────────────────────── */

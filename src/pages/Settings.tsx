@@ -50,6 +50,7 @@ export default function SettingsPage() {
             <SitesSection />
             <NotificationsSection />
             <SeoVisibilitySection />
+            {showAdminSections && <FormImportPanel />}
           </div>
         </TabsContent>
 

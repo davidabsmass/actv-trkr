@@ -11,9 +11,18 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.2";
+const CURRENT_PLUGIN_VERSION = "1.9.3";
 
 const CHANGELOG = `
+## 1.9.3
+- HARDENED: Conflict-resistant banner loading with inline bootstrap and fallback mounts
+- HARDENED: Fail-closed safety — malformed cookies treated as no consent
+- HARDENED: CSS uses !important and high z-index to resist theme/plugin overrides
+- NEW: Admin diagnostics panel with conflict hints and verification checklist
+- NEW: Debug mode (admin-only) logs banner lifecycle to browser console
+- NEW: Frontend self-check with delayed fallback for deferred/delayed JS environments
+- NEW: Copy Diagnostics button in admin panel
+
 ## 1.9.2
 - FIX: Built-in consent banner now defaults to enabled on new installs
 - FIX: Consent Banner settings now save correctly in WordPress admin

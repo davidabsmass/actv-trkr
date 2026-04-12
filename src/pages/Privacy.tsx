@@ -117,14 +117,10 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold mb-3">7. Cookies & Tracking Technologies</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Our tracking plugin uses <strong className="text-foreground">first-party cookies only</strong>. No third-party cookies, advertising trackers, or cross-site tracking pixels are used. The cookies we set include:
+              Our tracking plugin uses <strong className="text-foreground">first-party cookies only</strong>. No third-party cookies, advertising trackers, or cross-site tracking pixels are used. For full details on specific cookies and localStorage keys used, see our <Link to="/cookie-policy" className="text-primary underline">Cookie Policy</Link>.
             </p>
-            <ul className="list-disc pl-6 text-muted-foreground space-y-1 mt-2">
-              <li><strong className="text-foreground">Visitor ID cookie:</strong> A randomly generated identifier to distinguish unique visitors. Expires after 12 months.</li>
-              <li><strong className="text-foreground">Session ID cookie:</strong> A temporary identifier to group page visits within a single browsing session. Expires after 30 minutes of inactivity.</li>
-            </ul>
             <p className="text-muted-foreground leading-relaxed mt-2">
-              We do not use Google Analytics, Facebook Pixel, or any other third-party analytics service. All data remains first-party and under the Customer's control.
+              Our tracker supports a configurable <strong className="text-foreground">consent mode</strong>. In strict mode (GDPR default), no cookies are set and no tracking occurs until the End User grants analytics consent. See our <Link to="/cookie-policy" className="text-primary underline">Cookie Policy</Link> for details.
             </p>
           </section>
 

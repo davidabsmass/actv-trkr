@@ -278,6 +278,44 @@ export type Database = {
           },
         ]
       }
+      consent_config: {
+        Row: {
+          consent_mode: string
+          created_at: string
+          id: string
+          org_id: string
+          require_consent_before_tracking: boolean
+          retention_months: number
+          updated_at: string
+        }
+        Insert: {
+          consent_mode?: string
+          created_at?: string
+          id?: string
+          org_id: string
+          require_consent_before_tracking?: boolean
+          retention_months?: number
+          updated_at?: string
+        }
+        Update: {
+          consent_mode?: string
+          created_at?: string
+          id?: string
+          org_id?: string
+          require_consent_before_tracking?: boolean
+          retention_months?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_config_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversion_goals: {
         Row: {
           conversion_value: number | null
@@ -1645,6 +1683,7 @@ export type Database = {
           full_name: string | null
           id: string
           ip_address: string | null
+          ip_hash: string | null
           logged_in_at: string
           org_id: string | null
           user_agent: string | null
@@ -1655,6 +1694,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           ip_address?: string | null
+          ip_hash?: string | null
           logged_in_at?: string
           org_id?: string | null
           user_agent?: string | null
@@ -1665,6 +1705,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           ip_address?: string | null
+          ip_hash?: string | null
           logged_in_at?: string
           org_id?: string | null
           user_agent?: string | null

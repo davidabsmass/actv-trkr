@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractClientIp, hashIp } from "../_shared/ingestion-security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +25,6 @@ Deno.serve(async (req) => {
 
     const { data, error: claimsError } = await supabaseAuth.auth.getClaims(token);
     if (claimsError || !data?.claims) {
-      // Stale/invalid token — silently succeed since this is fire-and-forget
       console.warn("log-login: invalid token, skipping", claimsError?.message);
       return new Response(JSON.stringify({ status: "skipped" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -37,7 +37,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get user's org
     const { data: orgUser } = await supabase
       .from("org_users")
       .select("org_id")
@@ -45,19 +44,19 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    // Get full name from user metadata
     const { data: { user } } = await supabase.auth.admin.getUserById(userId);
 
     const userAgent = req.headers.get("user-agent") || null;
-    const xff = req.headers.get("x-forwarded-for");
-    const ip = xff ? xff.split(",")[0].trim() : req.headers.get("x-real-ip") || null;
+    const clientIp = extractClientIp(req);
+    const ipHash = clientIp ? await hashIp(clientIp) : null;
 
     await supabase.from("login_events").insert({
       user_id: userId,
       email: email || null,
       full_name: user?.user_metadata?.full_name || null,
       org_id: orgUser?.org_id || null,
-      ip_address: ip,
+      ip_address: null, // Never store raw IP
+      ip_hash: ipHash,
       user_agent: userAgent,
     });
 

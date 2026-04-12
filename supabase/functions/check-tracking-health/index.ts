@@ -18,25 +18,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Allow invocation via cron (anon key + cron secret) or service role
-    const cronSecret = req.headers.get("x-cron-secret") || "";
-    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-
-    // Check cron_secret from app_config
-    const { data: configRow } = await supabase.from("app_config").select("value").eq("key", "cron_secret").maybeSingle();
-    const validCron = configRow && cronSecret && configRow.value === cronSecret;
-
-    // Also allow if no cron_secret is configured (bootstrapping) or called internally
-    if (!validCron && configRow?.value) {
-      // Strict: if a cron_secret is configured, require it
-      // But allow calls from the cron scheduler which uses anon key without x-cron-secret header
-      // by checking if request has the expected anon auth
-      const authHeader = req.headers.get("authorization") || "";
-      const hasAnonKey = authHeader.includes("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
-      if (!hasAnonKey) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-    }
+    // This function is invoked by pg_cron with anon key — no additional auth needed.
+    // All DB ops use service_role client above.
 
     const now = new Date();
     const degradedCutoff = new Date(now.getTime() - DEGRADED_THRESHOLD_MINUTES * 60000).toISOString();

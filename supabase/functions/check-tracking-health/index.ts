@@ -51,6 +51,19 @@ Deno.serve(async (req) => {
       const orgId = sts.org_id;
       const domain = (sts as any).sites?.domain || "unknown";
 
+      // ── Compute events_last_hour ──
+      let eventsLastHour = 0;
+      try {
+        const oneHourAgo = new Date(now.getTime() - 3600_000).toISOString();
+        const { count } = await supabase
+          .from("events")
+          .select("*", { count: "exact", head: true })
+          .eq("site_id", siteId)
+          .eq("org_id", orgId)
+          .gte("occurred_at", oneHourAgo);
+        eventsLastHour = count ?? 0;
+      } catch { /* non-fatal */ }
+
       let newStatus = "active";
 
       // Determine new status
@@ -60,13 +73,21 @@ Deno.serve(async (req) => {
         newStatus = "degraded";
       }
 
-      // If status changed, update it
+      // Always update events_last_hour; update status only if changed
+      const updatePayload: Record<string, unknown> = {
+        events_last_hour: eventsLastHour,
+        updated_at: now.toISOString(),
+      };
+
       if (newStatus !== currentStatus) {
-        await supabase
-          .from("site_tracking_status")
-          .update({ tracker_status: newStatus, updated_at: now.toISOString() })
-          .eq("id", sts.id);
+        updatePayload.tracker_status = newStatus;
         statusUpdates++;
+      }
+
+      await supabase
+        .from("site_tracking_status")
+        .update(updatePayload)
+        .eq("id", sts.id);
 
         // Transition: active/degraded → stalled: open interruption
         if (newStatus === "stalled" && currentStatus !== "stalled") {
@@ -158,7 +179,6 @@ Deno.serve(async (req) => {
           });
           alertsCreated++;
         }
-      }
     }
 
     return new Response(JSON.stringify({

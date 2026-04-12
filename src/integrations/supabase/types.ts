@@ -1040,13 +1040,20 @@ export type Database = {
       }
       form_import_jobs: {
         Row: {
+          adaptive_batch_size: number | null
+          auto_resume_enabled: boolean | null
           batch_size: number
+          cancel_reason: string | null
           created_at: string
           cursor: string | null
           form_integration_id: string
+          heartbeat_at: string | null
           id: string
           last_batch_at: string | null
           last_error: string | null
+          lock_token: string | null
+          locked_at: string | null
+          next_run_at: string | null
           org_id: string
           retry_count: number
           site_id: string
@@ -1056,13 +1063,20 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          adaptive_batch_size?: number | null
+          auto_resume_enabled?: boolean | null
           batch_size?: number
+          cancel_reason?: string | null
           created_at?: string
           cursor?: string | null
           form_integration_id: string
+          heartbeat_at?: string | null
           id?: string
           last_batch_at?: string | null
           last_error?: string | null
+          lock_token?: string | null
+          locked_at?: string | null
+          next_run_at?: string | null
           org_id: string
           retry_count?: number
           site_id: string
@@ -1072,13 +1086,20 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          adaptive_batch_size?: number | null
+          auto_resume_enabled?: boolean | null
           batch_size?: number
+          cancel_reason?: string | null
           created_at?: string
           cursor?: string | null
           form_integration_id?: string
+          heartbeat_at?: string | null
           id?: string
           last_batch_at?: string | null
           last_error?: string | null
+          lock_token?: string | null
+          locked_at?: string | null
+          next_run_at?: string | null
           org_id?: string
           retry_count?: number
           site_id?: string

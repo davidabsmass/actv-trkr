@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Target, Bell, Check, ChevronRight, Zap } from "lucide-react";
+import { Target, Bell, Check, ChevronRight, Zap, Shield, ExternalLink } from "lucide-react";
 import { useUpdateSiteSettings, PrimaryFocus, logUserInputEvent } from "@/hooks/use-site-settings";
 import { useOrg } from "@/hooks/use-org";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 
 const FOCUS_OPTIONS: { value: PrimaryFocus; label: string; description: string; icon: string }[] = [
   { value: "lead_volume", label: "Grow Lead Volume", description: "See where leads are coming from and how to get more.", icon: "📈" },
@@ -12,13 +13,18 @@ const FOCUS_OPTIONS: { value: PrimaryFocus; label: string; description: string; 
   { value: "paid_optimization", label: "Optimize Paid Traffic", description: "Spot underperforming paid traffic and improve efficiency.", icon: "✂️" },
 ];
 
-// Map focus to legacy goal for backward compat
 const focusToGoal: Record<PrimaryFocus, string> = {
   lead_volume: "get_more_leads",
   marketing_impact: "prove_roi",
   conversion_performance: "improve_conversion",
   paid_optimization: "reduce_ad_waste",
 };
+
+const COMPLIANCE_CHECKS = [
+  { key: "banner", label: "Cookie consent banner installed on my website" },
+  { key: "blocking", label: "Analytics tracking blocked before visitor consent" },
+  { key: "strict", label: "Strict consent mode enabled (recommended)" },
+] as const;
 
 export function OnboardingModal() {
   const [step, setStep] = useState(0);
@@ -29,6 +35,11 @@ export function OnboardingModal() {
     daily_digest: false,
     monitoring_alerts: true,
   });
+  const [complianceChecks, setComplianceChecks] = useState<Record<string, boolean>>({
+    banner: false,
+    blocking: false,
+    strict: false,
+  });
   const [saving, setSaving] = useState(false);
 
   const { orgId } = useOrg();
@@ -37,7 +48,6 @@ export function OnboardingModal() {
   const handleComplete = async () => {
     setSaving(true);
     try {
-      // Save settings + mark onboarding complete
       await updateSettings.mutateAsync({
         primary_goal: focusToGoal[focus] as any,
         primary_focus: focus,
@@ -45,7 +55,6 @@ export function OnboardingModal() {
         onboarding_completed: true,
       });
 
-      // Write onboarding_responses row
       if (orgId) {
         const { data: { user } } = await supabase.auth.getUser();
         await supabase.from("onboarding_responses").insert({
@@ -54,11 +63,10 @@ export function OnboardingModal() {
           primary_focus: focus,
           selected_forms_json: [],
           notification_prefs_json: notifications,
-          raw_answers_json: { focus, notifications },
+          raw_answers_json: { focus, notifications, compliance: complianceChecks },
         });
 
-        // Log individual events
-        await logUserInputEvent(orgId, "onboarding_completed", { primary_focus: focus });
+        await logUserInputEvent(orgId, "onboarding_completed", { primary_focus: focus, compliance_acknowledged: complianceChecks });
         await logUserInputEvent(orgId, "focus_changed", { new_value: focus, source: "onboarding" });
         await logUserInputEvent(orgId, "notification_pref_changed", { new_value: notifications, source: "onboarding" });
       }
@@ -71,17 +79,20 @@ export function OnboardingModal() {
     }
   };
 
+  const totalSteps = 3;
+
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-lg animate-slide-up">
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[0, 1].map((i) => (
+          {Array.from({ length: totalSteps }).map((_, i) => (
             <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i <= step ? "w-12 bg-primary" : "w-8 bg-border"}`} />
           ))}
         </div>
 
         <div className="glass-card p-8">
+          {/* Step 0: Focus */}
           {step === 0 && (
             <>
               <div className="flex items-center gap-3 mb-2">
@@ -121,7 +132,65 @@ export function OnboardingModal() {
             </>
           )}
 
+          {/* Step 1: Privacy & Compliance */}
           {step === 1 && (
+            <>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Privacy & Compliance Setup</h2>
+                  <p className="text-sm text-muted-foreground">Ensure your tracking is GDPR-compliant.</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-warning/5 border border-warning/20 p-3 mb-4">
+                <p className="text-sm text-foreground font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-warning" />
+                  You must install a cookie consent banner
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  GDPR requires visitor consent before analytics tracking. Without a consent banner, tracking may be unlawful in many regions.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {COMPLIANCE_CHECKS.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setComplianceChecks((p) => ({ ...p, [item.key]: !p[item.key] }))}
+                    className={`w-full text-left p-3 rounded-lg border transition-all flex items-center gap-3 ${
+                      complianceChecks[item.key]
+                        ? "border-success/30 bg-success/5"
+                        : "border-border hover:border-primary/30"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                      complianceChecks[item.key] ? "bg-success border-success" : "border-muted-foreground/30"
+                    }`}>
+                      {complianceChecks[item.key] && <Check className="h-3 w-3 text-success-foreground" />}
+                    </div>
+                    <span className="text-sm text-foreground">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <Link
+                to="/compliance-setup"
+                className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-4"
+              >
+                View Setup Guide <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+
+              <p className="text-xs text-muted-foreground mt-3">
+                You can complete these steps later. This checklist is for your awareness — it does not block setup.
+              </p>
+            </>
+          )}
+
+          {/* Step 2: Notifications */}
+          {step === 2 && (
             <>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -163,7 +232,7 @@ export function OnboardingModal() {
                 Back
               </button>
             ) : <span />}
-            {step < 1 ? (
+            {step < totalSteps - 1 ? (
               <button
                 onClick={() => setStep((s) => s + 1)}
                 className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"

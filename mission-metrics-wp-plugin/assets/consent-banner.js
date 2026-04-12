@@ -131,6 +131,7 @@
   diag.detected_region = detectedRegion;
   diag.region_behavior = regionBehavior;
   diag.region_source = regionSource;
+  diag.external_cmp_detected = !!(CFG.externalCmpDetected);
 
   // ── Debug logger ───────────────────────────────────────────
   function debugLog(msg, data) {

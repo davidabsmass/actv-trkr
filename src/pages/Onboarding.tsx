@@ -2,11 +2,26 @@ import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Zap, Plus, Copy, Check, Download, Globe } from "lucide-react";
+import { Zap, Plus, Copy, Check, Download, Globe, Shield } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
 import { useAuth } from "@/hooks/use-auth";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
+
+const COMPLIANCE_MODES = [
+  {
+    value: "eu_us",
+    label: "EU/UK Strict + US Opt-Out",
+    tag: "Recommended",
+    description: "EU/UK visitors see a consent banner. US visitors browse freely with an opt-out link.",
+  },
+  {
+    value: "global_strict",
+    label: "Global Strict",
+    tag: null,
+    description: "Every visitor sees a consent banner before any analytics run.",
+  },
+] as const;
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -25,6 +40,7 @@ const Onboarding = () => {
   const [siteUrl, setSiteUrl] = useState("");
   const [savingSite, setSavingSite] = useState(false);
   const [siteSaved, setSiteSaved] = useState(false);
+  const [complianceMode, setComplianceMode] = useState("eu_us");
 
   const handleAddSite = async () => {
     if (!siteUrl || !createdOrg) return;
@@ -171,6 +187,50 @@ const Onboarding = () => {
                   {siteSaved ? <><Check className="h-3.5 w-3.5" /> Added</> : savingSite ? "Saving…" : "Add"}
                 </button>
               </div>
+            </div>
+            <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+              <div className="flex items-center gap-2 mb-1">
+                <Shield className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-medium text-foreground">Privacy & Compliance Mode</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Choose how the consent banner behaves for visitors from different regions. You can change this later in the WordPress plugin settings.
+              </p>
+              <div className="space-y-2">
+                {COMPLIANCE_MODES.map((mode) => (
+                  <label
+                    key={mode.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      complianceMode === mode.value
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="compliance_mode"
+                      value={mode.value}
+                      checked={complianceMode === mode.value}
+                      onChange={() => setComplianceMode(mode.value)}
+                      className="mt-0.5 accent-primary"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{mode.label}</span>
+                        {mode.tag && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            {mode.tag}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{mode.description}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                This sets the default in the plugin. Go to <strong>WP Admin → Settings → ACTV TRKR → Consent Banner → Compliance Mode</strong> to adjust after install.
+              </p>
             </div>
             <button onClick={() => navigate("/checkout")} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
               Continue to Checkout

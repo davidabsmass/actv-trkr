@@ -86,6 +86,7 @@ $mm_security = new Mission_Metrics_Security();
 $mm_security->init();
 MM_Magic_Login::init();
 MM_Import_Engine::init();
+MM_Consent_Banner::init();
 
 // Ensure crons are scheduled even after updates (activation hook only fires on first install).
 add_action( 'init', function () {

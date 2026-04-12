@@ -180,6 +180,20 @@ Deno.serve(async (req) => {
         .update({ active_seconds: activeSeconds })
         .eq("org_id", orgId).eq("site_id", site.id).eq("event_id", eventId);
 
+      // Update tracking status for heartbeat/time_update
+      try {
+        await supabase.from("site_tracking_status").upsert({
+          org_id: orgId,
+          site_id: site.id,
+          last_event_at: new Date().toISOString(),
+          last_heartbeat_at: new Date().toISOString(),
+          tracker_status: "active",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "org_id,site_id" });
+      } catch (stsErr) {
+        console.error("Tracking status update error (non-fatal):", stsErr);
+      }
+
       return new Response(JSON.stringify({ status: "ok", active_seconds: activeSeconds }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -313,6 +327,21 @@ Deno.serve(async (req) => {
         wp_user_role: wpUserRole,
         last_seen_at: occurredAt.toISOString(),
       }, { onConflict: "org_id,site_id,visitor_id" });
+    }
+
+    // ── Update site_tracking_status ──
+    try {
+      const statusUpdate: Record<string, unknown> = {
+        org_id: orgId,
+        site_id: siteId,
+        last_event_at: occurredAt.toISOString(),
+        last_page_view_at: occurredAt.toISOString(),
+        tracker_status: "active",
+        updated_at: new Date().toISOString(),
+      };
+      await supabase.from("site_tracking_status").upsert(statusUpdate, { onConflict: "org_id,site_id" });
+    } catch (stsErr) {
+      console.error("Tracking status update error (non-fatal):", stsErr);
     }
 
     return new Response(JSON.stringify({ status: "ok", event_id: eventId }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

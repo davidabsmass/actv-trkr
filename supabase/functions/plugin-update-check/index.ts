@@ -11,9 +11,20 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.3";
+const CURRENT_PLUGIN_VERSION = "1.9.4";
 
 const CHANGELOG = `
+## 1.9.4
+- NEW: Region-based privacy — EU/UK strict opt-in, US opt-out, configurable fallback
+- NEW: Server-side region detection via CDN headers (Cloudflare, Vercel, etc.)
+- NEW: Client-side timezone fallback for region detection
+- NEW: Compliance Mode setting (Global Strict, EU/UK+US, Custom)
+- NEW: US Privacy Settings link and non-blocking notice
+- NEW: Admin region override for testing (debug mode only)
+- NEW: Enhanced diagnostics panel with region info and behavior details
+- IMPROVED: Consent banner now region-aware — EU/UK sees full banner, US sees opt-out link
+- PRESERVED: Existing strict mode and fail-closed behavior unchanged
+
 ## 1.9.3
 - HARDENED: Conflict-resistant banner loading with inline bootstrap and fallback mounts
 - HARDENED: Fail-closed safety — malformed cookies treated as no consent

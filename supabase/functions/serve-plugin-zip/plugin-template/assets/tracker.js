@@ -11,16 +11,19 @@
   var COOKIE_TS  = 'mm_ts';
   var CONSENT_KEY = 'mm_consent';
   var SESSION_TIMEOUT = 30 * 60 * 1000;
-  var HEARTBEAT_INTERVAL = 20000; // 20 seconds
+  var HEARTBEAT_INTERVAL = 20000;
   var WATCHDOG_MULTIPLIER = 2;
   var MAX_EVENTS_PER_SESSION = 200;
   var MAX_QUEUE_SIZE = 500;
   var QUEUE_STORAGE_KEY = 'mm_event_queue';
-  var FLUSH_INTERVAL = 10000; // 10 seconds batch flush
-  var MAX_RETRY_DELAY = 300000; // 5 min cap
+  var FLUSH_INTERVAL = 10000;
+  var MAX_RETRY_DELAY = 300000;
   var BASE_RETRY_DELAY = 2000;
 
   // ── Consent Mode ──────────────────────────────────────────────
+  // The legacy consentMode from wp_localize_script is still used as a baseline.
+  // Region-based behavior is handled by the consent banner JS which calls
+  // mmConsent.grant() or mmConsent.deny() as appropriate.
   var consentMode = (CFG.consentMode || 'relaxed').toLowerCase();
   var consentState = 'no_consent';
   var trackerInitialized = false;
@@ -139,7 +142,7 @@
     return 'desktop';
   }
 
-  // ── Visitor identity (includes WP user if logged in) ──────────
+  // ── Visitor identity ──────────────────────────────────────────
 
   function buildVisitor(vid) {
     var v = { visitor_id: vid };
@@ -163,13 +166,13 @@
           eventQueue = parsed;
         }
       }
-    } catch (e) { /* localStorage unavailable */ }
+    } catch (e) {}
   }
 
   function saveQueue() {
     try {
       localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(eventQueue));
-    } catch (e) { /* quota exceeded or unavailable */ }
+    } catch (e) {}
   }
 
   function clearSavedQueue() {
@@ -331,7 +334,7 @@
         xhr.setRequestHeader('Authorization', 'Bearer ' + CFG.apiKey);
         xhr.send(body);
       }
-    } catch (e) { /* silent */ }
+    } catch (e) {}
   }
 
   function send(endpoint, payload) {
@@ -352,7 +355,7 @@
     }).catch(function () {
       try {
         navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
-      } catch (e) { /* silent */ }
+      } catch (e) {}
     });
   }
 
@@ -668,7 +671,7 @@
     });
   }
 
-  // ── Registered listeners tracking (for cleanup on shutdown) ────
+  // ── Registered listeners tracking ────────────────────────────
   var flushIntervalId = null;
   var listenersAttached = false;
 
@@ -855,6 +858,9 @@
   });
 
   // ── Consent-aware initialization ──────────────────────────────
+  // The tracker respects the legacy consentMode from wp_localize_script.
+  // The consent-banner.js handles region-based logic and calls
+  // mmConsent.grant() / mmConsent.deny() accordingly.
 
   if (consentMode === 'strict') {
     var stored = getStoredConsent();
@@ -863,7 +869,6 @@
       bootTracker();
     } else if (stored === 'denied') {
       consentState = 'analytics_consent_denied';
-      // Stay inert, cookies already cleared above
     } else {
       consentState = 'no_consent';
       // Stay completely inert — wait for mmConsent.grant()

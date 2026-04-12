@@ -1,4 +1,4 @@
-/* ACTV TRKR Consent Banner v2 — conflict-resistant, accessible, no dark patterns */
+/* ACTV TRKR Consent Banner v3 — region-aware, conflict-resistant, accessible */
 
 /* ── Reset / namespace guard ─────────────────────────────────── */
 #mm-cb-root,
@@ -27,7 +27,7 @@
 }
 .mm-cb-overlay.mm-cb-visible { display: block !important; }
 
-/* ── Banner ─────────────────────────────────────────────────── */
+/* ── Banner (EU/UK strict) ───────────────────────────────────── */
 .mm-cb-banner {
   position: fixed !important;
   z-index: 2147483641 !important;
@@ -41,7 +41,6 @@
   box-shadow: 0 -2px 12px rgba(0,0,0,.15) !important;
   display: none !important;
   padding: 16px 20px !important;
-  /* Prevent clipping */
   overflow: visible !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -124,6 +123,41 @@
   color: #2563eb !important;
   text-decoration: underline !important;
   padding: 10px 8px !important;
+}
+.mm-cb-btn-dismiss {
+  background: #e5e7eb !important;
+  color: #222 !important;
+}
+
+/* ── US Notice (non-blocking) ────────────────────────────────── */
+.mm-cb-us-notice {
+  position: fixed !important;
+  z-index: 2147483639 !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  box-shadow: 0 -1px 8px rgba(0,0,0,.1) !important;
+  display: none !important;
+  padding: 10px 20px !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+.mm-cb-us-notice.mm-cb-visible { display: block !important; }
+.mm-cb-us-notice.mm-cb-pos-bottom { bottom: 0 !important; top: auto !important; }
+.mm-cb-us-notice.mm-cb-pos-top { top: 0 !important; bottom: auto !important; }
+.mm-cb-us-notice .mm-cb-inner {
+  gap: 10px !important;
+}
+.mm-cb-us-notice-text {
+  font-size: 13px !important;
+  color: #475569 !important;
+  flex: 1 1 200px !important;
 }
 
 /* ── Preferences Modal ──────────────────────────────────────── */
@@ -225,7 +259,7 @@
 }
 .mm-cb-modal-actions .mm-cb-btn { flex: 1 1 auto !important; text-align: center !important; }
 
-/* ── Footer reopener ────────────────────────────────────────── */
+/* ── Footer links ────────────────────────────────────────────── */
 .mm-cb-reopen {
   cursor: pointer !important;
   color: #2563eb !important;
@@ -237,6 +271,9 @@
   outline: 2px solid #2563eb !important;
   outline-offset: 2px !important;
 }
+.mm-cb-privacy-link {
+  margin-left: 12px !important;
+}
 
 /* ── Mobile ─────────────────────────────────────────────────── */
 @media (max-width: 600px) {
@@ -244,8 +281,5 @@
   .mm-cb-actions { justify-content: stretch !important; }
   .mm-cb-actions .mm-cb-btn { flex: 1 1 auto !important; text-align: center !important; }
   .mm-cb-modal { width: 95% !important; padding: 16px !important; }
+  .mm-cb-us-notice .mm-cb-inner { flex-direction: column !important; }
 }
-
-/* ── Fallback: no-CSS minimal usability ─────────────────────── */
-/* If CSS fails to load, the inline styles from JS still render a usable banner.
-   These rules provide extra safety. */

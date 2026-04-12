@@ -1,8 +1,8 @@
 /**
- * ACTV TRKR Built-in Consent Banner v2
+ * ACTV TRKR Built-in Consent Banner v3
+ * Region-aware: EU/UK strict, US opt-out, configurable other.
  * Conflict-resistant, fail-closed, with diagnostics.
- * Integrates with the existing window.mmConsent API in tracker.js.
- * No third-party dependencies. Lightweight, accessible, GDPR-safe.
+ * Integrates with window.mmConsent API in tracker.js.
  */
 (function () {
   'use strict';
@@ -11,7 +11,7 @@
   // ── Diagnostics state ──────────────────────────────────────
   var diag = {
     banner_enabled: false,
-    script_enqueued: true, // if we're running, we were enqueued
+    script_enqueued: true,
     css_enqueued: false,
     bootstrap_present: false,
     dom_mount_attempted: false,
@@ -22,15 +22,16 @@
     tracker_blocked: true,
     tracker_active: false,
     last_banner_error: null,
-    init_timestamp: Date.now()
+    init_timestamp: Date.now(),
+    detected_region: 'unknown',
+    region_behavior: 'strict',
+    region_source: 'none'
   };
 
-  // Expose diagnostics on a namespaced global
   window.__mmConsentDiag = diag;
 
   var CFG = window.mmConsentBannerConfig;
 
-  // Check for inline bootstrap
   diag.bootstrap_present = !!(CFG && typeof CFG === 'object');
 
   if (!CFG || !CFG.enabled) {
@@ -41,19 +42,15 @@
 
   diag.banner_enabled = true;
 
-  // Check if CSS was loaded
+  // Check CSS
   var sheets = document.styleSheets;
   try {
     for (var s = 0; s < sheets.length; s++) {
       var href = '';
       try { href = sheets[s].href || ''; } catch (e) {}
-      if (href.indexOf('consent-banner') !== -1) {
-        diag.css_enqueued = true;
-        break;
-      }
+      if (href.indexOf('consent-banner') !== -1) { diag.css_enqueued = true; break; }
     }
   } catch (e) {}
-  // Recheck CSS after load
   if (!diag.css_enqueued) {
     var cssCheck = function () {
       try {
@@ -70,12 +67,68 @@
   }
 
   var COOKIE_NAME = 'mm_consent_decision';
-  var CONSENT_VERSION = '1';
+  var OPT_OUT_COOKIE = 'mm_optout';
+  var CONSENT_VERSION = '2';
   var MOUNT_ID = 'mm-cb-root';
   var FALLBACK_DELAY = 1500;
   var SECOND_FALLBACK_DELAY = 3500;
   var isDebug = !!(CFG.debugMode);
-  var mountCount = 0; // prevent duplicate mounts
+  var mountCount = 0;
+
+  // ── Region detection ──────────────────────────────────────────
+
+  var EU_TIMEZONES_PREFIX = [
+    'Europe/', 'Atlantic/Canary', 'Atlantic/Faroe', 'Atlantic/Madeira',
+    'Atlantic/Reykjavik', 'Arctic/Longyearbyen'
+  ];
+  var US_TIMEZONES_PREFIX = [
+    'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+    'America/Anchorage', 'America/Phoenix', 'America/Adak', 'America/Boise',
+    'America/Detroit', 'America/Indiana', 'America/Kentucky', 'America/Menominee',
+    'America/Nome', 'America/North_Dakota', 'America/Sitka', 'America/Yakutat',
+    'Pacific/Honolulu', 'US/'
+  ];
+
+  function detectRegionFromTimezone() {
+    try {
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      for (var i = 0; i < US_TIMEZONES_PREFIX.length; i++) {
+        if (tz.indexOf(US_TIMEZONES_PREFIX[i]) === 0) return 'us';
+      }
+      for (var j = 0; j < EU_TIMEZONES_PREFIX.length; j++) {
+        if (tz.indexOf(EU_TIMEZONES_PREFIX[j]) === 0) return 'eu';
+      }
+    } catch (e) {}
+    return 'other';
+  }
+
+  // Determine effective region: server-detected > timezone fallback
+  var detectedRegion = CFG.detectedRegion || 'unknown';
+  var regionSource = 'server';
+
+  if (detectedRegion === 'unknown') {
+    detectedRegion = detectRegionFromTimezone();
+    regionSource = 'timezone';
+  }
+
+  // Determine effective behavior
+  var regionBehavior = CFG.regionBehavior || 'strict';
+
+  // If server gave 'unknown', we need to compute behavior client-side
+  if (CFG.detectedRegion === 'unknown' || !CFG.detectedRegion) {
+    var mode = CFG.complianceMode || 'global_strict';
+    if (mode === 'global_strict') {
+      regionBehavior = 'strict';
+    } else {
+      if (detectedRegion === 'eu') regionBehavior = 'strict';
+      else if (detectedRegion === 'us') regionBehavior = 'us_optout';
+      else regionBehavior = (CFG.otherRegionFallback === 'relaxed') ? 'relaxed' : 'strict';
+    }
+  }
+
+  diag.detected_region = detectedRegion;
+  diag.region_behavior = regionBehavior;
+  diag.region_source = regionSource;
 
   // ── Debug logger ───────────────────────────────────────────
   function debugLog(msg, data) {
@@ -87,6 +140,9 @@
       try { console.log(prefix, msg); } catch (e) {}
     }
   }
+
+  debugLog('Region detected:', detectedRegion + ' (source: ' + regionSource + ')');
+  debugLog('Region behavior:', regionBehavior);
 
   // ── Helpers ──────────────────────────────────────────────────
 
@@ -113,11 +169,10 @@
     if (!raw) return null;
     try {
       var d = JSON.parse(raw);
-      if (d && typeof d === 'object' && d.v === CONSENT_VERSION && typeof d.analytics === 'boolean') {
+      if (d && typeof d === 'object' && (d.v === CONSENT_VERSION || d.v === '1') && typeof d.analytics === 'boolean') {
         return d;
       }
     } catch (e) {
-      // Malformed cookie — treat as no consent (fail-closed)
       debugLog('Malformed consent cookie, treating as no consent');
       diag.last_banner_error = 'malformed_consent_cookie';
       deleteCookie(COOKIE_NAME);
@@ -125,13 +180,28 @@
     return null;
   }
 
+  function getOptOut() {
+    return getCookie(OPT_OUT_COOKIE) === '1';
+  }
+
+  function setOptOut(value) {
+    if (value) {
+      setCookie(OPT_OUT_COOKIE, '1', CFG.expiryDays || 365);
+    } else {
+      deleteCookie(OPT_OUT_COOKIE);
+    }
+  }
+
   function saveDecision(analytics) {
-    var val = JSON.stringify({ analytics: analytics, v: CONSENT_VERSION, t: Date.now() });
+    var val = JSON.stringify({ analytics: analytics, v: CONSENT_VERSION, t: Date.now(), region: detectedRegion });
     setCookie(COOKIE_NAME, val, CFG.expiryDays || 365);
+    // Also update opt-out cookie for US mode
+    setOptOut(!analytics);
   }
 
   function clearDecision() {
     deleteCookie(COOKIE_NAME);
+    deleteCookie(OPT_OUT_COOKIE);
   }
 
   // ── Wire to existing mmConsent API ───────────────────────────
@@ -177,12 +247,11 @@
     return node;
   }
 
-  // ── Build Banner ────────────────────────────────────────────
+  // ── Build Banner (EU/UK strict) ────────────────────────────
 
   var bannerEl, overlayEl, modalEl;
 
   function buildBanner() {
-    // Links
     var links = '';
     if (CFG.privacyUrl) links += '<a href="' + esc(CFG.privacyUrl) + '" target="_blank" rel="noopener">' + esc(CFG.privacyLabel || 'Privacy Policy') + '</a>';
     if (CFG.cookieUrl) {
@@ -230,6 +299,57 @@
     return bannerEl;
   }
 
+  // ── Build US Notice (non-blocking) ─────────────────────────
+
+  var usNoticeEl;
+
+  function buildUsNotice() {
+    if (!CFG.usShowNotice) return null;
+
+    var text = CFG.usNoticeText || 'We use analytics cookies to improve your experience. You can opt out anytime via Privacy Settings.';
+    var privacyLabel = CFG.usPrivacyLabel || 'Privacy Settings';
+
+    usNoticeEl = el('div', {
+      className: 'mm-cb-us-notice mm-cb-pos-' + (CFG.position || 'bottom'),
+      role: 'status',
+      'aria-label': 'Privacy notice',
+    }, [
+      el('div', { className: 'mm-cb-inner' }, [
+        el('p', { className: 'mm-cb-us-notice-text', textContent: text }),
+        el('div', { className: 'mm-cb-actions' }, [
+          el('button', {
+            className: 'mm-cb-btn mm-cb-btn-prefs',
+            textContent: privacyLabel,
+            type: 'button',
+            onClick: function () { openModal(); },
+          }),
+          el('button', {
+            className: 'mm-cb-btn mm-cb-btn-dismiss',
+            textContent: 'OK',
+            type: 'button',
+            onClick: function () { hideUsNotice(); },
+          }),
+        ]),
+      ]),
+    ]);
+
+    return usNoticeEl;
+  }
+
+  function showUsNotice() {
+    if (usNoticeEl) usNoticeEl.classList.add('mm-cb-visible');
+  }
+
+  function hideUsNotice() {
+    if (usNoticeEl) usNoticeEl.classList.remove('mm-cb-visible');
+    // Remember dismissal
+    try { sessionStorage.setItem('mm_us_notice_dismissed', '1'); } catch (e) {}
+  }
+
+  function wasUsNoticeDismissed() {
+    try { return sessionStorage.getItem('mm_us_notice_dismissed') === '1'; } catch (e) { return false; }
+  }
+
   // ── Build Preferences Modal ─────────────────────────────────
 
   var analyticsToggle;
@@ -239,10 +359,14 @@
 
     analyticsToggle = el('input', { type: 'checkbox', id: 'mm-cb-analytics-toggle', 'aria-label': 'Analytics cookies' });
 
+    var modalTitle = regionBehavior === 'us_optout'
+      ? (CFG.usPrivacyLabel || 'Privacy Settings')
+      : (CFG.prefsTitle || 'Cookie Preferences');
+
     modalEl = el('div', {
       className: 'mm-cb-modal',
       role: 'dialog',
-      'aria-label': 'Cookie preferences',
+      'aria-label': modalTitle,
       'aria-modal': 'true',
     }, [
       el('button', {
@@ -252,7 +376,7 @@
         'aria-label': 'Close preferences',
         onClick: function () { closeModal(); },
       }),
-      el('h3', { textContent: CFG.prefsTitle || 'Cookie Preferences' }),
+      el('h3', { textContent: modalTitle }),
 
       // Essential
       el('div', { className: 'mm-cb-category' }, [
@@ -279,13 +403,13 @@
       el('div', { className: 'mm-cb-modal-actions' }, [
         el('button', {
           className: 'mm-cb-btn mm-cb-btn-reject',
-          textContent: 'Reject All',
+          textContent: regionBehavior === 'us_optout' ? 'Opt Out' : 'Reject All',
           type: 'button',
           onClick: function () { doDecision(false); closeModal(); },
         }),
         el('button', {
           className: 'mm-cb-btn mm-cb-btn-accept',
-          textContent: 'Accept All',
+          textContent: regionBehavior === 'us_optout' ? 'Keep Enabled' : 'Accept All',
           type: 'button',
           onClick: function () { doDecision(true); closeModal(); },
         }),
@@ -303,7 +427,12 @@
 
   function openModal() {
     var decision = getDecision();
-    analyticsToggle.checked = decision ? decision.analytics : false;
+    if (regionBehavior === 'us_optout') {
+      // US: default ON unless opted out
+      analyticsToggle.checked = decision ? decision.analytics : !getOptOut();
+    } else {
+      analyticsToggle.checked = decision ? decision.analytics : false;
+    }
     overlayEl.classList.add('mm-cb-visible');
     modalEl.classList.add('mm-cb-visible');
     modalEl.focus();
@@ -332,6 +461,7 @@
     saveDecision(analytics);
     applyDecision(analytics);
     hideBanner();
+    hideUsNotice();
     debugLog('User decision saved:', analytics ? 'accept' : 'reject');
   }
 
@@ -343,17 +473,41 @@
     if (bannerEl) bannerEl.classList.remove('mm-cb-visible');
   }
 
-  // ── Footer reopener ─────────────────────────────────────────
+  // ── Footer link management ──────────────────────────────────
 
-  function addReopener() {
-    var existing = document.getElementById('mm-cookie-settings');
-    if (existing) {
-      existing.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
-      existing.setAttribute('role', 'button');
-      existing.setAttribute('tabindex', '0');
-      return;
+  function setupFooterLinks() {
+    var cookieLink = document.getElementById('mm-cookie-settings');
+    var privacyLink = document.getElementById('mm-privacy-settings');
+
+    if (regionBehavior === 'strict') {
+      // EU/UK: show cookie settings link
+      if (cookieLink) {
+        cookieLink.style.display = '';
+        cookieLink.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
+        cookieLink.setAttribute('role', 'button');
+        cookieLink.setAttribute('tabindex', '0');
+      }
+      if (privacyLink) privacyLink.style.display = 'none';
+    } else if (regionBehavior === 'us_optout') {
+      // US: show privacy settings link
+      if (privacyLink) {
+        privacyLink.style.display = '';
+        privacyLink.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
+        privacyLink.setAttribute('role', 'button');
+        privacyLink.setAttribute('tabindex', '0');
+      }
+      // Also show cookie link if enabled
+      if (cookieLink && CFG.showReopener) {
+        cookieLink.style.display = 'none'; // hide cookie link for US, privacy link handles it
+      }
+    } else {
+      // Relaxed/other: show cookie settings if reopener enabled
+      if (cookieLink && CFG.showReopener) {
+        cookieLink.style.display = '';
+        cookieLink.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
+      }
+      if (privacyLink) privacyLink.style.display = 'none';
     }
-    if (CFG.showReopener === false) return;
   }
 
   // ── Public API for reopening ────────────────────────────────
@@ -363,10 +517,15 @@
     reset: function () {
       clearDecision();
       applyDecision(false);
-      showBanner();
+      if (regionBehavior === 'strict') {
+        showBanner();
+      }
     },
     getDiagnostics: function () {
       return JSON.parse(JSON.stringify(diag));
+    },
+    getRegion: function () {
+      return { region: detectedRegion, behavior: regionBehavior, source: regionSource };
     },
   };
 
@@ -378,14 +537,13 @@
     return d.innerHTML;
   }
 
-  // ── Mount logic (conflict-resistant) ────────────────────────
+  // ── Mount logic ────────────────────────────────────────────
 
   function isBannerMounted() {
     return !!document.getElementById(MOUNT_ID);
   }
 
   function mountBanner(isFallback) {
-    // Prevent duplicate mounts
     if (isBannerMounted()) {
       debugLog('Banner already mounted, skipping');
       return true;
@@ -401,14 +559,24 @@
     try {
       var root = el('div', { id: MOUNT_ID });
 
-      var banner = buildBanner();
+      // Always build the modal (shared between banner & US notice)
       var modal = buildModal();
 
-      root.appendChild(banner);
+      // Build banner for strict mode
+      if (regionBehavior === 'strict') {
+        var banner = buildBanner();
+        root.appendChild(banner);
+      }
+
+      // Build US notice for opt-out mode
+      if (regionBehavior === 'us_optout') {
+        var notice = buildUsNotice();
+        if (notice) root.appendChild(notice);
+      }
+
       root.appendChild(modal.overlay);
       root.appendChild(modal.modal);
 
-      // Mount directly on document.body to avoid being clipped by parent containers
       document.body.appendChild(root);
 
       if (isFallback) {
@@ -421,7 +589,7 @@
         debugLog('Primary mount succeeded');
       }
 
-      addReopener();
+      setupFooterLinks();
       return true;
     } catch (err) {
       diag.last_banner_error = 'mount_error: ' + (err.message || String(err));
@@ -441,6 +609,9 @@
 
   function selfCheck(delay, label) {
     setTimeout(function () {
+      // Only fallback-mount matters for strict mode (EU/UK)
+      if (regionBehavior !== 'strict') return;
+
       var decision = getDecision();
       if (decision) {
         debugLog(label + ': consent already decided, no action needed');
@@ -457,12 +628,10 @@
           diag.last_banner_error = label + '_fallback_failed';
         }
       } else if (bannerEl && !bannerEl.classList.contains('mm-cb-visible')) {
-        // Banner is mounted but not visible — could be CSS conflict
         debugLog(label + ': banner mounted but not visible, forcing show');
         showBanner();
       }
 
-      // Verify tracking is still blocked
       updateTrackerDiag();
     }, delay);
   }
@@ -479,30 +648,63 @@
   // ── Init ────────────────────────────────────────────────────
 
   function init() {
-    debugLog('Initializing consent banner');
+    debugLog('Initializing consent banner (behavior: ' + regionBehavior + ')');
     diag.dom_mount_attempted = true;
 
     var decision = getDecision();
-
-    // Primary mount
+    var optedOut = getOptOut();
     var mounted = mountBanner(false);
 
-    if (decision) {
-      // Already decided — apply silently, no banner
-      applyDecision(decision.analytics);
-      diag.current_consent_state = decision.analytics ? 'granted' : 'denied';
-      debugLog('Existing consent found:', decision.analytics ? 'granted' : 'denied');
-    } else {
-      // No decision yet — show banner
-      if (mounted) {
-        showBanner();
+    if (regionBehavior === 'strict') {
+      // ── EU/UK: strict opt-in ──────────────────────────────
+      if (decision) {
+        applyDecision(decision.analytics);
+        diag.current_consent_state = decision.analytics ? 'granted' : 'denied';
+        debugLog('Existing consent found:', decision.analytics ? 'granted' : 'denied');
+      } else {
+        // No decision — show banner, keep tracker blocked
+        if (mounted) showBanner();
+        diag.current_consent_state = 'pending';
+        debugLog('No consent decision, showing banner');
+        selfCheck(FALLBACK_DELAY, 'fallback1');
+        selfCheck(SECOND_FALLBACK_DELAY, 'fallback2');
       }
-      diag.current_consent_state = 'pending';
-      debugLog('No consent decision, showing banner');
 
-      // Schedule fallback checks for deferred/delayed JS environments
-      selfCheck(FALLBACK_DELAY, 'fallback1');
-      selfCheck(SECOND_FALLBACK_DELAY, 'fallback2');
+    } else if (regionBehavior === 'us_optout') {
+      // ── US: opt-out ───────────────────────────────────────
+      if (decision) {
+        // User made an explicit decision
+        applyDecision(decision.analytics);
+        diag.current_consent_state = decision.analytics ? 'granted' : 'denied';
+        debugLog('Existing decision found:', decision.analytics ? 'opted in' : 'opted out');
+      } else if (optedOut) {
+        // Opted out via mm_optout cookie but no full decision
+        applyDecision(false);
+        diag.current_consent_state = 'opted_out';
+        debugLog('User previously opted out');
+      } else {
+        // No decision, no opt-out → allow tracking (US default)
+        applyDecision(true);
+        diag.current_consent_state = 'us_default_granted';
+        debugLog('US visitor, no opt-out — allowing analytics');
+
+        // Show US notice if configured and not dismissed
+        if (CFG.usShowNotice && !wasUsNoticeDismissed() && mounted) {
+          showUsNotice();
+        }
+      }
+
+    } else {
+      // ── Relaxed / other ───────────────────────────────────
+      if (decision) {
+        applyDecision(decision.analytics);
+        diag.current_consent_state = decision.analytics ? 'granted' : 'denied';
+      } else {
+        // Relaxed: allow tracking by default
+        applyDecision(true);
+        diag.current_consent_state = 'relaxed_default_granted';
+        debugLog('Relaxed mode — allowing analytics');
+      }
     }
 
     updateTrackerDiag();
@@ -510,16 +712,13 @@
   }
 
   // ── Boot ────────────────────────────────────────────────────
-  // Use multiple strategies to ensure init runs even if DOMContentLoaded was missed
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    // DOM already ready — init immediately
     init();
   }
 
-  // Safety net: if init hasn't run after window load, run it
   window.addEventListener('load', function () {
     if (!diag.dom_mount_attempted) {
       debugLog('Init did not run by window.load — running now');

@@ -1,3 +1,5 @@
+import { pluginManifest } from "@/generated/plugin-manifest";
+
 const PLUGIN_FILENAME_PATTERN = /filename="?([^";]+)"?/i;
 const PLUGIN_VERSION_PATTERN = /actv-trkr-(\d+\.\d+\.\d+)\.zip/i;
 
@@ -5,7 +7,7 @@ const PLUGIN_VERSION_PATTERN = /actv-trkr-(\d+\.\d+\.\d+)\.zip/i;
  * Always download from a single "latest" URL so every plugin update is
  * picked up automatically — no hardcoded version string to forget.
  */
-const STATIC_PLUGIN_FILE_NAME = "actv-trkr-latest.zip";
+const STATIC_PLUGIN_FILE_NAME = pluginManifest.downloadFileName;
 
 function getPluginZipUrl() {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-plugin-zip?t=${Date.now()}`;
@@ -44,6 +46,10 @@ export function extractPluginVersion(contentDisposition?: string | null) {
 }
 
 export async function getLatestPluginVersion() {
+  if (pluginManifest.version) {
+    return pluginManifest.version;
+  }
+
   try {
     const infoResponse = await fetch(getPluginInfoUrl(), {
       cache: "no-store",

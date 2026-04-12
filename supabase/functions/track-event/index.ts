@@ -319,6 +319,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Update site_tracking_status ──
+    if (rows.length > 0) {
+      try {
+        await supabase.from("site_tracking_status").upsert({
+          org_id: orgId,
+          site_id: siteId,
+          last_event_at: new Date().toISOString(),
+          tracker_status: "active",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "org_id,site_id" });
+      } catch (stsErr) {
+        console.error("Tracking status update error (non-fatal):", stsErr);
+      }
+    }
+
     return new Response(JSON.stringify({ status: "ok", stored: rows.length, skipped: skipped.length }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Event tracking error:", err);

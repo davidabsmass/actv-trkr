@@ -4,12 +4,20 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.9.1 =
+* NEW: Built-in cookie consent banner — no third-party plugin required.
+* Preferences modal with Essential (always on) and Analytics (opt-in) categories.
+* Admin settings for banner text, button labels, policy URLs, position, and expiry.
+* Footer "Cookie Settings" reopener link.
+* Consent debug panel in WP admin.
+* Full integration with existing mmConsent API and strict/relaxed modes.
 
 = 1.8.13 =
 * FIX: Dashboard downloads now always serve the canonical latest plugin ZIP.

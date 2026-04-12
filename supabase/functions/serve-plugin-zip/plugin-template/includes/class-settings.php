@@ -198,6 +198,8 @@ class MM_Settings {
 					});
 			});
 			</script>
+
+			<?php MM_Consent_Banner::render_settings_section(); ?>
 		</div>
 		<?php
 	}

@@ -869,6 +869,139 @@ class MM_Consent_Banner {
 		<?php
 	}
 
+	/* ── External CMP Setup Section ───────────────────────────── */
+
+	private static function render_external_cmp_section( $diag ) {
+		$external_cmps = $diag['external_cmps'] ?? array();
+		$has_external = ! empty( $external_cmps );
+		$banner_enabled = $diag['banner_enabled'];
+
+		// Consent signal confidence
+		if ( $has_external && ! $banner_enabled ) {
+			$signal_status = 'external_cmp_detected_banner_off';
+			$signal_label  = 'External CMP detected, ACTV TRKR banner disabled — ensure your CMP sends analytics consent to ACTV TRKR';
+			$signal_icon   = '⚠️';
+		} elseif ( $has_external && $banner_enabled ) {
+			$signal_status = 'external_cmp_detected_banner_on';
+			$signal_label  = 'External CMP detected AND ACTV TRKR banner is enabled — this may cause double banners';
+			$signal_icon   = '🔴';
+		} elseif ( ! $has_external && $banner_enabled ) {
+			$signal_status = 'actv_trkr_banner_active';
+			$signal_label  = 'ACTV TRKR built-in banner is active — handling consent natively';
+			$signal_icon   = '✅';
+		} else {
+			$signal_status = 'no_consent_handler';
+			$signal_label  = 'No consent handler detected — in strict mode, analytics will remain blocked';
+			$signal_icon   = '🔴';
+		}
+		?>
+		<hr />
+		<h2>🔌 External Consent Plugin Setup</h2>
+
+		<?php if ( $has_external ) : ?>
+			<div class="notice notice-warning inline" style="max-width:700px;margin:12px 0">
+				<p><strong>🔍 External consent plugin detected:</strong>
+				<?php
+				$names = array_map( function( $c ) { return '<strong>' . esc_html( $c['name'] ) . '</strong>'; }, $external_cmps );
+				echo implode( ', ', $names );
+				?>
+				</p>
+				<p>To avoid showing two consent banners, we recommend <strong>disabling the ACTV TRKR built-in banner</strong> and classifying ACTV TRKR under <strong>Analytics / Statistics</strong> in your existing consent tool.</p>
+				<p>ACTV TRKR tracking will remain blocked in strict mode unless a valid analytics consent signal is received — even if your CMP popup appears.</p>
+			</div>
+
+			<?php if ( $banner_enabled ) : ?>
+			<div class="notice notice-error inline" style="max-width:700px;margin:0 0 12px">
+				<p><strong>⚠️ Double banner risk:</strong> Both the ACTV TRKR banner and <?php echo esc_html( $external_cmps[0]['name'] ); ?> are active. Visitors may see two consent popups. Disable the ACTV TRKR banner above, or deactivate your other consent plugin.</p>
+			</div>
+			<?php endif; ?>
+
+			<div style="max-width:700px;background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:16px;margin-bottom:16px">
+				<h3 style="margin:0 0 12px;font-size:15px">📋 Recommended Setup Steps</h3>
+				<ol style="padding-left:20px;margin:0">
+					<li style="margin-bottom:8px">
+						<strong>Add ACTV TRKR to your consent tool's Analytics / Statistics category.</strong><br>
+						<span style="color:#666">In <?php echo esc_html( $external_cmps[0]['name'] ); ?>, look for the <em><?php echo esc_html( $external_cmps[0]['category_hint'] ); ?></em> category. Add ACTV TRKR there.</span>
+					</li>
+					<li style="margin-bottom:8px">
+						<strong>Disable the ACTV TRKR built-in banner</strong> (uncheck "Enable Banner" above).
+					</li>
+					<li style="margin-bottom:8px">
+						<strong>Verify consent signal:</strong> Enable Debug Mode, visit your site, accept analytics in your CMP, and check the browser console for <code>[ACTV TRKR Consent]</code> messages confirming consent was received.
+					</li>
+				</ol>
+			</div>
+
+		<?php else : ?>
+			<p class="description" style="max-width:700px">No external consent/cookie plugin detected. ACTV TRKR's built-in banner will handle analytics consent.</p>
+			<p class="description" style="max-width:700px">If you already use a consent tool that isn't detected here, you can still classify ACTV TRKR manually — use the copy blocks below.</p>
+		<?php endif; ?>
+
+		<!-- Consent signal status -->
+		<div style="max-width:700px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:16px">
+			<strong>Consent Signal Status:</strong> <?php echo $signal_icon . ' ' . esc_html( $signal_label ); ?>
+		</div>
+
+		<!-- Copy blocks -->
+		<h3 style="margin-top:16px">📝 Analytics Description — Copy for Your Consent Tool</h3>
+		<p class="description" style="max-width:700px;margin-bottom:12px">Paste one of these into your consent plugin's <strong>Analytics / Statistics</strong> category description. These explain what ACTV TRKR does in plain language.</p>
+
+		<div style="max-width:700px;margin-bottom:12px">
+			<label style="font-weight:600;display:block;margin-bottom:4px">Short version:</label>
+			<textarea id="mm-copy-short" readonly rows="3" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR to measure website performance and form activity. This includes anonymized usage data such as page views, clicks, and form submissions. No data is used for advertising or sold to third parties.</textarea>
+			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-short" style="margin-top:4px">📋 Copy Short</button>
+		</div>
+
+		<div style="max-width:700px;margin-bottom:12px">
+			<label style="font-weight:600;display:block;margin-bottom:4px">Detailed version:</label>
+			<textarea id="mm-copy-long" readonly rows="4" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR, a website analytics tool, to understand how visitors interact with our site and to improve performance. ACTV TRKR may collect anonymized usage data such as page views, clicks, and form interactions. This data is used solely for internal analytics and is not shared with third parties for advertising purposes.</textarea>
+			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-long" style="margin-top:4px">📋 Copy Detailed</button>
+		</div>
+
+		<div style="max-width:700px;margin-bottom:12px">
+			<label style="font-weight:600;display:block;margin-bottom:4px">Technical note (for CMP configuration):</label>
+			<textarea id="mm-copy-tech" readonly rows="2" class="large-text" style="background:#f9fafb;font-size:13px">ACTV TRKR sets first-party analytics identifiers (mm_vid, mm_sid) and should only be activated after analytics/statistics consent is granted.</textarea>
+			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-tech" style="margin-top:4px">📋 Copy Technical</button>
+		</div>
+
+		<p class="description" style="max-width:700px;margin-top:8px"><strong>Recommended category:</strong> <code>Analytics</code> or <code>Statistics</code> (varies by consent tool).</p>
+
+		<details style="max-width:700px;margin-top:16px">
+			<summary style="cursor:pointer;font-weight:600">ℹ️ How ACTV TRKR receives consent from external CMPs</summary>
+			<div style="padding:8px 0 0 16px">
+				<p>ACTV TRKR listens for the standard <code>window.mmConsent.grant()</code> API call. For most consent plugins, you need to:</p>
+				<ol style="padding-left:20px">
+					<li>Add ACTV TRKR's tracker script (<code>mm-tracker.js</code>) to the Analytics/Statistics service category in your CMP.</li>
+					<li>Your CMP will block the script until consent is granted, then load it — at which point ACTV TRKR initializes tracking.</li>
+					<li>If your CMP uses a script-blocking approach (e.g. changing <code>type="text/plain"</code>), ACTV TRKR's tracker will not load until the CMP allows it.</li>
+				</ol>
+				<p><strong>Important:</strong> If ACTV TRKR does not receive a valid analytics consent signal in strict mode, tracking stays blocked. This is by design — no silent tracking.</p>
+			</div>
+		</details>
+
+		<script>
+		(function() {
+			var copyBtns = document.querySelectorAll('.mm-copy-block');
+			for (var i = 0; i < copyBtns.length; i++) {
+				copyBtns[i].addEventListener('click', function() {
+					var targetId = this.getAttribute('data-target');
+					var textarea = document.getElementById(targetId);
+					if (!textarea) return;
+					var text = textarea.value;
+					if (navigator.clipboard) {
+						navigator.clipboard.writeText(text).then(function() { alert('Copied to clipboard!'); });
+					} else {
+						textarea.select();
+						document.execCommand('copy');
+						alert('Copied to clipboard!');
+					}
+				});
+			}
+		})();
+		</script>
+		<?php
+	}
+
 	/* ── Build status summary ─────────────────────────────────── */
 
 	private static function build_status_summary( $diag ) {

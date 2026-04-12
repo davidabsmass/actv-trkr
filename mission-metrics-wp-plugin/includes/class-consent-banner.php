@@ -124,13 +124,6 @@ class MM_Consent_Banner {
 			'showReopener'  => $opts['show_reopener'] === '1',
 			'consentMode'   => $main_opts['consent_mode'] ?? 'strict',
 		) );
-
-		// Ensure consent-banner loads after tracker so mmConsent API exists
-		wp_add_inline_script( 'mm-consent-banner', '', 'before' );
-		add_filter( 'script_loader_tag', function ( $tag, $handle ) {
-			// No changes needed — WP dependency ordering handles this
-			return $tag;
-		}, 10, 2 );
 	}
 
 	/* ── Footer reopener link ──────────────────────────────────── */

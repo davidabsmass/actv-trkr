@@ -21,6 +21,8 @@ require_once MM_PLUGIN_DIR . 'includes/class-settings.php';
 require_once MM_PLUGIN_DIR . 'includes/class-tracker.php';
 require_once MM_PLUGIN_DIR . 'includes/class-forms.php';
 require_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';
+require_once MM_PLUGIN_DIR . 'includes/class-import-adapters.php';
+require_once MM_PLUGIN_DIR . 'includes/class-import-engine.php';
 require_once MM_PLUGIN_DIR . 'includes/class-updater.php';
 require_once MM_PLUGIN_DIR . 'includes/class-heartbeat.php';
 require_once MM_PLUGIN_DIR . 'includes/class-broken-links.php';
@@ -83,6 +85,7 @@ MM_SEO_Fixes::init();
 $mm_security = new Mission_Metrics_Security();
 $mm_security->init();
 MM_Magic_Login::init();
+MM_Import_Engine::init();
 
 // Ensure crons are scheduled even after updates (activation hook only fires on first install).
 add_action( 'init', function () {

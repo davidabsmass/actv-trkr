@@ -21,9 +21,8 @@
   var BASE_RETRY_DELAY = 2000;
 
   // ── Consent Mode ──────────────────────────────────────────────
-  // CFG.consentMode: 'strict' | 'relaxed' (default: 'relaxed' for backward compat)
   var consentMode = (CFG.consentMode || 'relaxed').toLowerCase();
-  var consentState = 'no_consent'; // no_consent | analytics_consent_granted | analytics_consent_denied
+  var consentState = 'no_consent';
   var trackerInitialized = false;
 
   function getStoredConsent() {
@@ -51,58 +50,14 @@
     clearStoredConsent();
   }
 
-  // Public API for consent management (called by CMP like Complianz)
-  window.mmConsent = {
-    grant: function () {
-      consentState = 'analytics_consent_granted';
-      setStoredConsent('granted');
-      if (!trackerInitialized) {
-        bootTracker();
-      }
-    },
-    deny: function () {
-      consentState = 'analytics_consent_denied';
-      setStoredConsent('denied');
-      shutdownTracker();
-    },
-    revoke: function () {
-      consentState = 'analytics_consent_denied';
-      clearAnalyticsStorage();
-      shutdownTracker();
-    },
-    getState: function () { return consentState; },
-  };
-
-  // Complianz integration: listen for cmplz consent events
-  document.addEventListener('cmplz_fire_categories', function (e) {
-    if (e.detail && e.detail.categories && e.detail.categories.indexOf('statistics') !== -1) {
-      window.mmConsent.grant();
-    } else {
-      window.mmConsent.deny();
+  // ── DEFENSIVE CLEANUP ─────────────────────────────────────────
+  // In strict mode with no valid consent, nuke any cookies that may exist
+  if (consentMode === 'strict') {
+    var _stored = getStoredConsent();
+    if (_stored !== 'granted') {
+      clearAnalyticsCookies();
     }
-  });
-
-  // Generic CMP integration via custom event
-  document.addEventListener('mm_consent_update', function (e) {
-    if (e.detail && e.detail.analytics === true) {
-      window.mmConsent.grant();
-    } else {
-      window.mmConsent.deny();
-    }
-  });
-
-  function shutdownTracker() {
-    if (pageTimer.heartbeatTimer) clearInterval(pageTimer.heartbeatTimer);
-    if (pageTimer.watchdogTimer) clearInterval(pageTimer.watchdogTimer);
-    eventQueue = [];
-    trackerInitialized = false;
   }
-
-  // ── Tracker State ──────────────────────────────────────────────
-  var trackerState = 'active'; // active | degraded | retrying | offline | stalled
-  var retryCount = 0;
-  var lastSuccessfulSend = Date.now();
-  var lastHeartbeatAttempt = 0;
 
   // ── Cookie helpers ──────────────────────────────────────────────
 
@@ -221,7 +176,6 @@
     try { localStorage.removeItem(QUEUE_STORAGE_KEY); } catch (e) {}
   }
 
-  // Priority: page_view > click events > heartbeat
   function eventPriority(type) {
     if (type === 'page_view') return 3;
     if (type === 'form_submit') return 3;
@@ -231,14 +185,12 @@
 
   function trimQueue() {
     if (eventQueue.length <= MAX_QUEUE_SIZE) return;
-    // Sort by priority ascending (lowest priority first), then oldest first
     eventQueue.sort(function (a, b) {
       var pa = eventPriority(a.event_type);
       var pb = eventPriority(b.event_type);
       if (pa !== pb) return pa - pb;
       return (new Date(a.timestamp)).getTime() - (new Date(b.timestamp)).getTime();
     });
-    // Remove lowest priority (first items) until under limit
     eventQueue = eventQueue.slice(eventQueue.length - MAX_QUEUE_SIZE);
     saveQueue();
   }
@@ -249,6 +201,17 @@
     eventQueue.push(evt);
     trimQueue();
     saveQueue();
+  }
+
+  // ── Tracker State ──────────────────────────────────────────────
+  var trackerState = 'active';
+  var retryCount = 0;
+  var lastSuccessfulSend = Date.now();
+  var lastHeartbeatAttempt = 0;
+
+  function setTrackerState(newState) {
+    if (trackerState === newState) return;
+    trackerState = newState;
   }
 
   // ── Transport ──────────────────────────────────────────────────
@@ -264,7 +227,6 @@
       return;
     }
 
-    // Split queue: pageview events go to track-pageview, rest to track-event
     var pageviewEvents = [];
     var otherEvents = [];
     for (var i = 0; i < eventQueue.length; i++) {
@@ -275,10 +237,8 @@
       }
     }
 
-    // For now, send everything via track-event batch endpoint
-    // (page_view events still use their original endpoint for compatibility)
     if (otherEvents.length > 0) {
-      var batch = otherEvents.splice(0, 50); // max 50 per batch
+      var batch = otherEvents.splice(0, 50);
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
 
@@ -307,7 +267,6 @@
       };
 
       sendWithRetry(getEventEndpoint(), payload, function onSuccess() {
-        // Remove sent events from queue
         var sentUuids = {};
         for (var j = 0; j < batch.length; j++) {
           sentUuids[batch[j].event_uuid] = true;
@@ -320,7 +279,6 @@
         lastSuccessfulSend = Date.now();
         setTrackerState('active');
       }, function onFailure() {
-        // Events stay in queue for next retry
         setTrackerState('retrying');
       });
     }
@@ -376,7 +334,6 @@
     } catch (e) { /* silent */ }
   }
 
-  // Legacy send function for pageview endpoint (backward compat)
   function send(endpoint, payload) {
     var body = JSON.stringify(payload);
     fetch(endpoint, {
@@ -393,18 +350,10 @@
         setTrackerState('active');
       }
     }).catch(function () {
-      // Pageview sends are critical — try beacon as fallback
       try {
         navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
       } catch (e) { /* silent */ }
     });
-  }
-
-  // ── Tracker State Management ──────────────────────────────────
-
-  function setTrackerState(newState) {
-    if (trackerState === newState) return;
-    trackerState = newState;
   }
 
   // ── Time-on-Page Tracking ─────────────────────────────────────
@@ -461,7 +410,6 @@
       }, HEARTBEAT_INTERVAL);
     },
 
-    // Watchdog: restart heartbeat if no attempt in 2x interval
     startWatchdog: function () {
       var self = this;
       if (this.watchdogTimer) clearInterval(this.watchdogTimer);
@@ -469,10 +417,8 @@
       this.watchdogTimer = setInterval(function () {
         var elapsed = Date.now() - lastHeartbeatAttempt;
         if (elapsed > HEARTBEAT_INTERVAL * WATCHDOG_MULTIPLIER) {
-          // Heartbeat loop died — restart it
           self.startHeartbeat();
           setTrackerState('degraded');
-          // Queue a session_gap_detected event
           enqueueEvent({
             event_type: 'session_gap_detected',
             page_url: window.location.href,
@@ -520,120 +466,28 @@
     },
   };
 
-  // ── Visibility & Focus Handlers ───────────────────────────────
-
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) {
-      pageTimer.pause();
-      // Flush queue when tab goes hidden
-      flushQueue();
-    } else {
-      pageTimer.resume();
-      // Re-check session on return
-      var sid = getCookie(COOKIE_SID);
-      var lastTs = parseInt(getCookie(COOKIE_TS) || '0', 10);
-      var now = Date.now();
-      if (!sid || (now - lastTs > SESSION_TIMEOUT)) {
-        // Session expired while hidden — queue session_resume
-        enqueueEvent({
-          event_type: 'session_resume',
-          page_url: window.location.href,
-          page_path: window.location.pathname,
-          meta: { gap_ms: now - lastTs },
-        });
-        resolveSession(null);
-      }
-      setCookie(COOKIE_TS, String(now), 1);
-      // Ensure heartbeat is running
-      pageTimer.startHeartbeat();
-      flushQueue();
-    }
-  });
-
-  window.addEventListener('focus', function () {
-    pageTimer.resume();
-    // Restart heartbeat on focus return
-    pageTimer.startHeartbeat();
-    flushQueue();
-  });
-
-  window.addEventListener('blur', function () {
-    pageTimer.pause();
-  });
-
-  window.addEventListener('beforeunload', function () {
-    pageTimer.sendFinal();
-    // Flush remaining events via beacon
-    if (eventQueue.length > 0) {
-      var vid = getCookie(COOKIE_VID);
-      var sid = getCookie(COOKIE_SID);
-      var batch = eventQueue.splice(0, 50);
-      sendBeaconSafe(getEventEndpoint(), {
-        api_key: CFG.apiKey,
-        source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
-        events: batch.map(function (e) {
-          return {
-            event_type: e.event_type,
-            event_uuid: e.event_uuid,
-            target_text: e.target_text,
-            page_url: e.page_url || window.location.href,
-            page_path: e.page_path || window.location.pathname,
-            timestamp: e.timestamp,
-            session_id: e.session_id || sid,
-            visitor_id: e.visitor_id || vid,
-            target_label: e.target_label,
-            target_href: e.target_href,
-            meta: e.meta,
-          };
-        }),
-      });
-      saveQueue(); // Save any remaining
-    }
-  });
-
-  window.addEventListener('pagehide', function () {
-    pageTimer.sendFinal();
-  });
-
-  // Online/offline handlers
-  window.addEventListener('online', function () {
-    setTrackerState('active');
-    flushQueue();
-  });
-
-  window.addEventListener('offline', function () {
-    setTrackerState('offline');
-  });
-
   // ── Intent-Based Click Tracking ───────────────────────────────
 
   var sessionEventCount = 0;
-
   var DOWNLOAD_EXTENSIONS = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|csv|txt|rtf|mp3|mp4|avi|mov|epub)$/i;
-
   var CTA_CLASS_PATTERN = /\b(btn|button|cta|book)\b/i;
 
   function classifyClick(el) {
     if (!el) return null;
-
     var target = el;
     for (var i = 0; i < 5 && target; i++) {
       var tag = (target.tagName || '').toLowerCase();
-
       if (target.getAttribute && target.getAttribute('data-actv') === 'cta') {
         return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
       }
-
       if (tag === 'a') {
         var href = target.getAttribute('href') || '';
         if (href.indexOf('tel:') === 0) return { type: 'tel_click', text: href.replace('tel:', ''), label: getActvLabel(target), el: target };
         if (href.indexOf('mailto:') === 0) return { type: 'mailto_click', text: href.replace('mailto:', ''), label: getActvLabel(target), el: target };
         if (DOWNLOAD_EXTENSIONS.test(href)) return { type: 'download_click', text: getClickText(target) || href.split('/').pop(), label: getActvLabel(target), el: target };
-
         var classes = target.className || '';
         var isCta = (typeof classes === 'string' && CTA_CLASS_PATTERN.test(classes)) || target.getAttribute('role') === 'button';
         if (isCta) return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
-
         try {
           var linkHost = new URL(href, window.location.origin).hostname;
           if (linkHost && linkHost !== window.location.hostname) {
@@ -641,7 +495,6 @@
           }
         } catch (e) {}
       }
-
       if (tag === 'button' || (target.getAttribute && target.getAttribute('role') === 'button')) {
         var inForm = target.closest && target.closest('form');
         var btnType = (target.getAttribute('type') || '').toLowerCase();
@@ -649,10 +502,8 @@
           return { type: 'cta_click', text: getClickText(target), label: getActvLabel(target), el: target };
         }
       }
-
       target = target.parentElement;
     }
-
     return null;
   }
 
@@ -673,11 +524,9 @@
     if (sessionEventCount >= MAX_EVENTS_PER_SESSION) return;
     var result = classifyClick(e.target);
     if (!result) return;
-
     sessionEventCount++;
     var vid = getCookie(COOKIE_VID);
     var sid = getCookie(COOKIE_SID);
-
     var evt = {
       event_type: result.type,
       target_text: result.text,
@@ -698,58 +547,7 @@
   function trackFormFocus() { return; }
   function handleFormSubmit() { return; }
 
-  document.addEventListener('click', trackClick, true);
-
-  // ── Periodic Queue Flush ──────────────────────────────────────
-
-  setInterval(function () {
-    flushQueue();
-  }, FLUSH_INTERVAL);
-
-  // ── Pageview tracking ──────────────────────────────────────────
-
-  function track() {
-    var vid = getCookie(COOKIE_VID);
-    if (!vid) {
-      vid = uuid();
-      setCookie(COOKIE_VID, vid, 365);
-    }
-
-    var urlUtms = getUtms();
-    if (urlUtms) {
-      setCookie(COOKIE_UTM, JSON.stringify(urlUtms), 30);
-    }
-
-    var sid = resolveSession(urlUtms);
-    var attribution = Object.assign({}, storedUtms(), urlUtms || {});
-    var eventId = uuid();
-
-    // Start time-on-page tracking
-    pageTimer.start(eventId);
-
-    // Pageview still goes via dedicated endpoint for backward compatibility
-    send(CFG.endpoint, {
-      source: {
-        domain: CFG.domain,
-        type: 'wordpress',
-        plugin_version: CFG.pluginVersion,
-      },
-      event: {
-        event_id: eventId,
-        session_id: sid,
-        page_url: window.location.href,
-        page_path: window.location.pathname,
-        title: document.title,
-        referrer: document.referrer || null,
-        device: deviceType(),
-        occurred_at: new Date().toISOString(),
-      },
-      attribution: attribution,
-      visitor: buildVisitor(vid),
-    });
-  }
-
-  // ── Universal Form Capture (Layer 1) ───────────────────────────
+  // ── Universal Form Capture (fields only) ───────────────────────
 
   var SKIP_NAMES = [
     '_wpnonce', '_wp_http_referer', '_wpcf7', '_wpcf7_version',
@@ -791,17 +589,13 @@
     var fields = [];
     var elements = formEl.elements;
     var seen = {};
-
     for (var i = 0; i < elements.length; i++) {
       var el = elements[i];
       var name = el.name || el.id || '';
       var type = (el.type || 'text').toLowerCase();
-
       if (shouldSkipField(name, type)) continue;
       if (seen[name]) continue;
-
       var value = '';
-
       if (type === 'checkbox') {
         var checked = formEl.querySelectorAll('input[name="' + name + '"]:checked');
         var vals = [];
@@ -818,15 +612,11 @@
       } else {
         value = el.value || '';
       }
-
       seen[name] = true;
-
       if (isSensitive(name)) {
         value = '[REDACTED]';
       }
-
       if (value === '' && type !== 'checkbox') continue;
-
       fields.push({
         name: name,
         label: el.getAttribute('aria-label') || el.getAttribute('placeholder') || name,
@@ -834,12 +624,174 @@
         value: value,
       });
     }
-
     return fields;
   }
 
-  // Safety-first: form submission capture is disabled so the plugin never runs
-  // inside a client form submission path.
+  // ── Pageview tracking ──────────────────────────────────────────
+
+  function track() {
+    var vid = getCookie(COOKIE_VID);
+    if (!vid) {
+      vid = uuid();
+      setCookie(COOKIE_VID, vid, 365);
+    }
+
+    var urlUtms = getUtms();
+    if (urlUtms) {
+      setCookie(COOKIE_UTM, JSON.stringify(urlUtms), 30);
+    }
+
+    var sid = resolveSession(urlUtms);
+    var attribution = Object.assign({}, storedUtms(), urlUtms || {});
+    var eventId = uuid();
+
+    pageTimer.start(eventId);
+
+    send(CFG.endpoint, {
+      source: {
+        domain: CFG.domain,
+        type: 'wordpress',
+        plugin_version: CFG.pluginVersion,
+      },
+      event: {
+        event_id: eventId,
+        session_id: sid,
+        page_url: window.location.href,
+        page_path: window.location.pathname,
+        title: document.title,
+        referrer: document.referrer || null,
+        device: deviceType(),
+        occurred_at: new Date().toISOString(),
+      },
+      attribution: attribution,
+      visitor: buildVisitor(vid),
+    });
+  }
+
+  // ── Registered listeners tracking (for cleanup on shutdown) ────
+  var flushIntervalId = null;
+  var listenersAttached = false;
+
+  function onVisibilityChange() {
+    if (!trackerInitialized) return;
+    if (document.hidden) {
+      pageTimer.pause();
+      flushQueue();
+    } else {
+      pageTimer.resume();
+      var sid = getCookie(COOKIE_SID);
+      var lastTs = parseInt(getCookie(COOKIE_TS) || '0', 10);
+      var now = Date.now();
+      if (!sid || (now - lastTs > SESSION_TIMEOUT)) {
+        enqueueEvent({
+          event_type: 'session_resume',
+          page_url: window.location.href,
+          page_path: window.location.pathname,
+          meta: { gap_ms: now - lastTs },
+        });
+        resolveSession(null);
+      }
+      setCookie(COOKIE_TS, String(now), 1);
+      pageTimer.startHeartbeat();
+      flushQueue();
+    }
+  }
+
+  function onFocus() {
+    if (!trackerInitialized) return;
+    pageTimer.resume();
+    pageTimer.startHeartbeat();
+    flushQueue();
+  }
+
+  function onBlur() {
+    if (!trackerInitialized) return;
+    pageTimer.pause();
+  }
+
+  function onBeforeUnload() {
+    if (!trackerInitialized) return;
+    pageTimer.sendFinal();
+    if (eventQueue.length > 0) {
+      var vid = getCookie(COOKIE_VID);
+      var sid = getCookie(COOKIE_SID);
+      var batch = eventQueue.splice(0, 50);
+      sendBeaconSafe(getEventEndpoint(), {
+        api_key: CFG.apiKey,
+        source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
+        events: batch.map(function (e) {
+          return {
+            event_type: e.event_type,
+            event_uuid: e.event_uuid,
+            target_text: e.target_text,
+            page_url: e.page_url || window.location.href,
+            page_path: e.page_path || window.location.pathname,
+            timestamp: e.timestamp,
+            session_id: e.session_id || sid,
+            visitor_id: e.visitor_id || vid,
+            target_label: e.target_label,
+            target_href: e.target_href,
+            meta: e.meta,
+          };
+        }),
+      });
+      saveQueue();
+    }
+  }
+
+  function onPageHide() {
+    if (!trackerInitialized) return;
+    pageTimer.sendFinal();
+  }
+
+  function onOnline() {
+    if (!trackerInitialized) return;
+    setTrackerState('active');
+    flushQueue();
+  }
+
+  function onOffline() {
+    if (!trackerInitialized) return;
+    setTrackerState('offline');
+  }
+
+  function attachListeners() {
+    if (listenersAttached) return;
+    listenersAttached = true;
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    document.addEventListener('click', trackClick, true);
+    flushIntervalId = setInterval(function () { flushQueue(); }, FLUSH_INTERVAL);
+  }
+
+  function detachListeners() {
+    if (!listenersAttached) return;
+    listenersAttached = false;
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    window.removeEventListener('focus', onFocus);
+    window.removeEventListener('blur', onBlur);
+    window.removeEventListener('beforeunload', onBeforeUnload);
+    window.removeEventListener('pagehide', onPageHide);
+    window.removeEventListener('online', onOnline);
+    window.removeEventListener('offline', onOffline);
+    document.removeEventListener('click', trackClick, true);
+    if (flushIntervalId) { clearInterval(flushIntervalId); flushIntervalId = null; }
+  }
+
+  // ── Shutdown ──────────────────────────────────────────────────
+
+  function shutdownTracker() {
+    if (pageTimer.heartbeatTimer) clearInterval(pageTimer.heartbeatTimer);
+    if (pageTimer.watchdogTimer) clearInterval(pageTimer.watchdogTimer);
+    detachListeners();
+    eventQueue = [];
+    trackerInitialized = false;
+  }
 
   // ── Boot ───────────────────────────────────────────────────────
 
@@ -847,6 +799,7 @@
     if (trackerInitialized) return;
     trackerInitialized = true;
 
+    attachListeners();
     loadQueue();
     if (eventQueue.length > 0) {
       setTimeout(flushQueue, 1000);
@@ -859,7 +812,50 @@
     }
   }
 
-  // Consent-aware initialization
+  // ── Public Consent API ────────────────────────────────────────
+
+  window.mmConsent = {
+    grant: function () {
+      consentState = 'analytics_consent_granted';
+      setStoredConsent('granted');
+      if (!trackerInitialized) {
+        bootTracker();
+      }
+    },
+    deny: function () {
+      consentState = 'analytics_consent_denied';
+      setStoredConsent('denied');
+      shutdownTracker();
+      clearAnalyticsCookies();
+    },
+    revoke: function () {
+      consentState = 'analytics_consent_denied';
+      clearAnalyticsStorage();
+      shutdownTracker();
+    },
+    getState: function () { return consentState; },
+  };
+
+  // Complianz integration
+  document.addEventListener('cmplz_fire_categories', function (e) {
+    if (e.detail && e.detail.categories && e.detail.categories.indexOf('statistics') !== -1) {
+      window.mmConsent.grant();
+    } else {
+      window.mmConsent.deny();
+    }
+  });
+
+  // Generic CMP integration
+  document.addEventListener('mm_consent_update', function (e) {
+    if (e.detail && e.detail.analytics === true) {
+      window.mmConsent.grant();
+    } else {
+      window.mmConsent.deny();
+    }
+  });
+
+  // ── Consent-aware initialization ──────────────────────────────
+
   if (consentMode === 'strict') {
     var stored = getStoredConsent();
     if (stored === 'granted') {
@@ -867,10 +863,10 @@
       bootTracker();
     } else if (stored === 'denied') {
       consentState = 'analytics_consent_denied';
-      // Do nothing — tracker stays inert
+      // Stay inert, cookies already cleared above
     } else {
       consentState = 'no_consent';
-      // Wait for consent via mmConsent.grant() or CMP event
+      // Stay completely inert — wait for mmConsent.grant()
     }
   } else {
     // Relaxed mode: boot immediately (backward compatible)

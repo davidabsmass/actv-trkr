@@ -104,8 +104,8 @@ export default function CookiePolicy() {
               The ACTV TRKR tracking plugin supports a configurable consent mode:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-2 mt-2">
-              <li><strong className="text-foreground">Strict mode (GDPR default):</strong> No cookies are set, no tracking events are fired, and no localStorage data is stored until the End User has granted analytics consent. The tracker remains completely inert until consent is received.</li>
-              <li><strong className="text-foreground">Relaxed mode:</strong> Tracking initializes on page load without waiting for explicit consent. This mode is intended for jurisdictions where analytics cookies do not require prior consent.</li>
+              <li><strong className="text-foreground">Strict mode (default for new installs):</strong> No cookies are set, no tracking events are fired, and no localStorage data is stored until the End User has granted analytics consent. The tracker remains completely inert until consent is received.</li>
+              <li><strong className="text-foreground">Relaxed mode:</strong> Tracking initializes on page load without waiting for explicit consent. This mode is intended for jurisdictions where analytics cookies do not require prior consent. It must be explicitly selected by the site administrator in the plugin settings.</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-2">
               When consent is denied or revoked in strict mode, the tracker clears all analytics cookies (<code>mm_vid</code>, <code>mm_sid</code>, <code>mm_utm</code>, <code>mm_ts</code>), removes the event queue from localStorage, and stops all tracking activity.

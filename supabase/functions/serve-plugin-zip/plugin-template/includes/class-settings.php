@@ -21,6 +21,7 @@ class MM_Settings {
 			'enable_tracking'  => '1',
 			'enable_gravity'   => '1',
 			'enable_heartbeat' => '1',
+			'consent_mode'     => 'strict',
 		);
 	}
 
@@ -52,6 +53,9 @@ class MM_Settings {
 		$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
 		$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
 		$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';
+		$clean['consent_mode']     = in_array( ( $input['consent_mode'] ?? '' ), array( 'strict', 'relaxed' ), true )
+			? $input['consent_mode']
+			: 'strict';
 		return $clean;
 	}
 
@@ -98,7 +102,7 @@ class MM_Settings {
 							</label>
 						</td>
 					</tr>
-					<tr>
+				<tr>
 						<th scope="row">Enable Heartbeat</th>
 						<td>
 							<label>
@@ -106,6 +110,16 @@ class MM_Settings {
 									<?php checked( $opts['enable_heartbeat'], '1' ); ?> />
 								Send uptime heartbeat (JS beacon + WP-Cron fallback)
 							</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mm_consent_mode">Consent Mode</label></th>
+						<td>
+							<select id="mm_consent_mode" name="<?php echo self::OPTION_NAME; ?>[consent_mode]">
+								<option value="strict" <?php selected( $opts['consent_mode'], 'strict' ); ?>>Strict (GDPR — no tracking before consent)</option>
+								<option value="relaxed" <?php selected( $opts['consent_mode'], 'relaxed' ); ?>>Relaxed (tracking starts immediately)</option>
+							</select>
+							<p class="description">Strict mode blocks all analytics cookies and events until the visitor grants consent via a CMP (e.g. Complianz).</p>
 						</td>
 					</tr>
 				</table>

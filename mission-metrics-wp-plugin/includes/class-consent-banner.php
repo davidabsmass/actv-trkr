@@ -1055,6 +1055,51 @@ class MM_Consent_Banner {
 			'optout_link_show'   => $optout_link_show,
 		);
 	}
+
+	/* ── Admin nudge for compliance mode ──────────────────────── */
+
+	public static function maybe_show_compliance_nudge() {
+		// Only show on ACTV TRKR settings page
+		$screen = get_current_screen();
+		if ( ! $screen || $screen->id !== 'settings_page_actv-trkr' ) return;
+
+		// Only for admins
+		if ( ! current_user_can( 'manage_options' ) ) return;
+
+		// Don't show if already dismissed
+		if ( get_option( 'mm_compliance_nudge_dismissed', false ) ) return;
+
+		// Only show if currently on global_strict (the old default)
+		$opts = self::get();
+		if ( $opts['compliance_mode'] !== 'global_strict' ) return;
+
+		?>
+		<div class="notice notice-info is-dismissible" id="mm-compliance-nudge" style="border-left-color:#3b82f6">
+			<p>
+				<strong>💡 Recommended:</strong> Switch your Compliance Mode to
+				<strong>"EU/UK Strict + US Opt-Out"</strong> to stop showing a blocking consent popup to US visitors.
+				EU/UK visitors will still see the consent banner.
+			</p>
+			<p style="margin-top:4px">
+				<a href="#mm_compliance_mode" class="button button-primary button-small" onclick="document.getElementById('mm_compliance_mode').value='eu_us';document.getElementById('mm_compliance_mode').dispatchEvent(new Event('change'));this.closest('.notice').style.display='none';return false;">
+					Switch to Recommended Mode
+				</a>
+				<button type="button" class="button button-small" style="margin-left:8px" onclick="jQuery.post(ajaxurl,{action:'mm_dismiss_compliance_nudge',_wpnonce:'<?php echo wp_create_nonce('mm_dismiss_nudge'); ?>'});jQuery(this).closest('.notice').fadeOut();">
+					Don't show again
+				</button>
+			</p>
+		</div>
+		<?php
+	}
+
+	public static function ajax_dismiss_nudge() {
+		check_ajax_referer( 'mm_dismiss_nudge', '_wpnonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+		update_option( 'mm_compliance_nudge_dismissed', true );
+		wp_send_json_success();
+	}
 }
 
 ?>

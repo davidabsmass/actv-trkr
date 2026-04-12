@@ -11,9 +11,18 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.5";
+const CURRENT_PLUGIN_VERSION = "1.9.6";
 
 const CHANGELOG = `
+## 1.9.6
+- NEW: External consent plugin detection (Complianz, CookieYes, Cookiebot, Real Cookie Banner, etc.)
+- NEW: External Consent Plugin Setup section with setup instructions and copy-to-clipboard blocks
+- NEW: Ready-to-paste analytics descriptions (short, detailed, technical) for CMP classification
+- NEW: Consent signal status diagnostics (signal received, unclear, denied)
+- NEW: Double-banner warning when both ACTV TRKR banner and external CMP are active
+- NEW: How-to guide for configuring ACTV TRKR in external consent tools
+- PRESERVED: Strict mode fail-closed — no tracking without valid consent signal
+
 ## 1.9.5
 - IMPROVED: Clearer admin settings copy for region-based privacy
 - NEW: "What Should Happen Right Now" status summary in diagnostics

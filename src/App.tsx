@@ -39,7 +39,6 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Dpa = lazy(() => import("./pages/Dpa"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
-const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -925,6 +925,64 @@ export type Database = {
           },
         ]
       }
+      form_entries: {
+        Row: {
+          builder_type: string
+          created_at: string
+          form_integration_id: string
+          id: string
+          normalized_data: Json
+          org_id: string
+          site_id: string
+          source_entry_id: string
+          submitted_at: string | null
+        }
+        Insert: {
+          builder_type: string
+          created_at?: string
+          form_integration_id: string
+          id?: string
+          normalized_data?: Json
+          org_id: string
+          site_id: string
+          source_entry_id: string
+          submitted_at?: string | null
+        }
+        Update: {
+          builder_type?: string
+          created_at?: string
+          form_integration_id?: string
+          id?: string
+          normalized_data?: Json
+          org_id?: string
+          site_id?: string
+          source_entry_id?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_entries_form_integration_id_fkey"
+            columns: ["form_integration_id"]
+            isOneToOne: false
+            referencedRelation: "form_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_entries_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_entries_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       form_health_checks: {
         Row: {
           form_id: string
@@ -973,6 +1031,142 @@ export type Database = {
           },
           {
             foreignKeyName: "form_health_checks_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_import_jobs: {
+        Row: {
+          batch_size: number
+          created_at: string
+          cursor: string | null
+          form_integration_id: string
+          id: string
+          last_batch_at: string | null
+          last_error: string | null
+          org_id: string
+          retry_count: number
+          site_id: string
+          status: string
+          total_expected: number
+          total_processed: number
+          updated_at: string
+        }
+        Insert: {
+          batch_size?: number
+          created_at?: string
+          cursor?: string | null
+          form_integration_id: string
+          id?: string
+          last_batch_at?: string | null
+          last_error?: string | null
+          org_id: string
+          retry_count?: number
+          site_id: string
+          status?: string
+          total_expected?: number
+          total_processed?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_size?: number
+          created_at?: string
+          cursor?: string | null
+          form_integration_id?: string
+          id?: string
+          last_batch_at?: string | null
+          last_error?: string | null
+          org_id?: string
+          retry_count?: number
+          site_id?: string
+          status?: string
+          total_expected?: number
+          total_processed?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_import_jobs_form_integration_id_fkey"
+            columns: ["form_integration_id"]
+            isOneToOne: false
+            referencedRelation: "form_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_import_jobs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_import_jobs_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_integrations: {
+        Row: {
+          builder_type: string
+          created_at: string
+          external_form_id: string
+          form_name: string
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          org_id: string
+          site_id: string
+          status: string
+          total_entries_estimated: number
+          total_entries_imported: number
+          updated_at: string
+        }
+        Insert: {
+          builder_type?: string
+          created_at?: string
+          external_form_id: string
+          form_name?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          org_id: string
+          site_id: string
+          status?: string
+          total_entries_estimated?: number
+          total_entries_imported?: number
+          updated_at?: string
+        }
+        Update: {
+          builder_type?: string
+          created_at?: string
+          external_form_id?: string
+          form_name?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          org_id?: string
+          site_id?: string
+          status?: string
+          total_entries_estimated?: number
+          total_entries_imported?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_integrations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_integrations_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"

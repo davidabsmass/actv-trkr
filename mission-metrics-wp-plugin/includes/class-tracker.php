@@ -26,6 +26,7 @@ class MM_Tracker {
 			'apiKey'         => $opts['api_key'],
 			'domain'         => wp_parse_url( home_url(), PHP_URL_HOST ),
 			'pluginVersion'  => MM_PLUGIN_VERSION,
+			'consentMode'    => $opts['consent_mode'] ?? 'strict',
 		);
 
 		// Pass logged-in WordPress user identity for visitor tracking

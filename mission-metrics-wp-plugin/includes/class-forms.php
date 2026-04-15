@@ -554,6 +554,40 @@ class MM_Forms {
 								}
 							}
 						}
+				}
+				}
+
+				// Strategy 0c: Reverse-match via known page URL candidates → source_url in submissions
+				// If Layer 0a/0b failed, find which internal form_id has submissions from the known page URL.
+				if ( ! $resolved_internal_id && ! empty( $url_candidates ) ) {
+					foreach ( $existing_tables as $resolve_table ) {
+						$resolve_cols = $wpdb->get_col( "SHOW COLUMNS FROM {$resolve_table}", 0 );
+						if ( ! is_array( $resolve_cols ) || ! in_array( 'form_id', $resolve_cols, true ) || ! in_array( 'source_url', $resolve_cols, true ) ) continue;
+
+						foreach ( $url_candidates as $url_cand ) {
+							$like = '%' . $wpdb->esc_like( $url_cand ) . '%';
+							$matched_iid = $wpdb->get_var( $wpdb->prepare(
+								"SELECT form_id FROM {$resolve_table} WHERE source_url LIKE %s AND form_id IS NOT NULL LIMIT 1",
+								$like
+							) );
+							if ( $matched_iid && is_numeric( $matched_iid ) && intval( $matched_iid ) !== intval( $form_id ) ) {
+								// Verify this internal ID isn't already claimed by another fusion_form post
+								// by checking if any OTHER form post resolves to the same internal ID via postmeta.
+								$collision = false;
+								foreach ( $meta_candidates as $mk ) {
+									$other_posts = $wpdb->get_col( $wpdb->prepare(
+										"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s AND post_id != %d",
+										$mk, (string) $matched_iid, intval( $form_id )
+									) );
+									if ( ! empty( $other_posts ) ) { $collision = true; break; }
+								}
+								if ( ! $collision ) {
+									$resolved_internal_id = intval( $matched_iid );
+									error_log( '[MissionMetrics] Avada Layer 0c: resolved post_id=' . $form_id . ' → internal form_id=' . $resolved_internal_id . ' via source_url match (url=' . $url_cand . ')' );
+									break 2;
+								}
+							}
+						}
 					}
 				}
 

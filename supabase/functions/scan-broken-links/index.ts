@@ -47,7 +47,11 @@ function extractLinks(html: string, baseHost: string, pageUrl: string): string[]
     if (href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:") || href.startsWith("data:")) continue;
 
     // Skip XML stylesheet processing instructions and non-link refs
-    if (href.endsWith(".xsl")) continue;
+    if (href.endsWith(".xsl") || href.endsWith(".xslt")) continue;
+
+    // Skip static assets that are not navigable pages
+    const staticExts = /\.(css|js|jpg|jpeg|png|gif|webp|svg|ico|woff2?|ttf|eot|otf|pdf|zip|map)(\?|$)/i;
+    if (staticExts.test(href)) continue;
 
     // Skip font files and other non-navigable resources
     const lowerHref = href.toLowerCase();

@@ -1,0 +1,1 @@
+DELETE FROM public.broken_links WHERE broken_url LIKE '%.xsl' OR broken_url LIKE '%.xsl?%' OR broken_url LIKE '%.css' OR broken_url LIKE '%.css?%' OR broken_url LIKE '%.js' OR broken_url LIKE '%.js?%';

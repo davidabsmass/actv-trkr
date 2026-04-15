@@ -1,4 +1,5 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
+import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
@@ -141,6 +142,11 @@ Deno.serve(async (req) => {
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
+
+    // Per-user burst rate limit
+    const rl = checkUserRateLimit(user.id, "scan-broken-links");
+    if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
+
     // Look up user's org
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: ouRow } = await svc.from("org_users").select("org_id").eq("user_id", user.id).limit(1).maybeSingle();

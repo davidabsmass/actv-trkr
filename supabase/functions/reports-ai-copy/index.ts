@@ -1,4 +1,5 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
+import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -26,6 +27,11 @@ serve(async (req) => {
     }
 
     const userId = data.claims.sub as string;
+
+    // Rate limit check
+    const rl = checkUserRateLimit(userId, "reports-ai-copy");
+    if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
+
     const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     // Resolve org_id

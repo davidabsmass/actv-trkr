@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
+import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,10 @@ serve(async (req) => {
     );
     const { data: { user }, error: authErr } = await anonClient.auth.getUser();
     if (authErr || !user) throw new Error("Unauthorized");
+
+    // Rate limit check
+    const rl = checkUserRateLimit(user.id, "seo-fix-command");
+    if (!rl.allowed) return rateLimitResponse(corsHeaders, rl.retryAfterMs);
 
     const { org_id, site_id, page_url, issue_id, fix_type, fix_value, scan_id } = await req.json();
 

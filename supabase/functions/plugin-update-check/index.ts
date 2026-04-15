@@ -11,9 +11,14 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.7";
+const CURRENT_PLUGIN_VERSION = "1.9.8";
 
 const CHANGELOG = `
+## 1.9.8
+- FIX: Avada import adapter now uses full multi-layer form ID resolution (postmeta, page content scan, source_url reverse-match)
+- FIX: Resolves Avada forms like "Renew You" showing drastically wrong entry counts during import
+- Renamed "Heartbeat" to "Signal" across all user-facing surfaces
+
 ## 1.9.7
 - NEW: Admin warning that ACTV TRKR controls its own analytics only
 - NEW: Lightweight detection of Meta Pixel, Google Analytics, GTM on frontend

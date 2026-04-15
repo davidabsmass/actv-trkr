@@ -1,4 +1,5 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
+import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
@@ -27,6 +28,10 @@ Deno.serve(async (req) => {
       });
     }
     const userId = userData.user.id;
+
+    // Rate limit check
+    const rl = checkUserRateLimit(userId, "process-export");
+    if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 

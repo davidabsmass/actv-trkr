@@ -1,4 +1,5 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
+import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts'
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const FEEDBACK_RECIPIENT = "info@newuniformdesign.com";
@@ -74,6 +75,10 @@ Deno.serve(async (req) => {
         headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+
+    // Rate limit check
+    const rl = checkUserRateLimit(user.id, "submit-feedback");
+    if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const { org_id, category, subject, message, website_url } = await req.json();
 

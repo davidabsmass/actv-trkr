@@ -1,6 +1,20 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 
+const ALLOWED_ORIGINS = [
+  "https://actvtrkr.com",
+  "https://www.actvtrkr.com",
+  "https://mshnctrl.lovable.app",
+];
+
+function getAllowedOrigin(req: Request): string {
+  const origin = req.headers.get("origin") || "";
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  // Allow Lovable preview origins
+  if (origin.includes("lovableproject.com") || origin.includes("lovable.app")) return origin;
+  return ALLOWED_ORIGINS[0]; // safe fallback
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -42,7 +56,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://actvtrkr.com";
+    const origin = getAllowedOrigin(req);
 
     const metadata: Record<string, string> = { plan: selectedPlan };
     if (site_url) metadata.site_url = site_url;

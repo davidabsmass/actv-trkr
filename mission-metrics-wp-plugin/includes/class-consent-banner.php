@@ -192,6 +192,18 @@ class MM_Consent_Banner {
 
 		$behavior = self::get_region_behavior( $detected_region, $opts );
 
+		// Resolve effective policy URLs: admin-set > auto-detected
+		$effective_privacy_url = $opts['privacy_url'];
+		$effective_cookie_url  = $opts['cookie_url'];
+		if ( empty( $effective_privacy_url ) && class_exists( 'MM_Privacy_Setup' ) ) {
+			$detected = MM_Privacy_Setup::detect_privacy_policy();
+			if ( $detected['found'] ) $effective_privacy_url = $detected['url'];
+		}
+		if ( empty( $effective_cookie_url ) && class_exists( 'MM_Privacy_Setup' ) ) {
+			$detected = MM_Privacy_Setup::detect_cookie_policy();
+			if ( $detected['found'] ) $effective_cookie_url = $detected['url'];
+		}
+
 		$config = array(
 			'enabled'          => true,
 			'title'            => $opts['title'],
@@ -200,9 +212,9 @@ class MM_Consent_Banner {
 			'rejectLabel'      => $opts['reject_label'],
 			'prefsLabel'       => $opts['prefs_label'],
 			'prefsTitle'       => $opts['prefs_title'],
-			'privacyUrl'       => $opts['privacy_url'],
+			'privacyUrl'       => $effective_privacy_url,
 			'privacyLabel'     => $opts['privacy_label'],
-			'cookieUrl'        => $opts['cookie_url'],
+			'cookieUrl'        => $effective_cookie_url,
 			'cookieLabel'      => $opts['cookie_label'],
 			'position'         => $opts['position'],
 			'expiryDays'       => intval( $opts['expiry_days'] ),

@@ -64,7 +64,7 @@ const Auth = () => {
         }
       }
 
-      navigate(ownerDest(pendingEmail));
+      navigate("/dashboard");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -124,7 +124,7 @@ const Auth = () => {
             console.error("Pending invite redeem failed:", e);
           }
         }
-        navigate(ownerDest(normalizedEmail));
+        navigate("/dashboard");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: normalizedEmail,
@@ -139,7 +139,7 @@ const Auth = () => {
           } catch (e) {
             console.error("Invite redeem failed:", e);
           }
-          navigate(ownerDest(normalizedEmail));
+          navigate("/dashboard");
           return;
         }
 

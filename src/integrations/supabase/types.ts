@@ -2545,6 +2545,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          function_name: string
+          id: string
+          request_count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          function_name: string
+          id?: string
+          request_count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          function_name?: string
+          id?: string
+          request_count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       renewals: {
         Row: {
           auto_renew: boolean
@@ -4152,6 +4176,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_invite_use: {
+        Args: { p_invite_id: string }
+        Returns: undefined
       }
       is_org_member: { Args: { _org_id: string }; Returns: boolean }
       move_to_dlq: {

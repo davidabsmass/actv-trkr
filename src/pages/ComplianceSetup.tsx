@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, CheckCircle2, AlertTriangle, BookOpen,
-  ChevronRight, ExternalLink, Info,
+  ChevronRight, ExternalLink, Info, Copy, Check, Code,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useComplianceStatus } from "@/hooks/use-compliance-status";
+import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
   compliant: "text-success",

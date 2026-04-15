@@ -813,23 +813,9 @@ Deno.serve(async (req) => {
 
     if (shouldAutoBackfillAvada) {
       avadaBackfillAttempted = true;
-      // Fire-and-forget: don't await the backfill response to avoid edge function timeout.
-      // The backfill runs on WordPress and will ingest data via the normal ingest endpoints.
-      triggerWordPressAvadaBackfill(siteUrl, apiKeyRow.key_hash, knownAvadaFormMappings)
-        .then(async ({ response: backfillRes, endpoint: backfillEndpoint }) => {
-          if (!backfillRes.ok) {
-            const backfillBody = await backfillRes.text();
-            console.error(`WP Avada backfill failed (${backfillEndpoint}): ${backfillRes.status} ${backfillBody}`);
-          } else {
-            const backfillRaw = await backfillRes.text();
-            console.log(`WP Avada backfill succeeded (${backfillEndpoint}): ${backfillRaw.slice(0, 200)}`);
-          }
-        })
-        .catch((err) => {
-          console.error("WP Avada backfill fire-and-forget error:", err);
-        });
-      // Don't set error/entries here — backfill is async now
-      console.log("Avada backfill triggered (fire-and-forget)");
+      // Avada forms are now included in the cursor-based backfill-entries flow below
+      // instead of the legacy one-shot backfill-avada route which could timeout and stall.
+      console.log("Avada backfill will use cursor-based backfill-entries path");
     }
 
     // ── Auto-backfill non-Avada entries (Gravity Forms, WPForms, CF7, etc.) ──
@@ -839,12 +825,12 @@ Deno.serve(async (req) => {
     let entryBackfillContinuationScheduled = false;
 
     {
+      // Include ALL providers (including Avada) in cursor-based backfill
       const nonAvadaFormRows = await supabase
         .from("forms")
         .select("id, provider, external_form_id")
         .eq("org_id", site.org_id)
         .eq("site_id", site.id)
-        .neq("provider", "avada")
         .eq("archived", false);
 
       const nonAvadaForms = (nonAvadaFormRows.data || []) as Array<{
@@ -871,7 +857,7 @@ Deno.serve(async (req) => {
         );
 
         const formsWithZeroLeads = leadCountsByForm.filter((form) => form.activeLeadCount === 0);
-        const shouldBackfill = !!force_backfill || wpSyncFailed || formsWithZeroLeads.length > 0;
+        const shouldBackfill = !!force_backfill || wpSyncFailed || formsWithZeroLeads.length > 0 || shouldAutoBackfillAvada;
 
         if (shouldBackfill) {
           const minimumBackfillVersion = "1.6.1";

@@ -351,9 +351,14 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           <Target className="h-4 w-4 text-primary" />
           {t("goals.goalCompletions")}
         </h3>
-        <IconTooltip label="Tracks how many times visitors complete your defined goals — page visits, button clicks, form submissions, etc.">
-          <Info className="h-3.5 w-3.5 text-muted-foreground" />
-        </IconTooltip>
+        <div className="flex items-center gap-2">
+          <IconTooltip label="Tracks how many times visitors complete your defined goals — page visits, button clicks, form submissions, etc.">
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+          </IconTooltip>
+          <Link to="/settings?tab=general" className="text-[11px] text-primary hover:underline flex items-center gap-1">
+            <Settings2 className="h-3 w-3" /> Manage Goals
+          </Link>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">No goals configured yet. Create a goal to start tracking conversions.</p>
       {orgId && <CreateGoalDialog orgId={orgId} forms={forms} />}

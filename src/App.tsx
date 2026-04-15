@@ -149,7 +149,7 @@ const App = () => (
             </Route>
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/snapshot/:id" element={<SnapshotView />} />
-            <Route path="/signup" element={<AuthRoute><Signup /></AuthRoute>} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/checkout" element={<Checkout />} />

@@ -229,17 +229,19 @@ Deno.serve(async (req) => {
 
       const hasUpdate = compareVersions(latestVersion, currentVersion) > 0;
 
-      // Log the check for analytics (optional)
+      // Update the plugin_version on the site record
       if (domain) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const sb = createClient(supabaseUrl, serviceKey);
 
-        // Update the plugin_version on the site record
+        // Normalize domain (strip www.) to match how sites are stored
+        const normalizedDomain = domain.replace(/^www\./i, "");
+
         await sb
           .from("sites")
           .update({ plugin_version: currentVersion })
-          .eq("domain", domain);
+          .eq("domain", normalizedDomain);
       }
 
       const zipUrl = getZipUrl(req) + (domain ? `?domain=${encodeURIComponent(domain)}` : "");

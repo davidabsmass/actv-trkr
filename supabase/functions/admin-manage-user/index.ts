@@ -33,8 +33,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check caller is admin via user_roles
-    const { data: roleData } = await anonClient
+    // Check caller is admin via user_roles (use service role for defense-in-depth)
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    // adminClient already created above for role check
     const body = await req.json();
     const { action } = body;
 

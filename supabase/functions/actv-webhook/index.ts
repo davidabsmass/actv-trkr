@@ -26,12 +26,15 @@ serve(async (req) => {
   let event: Stripe.Event;
   try {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    if (webhookSecret && sig) {
-      event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
-    } else {
-      event = JSON.parse(body);
-      logStep("WARNING: No webhook secret, parsing raw body");
+    if (!webhookSecret) {
+      logStep("FATAL: STRIPE_WEBHOOK_SECRET is not configured");
+      return new Response(JSON.stringify({ error: "Webhook not configured" }), { status: 500 });
     }
+    if (!sig) {
+      logStep("Rejected: missing stripe-signature header");
+      return new Response(JSON.stringify({ error: "Missing signature" }), { status: 400 });
+    }
+    event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
   } catch (err) {
     logStep("Signature verification failed", { error: String(err) });
     return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 400 });
@@ -88,9 +91,13 @@ serve(async (req) => {
           if (createErr.message?.includes("already been registered")) {
             logStep("User already exists, skipping account creation", { email });
             // Look up existing user
-            const { data: { users } } = await supabase.auth.admin.listUsers();
-            const existing = users?.find((u: any) => (u.email || "").toLowerCase() === email.toLowerCase());
-            userId = existing?.id || null;
+            // Look up by email via profiles table (avoids fetching all users)
+            const { data: profileRow } = await supabase
+              .from("profiles")
+              .select("user_id")
+              .ilike("email", email)
+              .maybeSingle();
+            userId = profileRow?.user_id || null;
           } else {
             logStep("Auth user creation error", { error: createErr.message });
           }

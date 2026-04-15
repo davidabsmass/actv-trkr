@@ -83,8 +83,15 @@ export default function PluginSection() {
   const siteVersion = latestReportedSite?.plugin_version ?? null;
   const siteDomain = latestReportedSite?.domain ?? null;
 
+  // Only show update banner if the heartbeat is recent enough to trust the reported version
+  const heartbeatIsRecent = (() => {
+    if (!latestReportedSite?.last_heartbeat_at) return false;
+    const ageMs = Date.now() - new Date(latestReportedSite.last_heartbeat_at).getTime();
+    return ageMs < 30 * 60 * 1000; // 30 minutes
+  })();
+
   const needsUpdate = Boolean(
-    siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
+    heartbeatIsRecent && siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
   );
 
   const handleDownload = async () => {

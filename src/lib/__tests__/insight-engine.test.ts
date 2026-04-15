@@ -75,7 +75,7 @@ describe("generateFindings", () => {
     const f = generateFindings({ ...base, currentLeads: 7, previousLeads: 10 });
     const ld = f.find(r => r.type === "lead_drop");
     expect(ld).toBeDefined();
-    expect(ld!.severity).toBe("medium");
+    expect(ld!.severity).toBe("high"); // -30% exceeds -25% threshold
   });
 
   it("detects form_abandonment", () => {

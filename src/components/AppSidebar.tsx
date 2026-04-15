@@ -59,7 +59,7 @@ export function AppSidebar() {
         <div className="mb-1">
           <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto" />
         </div>
-        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-4">{t("sidebar.beta")}</span>
+        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-2 md:mb-4">{t("sidebar.beta")}</span>
 
         {orgs.length > 1 ? (
           <DropdownMenu>

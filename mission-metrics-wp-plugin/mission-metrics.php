@@ -30,6 +30,7 @@ require_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';
 require_once MM_PLUGIN_DIR . 'includes/class-security.php';
 require_once MM_PLUGIN_DIR . 'includes/class-magic-login.php';
 require_once MM_PLUGIN_DIR . 'includes/class-consent-banner.php';
+require_once MM_PLUGIN_DIR . 'includes/class-privacy-setup.php';
 
 // WooCommerce integration (only load if WooCommerce is active)
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
@@ -88,6 +89,7 @@ $mm_security->init();
 MM_Magic_Login::init();
 MM_Import_Engine::init();
 MM_Consent_Banner::init();
+MM_Privacy_Setup::init();
 
 // Ensure crons are scheduled even after updates (activation hook only fires on first install).
 add_action( 'init', function () {

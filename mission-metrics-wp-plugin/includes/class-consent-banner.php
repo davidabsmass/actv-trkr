@@ -482,6 +482,8 @@ class MM_Consent_Banner {
 
 		<?php self::render_external_cmp_section( $diag ); ?>
 
+		<?php if ( class_exists( 'MM_Privacy_Setup' ) ) MM_Privacy_Setup::render_settings_section(); ?>
+
 		<hr />
 		<p class="description" style="max-width:700px">
 			Choose how ACTV TRKR analytics consent behaves for visitors from different regions:
@@ -583,12 +585,8 @@ class MM_Consent_Banner {
 				<td><input type="text" name="<?php echo $name; ?>[prefs_label]" value="<?php echo esc_attr( $opts['prefs_label'] ); ?>" class="regular-text" /></td>
 			</tr>
 			<tr>
-				<th scope="row"><label>Privacy Policy URL</label></th>
-				<td><input type="url" name="<?php echo $name; ?>[privacy_url]" value="<?php echo esc_attr( $opts['privacy_url'] ); ?>" class="regular-text" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label>Cookie Policy URL</label></th>
-				<td><input type="url" name="<?php echo $name; ?>[cookie_url]" value="<?php echo esc_attr( $opts['cookie_url'] ); ?>" class="regular-text" /></td>
+				<th scope="row">Policy Links</th>
+				<td><p class="description">Privacy Policy and Cookie Policy URLs are managed in the <a href="#mm-privacy-url-field">Privacy Setup</a> section below. Auto-detected pages are used as fallback.</p></td>
 			</tr>
 			<tr>
 				<th scope="row"><label>Banner Position</label></th>

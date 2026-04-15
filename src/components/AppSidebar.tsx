@@ -55,11 +55,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r-0 [&>[data-sidebar=sidebar]]:bg-transparent" style={{ background: "var(--sidebar-gradient)" }}>
-      <SidebarHeader className="p-5 pt-[62px]">
+      <SidebarHeader className="p-3 pt-6 md:p-5 md:pt-[62px]">
         <div className="mb-1">
-          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto" />
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-8 md:h-10 w-auto" />
         </div>
-        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-4">{t("sidebar.beta")}</span>
+        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-1 md:mb-4">{t("sidebar.beta")}</span>
 
         {orgs.length > 1 ? (
           <DropdownMenu>
@@ -112,7 +112,7 @@ export function AppSidebar() {
                         <NavLink
                           to={item.url}
                           onClick={closeMobileNav}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                          className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                           activeClassName="bg-white/20 text-white font-medium"
                         >
                           <item.icon className="h-4 w-4" />
@@ -139,7 +139,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/clients"
                       onClick={closeMobileNav}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Users className="h-4 w-4" />
@@ -152,7 +152,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/admin-setup"
                       onClick={closeMobileNav}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <ClipboardList className="h-4 w-4" />
@@ -175,7 +175,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/settings"
                       onClick={closeMobileNav}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Settings className="h-4 w-4" />
@@ -189,8 +189,8 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <div className="px-4 py-1.5 mb-2">
+      <SidebarFooter className="p-2 md:p-4">
+        <div className="px-4 py-1 mb-1 md:py-1.5 md:mb-2">
           <p className="text-xs text-white/50 truncate">{user?.email}</p>
           {orgRole && (
             <p className="text-xs text-white/40 uppercase tracking-wider">{orgRole}</p>
@@ -202,7 +202,7 @@ export function AppSidebar() {
               <NavLink
                 to="/account"
                 onClick={closeMobileNav}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
+                className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
                 activeClassName="bg-white/20 text-white font-medium"
               >
                 <UserCircle className="h-4 w-4" />
@@ -214,7 +214,7 @@ export function AppSidebar() {
         <LanguageSwitcher variant="sidebar" />
         <button
           onClick={() => void signOut()}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
+          className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />
           <span>{t("sidebar.signOut")}</span>

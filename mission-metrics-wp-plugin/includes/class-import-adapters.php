@@ -96,6 +96,9 @@ class MM_Adapter_Gravity implements MM_Import_Adapter {
 // ═══════════════════════════════════════════════════════════════════
 class MM_Adapter_Avada implements MM_Import_Adapter {
 
+	/** @var array Cache of resolved form IDs: post_id => internal_id */
+	private $resolved_cache = array();
+
 	public function get_builder_type(): string { return 'avada'; }
 
 	public function discover_forms(): array {
@@ -164,7 +167,6 @@ class MM_Adapter_Avada implements MM_Import_Adapter {
 			if ( is_array( $parsed ) ) {
 				$data = $parsed;
 			} elseif ( is_string( $parsed ) ) {
-				// CSV-style data
 				$data = array( 'raw_data' => $parsed );
 			}
 		}
@@ -196,13 +198,149 @@ class MM_Adapter_Avada implements MM_Import_Adapter {
 	}
 
 	/**
-	 * Resolve WP post ID to Avada internal form_id if needed.
+	 * Multi-layer resolution of WP post ID to Avada internal form_id.
+	 * Mirrors the same strategy used in MM_Forms::get_form_entry_ids().
+	 *
+	 * Layer 0a: postmeta keys (form_id, _fusion_form_id, fusion_form_id)
+	 * Layer 0b: page content scan for form_post_id="X" references
+	 * Layer 0c: source_url reverse-match in submissions table
+	 * Fallback: raw post ID (may return 0 results if Avada uses different IDs)
 	 */
 	private function resolve_form_id( string $form_id ): string {
-		$meta_id = get_post_meta( (int) $form_id, 'form_id', true );
-		if ( $meta_id ) return (string) $meta_id;
-		$meta_id = get_post_meta( (int) $form_id, '_fusion_form_id', true );
-		if ( $meta_id ) return (string) $meta_id;
+		if ( isset( $this->resolved_cache[ $form_id ] ) ) {
+			return $this->resolved_cache[ $form_id ];
+		}
+
+		global $wpdb;
+
+		// Layer 0a: postmeta
+		$meta_candidates = array( 'form_id', '_fusion_form_id', 'fusion_form_id' );
+		foreach ( $meta_candidates as $meta_key ) {
+			$meta_val = get_post_meta( (int) $form_id, $meta_key, true );
+			if ( ! empty( $meta_val ) && is_numeric( $meta_val ) && intval( $meta_val ) !== intval( $form_id ) ) {
+				$resolved = (string) intval( $meta_val );
+				$this->resolved_cache[ $form_id ] = $resolved;
+				return $resolved;
+			}
+		}
+
+		$table = $this->get_submissions_table();
+		if ( ! $table ) {
+			$this->resolved_cache[ $form_id ] = $form_id;
+			return $form_id;
+		}
+
+		// Check if the raw post ID actually has submissions (common case)
+		$direct_count = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table} WHERE form_id = %s LIMIT 1",
+			$form_id
+		) );
+		if ( $direct_count > 0 ) {
+			$this->resolved_cache[ $form_id ] = $form_id;
+			return $form_id;
+		}
+
+		// Layer 0b: page content scan — find which internal form_id corresponds
+		// by scanning pages whose content embeds form_post_id="<post_id>"
+		$cols = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+		$has_source_url = is_array( $cols ) && in_array( 'source_url', $cols, true );
+
+		$internal_ids = $wpdb->get_col( "SELECT DISTINCT form_id FROM {$table}" );
+		if ( is_array( $internal_ids ) && count( $internal_ids ) > 0 && $has_source_url ) {
+			foreach ( $internal_ids as $iid ) {
+				$sample_url = $wpdb->get_var( $wpdb->prepare(
+					"SELECT source_url FROM {$table} WHERE form_id = %d AND source_url IS NOT NULL AND source_url != '' LIMIT 1",
+					intval( $iid )
+				) );
+				if ( ! $sample_url ) continue;
+
+				$url_path = wp_parse_url( $sample_url, PHP_URL_PATH );
+				if ( ! $url_path ) continue;
+				$url_path = trim( $url_path, '/' );
+				if ( empty( $url_path ) ) continue;
+
+				$page_post = get_page_by_path( $url_path );
+				if ( ! $page_post ) continue;
+
+				$content = $page_post->post_content ?? '';
+				$decoded = html_entity_decode( $content );
+				if (
+					strpos( $decoded, 'form_post_id="' . $form_id . '"' ) !== false ||
+					strpos( $decoded, "form_post_id='" . $form_id . "'" ) !== false ||
+					strpos( $decoded, '"form_post_id":"' . $form_id . '"' ) !== false
+				) {
+					$resolved = (string) intval( $iid );
+					$this->resolved_cache[ $form_id ] = $resolved;
+					return $resolved;
+				}
+			}
+		}
+
+		// Layer 0c: source_url reverse-match using the form's known page_url
+		if ( $has_source_url ) {
+			// Get the page URL from the forms table in our DB (passed as context)
+			// or derive from the WP post's shortcode pages
+			$page_url = get_post_meta( (int) $form_id, '_page_url', true );
+			if ( ! $page_url ) {
+				// Try to find the page URL from the WP post slug
+				$form_post = get_post( (int) $form_id );
+				if ( $form_post ) {
+					$page_url = get_permalink( $form_post );
+				}
+			}
+
+			// Also build URL candidates from pages that embed this form
+			$url_candidates = array();
+			if ( $page_url ) {
+				$parsed_path = wp_parse_url( $page_url, PHP_URL_PATH );
+				if ( $parsed_path ) {
+					$url_candidates[] = trim( $parsed_path, '/' );
+				}
+			}
+
+			// Search all pages for form_post_id references to find URL candidates
+			$pages_with_form = $wpdb->get_col( $wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE post_type IN ('page','post') AND post_status = 'publish' AND (post_content LIKE %s OR post_content LIKE %s)",
+				'%form_post_id="' . intval( $form_id ) . '"%',
+				"%form_post_id='" . intval( $form_id ) . "'%"
+			) );
+			if ( is_array( $pages_with_form ) ) {
+				foreach ( $pages_with_form as $page_id ) {
+					$purl = get_permalink( $page_id );
+					if ( $purl ) {
+						$pp = wp_parse_url( $purl, PHP_URL_PATH );
+						if ( $pp ) $url_candidates[] = trim( $pp, '/' );
+					}
+				}
+			}
+
+			foreach ( $url_candidates as $url_cand ) {
+				$like = '%' . $wpdb->esc_like( $url_cand ) . '%';
+				$matched_iid = $wpdb->get_var( $wpdb->prepare(
+					"SELECT form_id FROM {$table} WHERE source_url LIKE %s AND form_id IS NOT NULL LIMIT 1",
+					$like
+				) );
+				if ( $matched_iid && is_numeric( $matched_iid ) && intval( $matched_iid ) !== intval( $form_id ) ) {
+					// Verify no collision with another form post via postmeta
+					$collision = false;
+					foreach ( $meta_candidates as $mk ) {
+						$other_posts = $wpdb->get_col( $wpdb->prepare(
+							"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s AND post_id != %d",
+							$mk, (string) $matched_iid, intval( $form_id )
+						) );
+						if ( ! empty( $other_posts ) ) { $collision = true; break; }
+					}
+					if ( ! $collision ) {
+						$resolved = (string) intval( $matched_iid );
+						$this->resolved_cache[ $form_id ] = $resolved;
+						return $resolved;
+					}
+				}
+			}
+		}
+
+		// Fallback: use raw post ID
+		$this->resolved_cache[ $form_id ] = $form_id;
 		return $form_id;
 	}
 }

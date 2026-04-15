@@ -105,6 +105,23 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Atomically increment use count FIRST to prevent race condition
+    // If max_uses is exceeded, this will return 0 rows updated
+    const { data: updated, error: rpcErr } = await admin.rpc("increment_invite_use", {
+      p_invite_id: invite.id,
+    });
+
+    // If the RPC returns false/null or errors, the invite was consumed by another request
+    if (rpcErr || updated === false) {
+      return new Response(
+        JSON.stringify({ error: "This invite code has reached its usage limit" }),
+        {
+          status: 400,
+          headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Add user to org as member
     const { error: joinErr } = await admin
       .from("org_users")
@@ -120,9 +137,6 @@ Deno.serve(async (req) => {
         }
       );
     }
-
-    // Atomically increment use count (prevents race condition)
-    await admin.rpc("increment_invite_use", { p_invite_id: invite.id });
 
     // Get org name for the response
     const { data: orgData } = await admin

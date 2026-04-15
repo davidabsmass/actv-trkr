@@ -56,7 +56,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://actvtrkr.com";
+    const origin = getAllowedOrigin(req);
 
     const metadata: Record<string, string> = { plan: selectedPlan };
     if (site_url) metadata.site_url = site_url;

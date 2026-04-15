@@ -125,9 +125,25 @@ class MM_Broken_Links {
 		preg_match_all( '/href=["\']([^"\']+)["\']/', $html, $matches );
 		$links = array();
 
+		// Static asset extensions to skip – these are not navigable pages
+		$skip_exts = array( '.css', '.js', '.xsl', '.xslt', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.otf', '.pdf', '.zip', '.map' );
+
 		foreach ( $matches[1] as $href ) {
 			if ( strpos( $href, '#' ) === 0 || strpos( $href, 'mailto:' ) === 0 || strpos( $href, 'tel:' ) === 0 ) continue;
 			if ( strpos( $href, 'javascript:' ) === 0 ) continue;
+
+			// Skip static assets / non-page resources
+			$lower = strtolower( $href );
+			$skip  = false;
+			foreach ( $skip_exts as $ext ) {
+				// Check before any query string
+				$path_part = strtok( $lower, '?' );
+				if ( substr( $path_part, -strlen( $ext ) ) === $ext ) {
+					$skip = true;
+					break;
+				}
+			}
+			if ( $skip ) continue;
 
 			// Make absolute
 			if ( strpos( $href, '/' ) === 0 ) {

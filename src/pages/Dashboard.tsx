@@ -353,6 +353,24 @@ const Dashboard = () => {
         countMap[c.goal_id] = (countMap[c.goal_id] || 0) + 1;
       });
 
+      // Count form_submission goals from leads table
+      const formGoals = (goals as any[]).filter(g => g.goal_type === "form_submission");
+      for (const goal of formGoals) {
+        const rules = goal.tracking_rules || {};
+        let query = supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .neq("status", "trashed")
+          .gte("submitted_at", dayStart)
+          .lte("submitted_at", dayEnd);
+        if (rules.form_id && rules.form_id !== "all") {
+          query = query.eq("form_id", rules.form_id);
+        }
+        const { count } = await query;
+        countMap[goal.id] = (countMap[goal.id] || 0) + (count || 0);
+      }
+
       // Fallback: count click goals from raw events if no completions
       const CLICK_TYPES = ["cta_click", "outbound_click", "tel_click", "mailto_click"];
       const clickGoals = (goals as any[]).filter(g => CLICK_TYPES.includes(g.goal_type));

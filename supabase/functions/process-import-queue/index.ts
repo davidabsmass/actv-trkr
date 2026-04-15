@@ -15,7 +15,7 @@ const corsHeaders = {
 };
 
 const LOCK_TIMEOUT_MS = 15 * 60 * 1000; // 15 min stale lock
-const STALL_THRESHOLD_MS = 10 * 60 * 1000; // 10 min no heartbeat
+const STALL_THRESHOLD_MS = 10 * 60 * 1000; // 10 min no signal
 const MAX_BATCHES_PER_RUN = 5; // limit per function invocation
 const MAX_JOBS_PER_RUN = 3;
 const MIN_BATCH_SIZE = 10;
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
 async function detectStalledJobs(supabase: any) {
   const stallCutoff = new Date(Date.now() - STALL_THRESHOLD_MS).toISOString();
 
-  // Find running jobs with stale heartbeat
+  // Find running jobs with stale signal
   const { data: stalledJobs } = await supabase
     .from("form_import_jobs")
     .select("id, retry_count, auto_resume_enabled, form_integration_id")
@@ -83,7 +83,7 @@ async function detectStalledJobs(supabase: any) {
         status: "stalled",
         lock_token: null,
         locked_at: null,
-        last_error: "Job stalled — no heartbeat detected. Auto-resuming.",
+        last_error: "Job stalled — no signal detected. Auto-resuming.",
         retry_count: newRetry,
         next_run_at: new Date(Date.now() + 30_000).toISOString(), // retry in 30s
       }).eq("id", job.id);

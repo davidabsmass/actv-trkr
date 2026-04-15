@@ -400,10 +400,10 @@ export default function WebsiteSetup() {
         ) : (
           <div className="space-y-4">
             {allSites.map(site => {
-              const hasHeartbeat = !!site.last_heartbeat_at;
-              const isRecent = hasHeartbeat && (Date.now() - new Date(site.last_heartbeat_at!).getTime() < 30 * 60 * 1000);
+              const hasSignal = !!site.last_heartbeat_at;
+              const isRecent = hasSignal && (Date.now() - new Date(site.last_heartbeat_at!).getTime() < 30 * 60 * 1000);
               const hasPluginOrData = !!site.plugin_version;
-              const siteStatus: "connected" | "pending" | "disconnected" = isRecent ? "connected" : (hasHeartbeat || hasPluginOrData) ? "pending" : "disconnected";
+              const siteStatus: "connected" | "pending" | "disconnected" = isRecent ? "connected" : (hasSignal || hasPluginOrData) ? "pending" : "disconnected";
               const statusLabels = {
                 connected: t("websiteSetup.statusConnected"),
                 pending: t("websiteSetup.statusConnectedIdle", "Connected (Idle)"),

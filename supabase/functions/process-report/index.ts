@@ -408,7 +408,7 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
     sites: (sitesData || []).map((s: any) => ({
       domain: s.domain,
       status: s.status,
-      lastHeartbeat: s.last_heartbeat_at,
+      lastSignal: s.last_heartbeat_at,
     })),
   };
 

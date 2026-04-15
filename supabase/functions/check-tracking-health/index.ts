@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
     for (const sts of statuses) {
       const lastEvent = sts.last_event_at;
-      const lastHeartbeat = sts.last_heartbeat_at;
+      const lastSignal = sts.last_heartbeat_at; // DB column kept as last_heartbeat_at
       const currentStatus = sts.tracker_status;
       const siteId = sts.site_id;
       const orgId = sts.org_id;
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       // Determine new status
       if (lastEvent && lastEvent < stalledCutoff) {
         newStatus = "stalled";
-      } else if (lastHeartbeat && lastHeartbeat < degradedCutoff && lastEvent && lastEvent >= stalledCutoff) {
+      } else if (lastSignal && lastSignal < degradedCutoff && lastEvent && lastEvent >= stalledCutoff) {
         newStatus = "degraded";
       }
 
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
               alert_type: "tracking_stalled",
               severity: "error",
               message: `Tracking data has stopped for ${domain}. No events received in the last ${STALLED_THRESHOLD_MINUTES} minutes.`,
-              details: { last_event_at: lastEvent, last_heartbeat_at: lastHeartbeat },
+              details: { last_event_at: lastEvent, last_heartbeat_at: lastSignal },
             });
             alertsCreated++;
           }
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
             .from("tracker_alerts")
             .select("id")
             .eq("site_id", siteId)
-            .eq("alert_type", "heartbeat_stale")
+            .eq("alert_type", "signal_stale")
             .gte("created_at", alertCooloff)
             .maybeSingle();
 
@@ -135,10 +135,10 @@ Deno.serve(async (req) => {
             await supabase.from("tracker_alerts").insert({
               org_id: orgId,
               site_id: siteId,
-              alert_type: "heartbeat_stale",
+              alert_type: "signal_stale",
               severity: "warning",
-              message: `Heartbeat is stale for ${domain}. Events are still flowing but heartbeat hasn't been received in ${DEGRADED_THRESHOLD_MINUTES} minutes.`,
-              details: { last_heartbeat_at: lastHeartbeat, last_event_at: lastEvent },
+              message: `Signal is stale for ${domain}. Events are still flowing but signal hasn't been received in ${DEGRADED_THRESHOLD_MINUTES} minutes.`,
+              details: { last_heartbeat_at: lastSignal, last_event_at: lastEvent },
             });
             alertsCreated++;
           }

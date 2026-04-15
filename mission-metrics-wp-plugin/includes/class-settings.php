@@ -103,12 +103,12 @@ class MM_Settings {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row">Enable Heartbeat</th>
+						<th scope="row">Enable Signal</th>
 						<td>
 							<label>
 								<input type="checkbox" name="<?php echo self::OPTION_NAME; ?>[enable_heartbeat]" value="1"
 									<?php checked( $opts['enable_heartbeat'], '1' ); ?> />
-								Send uptime heartbeat (JS beacon + WP-Cron fallback)
+								Send uptime signal (WP-Cron)
 							</label>
 						</td>
 					</tr>

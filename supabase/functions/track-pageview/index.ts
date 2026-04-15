@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
         .update({ active_seconds: activeSeconds })
         .eq("org_id", orgId).eq("site_id", site.id).eq("event_id", eventId);
 
-      // Update tracking status for heartbeat/time_update
+      // Update tracking status for signal/time_update
       try {
         await supabase.from("site_tracking_status").upsert({
           org_id: orgId,

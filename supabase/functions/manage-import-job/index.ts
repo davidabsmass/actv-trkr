@@ -201,7 +201,7 @@ async function handleProcess(supabase: any, user: any, req: Request) {
   const integration = job.form_integrations;
   const batchSize = job.adaptive_batch_size || job.batch_size || DEFAULT_BATCH_SIZE;
 
-  // Update to running with heartbeat
+  // Update to running with signal
   await supabase.from("form_import_jobs").update({
     status: "running",
     heartbeat_at: new Date().toISOString(),

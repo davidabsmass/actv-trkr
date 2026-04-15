@@ -141,7 +141,7 @@ const CHANGELOG = `
 - SEO fix command relay
 
 ## 1.6.2
-- Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions
+- Signal now reports full WP environment: active plugins, theme, available updates, WP/PHP versions
 - Powers the Plugins & WordPress monitoring tab with real data
 
 ## 1.6.1
@@ -193,7 +193,7 @@ const CHANGELOG = `
 - EMERGENCY: Fixes PHP syntax error that crashed WordPress sites after updating to 1.3.24
 
 ## 1.3.0
-- Active time-on-page tracking with focus-aware heartbeats
+- Active time-on-page tracking with focus-aware signals
 - Intent-based click tracking (CTAs, downloads, outbound links)
 - Form liveness monitoring
 

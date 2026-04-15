@@ -174,6 +174,9 @@ export default function ComplianceSetup() {
         </Alert>
       </Section>
 
+      {/* Step 6 — Privacy Link Snippet */}
+      <PrivacyLinkSnippet />
+
       {/* Disclaimer */}
       <div className="glass-card p-4 border-muted text-xs text-muted-foreground space-y-2">
         <p><strong className="text-foreground">Disclaimer:</strong> This guide provides general compliance guidance based on ACTV TRKR's technical capabilities. It does not constitute legal advice. Consult a qualified legal professional for advice specific to your jurisdiction and business.</p>

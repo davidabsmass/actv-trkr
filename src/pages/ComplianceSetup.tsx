@@ -223,3 +223,74 @@ function LegalLink({ to, label }: { to: string; label: string }) {
     </Link>
   );
 }
+
+function PrivacyLinkSnippet() {
+  const [url, setUrl] = useState("https://yoursite.com/privacy-policy");
+  const [linkText, setLinkText] = useState("Privacy Policy");
+  const [copied, setCopied] = useState(false);
+
+  const snippet = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:#888;text-decoration:underline;">${linkText}</a>`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(snippet);
+    setCopied(true);
+    toast.success("Snippet copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Section number={6} title="Add a Privacy Policy Link to Your Footer">
+      <p className="text-muted-foreground text-sm leading-relaxed">
+        Paste this HTML snippet into your website's footer (widget, theme template, or page builder) to link visitors to your privacy policy.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <div>
+          <label className="text-xs font-medium text-foreground block mb-1">Privacy Policy URL</label>
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://yoursite.com/privacy-policy"
+            className="font-mono text-xs"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-foreground block mb-1">Link Text</label>
+          <Input
+            value={linkText}
+            onChange={(e) => setLinkText(e.target.value)}
+            placeholder="Privacy Policy"
+            className="text-xs"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-foreground block mb-1.5 flex items-center gap-1.5">
+            <Code className="h-3.5 w-3.5 text-primary" /> HTML Snippet
+          </label>
+          <div className="relative">
+            <pre className="bg-muted/50 border border-border rounded-md p-3 text-xs font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-all">
+              {snippet}
+            </pre>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="absolute top-1.5 right-1.5 h-7 px-2 text-xs"
+              onClick={handleCopy}
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+        </div>
+
+        <Alert className="border-primary/20 bg-primary/5">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm">
+            <strong className="text-foreground">Where to place it:</strong> Add this to a footer widget, an HTML block in your page builder, or directly in your theme's <code className="px-1 py-0.5 bg-muted rounded text-xs font-mono">footer.php</code> template.
+          </AlertDescription>
+        </Alert>
+      </div>
+    </Section>
+  );
+}

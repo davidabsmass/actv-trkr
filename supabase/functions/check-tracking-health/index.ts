@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       // Determine new status
       if (lastEvent && lastEvent < stalledCutoff) {
         newStatus = "stalled";
-      } else if (lastHeartbeat && lastHeartbeat < degradedCutoff && lastEvent && lastEvent >= stalledCutoff) {
+      } else if (lastSignal && lastSignal < degradedCutoff && lastEvent && lastEvent >= stalledCutoff) {
         newStatus = "degraded";
       }
 
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
               alert_type: "tracking_stalled",
               severity: "error",
               message: `Tracking data has stopped for ${domain}. No events received in the last ${STALLED_THRESHOLD_MINUTES} minutes.`,
-              details: { last_event_at: lastEvent, last_heartbeat_at: lastHeartbeat },
+              details: { last_event_at: lastEvent, last_heartbeat_at: lastSignal },
             });
             alertsCreated++;
           }
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
               alert_type: "signal_stale",
               severity: "warning",
               message: `Signal is stale for ${domain}. Events are still flowing but signal hasn't been received in ${DEGRADED_THRESHOLD_MINUTES} minutes.`,
-              details: { last_heartbeat_at: lastHeartbeat, last_event_at: lastEvent },
+              details: { last_heartbeat_at: lastSignal, last_event_at: lastEvent },
             });
             alertsCreated++;
           }

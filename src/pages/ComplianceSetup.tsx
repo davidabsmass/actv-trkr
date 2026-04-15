@@ -181,9 +181,22 @@ function StartHere() {
 function ConsentModeSection() {
   const { status } = useComplianceStatus();
 
+  type ModeId = "regional" | "strict" | "relaxed";
+
+  const [selectedMode, setSelectedMode] = useState<ModeId | null>(null);
+
+  const currentModeId: ModeId | null =
+    status.consentMode === "relaxed"
+      ? "relaxed"
+      : status.consentMode === "strict"
+        ? "strict"
+        : null;
+
+  const activeModeId = selectedMode ?? currentModeId;
+
   const modes = [
     {
-      id: "regional",
+      id: "regional" as const,
       title: "EU/UK + US Mode",
       badge: "Recommended",
       badgeColor: "text-success bg-success/10",
@@ -195,7 +208,7 @@ function ConsentModeSection() {
       ],
     },
     {
-      id: "strict",
+      id: "strict" as const,
       title: "Global Strict Mode",
       badge: null,
       badgeColor: "",
@@ -207,7 +220,7 @@ function ConsentModeSection() {
       ],
     },
     {
-      id: "relaxed",
+      id: "relaxed" as const,
       title: "Relaxed Mode",
       badge: "Not GDPR compliant",
       badgeColor: "text-destructive bg-destructive/10",
@@ -224,26 +237,41 @@ function ConsentModeSection() {
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-foreground">Consent Mode</h2>
       <p className="text-sm text-muted-foreground">
-        Choose how ACTV TRKR handles consent. Configure this in your WordPress plugin settings.
+        Click a mode to compare options. Configure the live setting in your WordPress plugin settings.
       </p>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3" aria-label="Consent mode options">
         {modes.map((m) => {
-          const active = status.consentMode === m.id;
+          const active = activeModeId === m.id;
+          const isCurrent = currentModeId === m.id;
+          const isSelectedGuide = selectedMode === m.id && !isCurrent;
+
           return (
-            <div
+            <button
               key={m.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setSelectedMode(m.id)}
               className={`rounded-lg border p-4 transition-all ${
-                active ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border bg-card"
+                active
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                  : "border-border bg-card hover:border-primary/40"
               }`}
             >
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex items-start justify-between gap-2 mb-2">
                 {m.icon}
-                {m.badge && (
-                  <Badge variant="outline" className={`text-[10px] ${m.badgeColor} border-0`}>
-                    {m.badge}
-                  </Badge>
-                )}
+                <div className="flex flex-wrap justify-end gap-1">
+                  {m.badge && (
+                    <Badge variant="outline" className={`text-[10px] ${m.badgeColor} border-0`}>
+                      {m.badge}
+                    </Badge>
+                  )}
+                  {isCurrent && (
+                    <Badge variant="outline" className="text-[10px]">
+                      Current setup
+                    </Badge>
+                  )}
+                </div>
               </div>
               <h3 className="text-sm font-semibold text-foreground mb-2">{m.title}</h3>
               <ul className="space-y-1">
@@ -254,12 +282,12 @@ function ConsentModeSection() {
                   </li>
                 ))}
               </ul>
-              {active && (
+              {(active || isSelectedGuide) && (
                 <Badge variant="outline" className="mt-3 text-primary text-[10px]">
-                  <Check className="h-3 w-3 mr-0.5" /> Active
+                  <Check className="h-3 w-3 mr-0.5" /> {isCurrent ? "Active" : "Selected"}
                 </Badge>
               )}
-            </div>
+            </button>
           );
         })}
       </div>

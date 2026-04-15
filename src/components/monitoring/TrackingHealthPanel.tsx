@@ -67,7 +67,7 @@ export function TrackingStatusCard({ siteId }: { siteId: string }) {
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Last Heartbeat</span>
+          <span className="text-muted-foreground">Last Signal</span>
           <span className="text-foreground">
             {status.last_heartbeat_at
               ? formatDistanceToNow(new Date(status.last_heartbeat_at), { addSuffix: true })
@@ -259,7 +259,7 @@ export function SiteHealthBanner({ siteId }: { siteId: string }) {
         <p className="text-muted-foreground">
           {isStalled
             ? "No tracking data has been received recently. Analytics may be incomplete."
-            : "Heartbeat is stale but some events are still flowing. Data may be partially incomplete."}
+            : "Signal is stale but some events are still flowing. Data may be partially incomplete."}
         </p>
       </div>
     </div>

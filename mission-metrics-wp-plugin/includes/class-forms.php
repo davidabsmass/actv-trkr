@@ -2613,6 +2613,172 @@ class MM_Forms {
 
 			$has_more_current = count( $entries ) === $page_size;
 			$next_page        = intval( $state['page'] ) + 1;
+		} elseif ( 'avada' === $job['provider'] ) {
+			global $wpdb;
+			$form_post_id = (string) $job['form_id'];
+			$form_title   = $job['form']['title'] ?? get_the_title( intval( $form_post_id ) ) ?: 'Avada Form';
+
+			// Find the submissions table
+			$existing_tables = self::get_avada_submission_tables();
+			$primary_table   = null;
+			$resolved_id     = $form_post_id;
+
+			foreach ( $existing_tables as $table ) {
+				$cols = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
+				if ( ! is_array( $cols ) || ! in_array( 'id', $cols, true ) || ! in_array( 'form_id', $cols, true ) ) {
+					continue;
+				}
+
+				// Check if the raw post ID has entries
+				$direct_count = (int) $wpdb->get_var( $wpdb->prepare(
+					"SELECT COUNT(*) FROM {$table} WHERE form_id = %s",
+					$form_post_id
+				) );
+				if ( $direct_count > 0 ) {
+					$primary_table = $table;
+					break;
+				}
+
+				// Try postmeta resolution
+				$meta_candidates = array( 'form_id', '_fusion_form_id', 'fusion_form_id' );
+				foreach ( $meta_candidates as $meta_key ) {
+					$meta_val = get_post_meta( (int) $form_post_id, $meta_key, true );
+					if ( ! empty( $meta_val ) && is_numeric( $meta_val ) && intval( $meta_val ) !== intval( $form_post_id ) ) {
+						$check = (int) $wpdb->get_var( $wpdb->prepare(
+							"SELECT COUNT(*) FROM {$table} WHERE form_id = %s",
+							(string) intval( $meta_val )
+						) );
+						if ( $check > 0 ) {
+							$resolved_id   = (string) intval( $meta_val );
+							$primary_table = $table;
+							break 2;
+						}
+					}
+				}
+
+				// Try all distinct form_ids and match via page content scan
+				$internal_ids = $wpdb->get_col( "SELECT DISTINCT form_id FROM {$table}" );
+				$has_source_url_col = in_array( 'source_url', $cols, true );
+				if ( is_array( $internal_ids ) && $has_source_url_col ) {
+					foreach ( $internal_ids as $iid ) {
+						$sample_url = $wpdb->get_var( $wpdb->prepare(
+							"SELECT source_url FROM {$table} WHERE form_id = %d AND source_url IS NOT NULL AND source_url != '' LIMIT 1",
+							intval( $iid )
+						) );
+						if ( ! $sample_url ) continue;
+						$url_path = wp_parse_url( $sample_url, PHP_URL_PATH );
+						if ( ! $url_path ) continue;
+						$url_path = trim( $url_path, '/' );
+						if ( empty( $url_path ) ) continue;
+						$page_post = get_page_by_path( $url_path );
+						if ( ! $page_post ) continue;
+						$content = html_entity_decode( $page_post->post_content ?? '' );
+						if (
+							strpos( $content, 'form_post_id="' . $form_post_id . '"' ) !== false ||
+							strpos( $content, "form_post_id='" . $form_post_id . "'" ) !== false
+						) {
+							$resolved_id   = (string) intval( $iid );
+							$primary_table = $table;
+							break 2;
+						}
+					}
+				}
+			}
+
+			if ( $primary_table ) {
+				$offset = intval( $state['offset'] );
+				$rows = $wpdb->get_results( $wpdb->prepare(
+					"SELECT * FROM {$primary_table} WHERE form_id = %s ORDER BY id ASC LIMIT %d OFFSET %d",
+					$resolved_id, $page_size, $offset
+				), ARRAY_A );
+
+				if ( ! is_array( $rows ) ) $rows = array();
+
+				$ts_col_candidates = array( 'date_time', 'created_at', 'submitted_at', 'date', 'created' );
+				$table_cols = $wpdb->get_col( "SHOW COLUMNS FROM {$primary_table}", 0 );
+				$ts_col = 'id';
+				foreach ( $ts_col_candidates as $tc ) {
+					if ( in_array( $tc, $table_cols, true ) ) { $ts_col = $tc; break; }
+				}
+				$has_source_url = in_array( 'source_url', $table_cols, true );
+
+				foreach ( $rows as $row ) {
+					$db_id    = (string) ( $row['id'] ?? '' );
+					$entry_id = 'avada_db_' . $db_id;
+					$submitted_at = ( $ts_col !== 'id' && ! empty( $row[ $ts_col ] ) ) ? $row[ $ts_col ] : null;
+
+					// Extract fields from primary row
+					$fields = array();
+					if ( ! empty( $row['data'] ) ) {
+						$parsed = maybe_unserialize( $row['data'] );
+						if ( is_array( $parsed ) ) {
+							$idx = 0;
+							foreach ( $parsed as $k => $v ) {
+								if ( is_scalar( $v ) && trim( (string) $v ) !== '' ) {
+									$fields[] = array( 'id' => $idx++, 'name' => $k, 'label' => $k, 'type' => 'text', 'value' => (string) $v );
+								}
+							}
+						}
+					}
+					if ( ! empty( $row['submission'] ) ) {
+						$parsed = json_decode( $row['submission'], true );
+						if ( ! is_array( $parsed ) ) $parsed = maybe_unserialize( $row['submission'] );
+						if ( is_array( $parsed ) ) {
+							$idx = count( $fields );
+							foreach ( $parsed as $k => $v ) {
+								if ( is_scalar( $v ) && trim( (string) $v ) !== '' ) {
+									$fields[] = array( 'id' => $idx++, 'name' => $k, 'label' => $k, 'type' => 'text', 'value' => (string) $v );
+								}
+							}
+						}
+					}
+
+					// Enrich from secondary tables
+					if ( intval( $db_id ) > 0 ) {
+						$secondary_fields = self::extract_avada_secondary_fields( intval( $db_id ) );
+						if ( ! empty( $secondary_fields ) ) {
+							if ( empty( $fields ) ) {
+								$fields = $secondary_fields;
+							} else {
+								$existing_labels = array_map( function( $f ) {
+									return strtolower( trim( $f['label'] ?? $f['name'] ?? '' ) );
+								}, $fields );
+								$next_id = count( $fields );
+								foreach ( $secondary_fields as $sf ) {
+									$sf_label = strtolower( trim( $sf['label'] ?? $sf['name'] ?? '' ) );
+									if ( $sf_label !== '' && ! in_array( $sf_label, $existing_labels, true ) ) {
+										$sf['id'] = $next_id++;
+										$fields[]  = $sf;
+										$existing_labels[] = $sf_label;
+									}
+								}
+							}
+						}
+					}
+
+					$source_url = ( $has_source_url && ! empty( $row['source_url'] ) ) ? $row['source_url'] : null;
+
+					$payloads[] = array(
+						'provider' => 'avada',
+						'entry'    => array(
+							'form_id'      => $form_post_id,
+							'form_title'   => $form_title,
+							'entry_id'     => $entry_id,
+							'source_url'   => $source_url,
+							'submitted_at' => $submitted_at,
+						),
+						'context' => array(
+							'domain'         => $domain,
+							'plugin_version' => MM_PLUGIN_VERSION,
+							'backfill'       => true,
+						),
+						'fields' => $fields,
+					);
+				}
+
+				$has_more_current = count( $rows ) === $page_size;
+				$next_offset      = $offset + count( $rows );
+			}
 		}
 
 		// Send payloads in batches of 25 to the batch endpoint

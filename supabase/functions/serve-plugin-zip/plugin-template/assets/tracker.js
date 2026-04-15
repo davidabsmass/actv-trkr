@@ -11,7 +11,7 @@
   var COOKIE_TS  = 'mm_ts';
   var CONSENT_KEY = 'mm_consent';
   var SESSION_TIMEOUT = 30 * 60 * 1000;
-  var HEARTBEAT_INTERVAL = 20000;
+  var SIGNAL_INTERVAL = 20000;
   var WATCHDOG_MULTIPLIER = 2;
   var MAX_EVENTS_PER_SESSION = 200;
   var MAX_QUEUE_SIZE = 500;
@@ -182,7 +182,7 @@
   function eventPriority(type) {
     if (type === 'page_view') return 3;
     if (type === 'form_submit') return 3;
-    if (type === 'heartbeat' || type === 'time_update') return 0;
+    if (type === 'signal' || type === 'time_update') return 0;
     return 1;
   }
 
@@ -210,7 +210,7 @@
   var trackerState = 'active';
   var retryCount = 0;
   var lastSuccessfulSend = Date.now();
-  var lastHeartbeatAttempt = 0;
+  var lastSignalAttempt = 0;
 
   function setTrackerState(newState) {
     if (trackerState === newState) return;
@@ -367,7 +367,7 @@
     lastResumeAt: null,
     isActive: true,
     eventId: null,
-    heartbeatTimer: null,
+    signalTimer: null,
     watchdogTimer: null,
 
     start: function (eventId) {
@@ -376,7 +376,7 @@
       this.lastResumeAt = Date.now();
       this.activeMs = 0;
       this.isActive = true;
-      this.startHeartbeat();
+      this.startSignal();
       this.startWatchdog();
     },
 
@@ -402,25 +402,25 @@
       return Math.round(total / 1000);
     },
 
-    startHeartbeat: function () {
+    startSignal: function () {
       var self = this;
-      if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = setInterval(function () {
+      if (this.signalTimer) clearInterval(this.signalTimer);
+      this.signalTimer = setInterval(function () {
         if (self.isActive) {
           self.sendTimeUpdate();
-          lastHeartbeatAttempt = Date.now();
+          lastSignalAttempt = Date.now();
         }
-      }, HEARTBEAT_INTERVAL);
+      }, SIGNAL_INTERVAL);
     },
 
     startWatchdog: function () {
       var self = this;
       if (this.watchdogTimer) clearInterval(this.watchdogTimer);
-      lastHeartbeatAttempt = Date.now();
+      lastSignalAttempt = Date.now();
       this.watchdogTimer = setInterval(function () {
-        var elapsed = Date.now() - lastHeartbeatAttempt;
-        if (elapsed > HEARTBEAT_INTERVAL * WATCHDOG_MULTIPLIER) {
-          self.startHeartbeat();
+        var elapsed = Date.now() - lastSignalAttempt;
+        if (elapsed > SIGNAL_INTERVAL * WATCHDOG_MULTIPLIER) {
+          self.startSignal();
           setTrackerState('degraded');
           enqueueEvent({
             event_type: 'session_gap_detected',
@@ -429,7 +429,7 @@
             meta: { gap_ms: elapsed, reason: 'watchdog_restart' },
           });
         }
-      }, HEARTBEAT_INTERVAL * WATCHDOG_MULTIPLIER + 5000);
+      }, SIGNAL_INTERVAL * WATCHDOG_MULTIPLIER + 5000);
     },
 
     sendTimeUpdate: function () {
@@ -451,7 +451,7 @@
 
     sendFinal: function () {
       if (!this.eventId) return;
-      clearInterval(this.heartbeatTimer);
+      clearInterval(this.signalTimer);
       clearInterval(this.watchdogTimer);
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
@@ -695,7 +695,7 @@
         resolveSession(null);
       }
       setCookie(COOKIE_TS, String(now), 1);
-      pageTimer.startHeartbeat();
+      pageTimer.startSignal();
       flushQueue();
     }
   }
@@ -703,7 +703,7 @@
   function onFocus() {
     if (!trackerInitialized) return;
     pageTimer.resume();
-    pageTimer.startHeartbeat();
+    pageTimer.startSignal();
     flushQueue();
   }
 
@@ -789,7 +789,7 @@
   // ── Shutdown ──────────────────────────────────────────────────
 
   function shutdownTracker() {
-    if (pageTimer.heartbeatTimer) clearInterval(pageTimer.heartbeatTimer);
+    if (pageTimer.signalTimer) clearInterval(pageTimer.signalTimer);
     if (pageTimer.watchdogTimer) clearInterval(pageTimer.watchdogTimer);
     detachListeners();
     eventQueue = [];

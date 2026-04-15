@@ -31,14 +31,9 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 * FIX: Avada historical backfill now loads matching rows from all supported submission tables instead of only the first table found.
 * FIX: Prevents missing Avada entries after April 2 on sites where newer submissions live outside the first detected table.
 
-= 1.8.8 =
-* FIX: Avada entry discovery now scans ALL existing submission tables and merges results (previously only used the first table found).
-* FIX: Backfill entries endpoint now correctly reads request body parameters (fixes cursor/resume not working).
-* FIX: Avada forms are now included in the backfill jobs list for full historical imports.
-
 = 1.8.3 =
 * SAFETY: Disables shutdown fallback polling so visitor and form requests are never delayed by plugin housekeeping.
-* SAFETY: Moves site heartbeat to WP-Cron only; no front-end heartbeat script runs on client pages.
+* SAFETY: Moves site signal to WP-Cron only; no front-end signal script runs on client pages.
 
 = 1.8.2 =
 * SAFETY: Disables all live form submission hooks so the plugin never runs in a client's form request path.
@@ -59,21 +54,10 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 
 = 1.7.0 =
 * Adds Magic Login for remote WP-Admin access from the dashboard.
-* Removes "heartbeat" terminology from all user-facing labels.
+* Removes "heartbeat" terminology from all user-facing labels in favor of "signal".
 
 = 1.6.2 =
-* Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions.
-
-= 1.6.1 =
-* Replaces fire-and-forget chained backfill with synchronous loop — guarantees ALL entries across ALL pages are processed in a single request.
-* Fixes incomplete historical imports where older entries (e.g. Jan/Feb) were silently dropped when the chain broke.
-
-= 1.6.0 =
-* Increases backfill batch size from 5 to 50 entries per request for reliable historical imports.
-* Prevents chain-break failures on large form datasets (500+ entries).
-
-= 1.5.8 =
-* Fixes backfill chain breaking mid-way — uses non-blocking sends and smaller batches (10 per batch) so all forms get processed.
+* Signal now reports full WP environment: active plugins, theme, available updates, WP/PHP versions.
 
 = 1.5.6 =
 * Fixes large Gravity Forms and WPForms backfills timing out by breaking imports into chained batches.

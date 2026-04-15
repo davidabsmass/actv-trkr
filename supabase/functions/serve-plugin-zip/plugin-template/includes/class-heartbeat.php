@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Heartbeat – WP-Cron only.
+ * Signal – WP-Cron only.
  */
 class MM_Heartbeat {
 
@@ -11,7 +11,7 @@ class MM_Heartbeat {
 		if ( empty( $opts['api_key'] ) ) return;
 		if ( empty( $opts['enable_heartbeat'] ) || $opts['enable_heartbeat'] !== '1' ) return;
 
-		// Front-end heartbeat is intentionally disabled so visitor requests stay untouched.
+		// Front-end signal is intentionally disabled so visitor requests stay untouched.
 
 		// WP-Cron fallback every 5 min
 		add_action( 'mm_heartbeat_cron', array( __CLASS__, 'send_cron_heartbeat' ) );
@@ -25,7 +25,7 @@ class MM_Heartbeat {
 	}
 
 	/**
-	 * Collect WP environment details for the cron heartbeat.
+	 * Collect WP environment details for the cron signal.
 	 */
 	private static function get_wp_environment() {
 		$env = array(

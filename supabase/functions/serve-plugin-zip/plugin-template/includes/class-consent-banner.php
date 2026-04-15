@@ -192,6 +192,18 @@ class MM_Consent_Banner {
 
 		$behavior = self::get_region_behavior( $detected_region, $opts );
 
+		// Resolve effective policy URLs: admin-set > auto-detected
+		$effective_privacy_url = $opts['privacy_url'];
+		$effective_cookie_url  = $opts['cookie_url'];
+		if ( empty( $effective_privacy_url ) && class_exists( 'MM_Privacy_Setup' ) ) {
+			$detected = MM_Privacy_Setup::detect_privacy_policy();
+			if ( $detected['found'] ) $effective_privacy_url = $detected['url'];
+		}
+		if ( empty( $effective_cookie_url ) && class_exists( 'MM_Privacy_Setup' ) ) {
+			$detected = MM_Privacy_Setup::detect_cookie_policy();
+			if ( $detected['found'] ) $effective_cookie_url = $detected['url'];
+		}
+
 		$config = array(
 			'enabled'          => true,
 			'title'            => $opts['title'],
@@ -200,9 +212,9 @@ class MM_Consent_Banner {
 			'rejectLabel'      => $opts['reject_label'],
 			'prefsLabel'       => $opts['prefs_label'],
 			'prefsTitle'       => $opts['prefs_title'],
-			'privacyUrl'       => $opts['privacy_url'],
+			'privacyUrl'       => $effective_privacy_url,
 			'privacyLabel'     => $opts['privacy_label'],
-			'cookieUrl'        => $opts['cookie_url'],
+			'cookieUrl'        => $effective_cookie_url,
 			'cookieLabel'      => $opts['cookie_label'],
 			'position'         => $opts['position'],
 			'expiryDays'       => intval( $opts['expiry_days'] ),
@@ -258,6 +270,18 @@ class MM_Consent_Banner {
 		}
 		$behavior = self::get_region_behavior( $detected_region, $opts );
 
+		// Resolve effective policy URLs: admin-set > auto-detected
+		$effective_privacy_url = $opts['privacy_url'];
+		$effective_cookie_url  = $opts['cookie_url'];
+		if ( empty( $effective_privacy_url ) && class_exists( 'MM_Privacy_Setup' ) ) {
+			$detected_pp = MM_Privacy_Setup::detect_privacy_policy();
+			if ( $detected_pp['found'] ) $effective_privacy_url = $detected_pp['url'];
+		}
+		if ( empty( $effective_cookie_url ) && class_exists( 'MM_Privacy_Setup' ) ) {
+			$detected_cp = MM_Privacy_Setup::detect_cookie_policy();
+			if ( $detected_cp['found'] ) $effective_cookie_url = $detected_cp['url'];
+		}
+
 		wp_localize_script( 'mm-consent-banner', 'mmConsentBannerConfig', array(
 			'enabled'          => true,
 			'title'            => $opts['title'],
@@ -266,9 +290,9 @@ class MM_Consent_Banner {
 			'rejectLabel'      => $opts['reject_label'],
 			'prefsLabel'       => $opts['prefs_label'],
 			'prefsTitle'       => $opts['prefs_title'],
-			'privacyUrl'       => $opts['privacy_url'],
+			'privacyUrl'       => $effective_privacy_url,
 			'privacyLabel'     => $opts['privacy_label'],
-			'cookieUrl'        => $opts['cookie_url'],
+			'cookieUrl'        => $effective_cookie_url,
 			'cookieLabel'      => $opts['cookie_label'],
 			'position'         => $opts['position'],
 			'expiryDays'       => intval( $opts['expiry_days'] ),
@@ -458,6 +482,8 @@ class MM_Consent_Banner {
 
 		<?php self::render_external_cmp_section( $diag ); ?>
 
+		<?php if ( class_exists( 'MM_Privacy_Setup' ) ) MM_Privacy_Setup::render_settings_section(); ?>
+
 		<hr />
 		<p class="description" style="max-width:700px">
 			Choose how ACTV TRKR analytics consent behaves for visitors from different regions:
@@ -559,12 +585,8 @@ class MM_Consent_Banner {
 				<td><input type="text" name="<?php echo $name; ?>[prefs_label]" value="<?php echo esc_attr( $opts['prefs_label'] ); ?>" class="regular-text" /></td>
 			</tr>
 			<tr>
-				<th scope="row"><label>Privacy Policy URL</label></th>
-				<td><input type="url" name="<?php echo $name; ?>[privacy_url]" value="<?php echo esc_attr( $opts['privacy_url'] ); ?>" class="regular-text" /></td>
-			</tr>
-			<tr>
-				<th scope="row"><label>Cookie Policy URL</label></th>
-				<td><input type="url" name="<?php echo $name; ?>[cookie_url]" value="<?php echo esc_attr( $opts['cookie_url'] ); ?>" class="regular-text" /></td>
+				<th scope="row">Policy Links</th>
+				<td><p class="description">Privacy Policy and Cookie Policy URLs are managed in the <a href="#mm-privacy-url-field">Privacy Setup</a> section below. Auto-detected pages are used as fallback.</p></td>
 			</tr>
 			<tr>
 				<th scope="row"><label>Banner Position</label></th>

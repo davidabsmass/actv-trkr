@@ -69,10 +69,10 @@ export default function PluginSection() {
       return (data ?? [])
         .filter((site) => Boolean(site.plugin_version))
         .sort((a, b) => {
-          const aHeartbeat = a.last_heartbeat_at ? new Date(a.last_heartbeat_at).getTime() : 0;
-          const bHeartbeat = b.last_heartbeat_at ? new Date(b.last_heartbeat_at).getTime() : 0;
+          const aSignal = a.last_heartbeat_at ? new Date(a.last_heartbeat_at).getTime() : 0;
+          const bSignal = b.last_heartbeat_at ? new Date(b.last_heartbeat_at).getTime() : 0;
 
-          if (bHeartbeat !== aHeartbeat) return bHeartbeat - aHeartbeat;
+          if (bSignal !== aSignal) return bSignal - aSignal;
 
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         })[0] ?? null;

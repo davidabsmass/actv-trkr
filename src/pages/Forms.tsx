@@ -142,14 +142,14 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
 
   if (relevantSiteIds.size === 0) return null;
 
-  const ACTIVE_HEARTBEAT_WINDOW_MS = 1000 * 60 * 60 * 24 * 7;
+  const ACTIVE_SIGNAL_WINDOW_MS = 1000 * 60 * 60 * 24 * 7;
   const scopedSiteVersions = (siteVersions || []).filter((s) => relevantSiteIds.has(s.id));
   const outdatedSites = scopedSiteVersions.filter((s) => {
     if (!s.plugin_version || !latestVersion || !s.last_heartbeat_at) return false;
-    const lastHeartbeatMs = new Date(s.last_heartbeat_at).getTime();
-    if (!Number.isFinite(lastHeartbeatMs)) return false;
-    const hasRecentHeartbeat = Date.now() - lastHeartbeatMs <= ACTIVE_HEARTBEAT_WINDOW_MS;
-    if (!hasRecentHeartbeat) return false;
+    const lastSignalMs = new Date(s.last_heartbeat_at).getTime();
+    if (!Number.isFinite(lastSignalMs)) return false;
+    const hasRecentSignal = Date.now() - lastSignalMs <= ACTIVE_SIGNAL_WINDOW_MS;
+    if (!hasRecentSignal) return false;
     return compareVersions(latestVersion, s.plugin_version) > 0;
   });
 

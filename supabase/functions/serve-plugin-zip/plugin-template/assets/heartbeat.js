@@ -5,7 +5,7 @@
   var CFG = window.mmHeartbeat;
   var sent = false;
 
-  function sendHeartbeat() {
+  function sendSignal() {
     if (sent) return;
     sent = true;
 
@@ -32,5 +32,5 @@
   }
 
   // Send once per page load, debounced
-  setTimeout(sendHeartbeat, 2000);
+  setTimeout(sendSignal, 2000);
 })();

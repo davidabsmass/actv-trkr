@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: "What form plugins are supported?",
-    a: "ACTV TRKR supports all major WordPress form plugins and is also WooCommerce compatible — tracking orders, totals, product details, and customer attribution automatically. On top of that, our universal capture engine intercepts any standard HTML form submission event — so even custom-built or niche forms are detected automatically with no extra configuration.",
+    a: "ACTV TRKR supports all major WordPress form plugins including Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable, and more. On top of that, our universal capture engine intercepts any standard HTML form submission event — so even custom-built or niche forms are detected automatically with no extra configuration.",
   },
   {
     q: "Do I need to install a WordPress plugin?",

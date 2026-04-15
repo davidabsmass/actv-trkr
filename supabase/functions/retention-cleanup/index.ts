@@ -60,9 +60,9 @@ Deno.serve(async (req) => {
 
       const now = new Date();
 
-      // Clean old heartbeats (keep 30 days for all tiers)
-      const heartbeatCutoff = new Date(now.getTime() - 30 * 86400000).toISOString();
-      await supabase.from("site_heartbeats").delete().eq("site_id", site.id).lt("received_at", heartbeatCutoff);
+      // Clean old signals (keep 30 days for all tiers)
+      const signalCutoff = new Date(now.getTime() - 30 * 86400000).toISOString();
+      await supabase.from("site_heartbeats").delete().eq("site_id", site.id).lt("received_at", signalCutoff);
 
       // Clean old form submission logs
       const formCutoff = new Date(now.getTime() - forms * 86400000).toISOString();

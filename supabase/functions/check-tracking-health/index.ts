@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
             .from("tracker_alerts")
             .select("id")
             .eq("site_id", siteId)
-            .eq("alert_type", "heartbeat_stale")
+            .eq("alert_type", "signal_stale")
             .gte("created_at", alertCooloff)
             .maybeSingle();
 
@@ -135,9 +135,9 @@ Deno.serve(async (req) => {
             await supabase.from("tracker_alerts").insert({
               org_id: orgId,
               site_id: siteId,
-              alert_type: "heartbeat_stale",
+              alert_type: "signal_stale",
               severity: "warning",
-              message: `Heartbeat is stale for ${domain}. Events are still flowing but heartbeat hasn't been received in ${DEGRADED_THRESHOLD_MINUTES} minutes.`,
+              message: `Signal is stale for ${domain}. Events are still flowing but signal hasn't been received in ${DEGRADED_THRESHOLD_MINUTES} minutes.`,
               details: { last_heartbeat_at: lastHeartbeat, last_event_at: lastEvent },
             });
             alertsCreated++;

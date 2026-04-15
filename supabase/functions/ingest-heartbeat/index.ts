@@ -30,7 +30,7 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-const MAX_HEARTBEAT_PAYLOAD = 102400; // 100KB for heartbeat (includes wp_environment)
+const MAX_SIGNAL_PAYLOAD = 102400; // 100KB for signal (includes wp_environment)
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -52,13 +52,13 @@ Deno.serve(async (req) => {
     // ── Rate limiting ──
     const rateCheck = checkRateLimit(clientIp, null, orgId);
     if (!rateCheck.allowed) {
-      logAnomaly(supabase, orgId, null, "rate_limit_exceeded", { endpoint: "ingest-heartbeat", reason: rateCheck.reason });
+      logAnomaly(supabase, orgId, null, "rate_limit_exceeded", { endpoint: "ingest-signal", reason: rateCheck.reason });
       return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
     }
 
     // ── Payload size check ──
     const rawBody = await req.text();
-    if (rawBody.length > MAX_HEARTBEAT_PAYLOAD) {
+    if (rawBody.length > MAX_SIGNAL_PAYLOAD) {
       return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -152,17 +152,17 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
 
     // Validate source field
-    const heartbeatSource = sanitizeStr(body.source, 32) || "js";
+    const signalSource = sanitizeStr(body.source, 32) || "js";
 
-    // Insert heartbeat
+    // Insert signal
     await supabase.from("site_heartbeats").insert({
       site_id: site.id,
       received_at: now,
-      source: heartbeatSource,
+      source: signalSource,
       meta: typeof body.meta === "object" && body.meta !== null ? body.meta : {},
     });
 
-    // Update last_heartbeat_at and plugin_version on site
+    // Update last_heartbeat_at (signal timestamp) and plugin_version on site
     const updateData: Record<string, unknown> = { last_heartbeat_at: now, status: "UP" };
     const pluginVersion = sanitizeStr(body.plugin_version || body.pluginVersion, 32);
     if (
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    console.error("Heartbeat error:", err);
+    console.error("Signal error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

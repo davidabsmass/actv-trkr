@@ -825,12 +825,12 @@ Deno.serve(async (req) => {
     let entryBackfillContinuationScheduled = false;
 
     {
+      // Include ALL providers (including Avada) in cursor-based backfill
       const nonAvadaFormRows = await supabase
         .from("forms")
         .select("id, provider, external_form_id")
         .eq("org_id", site.org_id)
         .eq("site_id", site.id)
-        .neq("provider", "avada")
         .eq("archived", false);
 
       const nonAvadaForms = (nonAvadaFormRows.data || []) as Array<{

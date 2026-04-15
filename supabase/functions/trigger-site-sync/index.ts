@@ -857,7 +857,7 @@ Deno.serve(async (req) => {
         );
 
         const formsWithZeroLeads = leadCountsByForm.filter((form) => form.activeLeadCount === 0);
-        const shouldBackfill = !!force_backfill || wpSyncFailed || formsWithZeroLeads.length > 0;
+        const shouldBackfill = !!force_backfill || wpSyncFailed || formsWithZeroLeads.length > 0 || shouldAutoBackfillAvada;
 
         if (shouldBackfill) {
           const minimumBackfillVersion = "1.6.1";

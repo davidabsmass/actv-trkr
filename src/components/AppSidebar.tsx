@@ -189,8 +189,8 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <div className="px-4 py-1.5 mb-2">
+      <SidebarFooter className="p-2 md:p-4">
+        <div className="px-4 py-1 mb-1 md:py-1.5 md:mb-2">
           <p className="text-xs text-white/50 truncate">{user?.email}</p>
           {orgRole && (
             <p className="text-xs text-white/40 uppercase tracking-wider">{orgRole}</p>
@@ -202,7 +202,7 @@ export function AppSidebar() {
               <NavLink
                 to="/account"
                 onClick={closeMobileNav}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
+                className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
                 activeClassName="bg-white/20 text-white font-medium"
               >
                 <UserCircle className="h-4 w-4" />
@@ -214,7 +214,7 @@ export function AppSidebar() {
         <LanguageSwitcher variant="sidebar" />
         <button
           onClick={() => void signOut()}
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
+          className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/60 rounded-lg hover:bg-white/15 hover:text-white transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />
           <span>{t("sidebar.signOut")}</span>

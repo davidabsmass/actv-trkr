@@ -55,11 +55,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r-0 [&>[data-sidebar=sidebar]]:bg-transparent" style={{ background: "var(--sidebar-gradient)" }}>
-      <SidebarHeader className="p-5 pt-10 md:pt-[62px]">
+      <SidebarHeader className="p-3 pt-6 md:p-5 md:pt-[62px]">
         <div className="mb-1">
-          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-10 w-auto" />
+          <img src={actvTrkrLogo} alt="ACTV TRKR" className="h-8 md:h-10 w-auto" />
         </div>
-        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-2 md:mb-4">{t("sidebar.beta")}</span>
+        <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-1 md:mb-4">{t("sidebar.beta")}</span>
 
         {orgs.length > 1 ? (
           <DropdownMenu>

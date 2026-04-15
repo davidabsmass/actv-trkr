@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     callerUserId = user.id;
 
     // Rate limit check (skip for cron)
-    const rl = checkUserRateLimit(callerUserId, "process-report");
+    const rl = await checkUserRateLimit(callerUserId, "process-report");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
   }
 

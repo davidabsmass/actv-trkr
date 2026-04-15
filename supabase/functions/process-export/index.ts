@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     // Rate limit check
-    const rl = checkUserRateLimit(userId, "process-export");
+    const rl = await checkUserRateLimit(userId, "process-export");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

@@ -155,7 +155,7 @@ serve(async (req) => {
     }
 
     // Per-user burst rate limit
-    const rl = checkUserRateLimit(user.id, "scan-site-seo");
+    const rl = await checkUserRateLimit(user.id, "scan-site-seo");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const { url, site_id, org_id } = await req.json();

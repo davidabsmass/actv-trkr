@@ -29,7 +29,7 @@ serve(async (req) => {
     const userId = data.claims.sub as string;
 
     // Rate limit check
-    const rl = checkUserRateLimit(userId, "reports-ai-copy");
+    const rl = await checkUserRateLimit(userId, "reports-ai-copy");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
     }
 
     // Per-user burst rate limit
-    const rl = checkUserRateLimit(user.id, "scan-broken-links");
+    const rl = await checkUserRateLimit(user.id, "scan-broken-links");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     // Look up user's org

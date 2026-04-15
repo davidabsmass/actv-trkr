@@ -434,6 +434,7 @@ function isEntryBackfillCursor(value: unknown): value is EntryBackfillCursor {
 async function triggerWordPressEntryBackfill(
   siteUrl: string,
   keyHash: string,
+  knownFormMappings: KnownFormMapping[] = [],
   cursor?: EntryBackfillCursor,
 ): Promise<{ response: Response; endpoint: string }> {
   const normalizedSiteUrl = siteUrl.replace(/\/$/, "");
@@ -447,6 +448,9 @@ async function triggerWordPressEntryBackfill(
     max_seconds: 12,
     page_size: 50,
   };
+  if (knownFormMappings.length > 0) {
+    payload.known_form_mappings = knownFormMappings;
+  }
   if (cursor) {
     payload.resume_job_index = cursor.resume_job_index;
     payload.resume_offset = cursor.resume_offset;
@@ -894,7 +898,12 @@ Deno.serve(async (req) => {
 
               while (!done && (Date.now() - backfillStart) < maxBackfillMs) {
                 try {
-                  const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(siteUrl, apiKeyRow.key_hash, cursor);
+                  const { response: bfRes, endpoint: bfEndpoint } = await triggerWordPressEntryBackfill(
+                    siteUrl,
+                    apiKeyRow.key_hash,
+                    knownAvadaFormMappings,
+                    cursor,
+                  );
                   if (!bfRes.ok) {
                     const bfBody = await bfRes.text();
                     console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);

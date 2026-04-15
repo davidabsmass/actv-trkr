@@ -14,6 +14,10 @@ function getZipUrl(req: Request): string {
 const CURRENT_PLUGIN_VERSION = "1.9.12";
 
 const CHANGELOG = `
+## 1.9.13
+- FIX: Cursor-based Avada re-backfill now receives backend-known page mappings for the correct form page
+- FIX: Avada re-backfill now reuses the same authoritative multi-table discovery path as sync counting, preventing 46/38 mismatches
+
 ## 1.9.9
 - FIX: Avada forms were silently skipped during cursor-based entry backfill (backfill-entries route)
 - FIX: Resolves "Renew You, Near You" and similar Avada forms stalling at partial entry counts

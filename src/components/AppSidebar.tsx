@@ -139,7 +139,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/clients"
                       onClick={closeMobileNav}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Users className="h-4 w-4" />
@@ -152,7 +152,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/admin-setup"
                       onClick={closeMobileNav}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <ClipboardList className="h-4 w-4" />
@@ -175,7 +175,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/settings"
                       onClick={closeMobileNav}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
                       activeClassName="bg-white/20 text-white font-medium"
                     >
                       <Settings className="h-4 w-4" />

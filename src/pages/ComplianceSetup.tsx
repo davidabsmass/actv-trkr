@@ -225,11 +225,16 @@ function LegalLink({ to, label }: { to: string; label: string }) {
 }
 
 function PrivacyLinkSnippet() {
+  const [mode, setMode] = useState<"url" | "modal">("url");
   const [url, setUrl] = useState("https://yoursite.com/privacy-policy");
   const [linkText, setLinkText] = useState("Privacy Policy");
   const [copied, setCopied] = useState(false);
 
-  const snippet = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:#888;text-decoration:underline;">${linkText}</a>`;
+  const urlSnippet = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:#888;text-decoration:underline;">${linkText}</a>`;
+
+  const modalSnippet = `<a href="#" id="mm-privacy-settings" style="font-size:13px;color:#888;text-decoration:underline;">${linkText}</a>`;
+
+  const snippet = mode === "url" ? urlSnippet : modalSnippet;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(snippet);
@@ -245,15 +250,49 @@ function PrivacyLinkSnippet() {
       </p>
 
       <div className="mt-4 space-y-3">
+        {/* Link type selector */}
         <div>
-          <label className="text-xs font-medium text-foreground block mb-1">Privacy Policy URL</label>
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://yoursite.com/privacy-policy"
-            className="font-mono text-xs"
-          />
+          <label className="text-xs font-medium text-foreground block mb-1.5">Link Behavior</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMode("url")}
+              className={`p-3 rounded-lg border text-left text-xs transition-colors ${
+                mode === "url"
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+              }`}
+            >
+              <span className="font-semibold block mb-0.5">Open a URL</span>
+              <span className="text-[11px] opacity-80">Links to your own privacy policy page</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("modal")}
+              className={`p-3 rounded-lg border text-left text-xs transition-colors ${
+                mode === "modal"
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"
+              }`}
+            >
+              <span className="font-semibold block mb-0.5">Open Consent Popup</span>
+              <span className="text-[11px] opacity-80">Reopens the ACTV TRKR cookie consent modal</span>
+            </button>
+          </div>
         </div>
+
+        {mode === "url" && (
+          <div>
+            <label className="text-xs font-medium text-foreground block mb-1">Privacy Policy URL</label>
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://yoursite.com/privacy-policy"
+              className="font-mono text-xs"
+            />
+          </div>
+        )}
+
         <div>
           <label className="text-xs font-medium text-foreground block mb-1">Link Text</label>
           <Input
@@ -283,6 +322,15 @@ function PrivacyLinkSnippet() {
             </Button>
           </div>
         </div>
+
+        {mode === "modal" && (
+          <Alert className="border-warning/20 bg-warning/5">
+            <AlertTriangle className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-sm">
+              This requires the ACTV TRKR built-in consent banner to be enabled. The link uses <code className="px-1 py-0.5 bg-muted rounded text-xs font-mono">id="mm-privacy-settings"</code> which the banner script automatically hooks into.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Alert className="border-primary/20 bg-primary/5">
           <Info className="h-4 w-4 text-primary" />

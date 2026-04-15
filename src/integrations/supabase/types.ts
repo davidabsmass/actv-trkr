@@ -4181,6 +4181,10 @@ export type Database = {
         Args: { p_invite_id: string }
         Returns: undefined
       }
+      increment_rate_limit: {
+        Args: { p_function_name: string; p_user_id: string }
+        Returns: undefined
+      }
       is_org_member: { Args: { _org_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {

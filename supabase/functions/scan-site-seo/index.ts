@@ -1,4 +1,5 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
+import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
 
@@ -152,6 +153,10 @@ serve(async (req) => {
         status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+
+    // Per-user burst rate limit
+    const rl = checkUserRateLimit(user.id, "scan-site-seo");
+    if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const { url, site_id, org_id } = await req.json();
     if (!url || !site_id || !org_id) {

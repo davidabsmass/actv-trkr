@@ -87,8 +87,9 @@ Deno.serve(async (req) => {
 
       if (createError) {
         if (createError.message.includes("already been registered")) {
-          const { data: { users } } = await adminClient.auth.admin.listUsers();
-          const existing = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
+          const { data: profileRow } = await adminClient
+            .from("profiles").select("user_id").ilike("email", normalizedEmail).maybeSingle();
+          const existing = profileRow ? { id: profileRow.user_id } : null;
           if (!existing) {
             return new Response(JSON.stringify({ error: "User not found" }), {
               status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
@@ -156,8 +157,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: { users } } = await adminClient.auth.admin.listUsers();
-      const targetUser = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
+      const { data: targetProfileRow } = await adminClient
+        .from("profiles").select("user_id").ilike("email", normalizedEmail).maybeSingle();
+      const targetUser = targetProfileRow ? { id: targetProfileRow.user_id } : null;
       if (!targetUser) {
         return new Response(JSON.stringify({ error: "User not found" }), {
           status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },

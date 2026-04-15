@@ -33,7 +33,7 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 
 = 1.8.3 =
 * SAFETY: Disables shutdown fallback polling so visitor and form requests are never delayed by plugin housekeeping.
-* SAFETY: Moves site heartbeat to WP-Cron only; no front-end heartbeat script runs on client pages.
+* SAFETY: Moves site signal to WP-Cron only; no front-end signal script runs on client pages.
 
 = 1.8.2 =
 * SAFETY: Disables all live form submission hooks so the plugin never runs in a client's form request path.
@@ -54,10 +54,10 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 
 = 1.7.0 =
 * Adds Magic Login for remote WP-Admin access from the dashboard.
-* Removes "heartbeat" terminology from all user-facing labels.
+* Removes "heartbeat" terminology from all user-facing labels in favor of "signal".
 
 = 1.6.2 =
-* Heartbeat now reports full WP environment: active plugins, theme, available updates, WP/PHP versions.
+* Signal now reports full WP environment: active plugins, theme, available updates, WP/PHP versions.
 
 = 1.5.6 =
 * Fixes large Gravity Forms and WPForms backfills timing out by breaking imports into chained batches.

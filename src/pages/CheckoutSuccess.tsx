@@ -1,9 +1,27 @@
 import { Mail, ArrowRight } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
 
 export default function CheckoutSuccess() {
+  const { session, loading } = useAuth();
+
+  // If user is already logged in, send them to the dashboard
+  if (!loading && session) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Check for session_id query param from Stripe — validates this is a real checkout completion
+  const params = new URLSearchParams(window.location.search);
+  const hasSessionId = params.has("session_id");
+
+  // If no session_id and not authenticated, this is a stale bookmark — redirect to home
+  if (!loading && !session && !hasSessionId) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"

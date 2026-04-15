@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Zap, Plus, Copy, Check, Download, Globe, Shield } from "lucide-react";
 import { useOrgs } from "@/hooks/use-dashboard-data";
 import { useAuth } from "@/hooks/use-auth";
+import { useSubscription } from "@/hooks/use-subscription";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
 
@@ -32,6 +33,8 @@ const Onboarding = () => {
   });
   const { loading: authLoading, user } = useAuth();
   const { data: orgs, status, refetch } = useOrgs();
+  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(user?.id);
+
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [createdOrg, setCreatedOrg] = useState<any>(null);
@@ -41,6 +44,8 @@ const Onboarding = () => {
   const [savingSite, setSavingSite] = useState(false);
   const [siteSaved, setSiteSaved] = useState(false);
   const [complianceMode, setComplianceMode] = useState("eu_us");
+
+  const alreadyPaid = subscribed || billingExempt;
 
   const handleAddSite = async () => {
     if (!siteUrl || !createdOrg) return;
@@ -93,10 +98,29 @@ const Onboarding = () => {
         .insert({ org_id: orgId, key_hash: keyHash, label: "Default" });
       if (akErr) throw akErr;
 
-      // Mark onboarding complete so the Dashboard modal doesn't re-ask
+      // Mark onboarding complete AND persist compliance mode
       await supabase
         .from("site_settings")
-        .upsert({ org_id: orgId, onboarding_completed: true }, { onConflict: "org_id" });
+        .upsert(
+          {
+            org_id: orgId,
+            onboarding_completed: true,
+            primary_focus: "lead_volume",
+            primary_goal: "get_more_leads",
+          },
+          { onConflict: "org_id" }
+        );
+
+      // Save compliance mode to consent_config
+      await supabase
+        .from("consent_config")
+        .upsert(
+          {
+            org_id: orgId,
+            consent_mode: complianceMode === "global_strict" ? "strict" : "region",
+          },
+          { onConflict: "org_id" }
+        );
 
       setCreatedOrg({ id: orgId, name });
       setApiKey(rawKey);
@@ -177,7 +201,7 @@ const Onboarding = () => {
                   value={siteUrl}
                   onChange={(e) => setSiteUrl(e.target.value)}
                   disabled={siteSaved}
-                  className="flex-1 px-3 py-2 text-sm bg-secondary border border-border rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                  className="flex-1 px-3 py-2 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                 />
                 <button
                   onClick={handleAddSite}
@@ -232,9 +256,25 @@ const Onboarding = () => {
                 This sets the default in the plugin. Go to <strong>WP Admin → Settings → ACTV TRKR → Consent Banner → Compliance Mode</strong> to adjust after install.
               </p>
             </div>
-            <button onClick={() => navigate("/checkout")} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-              Continue to Checkout
-            </button>
+            {subLoading ? (
+              <div className="w-full py-2.5 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : alreadyPaid ? (
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate("/checkout")}
+                className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Continue to Checkout
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -257,7 +297,7 @@ const Onboarding = () => {
             <input
               type="text" placeholder="Organization name (e.g., Example Ortho)" value={name}
               onChange={(e) => setName(e.target.value)} required
-              className="w-full px-3 py-2.5 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full px-3 py-2.5 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
             <button type="submit" disabled={loading || !name}
               className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">

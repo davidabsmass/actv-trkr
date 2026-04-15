@@ -51,7 +51,7 @@ Deno.test("redactSensitiveFields redacts password fields", () => {
 
 Deno.test("redactSensitiveFields returns non-array input unchanged", () => {
   const result = redactSensitiveFields("not an array" as any);
-  assertEquals(result, "not an array");
+  assertEquals(result as unknown as string, "not an array");
 });
 
 Deno.test("sanitizeStr truncates and trims", () => {

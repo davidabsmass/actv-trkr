@@ -4070,7 +4070,60 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      site_visitors_safe: {
+        Row: {
+          first_seen_at: string | null
+          id: string | null
+          last_seen_at: string | null
+          org_id: string | null
+          site_id: string | null
+          visitor_id: string | null
+          wp_user_email_hash: string | null
+          wp_user_id: string | null
+          wp_user_name: string | null
+          wp_user_role: string | null
+        }
+        Insert: {
+          first_seen_at?: string | null
+          id?: string | null
+          last_seen_at?: string | null
+          org_id?: string | null
+          site_id?: string | null
+          visitor_id?: string | null
+          wp_user_email_hash?: string | null
+          wp_user_id?: string | null
+          wp_user_name?: string | null
+          wp_user_role?: string | null
+        }
+        Update: {
+          first_seen_at?: string | null
+          id?: string | null
+          last_seen_at?: string | null
+          org_id?: string | null
+          site_id?: string | null
+          visitor_id?: string | null
+          wp_user_email_hash?: string | null
+          wp_user_id?: string | null
+          wp_user_name?: string | null
+          wp_user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_visitors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_visitors_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_engagement_score: {

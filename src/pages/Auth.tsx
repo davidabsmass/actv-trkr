@@ -257,7 +257,7 @@ const Auth = () => {
                   </button>
                 </form>
 
-                <p className="text-xs text-white/50 mt-4 text-center" />
+                
               </div>
             </div>
 

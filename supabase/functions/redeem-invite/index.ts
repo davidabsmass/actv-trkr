@@ -121,11 +121,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Increment use count
-    await admin
-      .from("invite_codes")
-      .update({ use_count: invite.use_count + 1 })
-      .eq("id", invite.id);
+    // Atomically increment use count (prevents race condition)
+    await admin.rpc("increment_invite_use", { p_invite_id: invite.id });
 
     // Get org name for the response
     const { data: orgData } = await admin

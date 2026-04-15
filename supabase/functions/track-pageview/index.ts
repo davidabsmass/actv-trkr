@@ -105,11 +105,11 @@ async function lookupCountryByIp(ip: string): Promise<string | null> {
     geoApiCallCount++;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2000);
-    const resp = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode`, { signal: controller.signal });
+    const resp = await fetch(`https://ipapi.co/${ip}/json/`, { signal: controller.signal });
     clearTimeout(timeout);
     if (!resp.ok) return null;
     const data = await resp.json();
-    const country = data.status === "success" && data.countryCode ? data.countryCode : null;
+    const country = data.country_code ? data.country_code : null;
     geoCache.set(ip, { country, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
     return country;
   } catch { return null; }

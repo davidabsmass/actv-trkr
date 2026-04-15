@@ -40,7 +40,7 @@ serve(async (req) => {
     const userId = user.id;
 
     // Rate limit check
-    const rl = checkUserRateLimit(userId, "ai-chatbot");
+    const rl = await checkUserRateLimit(userId, "ai-chatbot");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

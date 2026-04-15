@@ -32,7 +32,7 @@ serve(async (req) => {
     const userId = userData.user.id;
 
     // Rate limit check
-    const rl = checkUserRateLimit(userId, "dashboard-ai-insights");
+    const rl = await checkUserRateLimit(userId, "dashboard-ai-insights");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

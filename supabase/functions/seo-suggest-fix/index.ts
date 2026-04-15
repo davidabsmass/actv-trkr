@@ -168,7 +168,7 @@ serve(async (req) => {
     const userId = user.id;
 
     // Per-user burst rate limit
-    const rl = checkUserRateLimit(userId, "seo-suggest-fix");
+    const rl = await checkUserRateLimit(userId, "seo-suggest-fix");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

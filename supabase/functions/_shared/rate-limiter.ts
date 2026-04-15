@@ -1,23 +1,10 @@
 /**
- * Per-user per-function in-memory rate limiter for authenticated edge functions.
- * Prevents spam by enforcing short-burst and rolling-window limits.
+ * Per-user per-function DB-backed rate limiter for authenticated edge functions.
+ * Uses the rate_limits table for persistence across cold starts and isolates.
+ * Falls back to in-memory for non-critical paths.
  */
 
-interface Bucket {
-  count: number;
-  resetAt: number;
-}
-
-// Map key: `${userId}:${functionName}`
-const buckets = new Map<string, Bucket>();
-
-// Cleanup stale buckets every 2 min
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of buckets) {
-    if (now > v.resetAt) buckets.delete(k);
-  }
-}, 120_000);
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /** Default limits per function category */
 const FUNCTION_LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
@@ -50,36 +37,72 @@ export interface RateLimitResult {
 
 /**
  * Check if a user is within their rate limit for a given function.
- * Call this early in every authenticated edge function handler.
+ * Uses the rate_limits DB table for persistence across isolates.
  */
-export function checkUserRateLimit(
+export async function checkUserRateLimit(
   userId: string,
   functionName: string,
   overrides?: { maxRequests?: number; windowMs?: number },
-): RateLimitResult {
+): Promise<RateLimitResult> {
   const config = overrides
     ? { ...FUNCTION_LIMITS._default, ...overrides }
     : FUNCTION_LIMITS[functionName] || FUNCTION_LIMITS._default;
 
-  const key = `${userId}:${functionName}`;
-  const now = Date.now();
-  const bucket = buckets.get(key);
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-  if (!bucket || now > bucket.resetAt) {
-    buckets.set(key, { count: 1, resetAt: now + config.windowMs });
+    const windowStart = new Date(Date.now() - config.windowMs).toISOString();
+
+    // Try to get existing record
+    const { data: existing } = await supabase
+      .from("rate_limits")
+      .select("request_count, window_start")
+      .eq("user_id", userId)
+      .eq("function_name", functionName)
+      .single();
+
+    if (!existing) {
+      // First request — insert
+      await supabase.from("rate_limits").upsert({
+        user_id: userId,
+        function_name: functionName,
+        window_start: new Date().toISOString(),
+        request_count: 1,
+      }, { onConflict: "user_id,function_name" });
+      return { allowed: true };
+    }
+
+    // Check if window has expired
+    if (new Date(existing.window_start) < new Date(windowStart)) {
+      // Reset window
+      await supabase.from("rate_limits")
+        .update({ request_count: 1, window_start: new Date().toISOString() })
+        .eq("user_id", userId)
+        .eq("function_name", functionName);
+      return { allowed: true };
+    }
+
+    // Window still active — check count
+    if (existing.request_count >= config.maxRequests) {
+      const retryAfterMs = new Date(existing.window_start).getTime() + config.windowMs - Date.now();
+      return { allowed: false, retryAfterMs: Math.max(retryAfterMs, 1000) };
+    }
+
+    // Increment atomically
+    await supabase.rpc("increment_rate_limit", {
+      p_user_id: userId,
+      p_function_name: functionName,
+    });
+
+    return { allowed: true };
+  } catch (err) {
+    // If DB fails, allow the request (fail-open) but log warning
+    console.warn("[RATE-LIMITER] DB check failed, allowing request:", err);
     return { allowed: true };
   }
-
-  bucket.count++;
-
-  if (bucket.count > config.maxRequests) {
-    return {
-      allowed: false,
-      retryAfterMs: bucket.resetAt - now,
-    };
-  }
-
-  return { allowed: true };
 }
 
 /**

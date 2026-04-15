@@ -33,8 +33,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check caller is admin via user_roles
-    const { data: roleData } = await anonClient
+    // Check caller is admin via user_roles (use service role for defense-in-depth)
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    // adminClient already created above for role check
     const body = await req.json();
     const { action } = body;
 
@@ -86,8 +87,9 @@ Deno.serve(async (req) => {
 
       if (createError) {
         if (createError.message.includes("already been registered")) {
-          const { data: { users } } = await adminClient.auth.admin.listUsers();
-          const existing = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
+          const { data: profileRow } = await adminClient
+            .from("profiles").select("user_id").ilike("email", normalizedEmail).maybeSingle();
+          const existing = profileRow ? { id: profileRow.user_id } : null;
           if (!existing) {
             return new Response(JSON.stringify({ error: "User not found" }), {
               status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
@@ -155,8 +157,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: { users } } = await adminClient.auth.admin.listUsers();
-      const targetUser = users.find((u: any) => (u.email || "").toLowerCase() === normalizedEmail);
+      const { data: targetProfileRow } = await adminClient
+        .from("profiles").select("user_id").ilike("email", normalizedEmail).maybeSingle();
+      const targetUser = targetProfileRow ? { id: targetProfileRow.user_id } : null;
       if (!targetUser) {
         return new Response(JSON.stringify({ error: "User not found" }), {
           status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },

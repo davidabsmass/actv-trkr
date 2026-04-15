@@ -28,7 +28,7 @@ serve(async (req) => {
     if (authErr || !user) throw new Error("Unauthorized");
 
     // Rate limit check
-    const rl = checkUserRateLimit(user.id, "seo-fix-command");
+    const rl = await checkUserRateLimit(user.id, "seo-fix-command");
     if (!rl.allowed) return rateLimitResponse(corsHeaders, rl.retryAfterMs);
 
     const { org_id, site_id, page_url, issue_id, fix_type, fix_value, scan_id } = await req.json();

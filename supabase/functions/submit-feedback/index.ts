@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     }
 
     // Rate limit check
-    const rl = checkUserRateLimit(user.id, "submit-feedback");
+    const rl = await checkUserRateLimit(user.id, "submit-feedback");
     if (!rl.allowed) return rateLimitResponse(appCorsHeaders(req), rl.retryAfterMs);
 
     const { org_id, category, subject, message, website_url } = await req.json();

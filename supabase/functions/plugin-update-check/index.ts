@@ -11,9 +11,14 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.8";
+const CURRENT_PLUGIN_VERSION = "1.9.9";
 
 const CHANGELOG = `
+## 1.9.9
+- FIX: Avada forms were silently skipped during cursor-based entry backfill (backfill-entries route)
+- FIX: Resolves "Renew You, Near You" and similar Avada forms stalling at partial entry counts
+- NEW: Full Avada entry pagination with secondary field enrichment in backfill-entries
+
 ## 1.9.8
 - FIX: Avada import adapter now uses full multi-layer form ID resolution (postmeta, page content scan, source_url reverse-match)
 - FIX: Resolves Avada forms like "Renew You" showing drastically wrong entry counts during import

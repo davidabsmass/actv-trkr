@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
     for (const sts of statuses) {
       const lastEvent = sts.last_event_at;
-      const lastHeartbeat = sts.last_heartbeat_at; // signal timestamp (DB column kept as-is)
+      const lastSignal = sts.last_heartbeat_at; // DB column kept as last_heartbeat_at
       const currentStatus = sts.tracker_status;
       const siteId = sts.site_id;
       const orgId = sts.org_id;

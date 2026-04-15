@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Target, Plus, ChevronDown, ChevronRight, MapPin, Clock, Info } from "lucide-react";
+import { Target, Plus, ChevronDown, ChevronRight, MapPin, Clock, Info, Settings2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";

@@ -105,7 +105,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
                     <p className="text-xs font-medium text-foreground truncate">{u.name}</p>
                     <p className="text-[10px] text-muted-foreground">→ v{u.new_version}</p>
                   </div>
-                  <Badge variant="outline" className="text-[10px] border-warning text-warning shrink-0">Update</Badge>
+                  <Badge variant="outline" className="text-[10px] border-warning text-warning shrink-0">Update Available</Badge>
                 </div>
               ))}
             </div>

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowRight, 
   Check, 
@@ -69,6 +70,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const Index = () => {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const { session, loading, signOut } = useAuth();
   const isLoggedIn = Boolean(session);
@@ -97,8 +99,9 @@ const Index = () => {
       } else {
         throw new Error(data.error || "Failed to create checkout");
       }
-    } catch {
-      navigate("/checkout");
+    } catch (err) {
+      console.error("Checkout error:", err);
+      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
     } finally {
       setCheckoutLoading(false);
     }

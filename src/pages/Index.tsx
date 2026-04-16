@@ -97,8 +97,9 @@ const Index = () => {
       } else {
         throw new Error(data.error || "Failed to create checkout");
       }
-    } catch {
-      navigate("/checkout");
+    } catch (err) {
+      console.error("Checkout error:", err);
+      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
     } finally {
       setCheckoutLoading(false);
     }

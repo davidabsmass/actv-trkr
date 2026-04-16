@@ -298,12 +298,15 @@ const Index = () => {
                 Lead Attribution
               </div>
               <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                See Where Your Leads Come From
+                Know Exactly Where Your Leads Come From
               </h3>
-              <p className="text-white/90 max-w-xl mb-6">
-                Track form submissions, review lead activity, and connect conversions back to the campaigns, traffic sources, and pages driving them. ACTV TRKR gives you a clearer view of marketing performance without making you piece data together across multiple tools.
+              <p className="text-white/90 max-w-xl mb-2 font-medium text-sm">
+                Stop guessing what's working.
               </p>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-white/70 text-sm max-w-xl">
+              <p className="text-white/90 max-w-xl mb-6">
+                ACTV TRKR connects every form submission back to the traffic source, campaign, and pages that drove it—so you can clearly see what's generating real results.
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-white/70 text-sm max-w-xl mb-6">
                 {["Form activity logs", "Lead attribution", "Entries by form", "Source breakdowns", "Exportable lead data"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
@@ -311,6 +314,9 @@ const Index = () => {
                   </li>
                 ))}
               </ul>
+              <p className="text-white/80 text-sm italic">
+                Finally understand what's actually driving leads.
+              </p>
             </div>
           </div>
           <img

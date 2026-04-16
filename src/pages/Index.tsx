@@ -619,11 +619,10 @@ const Index = () => {
               <Button onClick={() => navigate('/checkout')} className="w-full mt-8" size="lg">
                 Get Started <ArrowRight className="h-4 w-4" />
               </Button>
+              <p className="text-center text-xs text-muted-foreground mt-3" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+                Cancel anytime.
+              </p>
             </div>
-
-            <p className="text-center text-sm text-white/80 mt-6" style={{ fontFamily: "'BR Omega', sans-serif" }}>
-              Cancel anytime.
-            </p>
           </div>
         </div>
       </section>

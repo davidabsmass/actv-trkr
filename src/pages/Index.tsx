@@ -244,14 +244,14 @@ const Index = () => {
                 Everything That Matters, In One View
               </h2>
               <p className="text-lg text-muted-foreground mb-4">
-                ACTV TRKR brings together the most important data from your website into one clear, streamlined dashboard—so you can understand performance without digging through multiple tools.
+                ACTV TRKR brings your most important website data into one clear dashboard—so you can understand performance without jumping between tools.
               </p>
-              <p className="text-sm font-semibold text-foreground mb-2">See exactly what's driving results:</p>
+              <p className="text-sm font-semibold text-foreground mb-2">See what's driving results:</p>
               <ul className="text-muted-foreground text-sm space-y-1.5 mb-4 list-none">
                 {[
                   "Traffic and source performance",
                   "Leads and form activity across WordPress",
-                  "Real visitor behavior and movement",
+                  "Real visitor behavior",
                   "Page performance and SEO signals",
                   "Site health, uptime, and critical issues",
                 ].map((item) => (
@@ -262,7 +262,7 @@ const Index = () => {
                 ))}
               </ul>
               <p className="text-sm text-muted-foreground mb-6">
-                Track trends over time, spot changes early, and catch problems before they start costing you leads.
+                Spot changes earlier, catch problems faster, and take action before they cost you leads.
               </p>
               <a href="/checkout" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
                 Get Started <ArrowRight className="h-4 w-4" />

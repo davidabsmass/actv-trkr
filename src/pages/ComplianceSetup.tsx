@@ -550,8 +550,6 @@ export default function ComplianceSetup() {
       {/* 7. Legal Pages (collapsed) */}
       <LegalPages />
 
-      {/* 8. Footer Privacy Link Snippet */}
-      <PrivacyLinkSnippet />
 
       {/* Disclaimer */}
       <p className="text-[11px] text-muted-foreground">

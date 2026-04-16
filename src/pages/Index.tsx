@@ -195,11 +195,11 @@ const Index = () => {
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2 hero-copy-block">
                 <h1 className="hero-headline text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
-                  Know Exactly What's Driving Leads on Your WordPress Site
+                  Everything That Matters on Your Website. Finally in One Place.
                 </h1>
                 
                 <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">
-                  ACTV TRKR gives you one clear dashboard for traffic, forms, lead attribution, and website health—so you can see what's working, what needs attention, and how leads actually happen on your site.
+                  ACTV TRKR brings together traffic, forms, lead attribution, visitor activity, and site health across your WordPress site—so you can see what's working, what's not, and what to do next.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">

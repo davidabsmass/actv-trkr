@@ -4170,6 +4170,22 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_top_exit_pages: {
+        Args: {
+          p_end_date: string
+          p_limit?: number
+          p_org_id: string
+          p_start_date: string
+        }
+        Returns: {
+          exit_rate: number
+          page_path: string
+          page_url: string
+          title: string
+          total_exits: number
+          total_pageviews_on_page: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

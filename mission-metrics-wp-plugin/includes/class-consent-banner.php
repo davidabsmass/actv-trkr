@@ -86,6 +86,7 @@ class MM_Consent_Banner {
 		$clean['expiry_days']    = max( 1, min( 730, intval( $input['expiry_days'] ?? 365 ) ) );
 		$clean['show_reopener']  = ! empty( $input['show_reopener'] ) ? '1' : '0';
 		$clean['reopener_label'] = sanitize_text_field( $input['reopener_label'] ?? $d['reopener_label'] );
+		$clean['show_footer_cookie_link'] = ! empty( $input['show_footer_cookie_link'] ) ? '1' : '0';
 		$clean['debug_mode']     = ! empty( $input['debug_mode'] ) ? '1' : '0';
 
 		// Region settings

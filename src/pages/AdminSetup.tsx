@@ -369,7 +369,36 @@ export default function AdminSetup() {
   const [billingData, setBillingData] = useState<any>(null);
   const [billingLoading, setBillingLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deletingOrgId, setDeletingOrgId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const handleDeleteOrg = async (orgId: string, orgName: string) => {
+    const confirmation = window.prompt(
+      `This will permanently delete "${orgName}" and ALL associated data (sites, leads, events, settings, members, etc.). This cannot be undone.\n\nType the organization name to confirm:`
+    );
+    if (confirmation !== orgName) {
+      if (confirmation !== null) toast.error("Name did not match. Deletion cancelled.");
+      return;
+    }
+    setDeletingOrgId(orgId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-org", {
+        body: { orgId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Removed "${orgName}"`);
+      queryClient.invalidateQueries({ queryKey: ["admin_orgs_setup"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_all_settings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_all_sites"] });
+      queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });
+      if (selectedOrg === orgId) setSelectedOrg(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete organization");
+    } finally {
+      setDeletingOrgId(null);
+    }
+  };
 
   const { data: subscribers = [] } = useQuery({
     queryKey: ["owner_subscribers"],

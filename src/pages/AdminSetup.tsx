@@ -365,6 +365,7 @@ export default function AdminSetup() {
   // Owner-only: subscriber metrics
   const [subSortKey, setSubSortKey] = useState<"created_at" | "mrr" | "last_active_date" | "churn_date">("created_at");
   const [subSortAsc, setSubSortAsc] = useState(false);
+  const [subSearch, setSubSearch] = useState("");
   const [managingSub, setManagingSub] = useState<string | null>(null);
   const [billingData, setBillingData] = useState<any>(null);
   const [billingLoading, setBillingLoading] = useState(false);
@@ -446,12 +447,20 @@ export default function AdminSetup() {
 
 
   const sortedSubs = useMemo(() => {
-    return [...subscribers].sort((a: any, b: any) => {
+    const q = subSearch.trim().toLowerCase();
+    const filtered = q
+      ? subscribers.filter((s: any) => {
+          const name = (s._profile?.full_name || "").toLowerCase();
+          const email = (s.email || "").toLowerCase();
+          return name.includes(q) || email.includes(q);
+        })
+      : subscribers;
+    return [...filtered].sort((a: any, b: any) => {
       const av = a[subSortKey] ?? "";
       const bv = b[subSortKey] ?? "";
       return subSortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
-  }, [subscribers, subSortKey, subSortAsc]);
+  }, [subscribers, subSortKey, subSortAsc, subSearch]);
 
   const toggleSubSort = (key: "created_at" | "mrr" | "last_active_date" | "churn_date") => {
     if (subSortKey === key) setSubSortAsc(!subSortAsc);
@@ -999,7 +1008,22 @@ export default function AdminSetup() {
 
 
           <Card>
-            <CardHeader><CardTitle className="text-base">Subscribers ({subscribers.length})</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-base">
+                  Subscribers ({sortedSubs.length}{subSearch ? ` of ${subscribers.length}` : ""})
+                </CardTitle>
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    value={subSearch}
+                    onChange={(e) => setSubSearch(e.target.value)}
+                    placeholder="Search by name or email"
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+              </div>
+            </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>

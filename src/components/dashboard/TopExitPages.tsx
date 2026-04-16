@@ -79,7 +79,9 @@ export function TopExitPages({
         <h3 className="text-lg font-semibold text-foreground">
           Where Visitors Drop Off
         </h3>
-        <IconTooltip content="Exit pages are the final page visited before a session ended. Exit rate shows the percentage of pageviews on that page that were the last in a session." />
+        <IconTooltip label="Exit pages are the final page visited before a session ended. Exit rate shows the percentage of pageviews on that page that were the last in a session.">
+          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+        </IconTooltip>
       </div>
 
       {sorted.length === 0 ? (

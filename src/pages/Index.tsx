@@ -598,10 +598,12 @@ const Index = () => {
 
               <div className="mb-1 flex items-end justify-center gap-2">
                 <span className="text-4xl font-bold text-primary" style={{ fontFamily: "'Funnel Display', sans-serif" }}>{isAnnual ? '$495' : '$45'}</span>
-                <span className="text-muted-foreground text-base mb-1">{isAnnual ? '/year' : '/mo'}</span>
-                {isAnnual && (
-                  <span className="inline-block text-xs font-bold text-green-600 ml-1">🎉 Save $45/yr</span>
-                )}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-muted-foreground text-base">{isAnnual ? '/year' : '/mo'}</span>
+                  {isAnnual && (
+                    <span className="inline-block text-xs font-bold text-green-600 border border-green-600 rounded-full px-2 py-0.5">🎉 Save $45/yr</span>
+                  )}
+                </div>
               </div>
               {!isAnnual && (
                 <button onClick={() => setIsAnnual(true)} className="text-xs text-muted-foreground hover:text-primary transition-colors mb-4 underline underline-offset-2 decoration-dashed">

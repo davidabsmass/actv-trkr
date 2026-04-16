@@ -85,11 +85,11 @@ export default function FaqSection({ variant = "app" }: FaqSectionProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-0 w-full">
         <Accordion type="single" collapsible className="w-full">
           {leftFaqs.map((faq, i) => (
-            <AccordionItem key={i} value={`faq-l-${i}`} className="border-white/10">
-              <AccordionTrigger className="text-left text-base font-medium text-white hover:text-white/80">
+            <AccordionItem key={i} value={`faq-l-${i}`} className="border-border/30">
+              <AccordionTrigger className="text-left text-base font-medium text-foreground hover:text-foreground/80">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-white/70 whitespace-pre-line">
+              <AccordionContent className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>
@@ -97,11 +97,11 @@ export default function FaqSection({ variant = "app" }: FaqSectionProps) {
         </Accordion>
         <Accordion type="single" collapsible className="w-full">
           {rightFaqs.map((faq, i) => (
-            <AccordionItem key={i} value={`faq-r-${i}`} className="border-white/10">
-              <AccordionTrigger className="text-left text-base font-medium text-white hover:text-white/80">
+            <AccordionItem key={i} value={`faq-r-${i}`} className="border-border/30">
+              <AccordionTrigger className="text-left text-base font-medium text-foreground hover:text-foreground/80">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-white/70 whitespace-pre-line">
+              <AccordionContent className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

@@ -472,7 +472,7 @@ const Index = () => {
               { icon: Sparkles, label: "SEO Signals" },
               { icon: Shield, label: "Site Health Monitoring" },
               { icon: Download, label: "PDF Reports" },
-              { icon: ShoppingCart, label: "WooCommerce Order Tracking" },
+              { icon: Activity, label: "Uptime Monitoring" },
               { icon: CalendarClock, label: "Weekly & Monthly Summaries" },
               { icon: Globe, label: "Traffic Source Breakdown" },
               { icon: Target, label: "Conversion Tracking" },

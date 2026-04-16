@@ -1012,19 +1012,19 @@ class MM_Consent_Banner {
 
 		<div style="max-width:700px;margin-bottom:12px">
 			<label style="font-weight:600;display:block;margin-bottom:4px">Short version:</label>
-			<textarea id="mm-copy-short" readonly rows="3" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR to measure website performance and form activity. This includes anonymized usage data such as page views, clicks, and form submissions. No data is used for advertising or sold to third parties.</textarea>
+			<textarea id="mm-copy-short" readonly rows="3" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR to measure website performance and usage. This includes anonymized data such as page views, clicks, and form interactions. This data is used only for internal analytics.</textarea>
 			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-short" style="margin-top:4px">📋 Copy Short</button>
 		</div>
 
 		<div style="max-width:700px;margin-bottom:12px">
-			<label style="font-weight:600;display:block;margin-bottom:4px">Detailed version:</label>
-			<textarea id="mm-copy-long" readonly rows="4" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR, a website analytics tool, to understand how visitors interact with our site and to improve performance. ACTV TRKR may collect anonymized usage data such as page views, clicks, and form interactions. This data is used solely for internal analytics and is not shared with third parties for advertising purposes.</textarea>
-			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-long" style="margin-top:4px">📋 Copy Detailed</button>
+			<label style="font-weight:600;display:block;margin-bottom:4px">Full version:</label>
+			<textarea id="mm-copy-long" readonly rows="4" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR, an analytics tool, to understand how visitors interact with our website and to improve performance. ACTV TRKR may collect anonymized usage data such as page views, clicks, and form submissions. This data is used solely for internal analytics and is not used for advertising or sold to third parties.</textarea>
+			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-long" style="margin-top:4px">📋 Copy Full</button>
 		</div>
 
 		<div style="max-width:700px;margin-bottom:12px">
 			<label style="font-weight:600;display:block;margin-bottom:4px">Technical note (for CMP configuration):</label>
-			<textarea id="mm-copy-tech" readonly rows="2" class="large-text" style="background:#f9fafb;font-size:13px">ACTV TRKR sets first-party analytics identifiers (mm_vid, mm_sid) and should only be activated after analytics/statistics consent is granted.</textarea>
+			<textarea id="mm-copy-tech" readonly rows="2" class="large-text" style="background:#f9fafb;font-size:13px">ACTV TRKR uses first-party analytics identifiers such as mm_vid, mm_sid, and related tracking data. ACTV TRKR should only be activated after Analytics or Statistics consent has been granted.</textarea>
 			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-tech" style="margin-top:4px">📋 Copy Technical</button>
 		</div>
 

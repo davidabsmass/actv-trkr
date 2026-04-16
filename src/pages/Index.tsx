@@ -489,17 +489,16 @@ const Index = () => {
       </section>
 
       {/* Features Grid */}
-      <section id="all-features-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }}><SparkleCanvas /></div>
+      <section id="all-features-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${everythingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
               Everything in One Place
             </div>
-            <h2 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Everything You Need. One Dashboard.
             </h2>
-            <p className="text-white/70 max-w-2xl mx-auto mb-8">
+            <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
               From traffic insights to site health alerts, ACTV TRKR brings together the parts of website performance that usually live across multiple tools.
             </p>
           </div>
@@ -521,13 +520,13 @@ const Index = () => {
               { icon: Lock, label: "SSL & Domain Alerts" },
               { icon: Share2, label: "Shareable Reports" },
             ] as { icon: LucideIcon; label: string }[]).map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-white/90 border border-white/40 shadow-sm hover:shadow-md hover:border-accent/40 transition-all duration-200 backdrop-blur-sm">
+              <div key={label} className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl bg-white/80 border border-border/30 shadow-sm hover:shadow-md hover:border-accent/40 transition-all duration-200 backdrop-blur-sm">
                 <Icon className="h-6 w-6 text-primary" />
                 <span className="text-sm font-medium text-foreground text-center">{label}</span>
               </div>
             ))}
           </div>
-          <p className="text-center text-white/60 text-sm mt-6">
+          <p className="text-center text-muted-foreground text-sm mt-6">
             No bloated analytics stack. No scattered reports. Just clear visibility into what your website is doing.
           </p>
         </div>

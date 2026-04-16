@@ -246,14 +246,13 @@ const Index = () => {
               <p className="text-lg text-muted-foreground mb-4">
                 ACTV TRKR brings your most important website data into one clear dashboard—so you can understand performance without jumping between tools.
               </p>
-              <p className="text-sm font-semibold text-foreground mb-2">See what's driving results:</p>
               <ul className="text-muted-foreground text-sm space-y-1.5 mb-4 list-none">
                 {[
-                  "Traffic and source performance",
-                  "Leads and form activity across WordPress",
-                  "Real visitor behavior",
-                  "Page performance and SEO signals",
-                  "Site health, uptime, and critical issues",
+                  "Which traffic sources are driving results",
+                  "Which forms are generating leads",
+                  "How visitors move through your site",
+                  "Which pages are underperforming",
+                  "What issues need attention right now",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />

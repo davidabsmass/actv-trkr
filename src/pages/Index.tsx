@@ -62,6 +62,7 @@ import accountabilityInset from "@/assets/accountability-astronaut.png";
 import visBehaviorBgd from "@/assets/vis-behavior-bgd.jpg";
 import visBehaviorGraphic from "@/assets/vis-behavior-graphic-1.png";
 import visBehaviorSmall from "@/assets/vis-behavior-graphic-small.png";
+import everythingBgd from "@/assets/everything-bgd.jpg";
 
 const Index = () => {
   const navigate = useNavigate();

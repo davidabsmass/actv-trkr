@@ -559,6 +559,116 @@ Deno.serve(async (req) => {
       }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
+    // ── FORCE LOGOUT (revoke all auth sessions) ──
+    if (action === "force_logout") {
+      const targetEmail = String(body.email || "").trim().toLowerCase();
+      if (!targetEmail) {
+        return new Response(JSON.stringify({ error: "email is required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { data: profileRow } = await adminClient
+        .from("profiles").select("user_id").ilike("email", targetEmail).maybeSingle();
+      if (!profileRow?.user_id) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { error: signOutError } = await adminClient.auth.admin.signOut(profileRow.user_id, "global");
+      if (signOutError) {
+        return new Response(JSON.stringify({ error: signOutError.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // ── ADD ADMIN NOTE (timestamped log) ──
+    if (action === "add_note") {
+      const noteBody = String(body.body || "").trim();
+      const category = String(body.category || "note").trim().slice(0, 32);
+      const orgId = body.org_id || null;
+      const subscriberId = body.subscriber_id || null;
+      const subscriberEmail = body.subscriber_email
+        ? String(body.subscriber_email).trim().toLowerCase()
+        : null;
+      if (!noteBody) {
+        return new Response(JSON.stringify({ error: "body is required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { data: inserted, error: insertErr } = await adminClient
+        .from("admin_notes")
+        .insert({
+          org_id: orgId,
+          subscriber_id: subscriberId,
+          subscriber_email: subscriberEmail,
+          author_id: caller.id,
+          author_email: caller.email,
+          category,
+          body: noteBody.slice(0, 4000),
+        })
+        .select()
+        .single();
+      if (insertErr) {
+        return new Response(JSON.stringify({ error: insertErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, note: inserted }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // ── DELETE ADMIN NOTE ──
+    if (action === "delete_note") {
+      const noteId = String(body.note_id || "").trim();
+      if (!noteId) {
+        return new Response(JSON.stringify({ error: "note_id is required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { error: delErr } = await adminClient.from("admin_notes").delete().eq("id", noteId);
+      if (delErr) {
+        return new Response(JSON.stringify({ error: delErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // ── UPDATE SUBSCRIBER METADATA (pricing_type, referral_source) ──
+    if (action === "update_subscriber_meta") {
+      const subscriberId = String(body.subscriber_id || "").trim();
+      if (!subscriberId) {
+        return new Response(JSON.stringify({ error: "subscriber_id is required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const patch: Record<string, unknown> = {};
+      if (typeof body.pricing_type === "string") patch.pricing_type = body.pricing_type;
+      if (typeof body.referral_source === "string") patch.referral_source = body.referral_source;
+      if (!Object.keys(patch).length) {
+        return new Response(JSON.stringify({ error: "Nothing to update" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { error: upErr } = await adminClient
+        .from("subscribers").update(patch).eq("id", subscriberId);
+      if (upErr) {
+        return new Response(JSON.stringify({ error: upErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });

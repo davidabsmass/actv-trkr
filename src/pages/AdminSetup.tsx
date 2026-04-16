@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
-import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2, CalendarIcon, Activity } from "lucide-react";
+import { Shield, ChevronLeft, Download, Search, Filter, Eye, DollarSign, Users, TrendingUp, AlertTriangle, BarChart3, ArrowUpDown, KeyRound, RotateCcw, XCircle, ExternalLink, Loader2, CalendarIcon, Activity, UserCog } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { AdminCustomerDetail } from "@/components/admin/AdminCustomerDetail";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
@@ -371,7 +372,16 @@ export default function AdminSetup() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deletingOrgId, setDeletingOrgId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailEmail, setDetailEmail] = useState<string | null>(null);
+  const [detailSubscriberId, setDetailSubscriberId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const openDetail = (sub: any) => {
+    setDetailEmail(sub.email);
+    setDetailSubscriberId(sub.id);
+    setDetailOpen(true);
+  };
 
   const handleDeleteOrg = async (orgId: string, orgName: string) => {
     const confirmation = window.prompt(
@@ -1070,8 +1080,12 @@ export default function AdminSetup() {
                         <TableCell>${Number(s.mrr || 0).toFixed(0)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
+                            <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => openDetail(s)}>
+                              <UserCog className="h-3 w-3 mr-1" />
+                              Details
+                            </Button>
                             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => loadBilling(s.email)}>
-                              {managingSub === s.email ? "Close" : "Manage"}
+                              {managingSub === s.email ? "Close" : "Billing"}
                             </Button>
                           </div>
                         </TableCell>
@@ -1298,6 +1312,12 @@ export default function AdminSetup() {
           </Card>
         </div>
       )}
+      <AdminCustomerDetail
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        email={detailEmail}
+        subscriberId={detailSubscriberId}
+      />
     </div>
   );
 }

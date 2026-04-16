@@ -63,6 +63,7 @@ import visBehaviorBgd from "@/assets/vis-behavior-bgd.jpg";
 import visBehaviorGraphic from "@/assets/vis-behavior-graphic-1.png";
 import visBehaviorSmall from "@/assets/vis-behavior-graphic-small.png";
 import everythingBgd from "@/assets/everything-bgd.jpg";
+import faqsBgd from "@/assets/faqs-bgd.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -613,13 +614,13 @@ const Index = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', background: 'linear-gradient(to bottom, #0a0a1a, #111128)' }}>
+      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${faqsBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center mb-10">
-            <h2 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
+            <h2 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Frequently Asked Questions
             </h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
+            <p className="text-muted-foreground max-w-2xl mx-auto">
               How ACTV TRKR compares to other tools and what you need to know before getting started.
             </p>
           </div>

@@ -606,7 +606,7 @@ const Index = () => {
                 </div>
               </div>
               {!isAnnual && (
-                <button onClick={() => setIsAnnual(true)} className="text-xs text-muted-foreground hover:text-primary transition-colors mb-4 underline underline-offset-2 decoration-dashed">
+                <button onClick={() => setIsAnnual(true)} className="text-xs text-green-600 hover:text-green-500 transition-colors mb-4 underline underline-offset-2 decoration-dashed">
                   Switch to yearly &amp; save $45
                 </button>
               )}

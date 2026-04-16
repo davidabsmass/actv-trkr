@@ -21,7 +21,7 @@ const corsHeaders = {
 };
 
 const PRICES = {
-  monthly: "price_1TCKGRQXOqBVFUKWK9MbEvfO",
+  monthly: "price_1TMlVgQXOqBVFUKWKU31SRaN",
   annual: "price_1TFWOBQXOqBVFUKWszIUMcAS",
 };
 
@@ -68,6 +68,7 @@ serve(async (req) => {
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       metadata,
+      allow_promotion_codes: true,
       billing_address_collection: "required",
       phone_number_collection: { enabled: true },
       success_url: `${origin}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,

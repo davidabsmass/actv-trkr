@@ -22,7 +22,7 @@ const corsHeaders = {
 
 const PRICES = {
   monthly: "price_1TMlVgQXOqBVFUKWKU31SRaN",
-  annual: "price_1TFWOBQXOqBVFUKWszIUMcAS",
+  annual: "price_1TMtdtQXOqBVFUKWVejiZBzI",
 };
 
 const logStep = (step: string, details?: any) => {

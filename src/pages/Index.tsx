@@ -459,7 +459,7 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
                <img src={visBehaviorGraphic} alt="Session timeline view" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.06}px)`, willChange: 'transform' }} />
-               <img src={visBehaviorSmall} alt="Rocket launch pad" className="absolute bottom-[20px] right-[10px] lg:bottom-[20px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.12}px)`, willChange: 'transform' }} />
+               <img src={visBehaviorSmall} alt="Rocket launch pad" className="absolute bottom-[-180px] right-[10px] lg:bottom-[-180px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.12}px)`, willChange: 'transform' }} />
             </div>
             <div className="lg:col-span-5 section-copy-block">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">

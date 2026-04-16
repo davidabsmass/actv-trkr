@@ -51,8 +51,21 @@ serve(async (req) => {
         const subscriptionId = typeof session.subscription === "string" ? session.subscription : "";
         const metadata = session.metadata || {};
         const plan = metadata.plan || "monthly";
-        const mrr = plan === "annual" ? 27.5 : 30;
         const siteUrl = metadata.site_url || null;
+
+        // Derive MRR from the actual Stripe subscription price (no hardcoded fallbacks)
+        let mrr = 0;
+        if (subscriptionId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            const price = sub.items.data[0]?.price;
+            const unitAmount = price?.unit_amount || 0;
+            const interval = price?.recurring?.interval;
+            mrr = interval === "year" ? (unitAmount / 100) / 12 : unitAmount / 100;
+          } catch (priceErr) {
+            logStep("Failed to derive MRR from subscription", { error: String(priceErr) });
+          }
+        }
 
         // Extract billing details from checkout session
         const customerDetails = session.customer_details;

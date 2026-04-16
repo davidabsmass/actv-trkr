@@ -600,7 +600,7 @@ const Index = () => {
                 <span className="text-4xl font-bold text-primary" style={{ fontFamily: "'Funnel Display', sans-serif" }}>{isAnnual ? '$495' : '$45'}</span>
                 <span className="text-muted-foreground text-base mb-1">{isAnnual ? '/year' : '/mo'}</span>
                 {isAnnual && (
-                  <span className="inline-block text-xs font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 rounded-full px-3 py-1 mb-1 ml-1 animate-pulse">🎉 Save $45/yr</span>
+                  <span className="inline-block text-xs font-bold text-green-600 ml-1">🎉 Save $45/yr</span>
                 )}
               </div>
               {!isAnnual && (

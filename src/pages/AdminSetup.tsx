@@ -1312,6 +1312,12 @@ export default function AdminSetup() {
           </Card>
         </div>
       )}
+      <AdminCustomerDetail
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        email={detailEmail}
+        subscriberId={detailSubscriberId}
+      />
     </div>
   );
 }

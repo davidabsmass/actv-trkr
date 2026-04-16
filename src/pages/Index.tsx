@@ -398,10 +398,16 @@ const Index = () => {
                 Track Performance on Every Form
               </h3>
               <p className="text-white/90 max-w-xl mb-4">
-                Your forms are one of the most important parts of your website — and one of the easiest places for problems to slip by unnoticed.
+                Your forms are one of the most important parts of your website—and one of the easiest places for problems to go unnoticed.
               </p>
-              <p className="text-white/70 max-w-xl">
-                ACTV TRKR monitors submissions, failures, trends, and activity across your WordPress forms, helping you see what is converting, what is underperforming, and when something needs attention. With universal form capture, it works across Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable, and more without a complicated setup.
+              <p className="text-white/70 max-w-xl mb-4">
+                ACTV TRKR tracks submissions, failures, trends, and activity across your WordPress forms so you can see what's converting, what's underperforming, and when something needs attention.
+              </p>
+              <p className="text-white/70 text-sm max-w-xl mb-4">
+                Works across Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable, and more.
+              </p>
+              <p className="text-white/80 text-sm italic">
+                Don't lose leads because something broke.
               </p>
             </div>
           </div>
@@ -421,9 +427,9 @@ const Index = () => {
                 Catch Problems Before They Cost You
               </h3>
               <p className="text-muted-foreground max-w-xl mb-6">
-                ACTV TRKR does more than track traffic. It helps you monitor the health of your website so you can catch broken forms, broken links, SSL issues, uptime problems, and domain-related risks before they affect leads and performance.
+                ACTV TRKR helps you monitor the health of your website so you can catch broken forms, broken links, SSL issues, uptime problems, and domain-related risks before they affect leads and performance.
               </p>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl mb-4">
                 {["Site health alerts", "Broken form checks", "Broken link detection", "SSL expiry alerts", "Domain expiry alerts", "Uptime monitoring"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
@@ -431,6 +437,9 @@ const Index = () => {
                   </li>
                 ))}
               </ul>
+              <p className="text-muted-foreground text-sm italic">
+                Know what needs attention before it starts costing you.
+              </p>
             </div>
             <div className="relative flex items-end justify-center lg:col-span-7 pt-12">
               <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-[85%] h-auto relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />

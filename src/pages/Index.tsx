@@ -457,7 +457,7 @@ const Index = () => {
       <section className="relative px-6 overflow-hidden visitor-behavior-section landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${visBehaviorBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
         <SparkleCanvas />
         <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .visitor-behavior-section { background-position: left top !important; } } @media (max-width: 1023px) { .visitor-behavior-section { padding-top: 0px !important; background-position: center bottom !important; } }` }} />
-        <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(40px)' }}>
+        <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(-20px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
                <img src={visBehaviorGraphic} alt="Session timeline view" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.06}px)`, willChange: 'transform' }} />

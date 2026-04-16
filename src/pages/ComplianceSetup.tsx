@@ -2,20 +2,39 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, ShieldCheck, ShieldAlert, ShieldOff,
-  CheckCircle2, XCircle, AlertTriangle, Info,
+  CheckCircle2, XCircle, Info,
   Copy, Check, Code, ChevronDown, BookOpen,
-  Globe, Lock, Unlock, Eye, EyeOff,
+  Globe, Lock, Unlock, Eye, Link2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useComplianceStatus } from "@/hooks/use-compliance-status";
 import { toast } from "sonner";
+
+/* ══════════════════════════════════════════════════
+   COPY BUTTON HELPER
+   ══════════════════════════════════════════════════ */
+
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleCopy}>
+      {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? "Copied" : label}
+    </Button>
+  );
+}
 
 /* ══════════════════════════════════════════════════
    STATUS SUMMARY CARD
@@ -103,6 +122,12 @@ function StatusSummary() {
 function StartHere() {
   const [choice, setChoice] = useState<"yes" | "no" | null>(null);
 
+  const copyBlocks = {
+    short: `We use ACTV TRKR to measure website performance and usage. This includes anonymized data such as page views, clicks, and form interactions. This data is used only for internal analytics.`,
+    full: `We use ACTV TRKR, an analytics tool, to understand how visitors interact with our website and to improve performance. ACTV TRKR may collect anonymized usage data such as page views, clicks, and form submissions. This data is used solely for internal analytics and is not used for advertising or sold to third parties.`,
+    technical: `ACTV TRKR uses first-party analytics identifiers such as mm_vid, mm_sid, and related tracking data. ACTV TRKR should only be activated after Analytics or Statistics consent has been granted.`,
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-foreground">Start Here</h2>
@@ -121,7 +146,7 @@ function StartHere() {
         >
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle2 className={`h-5 w-5 ${choice === "yes" ? "text-primary" : "text-muted-foreground"}`} />
-            <span className="font-semibold text-sm text-foreground">Yes, I have one</span>
+            <span className="font-semibold text-sm text-foreground">Yes — Use your existing consent tool</span>
           </div>
           <p className="text-xs text-muted-foreground">Complianz, CookieYes, CookieBot, or similar</p>
         </button>
@@ -138,34 +163,58 @@ function StartHere() {
         >
           <div className="flex items-center gap-2 mb-2">
             <XCircle className={`h-5 w-5 ${choice === "no" ? "text-primary" : "text-muted-foreground"}`} />
-            <span className="font-semibold text-sm text-foreground">No, I don't</span>
+            <span className="font-semibold text-sm text-foreground">No — Use ACTV TRKR's built-in banner</span>
           </div>
           <p className="text-xs text-muted-foreground">I need a consent solution</p>
         </button>
       </div>
 
-      {/* Expanded instructions */}
+      {/* Branch A — existing CMP */}
       {choice === "yes" && (
-        <Card className="border-success/20 bg-success/5">
-          <CardContent className="p-4 space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">Use your existing consent tool</h3>
-            <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
-              <li>Add <strong className="text-foreground">ACTV TRKR</strong> to the "Analytics" or "Statistics" category in your consent plugin</li>
-              <li>Set consent mode to <strong className="text-foreground">Strict</strong> in ACTV TRKR → Settings → Consent Mode</li>
-              <li>Disable the ACTV TRKR built-in banner (your CMP handles it)</li>
-            </ol>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card className="border-success/20 bg-success/5">
+            <CardContent className="p-4 space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">Use your existing consent tool</h3>
+              <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
+                <li>Add <strong className="text-foreground">ACTV TRKR</strong> to the "Analytics" or "Statistics" category in your consent plugin</li>
+                <li>Choose <strong className="text-foreground">Global Strict Mode</strong> below</li>
+                <li>Disable the ACTV TRKR built-in banner if your current consent tool already handles visitor consent</li>
+              </ol>
+            </CardContent>
+          </Card>
+
+          {/* Copy blocks */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">Paste one of these into your consent plugin's Analytics / Statistics category:</p>
+
+            {[
+              { label: "Short", text: copyBlocks.short },
+              { label: "Full", text: copyBlocks.full },
+              { label: "Technical", text: copyBlocks.technical },
+            ].map((block) => (
+              <Card key={block.label} className="border-border">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-foreground">{block.label}</span>
+                    <CopyButton text={block.text} />
+                  </div>
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap">{block.text}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       )}
 
+      {/* Branch B — built-in banner */}
       {choice === "no" && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="p-4 space-y-2">
             <h3 className="text-sm font-semibold text-foreground">Use ACTV TRKR's built-in banner</h3>
             <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
-              <li>Enable <strong className="text-foreground">Strict Mode</strong> in ACTV TRKR → Settings → Consent Mode</li>
-              <li>Enable the <strong className="text-foreground">built-in consent banner</strong> in ACTV TRKR → Settings → Banner</li>
-              <li>The banner will ask visitors for consent before any tracking starts</li>
+              <li>Choose <strong className="text-foreground">Global Strict Mode</strong> below</li>
+              <li>Enable the <strong className="text-foreground">ACTV TRKR built-in banner</strong></li>
+              <li>ACTV TRKR will ask visitors for consent before analytics tracking begins</li>
             </ol>
           </CardContent>
         </Card>
@@ -196,23 +245,12 @@ function ConsentModeSection() {
 
   const modes = [
     {
-      id: "regional" as const,
-      title: "EU/UK + US Mode",
-      badge: "Recommended",
-      badgeColor: "text-success bg-success/10",
-      icon: <Globe className="h-5 w-5 text-primary" />,
-      bullets: [
-        "EU/UK visitors → consent required before tracking",
-        "US visitors → opt-out allowed",
-        "Best balance of compliance and data coverage",
-      ],
-    },
-    {
       id: "strict" as const,
       title: "Global Strict Mode",
       badge: null,
       badgeColor: "",
       icon: <Lock className="h-5 w-5 text-success" />,
+      description: "Shows the ACTV TRKR consent banner and blocks ACTV TRKR analytics until consent is granted.",
       bullets: [
         "Consent required for all visitors worldwide",
         "Maximum compliance",
@@ -220,15 +258,29 @@ function ConsentModeSection() {
       ],
     },
     {
-      id: "relaxed" as const,
-      title: "Relaxed Mode",
-      badge: "Not GDPR compliant",
-      badgeColor: "text-destructive bg-destructive/10",
-      icon: <Unlock className="h-5 w-5 text-warning" />,
+      id: "regional" as const,
+      title: "EU/UK Strict + US Opt-Out",
+      badge: "Recommended",
+      badgeColor: "text-success bg-success/10",
+      icon: <Globe className="h-5 w-5 text-primary" />,
+      description: "EU/UK visitors see the consent banner before ACTV TRKR analytics starts. US visitors can opt out using Privacy Settings.",
       bullets: [
-        "Tracking starts immediately for all visitors",
-        "No consent required",
-        "Only suitable for non-EU audiences",
+        "EU/UK visitors → consent required before tracking",
+        "US visitors → opt-out allowed",
+        "Best balance of compliance and data coverage",
+      ],
+    },
+    {
+      id: "relaxed" as const,
+      title: "Custom Region Rules",
+      badge: null,
+      badgeColor: "",
+      icon: <Unlock className="h-5 w-5 text-warning" />,
+      description: "Configure different behavior for EU/UK, US, and other regions.",
+      bullets: [
+        "EU/UK → strict consent banner",
+        "US → opt-out via Privacy Settings",
+        "Other regions → choose strict or relaxed fallback",
       ],
     },
   ];
@@ -237,14 +289,13 @@ function ConsentModeSection() {
     <div className="space-y-4">
       <h2 className="text-base font-semibold text-foreground">Consent Mode</h2>
       <p className="text-sm text-muted-foreground">
-        Click a mode to compare options. Configure the live setting in your WordPress plugin settings.
+        Choose how ACTV TRKR handles analytics consent for your visitors.
       </p>
 
       <div className="grid gap-3 md:grid-cols-3" aria-label="Consent mode options">
         {modes.map((m) => {
           const active = activeModeId === m.id;
           const isCurrent = currentModeId === m.id;
-          const isSelectedGuide = selectedMode === m.id && !isCurrent;
 
           return (
             <button
@@ -252,7 +303,7 @@ function ConsentModeSection() {
               type="button"
               aria-pressed={active}
               onClick={() => setSelectedMode(m.id)}
-              className={`rounded-lg border p-4 transition-all ${
+              className={`rounded-lg border p-4 transition-all text-left ${
                 active
                   ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                   : "border-border bg-card hover:border-primary/40"
@@ -273,7 +324,8 @@ function ConsentModeSection() {
                   )}
                 </div>
               </div>
-              <h3 className="text-sm font-semibold text-foreground mb-2">{m.title}</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-1">{m.title}</h3>
+              <p className="text-xs text-muted-foreground mb-2">{m.description}</p>
               <ul className="space-y-1">
                 {m.bullets.map((b, i) => (
                   <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
@@ -282,7 +334,7 @@ function ConsentModeSection() {
                   </li>
                 ))}
               </ul>
-              {(active || isSelectedGuide) && (
+              {active && (
                 <Badge variant="outline" className="mt-3 text-primary text-[10px]">
                   <Check className="h-3 w-3 mr-0.5" /> {isCurrent ? "Active" : "Selected"}
                 </Badge>
@@ -296,54 +348,41 @@ function ConsentModeSection() {
 }
 
 /* ══════════════════════════════════════════════════
-   TESTING CHECKLIST
+   CUSTOM COOKIE SETTINGS LINK
    ══════════════════════════════════════════════════ */
 
-function TestingChecklist() {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-
-  const toggle = (id: string) =>
-    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
-
-  const steps = [
-    { id: "incognito", label: "Open your site in a private / incognito window" },
-    { id: "before_vid", label: "Before consent: no mm_vid cookie" },
-    { id: "before_sid", label: "Before consent: no mm_sid cookie" },
-    { id: "accept", label: "Accept consent → cookies appear, tracking starts" },
-    { id: "reject", label: "Reject consent → no tracking, cookies removed" },
-  ];
-
-  const allDone = steps.every((s) => checked[s.id]);
+function CustomCookieSettingsLink() {
+  const linkSnippet = `<a href="#" onclick="if(window.mmConsentBanner && typeof window.mmConsentBanner.open === 'function'){ window.mmConsentBanner.open(); } return false;">\n  Cookie Settings\n</a>`;
+  const buttonSnippet = `<button type="button" onclick="if(window.mmConsentBanner && typeof window.mmConsentBanner.open === 'function'){ window.mmConsentBanner.open(); }">\n  Cookie Settings\n</button>`;
 
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-semibold text-foreground">Test Your Setup</h2>
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          {steps.map((s) => (
-            <label
-              key={s.id}
-              className="flex items-center gap-3 cursor-pointer group"
-              onClick={() => toggle(s.id)}
-            >
-              <Checkbox
-                checked={!!checked[s.id]}
-                onCheckedChange={() => toggle(s.id)}
-              />
-              <span className={`text-sm transition-colors ${
-                checked[s.id] ? "text-muted-foreground line-through" : "text-foreground"
-              }`}>
-                {s.label}
-              </span>
-            </label>
-          ))}
-          {allDone && (
-            <div className="flex items-center gap-2 pt-2 text-sm text-success font-medium">
-              <CheckCircle2 className="h-4 w-4" /> All checks passed!
+      <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+        <Link2 className="h-4 w-4 text-primary" /> Custom Cookie Settings Link
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Launch the ACTV TRKR cookie settings popup from your own footer, theme, or site link. Use one of the snippets below.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        If you use your own Cookie Settings link, you can hide the built-in ACTV TRKR footer link in the plugin settings.
+      </p>
+
+      {[
+        { label: "Link (for footer / navigation)", snippet: linkSnippet },
+        { label: "Button", snippet: buttonSnippet },
+      ].map((item) => (
+        <Card key={item.label} className="border-border">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground">{item.label}</span>
+              <CopyButton text={item.snippet} />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <pre className="bg-muted/50 border border-border rounded-md p-3 text-xs font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-all">
+              {item.snippet}
+            </pre>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
@@ -361,7 +400,7 @@ function ExternalTrackingWarning() {
       <Card className="border-warning/20 bg-warning/5">
         <CardContent className="p-4">
           <p className="text-sm text-foreground">
-            ACTV TRKR only controls its own analytics. Other tools like Google Analytics or Facebook Pixel must be configured separately in your consent plugin.
+            ACTV TRKR only controls ACTV TRKR analytics. Other tools, such as Google Analytics or Facebook Pixel, must be configured separately in your consent plugin or tracking setup.
           </p>
         </CardContent>
       </Card>
@@ -437,25 +476,16 @@ function LegalPages() {
 }
 
 /* ══════════════════════════════════════════════════
-   PRIVACY LINK SNIPPET
+   FOOTER LINK SNIPPET (Privacy Policy)
    ══════════════════════════════════════════════════ */
 
 function PrivacyLinkSnippet() {
   const [url, setUrl] = useState("https://yoursite.com/privacy-policy");
-  const [copied, setCopied] = useState(false);
-
   const snippet = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:#888;text-decoration:underline;">Privacy Policy</a>`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(snippet);
-    setCopied(true);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-semibold text-foreground">Footer Link Snippet</h2>
+      <h2 className="text-base font-semibold text-foreground">Footer Privacy Link Snippet</h2>
       <Card>
         <CardContent className="p-4 space-y-3">
           <div>
@@ -471,15 +501,9 @@ function PrivacyLinkSnippet() {
             <pre className="bg-muted/50 border border-border rounded-md p-3 text-xs font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-all">
               {snippet}
             </pre>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="absolute top-1.5 right-1.5 h-7 px-2 text-xs"
-              onClick={handleCopy}
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
+            <div className="absolute top-1.5 right-1.5">
+              <CopyButton text={snippet} />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -508,16 +532,16 @@ export default function ComplianceSetup() {
       {/* 1. Status Summary */}
       <StatusSummary />
 
-      {/* 2. Start Here */}
+      {/* 2. Start Here — decision flow */}
       <StartHere />
 
       {/* 3. Consent Mode */}
       <ConsentModeSection />
 
-      {/* 4. Testing Checklist */}
-      <TestingChecklist />
+      {/* 4. Custom Cookie Settings Link */}
+      <CustomCookieSettingsLink />
 
-      {/* 5. External Tracking */}
+      {/* 5. Other Tracking Tools */}
       <ExternalTrackingWarning />
 
       {/* 6. Data Retention (collapsed) */}
@@ -526,7 +550,7 @@ export default function ComplianceSetup() {
       {/* 7. Legal Pages (collapsed) */}
       <LegalPages />
 
-      {/* 8. Footer Snippet */}
+      {/* 8. Footer Privacy Link Snippet */}
       <PrivacyLinkSnippet />
 
       {/* Disclaimer */}

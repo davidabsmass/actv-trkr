@@ -47,6 +47,7 @@ class MM_Consent_Banner {
 			'expiry_days'          => '365',
 			'show_reopener'        => '1',
 			'reopener_label'       => 'Cookie Settings',
+			'show_footer_cookie_link' => '1',
 			'debug_mode'           => '0',
 			// Region-based privacy
 			'compliance_mode'      => 'eu_us', // global_strict | eu_us | custom
@@ -85,6 +86,7 @@ class MM_Consent_Banner {
 		$clean['expiry_days']    = max( 1, min( 730, intval( $input['expiry_days'] ?? 365 ) ) );
 		$clean['show_reopener']  = ! empty( $input['show_reopener'] ) ? '1' : '0';
 		$clean['reopener_label'] = sanitize_text_field( $input['reopener_label'] ?? $d['reopener_label'] );
+		$clean['show_footer_cookie_link'] = ! empty( $input['show_footer_cookie_link'] ) ? '1' : '0';
 		$clean['debug_mode']     = ! empty( $input['debug_mode'] ) ? '1' : '0';
 
 		// Region settings
@@ -322,8 +324,8 @@ class MM_Consent_Banner {
 
 		echo '<div id="mm-cb-footer-links" style="text-align:center;padding:8px 0;">';
 
-		// Cookie settings link (EU/strict regions)
-		if ( $opts['show_reopener'] === '1' ) {
+		// Cookie settings link (EU/strict regions) — only if footer cookie link is enabled
+		if ( $opts['show_reopener'] === '1' && $opts['show_footer_cookie_link'] === '1' ) {
 			echo '<a href="#" id="mm-cookie-settings" class="mm-cb-reopen" role="button" tabindex="0" style="display:none;">' . $cookie_label . '</a>';
 		}
 
@@ -612,6 +614,16 @@ class MM_Consent_Banner {
 					<input type="text" name="<?php echo $name; ?>[reopener_label]" value="<?php echo esc_attr( $opts['reopener_label'] ); ?>" class="regular-text" style="margin-top:4px" placeholder="Cookie Settings" />
 				</td>
 			</tr>
+			<tr>
+				<th scope="row">Show built-in footer Cookie Settings link</th>
+				<td>
+					<label>
+						<input type="checkbox" name="<?php echo $name; ?>[show_footer_cookie_link]" value="1" <?php checked( $opts['show_footer_cookie_link'], '1' ); ?> />
+						Render the built-in ACTV TRKR footer Cookie Settings link
+					</label>
+					<p class="description">If you use your own Cookie Settings link (see code snippets below), you can turn this off to hide the built-in footer link.</p>
+				</td>
+			</tr>
 		</table>
 
 		<h3>Debug &amp; Testing</h3>
@@ -834,14 +846,25 @@ class MM_Consent_Banner {
 		</div>
 
 		<hr />
-		<h2>✅ Verification Checklist</h2>
-		<ol style="max-width:700px;padding-left:20px">
-			<li><strong>EU/UK test:</strong> Set region override to EU/UK. Open site in private window. Confirm banner appears. Check DevTools → Cookies — no <code>mm_vid</code> or <code>mm_sid</code> before consent. Accept → tracking starts. Reject → no tracking cookies remain.</li>
-			<li><strong>US test:</strong> Set region override to US. Open site in private window. Confirm <strong>no blocking banner</strong>. Confirm "Privacy Settings" link is visible in footer. Click it → preferences modal opens. Toggle analytics off → cookies clear, tracking stops.</li>
-			<li><strong>Other test:</strong> Set region override to Other. Confirm behavior matches your fallback setting (strict = banner, relaxed = no banner).</li>
-			<li><strong>Footer links:</strong> Look for "Cookie Settings" (EU/UK) or "Privacy Settings" (US) in footer.</li>
-			<li><strong>Console:</strong> With Debug Mode on, confirm <code>[ACTV TRKR Consent]</code> messages show the correct region and behavior.</li>
-		</ol>
+		<h2>🔗 Custom Cookie Settings Link</h2>
+		<p class="description" style="max-width:700px;margin-bottom:12px">You can launch the ACTV TRKR cookie settings popup from your own footer, theme, or site link. Use one of the snippets below.</p>
+		<p class="description" style="max-width:700px;margin-bottom:12px">If you use your own Cookie Settings link, you can hide the built-in ACTV TRKR footer link using the setting above.</p>
+
+		<div style="max-width:700px;margin-bottom:12px">
+			<label style="font-weight:600;display:block;margin-bottom:4px">Link (for footer / navigation):</label>
+			<textarea id="mm-copy-custom-link" readonly rows="3" class="large-text" style="background:#f9fafb;font-size:13px"><a href="#" onclick="if(window.mmConsentBanner && typeof window.mmConsentBanner.open === 'function'){ window.mmConsentBanner.open(); } return false;">
+  Cookie Settings
+</a></textarea>
+			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-custom-link" style="margin-top:4px">📋 Copy Link</button>
+		</div>
+
+		<div style="max-width:700px;margin-bottom:12px">
+			<label style="font-weight:600;display:block;margin-bottom:4px">Button:</label>
+			<textarea id="mm-copy-custom-button" readonly rows="3" class="large-text" style="background:#f9fafb;font-size:13px"><button type="button" onclick="if(window.mmConsentBanner && typeof window.mmConsentBanner.open === 'function'){ window.mmConsentBanner.open(); }">
+  Cookie Settings
+</button></textarea>
+			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-custom-button" style="margin-top:4px">📋 Copy Button</button>
+		</div>
 
 		<script>
 		document.getElementById('mm-copy-diag').addEventListener('click', function() {
@@ -989,19 +1012,19 @@ class MM_Consent_Banner {
 
 		<div style="max-width:700px;margin-bottom:12px">
 			<label style="font-weight:600;display:block;margin-bottom:4px">Short version:</label>
-			<textarea id="mm-copy-short" readonly rows="3" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR to measure website performance and form activity. This includes anonymized usage data such as page views, clicks, and form submissions. No data is used for advertising or sold to third parties.</textarea>
+			<textarea id="mm-copy-short" readonly rows="3" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR to measure website performance and usage. This includes anonymized data such as page views, clicks, and form interactions. This data is used only for internal analytics.</textarea>
 			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-short" style="margin-top:4px">📋 Copy Short</button>
 		</div>
 
 		<div style="max-width:700px;margin-bottom:12px">
-			<label style="font-weight:600;display:block;margin-bottom:4px">Detailed version:</label>
-			<textarea id="mm-copy-long" readonly rows="4" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR, a website analytics tool, to understand how visitors interact with our site and to improve performance. ACTV TRKR may collect anonymized usage data such as page views, clicks, and form interactions. This data is used solely for internal analytics and is not shared with third parties for advertising purposes.</textarea>
-			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-long" style="margin-top:4px">📋 Copy Detailed</button>
+			<label style="font-weight:600;display:block;margin-bottom:4px">Full version:</label>
+			<textarea id="mm-copy-long" readonly rows="4" class="large-text" style="background:#f9fafb;font-size:13px">We use ACTV TRKR, an analytics tool, to understand how visitors interact with our website and to improve performance. ACTV TRKR may collect anonymized usage data such as page views, clicks, and form submissions. This data is used solely for internal analytics and is not used for advertising or sold to third parties.</textarea>
+			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-long" style="margin-top:4px">📋 Copy Full</button>
 		</div>
 
 		<div style="max-width:700px;margin-bottom:12px">
 			<label style="font-weight:600;display:block;margin-bottom:4px">Technical note (for CMP configuration):</label>
-			<textarea id="mm-copy-tech" readonly rows="2" class="large-text" style="background:#f9fafb;font-size:13px">ACTV TRKR sets first-party analytics identifiers (mm_vid, mm_sid) and should only be activated after analytics/statistics consent is granted.</textarea>
+			<textarea id="mm-copy-tech" readonly rows="2" class="large-text" style="background:#f9fafb;font-size:13px">ACTV TRKR uses first-party analytics identifiers such as mm_vid, mm_sid, and related tracking data. ACTV TRKR should only be activated after Analytics or Statistics consent has been granted.</textarea>
 			<button type="button" class="button button-small mm-copy-block" data-target="mm-copy-tech" style="margin-top:4px">📋 Copy Technical</button>
 		</div>
 

@@ -106,9 +106,6 @@ export default function Checkout() {
                 That's $41.25/mo — save $45/year
               </p>
             )}
-            <p className="text-sm text-primary font-semibold mt-2">
-              Use code <span className="font-mono bg-primary/10 px-1.5 py-0.5 rounded text-xs">FOUNDING30</span> at checkout for <span className="font-bold">$15/mo off forever</span>
-            </p>
           </div>
         </div>
 

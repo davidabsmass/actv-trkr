@@ -485,9 +485,6 @@ const Index = () => {
                 <span className="text-3xl font-bold text-foreground">{isAnnual ? '$495' : '$45'}</span>
                 <span className="text-muted-foreground text-sm">{isAnnual ? '/year' : '/month'}</span>
               </div>
-              <p className="text-xs text-primary font-semibold mb-1">
-                Use code <span className="font-mono bg-primary/10 px-1.5 py-0.5 rounded">FOUNDING30</span> at checkout to get <span className="font-bold">$15/mo off forever</span> → $30/mo
-              </p>
               
               <p className="text-sm text-muted-foreground mb-6">
                 Everything you need to track website activity, leads, site health, and reporting in one streamlined, all-inclusive dashboard.

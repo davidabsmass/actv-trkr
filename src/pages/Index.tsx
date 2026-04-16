@@ -454,7 +454,7 @@ const Index = () => {
       </section>
 
       {/* Section 5b — Visitor Behavior (mirrors Form Monitoring layout) */}
-      <section className="relative px-6 overflow-hidden visitor-behavior-section landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${visBehaviorBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
+      <section className="relative px-6 overflow-hidden visitor-behavior-section landing-section" style={{ paddingTop: '100px', paddingBottom: '65px', backgroundImage: `url(${visBehaviorBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
         <SparkleCanvas />
         <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .visitor-behavior-section { background-position: left top !important; } } @media (max-width: 1023px) { .visitor-behavior-section { padding-top: 0px !important; background-position: center bottom !important; } }` }} />
         <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(-20px)' }}>

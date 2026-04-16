@@ -324,8 +324,8 @@ class MM_Consent_Banner {
 
 		echo '<div id="mm-cb-footer-links" style="text-align:center;padding:8px 0;">';
 
-		// Cookie settings link (EU/strict regions)
-		if ( $opts['show_reopener'] === '1' ) {
+		// Cookie settings link (EU/strict regions) — only if footer cookie link is enabled
+		if ( $opts['show_reopener'] === '1' && $opts['show_footer_cookie_link'] === '1' ) {
 			echo '<a href="#" id="mm-cookie-settings" class="mm-cb-reopen" role="button" tabindex="0" style="display:none;">' . $cookie_label . '</a>';
 		}
 

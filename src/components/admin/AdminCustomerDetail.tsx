@@ -295,6 +295,23 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
                     />
                     <Row label="Coupon" value={stripe?.coupon?.name || stripe?.coupon?.id || "—"} />
                     <Row label="Team members" value={String(teamMembers.length)} />
+                    <div className="col-span-2">
+                      <Row
+                        label="Address"
+                        value={
+                          profile?.address_line1
+                            ? [
+                                profile.address_line1,
+                                profile.address_line2,
+                                [profile.city, profile.state, profile.postal_code].filter(Boolean).join(" "),
+                                profile.country,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")
+                            : "—"
+                        }
+                      />
+                    </div>
                   </CardContent>
                 </Card>
 

@@ -547,23 +547,25 @@ const Index = () => {
               ACTV TRKR
             </p>
 
-            <div className="flex items-center justify-center gap-3 mt-4">
-              <span className={`text-sm font-medium ${!isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Monthly</span>
-              <button
-                onClick={() => setIsAnnual(!isAnnual)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${isAnnual ? 'bg-primary' : 'bg-white/30'}`}
-              >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-5' : ''}`} />
-              </button>
-              <span className={`text-sm font-medium ${isAnnual ? 'text-white' : 'text-white/50'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-primary text-xs font-semibold">Save $45</span></span>
-            </div>
           </div>
 
           <div className="max-w-4xl mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col">
-              <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$495' : '$45'}</span>
-                <span className="text-muted-foreground text-sm">{isAnnual ? '/year' : '/month'}</span>
+              <div className="flex items-center justify-center gap-4 mb-1">
+                <div>
+                  <span className="text-3xl font-bold text-primary">{isAnnual ? '$495' : '$45'}</span>
+                  <span className="text-muted-foreground text-sm">{isAnnual ? '/year' : '/month'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-medium ${!isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Monthly</span>
+                  <button
+                    onClick={() => setIsAnnual(!isAnnual)}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${isAnnual ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-4' : ''}`} />
+                  </button>
+                  <span className={`text-xs font-medium ${isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-primary text-xs font-semibold">Save $45</span></span>
+                </div>
               </div>
               
               <p className="text-sm text-muted-foreground mb-6">

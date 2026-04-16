@@ -298,7 +298,7 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mb-6">
                 Know what's working, catch what's not, and take action faster.
               </p>
-              <a href="/checkout" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
+              <a href="#pricing-section" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity" onClick={(e) => { e.preventDefault(); document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' }); }}>
                 Get Started <ArrowRight className="h-4 w-4" />
               </a>
             </div>

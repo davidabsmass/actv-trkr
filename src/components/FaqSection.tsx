@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     q: "How does the AI agent work?",
-    a: "ACTV TRKR includes an AI agent that analyzes your website data and lets you ask questions about it.\n\nYou can ask things like "Where are my leads coming from?", "What changed this week?", or "What should I fix?"—and get clear, actionable answers based on your actual data.\n\n👉 No digging through reports.",
+    a: "ACTV TRKR includes an AI agent that analyzes your website data and lets you ask questions about it.\n\nYou can ask things like \"Where are my leads coming from?\", \"What changed this week?\", or \"What should I fix?\"—and get clear, actionable answers based on your actual data.\n\n👉 No digging through reports.",
   },
   {
     q: "How accurate is the data?",

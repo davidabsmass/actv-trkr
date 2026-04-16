@@ -331,7 +331,7 @@ const Index = () => {
       {/* Section 3 — Visitor Behavior */}
       <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${aiBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
             <div className="lg:col-span-5 lg:pl-[29px]">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
                 <Sparkles className="h-4 w-4" />
@@ -355,8 +355,8 @@ const Index = () => {
                 Useful direction, without the noise.
               </p>
             </div>
-            <div className="relative flex items-center justify-end lg:col-span-7">
-              <img src={aiGraphic} alt="ACTV TRKR AI assistant" className="w-[85%] h-auto relative z-10" />
+            <div className="relative flex items-center justify-center lg:col-span-7">
+              <img src={aiGraphic} alt="ACTV TRKR AI assistant" className="w-full max-w-lg h-auto relative z-10 lg:-ml-8" />
             </div>
           </div>
         </div>

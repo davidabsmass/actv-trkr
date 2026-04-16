@@ -185,6 +185,7 @@ const Performance = () => {
                 <ClickActivity orgId={orgId} startDate={startDate} endDate={endDate} />
               </div>
               <ConversionBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
+              <TopExitPages orgId={orgId} startDate={startDate} endDate={endDate} />
               <GoalConversions orgId={orgId} startDate={startDate} endDate={endDate} />
               {renderSections()}
             </div>

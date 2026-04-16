@@ -1081,7 +1081,7 @@ export default function AdminSetup() {
                       </TableRow>
                       {managingSub === s.email && (
                         <TableRow key={`${s.id}-manage`}>
-                          <TableCell colSpan={9} className="bg-muted/30 p-4">
+                          <TableCell colSpan={8} className="bg-muted/30 p-4">
                             {billingLoading ? (
                               <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
                                 <Loader2 className="h-4 w-4 animate-spin" /> Loading billing data…

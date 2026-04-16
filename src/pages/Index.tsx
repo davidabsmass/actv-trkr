@@ -174,8 +174,8 @@ const Index = () => {
                   <Button variant="ghost" className="text-primary-foreground hover:bg-primary/10 hover:text-primary-foreground" onClick={handleSignIn}>
                     Sign In
                   </Button>
-                  <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleCheckout}>
-                    Get Started
+                   <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={() => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
+                     Get Started
                   </Button>
                 </>
               ) : null}
@@ -239,7 +239,7 @@ const Index = () => {
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">
                   {!loading && (
-                    <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={isLoggedIn ? handleDashboard : handleCheckout}>
+                    <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={isLoggedIn ? handleDashboard : () => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
                       {isLoggedIn ? "Go to Dashboard" : "Get Started"}
                     </Button>
                   )}
@@ -298,7 +298,7 @@ const Index = () => {
               <p className="text-sm text-muted-foreground mb-6">
                 Know what's working, catch what's not, and take action faster.
               </p>
-              <a href="/checkout" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
+              <a href="#pricing-section" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity" onClick={(e) => { e.preventDefault(); document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' }); }}>
                 Get Started <ArrowRight className="h-4 w-4" />
               </a>
             </div>

@@ -492,7 +492,7 @@ const Index = () => {
                <img src={visBehaviorSmall} alt="Rocket launch pad" className="absolute bottom-[-105px] right-[10px] lg:bottom-[-105px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.12 + 60}px)`, willChange: 'transform' }} />
             </div>
             <div className="lg:col-span-5 section-copy-block flex flex-col justify-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4 w-fit">
                 <Eye className="h-4 w-4" />
                 Visitor Behavior
               </div>

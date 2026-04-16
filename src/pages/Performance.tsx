@@ -12,6 +12,7 @@ import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorEngagement } from "@/components/dashboard/VisitorEngagement";
 import { ClickActivity } from "@/components/dashboard/ClickActivity";
 import { GoalConversions } from "@/components/dashboard/GoalConversions";
+import { TopExitPages } from "@/components/dashboard/TopExitPages";
 import { ConversionBreakdown } from "@/components/dashboard/ConversionBreakdown";
 import { KPIRow } from "@/components/dashboard/KPIRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -184,6 +185,7 @@ const Performance = () => {
                 <ClickActivity orgId={orgId} startDate={startDate} endDate={endDate} />
               </div>
               <ConversionBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
+              <TopExitPages orgId={orgId} startDate={startDate} endDate={endDate} />
               <GoalConversions orgId={orgId} startDate={startDate} endDate={endDate} />
               {renderSections()}
             </div>

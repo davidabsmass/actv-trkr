@@ -305,14 +305,6 @@ export default function WebsiteSetup() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("websiteSetup.plan")}</span>
             <p className="text-sm font-medium text-foreground mt-1 capitalize">{activeTier}</p>
           </div>
-          <div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("websiteSetup.websitesAllowed")}</span>
-            <p className="text-sm font-medium text-foreground mt-1">{allowedWebsites}</p>
-          </div>
-          <div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("websiteSetup.connectedWebsites")}</span>
-            <p className="text-sm font-medium text-foreground mt-1">{allSites.length}</p>
-          </div>
           {connectedSites[0] && (
             <div>
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("websiteSetup.primaryConnectedDomain")}</span>

@@ -824,6 +824,7 @@ export default function AdminSetup() {
                <tbody>
                  {enrichedOrgs.map((org) => {
                    const tier = isClientTier(org.name) ? "client" : "paid";
+                   const isDeleting = deletingOrgId === org.id;
                    return (
                    <tr key={org.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrg(org.id)}>
                      <td className="px-4 py-3 font-medium text-foreground">{org.name}</td>
@@ -846,8 +847,19 @@ export default function AdminSetup() {
                      <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
                        {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
                      </td>
-                     <td className="px-4 py-3 text-right">
-                       <span className="text-xs text-primary">{t("admin.view")}</span>
+                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                       <span className="text-xs text-primary mr-3">{t("admin.view")}</span>
+                       {isOwner && (
+                         <button
+                           onClick={(e) => { e.stopPropagation(); handleDeleteOrg(org.id, org.name); }}
+                           disabled={isDeleting}
+                           className="text-xs text-destructive hover:text-destructive/80 disabled:opacity-50 inline-flex items-center gap-1"
+                           title="Remove client (owner only)"
+                         >
+                           {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                           Remove
+                         </button>
+                       )}
                      </td>
                    </tr>
                    );

@@ -59,6 +59,9 @@ import satelliteChartTiny from "@/assets/satellite-chart-tiny.png";
 import satelliteImg from "@/assets/satellite.png";
 import accountabilityBg from "@/assets/accountability-bg-new.jpg";
 import accountabilityInset from "@/assets/accountability-astronaut.png";
+import visBehaviorBgd from "@/assets/vis-behavior-bgd.jpg";
+import visBehaviorGraphic from "@/assets/vis-behavior-graphic-1.png";
+import visBehaviorSmall from "@/assets/vis-behavior-graphic-small.png";
 
 const Index = () => {
   const navigate = useNavigate();

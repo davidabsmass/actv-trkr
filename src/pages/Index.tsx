@@ -460,16 +460,19 @@ const Index = () => {
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-5' : ''}`} />
               </button>
-              <span className={`text-sm font-medium ${isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-primary text-xs font-semibold">Save 17%</span></span>
+              <span className={`text-sm font-medium ${isAnnual ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontFamily: "'BR Omega', sans-serif" }}>Yearly <span className="text-primary text-xs font-semibold">Save $45</span></span>
             </div>
           </div>
 
           <div className="max-w-4xl mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col">
               <div className="mb-1">
-                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$330' : '$30'}</span>
+                <span className="text-3xl font-bold text-foreground">{isAnnual ? '$495' : '$45'}</span>
                 <span className="text-muted-foreground text-sm">{isAnnual ? '/year' : '/month'}</span>
               </div>
+              <p className="text-xs text-primary font-semibold mb-1">
+                Use code <span className="font-mono bg-primary/10 px-1.5 py-0.5 rounded">FOUNDING30</span> at checkout to get <span className="font-bold">$15/mo off forever</span> → $30/mo
+              </p>
               
               <p className="text-sm text-muted-foreground mb-6">
                 Everything you need to track website activity, leads, site health, and reporting in one streamlined, all-inclusive dashboard.

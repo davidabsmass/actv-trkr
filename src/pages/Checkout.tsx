@@ -99,13 +99,16 @@ export default function Checkout() {
           </div>
 
           <div className="text-foreground">
-            <span className="text-4xl font-bold">${annual ? "330" : "30"}</span>
+            <span className="text-4xl font-bold">${annual ? "495" : "45"}</span>
             <span className="text-muted-foreground ml-1">/{annual ? "year" : "month"}</span>
             {annual && (
               <p className="text-sm text-muted-foreground mt-1">
-                That's $27.50/mo — save $30/year
+                That's $41.25/mo — save $45/year
               </p>
             )}
+            <p className="text-sm text-primary font-semibold mt-2">
+              Use code <span className="font-mono bg-primary/10 px-1.5 py-0.5 rounded text-xs">FOUNDING30</span> at checkout for <span className="font-bold">$15/mo off forever</span>
+            </p>
           </div>
         </div>
 
@@ -155,7 +158,7 @@ export default function Checkout() {
               onClick={handleCheckout}
               disabled={loading}
             >
-              {loading ? "Redirecting to payment…" : `Subscribe — $${annual ? "330/yr" : "30/mo"}`}
+              {loading ? "Redirecting to payment…" : `Subscribe — $${annual ? "495/yr" : "45/mo"}`}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
               Secure payment via Stripe. Cancel anytime.

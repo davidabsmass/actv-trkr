@@ -241,13 +241,28 @@ const Index = () => {
                 Performance Snapshot
               </div>
               <h2 className="font-normal text-foreground mb-6" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                See What Needs Attention
+                Everything That Matters, In One View
               </h2>
               <p className="text-lg text-muted-foreground mb-4">
-                ACTV TRKR brings your most important website metrics into one streamlined dashboard, so you can quickly monitor traffic, leads, visitor activity, SEO performance, and site health in one place.
+                ACTV TRKR brings together the most important data from your website into one clear, streamlined dashboard—so you can understand performance without digging through multiple tools.
               </p>
-              <p className="text-lg text-muted-foreground mb-6">
-                Track trends over time, spot performance shifts earlier, and catch issues before they start costing you leads.
+              <p className="text-sm font-semibold text-foreground mb-2">See exactly what's driving results:</p>
+              <ul className="text-muted-foreground text-sm space-y-1.5 mb-4 list-none">
+                {[
+                  "Traffic and source performance",
+                  "Leads and form activity across WordPress",
+                  "Real visitor behavior and movement",
+                  "Page performance and SEO signals",
+                  "Site health, uptime, and critical issues",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm text-muted-foreground mb-6">
+                Track trends over time, spot changes early, and catch problems before they start costing you leads.
               </p>
               <a href="/checkout" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
                 Get Started <ArrowRight className="h-4 w-4" />
@@ -348,7 +363,7 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
                <img src={satelliteChart} alt="Form performance dashboard" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.06}px)`, willChange: 'transform' }} />
-               <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl shadow-lg prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.12}px)`, willChange: 'transform' }} />
+               <img src={satelliteChartTiny} alt="Total Submissions" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl prlx" style={{ transform: `translateY(${(scrollY - 1800) * -0.12}px)`, willChange: 'transform' }} />
                <img src={satelliteImg} alt="Satellite" className="absolute bottom-[-30px] right-[-15px] lg:bottom-[110px] lg:right-[2%] w-[130px] lg:w-[180px] h-auto z-20 pointer-events-none prlx" style={{ transform: `translateY(${(scrollY - 1800) * 0.05}px) rotate(-10deg)`, willChange: 'transform' }} />
             </div>
             <div className="lg:col-span-5 section-copy-block">
@@ -363,7 +378,7 @@ const Index = () => {
                 Your forms are one of the most important parts of your website — and one of the easiest places for problems to slip by unnoticed.
               </p>
               <p className="text-white/70 max-w-xl">
-                ACTV TRKR monitors submissions, failures, trends, and activity across your WordPress forms, helping you see what is converting, what is underperforming, and when something needs attention. With universal form capture, it works across Gravity Forms, Avada/Fusion Forms, and more without a complicated setup.
+                ACTV TRKR monitors submissions, failures, trends, and activity across your WordPress forms, helping you see what is converting, what is underperforming, and when something needs attention. With universal form capture, it works across Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable, and more without a complicated setup.
               </p>
             </div>
           </div>

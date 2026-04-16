@@ -174,8 +174,8 @@ const Index = () => {
                   <Button variant="ghost" className="text-primary-foreground hover:bg-primary/10 hover:text-primary-foreground" onClick={handleSignIn}>
                     Sign In
                   </Button>
-                  <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={handleCheckout}>
-                    Get Started
+                   <Button className="text-primary-foreground hover:opacity-90" style={{ background: 'linear-gradient(to right, #ae51ff, #8a6ef9)' }} onClick={() => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
+                     Get Started
                   </Button>
                 </>
               ) : null}

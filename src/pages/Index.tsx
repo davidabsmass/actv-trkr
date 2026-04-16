@@ -239,7 +239,7 @@ const Index = () => {
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 pb-[30px]">
                   {!loading && (
-                    <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={isLoggedIn ? handleDashboard : handleCheckout}>
+                    <Button size="default" className="text-base px-6 py-2.5 bg-white text-primary hover:bg-white/90 shadow-xl" onClick={isLoggedIn ? handleDashboard : () => document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' })}>
                       {isLoggedIn ? "Go to Dashboard" : "Get Started"}
                     </Button>
                   )}

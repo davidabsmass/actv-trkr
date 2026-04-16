@@ -479,37 +479,6 @@ function LegalPages() {
    FOOTER LINK SNIPPET (Privacy Policy)
    ══════════════════════════════════════════════════ */
 
-function PrivacyLinkSnippet() {
-  const [url, setUrl] = useState("https://yoursite.com/privacy-policy");
-  const snippet = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:#888;text-decoration:underline;">Privacy Policy</a>`;
-
-  return (
-    <div className="space-y-3">
-      <h2 className="text-base font-semibold text-foreground">Footer Privacy Link Snippet</h2>
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div>
-            <label className="text-xs font-medium text-foreground block mb-1">Your Privacy Policy URL</label>
-            <Input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://yoursite.com/privacy-policy"
-              className="font-mono text-xs"
-            />
-          </div>
-          <div className="relative">
-            <pre className="bg-muted/50 border border-border rounded-md p-3 text-xs font-mono text-foreground overflow-x-auto whitespace-pre-wrap break-all">
-              {snippet}
-            </pre>
-            <div className="absolute top-1.5 right-1.5">
-              <CopyButton text={snippet} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 /* ══════════════════════════════════════════════════
    MAIN PAGE

@@ -641,17 +641,8 @@ const Index = () => {
                 ))}
               </div>
 
-              {showEmailInput && (
-                <input
-                  type="email"
-                  placeholder="Enter your email to get started"
-                  value={checkoutEmail}
-                  onChange={(e) => setCheckoutEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleDirectCheckout()}
-                  className="w-full mt-6 px-4 py-3 rounded-lg bg-muted/60 border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  autoFocus
-                />
-              )}
+
+
               <Button onClick={handleDirectCheckout} className="w-full mt-3" size="lg" disabled={checkoutLoading}>
                 {checkoutLoading ? "Redirecting to payment…" : <>Get Started <ArrowRight className="h-4 w-4" /></>}
               </Button>

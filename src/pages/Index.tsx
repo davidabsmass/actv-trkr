@@ -451,6 +451,42 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Section 5b — Visitor Behavior (mirrors Form Monitoring layout) */}
+      <section className="px-6 overflow-hidden visitor-behavior-section landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${visBehaviorBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
+        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .visitor-behavior-section { background-position: left top !important; } } @media (max-width: 1023px) { .visitor-behavior-section { padding-top: 0px !important; background-position: center bottom !important; } }` }} />
+        <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(40px)' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
+               <img src={visBehaviorGraphic} alt="Session timeline view" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.06}px)`, willChange: 'transform' }} />
+               <img src={visBehaviorSmall} alt="Rocket launch pad" className="absolute top-[92px] right-[10px] lg:top-[90px] lg:right-[2%] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.12}px)`, willChange: 'transform' }} />
+            </div>
+            <div className="lg:col-span-5 section-copy-block">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold mb-4">
+                <Eye className="h-4 w-4" />
+                Visitor Behavior
+              </div>
+              <h3 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
+                Follow Every Visit From First Click to Conversion
+              </h3>
+              <p className="text-white/90 max-w-xl mb-6">
+                ACTV TRKR ties traffic source, page visits, clicks, and form submissions together into one session timeline—so you can see how users move through your site before they convert.
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-white/70 text-sm max-w-xl mb-4">
+                {["Session timelines", "Meaningful click tracking", "Page-by-page journeys", "Conversion paths"].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-white/80 text-sm italic">
+                See how visitors get from first visit to final action.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
       <section id="all-features-section" className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${pricingBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 1, opacity: 0.8 }}><SparkleCanvas /></div>

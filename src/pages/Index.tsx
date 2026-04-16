@@ -338,21 +338,38 @@ const Index = () => {
                 Smart Insights
               </div>
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Get Answers Without Digging Through Reports
+                Ask Your AI Agent Anything
               </h3>
-              <p className="text-muted-foreground max-w-xl mb-6">
-                ACTV TRKR turns your traffic, lead, SEO, and site health data into clear weekly and monthly summaries—with AI-powered recommendations to help you spot trends, issues, and next steps faster.
+              <p className="text-muted-foreground max-w-xl mb-4">
+                ACTV TRKR includes an AI agent that analyzes your traffic, leads, and site activity—so you can get answers instantly, not dig through reports.
               </p>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl mb-6">
-                {["AI-powered suggestions", "Weekly insights", "Monthly summaries", "Recommended actions", "Clear performance signals"].map((item) => (
+              <p className="text-sm font-semibold text-foreground mb-2">Ask questions like:</p>
+              <ul className="text-muted-foreground text-sm space-y-1.5 mb-4 list-none max-w-xl">
+                {[
+                  '"Where are my leads coming from?"',
+                  '"What changed this week?"',
+                  '"Why did conversions drop?"',
+                  '"What should I fix right now?"',
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="italic">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-muted-foreground text-sm mb-4">
+                And get clear, actionable answers based on your real website data.
+              </p>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl mb-4">
+                {["Instant answers to real questions", "AI-powered insights and recommendations", "Weekly and monthly summaries", "Clear next steps, not just reports"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
-              <p className="text-muted-foreground text-sm italic">
-                Useful direction, without the noise.
+              <p className="text-foreground text-sm font-medium">
+                👉 Know what's happening—and what to do next.
               </p>
             </div>
             <div className="relative flex items-center justify-center lg:col-span-7">

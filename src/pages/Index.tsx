@@ -241,7 +241,7 @@ const Index = () => {
                 Performance Snapshot
               </div>
               <h2 className="font-normal text-foreground mb-6" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Everything That Matters, In One View
+                A Clear View of What's Driving Performance
               </h2>
               <p className="text-lg text-muted-foreground mb-4">
                 ACTV TRKR brings your most important website data into one clear dashboard—so you can understand performance without jumping between tools.

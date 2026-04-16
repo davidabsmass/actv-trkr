@@ -525,7 +525,7 @@ const Index = () => {
               </div>
               
               <p className="text-sm text-muted-foreground mb-6">
-                Everything you need to track website activity, leads, site health, and reporting in one streamlined, all-inclusive dashboard.
+                Everything you need to track website activity, leads, site health, and reporting in one streamlined dashboard.
               </p>
               
               <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>
@@ -565,7 +565,7 @@ const Index = () => {
             </div>
 
             <p className="text-center text-sm text-muted-foreground mt-6" style={{ fontFamily: "'BR Omega', sans-serif" }}>
-              No bloated analytics stack. No scattered reports. Just clear visibility into what your website is doing. Cancel anytime.
+              Cancel anytime.
             </p>
           </div>
         </div>
@@ -573,7 +573,7 @@ const Index = () => {
 
       {/* FAQ Section */}
       <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', background: 'linear-gradient(to bottom, #0a0a1a, #111128)' }}>
-        <div className="max-w-3xl mx-auto relative z-10">
+        <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center mb-10">
             <h2 className="font-normal text-white mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '2.2em', lineHeight: '1.2em' }}>
               Frequently Asked Questions

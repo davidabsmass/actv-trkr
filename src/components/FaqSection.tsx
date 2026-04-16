@@ -82,7 +82,7 @@ export default function FaqSection({ variant = "app" }: FaqSectionProps) {
 
   if (isLanding) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0 w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-0 w-full">
         <Accordion type="single" collapsible className="w-full">
           {leftFaqs.map((faq, i) => (
             <AccordionItem key={i} value={`faq-l-${i}`} className="border-white/10">

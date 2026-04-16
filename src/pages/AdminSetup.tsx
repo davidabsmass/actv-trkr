@@ -369,7 +369,36 @@ export default function AdminSetup() {
   const [billingData, setBillingData] = useState<any>(null);
   const [billingLoading, setBillingLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deletingOrgId, setDeletingOrgId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const handleDeleteOrg = async (orgId: string, orgName: string) => {
+    const confirmation = window.prompt(
+      `This will permanently delete "${orgName}" and ALL associated data (sites, leads, events, settings, members, etc.). This cannot be undone.\n\nType the organization name to confirm:`
+    );
+    if (confirmation !== orgName) {
+      if (confirmation !== null) toast.error("Name did not match. Deletion cancelled.");
+      return;
+    }
+    setDeletingOrgId(orgId);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-delete-org", {
+        body: { orgId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Removed "${orgName}"`);
+      queryClient.invalidateQueries({ queryKey: ["admin_orgs_setup"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_all_settings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin_all_sites"] });
+      queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });
+      if (selectedOrg === orgId) setSelectedOrg(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete organization");
+    } finally {
+      setDeletingOrgId(null);
+    }
+  };
 
   const { data: subscribers = [] } = useQuery({
     queryKey: ["owner_subscribers"],
@@ -824,6 +853,7 @@ export default function AdminSetup() {
                <tbody>
                  {enrichedOrgs.map((org) => {
                    const tier = isClientTier(org.name) ? "client" : "paid";
+                   const isDeleting = deletingOrgId === org.id;
                    return (
                    <tr key={org.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrg(org.id)}>
                      <td className="px-4 py-3 font-medium text-foreground">{org.name}</td>
@@ -846,8 +876,19 @@ export default function AdminSetup() {
                      <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
                        {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
                      </td>
-                     <td className="px-4 py-3 text-right">
-                       <span className="text-xs text-primary">{t("admin.view")}</span>
+                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                       <span className="text-xs text-primary mr-3">{t("admin.view")}</span>
+                       {isOwner && (
+                         <button
+                           onClick={(e) => { e.stopPropagation(); handleDeleteOrg(org.id, org.name); }}
+                           disabled={isDeleting}
+                           className="text-xs text-destructive hover:text-destructive/80 disabled:opacity-50 inline-flex items-center gap-1"
+                           title="Remove client (owner only)"
+                         >
+                           {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                           Remove
+                         </button>
+                       )}
                      </td>
                    </tr>
                    );

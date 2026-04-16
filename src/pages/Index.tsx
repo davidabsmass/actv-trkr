@@ -606,7 +606,7 @@ const Index = () => {
               </Button>
             </div>
 
-            <p className="text-center text-sm text-white/60 mt-6" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+            <p className="text-center text-sm text-white/80 mt-6" style={{ fontFamily: "'BR Omega', sans-serif" }}>
               Cancel anytime.
             </p>
           </div>

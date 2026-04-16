@@ -341,7 +341,7 @@ const Index = () => {
                 Ask Your AI Agent Anything
               </h3>
               <p className="text-muted-foreground max-w-xl mb-4">
-                ACTV TRKR includes an AI agent that analyzes your traffic, leads, and site activity—so you can get answers instantly, not dig through reports.
+                ACTV TRKR includes an AI agent that analyzes your traffic, leads, and site activity—so you can get answers instantly instead of digging through reports.
               </p>
               <p className="text-sm font-semibold text-foreground mb-2">Ask questions like:</p>
               <ul className="text-muted-foreground text-sm space-y-1.5 mb-4 list-none max-w-xl">
@@ -358,7 +358,7 @@ const Index = () => {
                 ))}
               </ul>
               <p className="text-muted-foreground text-sm mb-4">
-                And get clear, actionable answers based on your real website data.
+                Get clear, actionable answers based on your real website data.
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl mb-4">
                 {["Instant answers to real questions", "AI-powered insights and recommendations", "Weekly and monthly summaries", "Clear next steps, not just reports"].map((item) => (

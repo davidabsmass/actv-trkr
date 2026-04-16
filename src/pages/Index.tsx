@@ -81,22 +81,15 @@ const Index = () => {
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);
-  const [checkoutEmail, setCheckoutEmail] = useState("");
-  const [showEmailInput, setShowEmailInput] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const handleDirectCheckout = async () => {
-    if (!showEmailInput) {
-      setShowEmailInput(true);
-      return;
-    }
-    if (!checkoutEmail) return;
     setCheckoutLoading(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/actv-checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
-        body: JSON.stringify({ email: checkoutEmail, plan: isAnnual ? "annual" : "monthly" }),
+        body: JSON.stringify({ plan: isAnnual ? "annual" : "monthly" }),
       });
       const data = await res.json();
       if (data.url) {
@@ -105,7 +98,6 @@ const Index = () => {
         throw new Error(data.error || "Failed to create checkout");
       }
     } catch {
-      // fallback to checkout page
       navigate("/checkout");
     } finally {
       setCheckoutLoading(false);

@@ -65,6 +65,9 @@ import visBehaviorSmall from "@/assets/vis-behavior-graphic-small.png";
 import everythingBgd from "@/assets/everything-bgd.jpg";
 import faqsBgd from "@/assets/faqs-bgd.jpg";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 const Index = () => {
   const navigate = useNavigate();
   const { session, loading, signOut } = useAuth();
@@ -78,6 +81,36 @@ const Index = () => {
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);
+  const [checkoutEmail, setCheckoutEmail] = useState("");
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleDirectCheckout = async () => {
+    if (!showEmailInput) {
+      setShowEmailInput(true);
+      return;
+    }
+    if (!checkoutEmail) return;
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/actv-checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
+        body: JSON.stringify({ email: checkoutEmail, plan: isAnnual ? "annual" : "monthly" }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || "Failed to create checkout");
+      }
+    } catch {
+      // fallback to checkout page
+      navigate("/checkout");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
   const logoRef = useRef<HTMLImageElement>(null);
 
   const handleScroll = useCallback(() => {
@@ -616,10 +649,21 @@ const Index = () => {
                 ))}
               </div>
 
-              <Button onClick={() => navigate('/checkout')} className="w-full mt-8" size="lg">
-                Get Started <ArrowRight className="h-4 w-4" />
+              {showEmailInput && (
+                <input
+                  type="email"
+                  placeholder="Enter your email to get started"
+                  value={checkoutEmail}
+                  onChange={(e) => setCheckoutEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleDirectCheckout()}
+                  className="w-full mt-6 px-4 py-3 rounded-lg bg-muted/60 border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                />
+              )}
+              <Button onClick={handleDirectCheckout} className="w-full mt-3" size="lg" disabled={checkoutLoading}>
+                {checkoutLoading ? "Redirecting to payment…" : <>Get Started <ArrowRight className="h-4 w-4" /></>}
               </Button>
-              <p className="text-center text-xs text-muted-foreground mt-3" style={{ fontFamily: "'BR Omega', sans-serif" }}>
+              <p className="text-center text-sm text-muted-foreground mt-3" style={{ fontFamily: "'BR Omega', sans-serif" }}>
                 Cancel anytime.
               </p>
             </div>

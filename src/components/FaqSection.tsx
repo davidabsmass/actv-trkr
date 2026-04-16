@@ -89,7 +89,7 @@ export default function FaqSection({ variant = "app" }: FaqSectionProps) {
               <AccordionTrigger className="text-left text-base font-medium text-foreground hover:text-foreground/80">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+              <AccordionContent className="text-sm leading-relaxed text-foreground/70 whitespace-pre-line">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>
@@ -101,7 +101,7 @@ export default function FaqSection({ variant = "app" }: FaqSectionProps) {
               <AccordionTrigger className="text-left text-base font-medium text-foreground hover:text-foreground/80">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+              <AccordionContent className="text-sm leading-relaxed text-foreground/70 whitespace-pre-line">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

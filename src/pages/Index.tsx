@@ -262,7 +262,7 @@ const Index = () => {
                 ))}
               </ul>
               <p className="text-sm text-muted-foreground mb-6">
-                Spot changes earlier, catch problems faster, and take action before they cost you leads.
+                Know what's working, catch what's not, and take action faster.
               </p>
               <a href="/checkout" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity">
                 Get Started <ArrowRight className="h-4 w-4" />

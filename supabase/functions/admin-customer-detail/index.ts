@@ -163,19 +163,35 @@ Deno.serve(async (req) => {
         const customers = await stripe.customers.list({ email: resolvedEmail, limit: 1 });
         const customer = customers.data[0];
         if (customer) {
-          const subs = await stripe.subscriptions.list({
-            customer: customer.id,
-            limit: 5,
-            expand: ["data.items.data.price.product"],
-          });
+          const [subs, invoices] = await Promise.all([
+            stripe.subscriptions.list({
+              customer: customer.id,
+              limit: 5,
+              expand: ["data.items.data.price.product", "data.discount.coupon"],
+            }),
+            stripe.invoices.list({ customer: customer.id, limit: 1 }),
+          ]);
           const active = subs.data.find((s) => s.status === "active") || subs.data[0] || null;
           const item = active?.items?.data?.[0];
           const price = item?.price;
           const product = price && typeof price.product !== "string" ? price.product : null;
+          const coupon = (active as any)?.discount?.coupon || null;
+          const lastInvoice = invoices.data[0] || null;
           stripeSummary = {
             customer_id: customer.id,
             customer_url: `https://dashboard.stripe.com/customers/${customer.id}`,
             invoices_url: `https://dashboard.stripe.com/customers/${customer.id}#invoices`,
+            coupon: coupon
+              ? { id: coupon.id, name: coupon.name, percent_off: coupon.percent_off, amount_off: coupon.amount_off }
+              : null,
+            last_payment: lastInvoice
+              ? {
+                  amount_paid: (lastInvoice.amount_paid || 0) / 100,
+                  status: lastInvoice.status,
+                  paid_at: lastInvoice.status_transitions?.paid_at || null,
+                  hosted_invoice_url: lastInvoice.hosted_invoice_url || null,
+                }
+              : null,
             subscription: active
               ? {
                   id: active.id,

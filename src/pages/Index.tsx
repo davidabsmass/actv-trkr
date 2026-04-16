@@ -144,7 +144,7 @@ const Index = () => {
             </div>
             <div className="hidden md:flex items-center gap-8">
               <button 
-                onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => document.getElementById('all-features-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="text-sm font-semibold text-white/70 hover:text-white transition-colors"
                 style={{ textTransform: 'uppercase' }}
               >

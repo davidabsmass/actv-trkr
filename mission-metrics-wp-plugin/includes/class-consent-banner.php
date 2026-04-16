@@ -47,6 +47,7 @@ class MM_Consent_Banner {
 			'expiry_days'          => '365',
 			'show_reopener'        => '1',
 			'reopener_label'       => 'Cookie Settings',
+			'show_footer_cookie_link' => '1',
 			'debug_mode'           => '0',
 			// Region-based privacy
 			'compliance_mode'      => 'eu_us', // global_strict | eu_us | custom

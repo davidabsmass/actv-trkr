@@ -59,6 +59,57 @@ export type Database = {
           },
         ]
       }
+      admin_notes: {
+        Row: {
+          author_email: string | null
+          author_id: string | null
+          body: string
+          category: string
+          created_at: string
+          id: string
+          org_id: string | null
+          subscriber_email: string | null
+          subscriber_id: string | null
+        }
+        Insert: {
+          author_email?: string | null
+          author_id?: string | null
+          body: string
+          category?: string
+          created_at?: string
+          id?: string
+          org_id?: string | null
+          subscriber_email?: string | null
+          subscriber_id?: string | null
+        }
+        Update: {
+          author_email?: string | null
+          author_id?: string | null
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          org_id?: string | null
+          subscriber_email?: string | null
+          subscriber_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_notes_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage_log: {
         Row: {
           cached: boolean
@@ -3544,6 +3595,7 @@ export type Database = {
           last_active_date: string | null
           mrr: number
           plan: string
+          pricing_type: string
           referral_source: string | null
           report_downloads: number | null
           site_url: string | null
@@ -3563,6 +3615,7 @@ export type Database = {
           last_active_date?: string | null
           mrr?: number
           plan?: string
+          pricing_type?: string
           referral_source?: string | null
           report_downloads?: number | null
           site_url?: string | null
@@ -3582,6 +3635,7 @@ export type Database = {
           last_active_date?: string | null
           mrr?: number
           plan?: string
+          pricing_type?: string
           referral_source?: string | null
           report_downloads?: number | null
           site_url?: string | null

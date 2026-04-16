@@ -81,22 +81,15 @@ const Index = () => {
   const [scrollY, setScrollY] = useState(0);
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);
-  const [checkoutEmail, setCheckoutEmail] = useState("");
-  const [showEmailInput, setShowEmailInput] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const handleDirectCheckout = async () => {
-    if (!showEmailInput) {
-      setShowEmailInput(true);
-      return;
-    }
-    if (!checkoutEmail) return;
     setCheckoutLoading(true);
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/actv-checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
-        body: JSON.stringify({ email: checkoutEmail, plan: isAnnual ? "annual" : "monthly" }),
+        body: JSON.stringify({ plan: isAnnual ? "annual" : "monthly" }),
       });
       const data = await res.json();
       if (data.url) {
@@ -105,7 +98,6 @@ const Index = () => {
         throw new Error(data.error || "Failed to create checkout");
       }
     } catch {
-      // fallback to checkout page
       navigate("/checkout");
     } finally {
       setCheckoutLoading(false);
@@ -649,17 +641,8 @@ const Index = () => {
                 ))}
               </div>
 
-              {showEmailInput && (
-                <input
-                  type="email"
-                  placeholder="Enter your email to get started"
-                  value={checkoutEmail}
-                  onChange={(e) => setCheckoutEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleDirectCheckout()}
-                  className="w-full mt-6 px-4 py-3 rounded-lg bg-muted/60 border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  autoFocus
-                />
-              )}
+
+
               <Button onClick={handleDirectCheckout} className="w-full mt-3" size="lg" disabled={checkoutLoading}>
                 {checkoutLoading ? "Redirecting to payment…" : <>Get Started <ArrowRight className="h-4 w-4" /></>}
               </Button>

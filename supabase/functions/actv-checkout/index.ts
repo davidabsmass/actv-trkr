@@ -42,18 +42,21 @@ serve(async (req) => {
     });
 
     const { email, plan, site_url, referral_source } = await req.json();
-    if (!email) throw new Error("email is required");
+
+    // email is optional — Stripe Checkout will collect it if not provided
 
     const selectedPlan = plan === "annual" ? "annual" : "monthly";
     const priceId = PRICES[selectedPlan];
     logStep("Plan selected", { plan: selectedPlan, priceId });
 
-    // Check for existing customer
-    const customers = await stripe.customers.list({ email, limit: 1 });
+    // Check for existing customer only if email provided
     let customerId: string | undefined;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Existing customer found", { customerId });
+    if (email) {
+      const customers = await stripe.customers.list({ email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Existing customer found", { customerId });
+      }
     }
 
     const origin = getAllowedOrigin(req);
@@ -64,7 +67,7 @@ serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : email,
+      customer_email: customerId ? undefined : (email || undefined),
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       metadata,

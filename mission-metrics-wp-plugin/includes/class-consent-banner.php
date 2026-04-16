@@ -614,6 +614,16 @@ class MM_Consent_Banner {
 					<input type="text" name="<?php echo $name; ?>[reopener_label]" value="<?php echo esc_attr( $opts['reopener_label'] ); ?>" class="regular-text" style="margin-top:4px" placeholder="Cookie Settings" />
 				</td>
 			</tr>
+			<tr>
+				<th scope="row">Show built-in footer Cookie Settings link</th>
+				<td>
+					<label>
+						<input type="checkbox" name="<?php echo $name; ?>[show_footer_cookie_link]" value="1" <?php checked( $opts['show_footer_cookie_link'], '1' ); ?> />
+						Render the built-in ACTV TRKR footer Cookie Settings link
+					</label>
+					<p class="description">If you use your own Cookie Settings link (see code snippets below), you can turn this off to hide the built-in footer link.</p>
+				</td>
+			</tr>
 		</table>
 
 		<h3>Debug &amp; Testing</h3>

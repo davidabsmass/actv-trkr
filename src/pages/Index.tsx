@@ -47,6 +47,8 @@ import spaceManBack from "@/assets/space-man-back.png";
 import conversionBgd from "@/assets/conversion-bgd.jpg";
 import fourChart from "@/assets/four-chart.png";
 import roverImg from "@/assets/rover.png";
+import aiBgd from "@/assets/ai-bgd.jpg";
+import aiGraphic from "@/assets/ai-graphic.png";
 import pricingBgd from "@/assets/pricing-bgd.jpg";
 import pricingAstronaut from "@/assets/pricing-astronaut.png";
 import websiteHealthBgd from "@/assets/website-health-bgd.jpg";
@@ -327,7 +329,7 @@ const Index = () => {
       </section>
 
       {/* Section 3 — Visitor Behavior */}
-      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${conversionBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+      <section className="relative px-6 overflow-hidden landing-section" style={{ paddingTop: '100px', paddingBottom: '100px', backgroundImage: `url(${aiBgd})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-5 lg:pl-[29px]">
@@ -354,8 +356,7 @@ const Index = () => {
               </p>
             </div>
             <div className="relative flex items-center justify-end lg:col-span-7">
-              <img src={fourChart} alt="Visitor behavior analytics" className="w-[85%] h-auto rounded-2xl relative z-10" />
-              <img src={roverImg} alt="Space rover" className="absolute bottom-[-30px] left-[-40px] w-[220px] h-auto z-20 pointer-events-none" />
+              <img src={aiGraphic} alt="ACTV TRKR AI assistant" className="w-[85%] h-auto relative z-10" />
             </div>
           </div>
         </div>

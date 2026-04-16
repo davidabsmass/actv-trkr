@@ -336,15 +336,12 @@ const Index = () => {
                 Smart Insights
               </div>
               <h3 className="font-normal text-foreground mb-3" style={{ fontFamily: "'Funnel Display', sans-serif", fontSize: '1.8em', lineHeight: '1.2em' }}>
-                Automated Insights, Without the Busywork
+                Get Answers Without Digging Through Reports
               </h3>
-              <p className="text-muted-foreground max-w-xl mb-3">
-                ACTV TRKR turns your traffic, lead, SEO, and site health data into clear weekly and monthly summaries, complete with AI-powered recommendations to help you spot trends, issues, and next steps faster.
-              </p>
               <p className="text-muted-foreground max-w-xl mb-6">
-                It is built to give you useful direction — not overwhelm you with unnecessary noise.
+                ACTV TRKR turns your traffic, lead, SEO, and site health data into clear weekly and monthly summaries—with AI-powered recommendations to help you spot trends, issues, and next steps faster.
               </p>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-muted-foreground text-sm max-w-xl mb-6">
                 {["AI-powered suggestions", "Weekly insights", "Monthly summaries", "Recommended actions", "Clear performance signals"].map((item) => (
                   <li key={item} className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
@@ -352,6 +349,9 @@ const Index = () => {
                   </li>
                 ))}
               </ul>
+              <p className="text-muted-foreground text-sm italic">
+                Useful direction, without the noise.
+              </p>
             </div>
             <div className="relative flex items-center justify-end lg:col-span-7">
               <img src={fourChart} alt="Visitor behavior analytics" className="w-[85%] h-auto rounded-2xl relative z-10" />

@@ -8,13 +8,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Download,
-  Upload,
   Link2,
   Copy,
   Loader2,
   CheckCircle2,
   KeyRound,
   RefreshCw,
+  AlertTriangle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 
@@ -68,7 +70,7 @@ export default function WebsiteSetup() {
       if (!orgId) return null;
       const { data, error } = await supabase
         .from("api_keys")
-        .select("id, label, created_at, key_hash")
+        .select("id, label, created_at")
         .eq("org_id", orgId)
         .is("revoked_at", null)
         .order("created_at", { ascending: false })

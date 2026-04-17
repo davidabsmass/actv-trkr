@@ -46,7 +46,7 @@ export default function CheckoutSuccess() {
 
           <div>
             <h1 className="text-2xl font-bold text-white">You're in!</h1>
-            <p className="text-white/60 mt-2 text-sm leading-relaxed">
+            <p className="text-white/90 mt-2 text-sm leading-relaxed">
               Your account has been created. We just sent you an email with a link to set your password and activate your account.
             </p>
           </div>

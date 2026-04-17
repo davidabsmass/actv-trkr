@@ -5,6 +5,11 @@
   if (!window.mmConfig) return;
 
   var CFG = window.mmConfig;
+  // SECURITY (v1.9.17+): the in-page tracker uses a narrow-scope ingest token,
+  // never the admin API key. We still read CFG.apiKey as a backward-compat
+  // fallback so old plugin builds continue to function while sites upgrade.
+  var INGEST_CRED = CFG.ingestToken || CFG.apiKey || '';
+  var USE_INGEST_TOKEN = !!CFG.ingestToken;
   var COOKIE_VID = 'mm_vid';
   var COOKIE_SID = 'mm_sid';
   var COOKIE_UTM = 'mm_utm';
@@ -19,6 +24,31 @@
   var FLUSH_INTERVAL = 10000;
   var MAX_RETRY_DELAY = 300000;
   var BASE_RETRY_DELAY = 2000;
+
+  // Build the auth headers for an ingest request. Either:
+  //   - X-Ingest-Token: <token>           (new, narrow-scope)
+  //   - Authorization: Bearer <admin key> (legacy fallback, will be removed)
+  function authHeaders(extra) {
+    var h = extra || {};
+    h['Content-Type'] = 'application/json';
+    if (USE_INGEST_TOKEN) {
+      h['X-Ingest-Token'] = INGEST_CRED;
+    } else if (INGEST_CRED) {
+      h['Authorization'] = 'Bearer ' + INGEST_CRED;
+    }
+    return h;
+  }
+
+  // Add the credential to a sendBeacon-style payload (no headers possible).
+  function withAuthBody(payload) {
+    if (USE_INGEST_TOKEN) {
+      payload.ingest_token = INGEST_CRED;
+    } else if (INGEST_CRED) {
+      payload.api_key = INGEST_CRED;
+    }
+    return payload;
+  }
+
 
   // ── Consent Mode ──────────────────────────────────────────────
   // The legacy consentMode from wp_localize_script is still used as a baseline.

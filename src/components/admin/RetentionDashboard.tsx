@@ -409,8 +409,20 @@ export default function RetentionDashboard() {
         {/* FLOWS */}
         <TabsContent value="flows">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Communication Flows ({flows.length})</CardTitle>
+              <Button variant="outline" size="sm" disabled={flows.length === 0} onClick={() => downloadCsv(
+                `retention-flows-${new Date().toISOString().slice(0,10)}.csv`,
+                flows.map((f) => ({
+                  name: f.name,
+                  slug: f.slug,
+                  trigger_type: f.trigger_type,
+                  description: f.description || "",
+                  is_active: f.is_active,
+                })),
+              )}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -437,6 +449,14 @@ export default function RetentionDashboard() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="cohorts">
+          <RetentionCohorts />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <RetentionSettings />
         </TabsContent>
       </Tabs>
     </div>

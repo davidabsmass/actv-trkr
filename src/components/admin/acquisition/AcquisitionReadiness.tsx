@@ -10,6 +10,11 @@ import FinancialEfficiencyPage from "./FinancialEfficiencyPage";
 import RiskFlagsPage from "./RiskFlagsPage";
 import MetricDefinitionsPage from "./MetricDefinitionsPage";
 import DiligenceExportsPage from "./DiligenceExportsPage";
+import SecurityCompliancePage from "./SecurityCompliancePage";
+import TechnologyIpPage from "./TechnologyIpPage";
+import ForecastingPage from "./ForecastingPage";
+import ReconciliationPage from "./ReconciliationPage";
+import DiligenceChecklistPage from "./DiligenceChecklistPage";
 
 export default function AcquisitionReadiness() {
   const data = useAcquisitionData();

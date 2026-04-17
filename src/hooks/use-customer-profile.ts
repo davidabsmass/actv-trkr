@@ -22,7 +22,6 @@ const RE_PROMPT_DAYS = 7;
 export function useCustomerProfile() {
   const { orgId } = useOrg();
   const { user } = useAuth();
-  const { data: sites } = useSites(orgId);
   const queryClient = useQueryClient();
 
   const { data: profile, isLoading } = useQuery({
@@ -40,10 +39,8 @@ export function useCustomerProfile() {
     enabled: !!orgId,
   });
 
-  const hasConnectedSite = (sites?.length ?? 0) > 0;
-
   const shouldShowPrompt = (() => {
-    if (!hasConnectedSite || isLoading) return false;
+    if (isLoading) return false;
     if (!profile) return true; // No record yet — show prompt
     if (profile.completed_at) return false; // Already completed
     if (profile.dismissed_count >= MAX_DISMISSALS) return false; // Too many dismissals

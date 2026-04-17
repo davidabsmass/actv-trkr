@@ -34,6 +34,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RetentionPanel } from "@/components/admin/RetentionPanel";
 
 interface Props {
   open: boolean;
@@ -314,6 +315,11 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Retention panel — one per org */}
+                {orgs.map((o) => (
+                  <RetentionPanel key={`ret-${o.id}`} orgId={o.id} orgName={o.name} />
+                ))}
 
                 {/* Card 2: Sites & Product Status */}
                 <Card>

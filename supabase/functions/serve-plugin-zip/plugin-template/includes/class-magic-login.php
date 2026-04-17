@@ -4,6 +4,17 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 /**
  * Magic Login – generates one-time, time-limited admin login URLs
  * triggered remotely from the ACTV TRKR dashboard.
+ *
+ * SECURITY MODEL (v1.9.16+):
+ *   - Tokens are minted by the ACTV TRKR backend, NOT by WordPress.
+ *   - WordPress merely STORES the token hash and serves the magic URL.
+ *   - When the URL is consumed, WordPress calls back to the backend's
+ *     /verify-magic-login endpoint to confirm the token is valid,
+ *     bound to the correct org, not expired, not revoked, and not
+ *     already used. Single-use atomicity is enforced server-side.
+ *   - Backwards compatibility: if the backend does not provide a
+ *     pre-minted token (older edge function), we fall back to the
+ *     legacy local-mint flow but ALSO require backend verification.
  */
 class MM_Magic_Login {
 
@@ -33,7 +44,6 @@ class MM_Magic_Login {
 		if ( empty( $api_key ) ) {
 			return new WP_Error( 'forbidden', 'No API key configured', array( 'status' => 403 ) );
 		}
-		// Support both raw key comparison and hash comparison
 		$stored_hash = hash( 'sha256', $api_key );
 		if ( hash_equals( $api_key, $auth ) || hash_equals( $stored_hash, $auth ) ) {
 			return true;
@@ -42,14 +52,27 @@ class MM_Magic_Login {
 	}
 
 	public static function generate_token( $request ) {
-		$token = wp_generate_password( 64, false );
-		$hash  = hash( 'sha256', $token );
+		$body = $request->get_json_params();
+
+		// New protocol: backend pre-mints the token and we just record it.
+		if ( ! empty( $body['token'] ) && is_string( $body['token'] ) ) {
+			$token = preg_replace( '/[^a-f0-9]/i', '', $body['token'] );
+			if ( strlen( $token ) < 32 ) {
+				return new WP_Error( 'invalid_token', 'Bad token format', array( 'status' => 400 ) );
+			}
+			$ttl = isset( $body['ttl_seconds'] ) ? max( 60, min( 3600, (int) $body['ttl_seconds'] ) ) : self::TOKEN_TTL;
+		} else {
+			// Legacy fallback: mint locally. Backend verification still applies.
+			$token = wp_generate_password( 64, false );
+			$ttl   = self::TOKEN_TTL;
+		}
+
+		$hash = hash( 'sha256', $token );
 
 		set_transient( self::TRANSIENT_PREFIX . $hash, array(
 			'created_at' => time(),
-			'ip'         => $request->get_header( 'X-Forwarded-For' ) ?: $_SERVER['REMOTE_ADDR'] ?? '',
 			'used'       => false,
-		), self::TOKEN_TTL );
+		), $ttl );
 
 		$login_url = add_query_arg( array(
 			'actv_magic_token' => $token,
@@ -57,8 +80,44 @@ class MM_Magic_Login {
 
 		return rest_ensure_response( array(
 			'login_url'  => $login_url,
-			'expires_in' => self::TOKEN_TTL,
+			'expires_in' => $ttl,
 		) );
+	}
+
+	/**
+	 * Call the ACTV TRKR backend to verify a token before honoring it.
+	 * Returns array on success, WP_Error on failure.
+	 */
+	private static function backend_verify( $token ) {
+		$opts        = MM_Settings::get();
+		$endpoint    = rtrim( $opts['endpoint_url'] ?? '', '/' );
+		$api_key     = $opts['api_key'] ?? '';
+		if ( empty( $endpoint ) || empty( $api_key ) ) {
+			return new WP_Error( 'no_backend', 'Backend not configured' );
+		}
+		$response = wp_remote_post( $endpoint . '/verify-magic-login', array(
+			'timeout' => 10,
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'X-Api-Key'    => $api_key,
+			),
+			'body'    => wp_json_encode( array( 'token' => $token ) ),
+		) );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			return new WP_Error( 'backend_error', 'Backend returned ' . $code );
+		}
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $data ) ) {
+			return new WP_Error( 'bad_response', 'Backend returned invalid JSON' );
+		}
+		if ( empty( $data['valid'] ) ) {
+			return new WP_Error( 'rejected', 'Backend rejected token: ' . ( $data['reason'] ?? 'unknown' ) );
+		}
+		return $data;
 	}
 
 	public static function handle_magic_login() {
@@ -67,8 +126,17 @@ class MM_Magic_Login {
 		}
 
 		$token = sanitize_text_field( wp_unslash( $_GET['actv_magic_token'] ) );
-		$hash  = hash( 'sha256', $token );
-		$data  = get_transient( self::TRANSIENT_PREFIX . $hash );
+		// Strict format guard: only hex/alnum, length-bounded.
+		if ( ! preg_match( '/^[A-Za-z0-9]{32,256}$/', $token ) ) {
+			wp_die(
+				'<h2>Invalid login link format</h2>',
+				'Login Failed',
+				array( 'response' => 400 )
+			);
+		}
+
+		$hash = hash( 'sha256', $token );
+		$data = get_transient( self::TRANSIENT_PREFIX . $hash );
 
 		if ( ! $data || ! is_array( $data ) ) {
 			wp_die(
@@ -87,11 +155,24 @@ class MM_Magic_Login {
 			);
 		}
 
+		// Burn the local transient FIRST so concurrent requests can't both proceed.
 		delete_transient( self::TRANSIENT_PREFIX . $hash );
 
+		// SECURITY: ask the backend to verify and atomically consume.
+		// This is the authoritative single-use enforcement and binds
+		// the magic login to the requestor recorded at issuance time.
+		$verify = self::backend_verify( $token );
+		if ( is_wp_error( $verify ) ) {
+			wp_die(
+				'<h2>Login verification failed</h2><p>' . esc_html( $verify->get_error_message() ) . '</p>',
+				'Login Failed',
+				array( 'response' => 403 )
+			);
+		}
+
 		$admins = get_users( array(
-			'role'   => 'administrator',
-			'number' => 1,
+			'role'    => 'administrator',
+			'number'  => 1,
 			'orderby' => 'ID',
 			'order'   => 'ASC',
 		) );

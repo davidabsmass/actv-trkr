@@ -4,6 +4,11 @@
  *
  * Hooks into WordPress's plugin update system to check our backend
  * for newer versions and show update notices in wp-admin.
+ *
+ * SECURITY: As of v1.9.16, the backend signs (version, download_url,
+ * issued_at) with HMAC-SHA256. We verify that signature here BEFORE
+ * surfacing the update to WordPress. If verification fails, the
+ * update is suppressed and an admin notice is shown.
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -13,33 +18,33 @@ class MM_Updater {
 
 	const SLUG        = 'actv-trkr/actv-trkr.php';
 	const TRANSIENT   = 'mm_update_data';
-	const CHECK_HOURS = 0; // Always fetch fresh — endpoint is fast and no-cache
+	const CHECK_HOURS = 0;
+
+	// Trusted shared secret for HMAC verification of update payloads.
+	// This MUST match PLUGIN_RELEASE_SIGNING_SECRET on the backend.
+	// Distributed via the plugin source on download — see SECURITY notes.
+	const TRUSTED_FINGERPRINT = ''; // legacy unused
+	// Maximum acceptable signature age (seconds)
+	const MAX_SIG_AGE = 86400; // 24h
 
 	public static function init() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 		add_filter( 'plugin_row_meta', array( __CLASS__, 'row_meta' ), 10, 2 );
 
-		// Force-clear update transient when viewing the plugins page
 		add_action( 'load-plugins.php', array( __CLASS__, 'force_check' ) );
 		add_action( 'load-options-general.php', array( __CLASS__, 'force_check' ) );
-
-		// After WordPress finishes upgrading a plugin, clear stale update data
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 10, 2 );
+
+		// Surface verification failures to admins
+		add_action( 'admin_notices', array( __CLASS__, 'maybe_show_signature_warning' ) );
 	}
 
-	/**
-	 * Clear the cached update transient so the next check is fresh.
-	 */
 	public static function force_check() {
 		delete_transient( self::TRANSIENT );
-		// Also clear WordPress's own plugin update cache so stale "update available" notices disappear
 		delete_site_transient( 'update_plugins' );
 	}
 
-	/**
-	 * After any plugin upgrade completes, clear our cached data so the version re-checks cleanly.
-	 */
 	public static function after_upgrade( $upgrader, $options ) {
 		if ( isset( $options['plugins'] ) && is_array( $options['plugins'] ) ) {
 			if ( in_array( self::SLUG, $options['plugins'], true ) ) {
@@ -49,17 +54,69 @@ class MM_Updater {
 		}
 	}
 
-	/**
-	 * Build the update-check endpoint URL.
-	 */
 	private static function endpoint() {
 		$opts = MM_Settings::get();
 		return rtrim( $opts['endpoint_url'], '/' ) . '/plugin-update-check';
 	}
 
 	/**
-	 * Check our backend for a newer version.
+	 * Returns the trusted signing secret.
+	 *
+	 * NOTE: The secret is intentionally NOT hardcoded here — it ships
+	 * via a separate distributable file when the plugin is downloaded
+	 * from the dashboard, and is stored in WP options at install time.
+	 * This means a fresh install without the secret will fall back to
+	 * "unsigned, untrusted" behavior (update notices suppressed).
 	 */
+	private static function get_signing_secret() {
+		$opts = MM_Settings::get();
+		$secret = $opts['release_signing_secret'] ?? '';
+		// Allow override via constant for emergency rotation.
+		if ( defined( 'MM_RELEASE_SIGNING_SECRET' ) ) {
+			$secret = MM_RELEASE_SIGNING_SECRET;
+		}
+		return $secret;
+	}
+
+	/**
+	 * Verify the HMAC-SHA256 signature on an update payload.
+	 *
+	 * @param array $remote The decoded JSON response from the backend.
+	 * @return true|WP_Error
+	 */
+	private static function verify_signature( $remote ) {
+		if ( empty( $remote['version'] ) || empty( $remote['download_url'] ) ) {
+			return new WP_Error( 'incomplete_payload', 'Missing version or download URL' );
+		}
+		$alg       = $remote['signature_alg'] ?? '';
+		$signature = $remote['signature'] ?? '';
+		$signed_at = $remote['signed_at'] ?? '';
+
+		if ( $alg !== 'HMAC-SHA256' || empty( $signature ) || empty( $signed_at ) ) {
+			return new WP_Error( 'unsigned', 'Update payload is unsigned' );
+		}
+
+		$secret = self::get_signing_secret();
+		if ( empty( $secret ) ) {
+			// Fail-closed: no trusted secret = cannot verify.
+			return new WP_Error( 'no_secret', 'No release signing secret configured on this site' );
+		}
+
+		// Reject stale signatures (replay defense).
+		$signed_ts = strtotime( $signed_at );
+		if ( ! $signed_ts || abs( time() - $signed_ts ) > self::MAX_SIG_AGE ) {
+			return new WP_Error( 'stale_signature', 'Signature too old or invalid timestamp' );
+		}
+
+		$message  = $remote['version'] . "\n" . $remote['download_url'] . "\n" . $signed_at;
+		$expected = hash_hmac( 'sha256', $message, $secret );
+
+		if ( ! hash_equals( $expected, $signature ) ) {
+			return new WP_Error( 'bad_signature', 'Signature verification failed' );
+		}
+		return true;
+	}
+
 	public static function check_update( $transient ) {
 		if ( empty( $transient->checked ) ) {
 			return $transient;
@@ -70,7 +127,15 @@ class MM_Updater {
 			return $transient;
 		}
 
-		$package     = ! empty( $remote['download_url'] ) ? $remote['download_url'] : '';
+		$verified = self::verify_signature( $remote );
+		if ( is_wp_error( $verified ) ) {
+			// SECURITY: do not surface an update we can't trust.
+			set_transient( 'mm_update_signature_error', $verified->get_error_message(), HOUR_IN_SECONDS );
+			return $transient;
+		}
+		delete_transient( 'mm_update_signature_error' );
+
+		$package = $remote['download_url'];
 
 		$plugin_data = (object) array(
 			'slug'        => 'actv-trkr',
@@ -85,13 +150,21 @@ class MM_Updater {
 		);
 
 		$transient->response[ self::SLUG ] = $plugin_data;
-
 		return $transient;
 	}
 
-	/**
-	 * Show plugin info in the WordPress "View details" modal.
-	 */
+	public static function maybe_show_signature_warning() {
+		$err = get_transient( 'mm_update_signature_error' );
+		if ( ! $err ) return;
+		$screen = get_current_screen();
+		if ( ! $screen || ! in_array( $screen->id, array( 'plugins', 'update-core', 'dashboard' ), true ) ) {
+			return;
+		}
+		echo '<div class="notice notice-warning"><p><strong>ACTV TRKR:</strong> '
+			. esc_html( 'A plugin update is available but the signature could not be verified (' . $err . '). The update has been suppressed for safety. Re-download the plugin from the ACTV TRKR dashboard to refresh credentials.' )
+			. '</p></div>';
+	}
+
 	public static function plugin_info( $result, $action, $args ) {
 		if ( $action !== 'plugin_information' ) {
 			return $result;
@@ -123,9 +196,6 @@ class MM_Updater {
 		return $info;
 	}
 
-	/**
-	 * Add a "Check for updates" link on the plugins page.
-	 */
 	public static function row_meta( $links, $file ) {
 		if ( $file !== self::SLUG ) {
 			return $links;
@@ -134,17 +204,14 @@ class MM_Updater {
 		return $links;
 	}
 
-	/**
-	 * Fetch update data from our backend (cached).
-	 */
 	private static function get_remote_data() {
 		$cached = get_transient( self::TRANSIENT );
 		if ( $cached !== false ) {
 			return $cached;
 		}
 
-		$domain  = wp_parse_url( home_url(), PHP_URL_HOST );
-		$url     = self::endpoint() . '?' . http_build_query( array(
+		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
+		$url    = self::endpoint() . '?' . http_build_query( array(
 			'action'  => 'check',
 			'version' => MM_PLUGIN_VERSION,
 			'domain'  => $domain,
@@ -164,9 +231,6 @@ class MM_Updater {
 		return $body;
 	}
 
-	/**
-	 * Fetch full plugin info from our backend.
-	 */
 	private static function get_remote_info() {
 		$url      = self::endpoint() . '?action=info';
 		$response = wp_remote_get( $url, array( 'timeout' => 10 ) );

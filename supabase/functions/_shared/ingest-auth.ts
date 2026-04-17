@@ -15,7 +15,7 @@
  * After the 30-day deprecation window, callers should remove the legacy
  * fallback and require an ingest token.
  */
-import { logSecurityEvent, hashIpForAudit } from "./security-audit.ts";
+import { logSecurityEvent, hashIp, extractClientIp } from "./security-audit.ts";
 
 export type IngestAuthResult =
   | {
@@ -136,12 +136,13 @@ export async function authenticateIngestRequest(opts: {
   // Log the deprecated usage so we can hunt down sites still leaking
   // the admin key in page source. Fire-and-forget.
   try {
-    const ipHash = await hashIpForAudit(req);
-    await logSecurityEvent(supabase, {
+    const ip = extractClientIp(req);
+    const ipHash = ip ? await hashIp(ip) : null;
+    await logSecurityEvent({
       event_type: "deprecated_auth_on_ingest",
       severity: "warn",
       org_id: akRow.org_id,
-      actor_type: "site",
+      actor_type: "plugin",
       message: `Legacy admin API key used on ${endpoint}`,
       metadata: { endpoint },
       ip_hash: ipHash,

@@ -275,8 +275,7 @@
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
 
-      var payload = {
-        api_key: CFG.apiKey,
+      var payload = withAuthBody({
         source: {
           domain: CFG.domain,
           type: 'wordpress',
@@ -321,10 +320,7 @@
     var body = JSON.stringify(payload);
     fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + CFG.apiKey,
-      },
+      headers: authHeaders(),
       body: body,
       keepalive: true,
     }).then(function (resp) {
@@ -361,7 +357,11 @@
         var xhr = new XMLHttpRequest();
         xhr.open('POST', endpoint, false);
         xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.setRequestHeader('Authorization', 'Bearer ' + CFG.apiKey);
+        if (USE_INGEST_TOKEN) {
+          xhr.setRequestHeader('X-Ingest-Token', INGEST_CRED);
+        } else if (INGEST_CRED) {
+          xhr.setRequestHeader('Authorization', 'Bearer ' + INGEST_CRED);
+        }
         xhr.send(body);
       }
     } catch (e) {}
@@ -371,10 +371,7 @@
     var body = JSON.stringify(payload);
     fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + CFG.apiKey,
-      },
+      headers: authHeaders(),
       body: body,
       keepalive: true,
     }).then(function (resp) {
@@ -466,9 +463,8 @@
       if (!this.eventId) return;
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
-      send(CFG.endpoint, {
+      send(CFG.endpoint, withAuthBody({
         type: 'time_update',
-        api_key: CFG.apiKey,
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         event: {
           event_id: this.eventId,
@@ -476,7 +472,7 @@
           active_seconds: this.getActiveSeconds(),
         },
         visitor: buildVisitor(vid),
-      });
+      }));
     },
 
     sendFinal: function () {
@@ -485,9 +481,8 @@
       clearInterval(this.watchdogTimer);
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
-      sendBeaconSafe(CFG.endpoint, {
+      sendBeaconSafe(CFG.endpoint, withAuthBody({
         type: 'time_update',
-        api_key: CFG.apiKey,
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         event: {
           event_id: this.eventId,
@@ -495,7 +490,7 @@
           active_seconds: this.getActiveSeconds(),
         },
         visitor: buildVisitor(vid),
-      });
+      }));
     },
   };
 
@@ -749,8 +744,7 @@
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
       var batch = eventQueue.splice(0, 50);
-      sendBeaconSafe(getEventEndpoint(), {
-        api_key: CFG.apiKey,
+      sendBeaconSafe(getEventEndpoint(), withAuthBody({
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         events: batch.map(function (e) {
           return {

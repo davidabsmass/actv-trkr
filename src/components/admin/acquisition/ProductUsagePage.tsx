@@ -136,11 +136,11 @@ export default function ProductUsagePage({ data }: { data: AcquisitionData }) {
                   <TableRow key={s.id}>
                     <TableCell className="text-xs">{s.domain}</TableCell>
                     <TableCell className="text-xs">
-                      <Badge variant={s.tracking_status === "active" || s.tracking_status === "ok" ? "default" : "destructive"}>
-                        {s.tracking_status ?? "unknown"}
+                      <Badge variant={s.status === "active" || s.status === "ok" ? "default" : "destructive"}>
+                        {s.status ?? "unknown"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs">{s.last_seen_at ? new Date(s.last_seen_at).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell className="text-xs">{s.last_heartbeat_at ? new Date(s.last_heartbeat_at).toLocaleDateString() : "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

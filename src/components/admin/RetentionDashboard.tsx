@@ -195,8 +195,24 @@ export default function RetentionDashboard() {
         {/* AT RISK */}
         <TabsContent value="at-risk">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Accounts at Risk ({atRisk})</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => downloadCsv(
+                `accounts-at-risk-${new Date().toISOString().slice(0,10)}.csv`,
+                health
+                  .filter((h) => h.risk_level === "high" || h.risk_level === "critical" || h.billing_risk || h.cancellation_intent)
+                  .map((h) => ({
+                    account: orgs[h.org_id] || h.org_id,
+                    health_score: h.health_score,
+                    risk_level: h.risk_level,
+                    lifecycle_stage: h.lifecycle_stage,
+                    primary_reason: h.churn_risk_reasons[0]?.label || "",
+                    last_login_at: h.last_login_at || "",
+                    last_data_received_at: h.last_data_received_at || "",
+                  })),
+              )} disabled={atRisk === 0}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>

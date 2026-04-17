@@ -3,6 +3,7 @@ import {
   checkRateLimit, validateDomain, extractClientIp, hashIp,
   checkPayloadSize, logAnomaly, sanitizeStr,
 } from "../_shared/ingestion-security.ts";
+import { authenticateIngestRequest } from "../_shared/ingest-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -141,20 +142,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Support API key from Authorization header OR request body (sendBeacon can't set headers)
-    const authHeader = req.headers.get("authorization") || "";
-    let apiKey = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!apiKey && body.api_key) {
-      apiKey = String(body.api_key).trim();
-    }
-    if (!apiKey || apiKey.length > 256) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const keyHash = await hashKey(apiKey);
-    const { data: akRow } = await supabase.from("api_keys").select("org_id").eq("key_hash", keyHash).is("revoked_at", null).maybeSingle();
-    if (!akRow) return new Response(JSON.stringify({ error: "Invalid API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const orgId = akRow.org_id;
+    // Dual-mode auth: prefer narrow-scope ingest token, fall back to legacy admin key.
+    const auth = await authenticateIngestRequest({ req, body, supabase, endpoint: "track-pageview" });
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const orgId = auth.orgId;
 
     // ── Rate limiting (per-IP + per-org) ──
     const rateCheck = checkRateLimit(clientIp, null, orgId);

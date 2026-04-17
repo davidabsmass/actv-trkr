@@ -1,15 +1,17 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileDown, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { Download, FileDown, CheckCircle2, AlertCircle, XCircle, Package, FileText, Loader2 } from "lucide-react";
 import { readinessTone } from "@/lib/acquisition-utils";
 import { buildMonthlyArr, buildRetention, buildConcentration, buildFinance, diligenceReadinessScore } from "./calculations";
 import type { AcquisitionData } from "./useAcquisitionData";
 import { downloadCsv } from "@/lib/csv-export";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { buildDiligencePack, downloadDiligencePackPdf, downloadDiligencePackZip } from "./diligencePack";
 
 const SECTIONS: Array<{ key: string; label: string }> = [
   { key: "revenue_support", label: "Revenue Support" },

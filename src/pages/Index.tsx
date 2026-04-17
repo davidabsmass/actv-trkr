@@ -131,6 +131,18 @@ const Index = () => {
     }
   }, [navigate]);
 
+  // Auto-redirect logged-in users straight to the dashboard.
+  useEffect(() => {
+    if (loading) return;
+    if (!isLoggedIn) return;
+    // Don't auto-redirect if the URL has a recovery token — let the recovery effect above handle it.
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const urlParams = new URLSearchParams(window.location.search);
+    const isRecovery = hashParams.get('type') === 'recovery' || urlParams.get('type') === 'recovery';
+    if (isRecovery) return;
+    navigate("/dashboard", { replace: true });
+  }, [loading, isLoggedIn, navigate]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 landing-page-fonts">
       <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } .hero-space-bg { background-position: 70% top !important; } .landing-section { padding-top: 70px !important; padding-bottom: 70px !important; } } @media (min-width: 768px) and (max-width: 1023px) { .hero-astronaut-wrap { position: absolute !important; left: -402px !important; top: 0 !important; margin: 0 !important; z-index: 0 !important; } .hero-astronaut-wrap img { width: 40rem !important; max-width: none !important; } .hero-headline { font-size: 2.225rem !important; } .hero-content-row { position: relative; } .hero-copy-block { position: relative; z-index: 1; margin-left: auto !important; text-align: left !important; } .hero-copy-block .flex { justify-content: flex-start !important; } .section-copy-block { padding-left: 39px !important; } }` }} />

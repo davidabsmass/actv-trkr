@@ -3491,6 +3491,51 @@ export type Database = {
           },
         ]
       }
+      retention_settings: {
+        Row: {
+          default_pause_days: number
+          default_save_offer: string
+          id: number
+          inactivity_warning_days: number
+          no_data_rescue_hours: number
+          no_second_login_hours: number
+          reply_to_email: string | null
+          sender_email: string
+          sender_name: string
+          updated_at: string
+          updated_by: string | null
+          weekly_summary_enabled: boolean
+        }
+        Insert: {
+          default_pause_days?: number
+          default_save_offer?: string
+          id?: number
+          inactivity_warning_days?: number
+          no_data_rescue_hours?: number
+          no_second_login_hours?: number
+          reply_to_email?: string | null
+          sender_email?: string
+          sender_name?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekly_summary_enabled?: boolean
+        }
+        Update: {
+          default_pause_days?: number
+          default_save_offer?: string
+          id?: number
+          inactivity_warning_days?: number
+          no_data_rescue_hours?: number
+          no_second_login_hours?: number
+          reply_to_email?: string | null
+          sender_email?: string
+          sender_name?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekly_summary_enabled?: boolean
+        }
+        Relationships: []
+      }
       saved_views: {
         Row: {
           columns: Json | null
@@ -5165,6 +5210,16 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_retention_cohorts: {
+        Args: { p_weeks?: number }
+        Returns: {
+          active_count: number
+          cohort_size: number
+          cohort_week: string
+          retention_pct: number
+          week_offset: number
+        }[]
       }
       get_top_exit_pages: {
         Args: {

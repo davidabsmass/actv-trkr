@@ -6,8 +6,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, AlertTriangle, CreditCard, Heart, TrendingDown, Users, Workflow, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, CreditCard, Download, Heart, TrendingDown, Users, Workflow, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { downloadCsv } from "@/lib/csv-export";
+import RetentionCohorts from "./RetentionCohorts";
+import RetentionSettings from "./RetentionSettings";
 
 type BillingEvent = {
   id: string;
@@ -147,12 +150,14 @@ export default function RetentionDashboard() {
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="at-risk">At Risk</TabsTrigger>
+          <TabsTrigger value="cohorts">Cohorts</TabsTrigger>
           <TabsTrigger value="billing">Billing Recovery</TabsTrigger>
           <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
           <TabsTrigger value="flows">Flows</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -190,8 +195,24 @@ export default function RetentionDashboard() {
         {/* AT RISK */}
         <TabsContent value="at-risk">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Accounts at Risk ({atRisk})</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => downloadCsv(
+                `accounts-at-risk-${new Date().toISOString().slice(0,10)}.csv`,
+                health
+                  .filter((h) => h.risk_level === "high" || h.risk_level === "critical" || h.billing_risk || h.cancellation_intent)
+                  .map((h) => ({
+                    account: orgs[h.org_id] || h.org_id,
+                    health_score: h.health_score,
+                    risk_level: h.risk_level,
+                    lifecycle_stage: h.lifecycle_stage,
+                    primary_reason: h.churn_risk_reasons[0]?.label || "",
+                    last_login_at: h.last_login_at || "",
+                    last_data_received_at: h.last_data_received_at || "",
+                  })),
+              )} disabled={atRisk === 0}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -242,8 +263,23 @@ export default function RetentionDashboard() {
             <Kpi icon={AlertTriangle} label="Unresolved" value={String(unresolved)} tone={unresolved > 0 ? "warn" : undefined} />
           </div>
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Recent billing events</CardTitle>
+              <Button variant="outline" size="sm" disabled={billing.length === 0} onClick={() => downloadCsv(
+                `billing-recovery-${new Date().toISOString().slice(0,10)}.csv`,
+                billing.map((b) => ({
+                  occurred_at: b.occurred_at,
+                  account: b.org_id ? (orgs[b.org_id] || b.org_id) : "",
+                  event_type: b.event_type,
+                  status: b.status || "",
+                  amount: b.amount != null ? (b.amount / 100).toFixed(2) : "",
+                  currency: b.currency || "",
+                  stripe_invoice_id: b.stripe_invoice_id || "",
+                  stripe_subscription_id: b.stripe_subscription_id || "",
+                })),
+              )}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -322,7 +358,22 @@ export default function RetentionDashboard() {
             </Card>
           </div>
           <Card>
-            <CardHeader><CardTitle className="text-base">Recent cancellations</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Recent cancellations</CardTitle>
+              <Button variant="outline" size="sm" disabled={cancellations.length === 0} onClick={() => downloadCsv(
+                `cancellations-${new Date().toISOString().slice(0,10)}.csv`,
+                cancellations.map((c) => ({
+                  created_at: c.created_at,
+                  account: orgs[c.org_id] || c.org_id,
+                  reason: c.reason,
+                  reason_detail: c.reason_detail || "",
+                  selected_offer: c.selected_offer || "",
+                  outcome: c.outcome,
+                })),
+              )}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
+            </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -358,8 +409,20 @@ export default function RetentionDashboard() {
         {/* FLOWS */}
         <TabsContent value="flows">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Communication Flows ({flows.length})</CardTitle>
+              <Button variant="outline" size="sm" disabled={flows.length === 0} onClick={() => downloadCsv(
+                `retention-flows-${new Date().toISOString().slice(0,10)}.csv`,
+                flows.map((f) => ({
+                  name: f.name,
+                  slug: f.slug,
+                  trigger_type: f.trigger_type,
+                  description: f.description || "",
+                  is_active: f.is_active,
+                })),
+              )}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -386,6 +449,14 @@ export default function RetentionDashboard() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="cohorts">
+          <RetentionCohorts />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <RetentionSettings />
         </TabsContent>
       </Tabs>
     </div>

@@ -994,6 +994,113 @@ export type Database = {
           },
         ]
       }
+      data_room_access_log: {
+        Row: {
+          action: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          link_id: string | null
+          occurred_at: string
+          referrer: string | null
+          section_key: string | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          link_id?: string | null
+          occurred_at?: string
+          referrer?: string | null
+          section_key?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          link_id?: string | null
+          occurred_at?: string
+          referrer?: string | null
+          section_key?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_access_log_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_links: {
+        Row: {
+          allowed_sections: string[]
+          created_at: string
+          created_by_user_id: string
+          expires_at: string
+          id: string
+          label: string
+          max_views: number | null
+          notes: string | null
+          recipient_company: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          revoked_at: string | null
+          revoked_by_user_id: string | null
+          token_hash: string
+          updated_at: string
+          view_count: number
+          watermark_text: string | null
+        }
+        Insert: {
+          allowed_sections?: string[]
+          created_at?: string
+          created_by_user_id: string
+          expires_at: string
+          id?: string
+          label: string
+          max_views?: number | null
+          notes?: string | null
+          recipient_company?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          token_hash: string
+          updated_at?: string
+          view_count?: number
+          watermark_text?: string | null
+        }
+        Update: {
+          allowed_sections?: string[]
+          created_at?: string
+          created_by_user_id?: string
+          expires_at?: string
+          id?: string
+          label?: string
+          max_views?: number | null
+          notes?: string | null
+          recipient_company?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          token_hash?: string
+          updated_at?: string
+          view_count?: number
+          watermark_text?: string | null
+        }
+        Relationships: []
+      }
       deletion_audit: {
         Row: {
           action: string

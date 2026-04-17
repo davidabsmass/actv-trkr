@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, MapPin } from "lucide-react";
 import TeamSection from "@/components/account/TeamSection";
 import SupportSection from "@/components/support/SupportSection";
+import { CancellationSaveDialog } from "@/components/account/CancellationSaveDialog";
 import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -255,11 +256,23 @@ export default function Account() {
 
 function CancelSubscriptionSection() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showCancel, setShowCancel] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [loading, setLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: orgRow } = useQuery({
+    queryKey: ["org_for_cancel", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("org_users").select("org_id").eq("user_id", user!.id).limit(1).maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+  });
+  const orgId = orgRow?.org_id;
 
   const handleOpenPortal = async () => {
     setPortalLoading(true);
@@ -314,10 +327,23 @@ function CancelSubscriptionSection() {
             {portalLoading ? "Opening…" : "Manage Billing"}
             <ExternalLink className="h-3 w-3" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowCancel(true)} className="text-xs text-muted-foreground">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => (orgId ? setShowSaveDialog(true) : setShowCancel(true))}
+            className="text-xs text-muted-foreground"
+          >
             Cancel subscription
           </Button>
         </div>
+        {orgId && (
+          <CancellationSaveDialog
+            open={showSaveDialog}
+            onOpenChange={setShowSaveDialog}
+            orgId={orgId}
+            onConfirmCancel={handleCancelNow}
+          />
+        )}
       </div>
     );
   }

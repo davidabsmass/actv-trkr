@@ -1558,6 +1558,45 @@ export type Database = {
         }
         Relationships: []
       }
+      forecast_assumptions: {
+        Row: {
+          actual_value: number | null
+          created_at: string
+          forecast_value: number | null
+          id: string
+          metric_key: string
+          notes: string | null
+          owner_user_id: string | null
+          period_label: string
+          scenario: string
+          updated_at: string
+        }
+        Insert: {
+          actual_value?: number | null
+          created_at?: string
+          forecast_value?: number | null
+          id?: string
+          metric_key: string
+          notes?: string | null
+          owner_user_id?: string | null
+          period_label: string
+          scenario?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_value?: number | null
+          created_at?: string
+          forecast_value?: number | null
+          id?: string
+          metric_key?: string
+          notes?: string | null
+          owner_user_id?: string | null
+          period_label?: string
+          scenario?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       form_entries: {
         Row: {
           builder_type: string
@@ -1949,6 +1988,42 @@ export type Database = {
           },
         ]
       }
+      founder_dependencies: {
+        Row: {
+          category: string
+          created_at: string
+          dependency_level: string
+          documentation_status: string
+          id: string
+          notes: string | null
+          process_name: string
+          runbook_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          dependency_level?: string
+          documentation_status?: string
+          id?: string
+          notes?: string | null
+          process_name: string
+          runbook_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          dependency_level?: string
+          documentation_status?: string
+          id?: string
+          notes?: string | null
+          process_name?: string
+          runbook_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       goal_completions: {
         Row: {
           completed_at: string
@@ -2250,6 +2325,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ip_assignments: {
+        Row: {
+          asset_name: string
+          asset_type: string
+          assignment_status: string
+          created_at: string
+          document_url: string | null
+          id: string
+          notes: string | null
+          owner_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_name: string
+          asset_type: string
+          assignment_status?: string
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          notes?: string | null
+          owner_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_name?: string
+          asset_type?: string
+          assignment_status?: string
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          notes?: string | null
+          owner_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       kpi_daily: {
         Row: {
@@ -5203,6 +5314,45 @@ export type Database = {
           id?: string
           metadata?: Json | null
           reason?: string
+        }
+        Relationships: []
+      }
+      technology_dependencies: {
+        Row: {
+          category: string
+          created_at: string
+          criticality: string
+          description: string | null
+          id: string
+          monthly_cost: number | null
+          name: string
+          owner_notes: string | null
+          replaceable: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          criticality?: string
+          description?: string | null
+          id?: string
+          monthly_cost?: number | null
+          name: string
+          owner_notes?: string | null
+          replaceable?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          criticality?: string
+          description?: string | null
+          id?: string
+          monthly_cost?: number | null
+          name?: string
+          owner_notes?: string | null
+          replaceable?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -42,6 +42,40 @@ serve(async (req) => {
 
   logStep("Event received", { type: event.type, id: event.id });
 
+  // ── H-7 FIX: Idempotency guard ──────────────────────────────────
+  // Stripe retries webhook deliveries on failure. Without this guard,
+  // a single checkout.session.completed could create the org/user
+  // twice or send the welcome email twice. We claim the event id
+  // before doing any side-effects; the unique PK on event_id makes
+  // this atomic across concurrent webhook deliveries.
+  try {
+    const { error: dedupeErr } = await supabase
+      .from("processed_stripe_events")
+      .insert({
+        event_id: event.id,
+        event_type: event.type,
+        payload_summary: {
+          object: (event.data?.object as any)?.object || null,
+          customer: (event.data?.object as any)?.customer || null,
+          subscription: (event.data?.object as any)?.subscription || null,
+        },
+      });
+    if (dedupeErr) {
+      // Duplicate PK = already processed. Return 200 so Stripe stops retrying.
+      if (dedupeErr.code === "23505" || /duplicate key/i.test(dedupeErr.message || "")) {
+        logStep("Duplicate event ignored", { id: event.id, type: event.type });
+        return new Response(JSON.stringify({ received: true, duplicate: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      // Any other DB error: log and continue (we'd rather over-process than drop a real event).
+      logStep("Dedupe insert failed (non-fatal)", { error: dedupeErr.message });
+    }
+  } catch (dedupeErr) {
+    logStep("Dedupe check threw (non-fatal)", { error: String(dedupeErr) });
+  }
+
   try {
     switch (event.type) {
       case "checkout.session.completed": {

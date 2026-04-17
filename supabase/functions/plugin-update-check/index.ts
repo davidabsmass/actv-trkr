@@ -14,6 +14,10 @@ function getZipUrl(req: Request): string {
 const CURRENT_PLUGIN_VERSION = "1.9.15";
 
 const CHANGELOG = `
+## 1.9.16
+- SECURITY: Magic-login tokens now bound to dashboard requestor (atomic single-use, server-verified)
+- SECURITY: Plugin update payloads now signed (HMAC-SHA256) and verified on install
+
 ## 1.9.15
 - NEW: Auto-recovery banner in WP admin — appears when ACTV TRKR detects tracking has stopped
 - NEW: One-click "Reconnect Now" button re-fires the connection check from inside WordPress
@@ -102,128 +106,57 @@ const CHANGELOG = `
 
 ## 1.8.12
 - FIX: Avada form entry counts now resolve internal submission form_id from fusion_form post ID
-- FIX: Layer 0 pre-lookup checks wp_postmeta and page content to map form_post_id → internal form_id
-- FIX: Resolves "Renew You" and other Avada forms showing drastically wrong entry counts
 
 ## 1.8.11
 - FIX: Prevents WordPress admin crash caused by memory exhaustion during Avada form content scanning
-- FIX: Auto-sync on admin_init now wrapped in try/catch so plugin errors never break the admin
-- FIX: Heavy Avada builder content scanning skipped during lightweight admin sync (only runs via REST API)
-- FIX: content_has_avada_form_reference no longer duplicates large strings 4x in memory
-
-## 1.8.10
-- FIX: Avada sync now forwards backend-known page mappings to the WordPress plugin so encoded builder embeds still reconcile correctly
-- FIX: Avada entry matching now checks all known page URL candidates, recovering missing Apyx Medical submissions after April 2
-
-## 1.8.9
-- FIX: Avada backfill now reads matching entry rows from ALL supported submission tables instead of only the first detected table
-- FIX: Prevents missing newer Avada entries on sites where submissions are split across multiple Avada tables
-
-## 1.8.8
-- FIX: Avada multi-table discovery now merges entries from ALL candidate tables instead of stopping at first match
-- FIX: Backfill REST handler variable scope error ($body undefined) that broke cursor/resume parameters
-- FIX: Avada forms (fusion_form post type) now included in historical backfill job queue
-
-## 1.8.7
-- FIX: Avada entry discovery scans fusion_form_submissions, fusion_form_db_entries, and fusion_form_submission_data
-- FIX: Deduplicates entries across multiple Avada tables to prevent double-counting
-
-## 1.8.6
-- FIX: Multi-table Avada scanning with wildcard table discovery
-- FIX: Backfill resume parameters properly forwarded
-
-## 1.8.5
-- FIX: Avada form sync improvements for sites with non-standard table naming
-
-## 1.8.4
-- FIX: Plugin activation no longer interferes with frontend form rendering
-- Zero live form hooks — strictly passive data extraction
-
-## 1.8.3
-- FIX: REST API permission callback hardened against unauthorized requests
-- IP-based rate limiting (10 req/min) via WordPress transients
-
-## 1.8.2
-- FIX: Batched extraction engine (100 entries/batch) with extended timeouts
-- Backend safety guard for large forms (>=1000 leads)
-
-## 1.8.1
-- FIX: First-install cron event for automatic form discovery and backfill
-
-## 1.8.0
-- Zero-interference mode: all frontend listeners and live form hooks removed
-- Data extraction via REST API only
-
-## 1.7.0
-- WooCommerce order tracking support
-- Broken link scanner improvements
-- SEO fix command relay
-
-## 1.6.2
-- Signal now reports full WP environment: active plugins, theme, available updates, WP/PHP versions
-- Powers the Plugins & WordPress monitoring tab with real data
-
-## 1.6.1
-- FIX: Replaces fire-and-forget chained backfill with synchronous loop — all entries across all pages guaranteed to process
-- FIX: Older historical entries (Jan/Feb) no longer silently dropped when chain breaks
-
-## 1.5.9
-- FIX: Backfill now uses blocking sends with response verification — entries are confirmed delivered before moving to the next batch
-- FIX: Failed sends are automatically queued for retry instead of being silently dropped
-- FIX: Smaller batch size (5) prevents PHP timeout during blocking sends
-
-## 1.5.8
-- FIX: Backfill chain no longer breaks mid-way — uses non-blocking sends and smaller batches (10/batch) so ALL forms get their entries imported
-- FIX: Forms like "Contact Us" that were skipped during backfill now process correctly
-
-## 1.5.7
-- FIX: Eliminates false "update available" notices after upgrading by clearing WordPress update caches post-upgrade
-- FIX: Update check endpoint no longer returns stale cached responses
-
-## 1.5.6
-- FIX: Historical Gravity Forms and WPForms backfill now runs in chained batches so large imports do not timeout mid-run
-- FIX: Continues replaying entries automatically until all historical form entries are imported
-
-## 1.5.5
-- FIX: Historical Gravity Forms backfill now dispatches asynchronously so large forms do not stall partway through
-- FIX: Prevents partial imports where WordPress has hundreds of entries but the app stops far short of parity
-
-## 1.5.4
-- FIX: Backfill now paginates through ALL entries (removed 500-entry cap that caused count mismatches)
-- FIX: Gravity Forms and WPForms backfill fetches entries in batches of 200 until exhausted
-
-## 1.5.3
-- FIX: Adds /backfill-entries REST route for historical Gravity Forms and WPForms sync
-- FIX: Improves entry backfill reliability for sites with forms discovered but no imported leads
-
-## 1.5.2
-- FIX: CTA click events now include target_href in payload for reliable href-based goal matching
-- FIX: Goal matching tolerates legacy events without href when text rules are present
-
-## 1.5.1
-- FIX: BOOK NOW / CTA link clicks now classify as cta_click when buttons are anchors or class-based CTAs
-- FIX: Event batching uses the same 30-second cadence as the production tracker
-- FIX: Event flush uses fetch transport for improved delivery reliability
-
-## 1.3.28
-- CRITICAL: Fixes missing Avada field data by adding wp_fusion_form_entries as a secondary data source
-
-## 1.3.25
-- EMERGENCY: Fixes PHP syntax error that crashed WordPress sites after updating to 1.3.24
-
-## 1.3.0
-- Active time-on-page tracking with focus-aware signals
-- Intent-based click tracking (CTAs, downloads, outbound links)
-- Form liveness monitoring
-
-## 1.2.0
-- Added self-hosted auto-update support
-
-## 1.1.0
-- Universal form capture (CF7, WPForms, Avada, Ninja, Fluent)
-- Retry queue for failed submissions
-- Pre-configured API key on download
 `;
+
+// ── C-4 FIX: Plugin update signing ─────────────────────────────────
+// We sign the (version, download_url, timestamp) tuple with HMAC-SHA256
+// using PLUGIN_RELEASE_SIGNING_SECRET. WordPress verifies this signature
+// before trusting the download URL. The signing secret is shipped baked
+// into the plugin source (compromise of one site DOES expose it, so this
+// is defense-in-depth — a real upgrade path would use Ed25519 with the
+// public key embedded in plugin source. HMAC is the maximum we can do
+// without shipping per-key code. See SECURITY_AUDIT.md for follow-up.).
+
+const SIGNING_ALG = "HMAC-SHA256";
+
+async function signUpdatePayload(
+  version: string,
+  downloadUrl: string,
+  issuedAt: string
+): Promise<{ signature: string; alg: string } | null> {
+  const secret = Deno.env.get("PLUGIN_RELEASE_SIGNING_SECRET");
+  if (!secret) return null;
+  const message = `${version}\n${downloadUrl}\n${issuedAt}`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  const hex = Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return { signature: hex, alg: SIGNING_ALG };
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function extractIp(req: Request): string | null {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+  return req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -235,7 +168,6 @@ Deno.serve(async (req) => {
     const action = url.searchParams.get("action");
     const latestVersion = await resolveLatestVersion(req);
 
-    // WordPress-style update check
     if (action === "check") {
       const currentVersion = url.searchParams.get("version") || "0.0.0";
       const domain = url.searchParams.get("domain") || "";
@@ -243,22 +175,45 @@ Deno.serve(async (req) => {
 
       const hasUpdate = compareVersions(latestVersion, currentVersion) > 0;
 
-      // Update the plugin_version on the site record
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(supabaseUrl, serviceKey, {
+        auth: { persistSession: false },
+      });
+
+      // Update plugin_version on the site record
       if (domain) {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const sb = createClient(supabaseUrl, serviceKey);
-
-        // Normalize domain (strip www.) to match how sites are stored
         const normalizedDomain = domain.replace(/^www\./i, "");
-
         await sb
           .from("sites")
           .update({ plugin_version: currentVersion })
           .eq("domain", normalizedDomain);
       }
 
-      const zipUrl = getZipUrl(req) + (domain ? `?domain=${encodeURIComponent(domain)}` : "");
+      const zipUrl =
+        getZipUrl(req) +
+        (domain ? `?domain=${encodeURIComponent(domain)}` : "");
+      const issuedAt = new Date().toISOString();
+      const sig = hasUpdate
+        ? await signUpdatePayload(latestVersion, zipUrl, issuedAt)
+        : null;
+
+      // Audit log (non-blocking)
+      try {
+        const ip = extractIp(req);
+        const ipHash = ip ? await sha256Hex(`actv-trkr-ip-salt:${ip}`) : null;
+        await sb.from("plugin_update_fetches").insert({
+          domain: domain || null,
+          current_version: currentVersion,
+          served_version: latestVersion,
+          signature_issued: !!sig,
+          signature_alg: sig?.alg || null,
+          ip_hash: ipHash,
+          user_agent: req.headers.get("user-agent")?.slice(0, 500) || null,
+        });
+      } catch {
+        // ignore audit failure
+      }
 
       return new Response(
         JSON.stringify({
@@ -270,17 +225,24 @@ Deno.serve(async (req) => {
           tested_wp: "6.7",
           requires_wp: "5.8",
           requires_php: "7.4",
+          // C-4: signed tuple — plugin must verify before trusting download_url
+          signature: sig?.signature || null,
+          signature_alg: sig?.alg || null,
+          signed_at: sig ? issuedAt : null,
           message: hasUpdate
             ? `Version ${latestVersion} is available. Click "Update Now" in your WordPress admin.`
             : "You are running the latest version.",
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-cache, no-store, must-revalidate" },
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
         }
       );
     }
 
-    // Info endpoint — returns full plugin metadata
     if (action === "info") {
       return new Response(
         JSON.stringify({
@@ -299,20 +261,27 @@ Deno.serve(async (req) => {
           },
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-cache, no-store, must-revalidate" },
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
         }
       );
     }
 
     return new Response(
       JSON.stringify({ error: "Invalid action. Use ?action=check or ?action=info" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
 
@@ -328,10 +297,6 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-function extractVersionFromContentDisposition(contentDisposition: string | null): string | null {
-  return contentDisposition?.match(/actv-trkr-([0-9.]+)\.zip/i)?.[1] ?? null;
-}
-
 function extractLatestVersionFromChangelog(changelog: string): string {
   const match = changelog.match(/##\s+([0-9]+\.[0-9]+\.[0-9]+)/);
   if (!match) {
@@ -341,8 +306,6 @@ function extractLatestVersionFromChangelog(changelog: string): string {
 }
 
 async function resolveLatestVersion(_req: Request): Promise<string> {
-  // Derive version from changelog so it stays in sync automatically.
-  // Falls back to the hardcoded constant if parsing fails.
   try {
     return extractLatestVersionFromChangelog(CHANGELOG);
   } catch {

@@ -73,14 +73,18 @@ Deno.serve(async (req) => {
         eventsLastHour = count ?? 0;
       } catch { /* non-fatal */ }
 
+      const hasRecentEvent = Boolean(lastEvent && lastEvent >= stalledCutoff);
+      const hasRecentSignal = Boolean(lastSignal && lastSignal >= stalledCutoff);
+
       let newStatus = "active";
 
-      // Determine new status. If the verifier just confirmed the tracker is
-      // still on the page, treat a quiet site as "active" (no traffic) rather
-      // than "stalled" (broken integration).
-      if (lastEvent && lastEvent < stalledCutoff && !trackerConfirmedPresent) {
+      // Treat fresh heartbeat traffic as proof that tracking is alive, even on
+      // quiet sites with no recent pageviews. Only mark stalled when both the
+      // event stream and the signal stream are stale and the verifier has not
+      // recently confirmed the tracker is present.
+      if (!hasRecentEvent && !hasRecentSignal && !trackerConfirmedPresent) {
         newStatus = "stalled";
-      } else if (lastSignal && lastSignal < degradedCutoff && lastEvent && lastEvent >= stalledCutoff) {
+      } else if (hasRecentEvent && lastSignal && lastSignal < degradedCutoff) {
         newStatus = "degraded";
       }
 

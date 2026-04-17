@@ -9,6 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-actvtrkr-key",
 };
 
+const SIGNAL_FRESH_MINUTES = 10;
+
 async function hashKey(key: string): Promise<string> {
   const data = new TextEncoder().encode(key);
   const hash = await crypto.subtle.digest("SHA-256", data);
@@ -49,7 +51,7 @@ Deno.serve(async (req) => {
 
     const { data: site } = await supabase
       .from("sites")
-      .select("id")
+      .select("id, last_heartbeat_at")
       .eq("org_id", ak.org_id)
       .eq("domain", domain)
       .maybeSingle();
@@ -65,17 +67,25 @@ Deno.serve(async (req) => {
       .eq("site_id", site.id)
       .maybeSingle();
 
-    const trackerStatus = sts?.tracker_status || "active";
+    const freshestHeartbeatAt = sts?.last_heartbeat_at || site.last_heartbeat_at || null;
+    const signalIsFresh = freshestHeartbeatAt
+      ? new Date(freshestHeartbeatAt).getTime() > Date.now() - SIGNAL_FRESH_MINUTES * 60_000
+      : false;
+    const trackerStatus = signalIsFresh && sts?.verifier_last_status !== "tracker_missing" && sts?.verifier_last_status !== "unreachable"
+      ? "active"
+      : (sts?.tracker_status || "active");
     const verifierStatus = sts?.verifier_last_status || null;
 
     // Banner trigger logic — STALLED only (or verifier-confirmed missing)
     const showBanner =
-      trackerStatus === "stalled" ||
+      (trackerStatus === "stalled" && !signalIsFresh) ||
       verifierStatus === "tracker_missing" ||
       verifierStatus === "unreachable";
 
     let message = "Tracking is healthy.";
-    if (trackerStatus === "stalled") {
+    if (signalIsFresh) {
+      message = "Tracking signal is healthy.";
+    } else if (trackerStatus === "stalled") {
       message = "No tracking events received from this site for over 10 minutes.";
     } else if (verifierStatus === "tracker_missing") {
       message = "Our hourly homepage check could not find the ACTV TRKR script.";
@@ -89,7 +99,7 @@ Deno.serve(async (req) => {
         tracker_status: trackerStatus,
         verifier_status: verifierStatus,
         last_event_at: sts?.last_event_at || null,
-        last_heartbeat_at: sts?.last_heartbeat_at || null,
+        last_heartbeat_at: freshestHeartbeatAt,
         message,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } }

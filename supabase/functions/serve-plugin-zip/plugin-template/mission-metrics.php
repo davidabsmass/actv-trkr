@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.9.10
+ * Version:     1.9.15
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.9.10' );
+define( 'MM_PLUGIN_VERSION', '1.9.15' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -30,6 +30,7 @@ require_once MM_PLUGIN_DIR . 'includes/class-seo-fixes.php';
 require_once MM_PLUGIN_DIR . 'includes/class-security.php';
 require_once MM_PLUGIN_DIR . 'includes/class-magic-login.php';
 require_once MM_PLUGIN_DIR . 'includes/class-consent-banner.php';
+require_once MM_PLUGIN_DIR . 'includes/class-recovery-banner.php';
 
 // WooCommerce integration (only load if WooCommerce is active)
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ), true ) ) {
@@ -88,6 +89,7 @@ $mm_security->init();
 MM_Magic_Login::init();
 MM_Import_Engine::init();
 MM_Consent_Banner::init();
+MM_Recovery_Banner::init();
 
 // Ensure crons are scheduled even after updates (activation hook only fires on first install).
 add_action( 'init', function () {

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAcquisitionData } from "./useAcquisitionData";
+import { BuyerViewProvider, BuyerViewToggle } from "./BuyerViewContext";
 import ExecutiveSummaryPage from "./ExecutiveSummaryPage";
 import RevenueQualityPage from "./RevenueQualityPage";
 import RetentionCohortsPage from "./RetentionCohortsPage";
@@ -30,10 +31,16 @@ export default function AcquisitionReadiness() {
   }
 
   return (
+    <BuyerViewProvider>
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Acquisition Readiness</CardTitle>
-        <p className="text-sm text-muted-foreground">A complete view of growth, retention, efficiency, risk, and diligence readiness.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg">Acquisition Readiness</CardTitle>
+            <p className="text-sm text-muted-foreground">A complete view of growth, retention, efficiency, risk, and diligence readiness.</p>
+          </div>
+          <BuyerViewToggle />
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="exec" className="w-full">
@@ -70,5 +77,6 @@ export default function AcquisitionReadiness() {
         </Tabs>
       </CardContent>
     </Card>
+    </BuyerViewProvider>
   );
 }

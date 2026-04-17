@@ -39,6 +39,7 @@ const Dpa = lazy(() => import("./pages/Dpa"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const ComplianceSetup = lazy(() => import("./pages/ComplianceSetup"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const DataRoomView = lazy(() => import("./pages/DataRoomView"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -159,6 +160,7 @@ const App = () => (
             <Route path="/dpa" element={<Dpa />} />
             <Route path="/cookie-policy" element={<CookiePolicy />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/data-room/:token" element={<DataRoomView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

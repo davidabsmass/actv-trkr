@@ -107,11 +107,26 @@ export default function RetentionDashboard() {
 
   const total = health.length;
   const atRisk = health.filter((h) => h.risk_level === "high" || h.risk_level === "critical").length;
-  const billing = health.filter((h) => h.billing_risk).length;
-  const cancel = health.filter((h) => h.cancellation_intent).length;
-  const setup = health.filter((h) => h.setup_risk).length;
-  const engagement = health.filter((h) => h.engagement_risk).length;
+  const billingCount = health.filter((h) => h.billing_risk).length;
+  const cancelCount = health.filter((h) => h.cancellation_intent).length;
+  const setupCount = health.filter((h) => h.setup_risk).length;
   const avgScore = total ? Math.round(health.reduce((s, h) => s + h.health_score, 0) / total) : 0;
+
+  // Billing recovery KPIs (last 30 days)
+  const since30 = Date.now() - 30 * 24 * 3600 * 1000;
+  const recentBilling = billing.filter((b) => new Date(b.occurred_at).getTime() >= since30);
+  const failed30 = recentBilling.filter((b) => b.event_type === "invoice_payment_failed").length;
+  const recovered30 = recentBilling.filter((b) => b.event_type === "payment_recovered" || b.event_type === "invoice_payment_succeeded").length;
+  const recoveryRate = failed30 > 0 ? Math.round((recovered30 / failed30) * 100) : null;
+  const unresolved = recentBilling.filter((b) => b.event_type === "invoice_payment_failed" && b.status !== "recovered").length;
+
+  // Cancellation analytics
+  const cf30 = cancellations.filter((c) => new Date(c.created_at).getTime() >= since30);
+  const cfReasons = cf30.reduce<Record<string, number>>((acc, c) => { acc[c.reason] = (acc[c.reason] || 0) + 1; return acc; }, {});
+  const cfOutcomes = cf30.reduce<Record<string, number>>((acc, c) => { acc[c.outcome] = (acc[c.outcome] || 0) + 1; return acc; }, {});
+  const saveRate = cf30.length > 0
+    ? Math.round((((cfOutcomes.saved || 0) + (cfOutcomes.paused || 0) + (cfOutcomes.downgraded || 0)) / cf30.length) * 100)
+    : null;
 
   if (loading) {
     return (
@@ -144,9 +159,9 @@ export default function RetentionDashboard() {
             <Kpi icon={Users} label="Total Accounts" value={String(total)} />
             <Kpi icon={Heart} label="Avg Health" value={`${avgScore}`} />
             <Kpi icon={AlertTriangle} label="At Risk" value={String(atRisk)} tone={atRisk > 0 ? "warn" : undefined} />
-            <Kpi icon={TrendingDown} label="Billing Risk" value={String(billing)} tone={billing > 0 ? "warn" : undefined} />
-            <Kpi icon={Activity} label="Setup Risk" value={String(setup)} />
-            <Kpi icon={Workflow} label="Cancel Intent" value={String(cancel)} tone={cancel > 0 ? "warn" : undefined} />
+            <Kpi icon={TrendingDown} label="Billing Risk" value={String(billingCount)} tone={billingCount > 0 ? "warn" : undefined} />
+            <Kpi icon={Activity} label="Setup Risk" value={String(setupCount)} />
+            <Kpi icon={Workflow} label="Cancel Intent" value={String(cancelCount)} tone={cancelCount > 0 ? "warn" : undefined} />
           </div>
           <Card>
             <CardHeader>

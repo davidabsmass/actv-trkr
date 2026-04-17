@@ -434,6 +434,7 @@ serve(async (req) => {
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = typeof invoice.customer === "string" ? invoice.customer : "";
+        const subscriptionId = typeof (invoice as any).subscription === "string" ? (invoice as any).subscription : null;
 
         await supabase
           .from("subscribers")
@@ -445,7 +446,86 @@ serve(async (req) => {
           error_message: `Invoice ${invoice.id} failed for customer ${customerId}`,
         });
 
+        // Log to retention billing recovery (resolves org via subscriber → profile → org_users)
+        try {
+          const { data: sub } = await supabase
+            .from("subscribers")
+            .select("id, email")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+          let orgId: string | null = null;
+          if (sub?.email) {
+            const { data: profile } = await supabase.from("profiles").select("user_id").ilike("email", sub.email).maybeSingle();
+            if (profile?.user_id) {
+              const { data: ou } = await supabase.from("org_users").select("org_id").eq("user_id", profile.user_id).maybeSingle();
+              orgId = ou?.org_id ?? null;
+            }
+          }
+          await supabase.from("billing_recovery_events").insert({
+            org_id: orgId,
+            customer_id: sub?.id ?? null,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            stripe_invoice_id: invoice.id,
+            event_type: "invoice_payment_failed",
+            status: "past_due",
+            amount: typeof invoice.amount_due === "number" ? invoice.amount_due / 100 : null,
+            currency: invoice.currency ?? null,
+            details: { hosted_invoice_url: (invoice as any).hosted_invoice_url ?? null, attempt_count: (invoice as any).attempt_count ?? null },
+            occurred_at: new Date().toISOString(),
+          });
+        } catch (recErr) {
+          logStep("billing_recovery_events insert failed", { error: String(recErr) });
+        }
+
         logStep("Payment failed recorded", { customerId });
+        break;
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : "";
+        const subscriptionId = typeof (invoice as any).subscription === "string" ? (invoice as any).subscription : null;
+
+        // Only log "recovered" if it follows a recent failure (otherwise it's just a normal renewal)
+        try {
+          const { data: sub } = await supabase
+            .from("subscribers")
+            .select("id, email, status")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+          const wasPastDue = sub?.status === "past_due";
+
+          // Reset status to active
+          await supabase.from("subscribers").update({ status: "active" }).eq("stripe_customer_id", customerId);
+
+          if (wasPastDue) {
+            let orgId: string | null = null;
+            if (sub?.email) {
+              const { data: profile } = await supabase.from("profiles").select("user_id").ilike("email", sub.email).maybeSingle();
+              if (profile?.user_id) {
+                const { data: ou } = await supabase.from("org_users").select("org_id").eq("user_id", profile.user_id).maybeSingle();
+                orgId = ou?.org_id ?? null;
+              }
+            }
+            await supabase.from("billing_recovery_events").insert({
+              org_id: orgId,
+              customer_id: sub?.id ?? null,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscriptionId,
+              stripe_invoice_id: invoice.id,
+              event_type: "payment_recovered",
+              status: "active",
+              amount: typeof invoice.amount_paid === "number" ? invoice.amount_paid / 100 : null,
+              currency: invoice.currency ?? null,
+              details: {},
+              occurred_at: new Date().toISOString(),
+            });
+            logStep("Payment recovered", { customerId });
+          }
+        } catch (recErr) {
+          logStep("payment_succeeded handling failed", { error: String(recErr) });
+        }
         break;
       }
 

@@ -103,3 +103,7 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.submit-feedback]
     verify_jwt = false
+  [functions.retention-flow-dispatcher]
+    verify_jwt = false
+  [functions.cancellation-feedback]
+    verify_jwt = true

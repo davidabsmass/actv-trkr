@@ -1,0 +1,29 @@
+/// <reference types="npm:@types/react@18.3.1" />
+import * as React from 'npm:react@18.3.1'
+import { Body, Button, Container, Head, Heading, Html, Preview, Section, Text } from 'npm:@react-email/components@0.0.22'
+import type { TemplateEntry } from './registry.ts'
+
+interface Props { account_name?: string; dashboard_url?: string }
+
+const Email = ({ account_name, dashboard_url }: Props) => (
+  <Html lang="en"><Head /><Preview>Your dashboard is waiting</Preview>
+    <Body style={{ background: '#0b0f17', fontFamily: 'system-ui, sans-serif', color: '#e6e8ee', margin: 0 }}>
+      <Container style={{ maxWidth: 560, margin: '0 auto', padding: 24 }}>
+        <Heading style={{ color: '#fff', fontSize: 22 }}>Your dashboard is waiting{account_name ? `, ${account_name}` : ''}</Heading>
+        <Text>We've been quietly tracking your visitors all week. Pop in for a 60-second look — there's already useful stuff to see.</Text>
+        <Section style={{ background: '#11151f', borderRadius: 8, padding: 16, margin: '16px 0' }}>
+          <Text style={{ margin: 0 }}>What's worth checking first:</Text>
+          <Text style={{ margin: '6px 0 0 0' }}>• Top sources &nbsp; • Best-converting pages &nbsp; • Form submissions</Text>
+        </Section>
+        <Button href={dashboard_url || 'https://actvtrkr.com/dashboard'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none' }}>Open dashboard</Button>
+      </Container>
+    </Body>
+  </Html>
+)
+
+export const template: TemplateEntry = {
+  component: Email,
+  subject: () => 'Your dashboard is waiting',
+  displayName: 'Retention · No second login',
+  previewData: { account_name: 'Acme Ortho', dashboard_url: 'https://actvtrkr.com/dashboard' },
+}

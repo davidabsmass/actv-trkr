@@ -106,6 +106,7 @@ export default function WebsiteSetup() {
           .eq("id", k.id);
       }
 
+      // Raw key — this is the secret. It's shown to the user ONCE and never persisted in plain text.
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
@@ -124,8 +125,12 @@ export default function WebsiteSetup() {
       });
       if (error) throw error;
 
+      setRevealedKey(rawKey);
+      setAcknowledged(false);
+      setKeyVisible(true);
+      setConfirmRegenerate(false);
       await queryClient.invalidateQueries({ queryKey: ["active_api_key_setup", orgId] });
-      toast.success("License key generated");
+      toast.success("License key generated — copy and save it now");
     } catch (e: any) {
       toast.error(e.message || "Could not generate key");
     } finally {
@@ -146,15 +151,25 @@ export default function WebsiteSetup() {
   };
 
   const handleCopyKey = async () => {
-    if (!apiKeyData?.key_hash) return;
+    if (!revealedKey) return;
     try {
-      await navigator.clipboard.writeText(apiKeyData.key_hash);
+      await navigator.clipboard.writeText(revealedKey);
       setCopied(true);
       toast.success("License key copied");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Could not copy. Please select and copy manually.");
     }
+  };
+
+  const handleDismissKey = () => {
+    if (!acknowledged) {
+      toast.error("Please confirm you've saved the key first");
+      return;
+    }
+    setRevealedKey(null);
+    setKeyVisible(true);
+    setCopied(false);
   };
 
   return (

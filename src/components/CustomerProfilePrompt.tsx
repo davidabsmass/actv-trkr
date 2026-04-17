@@ -193,9 +193,6 @@ export function CustomerProfilePrompt() {
               </Button>
             </div>
 
-            <p className="text-center text-[10px] text-muted-foreground/50 pb-3">
-              Takes less than 15 seconds
-            </p>
           </div>
         )}
       </DialogContent>

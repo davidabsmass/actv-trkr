@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const APP_URL = "https://actvtrkr.com";
-const ADMIN_RECIPIENTS = ["david@newuniformdesign.com"]; // Annie added later if desired
+const ADMIN_RECIPIENTS = ["david@absmass.com"]; // Annie added later if desired
 
 type EventKind = "created" | "admin_replied" | "customer_replied" | "status_changed" | "shipped";
 

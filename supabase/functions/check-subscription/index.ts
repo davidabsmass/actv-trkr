@@ -62,8 +62,17 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      productId = subscription.items.data[0].price.product;
+      const item = subscription.items.data[0];
+      // In newer Stripe API versions, current_period_end lives on the subscription item, not the subscription itself.
+      const periodEndUnix =
+        (item as any)?.current_period_end ??
+        (subscription as any)?.current_period_end ??
+        null;
+      subscriptionEnd =
+        typeof periodEndUnix === "number" && Number.isFinite(periodEndUnix)
+          ? new Date(periodEndUnix * 1000).toISOString()
+          : null;
+      productId = item?.price?.product ?? null;
       logStep("Active subscription found", { subscriptionEnd, productId });
     } else {
       logStep("No active subscription");

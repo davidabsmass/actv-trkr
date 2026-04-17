@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
 import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts';
+import { safeFetch } from '../_shared/ssrf-guard.ts';
+import { logSecurityEvent } from '../_shared/security-audit.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,13 +57,26 @@ serve(async (req) => {
 
     // For AI-generated values (title, meta desc), generate if not provided
     if (!finalValue && ["set_title", "set_meta_desc", "add_og_tags"].includes(fix_type)) {
-      // Fetch page to get context
+      // SSRF GUARD: only fetch page_url if it matches one of the org's connected sites.
+      // Resolves H-8 — without this, an authenticated user could probe internal/cloud-metadata IPs.
+      const { data: siteRows } = await supabase
+        .from("sites")
+        .select("domain, allowed_domains")
+        .eq("org_id", org_id);
+      const allowedHosts: string[] = [];
+      for (const s of siteRows ?? []) {
+        if (s.domain) allowedHosts.push(s.domain);
+        if (Array.isArray(s.allowed_domains)) allowedHosts.push(...s.allowed_domains);
+      }
+
       try {
-        const pageResp = await fetch(page_url, {
+        const pageResp = await safeFetch(page_url, {
           headers: { "User-Agent": "ACTV-TRKR-SEO/1.0" },
-          signal: AbortSignal.timeout(10000),
+          allowedHosts,
+          maxBytes: 256 * 1024,   // 256 KiB cap
+          timeoutMs: 10_000,
         });
-        const html = await pageResp.text();
+        const html = pageResp.body;
         const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/is);
         const h1Match = html.match(/<h1[^>]*>(.*?)<\/h1>/is);
         const pageTitle = titleMatch?.[1]?.trim() || "";

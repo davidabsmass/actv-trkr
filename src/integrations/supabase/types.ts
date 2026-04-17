@@ -916,6 +916,64 @@ export type Database = {
           },
         ]
       }
+      credential_rotation_events: {
+        Row: {
+          actor_type: string
+          actor_user_id: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          org_id: string | null
+          site_credential_id: string | null
+          site_id: string | null
+        }
+        Insert: {
+          actor_type?: string
+          actor_user_id?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          org_id?: string | null
+          site_credential_id?: string | null
+          site_id?: string | null
+        }
+        Update: {
+          actor_type?: string
+          actor_user_id?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          org_id?: string | null
+          site_credential_id?: string | null
+          site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_rotation_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credential_rotation_events_site_credential_id_fkey"
+            columns: ["site_credential_id"]
+            isOneToOne: false
+            referencedRelation: "site_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credential_rotation_events_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_contracts: {
         Row: {
           acv: number | null
@@ -3767,6 +3825,27 @@ export type Database = {
           },
         ]
       }
+      processed_stripe_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          processed_at: string
+          summary: Json
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          processed_at?: string
+          summary?: Json
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          processed_at?: string
+          summary?: Json
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address_line1: string | null
@@ -3878,6 +3957,33 @@ export type Database = {
           period_start?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      release_gate_checks: {
+        Row: {
+          check_name: string
+          created_at: string
+          details: Json
+          id: string
+          release_ref: string
+          status: string
+        }
+        Insert: {
+          check_name: string
+          created_at?: string
+          details?: Json
+          id?: string
+          release_ref: string
+          status: string
+        }
+        Update: {
+          check_name?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          release_ref?: string
+          status?: string
         }
         Relationships: []
       }
@@ -4637,6 +4743,135 @@ export type Database = {
           },
         ]
       }
+      security_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          id: string
+          metadata: Json
+          org_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          site_id: string | null
+          status: string
+          summary: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          org_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          site_id?: string | null
+          status?: string
+          summary: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          org_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          site_id?: string | null
+          status?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_alerts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_alerts_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_audit_log: {
+        Row: {
+          actor_type: string
+          created_at: string
+          event_type: string
+          id: string
+          ip_hash: string | null
+          message: string | null
+          metadata: Json
+          org_id: string | null
+          request_id: string | null
+          severity: string
+          site_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          actor_type?: string
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_hash?: string | null
+          message?: string | null
+          metadata?: Json
+          org_id?: string | null
+          request_id?: string | null
+          severity?: string
+          site_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          actor_type?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_hash?: string | null
+          message?: string | null
+          metadata?: Json
+          org_id?: string | null
+          request_id?: string | null
+          severity?: string
+          site_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_audit_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_audit_log_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_events: {
         Row: {
           created_at: string
@@ -4952,6 +5187,72 @@ export type Database = {
           },
           {
             foreignKeyName: "sessions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_credentials: {
+        Row: {
+          credential_type: string
+          expires_at: string | null
+          fingerprint_sha256: string
+          id: string
+          issued_at: string
+          last_used_at: string | null
+          last_used_ip_hash: string | null
+          metadata: Json
+          org_id: string
+          revoked_at: string | null
+          revoked_reason: string | null
+          secret_hash: string
+          site_id: string
+          status: string
+        }
+        Insert: {
+          credential_type?: string
+          expires_at?: string | null
+          fingerprint_sha256: string
+          id?: string
+          issued_at?: string
+          last_used_at?: string | null
+          last_used_ip_hash?: string | null
+          metadata?: Json
+          org_id: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          secret_hash: string
+          site_id: string
+          status?: string
+        }
+        Update: {
+          credential_type?: string
+          expires_at?: string | null
+          fingerprint_sha256?: string
+          id?: string
+          issued_at?: string
+          last_used_at?: string | null
+          last_used_ip_hash?: string | null
+          metadata?: Json
+          org_id?: string
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          secret_hash?: string
+          site_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_credentials_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_credentials_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
@@ -6348,6 +6649,39 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_verification_log: {
+        Row: {
+          event_id: string | null
+          failure_reason: string | null
+          id: string
+          metadata: Json
+          occurred_at: string
+          provider: string
+          request_id: string | null
+          verification_status: string
+        }
+        Insert: {
+          event_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          provider: string
+          request_id?: string | null
+          verification_status: string
+        }
+        Update: {
+          event_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          provider?: string
+          request_id?: string | null
+          verification_status?: string
+        }
+        Relationships: []
+      }
       weekly_summaries: {
         Row: {
           conversion_anomalies: Json | null
@@ -6591,6 +6925,22 @@ export type Database = {
         Returns: undefined
       }
       is_org_member: { Args: { _org_id: string }; Returns: boolean }
+      log_security_event: {
+        Args: {
+          p_actor_type?: string
+          p_event_type: string
+          p_ip_hash?: string
+          p_message?: string
+          p_metadata?: Json
+          p_org_id?: string
+          p_request_id?: string
+          p_severity?: string
+          p_site_id?: string
+          p_user_agent?: string
+          p_user_id?: string
+        }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string

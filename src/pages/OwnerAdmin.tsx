@@ -212,6 +212,9 @@ export default function OwnerAdmin() {
       {/* Retention */}
       <RetentionDashboard />
 
+      {/* Acquisition Readiness */}
+      <AcquisitionReadiness />
+
       {/* Support Inbox */}
       <SupportInbox />
 

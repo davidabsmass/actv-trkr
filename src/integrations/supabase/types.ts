@@ -14,6 +14,166 @@ export type Database = {
   }
   public: {
     Tables: {
+      acquisition_contract_flags: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          customer_id: string
+          description: string | null
+          flag_type: string
+          id: string
+          resolved: boolean
+          severity: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          customer_id: string
+          description?: string | null
+          flag_type: string
+          id?: string
+          resolved?: boolean
+          severity?: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          customer_id?: string
+          description?: string | null
+          flag_type?: string
+          id?: string
+          resolved?: boolean
+          severity?: string
+        }
+        Relationships: []
+      }
+      acquisition_metric_snapshots: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          id: string
+          metric_date: string
+          metric_key: string
+          metric_name: string
+          metric_value: number | null
+          notes: string | null
+          org_id: string | null
+          plan: string | null
+          segment: string | null
+          site_id: string | null
+          source_system: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          metric_date: string
+          metric_key: string
+          metric_name: string
+          metric_value?: number | null
+          notes?: string | null
+          org_id?: string | null
+          plan?: string | null
+          segment?: string | null
+          site_id?: string | null
+          source_system?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          metric_date?: string
+          metric_key?: string
+          metric_name?: string
+          metric_value?: number | null
+          notes?: string | null
+          org_id?: string | null
+          plan?: string | null
+          segment?: string | null
+          site_id?: string | null
+          source_system?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_metric_snapshots_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_risk_flags: {
+        Row: {
+          auto_generated: boolean
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          linked_customer_id: string | null
+          linked_org_id: string | null
+          linked_site_id: string | null
+          linked_ticket_id: string | null
+          linked_vendor_id: string | null
+          mitigation_plan: string | null
+          owner_user_id: string | null
+          resolved_at: string | null
+          risk_type: string
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          auto_generated?: boolean
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_customer_id?: string | null
+          linked_org_id?: string | null
+          linked_site_id?: string | null
+          linked_ticket_id?: string | null
+          linked_vendor_id?: string | null
+          mitigation_plan?: string | null
+          owner_user_id?: string | null
+          resolved_at?: string | null
+          risk_type: string
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          auto_generated?: boolean
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_customer_id?: string | null
+          linked_org_id?: string | null
+          linked_site_id?: string | null
+          linked_ticket_id?: string | null
+          linked_vendor_id?: string | null
+          mitigation_plan?: string | null
+          owner_user_id?: string | null
+          resolved_at?: string | null
+          risk_type?: string
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_risk_flags_linked_org_id_fkey"
+            columns: ["linked_org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_spend: {
         Row: {
           created_at: string
@@ -625,6 +785,124 @@ export type Database = {
           },
         ]
       }
+      customer_contracts: {
+        Row: {
+          acv: number | null
+          auto_renew: boolean | null
+          billing_frequency: string | null
+          contract_end: string | null
+          contract_start: string | null
+          created_at: string
+          custom_terms: string | null
+          customer_id: string
+          customer_name: string
+          geography: string | null
+          id: string
+          industry: string | null
+          mrr: number | null
+          notes: string | null
+          org_id: string | null
+          plan: string | null
+          updated_at: string
+        }
+        Insert: {
+          acv?: number | null
+          auto_renew?: boolean | null
+          billing_frequency?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          created_at?: string
+          custom_terms?: string | null
+          customer_id: string
+          customer_name: string
+          geography?: string | null
+          id?: string
+          industry?: string | null
+          mrr?: number | null
+          notes?: string | null
+          org_id?: string | null
+          plan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acv?: number | null
+          auto_renew?: boolean | null
+          billing_frequency?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          created_at?: string
+          custom_terms?: string | null
+          customer_id?: string
+          customer_name?: string
+          geography?: string | null
+          id?: string
+          industry?: string | null
+          mrr?: number | null
+          notes?: string | null
+          org_id?: string | null
+          plan?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_contracts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_health_snapshots: {
+        Row: {
+          arr: number | null
+          created_at: string
+          customer_id: string
+          expansion_potential: string | null
+          health_score: number | null
+          id: string
+          org_id: string | null
+          renewal_risk: string | null
+          snapshot_date: string
+          support_score: number | null
+          usage_score: number | null
+        }
+        Insert: {
+          arr?: number | null
+          created_at?: string
+          customer_id: string
+          expansion_potential?: string | null
+          health_score?: number | null
+          id?: string
+          org_id?: string | null
+          renewal_risk?: string | null
+          snapshot_date: string
+          support_score?: number | null
+          usage_score?: number | null
+        }
+        Update: {
+          arr?: number | null
+          created_at?: string
+          customer_id?: string
+          expansion_potential?: string | null
+          health_score?: number | null
+          id?: string
+          org_id?: string | null
+          renewal_risk?: string | null
+          snapshot_date?: string
+          support_score?: number | null
+          usage_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_health_snapshots_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_profiles: {
         Row: {
           acquisition_source: string | null
@@ -737,6 +1015,45 @@ export type Database = {
           executed_at?: string
           id?: string
           org_id?: string
+        }
+        Relationships: []
+      }
+      diligence_checklist_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_name: string
+          linked_document_url: string | null
+          notes: string | null
+          owner_user_id: string | null
+          readiness_status: string
+          section_key: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_name: string
+          linked_document_url?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          readiness_status?: string
+          section_key: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_name?: string
+          linked_document_url?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          readiness_status?: string
+          section_key?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1186,6 +1503,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      finance_monthly: {
+        Row: {
+          cash_balance: number | null
+          cogs_ai: number | null
+          cogs_hosting: number | null
+          cogs_other: number | null
+          cogs_support: number | null
+          created_at: string
+          headcount: number | null
+          id: string
+          month: string
+          notes: string | null
+          opex_ga: number | null
+          opex_rd: number | null
+          opex_sm: number | null
+          revenue: number | null
+          updated_at: string
+        }
+        Insert: {
+          cash_balance?: number | null
+          cogs_ai?: number | null
+          cogs_hosting?: number | null
+          cogs_other?: number | null
+          cogs_support?: number | null
+          created_at?: string
+          headcount?: number | null
+          id?: string
+          month: string
+          notes?: string | null
+          opex_ga?: number | null
+          opex_rd?: number | null
+          opex_sm?: number | null
+          revenue?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cash_balance?: number | null
+          cogs_ai?: number | null
+          cogs_hosting?: number | null
+          cogs_other?: number | null
+          cogs_support?: number | null
+          created_at?: string
+          headcount?: number | null
+          id?: string
+          month?: string
+          notes?: string | null
+          opex_ga?: number | null
+          opex_rd?: number | null
+          opex_sm?: number | null
+          revenue?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       form_entries: {
         Row: {
@@ -2190,6 +2561,51 @@ export type Database = {
         }
         Relationships: []
       }
+      metric_definitions: {
+        Row: {
+          category: string
+          caveats: string | null
+          created_at: string
+          description: string | null
+          formula: string | null
+          id: string
+          metric_key: string
+          metric_name: string
+          owner_user_id: string | null
+          source_systems: string | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          caveats?: string | null
+          created_at?: string
+          description?: string | null
+          formula?: string | null
+          id?: string
+          metric_key: string
+          metric_name: string
+          owner_user_id?: string | null
+          source_systems?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          caveats?: string | null
+          created_at?: string
+          description?: string | null
+          formula?: string | null
+          id?: string
+          metric_key?: string
+          metric_name?: string
+          owner_user_id?: string | null
+          source_systems?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monitoring_alerts: {
         Row: {
           alert_type: string
@@ -2474,6 +2890,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      operational_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          id: string
+          linked_url: string | null
+          notes: string | null
+          owner_user_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          id?: string
+          linked_url?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          id?: string
+          linked_url?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -2828,6 +3280,48 @@ export type Database = {
           request_count?: number
           user_id?: string
           window_start?: string
+        }
+        Relationships: []
+      }
+      reconciliation_status: {
+        Row: {
+          created_at: string
+          discrepancy_amount: number | null
+          id: string
+          last_reconciled_at: string | null
+          metric_key: string
+          notes: string | null
+          owner_user_id: string | null
+          period_end: string | null
+          period_start: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discrepancy_amount?: number | null
+          id?: string
+          last_reconciled_at?: string | null
+          metric_key: string
+          notes?: string | null
+          owner_user_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discrepancy_amount?: number | null
+          id?: string
+          last_reconciled_at?: string | null
+          metric_key?: string
+          notes?: string | null
+          owner_user_id?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3640,6 +4134,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_incidents: {
+        Row: {
+          created_at: string
+          id: string
+          identified_at: string
+          owner_user_id: string | null
+          remediation_notes: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          identified_at?: string
+          owner_user_id?: string | null
+          remediation_notes?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identified_at?: string
+          owner_user_id?: string | null
+          remediation_notes?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       seo_fix_history: {
         Row: {
@@ -5009,6 +5545,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vendor_risk_registry: {
+        Row: {
+          backup_plan: string | null
+          category: string | null
+          contract_renewal_date: string | null
+          contract_status: string | null
+          created_at: string
+          criticality: string | null
+          dependency_notes: string | null
+          id: string
+          monthly_cost: number | null
+          risk_level: string | null
+          updated_at: string
+          vendor_name: string
+        }
+        Insert: {
+          backup_plan?: string | null
+          category?: string | null
+          contract_renewal_date?: string | null
+          contract_status?: string | null
+          created_at?: string
+          criticality?: string | null
+          dependency_notes?: string | null
+          id?: string
+          monthly_cost?: number | null
+          risk_level?: string | null
+          updated_at?: string
+          vendor_name: string
+        }
+        Update: {
+          backup_plan?: string | null
+          category?: string | null
+          contract_renewal_date?: string | null
+          contract_status?: string | null
+          created_at?: string
+          criticality?: string | null
+          dependency_notes?: string | null
+          id?: string
+          monthly_cost?: number | null
+          risk_level?: string | null
+          updated_at?: string
+          vendor_name?: string
+        }
+        Relationships: []
       }
       weekly_summaries: {
         Row: {

@@ -56,14 +56,14 @@ export default function CheckoutSuccess() {
               <ArrowRight className="h-4 w-4 text-primary" />
               What happens next
             </h3>
-            <ol className="text-sm text-white/60 space-y-2 list-decimal list-inside">
+            <ol className="text-sm text-white/90 space-y-2 list-decimal list-inside">
               <li>Check your email for a message from ACTV TRKR</li>
               <li>Click the link to set your password</li>
               <li>You'll be taken straight to setup instructions</li>
             </ol>
           </div>
 
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-white/70">
             Don't see the email? Check your spam folder. It may take a minute to arrive.
           </p>
 

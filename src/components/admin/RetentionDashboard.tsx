@@ -233,6 +233,128 @@ export default function RetentionDashboard() {
           </Card>
         </TabsContent>
 
+        {/* BILLING RECOVERY */}
+        <TabsContent value="billing" className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Kpi icon={CreditCard} label="Failed (30d)" value={String(failed30)} tone={failed30 > 0 ? "warn" : undefined} />
+            <Kpi icon={Heart} label="Recovered (30d)" value={String(recovered30)} />
+            <Kpi icon={Activity} label="Recovery Rate" value={recoveryRate === null ? "—" : `${recoveryRate}%`} />
+            <Kpi icon={AlertTriangle} label="Unresolved" value={String(unresolved)} tone={unresolved > 0 ? "warn" : undefined} />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recent billing events</CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Invoice</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {billing.slice(0, 50).map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell className="text-xs">{new Date(b.occurred_at).toLocaleString()}</TableCell>
+                      <TableCell className="font-medium text-xs">{b.org_id ? (orgs[b.org_id] || b.org_id.slice(0, 8)) : "—"}</TableCell>
+                      <TableCell className="text-xs"><Badge variant={b.event_type === "invoice_payment_failed" ? "destructive" : "secondary"}>{b.event_type.replace(/_/g, " ")}</Badge></TableCell>
+                      <TableCell className="text-xs">{b.status || "—"}</TableCell>
+                      <TableCell className="text-xs font-mono">{b.amount != null ? `${(b.amount / 100).toFixed(2)} ${(b.currency || "").toUpperCase()}` : "—"}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{b.stripe_invoice_id?.slice(0, 14) || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {billing.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No billing events recorded yet.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* CANCELLATIONS */}
+        <TabsContent value="cancellations" className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Kpi icon={XCircle} label="Cancellations (30d)" value={String(cf30.length)} />
+            <Kpi icon={Heart} label="Save Rate" value={saveRate === null ? "—" : `${saveRate}%`} />
+            <Kpi icon={Activity} label="Paused" value={String(cfOutcomes.paused || 0)} />
+            <Kpi icon={Workflow} label="Downgraded" value={String(cfOutcomes.downgraded || 0)} />
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader><CardTitle className="text-base">Reasons (30d)</CardTitle></CardHeader>
+              <CardContent>
+                {Object.keys(cfReasons).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No cancellation feedback yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {Object.entries(cfReasons).sort((a, b) => b[1] - a[1]).map(([reason, count]) => (
+                      <li key={reason} className="flex items-center justify-between text-sm">
+                        <span className="capitalize">{reason.replace(/_/g, " ")}</span>
+                        <Badge variant="outline">{count}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Outcomes (30d)</CardTitle></CardHeader>
+              <CardContent>
+                {Object.keys(cfOutcomes).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">—</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {Object.entries(cfOutcomes).sort((a, b) => b[1] - a[1]).map(([outcome, count]) => (
+                      <li key={outcome} className="flex items-center justify-between text-sm">
+                        <span className="capitalize">{outcome}</span>
+                        <Badge variant={outcome === "canceled" ? "destructive" : outcome === "saved" || outcome === "paused" || outcome === "downgraded" ? "secondary" : "outline"}>{count}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Recent cancellations</CardTitle></CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Offer</TableHead>
+                    <TableHead>Outcome</TableHead>
+                    <TableHead>Detail</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cancellations.slice(0, 50).map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="text-xs">{new Date(c.created_at).toLocaleString()}</TableCell>
+                      <TableCell className="font-medium text-xs">{orgs[c.org_id] || c.org_id.slice(0, 8)}</TableCell>
+                      <TableCell className="text-xs capitalize">{c.reason.replace(/_/g, " ")}</TableCell>
+                      <TableCell className="text-xs">{c.selected_offer || "—"}</TableCell>
+                      <TableCell className="text-xs"><Badge variant={c.outcome === "canceled" ? "destructive" : "secondary"}>{c.outcome}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[280px] truncate">{c.reason_detail || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {cancellations.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No cancellation feedback recorded yet.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* FLOWS */}
         <TabsContent value="flows">
           <Card>

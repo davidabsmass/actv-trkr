@@ -6,8 +6,30 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, AlertTriangle, Heart, TrendingDown, Users, Workflow } from "lucide-react";
+import { Activity, AlertTriangle, CreditCard, Heart, TrendingDown, Users, Workflow, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
+type BillingEvent = {
+  id: string;
+  org_id: string | null;
+  event_type: string;
+  status: string | null;
+  amount: number | null;
+  currency: string | null;
+  occurred_at: string;
+  stripe_invoice_id: string | null;
+  stripe_subscription_id: string | null;
+};
+
+type Cancellation = {
+  id: string;
+  org_id: string;
+  reason: string;
+  reason_detail: string | null;
+  selected_offer: string | null;
+  outcome: string;
+  created_at: string;
+};
 
 type Health = {
   org_id: string;
@@ -46,6 +68,8 @@ export default function RetentionDashboard() {
   const [health, setHealth] = useState<Health[]>([]);
   const [orgs, setOrgs] = useState<Record<string, string>>({});
   const [flows, setFlows] = useState<Flow[]>([]);
+  const [billing, setBilling] = useState<BillingEvent[]>([]);
+  const [cancellations, setCancellations] = useState<Cancellation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,14 +78,18 @@ export default function RetentionDashboard() {
 
   const load = async () => {
     setLoading(true);
-    const [hRes, oRes, fRes] = await Promise.all([
+    const [hRes, oRes, fRes, bRes, cRes] = await Promise.all([
       supabase.from("retention_account_health").select("*").order("health_score", { ascending: true }),
       supabase.from("orgs").select("id, name"),
       supabase.from("retention_flows").select("*").order("name"),
+      supabase.from("billing_recovery_events").select("*").order("occurred_at", { ascending: false }).limit(200),
+      supabase.from("cancellation_feedback").select("*").order("created_at", { ascending: false }).limit(200),
     ]);
     if (hRes.data) setHealth(hRes.data as any);
     if (oRes.data) setOrgs(Object.fromEntries((oRes.data as OrgRow[]).map((o) => [o.id, o.name])));
     if (fRes.data) setFlows(fRes.data as any);
+    if (bRes.data) setBilling(bRes.data as any);
+    if (cRes.data) setCancellations(cRes.data as any);
     setLoading(false);
   };
 

@@ -210,19 +210,87 @@ class MM_Settings {
 			wp_send_json_error( 'Unauthorized' );
 		}
 
-		$opts     = self::get();
-		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/track-pageview';
-		$response = wp_remote_post( $endpoint, array(
+		$opts      = self::get();
+		$api_key   = trim( $opts['api_key'] ?? '' );
+		$base_url  = rtrim( $opts['endpoint_url'] ?? '', '/' );
+		$domain    = preg_replace( '/^www\./i', '', (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+
+		if ( empty( $api_key ) || empty( $base_url ) || empty( $domain ) ) {
+			wp_send_json_error( 'Missing API key, endpoint URL, or site domain.' );
+		}
+
+		$heartbeat_response = wp_remote_post( $base_url . '/ingest-heartbeat', array(
 			'timeout' => 10,
 			'headers' => array(
-				'Content-Type'  => 'application/json',
-				'Authorization' => 'Bearer ' . $opts['api_key'],
+				'Content-Type'   => 'application/json',
+				'x-actvtrkr-key' => $api_key,
 			),
 			'body' => wp_json_encode( array(
-				'source' => array( 'domain' => wp_parse_url( home_url(), PHP_URL_HOST ), 'type' => 'wordpress', 'plugin_version' => MM_PLUGIN_VERSION ),
-				'event'  => array( 'page_url' => home_url(), 'event_id' => 'test_' . wp_generate_uuid4(), 'session_id' => 'test', 'title' => 'Connection Test' ),
+				'domain'         => $domain,
+				'source'         => 'wp_connection_test',
+				'plugin_version' => MM_PLUGIN_VERSION,
+				'meta'           => array( 'connection_test' => true ),
+			) ),
+		) );
+
+		if ( is_wp_error( $heartbeat_response ) ) {
+			wp_send_json_error( 'Signal check failed: ' . $heartbeat_response->get_error_message() );
+		}
+
+		$heartbeat_code = wp_remote_retrieve_response_code( $heartbeat_response );
+		if ( $heartbeat_code < 200 || $heartbeat_code >= 300 ) {
+			wp_send_json_error( 'Signal check failed (HTTP ' . $heartbeat_code . '): ' . wp_remote_retrieve_body( $heartbeat_response ) );
+		}
+
+		$token_response = wp_remote_post( $base_url . '/issue-site-ingest-token', array(
+			'timeout' => 10,
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'X-Api-Key'    => $api_key,
+			),
+			'body' => wp_json_encode( array( 'domain' => $domain ) ),
+		) );
+
+		if ( is_wp_error( $token_response ) ) {
+			wp_send_json_error( 'Token mint failed: ' . $token_response->get_error_message() );
+		}
+
+		$token_code = wp_remote_retrieve_response_code( $token_response );
+		if ( $token_code < 200 || $token_code >= 300 ) {
+			wp_send_json_error( 'Token mint failed (HTTP ' . $token_code . '): ' . wp_remote_retrieve_body( $token_response ) );
+		}
+
+		$token_body = json_decode( wp_remote_retrieve_body( $token_response ), true );
+		$ingest_token = is_array( $token_body ) ? preg_replace( '/[^a-f0-9]/i', '', (string) ( $token_body['ingest_token'] ?? '' ) ) : '';
+
+		if ( empty( $ingest_token ) || strlen( $ingest_token ) < 32 ) {
+			wp_send_json_error( 'Token mint succeeded but returned an invalid ingest token.' );
+		}
+
+		update_option( 'mm_ingest_token', array(
+			'token'     => $ingest_token,
+			'domain'    => $domain,
+			'site_id'   => isset( $token_body['site_id'] ) ? (string) $token_body['site_id'] : '',
+			'minted_at' => time(),
+		), false );
+
+		$response = wp_remote_post( $base_url . '/track-pageview', array(
+			'timeout' => 10,
+			'headers' => array(
+				'Content-Type'   => 'application/json',
+				'X-Ingest-Token' => $ingest_token,
+			),
+			'body' => wp_json_encode( array(
+				'source' => array( 'domain' => $domain, 'type' => 'wordpress', 'plugin_version' => MM_PLUGIN_VERSION ),
+				'event'  => array(
+					'page_url'   => home_url(),
+					'page_path'  => '/',
+					'event_id'   => 'test_' . wp_generate_uuid4(),
+					'session_id' => 'test_' . wp_generate_uuid4(),
+					'title'      => 'Connection Test',
+				),
 				'attribution' => new stdClass(),
-				'visitor' => array( 'visitor_id' => 'test' ),
+				'visitor'     => array( 'visitor_id' => 'test_' . wp_generate_uuid4() ),
 			) ),
 		) );
 
@@ -232,7 +300,8 @@ class MM_Settings {
 
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( $code >= 200 && $code < 300 ) {
-			wp_send_json_success();
+			delete_transient( 'mm_recovery_status' );
+			wp_send_json_success( array( 'message' => 'Connected and tracker token refreshed.' ) );
 		} else {
 			wp_send_json_error( 'HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
 		}

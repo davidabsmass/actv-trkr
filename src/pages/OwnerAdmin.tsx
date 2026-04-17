@@ -8,6 +8,7 @@ import { ArrowUpDown, TrendingUp, Users, DollarSign, AlertTriangle, BarChart3 } 
 import { Button } from "@/components/ui/button";
 import SupportInbox from "@/components/admin/SupportInbox";
 import RetentionDashboard from "@/components/admin/RetentionDashboard";
+import AcquisitionReadiness from "@/components/admin/acquisition/AcquisitionReadiness";
 
 type Subscriber = {
   id: string;

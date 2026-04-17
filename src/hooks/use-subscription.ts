@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 export interface SubscriptionState {
   subscribed: boolean;
   billingExempt: boolean;
+  subscriptionStatus: string | null;
+  shouldForceLogout: boolean;
   productId: string | null;
   subscriptionEnd: string | null;
   isLoading: boolean;
@@ -17,7 +19,13 @@ export function useSubscription(userId?: string | null): SubscriptionState {
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
-      return data as { subscribed: boolean; product_id: string | null; subscription_end: string | null };
+      return data as {
+        subscribed: boolean;
+        product_id: string | null;
+        subscription_end: string | null;
+        subscription_status?: string | null;
+        should_force_logout?: boolean;
+      };
     },
     enabled: isAuthenticated,
     refetchInterval: 60_000,
@@ -44,6 +52,8 @@ export function useSubscription(userId?: string | null): SubscriptionState {
   return {
     subscribed: data?.subscribed ?? false,
     billingExempt,
+    subscriptionStatus: data?.subscription_status ?? null,
+    shouldForceLogout: data?.should_force_logout === true,
     productId: data?.product_id ?? null,
     subscriptionEnd: data?.subscription_end ?? null,
     isLoading: isAuthenticated && (subscriptionLoading || exemptLoading),

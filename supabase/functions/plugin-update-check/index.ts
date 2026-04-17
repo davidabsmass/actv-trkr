@@ -11,9 +11,15 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.17";
+const CURRENT_PLUGIN_VERSION = "1.9.18";
 
 const CHANGELOG = `
+## 1.9.18
+- FIX: Plugin ZIP now ships with the correct main file name so WordPress updates no longer break wp-admin
+- FIX: Dashboard downloads now inject the real API key you copied, not its stored hash
+- FIX: Prevents canceled customers from bouncing between protected pages by forcing a clean logout to the login screen
+- FIX: Tracking health no longer flags no-traffic sites as stalled when the verifier confirms the tracker is still installed
+
 ## 1.9.16
 - SECURITY: Magic-login tokens now bound to dashboard requestor (atomic single-use, server-verified)
 - SECURITY: Plugin update payloads now signed (HMAC-SHA256) and verified on install

@@ -91,7 +91,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-actvtrkr-api-key",
   "Access-Control-Expose-Headers": "content-disposition, x-plugin-version",
 };
 
@@ -112,9 +112,10 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const domain = url.searchParams.get("domain") || "";
 
-    // Look up the site's API key so we can bake it into the plugin
-    let apiKey = "";
-    if (domain) {
+    // Prefer the raw API key passed from the dashboard download flow.
+    // Never inject a stored key hash into the plugin package.
+    let apiKey = (req.headers.get("x-actvtrkr-api-key") || "").trim();
+    if (!apiKey && domain) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const sb = createClient(supabaseUrl, serviceKey);
@@ -126,18 +127,8 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (site?.org_id) {
-        const { data: keyRow } = await sb
-          .from("api_keys")
-          .select("key_hash")
-          .eq("org_id", site.org_id)
-          .is("revoked_at", null)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (keyRow?.key_hash) {
-          apiKey = keyRow.key_hash;
-        }
+        // Domain validation only; existing installs keep their saved credential.
+        apiKey = "";
       }
     }
 

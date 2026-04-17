@@ -37,11 +37,37 @@ serve(async (req) => {
     logStep("User authenticated", { email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const { data: memberships } = await supabaseClient
+      .from("org_users")
+      .select("org_id")
+      .eq("user_id", user.id);
+
+    const orgIds = (memberships ?? []).map((row) => row.org_id);
+    const { data: subscriptionRows } = orgIds.length
+      ? await supabaseClient
+          .from("subscription_status")
+          .select("status")
+          .in("org_id", orgIds)
+      : { data: [] as Array<{ status: string }> };
+
+    const { data: subscriberRows } = await supabaseClient
+      .from("subscribers")
+      .select("status")
+      .ilike("email", user.email);
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+
+    const derivedStatus = [
+      ...(subscriptionRows ?? []).map((row) => row.status),
+      ...(subscriberRows ?? []).map((row) => row.status),
+    ].find((status) => ["cancelled", "canceled", "churned", "past_due"].includes(String(status).toLowerCase())) ?? null;
 
     if (customers.data.length === 0) {
       logStep("No customer found");
-      return new Response(JSON.stringify({ subscribed: false }), {
+      return new Response(JSON.stringify({
+        subscribed: false,
+        subscription_status: derivedStatus,
+        should_force_logout: ["cancelled", "canceled", "churned"].includes(String(derivedStatus).toLowerCase()),
+      }), {
         headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         status: 200,
       });
@@ -78,10 +104,14 @@ serve(async (req) => {
       logStep("No active subscription");
     }
 
+    const subscriptionStatus = hasActiveSub ? "active" : derivedStatus;
+
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       product_id: productId,
       subscription_end: subscriptionEnd,
+      subscription_status: subscriptionStatus,
+      should_force_logout: !hasActiveSub && ["cancelled", "canceled", "churned"].includes(String(subscriptionStatus).toLowerCase()),
     }), {
       headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       status: 200,

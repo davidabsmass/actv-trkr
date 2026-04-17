@@ -305,6 +305,69 @@ export type Database = {
           },
         ]
       }
+      billing_recovery_events: {
+        Row: {
+          amount: number | null
+          created_at: string
+          currency: string | null
+          customer_id: string | null
+          details: Json
+          event_type: string
+          id: string
+          occurred_at: string
+          org_id: string | null
+          status: string | null
+          stripe_customer_id: string | null
+          stripe_invoice_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          customer_id?: string | null
+          details?: Json
+          event_type: string
+          id?: string
+          occurred_at?: string
+          org_id?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_invoice_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          customer_id?: string | null
+          details?: Json
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          org_id?: string | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_invoice_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_recovery_events_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_recovery_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broken_links: {
         Row: {
           broken_url: string
@@ -352,6 +415,63 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cancellation_feedback: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          id: string
+          org_id: string
+          outcome: string
+          reason: string
+          reason_detail: string | null
+          selected_offer: string | null
+          subscription_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          org_id: string
+          outcome?: string
+          reason: string
+          reason_detail?: string | null
+          selected_offer?: string | null
+          subscription_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          org_id?: string
+          outcome?: string
+          reason?: string
+          reason_detail?: string | null
+          selected_offer?: string | null
+          subscription_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cancellation_feedback_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cancellation_feedback_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
@@ -2941,6 +3061,436 @@ export type Database = {
         }
         Relationships: []
       }
+      retention_account_flow_status: {
+        Row: {
+          current_step: number
+          entered_at: string
+          exited_at: string | null
+          flow_id: string
+          id: string
+          metadata: Json
+          org_id: string
+          status: string
+        }
+        Insert: {
+          current_step?: number
+          entered_at?: string
+          exited_at?: string | null
+          flow_id: string
+          id?: string
+          metadata?: Json
+          org_id: string
+          status?: string
+        }
+        Update: {
+          current_step?: number
+          entered_at?: string
+          exited_at?: string | null
+          flow_id?: string
+          id?: string
+          metadata?: Json
+          org_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_account_flow_status_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "retention_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_account_flow_status_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retention_account_health: {
+        Row: {
+          activation_stage: string
+          billing_risk: boolean
+          cancellation_intent: boolean
+          churn_risk_reasons: Json
+          computed_at: string
+          created_at: string
+          customer_id: string | null
+          engagement_risk: boolean
+          health_score: number
+          id: string
+          internal_note: string | null
+          last_data_received_at: string | null
+          last_login_at: string | null
+          last_payment_failed_at: string | null
+          last_summary_opened_at: string | null
+          lifecycle_stage: string
+          org_id: string
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          risk_level: string
+          setup_risk: boolean
+          updated_at: string
+        }
+        Insert: {
+          activation_stage?: string
+          billing_risk?: boolean
+          cancellation_intent?: boolean
+          churn_risk_reasons?: Json
+          computed_at?: string
+          created_at?: string
+          customer_id?: string | null
+          engagement_risk?: boolean
+          health_score?: number
+          id?: string
+          internal_note?: string | null
+          last_data_received_at?: string | null
+          last_login_at?: string | null
+          last_payment_failed_at?: string | null
+          last_summary_opened_at?: string | null
+          lifecycle_stage?: string
+          org_id: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          risk_level?: string
+          setup_risk?: boolean
+          updated_at?: string
+        }
+        Update: {
+          activation_stage?: string
+          billing_risk?: boolean
+          cancellation_intent?: boolean
+          churn_risk_reasons?: Json
+          computed_at?: string
+          created_at?: string
+          customer_id?: string | null
+          engagement_risk?: boolean
+          health_score?: number
+          id?: string
+          internal_note?: string | null
+          last_data_received_at?: string | null
+          last_login_at?: string | null
+          last_payment_failed_at?: string | null
+          last_summary_opened_at?: string | null
+          lifecycle_stage?: string
+          org_id?: string
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          risk_level?: string
+          setup_risk?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_account_health_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_account_health_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retention_events: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          event_category: string
+          event_name: string
+          event_value: Json
+          id: string
+          occurred_at: string
+          org_id: string
+          site_id: string | null
+          source: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          event_category?: string
+          event_name: string
+          event_value?: Json
+          id?: string
+          occurred_at?: string
+          org_id: string
+          site_id?: string | null
+          source?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          event_category?: string
+          event_name?: string
+          event_value?: Json
+          id?: string
+          occurred_at?: string
+          org_id?: string
+          site_id?: string | null
+          source?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_events_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_events_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retention_flow_steps: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          delay_minutes: number
+          flow_id: string
+          id: string
+          internal_name: string | null
+          is_active: boolean
+          send_condition: Json
+          step_order: number
+          subject: string | null
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          channel?: string
+          created_at?: string
+          delay_minutes?: number
+          flow_id: string
+          id?: string
+          internal_name?: string | null
+          is_active?: boolean
+          send_condition?: Json
+          step_order: number
+          subject?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          delay_minutes?: number
+          flow_id?: string
+          id?: string
+          internal_name?: string | null
+          is_active?: boolean
+          send_condition?: Json
+          step_order?: number
+          subject?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_flow_steps_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "retention_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retention_flows: {
+        Row: {
+          absence_event: string | null
+          absence_window_hours: number | null
+          audience_filter: Json
+          audience_type: string | null
+          created_at: string
+          description: string | null
+          goal: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          trigger_event: string | null
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          absence_event?: string | null
+          absence_window_hours?: number | null
+          audience_filter?: Json
+          audience_type?: string | null
+          created_at?: string
+          description?: string | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          trigger_event?: string | null
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          absence_event?: string | null
+          absence_window_hours?: number | null
+          audience_filter?: Json
+          audience_type?: string | null
+          created_at?: string
+          description?: string | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          trigger_event?: string | null
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      retention_message_log: {
+        Row: {
+          details: Json
+          event_timestamp: string
+          event_type: string
+          id: string
+          message_id: string
+        }
+        Insert: {
+          details?: Json
+          event_timestamp?: string
+          event_type: string
+          id?: string
+          message_id: string
+        }
+        Update: {
+          details?: Json
+          event_timestamp?: string
+          event_type?: string
+          id?: string
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_message_log_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "retention_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retention_messages: {
+        Row: {
+          body: string | null
+          channel: string
+          created_at: string
+          customer_id: string | null
+          email_message_id: string | null
+          flow_id: string | null
+          flow_step_id: string | null
+          id: string
+          message_type: string
+          metadata: Json
+          org_id: string
+          recipient_email: string
+          scheduled_for: string | null
+          sent_at: string | null
+          status: string
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          channel?: string
+          created_at?: string
+          customer_id?: string | null
+          email_message_id?: string | null
+          flow_id?: string | null
+          flow_step_id?: string | null
+          id?: string
+          message_type?: string
+          metadata?: Json
+          org_id: string
+          recipient_email: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          channel?: string
+          created_at?: string
+          customer_id?: string | null
+          email_message_id?: string | null
+          flow_id?: string | null
+          flow_step_id?: string | null
+          id?: string
+          message_type?: string
+          metadata?: Json
+          org_id?: string
+          recipient_email?: string
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_messages_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_messages_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "retention_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_messages_flow_step_id_fkey"
+            columns: ["flow_step_id"]
+            isOneToOne: false
+            referencedRelation: "retention_flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_views: {
         Row: {
           columns: Json | null
@@ -4585,6 +5135,10 @@ export type Database = {
         Args: { body?: Json; function_name: string }
         Returns: undefined
       }
+      compute_account_lifecycle_stage: {
+        Args: { p_org_id: string }
+        Returns: string
+      }
       create_org_with_admin: {
         Args: { p_name: string; p_org_id: string; p_timezone?: string }
         Returns: string
@@ -4592,6 +5146,21 @@ export type Database = {
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
+      }
+      emit_retention_event: {
+        Args: {
+          p_customer_id?: string
+          p_event_category?: string
+          p_event_name: string
+          p_event_value?: Json
+          p_first_time_only?: boolean
+          p_occurred_at?: string
+          p_org_id: string
+          p_site_id?: string
+          p_source?: string
+          p_user_id?: string
+        }
+        Returns: string
       }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
@@ -4646,6 +5215,11 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recompute_account_health: {
+        Args: { p_org_id: string }
+        Returns: undefined
+      }
+      recompute_all_account_health: { Args: never; Returns: number }
       upsert_session: {
         Args: {
           p_occurred_at: string

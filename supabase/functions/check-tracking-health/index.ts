@@ -26,7 +26,9 @@ Deno.serve(async (req) => {
     const stalledCutoff = new Date(now.getTime() - STALLED_THRESHOLD_MINUTES * 60000).toISOString();
     const alertCooloff = new Date(now.getTime() - ALERT_COOLDOWN_MINUTES * 60000).toISOString();
 
-    // Get all tracking statuses
+    // Get all tracking statuses (include verifier columns so we can suppress
+    // false-positive stalled alerts when the verifier confirms the tracker
+    // is still installed on the site)
     const { data: statuses } = await supabase
       .from("site_tracking_status")
       .select("*, sites!inner(domain, org_id)")
@@ -50,6 +52,13 @@ Deno.serve(async (req) => {
       const siteId = sts.site_id;
       const orgId = sts.org_id;
       const domain = (sts as any).sites?.domain || "unknown";
+      const verifierStatus = (sts as any).verifier_last_status || null;
+      const verifierCheckedAt = (sts as any).verifier_last_checked_at || null;
+      // Trust the verifier signal only if it's reasonably fresh (≤ 2 hours).
+      const verifierFresh = verifierCheckedAt
+        ? new Date(verifierCheckedAt).getTime() > now.getTime() - 2 * 60 * 60_000
+        : false;
+      const trackerConfirmedPresent = verifierFresh && verifierStatus === "ok";
 
       // ── Compute events_last_hour ──
       let eventsLastHour = 0;
@@ -66,8 +75,10 @@ Deno.serve(async (req) => {
 
       let newStatus = "active";
 
-      // Determine new status
-      if (lastEvent && lastEvent < stalledCutoff) {
+      // Determine new status. If the verifier just confirmed the tracker is
+      // still on the page, treat a quiet site as "active" (no traffic) rather
+      // than "stalled" (broken integration).
+      if (lastEvent && lastEvent < stalledCutoff && !trackerConfirmedPresent) {
         newStatus = "stalled";
       } else if (lastSignal && lastSignal < degradedCutoff && lastEvent && lastEvent >= stalledCutoff) {
         newStatus = "degraded";
@@ -144,8 +155,11 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Transition: stalled/degraded → active: close interruptions, create recovery alert
-        if (newStatus === "active" && (currentStatus === "stalled" || currentStatus === "degraded")) {
+        // Transition: stalled/degraded → active: close interruptions, create recovery alert.
+        // Also auto-resolve any lingering open interruptions whenever the site
+        // is currently healthy (defensive cleanup for the historical backlog).
+        const becameActive = newStatus === "active" && (currentStatus === "stalled" || currentStatus === "degraded");
+        if (becameActive || newStatus === "active") {
           const { data: openInterruptions } = await supabase
             .from("tracking_interruptions")
             .select("id, started_at")
@@ -169,15 +183,17 @@ Deno.serve(async (req) => {
             }
           }
 
-          await supabase.from("tracker_alerts").insert({
-            org_id: orgId,
-            site_id: siteId,
-            alert_type: "tracking_recovered",
-            severity: "info",
-            message: `Tracking data resumed for ${domain}.`,
-            details: { recovered_at: now.toISOString(), previous_status: currentStatus },
-          });
-          alertsCreated++;
+          if (becameActive) {
+            await supabase.from("tracker_alerts").insert({
+              org_id: orgId,
+              site_id: siteId,
+              alert_type: "tracking_recovered",
+              severity: "info",
+              message: `Tracking data resumed for ${domain}.`,
+              details: { recovered_at: now.toISOString(), previous_status: currentStatus },
+            });
+            alertsCreated++;
+          }
         }
     }
 

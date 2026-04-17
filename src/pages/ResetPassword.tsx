@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Lock, Eye, EyeOff } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
@@ -15,6 +16,7 @@ const ResetPassword = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let mounted = true;
@@ -54,6 +56,9 @@ const ResetPassword = () => {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      // Invalidate subscription cache so the dashboard guard sees the fresh paid status.
+      await queryClient.invalidateQueries({ queryKey: ["subscription_status"] });
+      await queryClient.invalidateQueries({ queryKey: ["billing_exempt"] });
       setMessage("Password updated successfully! Taking you to your dashboard…");
       setTimeout(() => navigate("/dashboard"), 1500);
     } catch (err: any) {

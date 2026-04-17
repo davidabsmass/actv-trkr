@@ -1101,6 +1101,213 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_activities: {
+        Row: {
+          activity_type: string
+          body: string | null
+          created_at: string
+          created_by_user_id: string | null
+          deal_id: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          title: string
+        }
+        Insert: {
+          activity_type: string
+          body?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          deal_id: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          title: string
+        }
+        Update: {
+          activity_type?: string
+          body?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          deal_id?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_documents: {
+        Row: {
+          created_at: string
+          deal_id: string
+          document_name: string
+          document_type: string
+          document_url: string | null
+          effective_date: string | null
+          expiration_date: string | null
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          uploaded_by_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          document_name: string
+          document_type: string
+          document_url?: string | null
+          effective_date?: string | null
+          expiration_date?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          document_name?: string
+          document_type?: string
+          document_url?: string | null
+          effective_date?: string | null
+          expiration_date?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_documents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_pipeline_stages: {
+        Row: {
+          created_at: string
+          id: string
+          is_lost: boolean
+          is_won: boolean
+          sort_order: number
+          stage_key: string
+          stage_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          sort_order?: number
+          stage_key: string
+          stage_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_lost?: boolean
+          is_won?: boolean
+          sort_order?: number
+          stage_key?: string
+          stage_name?: string
+        }
+        Relationships: []
+      }
+      deals: {
+        Row: {
+          actual_close_date: string | null
+          buyer_company: string | null
+          buyer_email: string | null
+          buyer_name: string
+          buyer_type: string
+          created_at: string
+          created_by_user_id: string | null
+          currency: string
+          data_room_link_id: string | null
+          deal_name: string
+          deal_value: number | null
+          expected_close_date: string | null
+          id: string
+          lost_reason: string | null
+          notes: string | null
+          owner_user_id: string | null
+          probability: number
+          source: string | null
+          stage_key: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_close_date?: string | null
+          buyer_company?: string | null
+          buyer_email?: string | null
+          buyer_name: string
+          buyer_type?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          currency?: string
+          data_room_link_id?: string | null
+          deal_name: string
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          probability?: number
+          source?: string | null
+          stage_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_close_date?: string | null
+          buyer_company?: string | null
+          buyer_email?: string | null
+          buyer_name?: string
+          buyer_type?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          currency?: string
+          data_room_link_id?: string | null
+          deal_name?: string
+          deal_value?: number | null
+          expected_close_date?: string | null
+          id?: string
+          lost_reason?: string | null
+          notes?: string | null
+          owner_user_id?: string | null
+          probability?: number
+          source?: string | null
+          stage_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_data_room_link_id_fkey"
+            columns: ["data_room_link_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deletion_audit: {
         Row: {
           action: string

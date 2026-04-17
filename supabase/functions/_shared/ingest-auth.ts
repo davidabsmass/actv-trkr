@@ -115,12 +115,12 @@ export async function authenticateIngestRequest(opts: {
     return { ok: false, status: 401, error: "Invalid credential format" };
   }
 
-  // SECURITY: a SHA-256 hex hash of the raw key must NOT be accepted as
-  // a credential. Reject anything that looks like a 64-char hex string
-  // submitted as the API key — that is the stored shape.
-  if (/^[a-f0-9]{64}$/i.test(legacyKey)) {
-    return { ok: false, status: 401, error: "Invalid credential" };
-  }
+  // NOTE: We previously rejected 64-char hex strings here on the assumption
+  // that they must be the stored key_hash being replayed. That guard
+  // produced false positives because legitimately-minted raw keys are
+  // also 64 hex chars. The hash lookup below is the real protection —
+  // feeding a hash as the credential would just sha256 it again and
+  // fail to match any stored row.
 
   const keyHash = await sha256Hex(legacyKey);
   const { data: akRow } = await supabase

@@ -119,7 +119,7 @@ export default function SecurityCompliancePage({ data }: { data: AcquisitionData
                 {data.incidents.map((i) => (
                   <TableRow key={i.id}>
                     <TableCell className="text-xs">{i.title}</TableCell>
-                    <TableCell><Badge variant={statusTone(i.severity) === "danger" ? "destructive" : "outline"}>{i.severity}</Badge></TableCell>
+                    <TableCell><Badge variant={severityTone(i.severity)}>{i.severity}</Badge></TableCell>
                     <TableCell><Badge variant="secondary">{i.status}</Badge></TableCell>
                     <TableCell className="text-xs">{new Date(i.identified_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-xs">{i.resolved_at ? new Date(i.resolved_at).toLocaleDateString() : "—"}</TableCell>

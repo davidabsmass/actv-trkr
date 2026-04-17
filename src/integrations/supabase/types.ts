@@ -14,6 +14,137 @@ export type Database = {
   }
   public: {
     Tables: {
+      acquisition_anomalies: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          context: Json
+          created_at: string
+          delta_pct: number | null
+          description: string | null
+          detected_at: string
+          id: string
+          linked_customer_id: string | null
+          linked_org_id: string | null
+          metric_value: number | null
+          notified_at: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          rule_id: string | null
+          rule_key: string
+          severity: string
+          status: string
+          threshold_value: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          context?: Json
+          created_at?: string
+          delta_pct?: number | null
+          description?: string | null
+          detected_at?: string
+          id?: string
+          linked_customer_id?: string | null
+          linked_org_id?: string | null
+          metric_value?: number | null
+          notified_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id?: string | null
+          rule_key: string
+          severity: string
+          status?: string
+          threshold_value?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          context?: Json
+          created_at?: string
+          delta_pct?: number | null
+          description?: string | null
+          detected_at?: string
+          id?: string
+          linked_customer_id?: string | null
+          linked_org_id?: string | null
+          metric_value?: number | null
+          notified_at?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id?: string | null
+          rule_key?: string
+          severity?: string
+          status?: string
+          threshold_value?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acquisition_anomalies_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "acquisition_anomaly_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      acquisition_anomaly_rules: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          metric_category: string
+          notify_email: boolean
+          notify_in_app: boolean
+          rule_key: string
+          rule_name: string
+          severity: string
+          threshold_operator: string
+          threshold_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_category: string
+          notify_email?: boolean
+          notify_in_app?: boolean
+          rule_key: string
+          rule_name: string
+          severity?: string
+          threshold_operator?: string
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_category?: string
+          notify_email?: boolean
+          notify_in_app?: boolean
+          rule_key?: string
+          rule_name?: string
+          severity?: string
+          threshold_operator?: string
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       acquisition_contract_flags: {
         Row: {
           contract_id: string | null

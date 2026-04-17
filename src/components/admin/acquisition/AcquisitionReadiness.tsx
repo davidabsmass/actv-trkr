@@ -19,6 +19,7 @@ import DiligenceChecklistPage from "./DiligenceChecklistPage";
 import DataRoomManager from "./DataRoomManager";
 import DealPipelineManager from "./DealPipelineManager";
 import ValuationManager from "./ValuationManager";
+import AnomalyAlertsPanel from "./AnomalyAlertsPanel";
 
 export default function AcquisitionReadiness() {
   const data = useAcquisitionData();
@@ -65,6 +66,7 @@ export default function AcquisitionReadiness() {
             <TabsTrigger value="dataroom">Data Room</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
             <TabsTrigger value="valuation">Valuation</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
           <TabsContent value="exec" className="mt-6"><ExecutiveSummaryPage data={data} /></TabsContent>
           <TabsContent value="revenue" className="mt-6"><RevenueQualityPage data={data} /></TabsContent>
@@ -83,6 +85,7 @@ export default function AcquisitionReadiness() {
           <TabsContent value="dataroom" className="mt-6"><DataRoomManager /></TabsContent>
           <TabsContent value="pipeline" className="mt-6"><DealPipelineManager /></TabsContent>
           <TabsContent value="valuation" className="mt-6"><ValuationManager /></TabsContent>
+          <TabsContent value="alerts" className="mt-6"><AnomalyAlertsPanel /></TabsContent>
         </Tabs>
       </CardContent>
     </Card>

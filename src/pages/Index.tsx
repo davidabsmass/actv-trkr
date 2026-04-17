@@ -74,7 +74,6 @@ const Index = () => {
   const navigate = useNavigate();
   const { session, loading, signOut } = useAuth();
   const isLoggedIn = Boolean(session);
-  const handleCheckout = () => navigate("/checkout");
   const handleDashboard = () => navigate("/dashboard");
   const handleSignIn = () => navigate("/auth");
   const handleLogout = () => {

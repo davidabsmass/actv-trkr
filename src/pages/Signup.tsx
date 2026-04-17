@@ -2,9 +2,8 @@ import { Navigate } from "react-router-dom";
 
 /**
  * The standalone signup page has been retired.
- * The canonical entry point is Checkout → Stripe → webhook provisioning.
- * Redirect any bookmarks or stale links to /checkout.
+ * The canonical entry point is the homepage CTA → Stripe Checkout → webhook provisioning.
  */
-const Signup = () => <Navigate to="/checkout" replace />;
+const Signup = () => <Navigate to="/" replace />;
 
 export default Signup;

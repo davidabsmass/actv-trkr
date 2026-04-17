@@ -6010,6 +6010,168 @@ export type Database = {
           },
         ]
       }
+      valuation_comparables: {
+        Row: {
+          arr: number | null
+          company_name: string
+          created_at: string
+          created_by_user_id: string | null
+          deal_value: number | null
+          ebitda: number | null
+          ev_arr_multiple: number | null
+          ev_ebitda_multiple: number | null
+          ev_revenue_multiple: number | null
+          growth_rate_pct: number | null
+          id: string
+          industry: string | null
+          revenue: number | null
+          source_notes: string | null
+          ticker: string | null
+          transaction_date: string | null
+          transaction_type: string
+          updated_at: string
+        }
+        Insert: {
+          arr?: number | null
+          company_name: string
+          created_at?: string
+          created_by_user_id?: string | null
+          deal_value?: number | null
+          ebitda?: number | null
+          ev_arr_multiple?: number | null
+          ev_ebitda_multiple?: number | null
+          ev_revenue_multiple?: number | null
+          growth_rate_pct?: number | null
+          id?: string
+          industry?: string | null
+          revenue?: number | null
+          source_notes?: string | null
+          ticker?: string | null
+          transaction_date?: string | null
+          transaction_type?: string
+          updated_at?: string
+        }
+        Update: {
+          arr?: number | null
+          company_name?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          deal_value?: number | null
+          ebitda?: number | null
+          ev_arr_multiple?: number | null
+          ev_ebitda_multiple?: number | null
+          ev_revenue_multiple?: number | null
+          growth_rate_pct?: number | null
+          id?: string
+          industry?: string | null
+          revenue?: number | null
+          source_notes?: string | null
+          ticker?: string | null
+          transaction_date?: string | null
+          transaction_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      valuation_scenarios: {
+        Row: {
+          base_arr: number | null
+          base_ebitda: number | null
+          base_revenue: number | null
+          computed_breakdown: Json | null
+          computed_high: number | null
+          computed_low: number | null
+          computed_mid: number | null
+          created_at: string
+          created_by_user_id: string | null
+          dcf_discount_rate_pct: number | null
+          dcf_fcf_margin_pct: number | null
+          dcf_projection_years: number
+          dcf_terminal_growth_pct: number | null
+          dcf_terminal_multiple: number | null
+          description: string | null
+          ebitda_margin_pct: number | null
+          ev_arr_multiple_high: number | null
+          ev_arr_multiple_low: number | null
+          ev_arr_multiple_mid: number | null
+          ev_ebitda_multiple_high: number | null
+          ev_ebitda_multiple_low: number | null
+          ev_ebitda_multiple_mid: number | null
+          ev_revenue_multiple_high: number | null
+          ev_revenue_multiple_low: number | null
+          ev_revenue_multiple_mid: number | null
+          growth_rate_pct: number | null
+          id: string
+          is_primary: boolean
+          scenario_name: string
+          updated_at: string
+        }
+        Insert: {
+          base_arr?: number | null
+          base_ebitda?: number | null
+          base_revenue?: number | null
+          computed_breakdown?: Json | null
+          computed_high?: number | null
+          computed_low?: number | null
+          computed_mid?: number | null
+          created_at?: string
+          created_by_user_id?: string | null
+          dcf_discount_rate_pct?: number | null
+          dcf_fcf_margin_pct?: number | null
+          dcf_projection_years?: number
+          dcf_terminal_growth_pct?: number | null
+          dcf_terminal_multiple?: number | null
+          description?: string | null
+          ebitda_margin_pct?: number | null
+          ev_arr_multiple_high?: number | null
+          ev_arr_multiple_low?: number | null
+          ev_arr_multiple_mid?: number | null
+          ev_ebitda_multiple_high?: number | null
+          ev_ebitda_multiple_low?: number | null
+          ev_ebitda_multiple_mid?: number | null
+          ev_revenue_multiple_high?: number | null
+          ev_revenue_multiple_low?: number | null
+          ev_revenue_multiple_mid?: number | null
+          growth_rate_pct?: number | null
+          id?: string
+          is_primary?: boolean
+          scenario_name: string
+          updated_at?: string
+        }
+        Update: {
+          base_arr?: number | null
+          base_ebitda?: number | null
+          base_revenue?: number | null
+          computed_breakdown?: Json | null
+          computed_high?: number | null
+          computed_low?: number | null
+          computed_mid?: number | null
+          created_at?: string
+          created_by_user_id?: string | null
+          dcf_discount_rate_pct?: number | null
+          dcf_fcf_margin_pct?: number | null
+          dcf_projection_years?: number
+          dcf_terminal_growth_pct?: number | null
+          dcf_terminal_multiple?: number | null
+          description?: string | null
+          ebitda_margin_pct?: number | null
+          ev_arr_multiple_high?: number | null
+          ev_arr_multiple_low?: number | null
+          ev_arr_multiple_mid?: number | null
+          ev_ebitda_multiple_high?: number | null
+          ev_ebitda_multiple_low?: number | null
+          ev_ebitda_multiple_mid?: number | null
+          ev_revenue_multiple_high?: number | null
+          ev_revenue_multiple_low?: number | null
+          ev_revenue_multiple_mid?: number | null
+          growth_rate_pct?: number | null
+          id?: string
+          is_primary?: boolean
+          scenario_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vendor_risk_registry: {
         Row: {
           backup_plan: string | null

@@ -111,3 +111,5 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.create-data-room-link]
     verify_jwt = true
+  [functions.detect-acquisition-anomalies]
+    verify_jwt = false

@@ -821,7 +821,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           end_date: string | null
           error: string | null
           file_path: string | null
@@ -840,7 +840,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           end_date?: string | null
           error?: string | null
           file_path?: string | null
@@ -859,7 +859,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           end_date?: string | null
           error?: string | null
           file_path?: string | null
@@ -2719,7 +2719,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           error: string | null
           file_path: string | null
           id: string
@@ -2731,7 +2731,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           error?: string | null
           file_path?: string | null
           id?: string
@@ -2743,7 +2743,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           error?: string | null
           file_path?: string | null
           id?: string
@@ -2854,7 +2854,7 @@ export type Database = {
         Row: {
           columns: Json | null
           created_at: string
-          created_by: string
+          created_by: string | null
           filters: Json | null
           form_id: string | null
           id: string
@@ -2865,7 +2865,7 @@ export type Database = {
         Insert: {
           columns?: Json | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           filters?: Json | null
           form_id?: string | null
           id?: string
@@ -2876,7 +2876,7 @@ export type Database = {
         Update: {
           columns?: Json | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           filters?: Json | null
           form_id?: string | null
           id?: string

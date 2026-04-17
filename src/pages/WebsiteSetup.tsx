@@ -57,6 +57,11 @@ export default function WebsiteSetup() {
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
+  // Raw key only ever lives in memory after generation. Never persisted, never re-fetchable.
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [keyVisible, setKeyVisible] = useState(true);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
   const { data: latestVersion } = useQuery({
     queryKey: ["latest_plugin_version", "plugin_info"],

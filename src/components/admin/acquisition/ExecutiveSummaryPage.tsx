@@ -38,8 +38,11 @@ export default function ExecutiveSummaryPage({ data }: { data: AcquisitionData }
   const readiness = diligenceReadinessScore(data.checklist);
 
   const latest = arr[arr.length - 1];
+  const prev = arr[arr.length - 2];
   const yearAgo = arr[arr.length - 13] ?? arr[0];
   const yoyArrGrowth = yearAgo && yearAgo.arr > 0 ? ((latest.arr - yearAgo.arr) / yearAgo.arr) * 100 : null;
+  const momArrGrowth = prev && prev.arr > 0 ? ((latest.arr - prev.arr) / prev.arr) * 100 : null;
+  const momMrrGrowth = prev && prev.mrr > 0 ? ((latest.mrr - prev.mrr) / prev.mrr) * 100 : null;
 
   const latestRetention = retention.filter((r) => r.nrr != null).slice(-1)[0];
   const openRiskCount = data.risks.filter((r) => r.status === "open").length + autoRisks.length;
@@ -54,6 +57,13 @@ export default function ExecutiveSummaryPage({ data }: { data: AcquisitionData }
     .reduce((sum, c) => sum + Number(c.acv || 0), 0);
 
   const trendData = arr.map((a) => ({ month: monthLabel(a.month), arr: a.arr, mrr: a.mrr, net_new: a.net_new_arr }));
+
+  // Sparkline series — last 12 months
+  const sparkArr = arr.slice(-12).map((a) => a.arr);
+  const sparkMrr = arr.slice(-12).map((a) => a.mrr);
+  const sparkNrr = retention.slice(-12).map((r) => r.nrr ?? 0);
+  const sparkGrr = retention.slice(-12).map((r) => r.grr ?? 0);
+  const sparkNetNew = arr.slice(-12).map((a) => a.net_new_arr);
 
   return (
     <div className="space-y-6">
@@ -72,17 +82,18 @@ export default function ExecutiveSummaryPage({ data }: { data: AcquisitionData }
 
       {/* Headline KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <AcqKpiCard label="ARR" value={fmtCurrency(latest?.arr ?? 0, { compact: true })} icon={DollarSign} hint="Annualized run-rate of all active recurring subscriptions." />
-        <AcqKpiCard label="MRR" value={fmtCurrency(latest?.mrr ?? 0, { compact: true })} icon={DollarSign} />
+        <AcqKpiCard label="ARR" value={fmtCurrency(latest?.arr ?? 0, { compact: true })} icon={DollarSign} hint="Annualized run-rate of all active recurring subscriptions." spark={sparkArr} trend={momArrGrowth != null ? { delta: momArrGrowth } : undefined} />
+        <AcqKpiCard label="MRR" value={fmtCurrency(latest?.mrr ?? 0, { compact: true })} icon={DollarSign} spark={sparkMrr} trend={momMrrGrowth != null ? { delta: momMrrGrowth } : undefined} />
         <AcqKpiCard label="YoY ARR Growth" value={yoyArrGrowth != null ? fmtPct(yoyArrGrowth) : "—"} icon={TrendingUp} tone={yoyArrGrowth != null && yoyArrGrowth > 0 ? "success" : "default"} />
-        <AcqKpiCard label="NRR" value={latestRetention?.nrr != null ? fmtPct(latestRetention.nrr) : "—"} icon={Activity} tone={latestRetention?.nrr != null && latestRetention.nrr >= 100 ? "success" : "warning"} hint="Net Revenue Retention. Buyers want >100%." />
-        <AcqKpiCard label="GRR" value={latestRetention?.grr != null ? fmtPct(latestRetention.grr) : "—"} icon={Shield} hint="Gross Revenue Retention. Excludes expansion." />
+        <AcqKpiCard label="NRR" value={latestRetention?.nrr != null ? fmtPct(latestRetention.nrr) : "—"} icon={Activity} tone={latestRetention?.nrr != null && latestRetention.nrr >= 100 ? "success" : "warning"} hint="Net Revenue Retention. Buyers want >100%." spark={sparkNrr} />
+        <AcqKpiCard label="GRR" value={latestRetention?.grr != null ? fmtPct(latestRetention.grr) : "—"} icon={Shield} hint="Gross Revenue Retention. Excludes expansion." spark={sparkGrr} />
         <AcqKpiCard label="Gross Margin" value={fmtPct(finance.gross_margin_pct)} icon={Percent} hint="Latest month gross margin from finance entries." />
         <AcqKpiCard label="Rule of 40" value={finance.rule_of_40 != null ? finance.rule_of_40.toFixed(1) : "—"} icon={Target} tone={finance.rule_of_40 != null && finance.rule_of_40 >= 40 ? "success" : "default"} />
         <AcqKpiCard label="Burn Multiple" value={fmtRatio(finance.burn_multiple)} icon={TrendingDown} tone={finance.burn_multiple != null && finance.burn_multiple > 2 ? "warning" : "default"} />
         <AcqKpiCard label="Cash Runway" value={fmtMonths(finance.cash_runway_months)} icon={Clock} tone={finance.cash_runway_months != null && finance.cash_runway_months < 9 ? "danger" : "default"} />
         <AcqKpiCard label="ARR / Employee" value={fmtCurrency(finance.arr_per_employee)} icon={Users} />
         <AcqKpiCard label="Top Customer % ARR" value={fmtPct(concentration.top_1_pct)} icon={AlertTriangle} tone={concentration.top_1_pct > 20 ? "warning" : "default"} hint="Single-customer concentration risk." />
+        <AcqKpiCard label="Net New ARR (12mo)" value={fmtCurrency(sparkNetNew.reduce((a, b) => a + b, 0), { compact: true })} icon={TrendingUp} spark={sparkNetNew} />
         <AcqKpiCard label="Renewal Risk (180d)" value={fmtCurrency(openRenewalArr, { compact: true })} icon={AlertTriangle} />
         <AcqKpiCard label="Open Risks" value={String(openRiskCount)} icon={AlertTriangle} tone={criticalRiskCount > 0 ? "danger" : "default"} />
         <AcqKpiCard label="Diligence Score" value={`${readiness.score}/100`} icon={Shield} tone={readiness.score >= 80 ? "success" : readiness.score >= 50 ? "warning" : "danger"} />

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { TrendingUp, Calendar, AlertTriangle, Plus } from "lucide-react";
 import { AcqKpiCard } from "./AcqKpiCard";
-import { fmtMoney, fmtPct } from "@/lib/acquisition-utils";
+import { fmtCurrency as fmtMoney, fmtPct } from "@/lib/acquisition-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { AcquisitionData } from "./useAcquisitionData";

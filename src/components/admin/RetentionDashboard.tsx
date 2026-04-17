@@ -149,8 +149,10 @@ export default function RetentionDashboard() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="at-risk">Accounts at Risk</TabsTrigger>
-          <TabsTrigger value="flows">Communication Flows</TabsTrigger>
+          <TabsTrigger value="at-risk">At Risk</TabsTrigger>
+          <TabsTrigger value="billing">Billing Recovery</TabsTrigger>
+          <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
+          <TabsTrigger value="flows">Flows</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}

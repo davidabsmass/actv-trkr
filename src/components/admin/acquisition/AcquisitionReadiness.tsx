@@ -16,6 +16,7 @@ import TechnologyIpPage from "./TechnologyIpPage";
 import ForecastingPage from "./ForecastingPage";
 import ReconciliationPage from "./ReconciliationPage";
 import DiligenceChecklistPage from "./DiligenceChecklistPage";
+import DataRoomManager from "./DataRoomManager";
 
 export default function AcquisitionReadiness() {
   const data = useAcquisitionData();
@@ -59,6 +60,7 @@ export default function AcquisitionReadiness() {
             <TabsTrigger value="risk">Risk</TabsTrigger>
             <TabsTrigger value="metrics">Definitions</TabsTrigger>
             <TabsTrigger value="exports">Exports</TabsTrigger>
+            <TabsTrigger value="dataroom">Data Room</TabsTrigger>
           </TabsList>
           <TabsContent value="exec" className="mt-6"><ExecutiveSummaryPage data={data} /></TabsContent>
           <TabsContent value="revenue" className="mt-6"><RevenueQualityPage data={data} /></TabsContent>
@@ -74,6 +76,7 @@ export default function AcquisitionReadiness() {
           <TabsContent value="risk" className="mt-6"><RiskFlagsPage data={data} /></TabsContent>
           <TabsContent value="metrics" className="mt-6"><MetricDefinitionsPage data={data} /></TabsContent>
           <TabsContent value="exports" className="mt-6"><DiligenceExportsPage data={data} /></TabsContent>
+          <TabsContent value="dataroom" className="mt-6"><DataRoomManager /></TabsContent>
         </Tabs>
       </CardContent>
     </Card>

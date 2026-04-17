@@ -107,3 +107,7 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.cancellation-feedback]
     verify_jwt = true
+  [functions.data-room-access]
+    verify_jwt = false
+  [functions.create-data-room-link]
+    verify_jwt = true

@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info, type LucideIcon } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, YAxis } from "recharts";
 
 type Props = {
   label: string;
@@ -9,6 +10,7 @@ type Props = {
   hint?: string;
   trend?: { delta: number; label?: string };
   tone?: "default" | "success" | "warning" | "danger";
+  spark?: number[];
 };
 
 const toneClass: Record<NonNullable<Props["tone"]>, string> = {
@@ -18,7 +20,15 @@ const toneClass: Record<NonNullable<Props["tone"]>, string> = {
   danger: "text-destructive",
 };
 
-export function AcqKpiCard({ label, value, icon: Icon, hint, trend, tone = "default" }: Props) {
+const sparkStroke: Record<NonNullable<Props["tone"]>, string> = {
+  default: "hsl(var(--primary))",
+  success: "hsl(var(--success))",
+  warning: "hsl(var(--warning))",
+  danger: "hsl(var(--destructive))",
+};
+
+export function AcqKpiCard({ label, value, icon: Icon, hint, trend, tone = "default", spark }: Props) {
+  const sparkData = spark && spark.length > 1 ? spark.map((v, i) => ({ i, v })) : null;
   return (
     <Card>
       <CardContent className="pt-4 pb-3 px-4">
@@ -44,6 +54,16 @@ export function AcqKpiCard({ label, value, icon: Icon, hint, trend, tone = "defa
         {trend && (
           <div className={`text-[11px] mt-0.5 ${trend.delta >= 0 ? "text-[hsl(var(--success))]" : "text-destructive"}`}>
             {trend.delta >= 0 ? "+" : ""}{trend.delta.toFixed(1)}% {trend.label ?? "MoM"}
+          </div>
+        )}
+        {sparkData && (
+          <div className="h-8 mt-1 -mx-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={sparkData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                <YAxis hide domain={["dataMin", "dataMax"]} />
+                <Line type="monotone" dataKey="v" stroke={sparkStroke[tone]} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         )}
       </CardContent>

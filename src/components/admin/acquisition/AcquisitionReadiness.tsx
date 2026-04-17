@@ -44,6 +44,11 @@ export default function AcquisitionReadiness() {
             <TabsTrigger value="concentration">Concentration</TabsTrigger>
             <TabsTrigger value="usage">Usage</TabsTrigger>
             <TabsTrigger value="finance">Finance</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="tech">Tech &amp; IP</TabsTrigger>
+            <TabsTrigger value="forecast">Forecast</TabsTrigger>
+            <TabsTrigger value="recon">Reconciliation</TabsTrigger>
+            <TabsTrigger value="checklist">Checklist</TabsTrigger>
             <TabsTrigger value="risk">Risk</TabsTrigger>
             <TabsTrigger value="metrics">Definitions</TabsTrigger>
             <TabsTrigger value="exports">Exports</TabsTrigger>
@@ -54,6 +59,11 @@ export default function AcquisitionReadiness() {
           <TabsContent value="concentration" className="mt-6"><CustomerConcentrationPage data={data} /></TabsContent>
           <TabsContent value="usage" className="mt-6"><ProductUsagePage data={data} /></TabsContent>
           <TabsContent value="finance" className="mt-6"><FinancialEfficiencyPage data={data} /></TabsContent>
+          <TabsContent value="security" className="mt-6"><SecurityCompliancePage data={data} /></TabsContent>
+          <TabsContent value="tech" className="mt-6"><TechnologyIpPage data={data} /></TabsContent>
+          <TabsContent value="forecast" className="mt-6"><ForecastingPage data={data} /></TabsContent>
+          <TabsContent value="recon" className="mt-6"><ReconciliationPage data={data} /></TabsContent>
+          <TabsContent value="checklist" className="mt-6"><DiligenceChecklistPage data={data} /></TabsContent>
           <TabsContent value="risk" className="mt-6"><RiskFlagsPage data={data} /></TabsContent>
           <TabsContent value="metrics" className="mt-6"><MetricDefinitionsPage data={data} /></TabsContent>
           <TabsContent value="exports" className="mt-6"><DiligenceExportsPage data={data} /></TabsContent>

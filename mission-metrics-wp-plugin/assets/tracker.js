@@ -761,7 +761,7 @@
             meta: e.meta,
           };
         }),
-      });
+      }));
       saveQueue();
     }
   }

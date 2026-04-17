@@ -11,10 +11,38 @@ export function useAuth() {
   useEffect(() => {
     let isMounted = true;
 
+    // Force a hard logout when the underlying auth.users row no longer exists
+    // (e.g. admin deleted the user while they were logged in). Without this the
+    // app loops between protected routes and "/" because the JWT is still in
+    // localStorage but every /user call returns 403 user_not_found.
+    const forceHardLogout = async (reason: string) => {
+      try { await supabase.auth.signOut({ scope: "local" }); } catch {}
+      try {
+        // Belt-and-braces: nuke any leftover sb-* tokens
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("sb-") || k === "supabase.auth.token")
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {}
+      queryClient.clear();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
+        window.location.replace(`/auth?reason=${encodeURIComponent(reason)}`);
+      }
+    };
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!isMounted) return;
+
+      // User row was deleted server-side — refresh attempt failed.
+      if (event === "TOKEN_REFRESHED" && !nextSession) {
+        forceHardLogout("session_expired");
+        return;
+      }
+      if (event === "USER_DELETED" as any) {
+        forceHardLogout("account_removed");
+        return;
+      }
 
       if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
         setSession(nextSession);
@@ -31,8 +59,27 @@ export function useAuth() {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       if (!isMounted) return;
+
+      // If we have a session token, verify the user still exists. If the row
+      // was deleted, getUser() returns a user_not_found / 403 error and we
+      // must purge the stale token before any protected route renders.
+      if (initialSession) {
+        const { data: userData, error } = await supabase.auth.getUser();
+        if (!isMounted) return;
+        const errMsg = (error as any)?.message?.toLowerCase?.() ?? "";
+        const errStatus = (error as any)?.status;
+        if (error && (errStatus === 403 || errStatus === 404 || errMsg.includes("user_not_found") || errMsg.includes("user from sub claim"))) {
+          await forceHardLogout("account_removed");
+          return;
+        }
+        if (!userData?.user) {
+          await forceHardLogout("session_expired");
+          return;
+        }
+      }
+
       setSession(initialSession);
       setLoading(false);
     });

@@ -174,6 +174,20 @@ Deno.serve(async (req) => {
     }
     await supabase.from("sites").update(updateData).eq("id", site.id);
 
+    // Keep tracking status in sync with heartbeats so low-traffic sites do not
+    // get flagged offline when cron heartbeats are still arriving.
+    try {
+      await supabase.from("site_tracking_status").upsert({
+        org_id: orgId,
+        site_id: site.id,
+        last_heartbeat_at: now,
+        tracker_status: "active",
+        updated_at: now,
+      }, { onConflict: "org_id,site_id" });
+    } catch (statusErr) {
+      console.error("Tracking status heartbeat sync error (non-fatal):", statusErr);
+    }
+
     // Persist WP environment data if provided
     const wpEnv = body.wp_environment;
     if (wpEnv && typeof wpEnv === "object") {

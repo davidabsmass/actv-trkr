@@ -919,6 +919,70 @@ export type Database = {
           },
         ]
       }
+      feature_requests: {
+        Row: {
+          business_reason: string | null
+          created_at: string
+          id: string
+          org_id: string
+          product_status: string
+          request_summary: string
+          site_id: string | null
+          ticket_id: string
+          title: string
+          updated_at: string
+          vote_count: number
+        }
+        Insert: {
+          business_reason?: string | null
+          created_at?: string
+          id?: string
+          org_id: string
+          product_status?: string
+          request_summary: string
+          site_id?: string | null
+          ticket_id: string
+          title: string
+          updated_at?: string
+          vote_count?: number
+        }
+        Update: {
+          business_reason?: string | null
+          created_at?: string
+          id?: string
+          org_id?: string
+          product_status?: string
+          request_summary?: string
+          site_id?: string | null
+          ticket_id?: string
+          title?: string
+          updated_at?: string
+          vote_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_requests_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_requests_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           category: string
@@ -3716,6 +3780,273 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: true
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          message_id: string | null
+          mime_type: string | null
+          ticket_id: string
+          uploaded_by_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          message_id?: string | null
+          mime_type?: string | null
+          ticket_id: string
+          uploaded_by_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          message_id?: string | null
+          mime_type?: string | null
+          ticket_id?: string
+          uploaded_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_attachments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_events: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          event_type: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          event_type: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          event_type?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_messages: {
+        Row: {
+          author_email: string | null
+          author_name: string | null
+          author_type: string
+          author_user_id: string | null
+          created_at: string
+          id: string
+          is_internal: boolean
+          message: string
+          ticket_id: string
+        }
+        Insert: {
+          author_email?: string | null
+          author_name?: string | null
+          author_type: string
+          author_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          message: string
+          ticket_id: string
+        }
+        Update: {
+          author_email?: string | null
+          author_name?: string | null
+          author_type?: string
+          author_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          message?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_satisfaction: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          rating: string | null
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          rating?: string | null
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          rating?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_satisfaction_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          app_version: string | null
+          assigned_to_user_id: string | null
+          browser_info: string | null
+          category: string | null
+          closed_at: string | null
+          created_at: string
+          current_app_path: string | null
+          id: string
+          is_feature_request: boolean
+          message: string
+          metadata: Json
+          org_id: string
+          plan_name: string | null
+          priority: string
+          queue: string | null
+          resolved_at: string | null
+          site_id: string | null
+          status: string
+          subject: string
+          submitted_by_email: string | null
+          submitted_by_name: string | null
+          submitted_by_user_id: string
+          ticket_number: number
+          type: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          assigned_to_user_id?: string | null
+          browser_info?: string | null
+          category?: string | null
+          closed_at?: string | null
+          created_at?: string
+          current_app_path?: string | null
+          id?: string
+          is_feature_request?: boolean
+          message: string
+          metadata?: Json
+          org_id: string
+          plan_name?: string | null
+          priority?: string
+          queue?: string | null
+          resolved_at?: string | null
+          site_id?: string | null
+          status?: string
+          subject: string
+          submitted_by_email?: string | null
+          submitted_by_name?: string | null
+          submitted_by_user_id: string
+          ticket_number?: number
+          type: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          assigned_to_user_id?: string | null
+          browser_info?: string | null
+          category?: string | null
+          closed_at?: string | null
+          created_at?: string
+          current_app_path?: string | null
+          id?: string
+          is_feature_request?: boolean
+          message?: string
+          metadata?: Json
+          org_id?: string
+          plan_name?: string | null
+          priority?: string
+          queue?: string | null
+          resolved_at?: string | null
+          site_id?: string | null
+          status?: string
+          subject?: string
+          submitted_by_email?: string | null
+          submitted_by_name?: string | null
+          submitted_by_user_id?: string
+          ticket_number?: number
+          type?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]

@@ -9,10 +9,21 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, MapPin } from "lucide-react";
 import TeamSection from "@/components/account/TeamSection";
+import SupportSection from "@/components/support/SupportSection";
 import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
 
 export default function Account() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") || "profile";
+  const setTab = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", v);
+    if (v !== "support") next.delete("ticket");
+    setSearchParams(next, { replace: true });
+  };
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -93,7 +104,20 @@ export default function Account() {
         {t("account.subtitle")}
       </p>
 
-      <div className="grid gap-4 lg:grid-cols-2 max-w-4xl">
+      <Tabs value={tab} onValueChange={setTab} className="max-w-4xl">
+        <TabsList className="mb-4">
+          <TabsTrigger value="profile" className="text-xs sm:text-sm">Profile & Billing</TabsTrigger>
+          <TabsTrigger value="support" className="text-xs sm:text-sm">Support</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="support">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SupportSection />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="profile">
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Profile Card */}
         <Card>
           <CardHeader>
@@ -223,6 +247,8 @@ export default function Account() {
           </Collapsible>
         </Card>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useSearchParams, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowUpDown, TrendingUp, Users, DollarSign, AlertTriangle, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SupportInbox from "@/components/admin/SupportInbox";
 
 type Subscriber = {
   id: string;
@@ -205,6 +206,9 @@ export default function OwnerAdmin() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Support Inbox */}
+      <SupportInbox />
 
       {/* Product Intelligence & Acquisition */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

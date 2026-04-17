@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
 import AppLayout from "@/components/AppLayout";
@@ -74,10 +75,16 @@ function isOwnerEmail(email?: string | null) {
 
 function ProtectedRoute({ children, requireSubscription = true }: { children: React.ReactNode; requireSubscription?: boolean }) {
   const isPreview = isPreviewEnvironment();
-  const { session, loading } = useAuth();
+  const { session, loading, signOut } = useAuth();
   const isOwner = isOwnerEmail(session?.user?.email);
   const subscriptionUserId = !isPreview && !isOwner ? session?.user?.id : undefined;
-  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(subscriptionUserId);
+  const { subscribed, billingExempt, shouldForceLogout, isLoading: subLoading } = useSubscription(subscriptionUserId);
+
+  useEffect(() => {
+    if (!isPreview && session && shouldForceLogout) {
+      void signOut("/auth?reason=subscription_cancelled");
+    }
+  }, [isPreview, session, shouldForceLogout, signOut]);
 
   if (isPreview) return <>{children}</>;
   if (loading) return <PageSpinner />;
@@ -86,6 +93,7 @@ function ProtectedRoute({ children, requireSubscription = true }: { children: Re
   if (isOwner) return <>{children}</>;
 
   if (subLoading) return <PageSpinner />;
+  if (shouldForceLogout) return <PageSpinner />;
 
   if (requireSubscription && !billingExempt && !subscribed) {
     return <Navigate to="/" replace />;
@@ -99,13 +107,14 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
   const isOwner = isOwnerEmail(session?.user?.email);
   const subscriptionUserId = !isPreview && !isOwner ? session?.user?.id : undefined;
-  const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(subscriptionUserId);
+  const { subscribed, billingExempt, shouldForceLogout, isLoading: subLoading } = useSubscription(subscriptionUserId);
 
   if (isPreview) return <>{children}</>;
   if (loading) return <PageSpinner />;
   if (!session) return <>{children}</>;
   if (isOwner) return <Navigate to="/admin-setup" replace />;
   if (subLoading) return <PageSpinner />;
+  if (shouldForceLogout) return <>{children}</>;
   if (billingExempt || subscribed) return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;

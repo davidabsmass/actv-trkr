@@ -8,7 +8,7 @@ import { AcqKpiCard } from "./AcqKpiCard";
 import { fmtNumber, fmtPct } from "@/lib/acquisition-utils";
 import type { AcquisitionData } from "./useAcquisitionData";
 
-type SiteRow = { id: string; org_id: string; domain: string; tracking_status: string | null; last_seen_at: string | null };
+type SiteRow = { id: string; org_id: string; domain: string; status: string | null; last_heartbeat_at: string | null };
 type RetentionEvent = { org_id: string; event_name: string; occurred_at: string };
 
 export default function ProductUsagePage({ data }: { data: AcquisitionData }) {

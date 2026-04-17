@@ -19,8 +19,11 @@ interface CustomerProfile {
 const MAX_DISMISSALS = 3;
 const RE_PROMPT_DAYS = 7;
 
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+
 export function useCustomerProfile() {
-  const { orgId } = useOrg();
+  const { orgId: rawOrgId } = useOrg();
+  const orgId = rawOrgId && rawOrgId !== ZERO_UUID ? rawOrgId : null;
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -40,7 +43,7 @@ export function useCustomerProfile() {
   });
 
   const shouldShowPrompt = (() => {
-    if (isLoading) return false;
+    if (!orgId || isLoading) return false;
     if (!profile) return true; // No record yet — show prompt
     if (profile.completed_at) return false; // Already completed
     if (profile.dismissed_count >= MAX_DISMISSALS) return false; // Too many dismissals

@@ -266,7 +266,7 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics">("clients");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics">("metrics");
   const [filterFocus, setFilterFocus] = useState<string>("");
   const [filterOnboarding, setFilterOnboarding] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -808,16 +808,16 @@ export default function AdminSetup() {
       {isOwner && (
         <div className="flex gap-1 mb-6 border-b border-border">
           <button
-            onClick={() => setActiveMainTab("clients")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeMainTab === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Clients
-          </button>
-          <button
             onClick={() => setActiveMainTab("metrics")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeMainTab === "metrics" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             Business Metrics
+          </button>
+          <button
+            onClick={() => setActiveMainTab("clients")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeMainTab === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Clients
           </button>
         </div>
       )}

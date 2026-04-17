@@ -6,8 +6,30 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, AlertTriangle, Heart, TrendingDown, Users, Workflow } from "lucide-react";
+import { Activity, AlertTriangle, CreditCard, Heart, TrendingDown, Users, Workflow, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
+type BillingEvent = {
+  id: string;
+  org_id: string | null;
+  event_type: string;
+  status: string | null;
+  amount: number | null;
+  currency: string | null;
+  occurred_at: string;
+  stripe_invoice_id: string | null;
+  stripe_subscription_id: string | null;
+};
+
+type Cancellation = {
+  id: string;
+  org_id: string;
+  reason: string;
+  reason_detail: string | null;
+  selected_offer: string | null;
+  outcome: string;
+  created_at: string;
+};
 
 type Health = {
   org_id: string;
@@ -46,6 +68,8 @@ export default function RetentionDashboard() {
   const [health, setHealth] = useState<Health[]>([]);
   const [orgs, setOrgs] = useState<Record<string, string>>({});
   const [flows, setFlows] = useState<Flow[]>([]);
+  const [billing, setBilling] = useState<BillingEvent[]>([]);
+  const [cancellations, setCancellations] = useState<Cancellation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,14 +78,18 @@ export default function RetentionDashboard() {
 
   const load = async () => {
     setLoading(true);
-    const [hRes, oRes, fRes] = await Promise.all([
+    const [hRes, oRes, fRes, bRes, cRes] = await Promise.all([
       supabase.from("retention_account_health").select("*").order("health_score", { ascending: true }),
       supabase.from("orgs").select("id, name"),
       supabase.from("retention_flows").select("*").order("name"),
+      supabase.from("billing_recovery_events").select("*").order("occurred_at", { ascending: false }).limit(200),
+      supabase.from("cancellation_feedback").select("*").order("created_at", { ascending: false }).limit(200),
     ]);
     if (hRes.data) setHealth(hRes.data as any);
     if (oRes.data) setOrgs(Object.fromEntries((oRes.data as OrgRow[]).map((o) => [o.id, o.name])));
     if (fRes.data) setFlows(fRes.data as any);
+    if (bRes.data) setBilling(bRes.data as any);
+    if (cRes.data) setCancellations(cRes.data as any);
     setLoading(false);
   };
 
@@ -79,11 +107,26 @@ export default function RetentionDashboard() {
 
   const total = health.length;
   const atRisk = health.filter((h) => h.risk_level === "high" || h.risk_level === "critical").length;
-  const billing = health.filter((h) => h.billing_risk).length;
-  const cancel = health.filter((h) => h.cancellation_intent).length;
-  const setup = health.filter((h) => h.setup_risk).length;
-  const engagement = health.filter((h) => h.engagement_risk).length;
+  const billingCount = health.filter((h) => h.billing_risk).length;
+  const cancelCount = health.filter((h) => h.cancellation_intent).length;
+  const setupCount = health.filter((h) => h.setup_risk).length;
   const avgScore = total ? Math.round(health.reduce((s, h) => s + h.health_score, 0) / total) : 0;
+
+  // Billing recovery KPIs (last 30 days)
+  const since30 = Date.now() - 30 * 24 * 3600 * 1000;
+  const recentBilling = billing.filter((b) => new Date(b.occurred_at).getTime() >= since30);
+  const failed30 = recentBilling.filter((b) => b.event_type === "invoice_payment_failed").length;
+  const recovered30 = recentBilling.filter((b) => b.event_type === "payment_recovered" || b.event_type === "invoice_payment_succeeded").length;
+  const recoveryRate = failed30 > 0 ? Math.round((recovered30 / failed30) * 100) : null;
+  const unresolved = recentBilling.filter((b) => b.event_type === "invoice_payment_failed" && b.status !== "recovered").length;
+
+  // Cancellation analytics
+  const cf30 = cancellations.filter((c) => new Date(c.created_at).getTime() >= since30);
+  const cfReasons = cf30.reduce<Record<string, number>>((acc, c) => { acc[c.reason] = (acc[c.reason] || 0) + 1; return acc; }, {});
+  const cfOutcomes = cf30.reduce<Record<string, number>>((acc, c) => { acc[c.outcome] = (acc[c.outcome] || 0) + 1; return acc; }, {});
+  const saveRate = cf30.length > 0
+    ? Math.round((((cfOutcomes.saved || 0) + (cfOutcomes.paused || 0) + (cfOutcomes.downgraded || 0)) / cf30.length) * 100)
+    : null;
 
   if (loading) {
     return (
@@ -106,8 +149,10 @@ export default function RetentionDashboard() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="at-risk">Accounts at Risk</TabsTrigger>
-          <TabsTrigger value="flows">Communication Flows</TabsTrigger>
+          <TabsTrigger value="at-risk">At Risk</TabsTrigger>
+          <TabsTrigger value="billing">Billing Recovery</TabsTrigger>
+          <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
+          <TabsTrigger value="flows">Flows</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}
@@ -116,9 +161,9 @@ export default function RetentionDashboard() {
             <Kpi icon={Users} label="Total Accounts" value={String(total)} />
             <Kpi icon={Heart} label="Avg Health" value={`${avgScore}`} />
             <Kpi icon={AlertTriangle} label="At Risk" value={String(atRisk)} tone={atRisk > 0 ? "warn" : undefined} />
-            <Kpi icon={TrendingDown} label="Billing Risk" value={String(billing)} tone={billing > 0 ? "warn" : undefined} />
-            <Kpi icon={Activity} label="Setup Risk" value={String(setup)} />
-            <Kpi icon={Workflow} label="Cancel Intent" value={String(cancel)} tone={cancel > 0 ? "warn" : undefined} />
+            <Kpi icon={TrendingDown} label="Billing Risk" value={String(billingCount)} tone={billingCount > 0 ? "warn" : undefined} />
+            <Kpi icon={Activity} label="Setup Risk" value={String(setupCount)} />
+            <Kpi icon={Workflow} label="Cancel Intent" value={String(cancelCount)} tone={cancelCount > 0 ? "warn" : undefined} />
           </div>
           <Card>
             <CardHeader>
@@ -181,6 +226,128 @@ export default function RetentionDashboard() {
                         No accounts currently at risk. 🎉
                       </TableCell>
                     </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* BILLING RECOVERY */}
+        <TabsContent value="billing" className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Kpi icon={CreditCard} label="Failed (30d)" value={String(failed30)} tone={failed30 > 0 ? "warn" : undefined} />
+            <Kpi icon={Heart} label="Recovered (30d)" value={String(recovered30)} />
+            <Kpi icon={Activity} label="Recovery Rate" value={recoveryRate === null ? "—" : `${recoveryRate}%`} />
+            <Kpi icon={AlertTriangle} label="Unresolved" value={String(unresolved)} tone={unresolved > 0 ? "warn" : undefined} />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recent billing events</CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Invoice</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {billing.slice(0, 50).map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell className="text-xs">{new Date(b.occurred_at).toLocaleString()}</TableCell>
+                      <TableCell className="font-medium text-xs">{b.org_id ? (orgs[b.org_id] || b.org_id.slice(0, 8)) : "—"}</TableCell>
+                      <TableCell className="text-xs"><Badge variant={b.event_type === "invoice_payment_failed" ? "destructive" : "secondary"}>{b.event_type.replace(/_/g, " ")}</Badge></TableCell>
+                      <TableCell className="text-xs">{b.status || "—"}</TableCell>
+                      <TableCell className="text-xs font-mono">{b.amount != null ? `${(b.amount / 100).toFixed(2)} ${(b.currency || "").toUpperCase()}` : "—"}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{b.stripe_invoice_id?.slice(0, 14) || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {billing.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No billing events recorded yet.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* CANCELLATIONS */}
+        <TabsContent value="cancellations" className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Kpi icon={XCircle} label="Cancellations (30d)" value={String(cf30.length)} />
+            <Kpi icon={Heart} label="Save Rate" value={saveRate === null ? "—" : `${saveRate}%`} />
+            <Kpi icon={Activity} label="Paused" value={String(cfOutcomes.paused || 0)} />
+            <Kpi icon={Workflow} label="Downgraded" value={String(cfOutcomes.downgraded || 0)} />
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader><CardTitle className="text-base">Reasons (30d)</CardTitle></CardHeader>
+              <CardContent>
+                {Object.keys(cfReasons).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No cancellation feedback yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {Object.entries(cfReasons).sort((a, b) => b[1] - a[1]).map(([reason, count]) => (
+                      <li key={reason} className="flex items-center justify-between text-sm">
+                        <span className="capitalize">{reason.replace(/_/g, " ")}</span>
+                        <Badge variant="outline">{count}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Outcomes (30d)</CardTitle></CardHeader>
+              <CardContent>
+                {Object.keys(cfOutcomes).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">—</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {Object.entries(cfOutcomes).sort((a, b) => b[1] - a[1]).map(([outcome, count]) => (
+                      <li key={outcome} className="flex items-center justify-between text-sm">
+                        <span className="capitalize">{outcome}</span>
+                        <Badge variant={outcome === "canceled" ? "destructive" : outcome === "saved" || outcome === "paused" || outcome === "downgraded" ? "secondary" : "outline"}>{count}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Recent cancellations</CardTitle></CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Offer</TableHead>
+                    <TableHead>Outcome</TableHead>
+                    <TableHead>Detail</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cancellations.slice(0, 50).map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="text-xs">{new Date(c.created_at).toLocaleString()}</TableCell>
+                      <TableCell className="font-medium text-xs">{orgs[c.org_id] || c.org_id.slice(0, 8)}</TableCell>
+                      <TableCell className="text-xs capitalize">{c.reason.replace(/_/g, " ")}</TableCell>
+                      <TableCell className="text-xs">{c.selected_offer || "—"}</TableCell>
+                      <TableCell className="text-xs"><Badge variant={c.outcome === "canceled" ? "destructive" : "secondary"}>{c.outcome}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[280px] truncate">{c.reason_detail || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {cancellations.length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">No cancellation feedback recorded yet.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>

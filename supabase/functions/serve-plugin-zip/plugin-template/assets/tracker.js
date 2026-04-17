@@ -5,6 +5,11 @@
   if (!window.mmConfig) return;
 
   var CFG = window.mmConfig;
+  // SECURITY (v1.9.17+): the in-page tracker uses a narrow-scope ingest token,
+  // never the admin API key. We still read CFG.apiKey as a backward-compat
+  // fallback so old plugin builds continue to function while sites upgrade.
+  var INGEST_CRED = CFG.ingestToken || CFG.apiKey || '';
+  var USE_INGEST_TOKEN = !!CFG.ingestToken;
   var COOKIE_VID = 'mm_vid';
   var COOKIE_SID = 'mm_sid';
   var COOKIE_UTM = 'mm_utm';
@@ -19,6 +24,31 @@
   var FLUSH_INTERVAL = 10000;
   var MAX_RETRY_DELAY = 300000;
   var BASE_RETRY_DELAY = 2000;
+
+  // Build the auth headers for an ingest request. Either:
+  //   - X-Ingest-Token: <token>           (new, narrow-scope)
+  //   - Authorization: Bearer <admin key> (legacy fallback, will be removed)
+  function authHeaders(extra) {
+    var h = extra || {};
+    h['Content-Type'] = 'application/json';
+    if (USE_INGEST_TOKEN) {
+      h['X-Ingest-Token'] = INGEST_CRED;
+    } else if (INGEST_CRED) {
+      h['Authorization'] = 'Bearer ' + INGEST_CRED;
+    }
+    return h;
+  }
+
+  // Add the credential to a sendBeacon-style payload (no headers possible).
+  function withAuthBody(payload) {
+    if (USE_INGEST_TOKEN) {
+      payload.ingest_token = INGEST_CRED;
+    } else if (INGEST_CRED) {
+      payload.api_key = INGEST_CRED;
+    }
+    return payload;
+  }
+
 
   // ── Consent Mode ──────────────────────────────────────────────
   // The legacy consentMode from wp_localize_script is still used as a baseline.
@@ -245,8 +275,7 @@
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
 
-      var payload = {
-        api_key: CFG.apiKey,
+      var payload = withAuthBody({
         source: {
           domain: CFG.domain,
           type: 'wordpress',
@@ -291,10 +320,7 @@
     var body = JSON.stringify(payload);
     fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + CFG.apiKey,
-      },
+      headers: authHeaders(),
       body: body,
       keepalive: true,
     }).then(function (resp) {
@@ -331,7 +357,11 @@
         var xhr = new XMLHttpRequest();
         xhr.open('POST', endpoint, false);
         xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.setRequestHeader('Authorization', 'Bearer ' + CFG.apiKey);
+        if (USE_INGEST_TOKEN) {
+          xhr.setRequestHeader('X-Ingest-Token', INGEST_CRED);
+        } else if (INGEST_CRED) {
+          xhr.setRequestHeader('Authorization', 'Bearer ' + INGEST_CRED);
+        }
         xhr.send(body);
       }
     } catch (e) {}
@@ -341,10 +371,7 @@
     var body = JSON.stringify(payload);
     fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + CFG.apiKey,
-      },
+      headers: authHeaders(),
       body: body,
       keepalive: true,
     }).then(function (resp) {
@@ -436,9 +463,8 @@
       if (!this.eventId) return;
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
-      send(CFG.endpoint, {
+      send(CFG.endpoint, withAuthBody({
         type: 'time_update',
-        api_key: CFG.apiKey,
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         event: {
           event_id: this.eventId,
@@ -446,7 +472,7 @@
           active_seconds: this.getActiveSeconds(),
         },
         visitor: buildVisitor(vid),
-      });
+      }));
     },
 
     sendFinal: function () {
@@ -455,9 +481,8 @@
       clearInterval(this.watchdogTimer);
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
-      sendBeaconSafe(CFG.endpoint, {
+      sendBeaconSafe(CFG.endpoint, withAuthBody({
         type: 'time_update',
-        api_key: CFG.apiKey,
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         event: {
           event_id: this.eventId,
@@ -465,7 +490,7 @@
           active_seconds: this.getActiveSeconds(),
         },
         visitor: buildVisitor(vid),
-      });
+      }));
     },
   };
 
@@ -719,8 +744,7 @@
       var vid = getCookie(COOKIE_VID);
       var sid = getCookie(COOKIE_SID);
       var batch = eventQueue.splice(0, 50);
-      sendBeaconSafe(getEventEndpoint(), {
-        api_key: CFG.apiKey,
+      sendBeaconSafe(getEventEndpoint(), withAuthBody({
         source: { domain: CFG.domain, type: 'wordpress', plugin_version: CFG.pluginVersion },
         events: batch.map(function (e) {
           return {
@@ -737,7 +761,7 @@
             meta: e.meta,
           };
         }),
-      });
+      }));
       saveQueue();
     }
   }

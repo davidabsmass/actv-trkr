@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.9.15
+ * Version:     1.9.17
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -13,11 +13,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.9.15' );
+define( 'MM_PLUGIN_VERSION', '1.9.17' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once MM_PLUGIN_DIR . 'includes/class-settings.php';
+require_once MM_PLUGIN_DIR . 'includes/class-ingest-token.php';
 require_once MM_PLUGIN_DIR . 'includes/class-tracker.php';
 require_once MM_PLUGIN_DIR . 'includes/class-forms.php';
 require_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';

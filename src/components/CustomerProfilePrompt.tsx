@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { CheckCircle, X } from "lucide-react";
+import { toast } from "sonner";
 
 const CUSTOMER_TYPES = [
   { value: "agency", label: "Agency" },
@@ -64,13 +65,17 @@ export function CustomerProfilePrompt() {
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    await completeProfile.mutateAsync({
-      customer_type: customerType,
-      website_count_range: websiteCount,
-      acquisition_source: acquisitionSource || undefined,
-    });
-    setSubmitted(true);
-    setTimeout(() => setOpen(false), 1500);
+    try {
+      await completeProfile.mutateAsync({
+        customer_type: customerType,
+        website_count_range: websiteCount,
+        acquisition_source: acquisitionSource || undefined,
+      });
+      setSubmitted(true);
+      setTimeout(() => setOpen(false), 1500);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not save your answers. Please try again.");
+    }
   };
 
   const handleSkip = async () => {

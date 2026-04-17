@@ -1,15 +1,35 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, TrendingUp, TrendingDown, Users, Shield, Target, AlertTriangle, Activity, Clock, Percent } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Users, Shield, Target, AlertTriangle, Activity, Clock, Percent, RefreshCw } from "lucide-react";
 import { AcqKpiCard } from "./AcqKpiCard";
 import { fmtCurrency, fmtPct, fmtRatio, fmtMonths, fmtNumber, severityTone, monthLabel } from "@/lib/acquisition-utils";
 import { buildMonthlyArr, buildRetention, buildConcentration, buildFinance, evaluateAutoRisks, diligenceReadinessScore } from "./calculations";
 import type { AcquisitionData } from "./useAcquisitionData";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, CartesianGrid, BarChart, Bar, Legend } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export default function ExecutiveSummaryPage({ data }: { data: AcquisitionData }) {
+  const [recomputing, setRecomputing] = useState(false);
+
+  const recompute = async () => {
+    setRecomputing(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("compute-acquisition-metrics");
+      if (error) throw error;
+      toast({ title: "Metrics recomputed", description: `${result?.snapshots ?? 0} snapshots saved, ${result?.auto_flags ?? 0} risk flags updated.` });
+      await data.reload();
+    } catch (e) {
+      toast({ title: "Recompute failed", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setRecomputing(false);
+    }
+  };
+
   const arr = buildMonthlyArr(data.subscribers, 24);
   const retention = buildRetention(arr);
   const concentration = buildConcentration(data.contracts, data.subscribers);
@@ -37,11 +57,17 @@ export default function ExecutiveSummaryPage({ data }: { data: AcquisitionData }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Acquisition Readiness</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          A complete view of growth, retention, efficiency, risk, and diligence readiness.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Acquisition Readiness</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            A complete view of growth, retention, efficiency, risk, and diligence readiness. Auto-recomputed nightly.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={recompute} disabled={recomputing}>
+          <RefreshCw className={`h-4 w-4 mr-1 ${recomputing ? "animate-spin" : ""}`} />
+          {recomputing ? "Recomputing…" : "Recompute now"}
+        </Button>
       </div>
 
       {/* Headline KPIs */}

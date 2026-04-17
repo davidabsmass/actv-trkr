@@ -79,13 +79,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Reject SHA-256 hash shape used as raw credential
-    if (/^[a-f0-9]{64}$/i.test(adminKey)) {
-      return new Response(JSON.stringify({ error: "Invalid credential" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // NOTE: We previously rejected any 64-char hex string here as a defense
+    // against feeding the stored key_hash back as a credential. That guard
+    // had a false-positive: legitimate raw keys minted by onboarding are
+    // also 64-char hex (sha256 of 32 random bytes is hex of length 64,
+    // and so is 32 random bytes hex-encoded). Removing it — the hash
+    // lookup below is the real protection: feeding a hash as the key
+    // would just sha256 it again and miss every row.
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,

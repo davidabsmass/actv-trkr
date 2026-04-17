@@ -84,8 +84,8 @@ const ResetPassword = () => {
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
-          <h2 className="text-lg font-semibold text-white mb-1">Set new password</h2>
-          <p className="text-sm text-white/60 mb-5">Enter your new password below</p>
+          <h2 className="text-lg font-semibold text-white mb-1">Set up your password</h2>
+          <p className="text-sm text-white/60 mb-5">Create a password to activate your account</p>
 
           {!ready ? (
             <p className="text-sm text-white/60 text-center py-4">Verifying reset link…</p>
@@ -95,7 +95,7 @@ const ResetPassword = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="New password"
+                  placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -114,7 +114,7 @@ const ResetPassword = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Confirm new password"
+                  placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

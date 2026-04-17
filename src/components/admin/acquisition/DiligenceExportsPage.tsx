@@ -26,6 +26,23 @@ const SECTIONS: Array<{ key: string; label: string }> = [
 ];
 
 export default function DiligenceExportsPage({ data }: { data: AcquisitionData }) {
+  const [building, setBuilding] = useState(false);
+  const [pack, setPack] = useState<{ pdfBlob: Blob; zipBlob: Blob; generatedAt: Date } | null>(null);
+
+  const generatePack = async () => {
+    setBuilding(true);
+    try {
+      const result = await buildDiligencePack(data);
+      setPack(result);
+      downloadDiligencePackZip(result.zipBlob, result.generatedAt);
+      toast({ title: "Diligence pack ready", description: "ZIP downloaded — re-download PDF or ZIP below." });
+    } catch (e) {
+      toast({ title: "Generation failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setBuilding(false);
+    }
+  };
+
   const arr = buildMonthlyArr(data.subscribers, 24);
   const retention = buildRetention(arr);
   const concentration = buildConcentration(data.contracts, data.subscribers);

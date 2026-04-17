@@ -174,7 +174,7 @@ export default function WebsiteSetup() {
           number={1}
           icon={KeyRound}
           title="Get Your License Key"
-          description="This key links your WordPress site to your account. We generate it for you here — you do NOT create it inside WordPress."
+          description="This key links your WordPress site to your account. We generate it for you here."
           action={
             <div className="space-y-3">
               {keyLoading ? (

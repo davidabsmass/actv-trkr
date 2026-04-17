@@ -263,8 +263,23 @@ export default function RetentionDashboard() {
             <Kpi icon={AlertTriangle} label="Unresolved" value={String(unresolved)} tone={unresolved > 0 ? "warn" : undefined} />
           </div>
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Recent billing events</CardTitle>
+              <Button variant="outline" size="sm" disabled={billing.length === 0} onClick={() => downloadCsv(
+                `billing-recovery-${new Date().toISOString().slice(0,10)}.csv`,
+                billing.map((b) => ({
+                  occurred_at: b.occurred_at,
+                  account: b.org_id ? (orgs[b.org_id] || b.org_id) : "",
+                  event_type: b.event_type,
+                  status: b.status || "",
+                  amount: b.amount != null ? (b.amount / 100).toFixed(2) : "",
+                  currency: b.currency || "",
+                  stripe_invoice_id: b.stripe_invoice_id || "",
+                  stripe_subscription_id: b.stripe_subscription_id || "",
+                })),
+              )}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -343,7 +358,22 @@ export default function RetentionDashboard() {
             </Card>
           </div>
           <Card>
-            <CardHeader><CardTitle className="text-base">Recent cancellations</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Recent cancellations</CardTitle>
+              <Button variant="outline" size="sm" disabled={cancellations.length === 0} onClick={() => downloadCsv(
+                `cancellations-${new Date().toISOString().slice(0,10)}.csv`,
+                cancellations.map((c) => ({
+                  created_at: c.created_at,
+                  account: orgs[c.org_id] || c.org_id,
+                  reason: c.reason,
+                  reason_detail: c.reason_detail || "",
+                  selected_offer: c.selected_offer || "",
+                  outcome: c.outcome,
+                })),
+              )}>
+                <Download className="h-3.5 w-3.5 mr-1.5" />CSV
+              </Button>
+            </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>

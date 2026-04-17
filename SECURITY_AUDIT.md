@@ -336,3 +336,19 @@ Given C-2 + C-3 are live in production today and the stored hash is reusable, th
 3. **Phase 2 + 30 days** — old key revoked.
 
 I.e., **add new model alongside, hard-deprecate the old credential within a single deprecation window**. The hard cutover option is unsafe given the install base cannot be assumed to auto-update.
+
+---
+
+## Phase 1 Progress (in this session)
+
+### Resolved
+- **C-1 Magic-login requestor binding** — Tokens now minted by backend (`generate-wp-login`), stored in `magic_login_tokens` with requestor user_id + IP hash, and atomically consumed via new `verify-magic-login` edge function. WP plugin (`class-magic-login.php`) calls back to backend on every URL hit; replay attempts logged.
+- **C-4 Plugin update signing** — `plugin-update-check` now signs `(version, download_url, signed_at)` tuple with HMAC-SHA256. WP `class-updater.php` verifies signature + freshness (≤24h) before surfacing the update. Stale/invalid signatures suppress the update and show an admin warning.
+- **H-7 Stripe webhook idempotency** — `actv-webhook` claims `event.id` in `processed_stripe_events` (PK) before side-effects. Duplicate deliveries return 200 with `duplicate: true`.
+
+### Foundation laid (still pending wire-up)
+- **C-3 API key in page source** — Created `site_ingest_tokens` table for narrow-scope tracking credentials. `tracker.js` and `heartbeat.js` still send the legacy `apiKey`; full migration requires a tracker-script rewrite that swaps `Authorization: Bearer <api_key>` for a per-site ingest token. Tracked as next-session work.
+
+### Deferred secret setup required
+- Add `PLUGIN_RELEASE_SIGNING_SECRET` to Lovable Cloud secrets (used by `plugin-update-check` to sign payloads). Until set, the function falls back to `signature: null` and the plugin will refuse the update — fail-closed, as designed.
+- The same secret value must be embedded in plugin builds (via the `release_signing_secret` plugin option or `MM_RELEASE_SIGNING_SECRET` constant). Recommend distributing via the `serve-plugin-zip` flow on next plugin re-download.

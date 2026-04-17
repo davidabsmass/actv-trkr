@@ -1,15 +1,17 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileDown, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { Download, FileDown, CheckCircle2, AlertCircle, XCircle, Package, FileText, Loader2 } from "lucide-react";
 import { readinessTone } from "@/lib/acquisition-utils";
 import { buildMonthlyArr, buildRetention, buildConcentration, buildFinance, diligenceReadinessScore } from "./calculations";
 import type { AcquisitionData } from "./useAcquisitionData";
 import { downloadCsv } from "@/lib/csv-export";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { buildDiligencePack, downloadDiligencePackPdf, downloadDiligencePackZip } from "./diligencePack";
 
 const SECTIONS: Array<{ key: string; label: string }> = [
   { key: "revenue_support", label: "Revenue Support" },
@@ -24,6 +26,23 @@ const SECTIONS: Array<{ key: string; label: string }> = [
 ];
 
 export default function DiligenceExportsPage({ data }: { data: AcquisitionData }) {
+  const [building, setBuilding] = useState(false);
+  const [pack, setPack] = useState<{ pdfBlob: Blob; zipBlob: Blob; generatedAt: Date } | null>(null);
+
+  const generatePack = async () => {
+    setBuilding(true);
+    try {
+      const result = await buildDiligencePack(data);
+      setPack(result);
+      downloadDiligencePackZip(result.zipBlob, result.generatedAt);
+      toast({ title: "Diligence pack ready", description: "ZIP downloaded — re-download PDF or ZIP below." });
+    } catch (e) {
+      toast({ title: "Generation failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setBuilding(false);
+    }
+  };
+
   const arr = buildMonthlyArr(data.subscribers, 24);
   const retention = buildRetention(arr);
   const concentration = buildConcentration(data.contracts, data.subscribers);
@@ -90,8 +109,39 @@ export default function DiligenceExportsPage({ data }: { data: AcquisitionData }
         </CardContent>
       </Card>
 
+      <Card className="border-primary/40 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Package className="h-4 w-4 text-primary" />
+            Generate Diligence Pack
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            One click — produces a branded PDF executive report and a ZIP containing every data table (CSV) plus the PDF. Buyer-ready, fully self-contained.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={generatePack} disabled={building} size="sm">
+              {building ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Package className="h-4 w-4 mr-1" />}
+              {building ? "Building pack…" : pack ? "Rebuild pack" : "Generate diligence pack"}
+            </Button>
+            {pack && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => downloadDiligencePackZip(pack.zipBlob, pack.generatedAt)}>
+                  <Package className="h-4 w-4 mr-1" /> Download ZIP
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => downloadDiligencePackPdf(pack.pdfBlob, pack.generatedAt)}>
+                  <FileText className="h-4 w-4 mr-1" /> Download PDF only
+                </Button>
+                <span className="text-xs text-muted-foreground">Generated {pack.generatedAt.toLocaleString()}</span>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
-        <CardHeader><CardTitle className="text-base">One-Click Exports</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Individual CSV Exports</CardTitle></CardHeader>
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
             <Button variant="outline" size="sm" onClick={exportSummary}><FileDown className="h-4 w-4 mr-1" /> KPI Summary</Button>

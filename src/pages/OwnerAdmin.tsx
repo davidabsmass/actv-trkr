@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowUpDown, TrendingUp, Users, DollarSign, AlertTriangle, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SupportInbox from "@/components/admin/SupportInbox";
+import RetentionDashboard from "@/components/admin/RetentionDashboard";
 
 type Subscriber = {
   id: string;
@@ -206,6 +207,9 @@ export default function OwnerAdmin() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Retention */}
+      <RetentionDashboard />
 
       {/* Support Inbox */}
       <SupportInbox />

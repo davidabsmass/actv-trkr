@@ -3175,6 +3175,69 @@ export type Database = {
         }
         Relationships: []
       }
+      magic_login_tokens: {
+        Row: {
+          consumed_at: string | null
+          consumed_ip_hash: string | null
+          expires_at: string
+          id: string
+          issued_at: string
+          org_id: string
+          requested_by_user_id: string
+          requestor_ip_hash: string | null
+          requestor_user_agent: string | null
+          revoked_at: string | null
+          revoked_reason: string | null
+          site_id: string
+          token_hash: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          consumed_ip_hash?: string | null
+          expires_at: string
+          id?: string
+          issued_at?: string
+          org_id: string
+          requested_by_user_id: string
+          requestor_ip_hash?: string | null
+          requestor_user_agent?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          site_id: string
+          token_hash: string
+        }
+        Update: {
+          consumed_at?: string | null
+          consumed_ip_hash?: string | null
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          org_id?: string
+          requested_by_user_id?: string
+          requestor_ip_hash?: string | null
+          requestor_user_agent?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          site_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magic_login_tokens_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "magic_login_tokens_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       metric_definitions: {
         Row: {
           category: string
@@ -3824,6 +3887,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plugin_release_keys: {
+        Row: {
+          algorithm: string
+          created_at: string
+          id: string
+          key_fingerprint: string
+          notes: string | null
+          retired_at: string | null
+          status: string
+        }
+        Insert: {
+          algorithm?: string
+          created_at?: string
+          id?: string
+          key_fingerprint: string
+          notes?: string | null
+          retired_at?: string | null
+          status?: string
+        }
+        Update: {
+          algorithm?: string
+          created_at?: string
+          id?: string
+          key_fingerprint?: string
+          notes?: string | null
+          retired_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      plugin_update_fetches: {
+        Row: {
+          current_version: string | null
+          domain: string | null
+          id: string
+          ip_hash: string | null
+          occurred_at: string
+          served_version: string | null
+          signature_alg: string | null
+          signature_issued: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          current_version?: string | null
+          domain?: string | null
+          id?: string
+          ip_hash?: string | null
+          occurred_at?: string
+          served_version?: string | null
+          signature_alg?: string | null
+          signature_issued?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          current_version?: string | null
+          domain?: string | null
+          id?: string
+          ip_hash?: string | null
+          occurred_at?: string
+          served_version?: string | null
+          signature_alg?: string | null
+          signature_issued?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       processed_stripe_events: {
         Row: {
@@ -5285,6 +5414,66 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "site_heartbeats_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_ingest_tokens: {
+        Row: {
+          bound_domain: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+          metadata: Json
+          org_id: string
+          revoked_at: string | null
+          rotated_at: string | null
+          scope: string
+          site_id: string
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          bound_domain: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json
+          org_id: string
+          revoked_at?: string | null
+          rotated_at?: string | null
+          scope?: string
+          site_id: string
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          bound_domain?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json
+          org_id?: string
+          revoked_at?: string | null
+          rotated_at?: string | null
+          scope?: string
+          site_id?: string
+          status?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_ingest_tokens_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_ingest_tokens_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"

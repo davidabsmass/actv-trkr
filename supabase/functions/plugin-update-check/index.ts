@@ -11,9 +11,14 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.9.14";
+const CURRENT_PLUGIN_VERSION = "1.9.15";
 
 const CHANGELOG = `
+## 1.9.15
+- NEW: Auto-recovery banner in WP admin — appears when ACTV TRKR detects tracking has stopped
+- NEW: One-click "Reconnect Now" button re-fires the connection check from inside WordPress
+- NEW: Polls our /check-site-status endpoint every 15 minutes from the admin dashboard
+
 ## 1.9.13
 - FIX: Cursor-based Avada re-backfill now receives backend-known page mappings for the correct form page
 - FIX: Avada re-backfill now reuses the same authoritative multi-table discovery path as sync counting, preventing 46/38 mismatches

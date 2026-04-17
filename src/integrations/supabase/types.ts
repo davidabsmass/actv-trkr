@@ -59,6 +59,33 @@ export type Database = {
           },
         ]
       }
+      admin_digest_log: {
+        Row: {
+          digest_date: string
+          digest_type: string
+          id: string
+          payload: Json | null
+          recipient_email: string
+          sent_at: string
+        }
+        Insert: {
+          digest_date: string
+          digest_type: string
+          id?: string
+          payload?: Json | null
+          recipient_email: string
+          sent_at?: string
+        }
+        Update: {
+          digest_date?: string
+          digest_type?: string
+          id?: string
+          payload?: Json | null
+          recipient_email?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       admin_notes: {
         Row: {
           author_email: string | null
@@ -3320,6 +3347,9 @@ export type Database = {
           site_id: string
           tracker_status: string
           updated_at: string
+          verifier_last_checked_at: string | null
+          verifier_last_message: string | null
+          verifier_last_status: string | null
         }
         Insert: {
           events_last_hour?: number
@@ -3332,6 +3362,9 @@ export type Database = {
           site_id: string
           tracker_status?: string
           updated_at?: string
+          verifier_last_checked_at?: string | null
+          verifier_last_message?: string | null
+          verifier_last_status?: string | null
         }
         Update: {
           events_last_hour?: number
@@ -3344,6 +3377,9 @@ export type Database = {
           site_id?: string
           tracker_status?: string
           updated_at?: string
+          verifier_last_checked_at?: string | null
+          verifier_last_message?: string | null
+          verifier_last_status?: string | null
         }
         Relationships: [
           {
@@ -3762,6 +3798,8 @@ export type Database = {
       tracking_interruptions: {
         Row: {
           created_at: string
+          customer_email_recipient: string | null
+          customer_email_sent_at: string | null
           duration_seconds: number | null
           ended_at: string | null
           id: string
@@ -3773,6 +3811,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_email_recipient?: string | null
+          customer_email_sent_at?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
@@ -3784,6 +3824,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_email_recipient?: string | null
+          customer_email_sent_at?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string

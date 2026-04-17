@@ -1,0 +1,143 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+export type Subscriber = {
+  id: string;
+  email: string;
+  plan: string;
+  status: string;
+  mrr: number;
+  created_at: string;
+  churn_date: string | null;
+};
+
+export type FinanceMonth = {
+  id: string;
+  month: string;
+  revenue: number;
+  cogs_hosting: number;
+  cogs_ai: number;
+  cogs_support: number;
+  cogs_other: number;
+  opex_rd: number;
+  opex_sm: number;
+  opex_ga: number;
+  cash_balance: number | null;
+  headcount: number;
+  notes: string | null;
+};
+
+export type Contract = {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  org_id: string | null;
+  plan: string | null;
+  acv: number;
+  mrr: number;
+  contract_start: string | null;
+  contract_end: string | null;
+  auto_renew: boolean;
+  billing_frequency: string;
+  industry: string | null;
+  geography: string | null;
+  custom_terms: string | null;
+};
+
+export type RiskFlag = {
+  id: string;
+  risk_type: string;
+  severity: string;
+  title: string;
+  description: string | null;
+  status: string;
+  due_date: string | null;
+  mitigation_plan: string | null;
+  auto_generated: boolean;
+  created_at: string;
+};
+
+export type MetricDef = {
+  id: string;
+  metric_key: string;
+  metric_name: string;
+  category: string;
+  formula: string | null;
+  description: string | null;
+  source_systems: string | null;
+  caveats: string | null;
+  unit: string | null;
+};
+
+export type DiligenceItem = {
+  id: string;
+  section_key: string;
+  item_name: string;
+  readiness_status: string;
+  notes: string | null;
+  linked_document_url: string | null;
+  sort_order: number;
+};
+
+export type Vendor = {
+  id: string;
+  vendor_name: string;
+  category: string | null;
+  criticality: string | null;
+  risk_level: string | null;
+  monthly_cost: number | null;
+  contract_status: string | null;
+  contract_renewal_date: string | null;
+  backup_plan: string | null;
+  dependency_notes: string | null;
+};
+
+export type AcquisitionData = {
+  subscribers: Subscriber[];
+  contracts: Contract[];
+  finance: FinanceMonth[];
+  risks: RiskFlag[];
+  metrics: MetricDef[];
+  checklist: DiligenceItem[];
+  vendors: Vendor[];
+  loading: boolean;
+  reload: () => Promise<void>;
+};
+
+export function useAcquisitionData(): AcquisitionData {
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [finance, setFinance] = useState<FinanceMonth[]>([]);
+  const [risks, setRisks] = useState<RiskFlag[]>([]);
+  const [metrics, setMetrics] = useState<MetricDef[]>([]);
+  const [checklist, setChecklist] = useState<DiligenceItem[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = async () => {
+    setLoading(true);
+    const [sub, ctr, fin, rsk, met, chk, ven] = await Promise.all([
+      supabase.from("subscribers").select("id,email,plan,status,mrr,created_at,churn_date"),
+      supabase.from("customer_contracts").select("*").order("acv", { ascending: false }),
+      supabase.from("finance_monthly").select("*").order("month", { ascending: true }),
+      supabase.from("acquisition_risk_flags").select("*").order("created_at", { ascending: false }),
+      supabase.from("metric_definitions").select("*").order("category").order("metric_name"),
+      supabase.from("diligence_checklist_items").select("*").order("section_key").order("sort_order"),
+      supabase.from("vendor_risk_registry").select("*").order("criticality"),
+    ]);
+    if (sub.data) setSubscribers(sub.data as Subscriber[]);
+    if (ctr.data) setContracts(ctr.data as Contract[]);
+    if (fin.data) setFinance(fin.data as FinanceMonth[]);
+    if (rsk.data) setRisks(rsk.data as RiskFlag[]);
+    if (met.data) setMetrics(met.data as MetricDef[]);
+    if (chk.data) setChecklist(chk.data as DiligenceItem[]);
+    if (ven.data) setVendors(ven.data as Vendor[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  return { subscribers, contracts, finance, risks, metrics, checklist, vendors, loading, reload };
+}

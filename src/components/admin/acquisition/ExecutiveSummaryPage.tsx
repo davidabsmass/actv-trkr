@@ -12,6 +12,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as ReToolti
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { InternalOnly } from "./BuyerViewContext";
 
 export default function ExecutiveSummaryPage({ data }: { data: AcquisitionData }) {
   const [recomputing, setRecomputing] = useState(false);
@@ -74,10 +75,12 @@ export default function ExecutiveSummaryPage({ data }: { data: AcquisitionData }
             A complete view of growth, retention, efficiency, risk, and diligence readiness. Auto-recomputed nightly.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={recompute} disabled={recomputing}>
-          <RefreshCw className={`h-4 w-4 mr-1 ${recomputing ? "animate-spin" : ""}`} />
-          {recomputing ? "Recomputing…" : "Recompute now"}
-        </Button>
+        <InternalOnly>
+          <Button variant="outline" size="sm" onClick={recompute} disabled={recomputing}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${recomputing ? "animate-spin" : ""}`} />
+            {recomputing ? "Recomputing…" : "Recompute now"}
+          </Button>
+        </InternalOnly>
       </div>
 
       {/* Headline KPIs */}

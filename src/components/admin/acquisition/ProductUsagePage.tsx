@@ -8,7 +8,7 @@ import { AcqKpiCard } from "./AcqKpiCard";
 import { fmtNumber, fmtPct } from "@/lib/acquisition-utils";
 import type { AcquisitionData } from "./useAcquisitionData";
 
-type SiteRow = { id: string; org_id: string; domain: string; tracking_status: string | null; last_seen_at: string | null };
+type SiteRow = { id: string; org_id: string; domain: string; status: string | null; last_heartbeat_at: string | null };
 type RetentionEvent = { org_id: string; event_name: string; occurred_at: string };
 
 export default function ProductUsagePage({ data }: { data: AcquisitionData }) {
@@ -20,7 +20,7 @@ export default function ProductUsagePage({ data }: { data: AcquisitionData }) {
   useEffect(() => {
     void (async () => {
       const [s, a, l] = await Promise.all([
-        supabase.from("sites").select("id,org_id,domain,tracking_status,last_seen_at"),
+        supabase.from("sites").select("id,org_id,domain,status,last_heartbeat_at"),
         supabase.from("retention_events").select("org_id,event_name,occurred_at").in("event_name", ["first_data_received", "second_login", "first_dashboard_view"]),
         supabase.from("login_events").select("org_id,logged_in_at").gte("logged_in_at", new Date(Date.now() - 30 * 86400000).toISOString()),
       ]);
@@ -32,7 +32,7 @@ export default function ProductUsagePage({ data }: { data: AcquisitionData }) {
   }, []);
 
   const activeOrgs = new Set(data.subscribers.filter((s) => s.status === "active").map((s) => s.id));
-  const activeSites = sites.filter((s) => s.tracking_status === "active" || s.tracking_status === "ok");
+  const activeSites = sites.filter((s) => s.status === "active" || s.status === "ok");
   const trackingEnabledRate = sites.length > 0 ? (activeSites.length / sites.length) * 100 : 0;
 
   const orgsActivated = new Set(activations.filter((e) => e.event_name === "first_data_received").map((e) => e.org_id));
@@ -136,11 +136,11 @@ export default function ProductUsagePage({ data }: { data: AcquisitionData }) {
                   <TableRow key={s.id}>
                     <TableCell className="text-xs">{s.domain}</TableCell>
                     <TableCell className="text-xs">
-                      <Badge variant={s.tracking_status === "active" || s.tracking_status === "ok" ? "default" : "destructive"}>
-                        {s.tracking_status ?? "unknown"}
+                      <Badge variant={s.status === "active" || s.status === "ok" ? "default" : "destructive"}>
+                        {s.status ?? "unknown"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs">{s.last_seen_at ? new Date(s.last_seen_at).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell className="text-xs">{s.last_heartbeat_at ? new Date(s.last_heartbeat_at).toLocaleDateString() : "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

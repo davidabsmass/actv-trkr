@@ -269,7 +269,22 @@ const Onboarding = () => {
               </button>
             ) : (
               <button
-                onClick={() => navigate("/checkout")}
+                onClick={async () => {
+                  try {
+                    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+                    const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+                    const res = await fetch(`${SUPABASE_URL}/functions/v1/actv-checkout`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY },
+                      body: JSON.stringify({ plan: "monthly", email: user?.email }),
+                    });
+                    const data = await res.json();
+                    if (data.url) window.location.href = data.url;
+                    else throw new Error(data.error || "Checkout failed");
+                  } catch (err: any) {
+                    toast({ title: "Checkout error", description: err.message, variant: "destructive" });
+                  }
+                }}
                 className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Continue to Checkout

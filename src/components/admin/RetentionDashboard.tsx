@@ -6,8 +6,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { Activity, AlertTriangle, CreditCard, Heart, TrendingDown, Users, Workflow, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, CreditCard, Download, Heart, TrendingDown, Users, Workflow, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { downloadCsv } from "@/lib/csv-export";
+import RetentionCohorts from "./RetentionCohorts";
+import RetentionSettings from "./RetentionSettings";
 
 type BillingEvent = {
   id: string;
@@ -147,12 +150,14 @@ export default function RetentionDashboard() {
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="at-risk">At Risk</TabsTrigger>
+          <TabsTrigger value="cohorts">Cohorts</TabsTrigger>
           <TabsTrigger value="billing">Billing Recovery</TabsTrigger>
           <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
           <TabsTrigger value="flows">Flows</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW */}

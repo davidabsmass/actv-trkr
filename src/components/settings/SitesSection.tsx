@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useSites } from "@/hooks/use-dashboard-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { Globe, CheckCircle, AlertTriangle, Plus, Trash2, X } from "lucide-react";
+import { Globe, CheckCircle, AlertTriangle, Settings, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -13,35 +14,7 @@ export default function SitesSection() {
   const { orgId } = useOrg();
   const { data: sites, isLoading } = useSites(orgId);
   const queryClient = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
-  const [siteUrl, setSiteUrl] = useState("");
-  const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleAddSite = async () => {
-    if (!siteUrl || !orgId) return;
-    setSaving(true);
-    try {
-      let domain: string;
-      try {
-        domain = new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`).hostname;
-      } catch {
-        domain = siteUrl.replace(/^https?:\/\//, "").split("/")[0];
-      }
-      // Normalize: strip www. so www.example.com and example.com are the same site
-      domain = domain.replace(/^www\./i, "");
-      const { error } = await supabase.from("sites").insert({ org_id: orgId, domain });
-      if (error) throw error;
-      toast({ title: t("settings.siteAdded"), description: t("settings.siteAddedDesc", { domain }) });
-      setSiteUrl("");
-      setShowForm(false);
-      queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
-    } catch (err: any) {
-      toast({ variant: "destructive", title: t("settings.errorAddingSite"), description: err?.message });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDelete = async (siteId: string, domain: string) => {
     if (!confirm(t("settings.removeSiteConfirm", { domain }))) return;
@@ -65,46 +38,18 @@ export default function SitesSection() {
           <Globe className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">{t("settings.connectedSites")}</h3>
         </div>
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("settings.addSite")}
-          </button>
-        )}
+        <Link
+          to="/settings?tab=setup"
+          className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+        >
+          <Settings className="h-3.5 w-3.5" />
+          Set Up Website
+        </Link>
       </div>
 
       <p className="text-xs text-muted-foreground mb-4">
-        {t("settings.sitesAutoAppear")}
+        Sites appear here automatically once the WordPress plugin is installed and connected with your license key.
       </p>
-
-      {showForm && (
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text"
-            placeholder={t("settings.exampleDomainPlaceholder")}
-            value={siteUrl}
-            onChange={(e) => setSiteUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddSite()}
-            className="flex-1 px-3 py-2 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-          <button
-            onClick={handleAddSite}
-            disabled={!siteUrl || saving}
-            className="px-3 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {saving ? t("settings.adding") : t("settings.addButton")}
-          </button>
-          <button
-            onClick={() => { setShowForm(false); setSiteUrl(""); }}
-            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {isLoading ? (
         <p className="text-xs text-muted-foreground">{t("settings.loadingKeys")}</p>
@@ -114,7 +59,7 @@ export default function SitesSection() {
           <div>
             <p className="text-xs font-medium text-foreground mb-1">{t("settings.noSitesConnected")}</p>
             <p className="text-xs text-muted-foreground">
-              {t("settings.noSitesInstallPlugin")}
+              Click <Link to="/settings?tab=setup" className="text-primary hover:underline font-medium">Set Up Website</Link> above to get your license key and install the WordPress plugin. Your site will appear here once connected.
             </p>
           </div>
         </div>

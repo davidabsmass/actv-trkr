@@ -5,7 +5,16 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist",
+      // Vendored plugin tracker (ships as-is to WordPress; not part of app source)
+      "mission-metrics-wp-plugin/**",
+      "supabase/functions/serve-plugin-zip/plugin-template/**",
+      // Generated Supabase types
+      "src/integrations/supabase/types.ts",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -21,9 +30,17 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
-      // Phase 1 hardening: surface `any` usage as a warning (visible in CI) rather than
-      // a hard error, so legacy code doesn't block PRs while we tighten types over time.
+      // ── Phase 1 hardening ──────────────────────────────────────────────
+      // Surface legacy code-quality issues as warnings so they're visible in CI
+      // without blocking PRs. Tighten to "error" once the codebase is clean.
       "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-empty-object-type": "warn",
+      "@typescript-eslint/ban-ts-comment": "warn",
+      "@typescript-eslint/no-require-imports": "warn",
+      "no-empty": "warn",
+      "no-useless-escape": "warn",
+      "no-constant-binary-expression": "warn",
+      "prefer-const": "warn",
     },
   },
 );

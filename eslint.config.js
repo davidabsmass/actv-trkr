@@ -11,6 +11,8 @@ export default tseslint.config(
       // Vendored plugin tracker (ships as-is to WordPress; not part of app source)
       "mission-metrics-wp-plugin/**",
       "supabase/functions/serve-plugin-zip/plugin-template/**",
+      // Edge function email templates use Deno/JSX runtime that the app's TS parser can't read
+      "supabase/functions/_shared/transactional-email-templates/**",
       // Generated Supabase types
       "src/integrations/supabase/types.ts",
     ],

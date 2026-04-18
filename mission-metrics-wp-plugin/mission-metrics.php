@@ -47,55 +47,95 @@ require_once MM_PLUGIN_DIR . 'includes/modules/class-module-legacy.php';
 require_once MM_PLUGIN_DIR . 'includes/bootstrap/class-bootstrap.php';
 
 /**
- * Activation: create retry-queue + log tables and schedule cron.
+ * Activation: keep this FAST. Heavy setup (migrations, retry-queue table,
+ * cron scheduling) is deferred to the first admin request after activation
+ * via the `actv_trkr_pending_setup` flag. This prevents activation
+ * timeouts on slow shared hosts where dbDelta + table probes can exceed
+ * PHP's max_execution_time and leave the plugin in a half-activated state.
  */
 function mm_activate() {
-	// Foundation tables.
-	if ( class_exists( 'ACTV_Logger' ) ) {
-		ACTV_Logger::create_table();
+	if ( function_exists( 'set_time_limit' ) ) {
+		@set_time_limit( 60 );
 	}
 
-	// Activation preflight — hard-abort on critical failures.
-	if ( class_exists( 'ACTV_Preflight' ) ) {
-		$pre = ACTV_Preflight::run_activation();
-		if ( empty( $pre['ok'] ) ) {
-			deactivate_plugins( plugin_basename( __FILE__ ) );
-			wp_die(
-				'<h1>ACTV TRKR cannot activate</h1>' .
-				'<p>The following requirements were not met:</p><ul><li>' .
-				implode( '</li><li>', array_map( 'esc_html', $pre['critical'] ) ) .
-				'</li></ul><p><a href="' . esc_url( admin_url( 'plugins.php' ) ) . '">← Back to Plugins</a></p>',
-				'ACTV TRKR Activation Failed',
-				array( 'back_link' => true )
+	// Foundation log table — wrapped so a DB hiccup never blocks activation.
+	try {
+		if ( class_exists( 'ACTV_Logger' ) ) {
+			ACTV_Logger::create_table();
+		}
+	} catch ( \Throwable $e ) {
+		// Logger unavailable — preflight will record its own warning.
+	}
+
+	// Activation preflight — hard-abort ONLY on truly critical failures
+	// (PHP/WP version, options write). Wrapped so a preflight bug
+	// never blocks activation.
+	try {
+		if ( class_exists( 'ACTV_Preflight' ) ) {
+			$pre = ACTV_Preflight::run_activation();
+			if ( ! empty( $pre ) && empty( $pre['ok'] ) ) {
+				deactivate_plugins( plugin_basename( __FILE__ ) );
+				wp_die(
+					'<h1>ACTV TRKR cannot activate</h1>' .
+					'<p>The following requirements were not met:</p><ul><li>' .
+					implode( '</li><li>', array_map( 'esc_html', $pre['critical'] ) ) .
+					'</li></ul><p><a href="' . esc_url( admin_url( 'plugins.php' ) ) . '">← Back to Plugins</a></p>',
+					'ACTV TRKR Activation Failed',
+					array( 'back_link' => true )
+				);
+			}
+		}
+	} catch ( \Throwable $e ) {
+		// Preflight failure is non-fatal — defer to runtime checks.
+	}
+
+	// Defer migrations + retry-queue table + cron scheduling to first admin request.
+	update_option( 'actv_trkr_pending_setup', '1', false );
+}
+register_activation_hook( __FILE__, 'mm_activate' );
+
+/**
+ * Deferred setup: runs once on the first admin_init after activation.
+ * Idempotent and time-boxed so a slow host can't stall the dashboard.
+ */
+function mm_run_deferred_setup() {
+	if ( get_option( 'actv_trkr_pending_setup' ) !== '1' ) {
+		return;
+	}
+
+	if ( function_exists( 'set_time_limit' ) ) {
+		@set_time_limit( 120 );
+	}
+
+	try {
+		if ( class_exists( 'ACTV_Migration_Runner' ) ) {
+			ACTV_Migration_Runner::ensure_pending(
+				MM_PLUGIN_DIR . 'includes/migrations/versions'
 			);
+		}
+	} catch ( \Throwable $e ) {
+		if ( class_exists( 'ACTV_Logger' ) ) {
+			ACTV_Logger::warn( 'core', 'deferred_migrations_failed', array( 'message' => $e->getMessage() ) );
 		}
 	}
 
-	// Apply pending migrations now so the first request has a valid schema.
-	if ( class_exists( 'ACTV_Migration_Runner' ) ) {
-		ACTV_Migration_Runner::ensure_pending(
-			MM_PLUGIN_DIR . 'includes/migrations/versions'
-		);
+	try {
+		require_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';
+		MM_Retry_Queue::create_table();
+	} catch ( \Throwable $e ) {
+		if ( class_exists( 'ACTV_Logger' ) ) {
+			ACTV_Logger::warn( 'core', 'deferred_retry_table_failed', array( 'message' => $e->getMessage() ) );
+		}
 	}
 
-	// Existing feature setup.
-	require_once MM_PLUGIN_DIR . 'includes/class-retry-queue.php';
-	MM_Retry_Queue::create_table();
-
-	if ( ! wp_next_scheduled( 'mm_retry_cron' ) ) {
-		wp_schedule_event( time(), 'mm_every_5_min', 'mm_retry_cron' );
-	}
-	if ( ! wp_next_scheduled( 'mm_form_probe_cron' ) ) {
-		wp_schedule_event( time(), 'hourly', 'mm_form_probe_cron' );
-	}
-	if ( ! wp_next_scheduled( 'mm_seo_fix_cron' ) ) {
-		wp_schedule_event( time(), 'mm_every_5_min', 'mm_seo_fix_cron' );
-	}
 	if ( ! wp_next_scheduled( 'actv_trkr_log_prune' ) ) {
 		wp_schedule_event( time() + 3600, 'weekly', 'actv_trkr_log_prune' );
 	}
+
+	delete_option( 'actv_trkr_pending_setup' );
 }
-register_activation_hook( __FILE__, 'mm_activate' );
+add_action( 'admin_init', 'mm_run_deferred_setup', 1 );
+
 
 /**
  * Deactivation: clear cron.

@@ -689,10 +689,17 @@ class MM_Settings {
 		$opts      = self::get();
 		$api_key   = trim( $opts['api_key'] ?? '' );
 		$base_url  = rtrim( $opts['endpoint_url'] ?? '', '/' );
+		if ( empty( $base_url ) ) {
+			// Fallback to hardcoded default if option somehow missing.
+			$base_url = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+		}
 		$domain    = preg_replace( '/^www\./i', '', (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
 
-		if ( empty( $api_key ) || empty( $base_url ) || empty( $domain ) ) {
-			wp_send_json_error( 'Missing API key, endpoint URL, or site domain.' );
+		if ( empty( $api_key ) ) {
+			wp_send_json_error( 'Please paste your API key above and click "Save Changes" before testing.' );
+		}
+		if ( empty( $domain ) ) {
+			wp_send_json_error( 'Could not detect this site\'s domain from WordPress settings.' );
 		}
 
 		$heartbeat_response = wp_remote_post( $base_url . '/ingest-heartbeat', array(

@@ -135,7 +135,7 @@
     "source": "Source",
     "campaign": "Campaign",
     "visitorEngagement": "Visitor Engagement",
-    "engagementDataPending": "Engagement data will appear once time-on-page tracking is active.",
+    "engagementDataPending": "No engagement data for this period yet — metrics build up as real visitors browse your pages.",
     "avgTimeOnPage": "Avg Time on Page",
     "avgSessionDuration": "Avg Session Duration",
     "pagesPerSession": "Pages / Session",

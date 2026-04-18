@@ -33,6 +33,7 @@ class ACTV_Recovery {
 			$breakers     = class_exists( 'ACTV_Circuit_Breaker' ) ? ACTV_Circuit_Breaker::snapshot() : array();
 			$modules      = class_exists( 'ACTV_Module_Registry' ) ? ACTV_Module_Registry::load_state() : array();
 			$history      = get_option( 'actv_trkr_state_history', array() );
+			$update_health = class_exists( 'ACTV_Update_Health' ) ? ACTV_Update_Health::snapshot() : null;
 
 			return array(
 				'ok'      => true,
@@ -49,6 +50,7 @@ class ACTV_Recovery {
 				'breakers'      => $breakers,
 				'modules'       => $modules,
 				'state_history' => is_array( $history ) ? array_slice( $history, -10 ) : array(),
+				'update_health' => $update_health,
 			);
 		} catch ( \Throwable $e ) {
 			return array( 'ok' => false, 'error' => $e->getMessage() );

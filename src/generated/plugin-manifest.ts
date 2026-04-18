@@ -1,4 +1,4 @@
 export const pluginManifest = {
-  version: "1.12.0",
+  version: "1.13.0",
   downloadFileName: "actv-trkr-latest.zip",
 } as const;

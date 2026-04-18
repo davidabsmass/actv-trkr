@@ -17,9 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 class MM_Updater {
 
 	const SLUG        = 'actv-trkr/actv-trkr.php';
-	const TRANSIENT   = 'mm_update_data';
-	const CHECK_HOURS = 12;
-...
+	const TRANSIENT    = 'mm_update_data';
+	const CHECK_HOURS  = 12;
+	const MAX_SIG_AGE  = 86400; // 24h replay window for signed update payloads.
+
 	public static function init() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );

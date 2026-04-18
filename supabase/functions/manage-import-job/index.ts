@@ -93,6 +93,13 @@ async function handlePreflight(supabase: any, user: any, req: Request) {
 }
 
 // ── Discover forms on WP site ──
+// Strategy:
+//   1. Try the WP plugin's import-discover endpoint (authoritative source).
+//   2. If it fails (timeout / 5xx / unreachable) OR returns 0 forms,
+//      fall back to backfilling form_integrations from any forms already
+//      recorded in the `forms` table (populated by site-sync / tracker).
+//   This guarantees the Settings UI never shows "0 forms" when forms
+//   already exist in the database.
 async function handleDiscover(supabase: any, user: any, req: Request) {
   const body = await req.json();
   const siteId = body.site_id;
@@ -101,10 +108,32 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
   const site = await getSiteForUser(supabase, user.id, siteId);
   if (!site) return json({ error: "Site not found" }, 404);
 
-  const wpResult = await callWpPlugin(supabase, site, "import-discover", {});
-  if (!wpResult.ok) return json({ error: wpResult.error || "WP plugin unreachable" }, 502);
+  let source: "wp_plugin" | "forms_table" = "wp_plugin";
+  let wpError: string | null = null;
+  let forms: any[] = [];
 
-  const forms = wpResult.forms || [];
+  const wpResult = await callWpPlugin(supabase, site, "import-discover", {});
+  if (wpResult.ok && Array.isArray(wpResult.forms) && wpResult.forms.length > 0) {
+    forms = wpResult.forms;
+  } else {
+    wpError = wpResult.ok ? null : (wpResult.error || "WP plugin unreachable");
+    // ── Fallback: backfill from existing forms table ──
+    const { data: existing } = await supabase
+      .from("forms")
+      .select("provider, external_form_id, name, page_url")
+      .eq("site_id", siteId)
+      .eq("archived", false);
+
+    if (existing && existing.length > 0) {
+      source = "forms_table";
+      forms = existing.map((f: any) => ({
+        builder_type: f.provider || "gravity_forms",
+        external_form_id: f.external_form_id,
+        form_name: f.name || `Form ${f.external_form_id}`,
+        entry_count: 0, // unknown without WP plugin
+      }));
+    }
+  }
 
   for (const form of forms) {
     await supabase.from("form_integrations").upsert({
@@ -118,7 +147,13 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     }, { onConflict: "site_id,builder_type,external_form_id" });
   }
 
-  return json({ ok: true, discovered: forms.length, forms });
+  return json({
+    ok: true,
+    discovered: forms.length,
+    source,
+    wp_plugin_error: wpError,
+    forms,
+  });
 }
 
 // ── Create import job ──

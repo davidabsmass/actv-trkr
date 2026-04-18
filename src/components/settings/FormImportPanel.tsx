@@ -140,18 +140,29 @@ export default function FormImportPanel() {
   const rescanSite = async (siteId: string) => {
     try {
       setRescanningSiteId(siteId);
-      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
-        body: { site_id: siteId, force_backfill: true },
-      });
+      // Call the discover action which populates form_integrations
+      // (the table this UI reads from). It includes a fallback to backfill
+      // from the existing `forms` table if the WP plugin endpoint is
+      // unreachable / times out — so the UI never gets stuck on 0 forms.
+      const { data, error } = await supabase.functions.invoke(
+        "manage-import-job?action=discover",
+        { body: { site_id: siteId } }
+      );
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       invalidate();
+
+      const discovered = data?.discovered ?? 0;
+      const sourceLabel = data?.source === "forms_table"
+        ? " (from previously detected forms — WP plugin was unreachable)"
+        : "";
+
       toast({
-        title: "Form re-scan started",
-        description: data?.backfill_in_progress
-          ? "We restarted discovery and background form sync for this site."
-          : "We restarted form discovery for this site.",
+        title: discovered > 0 ? "Forms re-scanned" : "Re-scan complete",
+        description: discovered > 0
+          ? `Found ${discovered} form${discovered === 1 ? "" : "s"}${sourceLabel}.`
+          : "No forms detected on this site yet.",
       });
     } catch (err: any) {
       toast({

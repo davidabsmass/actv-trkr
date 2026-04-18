@@ -135,21 +135,79 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     }
   }
 
+  // Upsert form_integrations and auto-create import jobs for any form with
+  // entries that haven't been fully imported yet. This makes "Re-scan" a
+  // one-click "discover + import" action — users no longer need to click
+  // "Start Import" on each form individually.
+  let autoStartedJobs = 0;
+  let skippedJobs = 0;
+
   for (const form of forms) {
-    await supabase.from("form_integrations").upsert({
-      site_id: siteId,
-      org_id: site.org_id,
-      builder_type: form.builder_type,
-      external_form_id: form.external_form_id,
-      form_name: form.form_name,
-      total_entries_estimated: form.entry_count || 0,
-      status: "detected",
-    }, { onConflict: "site_id,builder_type,external_form_id" });
+    const estimated = form.entry_count || 0;
+
+    // Upsert integration but DON'T overwrite total_entries_imported.
+    const { data: integration } = await supabase
+      .from("form_integrations")
+      .upsert({
+        site_id: siteId,
+        org_id: site.org_id,
+        builder_type: form.builder_type,
+        external_form_id: form.external_form_id,
+        form_name: form.form_name,
+        total_entries_estimated: estimated,
+        status: "detected",
+      }, { onConflict: "site_id,builder_type,external_form_id" })
+      .select("id, total_entries_imported, status")
+      .single();
+
+    if (!integration) continue;
+
+    // Skip auto-import when:
+    //  - form has no entries to import, or
+    //  - it's already fully synced, or
+    //  - source was the forms-table fallback (no real count, would create a
+    //    junk job for every form), or
+    //  - an active job already exists.
+    if (estimated === 0) { skippedJobs++; continue; }
+    if (source === "forms_table") { skippedJobs++; continue; }
+    if ((integration.total_entries_imported || 0) >= estimated) { skippedJobs++; continue; }
+
+    const { data: existingJobs } = await supabase
+      .from("form_import_jobs")
+      .select("id")
+      .eq("form_integration_id", integration.id)
+      .in("status", ["pending", "running", "stalled"])
+      .limit(1);
+
+    if (existingJobs && existingJobs.length > 0) { skippedJobs++; continue; }
+
+    const { error: jobErr } = await supabase
+      .from("form_import_jobs")
+      .insert({
+        site_id: siteId,
+        org_id: site.org_id,
+        form_integration_id: integration.id,
+        status: "pending",
+        batch_size: DEFAULT_BATCH_SIZE,
+        adaptive_batch_size: DEFAULT_BATCH_SIZE,
+        total_expected: estimated,
+        auto_resume_enabled: true,
+        next_run_at: new Date().toISOString(),
+      });
+
+    if (!jobErr) {
+      await supabase.from("form_integrations")
+        .update({ status: "importing" })
+        .eq("id", integration.id);
+      autoStartedJobs++;
+    }
   }
 
   return json({
     ok: true,
     discovered: forms.length,
+    auto_started_jobs: autoStartedJobs,
+    skipped_jobs: skippedJobs,
     source,
     wp_plugin_error: wpError,
     forms,

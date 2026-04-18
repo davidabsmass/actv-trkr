@@ -404,7 +404,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
         {/* Domain & SSL */}
         <TabsContent value="domain-ssl" className="space-y-4">
           <div className="flex justify-end mb-1">
-            <CheckDomainSslButton />
+            <CheckDomainSslButton siteId={site.id} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="glass-card p-5">
@@ -498,7 +498,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
 }
 // ─── Check Domain & SSL Button ──────────────────────────────────
 
-function CheckDomainSslButton() {
+function CheckDomainSslButton({ siteId }: { siteId: string }) {
   const queryClient = useQueryClient();
   const [checking, setChecking] = useState(false);
 
@@ -506,14 +506,17 @@ function CheckDomainSslButton() {
     setChecking(true);
     try {
       const { data, error } = await supabase.functions.invoke("check-domain-ssl", {
-        body: {},
+        body: { site_id: siteId },
       });
       if (error) throw error;
+      if (!data?.ok) {
+        throw new Error(data?.error || "We couldn’t complete the domain and SSL check.");
+      }
       toast({ title: "Check complete", description: `Checked ${data?.checked || 0} site(s).` });
       queryClient.invalidateQueries({ queryKey: ["domain_health"] });
       queryClient.invalidateQueries({ queryKey: ["ssl_health"] });
     } catch (err: any) {
-      toast({ title: "Check failed", description: err.message, variant: "destructive" });
+      toast({ title: "Check failed", description: err?.message || "The check did not complete.", variant: "destructive" });
     } finally {
       setChecking(false);
     }

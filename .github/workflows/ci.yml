@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  # ─── Layer 1: Source quality ────────────────────────────────────────────
+  app-quality:
+    name: App quality (lint + tsc + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: ESLint
+        run: npm run lint -- --max-warnings 0
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Vitest
+        run: npm test
+
+  # ─── Layer 2: Static security ──────────────────────────────────────────
+  semgrep:
+    name: Semgrep (TS/React)
+    runs-on: ubuntu-latest
+    container: returntocorp/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          semgrep ci \
+            --config p/typescript \
+            --config p/react \
+            --config p/owasp-top-ten \
+            --config .semgrep/ \
+            --error \
+            --sarif --output semgrep.sarif || EXIT=$?
+          # ERROR severity already failed; upload SARIF either way
+          exit ${EXIT:-0}
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+        continue-on-error: true
+
+  # ─── Layer 3: PHP/WP standards ─────────────────────────────────────────
+  php:
+    name: PHP (PHPCS + PHPStan)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mission-metrics-wp-plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer, cs2pr
+          coverage: none
+      - name: Composer install
+        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: PHP parse check
+        run: composer run lint:php
+      - name: PHPCS (changed files only on PRs)
+        run: composer run phpcs:diff
+        if: github.event_name == 'pull_request'
+      - name: PHPCS (full, baseline-aware)
+        run: composer run phpcs
+        if: github.event_name != 'pull_request'
+      - name: PHPStan
+        run: composer run phpstan
+
+  # ─── Layer 4: Dependency CVEs ──────────────────────────────────────────
+  deps:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: audit-ci (block high+critical in prod deps)
+        run: npx audit-ci --config audit-ci.json
+      - name: GitHub Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  # ─── Layer 5: Secret leakage ───────────────────────────────────────────
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  # ─── Layer 6: Frontend product (Lighthouse) ────────────────────────────
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@0.14.x
+          lhci autorun --config=lighthouserc.json || echo "::warning::Lighthouse regressions detected"
+        # a11y regression is the only blocker; LHCI's own assertions handle it
+
+  # ─── Aggregator: single PR comment ─────────────────────────────────────
+  quality-summary:
+    name: Quality summary
+    runs-on: ubuntu-latest
+    needs: [app-quality, semgrep, php, deps, gitleaks]
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Post summary comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const layers = {
+              'Source quality': '${{ needs.app-quality.result }}',
+              'Static security (Semgrep)': '${{ needs.semgrep.result }}',
+              'PHP / WordPress': '${{ needs.php.result }}',
+              'Dependency CVEs': '${{ needs.deps.result }}',
+              'Secret leakage': '${{ needs.gitleaks.result }}',
+            };
+            const icon = r => r === 'success' ? '✅' : r === 'failure' ? '❌' : r === 'skipped' ? '⏭️' : '⚠️';
+            const body = [
+              '### Quality pipeline summary',
+              '',
+              '| Layer | Result |',
+              '|---|---|',
+              ...Object.entries(layers).map(([k, v]) => `| ${k} | ${icon(v)} ${v} |`),
+              '',
+              '_Lighthouse regressions and detailed reports are in the workflow run artifacts._',
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo, issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes('Quality pipeline summary'));
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+            }

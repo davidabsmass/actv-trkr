@@ -1,0 +1,55 @@
+rules:
+  - id: actv-permissive-cors
+    pattern-either:
+      - pattern: |
+          "Access-Control-Allow-Origin": "*"
+      - pattern: |
+          'Access-Control-Allow-Origin': '*'
+    paths:
+      include:
+        - "supabase/functions/**/*.ts"
+      exclude:
+        # Public ingest endpoints intentionally accept any origin —
+        # they're protected by API key + per-domain allowlist instead.
+        - "supabase/functions/track-pageview/**"
+        - "supabase/functions/track-event/**"
+        - "supabase/functions/ingest-heartbeat/**"
+        - "supabase/functions/ingest-form-batch/**"
+        - "supabase/functions/check-site-status/**"
+        - "supabase/functions/serve-plugin-zip/**"
+        - "supabase/functions/plugin-update-check/**"
+    message: |
+      Edge function uses wildcard CORS. Restrict to the actvtrkr.com / mshnctrl.lovable.app
+      allowlist unless this endpoint is intentionally public (ingestion / plugin endpoints).
+    severity: ERROR
+    languages: [typescript]
+
+  - id: actv-supabase-service-role-in-client
+    pattern-either:
+      - pattern: createClient($URL, "$KEY")
+      - pattern: createClient($URL, $KEY)
+    pattern-not: createClient($URL, $ENV.get(...))
+    pattern-not: createClient($URL, Deno.env.get(...))
+    paths:
+      include:
+        - "src/**"
+    message: |
+      Hard-coded Supabase key in client code. Use the generated client at
+      @/integrations/supabase/client and never embed service-role keys.
+    severity: ERROR
+    languages: [typescript]
+
+  - id: actv-console-error-leak
+    pattern-either:
+      - pattern: console.log($X)
+      - pattern: console.debug($X)
+    paths:
+      include:
+        - "src/**"
+      exclude:
+        - "src/**/*.test.*"
+        - "src/lib/logger.ts"
+    message: |
+      Stray console.log in shipped code. Use the structured logger or remove.
+    severity: WARNING
+    languages: [typescript, javascript]

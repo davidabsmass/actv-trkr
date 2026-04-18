@@ -1,0 +1,5 @@
+# PHPStan baseline for legacy violations.
+# Generated on first run with `composer run phpstan:baseline`.
+# This file MUST shrink (or stay flat) every release — see scripts/check-baseline-shrink.mjs.
+parameters:
+  ignoreErrors: []

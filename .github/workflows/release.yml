@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+  security-events: write
+
+jobs:
+  full-suite:
+    name: Run full quality suite
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+
+  plugin-artifacts:
+    name: Verify plugin artifacts in sync
+    runs-on: ubuntu-latest
+    needs: full-suite
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - name: Re-run plugin artifact sync (must be a no-op)
+        run: |
+          node scripts/plugin-artifacts.mjs
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Plugin artifacts out of sync. Run 'node scripts/plugin-artifacts.mjs' and commit."
+            git status
+            git diff
+            exit 1
+          fi
+
+  zap-baseline:
+    name: ZAP baseline against staging
+    runs-on: ubuntu-latest
+    needs: full-suite
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'https://mshnctrl.lovable.app'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a -j -m 5 -T 10'
+          fail_action: true
+          allow_issue_writing: false
+
+  baseline-ratchet:
+    name: Verify PHP baselines did not grow
+    runs-on: ubuntu-latest
+    needs: full-suite
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/check-baseline-shrink.mjs

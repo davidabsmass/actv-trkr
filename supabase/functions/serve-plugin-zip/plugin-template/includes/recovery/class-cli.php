@@ -127,6 +127,19 @@ class ACTV_CLI_Command {
 			WP_CLI::log( '  none' );
 		}
 		WP_CLI::log( '' );
+
+		// Update health.
+		if ( ! empty( $snap['update_health'] ) ) {
+			$uh = $snap['update_health'];
+			WP_CLI::log( sprintf(
+				'Update health     : last-good=%s   blocked=%d   this-version: %d clean / %d fail',
+				(string) ( $uh['last_healthy_version'] ?: 'none' ),
+				is_array( $uh['blocked_versions'] ?? null ) ? count( $uh['blocked_versions'] ) : 0,
+				(int) ( $uh['current_clean_boots'] ?? 0 ),
+				(int) ( $uh['current_failure_boots'] ?? 0 )
+			) );
+			WP_CLI::log( '' );
+		}
 	}
 
 	/**
@@ -272,7 +285,67 @@ class ACTV_CLI_Command {
 	}
 
 	/**
-	 * Tail the health log.
+	 * Show update health: which versions are blocked, which is the last known-good.
+	 *
+	 * @when after_wp_load
+	 */
+	public function versions( $args, $assoc_args ) {
+		if ( ! class_exists( 'ACTV_Update_Health' ) ) {
+			WP_CLI::error( 'Update health gate unavailable.' );
+			return;
+		}
+		$s = ACTV_Update_Health::snapshot();
+		WP_CLI::log( '' );
+		WP_CLI::log( 'ACTV TRKR — update health' );
+		WP_CLI::log( '────────────────────────' );
+		WP_CLI::log( sprintf( 'Currently running    : %s', (string) $s['current_version'] ) );
+		WP_CLI::log( sprintf( 'Last known-good      : %s', (string) ( $s['last_healthy_version'] ?: 'none yet' ) ) );
+		WP_CLI::log( sprintf( 'Clean boots (this)   : %d', (int) $s['current_clean_boots'] ) );
+		WP_CLI::log( sprintf( 'Failure boots (this) : %d', (int) $s['current_failure_boots'] ) );
+		if ( ! empty( $s['current_install_at'] ) ) {
+			WP_CLI::log( sprintf( 'Installed at         : %s', gmdate( 'c', (int) $s['current_install_at'] ) ) );
+		}
+
+		WP_CLI::log( '' );
+		WP_CLI::log( 'Blocked versions:' );
+		if ( empty( $s['blocked_versions'] ) ) {
+			WP_CLI::log( '  none' );
+		} else {
+			foreach ( $s['blocked_versions'] as $ver => $info ) {
+				WP_CLI::log( sprintf(
+					'  - v%s   blocked %s   reason: %s',
+					$ver,
+					! empty( $info['blocked_at'] ) ? gmdate( 'c', (int) $info['blocked_at'] ) : 'unknown',
+					(string) ( $info['reason'] ?? '' )
+				) );
+			}
+		}
+		WP_CLI::log( '' );
+
+		if ( ACTV_Update_Health::current_is_blocked() ) {
+			WP_CLI::warning( 'The currently running version is on the local block list. Future update offers for this exact version will be suppressed until you run "wp actv-trkr unblock-version ' . $s['current_version'] . '".' );
+		}
+	}
+
+	/**
+	 * Remove a version from the local block list.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <version>
+	 * : Plugin version string (e.g. 1.13.0).
+	 *
+	 * @when after_wp_load
+	 */
+	public function unblock_version( $args, $assoc_args ) {
+		$version = isset( $args[0] ) ? $args[0] : '';
+		$res = ACTV_Recovery::unblock_version( $version );
+		if ( empty( $res['ok'] ) ) {
+			WP_CLI::error( $res['error'] ?? 'Unblock failed.' );
+			return;
+		}
+		WP_CLI::success( $res['message'] );
+	}
 	 *
 	 * ## OPTIONS
 	 *

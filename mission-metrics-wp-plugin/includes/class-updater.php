@@ -135,6 +135,18 @@ class MM_Updater {
 		}
 		delete_transient( 'mm_update_signature_error' );
 
+		// HEALTH GATE: refuse to advertise a version this site has already
+		// auto-blocked. Admin must `wp actv-trkr unblock-version <ver>` first.
+		if ( class_exists( 'ACTV_Update_Health' ) && ACTV_Update_Health::is_blocked( $remote['version'] ) ) {
+			set_transient(
+				'mm_update_blocked_version',
+				$remote['version'],
+				HOUR_IN_SECONDS
+			);
+			return $transient;
+		}
+		delete_transient( 'mm_update_blocked_version' );
+
 		$package = $remote['download_url'];
 
 		$plugin_data = (object) array(
@@ -154,15 +166,43 @@ class MM_Updater {
 	}
 
 	public static function maybe_show_signature_warning() {
-		$err = get_transient( 'mm_update_signature_error' );
-		if ( ! $err ) return;
 		$screen = get_current_screen();
-		if ( ! $screen || ! in_array( $screen->id, array( 'plugins', 'update-core', 'dashboard' ), true ) ) {
+		$relevant = $screen && in_array( $screen->id, array( 'plugins', 'update-core', 'dashboard' ), true );
+		if ( ! $relevant ) {
 			return;
 		}
-		echo '<div class="notice notice-warning"><p><strong>ACTV TRKR:</strong> '
-			. esc_html( 'A plugin update is available but the signature could not be verified (' . $err . '). The update has been suppressed for safety. Re-download the plugin from the ACTV TRKR dashboard to refresh credentials.' )
-			. '</p></div>';
+
+		// 1. Signature warning.
+		$err = get_transient( 'mm_update_signature_error' );
+		if ( $err ) {
+			echo '<div class="notice notice-warning"><p><strong>ACTV TRKR:</strong> '
+				. esc_html( 'A plugin update is available but the signature could not be verified (' . $err . '). The update has been suppressed for safety. Re-download the plugin from the ACTV TRKR dashboard to refresh credentials.' )
+				. '</p></div>';
+		}
+
+		// 2. Blocked-version warning (a remote update was suppressed).
+		$blocked = get_transient( 'mm_update_blocked_version' );
+		if ( $blocked ) {
+			echo '<div class="notice notice-error"><p><strong>ACTV TRKR:</strong> '
+				. esc_html( sprintf(
+					'Update to v%s was suppressed because a previous install of that version failed health checks on this site. Run "wp actv-trkr unblock-version %s" only after the issue has been resolved.',
+					$blocked, $blocked
+				) )
+				. '</p></div>';
+		}
+
+		// 3. Currently-running version was auto-marked bad.
+		if ( class_exists( 'ACTV_Update_Health' ) && ACTV_Update_Health::current_is_blocked() ) {
+			$last_good = ACTV_Update_Health::state()['last_healthy_version'];
+			echo '<div class="notice notice-error"><p><strong>ACTV TRKR:</strong> '
+				. esc_html( sprintf(
+					'The currently running version (v%s) repeatedly failed to boot cleanly and has been marked unhealthy. Last known-good version was v%s. The plugin is running in a degraded state. Roll back, or run "wp actv-trkr unblock-version %s" once you believe the issue is resolved.',
+					defined( 'MM_PLUGIN_VERSION' ) ? MM_PLUGIN_VERSION : '?',
+					$last_good ?: 'unknown',
+					defined( 'MM_PLUGIN_VERSION' ) ? MM_PLUGIN_VERSION : ''
+				) )
+				. '</p></div>';
+		}
 	}
 
 	public static function plugin_info( $result, $action, $args ) {

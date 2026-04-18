@@ -33,6 +33,11 @@ class ACTV_Bootstrap {
 			// 1. Load the safe foundation (already required by main file, but defensive).
 			self::ensure_foundation_loaded( $plugin_main_file );
 
+			// 1a. Note the boot started — Update Health detects version changes here.
+			if ( class_exists( 'ACTV_Update_Health' ) ) {
+				ACTV_Update_Health::note_boot_started();
+			}
+
 			// 2. Environment gate.
 			$env_failures = ACTV_Environment::check();
 			if ( ! empty( $env_failures ) ) {
@@ -96,9 +101,15 @@ class ACTV_Bootstrap {
 			if ( $any_critical_failed ) {
 				ACTV_Boot_Counter::record_failure( 'critical module failed during boot' );
 				ACTV_Mode::reset_clean_counter();
+				if ( class_exists( 'ACTV_Update_Health' ) ) {
+					ACTV_Update_Health::record_failure_boot( 'critical module failed during boot' );
+				}
 			} else {
 				ACTV_Boot_Counter::record_success();
 				ACTV_Mode::record_successful_boot();
+				if ( class_exists( 'ACTV_Update_Health' ) ) {
+					ACTV_Update_Health::record_clean_boot();
+				}
 			}
 
 			// 9. Schedule maintenance crons (only when not migration_locked).
@@ -109,6 +120,9 @@ class ACTV_Bootstrap {
 			// Last-resort containment. Never let bootstrap escape.
 			try {
 				ACTV_Boot_Counter::record_failure( $e->getMessage() );
+				if ( class_exists( 'ACTV_Update_Health' ) ) {
+					ACTV_Update_Health::record_failure_boot( 'bootstrap exception: ' . $e->getMessage() );
+				}
 				ACTV_Logger::fatal( 'core', 'bootstrap_exception', array(
 					'message' => $e->getMessage(),
 					'file'    => $e->getFile(),
@@ -139,6 +153,7 @@ class ACTV_Bootstrap {
 			'migrations/class-migration-runner.php',
 			'reliability/class-circuit-breaker.php',
 			'reliability/class-safe-http.php',
+			'reliability/class-update-health.php',
 			'modules/interface-module.php',
 			'modules/abstract-class-module.php',
 			'modules/class-module-registry.php',

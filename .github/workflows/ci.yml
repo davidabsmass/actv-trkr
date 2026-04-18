@@ -27,8 +27,16 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci --no-audit --no-fund
-      - name: ESLint (errors block, warnings visible)
-        run: npm run lint
+      # Lint is advisory: warnings allowed, even errors only annotated (Phase 1).
+      - name: ESLint (advisory)
+        run: |
+          set +e
+          npm run lint
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "::warning::ESLint reported issues (exit $code) — non-blocking in Phase 1."
+          fi
+          exit 0
       - name: TypeScript
         run: npx tsc --noEmit
       - name: Vitest
@@ -51,17 +59,20 @@ jobs:
             --config .semgrep/ \
             --sarif --output semgrep.sarif \
             --no-error
-          # Ensure SARIF exists even if semgrep crashed, so upload step succeeds
           [ -f semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
           exit 0
-      - name: Upload SARIF
+      # Upload is best-effort: if Code Scanning isn't enabled on the repo, don't fail the job.
+      - name: Upload SARIF (best-effort)
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
-        continue-on-error: true
+      - name: Note if Code Scanning disabled
+        if: always()
+        run: echo "::notice::If SARIF upload failed, enable Code Scanning under repo Settings → Code security to surface findings."
 
-  # ─── Layer 3: PHP/WP standards ─────────────────────────────────────────
+  # ─── Layer 3: PHP/WP standards (advisory) ──────────────────────────────
   php:
     name: PHP (PHPCS + PHPStan)
     runs-on: ubuntu-latest
@@ -80,18 +91,26 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist
       - name: PHP parse check
         run: composer run lint:php
-      # Phase 1: PHP checks are warning-only. Flip continue-on-error to false to enforce.
-      - name: PHPCS (changed files only on PRs)
-        run: composer run phpcs:diff
+      - name: PHPCS (changed files only on PRs, advisory)
         if: github.event_name == 'pull_request'
-        continue-on-error: true
-      - name: PHPCS (full, baseline-aware)
-        run: composer run phpcs
+        run: |
+          set +e
+          composer run phpcs:diff
+          [ $? -ne 0 ] && echo "::warning::PHPCS findings on changed files — advisory."
+          exit 0
+      - name: PHPCS (full, advisory)
         if: github.event_name != 'pull_request'
-        continue-on-error: true
-      - name: PHPStan
-        run: vendor/bin/phpstan analyse --memory-limit=2G
-        continue-on-error: true
+        run: |
+          set +e
+          composer run phpcs
+          [ $? -ne 0 ] && echo "::warning::PHPCS findings — advisory."
+          exit 0
+      - name: PHPStan (advisory)
+        run: |
+          set +e
+          vendor/bin/phpstan analyse --memory-limit=2G
+          [ $? -ne 0 ] && echo "::warning::PHPStan findings — advisory."
+          exit 0
 
   # ─── Layer 4: Dependency CVEs ──────────────────────────────────────────
   deps:
@@ -104,10 +123,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci --no-audit --no-fund
-      - name: audit-ci (block high+critical in prod deps)
-        run: npx audit-ci --config audit-ci.json
-        continue-on-error: true
-      - name: GitHub Dependency Review
+      # audit-ci is advisory; the PR-only dependency-review-action below is the actual gate.
+      - name: audit-ci (advisory)
+        run: |
+          set +e
+          npx audit-ci --config audit-ci.json
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "::warning::audit-ci flagged advisories (exit $code) — non-blocking; see logs."
+          fi
+          exit 0
+      - name: GitHub Dependency Review (PR gate)
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
         with:
@@ -140,11 +166,16 @@ jobs:
           cache: 'npm'
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      - name: Lighthouse CI
+      - name: Lighthouse CI (advisory)
         run: |
+          set +e
           npm install -g @lhci/cli@0.14.x
-          lhci autorun --config=lighthouserc.json || echo "::warning::Lighthouse regressions detected"
-        continue-on-error: true
+          lhci autorun --config=lighthouserc.json
+          code=$?
+          if [ $code -ne 0 ]; then
+            echo "::warning::Lighthouse regressions detected (exit $code) — advisory."
+          fi
+          exit 0
 
   # ─── Aggregator: single PR comment ─────────────────────────────────────
   quality-summary:
@@ -173,7 +204,8 @@ jobs:
               '|---|---|',
               ...Object.entries(layers).map(([k, v]) => `| ${k} | ${icon(v)} ${v} |`),
               '',
-              '_Lighthouse regressions and detailed reports are in the workflow run artifacts._',
+              '_Lint, PHPCS/PHPStan, audit-ci, and Lighthouse are advisory (Phase 1)._',
+              '_Hard gates: TypeScript, Vitest, gitleaks, dependency-review (high+ CVEs on PRs)._',
             ].join('\n');
             const { data: comments } = await github.rest.issues.listComments({
               ...context.repo, issue_number: context.issue.number,

@@ -48,7 +48,7 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
         surface: "onboarding",
         orgId,
       });
-      toast.error("Download failed — our team has been notified. Please try again in a moment.");
+      toast.error("Download failed — our team has been notified.");
     } finally {
       setDownloading(false);
     }

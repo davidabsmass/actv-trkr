@@ -217,7 +217,38 @@ class ACTV_Recovery {
 	}
 
 	/**
-	 * Tail the structured health log.
+	 * Remove a version from the local block list.
+	 *
+	 * @param string $version
+	 * @return array
+	 */
+	public static function unblock_version( $version ) {
+		try {
+			if ( ! class_exists( 'ACTV_Update_Health' ) ) {
+				return array( 'ok' => false, 'error' => 'Update health gate unavailable.' );
+			}
+			$version = trim( (string) $version );
+			if ( $version === '' ) {
+				return array( 'ok' => false, 'error' => 'Version is required.' );
+			}
+			$existed = ACTV_Update_Health::unblock( $version );
+			if ( class_exists( 'ACTV_Logger' ) ) {
+				ACTV_Logger::warn( 'core', 'recovery_unblock_version', array(
+					'actor'   => self::actor(),
+					'version' => $version,
+					'existed' => $existed,
+				) );
+			}
+			return array(
+				'ok'      => true,
+				'message' => $existed
+					? sprintf( 'Version "%s" unblocked. Future update checks may now offer it.', $version )
+					: sprintf( 'Version "%s" was not on the block list.', $version ),
+			);
+		} catch ( \Throwable $e ) {
+			return array( 'ok' => false, 'error' => $e->getMessage() );
+		}
+	}
 	 *
 	 * @param int $limit
 	 * @return array

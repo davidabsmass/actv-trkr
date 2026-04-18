@@ -67,9 +67,8 @@ export default function TeamSection() {
       toast({ title: "Member added", description: data.message });
       setEmail("");
     },
-    onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Could not add member";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+    onError: (e: any) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
     },
   });
 
@@ -85,9 +84,8 @@ export default function TeamSection() {
       queryClient.invalidateQueries({ queryKey: ["org_members", orgId] });
       toast({ title: "Member removed" });
     },
-    onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Could not remove member";
-      toast({ title: "Error", description: msg, variant: "destructive" });
+    onError: (e: any) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
     },
   });
 

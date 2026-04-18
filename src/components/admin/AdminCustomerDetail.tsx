@@ -58,51 +58,39 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
         body: { email, subscriber_id: subscriberId },
       });
       if (error) throw error;
-      const payload = data as Record<string, unknown> | null;
-      if (payload?.error) throw new Error(String(payload.error));
-      return payload as Record<string, unknown> | null;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data as any;
     },
     enabled: open && !!(email || subscriberId),
   });
 
-  // Permissive row type — backend payload is loosely typed JSON.
-  // Using `Record<string, any>` for fields keeps existing JSX accesses working
-  // without sprinkling `as any` at every use site. Lint allows this when
-  // wrapped in a named alias rather than inline `any`.
-  type Row = { [k: string]: unknown };
-  const row = (v: unknown): Row | undefined =>
-    v && typeof v === "object" ? (v as Row) : undefined;
-  const rows = (v: unknown): Row[] => (Array.isArray(v) ? (v as Row[]) : []);
-
-  const subscriber = row(data?.subscriber) as any;
-  const profile = row(data?.profile) as any;
-  const auth = row(data?.auth) as any;
-  const orgs = rows(data?.orgs) as any[];
-  const sites = rows(data?.sites) as any[];
-  const importJobs = rows(data?.import_jobs) as any[];
-  const recentAlerts = rows(data?.recent_alerts) as any[];
-  const consentConfigs = rows(data?.consent_configs) as any[];
-  const teamMembers = rows(data?.team_members) as any[];
-  const notes = rows(data?.notes) as any[];
-  const stripe = row(data?.stripe) as any;
+  const subscriber = data?.subscriber;
+  const profile = data?.profile;
+  const auth = data?.auth;
+  const orgs: any[] = data?.orgs ?? [];
+  const sites: any[] = data?.sites ?? [];
+  const importJobs: any[] = data?.import_jobs ?? [];
+  const recentAlerts: any[] = data?.recent_alerts ?? [];
+  const consentConfigs: any[] = data?.consent_configs ?? [];
+  const teamMembers: any[] = data?.team_members ?? [];
+  const notes: any[] = data?.notes ?? [];
+  const stripe = data?.stripe;
 
   const primarySite = sites[0];
   const consentByOrg = (orgId: string) =>
-    (consentConfigs.find((c) => c.org_id === orgId)?.consent_mode as string | undefined) || "strict";
+    consentConfigs.find((c) => c.org_id === orgId)?.consent_mode || "strict";
 
   // ── Action handlers ─────────────────────────────────────────────────
-  const callAction = async (actionKey: string, body: Record<string, unknown>, successMsg: string) => {
+  const callAction = async (actionKey: string, body: any, successMsg: string) => {
     setActionLoading(actionKey);
     try {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", { body });
       if (error) throw error;
-      const payload = data as { error?: string } | null;
-      if (payload?.error) throw new Error(payload.error);
+      if ((data as any)?.error) throw new Error((data as any).error);
       toast.success(successMsg);
       refetch();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : `Failed: ${actionKey}`;
-      toast.error(msg);
+    } catch (e: any) {
+      toast.error(e.message || `Failed: ${actionKey}`);
     } finally {
       setActionLoading(null);
     }

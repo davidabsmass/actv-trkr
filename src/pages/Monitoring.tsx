@@ -535,6 +535,7 @@ function CheckDomainSslButton() {
 
 function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
   const queryClient = useQueryClient();
+  const [rescanning, setRescanning] = useState(false);
 
   const { data: checks, isLoading } = useQuery({
     queryKey: ["form_health_checks", siteId],
@@ -563,6 +564,37 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
     },
   });
 
+  const handleRescanForms = async () => {
+    try {
+      setRescanning(true);
+      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
+        body: { site_id: siteId, force_backfill: true },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] }),
+        queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] }),
+      ]);
+
+      toast({
+        title: "Re-scan started",
+        description: data?.backfill_in_progress
+          ? "We restarted discovery and background form sync for this site."
+          : "We restarted form discovery for this site.",
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Re-scan failed",
+        description: err?.message || "We couldn’t re-scan this site right now.",
+      });
+    } finally {
+      setRescanning(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="glass-card p-6 animate-pulse"><div className="h-20 bg-muted rounded" /></div>;
   }
@@ -571,15 +603,21 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
 
   return (
     <div className="glass-card p-5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <FileSearch className="h-4 w-4" /> Form Liveness Checks
         </h3>
-        
+        <Button size="sm" variant="outline" onClick={handleRescanForms} disabled={rescanning} className="gap-1">
+          <RefreshCw className={`h-3.5 w-3.5 ${rescanning ? "animate-spin" : ""}`} />
+          {rescanning ? "Re-scanning…" : "Re-scan Forms"}
+        </Button>
       </div>
 
       {(!forms || forms.length === 0) ? (
-        <p className="text-xs text-muted-foreground">No forms discovered for this site yet.</p>
+        <div className="rounded-md border border-border bg-muted/20 p-4 space-y-2">
+          <p className="text-xs text-muted-foreground">No forms discovered for this site yet.</p>
+          <p className="text-xs text-muted-foreground">Use Re-scan Forms to retry WordPress discovery and background backfill when auto-detect misses forms.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {forms.map(form => {

@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { AdminCustomerDetail } from "@/components/admin/AdminCustomerDetail";
+import AppBibleChecklist from "@/components/admin/AppBibleChecklist";
+import AppBibleReviewBanner from "@/components/admin/AppBibleReviewBanner";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
@@ -266,7 +268,18 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "app-bible">("metrics");
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "app-bible" || tab === "clients" || tab === "metrics") {
+      setActiveMainTab(tab);
+    }
+  }, [searchParams]);
+  const switchMainTab = (tab: "clients" | "metrics" | "app-bible") => {
+    setActiveMainTab(tab);
+    setSearchParams({ tab }, { replace: true });
+  };
   const [filterFocus, setFilterFocus] = useState<string>("");
   const [filterOnboarding, setFilterOnboarding] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");

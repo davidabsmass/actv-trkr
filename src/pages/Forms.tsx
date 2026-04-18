@@ -450,11 +450,33 @@ export default function Forms() {
     }, 60000);
     try {
       const results = await Promise.allSettled(
-        siteIds.map((siteId) =>
-          supabase.functions.invoke("trigger-site-sync", {
-            body: { site_id: siteId, force_backfill: true },
-          })
-        )
+        siteIds.map(async (siteId) => {
+          const [siteSyncResult, discoverResult] = await Promise.all([
+            supabase.functions.invoke("trigger-site-sync", {
+              body: { site_id: siteId, force_backfill: true },
+            }),
+            supabase.functions.invoke("manage-import-job?action=discover", {
+              body: { site_id: siteId },
+            }),
+          ]);
+
+          if (siteSyncResult.error) throw siteSyncResult.error;
+          if (siteSyncResult.data?.error) throw new Error(siteSyncResult.data.error);
+          if (discoverResult.error) throw discoverResult.error;
+          if (discoverResult.data?.error) throw new Error(discoverResult.data.error);
+
+          return {
+            data: {
+              ...siteSyncResult.data,
+              import_discovered: discoverResult.data?.discovered ?? 0,
+              auto_started_jobs: discoverResult.data?.auto_started_jobs ?? 0,
+              import_source: discoverResult.data?.source,
+              import_wp_plugin_error: discoverResult.data?.wp_plugin_error,
+              backfill_in_progress: Boolean(siteSyncResult.data?.backfill_in_progress || discoverResult.data?.auto_started_jobs > 0),
+            },
+            error: null,
+          };
+        })
       );
 
       let successCount = 0;

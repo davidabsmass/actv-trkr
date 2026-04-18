@@ -44,10 +44,15 @@ class MM_Recovery_Banner {
 		$domain = preg_replace( '/^www\./i', '', (string) $domain );
 
 		$url = trailingslashit( $endpoint ) . 'check-site-status?domain=' . rawurlencode( $domain );
-		$resp = wp_remote_get( $url, array(
+		$get_args = array(
 			'timeout' => 8,
 			'headers' => array( 'x-actvtrkr-key' => $api_key ),
-		) );
+		);
+		// Guarded by remote_sync breaker — admin pages must not hang waiting
+		// for a status check against an unreachable endpoint.
+		$resp = class_exists( 'ACTV_Safe_HTTP' )
+			? ACTV_Safe_HTTP::get( 'remote_sync', $url, $get_args )
+			: wp_remote_get( $url, $get_args );
 
 		if ( is_wp_error( $resp ) ) {
 			$result = array( 'status' => 'unknown', 'message' => 'Status check failed: ' . $resp->get_error_message() );

@@ -186,7 +186,7 @@ class Mission_Metrics_Security {
 
         $url = rtrim($this->api_url, '/') . '/functions/v1/ingest-security';
 
-        wp_remote_post($url, [
+        $args = [
             'timeout' => 10,
             'headers' => [
                 'Content-Type' => 'application/json',
@@ -196,7 +196,15 @@ class Mission_Metrics_Security {
                 'site_domain' => $this->site_domain,
                 'events'      => $events,
             ]),
-        ]);
+        ];
+
+        // Guarded by remote_sync breaker. Brute-force / failed-login bursts
+        // should NOT melt the wp-login page if the ingest endpoint is down.
+        if ( class_exists( 'ACTV_Safe_HTTP' ) ) {
+            ACTV_Safe_HTTP::post( 'remote_sync', $url, $args );
+        } else {
+            wp_remote_post( $url, $args );
+        }
     }
 
     private function get_client_ip() {

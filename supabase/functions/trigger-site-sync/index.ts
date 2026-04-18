@@ -615,7 +615,7 @@ Deno.serve(async (req) => {
     }
 
     const requestBody = await req.json();
-    const { site_id, force_backfill } = requestBody;
+    const { site_id, force_backfill, force_form_probe } = requestBody;
     const initialBackfillCursor = isEntryBackfillCursor(requestBody?.backfill_cursor)
       ? requestBody.backfill_cursor
       : undefined;
@@ -688,7 +688,7 @@ Deno.serve(async (req) => {
     let wpSyncErrorText: string | null = null;
     let wpSyncStatus: number | null = null;
     let wpData: unknown = null;
-    let fallback = { checked: 0, updatedPageUrls: 0, alertsCreated: 0 };
+    let directFormProbe = { checked: 0, updatedPageUrls: 0, alertsCreated: 0 };
 
     if (!wpRes.ok) {
       wpSyncFailed = true;
@@ -696,7 +696,7 @@ Deno.serve(async (req) => {
       wpSyncErrorText = await wpRes.text();
       console.error(`WP sync failed (${wpEndpoint}): ${wpRes.status} ${wpSyncErrorText}`);
 
-      fallback = await runDirectFormChecks(supabase, site.org_id, site.id);
+      directFormProbe = await runDirectFormChecks(supabase, site.org_id, site.id);
       wpData = {
         ok: false,
         status: wpRes.status,
@@ -710,6 +710,10 @@ Deno.serve(async (req) => {
         wpData = JSON.parse(wpRaw);
       } catch {
         // Keep raw string
+      }
+
+      if (force_form_probe) {
+        directFormProbe = await runDirectFormChecks(supabase, site.org_id, site.id);
       }
     }
 

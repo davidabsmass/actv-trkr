@@ -3888,6 +3888,84 @@ export type Database = {
           },
         ]
       }
+      plugin_health_reports: {
+        Row: {
+          blocked_versions: string[]
+          boot_failure_count: number
+          created_at: string
+          disabled_modules: string[]
+          domain: string
+          forced_safe_mode: boolean
+          id: string
+          in_boot_loop: boolean
+          last_error: string | null
+          last_healthy_version: string | null
+          migration_lock_held: boolean
+          migration_version: number | null
+          mode: string
+          open_breakers: string[]
+          org_id: string | null
+          plugin_version: string | null
+          reported_at: string
+          site_id: string | null
+        }
+        Insert: {
+          blocked_versions?: string[]
+          boot_failure_count?: number
+          created_at?: string
+          disabled_modules?: string[]
+          domain: string
+          forced_safe_mode?: boolean
+          id?: string
+          in_boot_loop?: boolean
+          last_error?: string | null
+          last_healthy_version?: string | null
+          migration_lock_held?: boolean
+          migration_version?: number | null
+          mode?: string
+          open_breakers?: string[]
+          org_id?: string | null
+          plugin_version?: string | null
+          reported_at?: string
+          site_id?: string | null
+        }
+        Update: {
+          blocked_versions?: string[]
+          boot_failure_count?: number
+          created_at?: string
+          disabled_modules?: string[]
+          domain?: string
+          forced_safe_mode?: boolean
+          id?: string
+          in_boot_loop?: boolean
+          last_error?: string | null
+          last_healthy_version?: string | null
+          migration_lock_held?: boolean
+          migration_version?: number | null
+          mode?: string
+          open_breakers?: string[]
+          org_id?: string | null
+          plugin_version?: string | null
+          reported_at?: string
+          site_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_health_reports_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plugin_health_reports_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plugin_release_keys: {
         Row: {
           algorithm: string

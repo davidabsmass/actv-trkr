@@ -26,7 +26,7 @@ The full path a paying customer takes, from checkout to active monitoring.
 
 **Failure recovery**:
 - Stripe webhook missed → Owner can manually create the org via `/admin-setup → Clients`.
-- Plugin never reports → "Re-scan Forms" button on `/settings → Form Import` calls `manage-import-job?action=discover` (see §4 for fallback behavior).
+- Plugin never reports → "Re-scan Forms" button on `/settings → Form Import` calls `manage-import-job?action=discover`, which (a) discovers forms via the WP plugin (or falls back to the existing `forms` table), AND (b) auto-creates `form_import_jobs` for every form with un-imported entries. The `process-import-queue` cron worker (every 2 min) drains the jobs. See §4 for full details.
 
 ---
 

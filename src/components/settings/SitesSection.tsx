@@ -71,7 +71,10 @@ export default function SitesSection() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{site.domain}</p>
                 <p className="text-xs text-muted-foreground">
-                  {site.type} · {site.plugin_version ? `v${site.plugin_version}` : t("settings.versionUnknown")} · {t("settings.connected")} {format(new Date(site.created_at), "MMM d, yyyy")}
+                  {site.type} · {site.plugin_version ? `v${site.plugin_version}` : t("settings.versionUnknown")} · {t("settings.connected")} {(() => {
+                    const d = site.created_at ? new Date(site.created_at) : null;
+                    return d && !isNaN(d.getTime()) ? format(d, "MMM d, yyyy") : "—";
+                  })()}
                 </p>
               </div>
               <button

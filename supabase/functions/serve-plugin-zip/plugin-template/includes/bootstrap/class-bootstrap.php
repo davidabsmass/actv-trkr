@@ -197,6 +197,7 @@ class ACTV_Bootstrap {
 	private static function load_feature_files( $plugin_main_file ) {
 		$base = plugin_dir_path( $plugin_main_file ) . 'includes/';
 		$files = array(
+			'class-legal-copy.php',
 			'class-settings.php',
 			'class-ingest-token.php',
 			'class-tracker.php',

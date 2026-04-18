@@ -424,6 +424,16 @@ class MM_Consent_Banner {
 		);
 	}
 
+	/* ── Public wrappers (used by MM_Settings 4-tab UI) ───────── */
+
+	public static function detect_external_cmps_public() {
+		return self::detect_external_cmps();
+	}
+
+	public static function public_diagnostics() {
+		return self::build_diagnostics();
+	}
+
 	/* ── Detect external consent/CMP plugins ──────────────────── */
 
 	private static function detect_external_cmps() {
@@ -452,7 +462,17 @@ class MM_Consent_Banner {
 
 	/* ── Admin settings UI ────────────────────────────────────── */
 
+	/* ── Legacy admin section renderer (kept as no-op shim) ─────
+	 * The 4-tab settings page (v1.16.0+) renders Privacy controls
+	 * directly via MM_Settings. This method is preserved so any
+	 * older external integrations calling it do not error.
+	 */
 	public static function render_settings_section() {
+		return; // intentional no-op
+	}
+
+	/* ── Original full renderer kept below for reference only ─── */
+	private static function _legacy_render_settings_section_unused() {
 		$opts = self::get();
 		$main_opts = MM_Settings::get();
 		$name = self::OPTION_NAME;

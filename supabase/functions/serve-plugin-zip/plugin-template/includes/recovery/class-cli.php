@@ -346,6 +346,9 @@ class ACTV_CLI_Command {
 		}
 		WP_CLI::success( $res['message'] );
 	}
+
+	/**
+	 * Tail recent rows from the health log.
 	 *
 	 * ## OPTIONS
 	 *

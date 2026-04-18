@@ -31,6 +31,82 @@ function compareVersions(a: string, b: string): number {
 }
 
 const MAX_SIGNAL_PAYLOAD = 102400; // 100KB for signal (includes wp_environment)
+const BOOTSTRAP_RETRY_WINDOW_MS = 6 * 60 * 60 * 1000;
+const INSTALL_BOOTSTRAP_SOURCES = new Set(["cron", "wp_connection_test", "wp_admin_recovery"]);
+
+async function maybeTriggerPostInstallBootstrap(params: {
+  supabase: ReturnType<typeof createClient>;
+  site: { id: string; plugin_version: string | null; last_heartbeat_at: string | null };
+  pluginVersion: string | null;
+  signalSource: string;
+}) {
+  const { supabase, site, pluginVersion, signalSource } = params;
+
+  const pluginVersionAdvanced = !!pluginVersion && (!site.plugin_version || compareVersions(pluginVersion, site.plugin_version) > 0);
+  const previousHeartbeatMs = site.last_heartbeat_at ? Date.parse(site.last_heartbeat_at) : Number.NaN;
+  const heartbeatIsMissingOrStale = !Number.isFinite(previousHeartbeatMs) || (Date.now() - previousHeartbeatMs) >= BOOTSTRAP_RETRY_WINDOW_MS;
+  const sourceRequestsBootstrap = INSTALL_BOOTSTRAP_SOURCES.has(signalSource);
+
+  if (!pluginVersionAdvanced && !heartbeatIsMissingOrStale && !sourceRequestsBootstrap) {
+    return;
+  }
+
+  const [formsCountResult, formsMissingPageUrlsResult, formHealthCountResult, domainHealthCountResult, sslHealthCountResult] = await Promise.all([
+    supabase.from("forms").select("id", { count: "exact", head: true }).eq("site_id", site.id).eq("archived", false),
+    supabase.from("forms").select("id", { count: "exact", head: true }).eq("site_id", site.id).eq("archived", false).is("page_url", null),
+    supabase.from("form_health_checks").select("id", { count: "exact", head: true }).eq("site_id", site.id),
+    supabase.from("domain_health").select("id", { count: "exact", head: true }).eq("site_id", site.id),
+    supabase.from("ssl_health").select("id", { count: "exact", head: true }).eq("site_id", site.id),
+  ]);
+
+  const formsCount = formsCountResult.count || 0;
+  const formsMissingPageUrls = formsMissingPageUrlsResult.count || 0;
+  const formHealthCount = formHealthCountResult.count || 0;
+  const domainHealthCount = domainHealthCountResult.count || 0;
+  const sslHealthCount = sslHealthCountResult.count || 0;
+
+  const needsFormBootstrap = formsCount === 0 || formsMissingPageUrls > 0 || (formsCount > 0 && formHealthCount < formsCount);
+  const needsDomainBootstrap = domainHealthCount === 0 || sslHealthCount === 0;
+
+  if (!needsFormBootstrap && !needsDomainBootstrap) {
+    return;
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const requests: Promise<Response>[] = [];
+
+  if (needsFormBootstrap) {
+    requests.push(fetch(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ site_id: site.id, force_form_probe: true }),
+    }));
+  }
+
+  if (needsDomainBootstrap) {
+    requests.push(fetch(`${supabaseUrl}/functions/v1/check-domain-ssl`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ site_id: site.id }),
+    }));
+  }
+
+  const results = await Promise.allSettled(requests);
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") {
+      console.log(`Post-install bootstrap request ${index + 1} for site ${site.id} returned ${result.value.status}`);
+    } else {
+      console.error(`Post-install bootstrap request ${index + 1} for site ${site.id} failed:`, result.reason);
+    }
+  });
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

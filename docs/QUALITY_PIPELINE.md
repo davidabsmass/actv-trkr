@@ -301,6 +301,8 @@ After week 4, the **ratchet** kicks in: each minor release shrinks the PHP basel
 
 Drop-in files added by this change:
 
+- [x] `docs/APP_BIBLE.md` — single source of truth for every subscriber-facing function and process; reviewed in-app at `/admin-setup → App Bible` before each release (per-release sign-off enforced)
+
 - [x] `docs/QUALITY_PIPELINE.md` (this file)
 - [x] `.github/workflows/ci.yml` — PR + push to main, layers 1–6
 - [x] `.github/workflows/release.yml` — tag-triggered, full suite + ZAP

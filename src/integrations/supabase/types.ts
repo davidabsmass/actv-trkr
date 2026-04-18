@@ -531,6 +531,36 @@ export type Database = {
           },
         ]
       }
+      app_bible_reviews: {
+        Row: {
+          app_version: string
+          id: string
+          notes: string | null
+          reviewed_at: string
+          reviewed_by: string
+          reviewer_email: string | null
+          section_key: string
+        }
+        Insert: {
+          app_version: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string
+          reviewed_by: string
+          reviewer_email?: string | null
+          section_key: string
+        }
+        Update: {
+          app_version?: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string
+          reviewed_by?: string
+          reviewer_email?: string | null
+          section_key?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string

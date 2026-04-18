@@ -2,6 +2,7 @@ import {
   TableProperties, Settings, LogOut, UserCircle,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
   LayoutDashboard, TrendingUp, Users, Search, FileText, ShieldAlert,
+  ShieldCheck,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -158,6 +159,19 @@ export function AppSidebar() {
                     >
                       <ClipboardList className="h-4 w-4" />
                       <span>{t("sidebar.clients")}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/pipeline-status"
+                      onClick={closeMobileNav}
+                      className="flex items-center gap-3 px-4 py-1.5 md:py-2.5 text-sm text-white/70 rounded-lg hover:bg-white/15 hover:text-white transition-colors"
+                      activeClassName="bg-white/20 text-white font-medium"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Pipeline Status</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

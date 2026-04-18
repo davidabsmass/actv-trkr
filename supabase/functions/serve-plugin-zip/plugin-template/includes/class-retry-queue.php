@@ -54,14 +54,26 @@ class MM_Retry_Queue {
 		) );
 
 		foreach ( $rows as $row ) {
-			$response = wp_remote_post( $row->endpoint, array(
+			$args = array(
 				'timeout' => 15,
 				'headers' => array(
 					'Content-Type'  => 'application/json',
 					'Authorization' => 'Bearer ' . $opts['api_key'],
 				),
 				'body' => $row->payload,
-			) );
+			);
+			// Guarded by remote_sync breaker. If the breaker is open we
+			// short-circuit so we don't burn through the whole queue against
+			// a confirmed-down endpoint; the retry attempt counter is NOT
+			// incremented in that case (see breaker_open branch below).
+			$response = class_exists( 'ACTV_Safe_HTTP' )
+				? ACTV_Safe_HTTP::post( 'remote_sync', $row->endpoint, $args )
+				: wp_remote_post( $row->endpoint, $args );
+
+			// Breaker-open responses must not consume retry attempts.
+			if ( class_exists( 'ACTV_Safe_HTTP' ) && ACTV_Safe_HTTP::is_breaker_open( $response ) ) {
+				continue;
+			}
 
 			$code = is_wp_error( $response ) ? 0 : wp_remote_retrieve_response_code( $response );
 

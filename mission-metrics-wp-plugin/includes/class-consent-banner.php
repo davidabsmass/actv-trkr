@@ -462,7 +462,17 @@ class MM_Consent_Banner {
 
 	/* ── Admin settings UI ────────────────────────────────────── */
 
+	/* ── Legacy admin section renderer (kept as no-op shim) ─────
+	 * The 4-tab settings page (v1.16.0+) renders Privacy controls
+	 * directly via MM_Settings. This method is preserved so any
+	 * older external integrations calling it do not error.
+	 */
 	public static function render_settings_section() {
+		return; // intentional no-op
+	}
+
+	/* ── Original full renderer kept below for reference only ─── */
+	private static function _legacy_render_settings_section_unused() {
 		$opts = self::get();
 		$main_opts = MM_Settings::get();
 		$name = self::OPTION_NAME;

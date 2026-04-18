@@ -105,6 +105,9 @@ function mm_deactivate() {
 	wp_clear_scheduled_hook( 'mm_form_probe_cron' );
 	wp_clear_scheduled_hook( 'mm_seo_fix_cron' );
 	wp_clear_scheduled_hook( 'actv_trkr_log_prune' );
+	if ( class_exists( 'MM_Health_Reporter' ) ) {
+		MM_Health_Reporter::deactivate();
+	}
 }
 register_deactivation_hook( __FILE__, 'mm_deactivate' );
 

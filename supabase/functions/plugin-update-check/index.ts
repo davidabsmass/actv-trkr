@@ -11,9 +11,15 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.15.0";
+const CURRENT_PLUGIN_VERSION = "1.16.0";
 
 const CHANGELOG = `
+## 1.16.0
+- NEW: Settings page redesigned with 4 tabs (General, Privacy, Tools, Advanced) and a status summary bar
+- NEW: Privacy Policy and Consent Tool copy now live in modals — no more giant inline text blocks
+- IMPROVED: Conditional fields hide irrelevant settings (banner content only when built-in banner is active, US controls only when needed)
+- IMPROVED: Tools tab consolidates Sync Forms, Broken Link Scan, and copy helpers into one task-focused screen
+
 ## 1.15.0
 - NEW: Daily fleet-health beacon — plugin reports its mode, boot loop state, migration status, disabled modules, and blocked versions to the dashboard so operators can see crash-contained sites at a glance
 - NEW: Dashboard widget surfaces sites in reduced_mode or migration_locked across the entire fleet (admin-only)

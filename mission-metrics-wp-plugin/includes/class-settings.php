@@ -202,7 +202,7 @@ class MM_Settings {
 							// We keep it as a hidden input so the value still saves, and
 							// expose an "Advanced" toggle for the rare override case.
 							$endpoint_default = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
-							$endpoint_value   = $opts['endpoint_url'] ?? $endpoint_default;
+							$endpoint_value   = ! empty( $opts['endpoint_url'] ) ? $opts['endpoint_url'] : $endpoint_default;
 							?>
 							<input type="hidden" id="mm_endpoint" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[endpoint_url]"
 								value="<?php echo esc_attr( $endpoint_value ); ?>" />

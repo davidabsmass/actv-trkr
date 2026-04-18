@@ -817,22 +817,34 @@ export default function AdminSetup() {
       </div>
       <p className="text-sm text-muted-foreground mb-6">{t("admin.setupInputsDesc")}</p>
 
+      <AppBibleReviewBanner />
+
       {/* Owner-only tab switcher */}
       {isOwner && (
-        <div className="flex gap-1 mb-6 border-b border-border">
+        <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
           <button
-            onClick={() => setActiveMainTab("metrics")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeMainTab === "metrics" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => switchMainTab("metrics")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "metrics" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             Business Metrics
           </button>
           <button
-            onClick={() => setActiveMainTab("clients")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeMainTab === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            onClick={() => switchMainTab("clients")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             Clients
           </button>
+          <button
+            onClick={() => switchMainTab("app-bible")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "app-bible" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            App Bible
+          </button>
         </div>
+      )}
+
+      {activeMainTab === "app-bible" && isOwner && (
+        <AppBibleChecklist />
       )}
 
       {activeMainTab === "clients" && (

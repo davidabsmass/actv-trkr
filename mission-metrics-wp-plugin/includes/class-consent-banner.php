@@ -424,6 +424,16 @@ class MM_Consent_Banner {
 		);
 	}
 
+	/* ── Public wrappers (used by MM_Settings 4-tab UI) ───────── */
+
+	public static function detect_external_cmps_public() {
+		return self::detect_external_cmps();
+	}
+
+	public static function public_diagnostics() {
+		return self::build_diagnostics();
+	}
+
 	/* ── Detect external consent/CMP plugins ──────────────────── */
 
 	private static function detect_external_cmps() {

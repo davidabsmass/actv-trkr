@@ -36,6 +36,10 @@ class MM_Settings {
 
 	public static function get( $key = null ) {
 		$opts = wp_parse_args( get_option( self::OPTION_NAME, array() ), self::defaults() );
+		// Self-heal: if a previous save blanked the endpoint, restore the default.
+		if ( empty( $opts['endpoint_url'] ) ) {
+			$opts['endpoint_url'] = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+		}
 		return $key ? ( $opts[ $key ] ?? null ) : $opts;
 	}
 
@@ -58,7 +62,9 @@ class MM_Settings {
 	public static function sanitize( $input ) {
 		$clean = array();
 		$clean['api_key']          = sanitize_text_field( $input['api_key'] ?? '' );
-		$clean['endpoint_url']     = esc_url_raw( $input['endpoint_url'] ?? '' );
+		$clean['endpoint_url']     = ! empty( $input['endpoint_url'] )
+			? esc_url_raw( $input['endpoint_url'] )
+			: 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
 		$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
 		$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
 		$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';
@@ -202,7 +208,7 @@ class MM_Settings {
 							// We keep it as a hidden input so the value still saves, and
 							// expose an "Advanced" toggle for the rare override case.
 							$endpoint_default = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
-							$endpoint_value   = $opts['endpoint_url'] ?? $endpoint_default;
+							$endpoint_value   = ! empty( $opts['endpoint_url'] ) ? $opts['endpoint_url'] : $endpoint_default;
 							?>
 							<input type="hidden" id="mm_endpoint" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[endpoint_url]"
 								value="<?php echo esc_attr( $endpoint_value ); ?>" />

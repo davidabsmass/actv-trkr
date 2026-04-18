@@ -36,6 +36,10 @@ class MM_Settings {
 
 	public static function get( $key = null ) {
 		$opts = wp_parse_args( get_option( self::OPTION_NAME, array() ), self::defaults() );
+		// Self-heal: if a previous save blanked the endpoint, restore the default.
+		if ( empty( $opts['endpoint_url'] ) ) {
+			$opts['endpoint_url'] = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+		}
 		return $key ? ( $opts[ $key ] ?? null ) : $opts;
 	}
 

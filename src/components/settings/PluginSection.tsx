@@ -6,7 +6,8 @@ import { ArrowUp, Check, Download, Loader2 } from "lucide-react";
 import pluginThumb from "@/assets/actv-trkr-plugin-thumb.jpg";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
+import { downloadPlugin, getLatestPluginVersion, PluginDownloadError } from "@/lib/plugin-download";
+import { reportDownloadFailure } from "@/lib/report-download-failure";
 
 function compareVersions(a: string, b: string) {
   const aParts = a.split(".").map((part) => Number(part) || 0);
@@ -101,7 +102,16 @@ export default function PluginSection() {
       await refetchLatestVersion();
       toast.success(`Plugin v${latestVersion || "latest"} download started.`);
     } catch (e: any) {
-      toast.error(e.message || t("settings.downloadFailed"));
+      const isStructured = e instanceof PluginDownloadError;
+      await reportDownloadFailure({
+        stage: isStructured ? e.stage : "unknown",
+        error: e,
+        httpStatus: isStructured ? e.httpStatus : null,
+        downloadUrl: isStructured ? e.downloadUrl : undefined,
+        surface: "settings",
+        orgId,
+      });
+      toast.error("Download failed — our team has been notified. Please try again in a moment.");
     } finally {
       setDownloading(false);
     }

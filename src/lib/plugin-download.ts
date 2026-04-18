@@ -84,36 +84,77 @@ export async function getLatestPluginVersion() {
   }
 }
 
-export async function downloadPlugin(apiKey?: string) {
-  if (!apiKey) {
-    const res = await fetch(getStaticPluginZipUrl(), {
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error("Failed to download plugin package");
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    triggerBrowserDownload(blobUrl, STATIC_PLUGIN_FILE_NAME);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-    return STATIC_PLUGIN_FILE_NAME;
+export class PluginDownloadError extends Error {
+  stage: "fetch" | "http_error" | "blob" | "browser_trigger" | "unknown";
+  httpStatus: number | null;
+  downloadUrl: string;
+
+  constructor(
+    message: string,
+    stage: PluginDownloadError["stage"],
+    downloadUrl: string,
+    httpStatus: number | null = null,
+  ) {
+    super(message);
+    this.name = "PluginDownloadError";
+    this.stage = stage;
+    this.httpStatus = httpStatus;
+    this.downloadUrl = downloadUrl;
   }
+}
 
-  const zipUrl = getPluginZipUrl();
+export async function downloadPlugin(apiKey?: string) {
+  const zipUrl = apiKey ? getPluginZipUrl() : getStaticPluginZipUrl();
 
-  const response = await fetch(zipUrl, {
-    cache: "no-store",
-    headers: apiKey ? { "x-actvtrkr-api-key": apiKey } : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(zipUrl, {
+      cache: "no-store",
+      headers: apiKey ? { "x-actvtrkr-api-key": apiKey } : undefined,
+    });
+  } catch (err) {
+    throw new PluginDownloadError(
+      err instanceof Error ? err.message : "Network request failed",
+      "fetch",
+      zipUrl,
+    );
+  }
 
   if (!response.ok) {
-    throw new Error("Failed to download latest plugin package");
+    throw new PluginDownloadError(
+      `Server returned ${response.status} ${response.statusText}`,
+      "http_error",
+      zipUrl,
+      response.status,
+    );
   }
 
-  const blob = await response.blob();
-  const fileUrl = URL.createObjectURL(blob);
-  const fileName = extractPluginFileName(response.headers.get("content-disposition")) || "actv-trkr.zip";
+  let blob: Blob;
+  try {
+    blob = await response.blob();
+  } catch (err) {
+    throw new PluginDownloadError(
+      err instanceof Error ? err.message : "Failed to read response body",
+      "blob",
+      zipUrl,
+    );
+  }
 
-  triggerBrowserDownload(fileUrl, fileName);
-  URL.revokeObjectURL(fileUrl);
+  const fileName = apiKey
+    ? extractPluginFileName(response.headers.get("content-disposition")) || "actv-trkr.zip"
+    : STATIC_PLUGIN_FILE_NAME;
+
+  try {
+    const fileUrl = URL.createObjectURL(blob);
+    triggerBrowserDownload(fileUrl, fileName);
+    setTimeout(() => URL.revokeObjectURL(fileUrl), 5000);
+  } catch (err) {
+    throw new PluginDownloadError(
+      err instanceof Error ? err.message : "Browser failed to start download",
+      "browser_trigger",
+      zipUrl,
+    );
+  }
 
   return fileName;
 }

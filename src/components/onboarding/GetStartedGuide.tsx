@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Download, Plug, Activity, ChevronRight, Copy, Check } from "lucide-react";
-import { downloadPlugin } from "@/lib/plugin-download";
+import { downloadPlugin, PluginDownloadError } from "@/lib/plugin-download";
+import { reportDownloadFailure } from "@/lib/report-download-failure";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useOrg } from "@/hooks/use-org";
@@ -37,8 +38,17 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
     try {
       await downloadPlugin();
       toast.success("Plugin downloaded successfully");
-    } catch {
-      toast.error("Download failed — please try again");
+    } catch (e: any) {
+      const isStructured = e instanceof PluginDownloadError;
+      await reportDownloadFailure({
+        stage: isStructured ? e.stage : "unknown",
+        error: e,
+        httpStatus: isStructured ? e.httpStatus : null,
+        downloadUrl: isStructured ? e.downloadUrl : undefined,
+        surface: "onboarding",
+        orgId,
+      });
+      toast.error("Download failed — our team has been notified. Please try again in a moment.");
     } finally {
       setDownloading(false);
     }

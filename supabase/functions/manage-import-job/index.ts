@@ -223,6 +223,7 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     discovered: forms.length,
     auto_started_jobs: autoStartedJobs,
     skipped_jobs: skippedJobs,
+    junk_skipped: junkSkipped,
     source,
     wp_plugin_error: wpError,
     forms,

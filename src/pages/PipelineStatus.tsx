@@ -54,10 +54,10 @@ function StatusIcon({ status, conclusion }: { status: string | null; conclusion:
   if (status && status !== "completed") {
     return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
   }
-  if (conclusion === "success") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+  if (conclusion === "success") return <CheckCircle2 className="h-4 w-4 text-success" />;
   if (conclusion === "failure" || conclusion === "timed_out") return <XCircle className="h-4 w-4 text-destructive" />;
   if (conclusion === "cancelled" || conclusion === "skipped") return <AlertTriangle className="h-4 w-4 text-muted-foreground" />;
-  return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+  return <AlertTriangle className="h-4 w-4 text-warning" />;
 }
 
 function StatusBadge({ status, conclusion }: { status: string | null; conclusion: string | null }) {
@@ -287,7 +287,7 @@ function SummaryTile({
 }) {
   const toneClass =
     tone === "emerald"
-      ? "text-emerald-500"
+      ? "text-success"
       : tone === "destructive"
         ? "text-destructive"
         : tone === "primary"

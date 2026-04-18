@@ -195,10 +195,40 @@ class MM_Settings {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="mm_endpoint">Endpoint URL</label></th>
+						<th scope="row">Connection</th>
 						<td>
-							<input type="url" id="mm_endpoint" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[endpoint_url]"
-								value="<?php echo esc_attr( $opts['endpoint_url'] ); ?>" class="regular-text" />
+							<?php
+							// Endpoint URL is preconfigured — users never need to set it.
+							// We keep it as a hidden input so the value still saves, and
+							// expose an "Advanced" toggle for the rare override case.
+							$endpoint_default = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+							$endpoint_value   = $opts['endpoint_url'] ?? $endpoint_default;
+							?>
+							<input type="hidden" id="mm_endpoint" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[endpoint_url]"
+								value="<?php echo esc_attr( $endpoint_value ); ?>" />
+							<p class="description" style="margin:0">
+								Connected to ACTV TRKR automatically. No URL configuration needed.
+								<a href="#" id="mm-endpoint-toggle" style="margin-left:8px">Advanced</a>
+							</p>
+							<div id="mm-endpoint-advanced" style="display:none;margin-top:8px">
+								<label for="mm_endpoint_visible" style="display:block;font-weight:600;margin-bottom:4px">Endpoint URL (advanced)</label>
+								<input type="url" id="mm_endpoint_visible"
+									value="<?php echo esc_attr( $endpoint_value ); ?>"
+									class="regular-text"
+									oninput="document.getElementById('mm_endpoint').value=this.value" />
+								<p class="description">Only change this if ACTV TRKR support told you to.</p>
+							</div>
+							<script>
+							(function(){
+								var t=document.getElementById('mm-endpoint-toggle');
+								if(!t)return;
+								t.addEventListener('click',function(e){
+									e.preventDefault();
+									var b=document.getElementById('mm-endpoint-advanced');
+									b.style.display=(b.style.display==='none'?'block':'none');
+								});
+							})();
+							</script>
 						</td>
 					</tr>
 					<tr>

@@ -28,7 +28,17 @@ export function VisitorEngagement({ orgId, startDate, endDate }: { orgId: string
       if (!orgId) return null;
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
-      const { data: pvData } = await supabase.from("pageviews").select("session_id, active_seconds, page_path").eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd).not("active_seconds", "is", null).limit(1000);
+      // Exclude synthetic "Test Connection" pageviews (event_id prefixed with test_)
+      // which never receive time_update beacons and skew the empty state.
+      const { data: pvData } = await supabase
+        .from("pageviews")
+        .select("session_id, active_seconds, page_path, event_id")
+        .eq("org_id", orgId)
+        .gte("occurred_at", dayStart)
+        .lte("occurred_at", dayEnd)
+        .not("active_seconds", "is", null)
+        .not("event_id", "ilike", "test\\_%")
+        .limit(1000);
       if (!pvData || pvData.length === 0) return null;
 
       const totalTime = pvData.reduce((sum, pv) => sum + (pv.active_seconds || 0), 0);

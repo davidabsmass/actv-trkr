@@ -41,6 +41,7 @@ const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const ComplianceSetup = lazy(() => import("./pages/ComplianceSetup"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const DataRoomView = lazy(() => import("./pages/DataRoomView"));
+const PipelineStatus = lazy(() => import("./pages/PipelineStatus"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -151,6 +152,7 @@ const App = () => (
               <Route path="security" element={<Security />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="admin-setup" element={<AdminSetup />} />
+              <Route path="pipeline-status" element={<PipelineStatus />} />
               <Route path="account" element={<Account />} />
               <Route path="get-started" element={<GetStarted />} />
               <Route path="compliance-setup" element={<ComplianceSetup />} />

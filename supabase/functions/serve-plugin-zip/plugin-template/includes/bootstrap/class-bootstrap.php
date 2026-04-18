@@ -138,15 +138,29 @@ class ACTV_Bootstrap {
 			'migrations/class-migration-lock.php',
 			'migrations/class-migration-runner.php',
 			'reliability/class-circuit-breaker.php',
+			'reliability/class-safe-http.php',
 			'modules/interface-module.php',
 			'modules/abstract-class-module.php',
 			'modules/class-module-registry.php',
 			'modules/class-module-legacy.php',
+			'recovery/class-recovery.php',
 		);
 		foreach ( $files as $rel ) {
 			$path = $base . $rel;
 			if ( file_exists( $path ) ) {
 				require_once $path;
+			}
+		}
+
+		// WP-CLI commands — only loaded under WP-CLI context.
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			$cli = $base . 'recovery/class-cli.php';
+			if ( file_exists( $cli ) ) {
+				try {
+					require_once $cli;
+				} catch ( \Throwable $e ) {
+					// Never let CLI registration break boot.
+				}
 			}
 		}
 

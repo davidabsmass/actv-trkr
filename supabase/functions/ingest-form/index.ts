@@ -457,25 +457,15 @@ Deno.serve(async (req) => {
 
     // Upsert form
     const extFormId = entry.form_id?.toString() || `dom_form_${fingerprint.slice(0, 8)}`;
-    let formId: string;
-    const { data: existingForm } = await supabase.from("forms")
+    const formName = entry.form_title || entry.form_name || `Form (${providerName})`;
+    const { data: formRow, error: formErr } = await supabase.from("forms")
+      .upsert({ org_id: orgId, site_id: siteId, external_form_id: extFormId, name: formName, provider: providerName }, {
+        onConflict: "site_id,provider,external_form_id",
+      })
       .select("id")
-      .eq("org_id", orgId)
-      .eq("site_id", siteId)
-      .eq("provider", providerName)
-      .eq("external_form_id", extFormId)
-      .maybeSingle();
-
-    if (existingForm) {
-      formId = existingForm.id;
-    } else {
-      const formName = entry.form_title || entry.form_name || `Form (${providerName})`;
-      const { data: nf, error: nfErr } = await supabase.from("forms")
-        .insert({ org_id: orgId, site_id: siteId, external_form_id: extFormId, name: formName, provider: providerName })
-        .select("id").single();
-      if (nfErr || !nf) return new Response(JSON.stringify({ error: "Failed to create form" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      formId = nf.id;
-    }
+      .single();
+    if (formErr || !formRow) return new Response(JSON.stringify({ error: "Failed to create form" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const formId = formRow.id;
 
     // Insert raw event
     const extEntryId = entry.entry_id?.toString() || `${providerName}_${fingerprint.slice(0, 16)}`;
@@ -713,7 +703,7 @@ Deno.serve(async (req) => {
       const escapeHtml = (s: string): string =>
         s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
-      const formName = escapeHtml(existingForm?.name || entry.form_title || entry.form_name || "Form");
+      const safeFormName = escapeHtml(formName || "Form");
       const leadSource = escapeHtml(source || "direct");
       const leadPage = escapeHtml(pagePath || pageUrl || "Unknown page");
       const submittedAt = new Date(entry.submitted_at || Date.now()).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
@@ -724,7 +714,7 @@ Deno.serve(async (req) => {
         const inboxRows = orgMembers.map((m: any) => ({
           user_id: m.user_id,
           site_id: siteId,
-          title: `New lead from ${formName}`,
+            title: `New lead from ${safeFormName}`,
           body: `Source: ${leadSource} · Page: ${leadPage}`,
         }));
         await supabase.from("notification_inbox").insert(inboxRows);

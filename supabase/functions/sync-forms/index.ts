@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
       const { error } = await supabase
         .from("forms")
-        .upsert(upsertData, { onConflict: "org_id,site_id,provider,external_form_id" });
+        .upsert(upsertData, { onConflict: "site_id,provider,external_form_id" });
 
       if (!error) synced++;
     }

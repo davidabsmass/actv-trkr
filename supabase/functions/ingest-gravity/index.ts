@@ -41,14 +41,17 @@ Deno.serve(async (req) => {
 
     // Upsert form
     const extFormId = entry.form_id?.toString() || "unknown";
-    let formId: string;
-    const { data: existingForm } = await supabase.from("forms").select("id").eq("org_id", orgId).eq("site_id", siteId).eq("external_form_id", extFormId).maybeSingle();
-    if (existingForm) { formId = existingForm.id; }
-    else {
-      const { data: nf, error: nfErr } = await supabase.from("forms").insert({ org_id: orgId, site_id: siteId, external_form_id: extFormId, name: entry.form_title || "Untitled Form" }).select("id").single();
-      if (nfErr || !nf) return new Response(JSON.stringify({ error: "Failed to create form" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      formId = nf.id;
-    }
+    const { data: formRow, error: formErr } = await supabase.from("forms").upsert({
+      org_id: orgId,
+      site_id: siteId,
+      provider: "gravity_forms",
+      external_form_id: extFormId,
+      name: entry.form_title || "Untitled Form",
+    }, {
+      onConflict: "site_id,provider,external_form_id",
+    }).select("id").single();
+    if (formErr || !formRow) return new Response(JSON.stringify({ error: "Failed to create form" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const formId = formRow.id;
 
     // Insert raw event
     const extEntryId = entry.entry_id?.toString() || `${Date.now()}`;

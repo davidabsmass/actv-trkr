@@ -22,6 +22,11 @@ const MIN_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 250;
 const MAX_RETRIES = 10;
 
+function getWpBaseUrl(site: { url?: string | null; domain?: string | null }) {
+  const siteUrl = site.url || (site.domain ? `https://${site.domain}` : "");
+  return `${siteUrl.replace(/\/$/, "")}/wp-json`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -161,7 +166,7 @@ async function processJob(supabase: any, job: any) {
   // Get site info for WP plugin calls
   const { data: site } = await supabase
     .from("sites")
-    .select("id, org_id, domain, wp_rest_url")
+    .select("id, org_id, domain, url")
     .eq("id", job.site_id)
     .single();
 
@@ -332,7 +337,7 @@ async function releaseLock(
 }
 
 async function callWpPlugin(supabase: any, site: any, route: string, body: any): Promise<any> {
-  const baseUrl = site.wp_rest_url || `https://${site.domain}/wp-json`;
+  const baseUrl = getWpBaseUrl(site);
 
   const { data: apiKeys } = await supabase
     .from("api_keys")

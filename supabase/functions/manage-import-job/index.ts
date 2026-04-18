@@ -19,6 +19,11 @@ const MIN_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 250;
 const DEFAULT_BATCH_SIZE = 100;
 
+function getWpBaseUrl(site: { url?: string | null; domain?: string | null }) {
+  const siteUrl = site.url || (site.domain ? `https://${site.domain}` : "");
+  return `${siteUrl.replace(/\/$/, "")}/wp-json`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -68,8 +73,7 @@ async function handlePreflight(supabase: any, user: any, req: Request) {
 
   const checks: any = { site_found: true, errors: [], warnings: [] };
 
-  // Check wp_rest_url
-  const baseUrl = site.wp_rest_url || `https://${site.domain}/wp-json`;
+  const baseUrl = getWpBaseUrl(site);
   checks.wp_rest_url = baseUrl;
 
   try {
@@ -147,6 +151,11 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
   // but we skip auto-import (they can manually start it from the UI).
   const JUNK_THRESHOLD = 50_000;
   let junkSkipped = 0;
+
+  forms = Array.from(new Map(forms.map((form: any) => [
+    `${form.builder_type || "unknown"}::${String(form.external_form_id || "")}`,
+    form,
+  ])).values());
 
   for (const form of forms) {
     let estimated = form.entry_count || 0;
@@ -549,7 +558,7 @@ function deriveJobHealth(job: any): string {
 
 async function getSiteForUser(supabase: any, userId: string, siteId: string) {
   const { data: site } = await supabase
-    .from("sites").select("id, org_id, domain, wp_rest_url")
+    .from("sites").select("id, org_id, domain, url")
     .eq("id", siteId).single();
 
   if (!site) return null;
@@ -570,7 +579,7 @@ async function getKeyHash(supabase: any, orgId: string): Promise<string> {
 }
 
 async function callWpPlugin(supabase: any, site: any, route: string, body: any): Promise<any> {
-  const baseUrl = site.wp_rest_url || `https://${site.domain}/wp-json`;
+  const baseUrl = getWpBaseUrl(site);
   const keyHash = await getKeyHash(supabase, site.org_id);
 
   try {

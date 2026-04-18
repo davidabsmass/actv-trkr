@@ -62,7 +62,9 @@ class MM_Settings {
 	public static function sanitize( $input ) {
 		$clean = array();
 		$clean['api_key']          = sanitize_text_field( $input['api_key'] ?? '' );
-		$clean['endpoint_url']     = esc_url_raw( $input['endpoint_url'] ?? '' );
+		$clean['endpoint_url']     = ! empty( $input['endpoint_url'] )
+			? esc_url_raw( $input['endpoint_url'] )
+			: 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
 		$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
 		$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
 		$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';

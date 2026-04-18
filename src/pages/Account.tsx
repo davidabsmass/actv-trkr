@@ -153,33 +153,6 @@ export default function Account() {
           </CardContent>
         </Card>
 
-        {/* Billing Address Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <MapPin className="h-4 w-4" /> Billing Address
-            </CardTitle>
-            <CardDescription>Collected from your payment details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {profile?.address_line1 ? (
-              <div className="text-sm space-y-1">
-                <p className="font-medium">{profile.full_name}</p>
-                <p className="text-muted-foreground">{profile.address_line1}</p>
-                {profile.address_line2 && <p className="text-muted-foreground">{profile.address_line2}</p>}
-                <p className="text-muted-foreground">
-                  {[profile.city, profile.state, profile.postal_code].filter(Boolean).join(", ")}
-                </p>
-                {profile.country && <p className="text-muted-foreground">{profile.country}</p>}
-                {profile.phone && <p className="text-muted-foreground">{profile.phone}</p>}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No billing address on file. This is automatically populated from your Stripe payment details.
-              </p>
-            )}
-          </CardContent>
-        </Card>
         {/* Password Card */}
         <Card>
           <CardHeader>
@@ -226,6 +199,34 @@ export default function Account() {
             >
               {changingPassword ? t("account.updating") : t("account.updatePassword")}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Billing Address Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MapPin className="h-4 w-4" /> Billing Address
+            </CardTitle>
+            <CardDescription>Collected from your payment details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {profile?.address_line1 ? (
+              <div className="text-sm space-y-1">
+                <p className="font-medium">{profile.full_name}</p>
+                <p className="text-muted-foreground">{profile.address_line1}</p>
+                {profile.address_line2 && <p className="text-muted-foreground">{profile.address_line2}</p>}
+                <p className="text-muted-foreground">
+                  {[profile.city, profile.state, profile.postal_code].filter(Boolean).join(", ")}
+                </p>
+                {profile.country && <p className="text-muted-foreground">{profile.country}</p>}
+                {profile.phone && <p className="text-muted-foreground">{profile.phone}</p>}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No billing address on file. This is automatically populated from your Stripe payment details.
+              </p>
+            )}
           </CardContent>
         </Card>
         {/* Team Members */}

@@ -3888,6 +3888,56 @@ export type Database = {
           },
         ]
       }
+      plugin_download_failures: {
+        Row: {
+          created_at: string
+          download_url: string | null
+          error_message: string | null
+          failure_stage: string
+          http_status: number | null
+          id: string
+          notified_at: string | null
+          org_id: string | null
+          surface: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          download_url?: string | null
+          error_message?: string | null
+          failure_stage: string
+          http_status?: number | null
+          id?: string
+          notified_at?: string | null
+          org_id?: string | null
+          surface?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          download_url?: string | null
+          error_message?: string | null
+          failure_stage?: string
+          http_status?: number | null
+          id?: string
+          notified_at?: string | null
+          org_id?: string | null
+          surface?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plugin_download_failures_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plugin_health_reports: {
         Row: {
           blocked_versions: string[]

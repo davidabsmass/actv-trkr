@@ -71,12 +71,17 @@ If `forms` has rows but `form_integrations` is empty, the Settings UI will show 
 
 ### Re-scan / discovery flow
 
-The "Re-scan Forms" button in `/settings → Form Import` calls `manage-import-job?action=discover`. The function uses a two-step strategy:
+The "Re-scan Forms" button in `/settings → Form Import` calls `manage-import-job?action=discover`. The function does THREE things in one call:
 
-1. **Primary**: POST to the WP plugin's `/actv-trkr/v1/import-discover` endpoint (60s timeout). On success, upserts results into `form_integrations`.
-2. **Fallback** (when WP plugin times out, returns 5xx, or returns 0 forms): backfill `form_integrations` from any non-archived rows already present in the `forms` table for that site.
+1. **Discover (primary)**: POST to the WP plugin's `/actv-trkr/v1/import-discover` endpoint (60s timeout). On success, upserts results into `form_integrations`.
+2. **Discover (fallback)** when WP plugin times out, returns 5xx, or returns 0 forms: backfill `form_integrations` from any non-archived rows already present in the `forms` table for that site.
+3. **Auto-import**: for every discovered form with `entry_count > 0` that isn't already fully imported and has no active job, insert a `form_import_jobs` row with `status='pending'`. The `process-import-queue` cron worker (every 2 min) drains pending jobs by calling `manage-import-job?action=process` → WP plugin `/import-batch` → `ingest-form-batch`.
 
-The fallback guarantees the Settings UI never displays "0 forms" when forms already exist in the database. The response includes `source: "wp_plugin" | "forms_table"` and `wp_plugin_error` so the UI can surface why the fallback path was taken.
+Auto-import is skipped when: `entry_count` is 0; the discover path was the `forms_table` fallback (counts unknown); the integration is already fully synced; or an active/pending/stalled job already exists.
+
+Response shape: `{ ok, discovered, auto_started_jobs, skipped_jobs, source: "wp_plugin" | "forms_table", wp_plugin_error, forms[] }`. The fallback guarantees the Settings UI never displays "0 forms" when forms already exist in the database.
+
+**WP plugin auth (do not regress):** `permission_callback` is `MM_Forms::verify_key_hash`, which compares `hash('sha256', $opts['api_key'])` against the request body's `key_hash`. The edge function sends `api_keys.key_hash` (already SHA-256 of the raw key) — these match because the plugin re-computes the same hash from its stored raw key. Do NOT double-hash on either side or send the raw key over the wire.
 
 ---
 

@@ -169,6 +169,7 @@ export default function PipelineStatus() {
         <TabsList>
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="recent">Recent runs</TabsTrigger>
+          <TabsTrigger value="code-health">Code health</TabsTrigger>
         </TabsList>
 
         <TabsContent value="workflows" className="mt-4">

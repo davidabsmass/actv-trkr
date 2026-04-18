@@ -18,22 +18,16 @@ class MM_Updater {
 
 	const SLUG        = 'actv-trkr/actv-trkr.php';
 	const TRANSIENT   = 'mm_update_data';
-	const CHECK_HOURS = 0;
-
-	// Trusted shared secret for HMAC verification of update payloads.
-	// This MUST match PLUGIN_RELEASE_SIGNING_SECRET on the backend.
-	// Distributed via the plugin source on download — see SECURITY notes.
-	const TRUSTED_FINGERPRINT = ''; // legacy unused
-	// Maximum acceptable signature age (seconds)
-	const MAX_SIG_AGE = 86400; // 24h
-
+	const CHECK_HOURS = 12;
+...
 	public static function init() {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 		add_filter( 'plugin_row_meta', array( __CLASS__, 'row_meta' ), 10, 2 );
 
-		add_action( 'load-plugins.php', array( __CLASS__, 'force_check' ) );
-		add_action( 'load-options-general.php', array( __CLASS__, 'force_check' ) );
+		// Do not force remote update checks during plugins.php loads.
+		// WordPress already performs its own periodic update checks, and forcing
+		// our custom check here can stall wp-admin on slow hosts.
 		add_action( 'upgrader_process_complete', array( __CLASS__, 'after_upgrade' ), 10, 2 );
 
 		// Surface verification failures to admins
@@ -257,13 +251,15 @@ class MM_Updater {
 			'domain'  => $domain,
 		) );
 
-		$response = wp_remote_get( $url, array( 'timeout' => 10 ) );
+		$response = wp_remote_get( $url, array( 'timeout' => 3 ) );
 		if ( is_wp_error( $response ) ) {
+			set_transient( self::TRANSIENT, null, 30 * MINUTE_IN_SECONDS );
 			return null;
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $body ) ) {
+			set_transient( self::TRANSIENT, null, 30 * MINUTE_IN_SECONDS );
 			return null;
 		}
 

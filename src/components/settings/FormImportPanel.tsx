@@ -140,10 +140,11 @@ export default function FormImportPanel() {
   const rescanSite = async (siteId: string) => {
     try {
       setRescanningSiteId(siteId);
-      // Call the discover action which populates form_integrations
-      // (the table this UI reads from). It includes a fallback to backfill
-      // from the existing `forms` table if the WP plugin endpoint is
-      // unreachable / times out — so the UI never gets stuck on 0 forms.
+      // Discover forms on this site AND auto-start import jobs for any
+      // forms with un-imported entries. The "Re-scan" button is the
+      // single-click entry point: discover + import.
+      // The discover action falls back to the existing `forms` table when
+      // the WP plugin is unreachable so the UI never shows 0 forms.
       const { data, error } = await supabase.functions.invoke(
         "manage-import-job?action=discover",
         { body: { site_id: siteId } }
@@ -154,15 +155,23 @@ export default function FormImportPanel() {
       invalidate();
 
       const discovered = data?.discovered ?? 0;
+      const autoStarted = data?.auto_started_jobs ?? 0;
       const sourceLabel = data?.source === "forms_table"
-        ? " (from previously detected forms — WP plugin was unreachable)"
+        ? " (recovered from previously detected forms — WP plugin was unreachable, so entry counts and import are not available right now)"
         : "";
 
+      let description: string;
+      if (discovered === 0) {
+        description = "No forms detected on this site yet.";
+      } else if (autoStarted > 0) {
+        description = `Found ${discovered} form${discovered === 1 ? "" : "s"}. Started importing entries for ${autoStarted} form${autoStarted === 1 ? "" : "s"} in the background — counts will update over the next few minutes.`;
+      } else {
+        description = `Found ${discovered} form${discovered === 1 ? "" : "s"}${sourceLabel}.`;
+      }
+
       toast({
-        title: discovered > 0 ? "Forms re-scanned" : "Re-scan complete",
-        description: discovered > 0
-          ? `Found ${discovered} form${discovered === 1 ? "" : "s"}${sourceLabel}.`
-          : "No forms detected on this site yet.",
+        title: discovered > 0 ? "Re-scan complete" : "Re-scan complete",
+        description,
       });
     } catch (err: any) {
       toast({

@@ -21,6 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import WpEnvironmentTab from "@/components/monitoring/WpEnvironmentTab";
 import { TrackingStatusCard, TrackingAlertsPanel, TrackingInterruptionsTable, SiteHealthBanner } from "@/components/monitoring/TrackingHealthPanel";
 import { ConsentStatusIndicator, DataIntegrityNotice, ComplianceWarnings } from "@/components/monitoring/ComplianceStatusPanel";
+import { FleetHealthWidget } from "@/components/monitoring/FleetHealthWidget";
 
 export default function MonitoringPage() {
   const { orgId } = useOrg();
@@ -447,6 +448,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
 
         {/* Plugin & WordPress */}
         <TabsContent value="plugin-wp" className="space-y-4">
+          <FleetHealthWidget />
           <WpEnvironmentTab siteId={site.id} orgId={orgId} />
         </TabsContent>
 

@@ -16,6 +16,9 @@ import {
   Clock,
   GitBranch,
   ShieldCheck,
+  Bug,
+  Package,
+  FileCode,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 

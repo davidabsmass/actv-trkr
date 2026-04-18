@@ -275,6 +275,9 @@ export default function PipelineStatus() {
             </Card>
           )}
         </TabsContent>
+        <TabsContent value="code-health" className="mt-4">
+          <CodeHealthTab />
+        </TabsContent>
       </Tabs>
     </div>
   );

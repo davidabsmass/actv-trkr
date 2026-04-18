@@ -703,7 +703,7 @@ Deno.serve(async (req) => {
       const escapeHtml = (s: string): string =>
         s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
-      const formName = escapeHtml(existingForm?.name || entry.form_title || entry.form_name || "Form");
+      const safeFormName = escapeHtml(formName || "Form");
       const leadSource = escapeHtml(source || "direct");
       const leadPage = escapeHtml(pagePath || pageUrl || "Unknown page");
       const submittedAt = new Date(entry.submitted_at || Date.now()).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
@@ -714,7 +714,7 @@ Deno.serve(async (req) => {
         const inboxRows = orgMembers.map((m: any) => ({
           user_id: m.user_id,
           site_id: siteId,
-          title: `New lead from ${formName}`,
+            title: `New lead from ${safeFormName}`,
           body: `Source: ${leadSource} · Page: ${leadPage}`,
         }));
         await supabase.from("notification_inbox").insert(inboxRows);

@@ -570,21 +570,34 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
   const handleRescanForms = async () => {
     try {
       setRescanning(true);
-      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
-        body: { site_id: siteId, force_backfill: true },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const [siteSyncResult, discoverResult] = await Promise.all([
+        supabase.functions.invoke("trigger-site-sync", {
+          body: { site_id: siteId, force_backfill: true },
+        }),
+        supabase.functions.invoke("manage-import-job?action=discover", {
+          body: { site_id: siteId },
+        }),
+      ]);
+
+      if (siteSyncResult.error) throw siteSyncResult.error;
+      if (siteSyncResult.data?.error) throw new Error(siteSyncResult.data.error);
+      if (discoverResult.error) throw discoverResult.error;
+      if (discoverResult.data?.error) throw new Error(discoverResult.data.error);
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] }),
         queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] }),
+        queryClient.invalidateQueries({ queryKey: ["form_integrations"] }),
       ]);
+
+      const discovered = discoverResult.data?.discovered ?? 0;
+      const autoStartedJobs = discoverResult.data?.auto_started_jobs ?? 0;
+      const backfillInProgress = Boolean(siteSyncResult.data?.backfill_in_progress || autoStartedJobs > 0);
 
       toast({
         title: "Re-scan started",
-        description: data?.backfill_in_progress
-          ? "We restarted discovery and background form sync for this site."
+        description: backfillInProgress
+          ? `We restarted discovery and background entry import for this site${discovered > 0 ? ` (${discovered} form${discovered === 1 ? "" : "s"} found)` : ""}.`
           : "We restarted form discovery for this site.",
       });
     } catch (err: any) {

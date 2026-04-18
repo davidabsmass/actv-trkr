@@ -53,6 +53,28 @@ class ACTV_Bootstrap {
 			// 4. Resolve effective mode (after possible auto-transitions).
 			$mode = ACTV_Mode::resolve();
 
+			// 4b. Runtime preflight (cached). Soft-degrade only.
+			if ( class_exists( 'ACTV_Preflight' ) ) {
+				$pre = ACTV_Preflight::run_runtime();
+				if ( ! empty( $pre['critical'] ) && $mode !== ACTV_Mode::MIGRATION_LOCKED ) {
+					ACTV_Mode::set( ACTV_Mode::REDUCED_MODE, 'runtime preflight critical' );
+					$mode = ACTV_Mode::resolve();
+				}
+			}
+
+			// 4c. Run pending schema migrations (skipped while migration_locked).
+			if ( $mode !== ACTV_Mode::MIGRATION_LOCKED && class_exists( 'ACTV_Migration_Runner' ) ) {
+				$mig_dir = plugin_dir_path( $plugin_main_file ) . 'includes/migrations/versions';
+				$mig_res = ACTV_Migration_Runner::ensure_pending( $mig_dir );
+				if ( ! empty( $mig_res['error'] ) && empty( $mig_res['skipped'] ) ) {
+					self::register_admin_notice(
+						'ACTV TRKR is in migration-locked mode. ' .
+						'Run "wp actv-trkr migrate --retry" via WP-CLI or contact support.'
+					);
+					$mode = ACTV_Mode::resolve();
+				}
+			}
+
 			// 5. Load all feature classes (cheap requires).
 			self::load_feature_files( $plugin_main_file );
 

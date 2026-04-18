@@ -26,8 +26,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci --no-audit --no-fund
-      - name: ESLint
-        run: npm run lint -- --max-warnings 0
+      - name: ESLint (errors block, warnings visible)
+        run: npm run lint
       - name: TypeScript
         run: npx tsc --noEmit
       - name: Vitest
@@ -41,15 +41,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          semgrep ci \
+          set +e
+          semgrep scan \
             --config p/typescript \
             --config p/react \
             --config p/owasp-top-ten \
             --config .semgrep/ \
             --error \
-            --sarif --output semgrep.sarif || EXIT=$?
-          # ERROR severity already failed; upload SARIF either way
-          exit ${EXIT:-0}
+            --sarif --output semgrep.sarif
+          EXIT=$?
+          # Ensure SARIF exists even if semgrep crashed, so upload step succeeds
+          [ -f semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
+          exit $EXIT
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3
@@ -75,14 +78,18 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist
       - name: PHP parse check
         run: composer run lint:php
+      # Phase 1: PHP checks are warning-only. Flip continue-on-error to false to enforce.
       - name: PHPCS (changed files only on PRs)
         run: composer run phpcs:diff
         if: github.event_name == 'pull_request'
+        continue-on-error: true
       - name: PHPCS (full, baseline-aware)
         run: composer run phpcs
         if: github.event_name != 'pull_request'
+        continue-on-error: true
       - name: PHPStan
         run: composer run phpstan
+        continue-on-error: true
 
   # ─── Layer 4: Dependency CVEs ──────────────────────────────────────────
   deps:

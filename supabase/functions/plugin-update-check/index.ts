@@ -11,9 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.16.0";
+const CURRENT_PLUGIN_VERSION = "1.16.1";
 
 const CHANGELOG = `
+## 1.16.1
+- FIX: Repaired a malformed docblock in the WP-CLI recovery class that prevented \`wp actv-trkr log\` from registering on some PHP versions
+- DOCS: Shipped RECOVERY.md operator runbook covering safe-mode override, every \`wp actv-trkr\` command, and symptom-driven recipes
+
 ## 1.16.0
 - NEW: Settings page redesigned with 4 tabs (General, Privacy, Tools, Advanced) and a status summary bar
 - NEW: Privacy Policy and Consent Tool copy now live in modals — no more giant inline text blocks

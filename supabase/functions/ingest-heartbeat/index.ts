@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Fire-and-forget: trigger form sync and domain/SSL check for the new site
+      // Fire-and-forget: trigger install bootstrap for the new site
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${serviceKey}`,
           },
-          body: JSON.stringify({ site_id: site.id }),
+          body: JSON.stringify({ site_id: site.id, force_form_probe: true }),
         }).then(r => console.log(`Auto-sync triggered for new site ${site.id}: ${r.status}`))
           .catch(e => console.error("Auto-sync fire-and-forget failed:", e));
 
@@ -223,12 +223,16 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.error("Failed to trigger auto-sync:", e);
       }
+    } else {
+      try {
+        const pluginVersion = sanitizeStr(body.plugin_version || body.pluginVersion, 32);
+        await maybeTriggerPostInstallBootstrap({ supabase, site, pluginVersion, signalSource });
+      } catch (bootstrapErr) {
+        console.error("Existing-site bootstrap check failed (non-fatal):", bootstrapErr);
+      }
     }
 
     const now = new Date().toISOString();
-
-    // Validate source field
-    const signalSource = sanitizeStr(body.source, 32) || "js";
 
     // Insert signal
     await supabase.from("site_heartbeats").insert({

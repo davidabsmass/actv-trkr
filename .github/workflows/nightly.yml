@@ -1,0 +1,68 @@
+name: Nightly drift scan
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  security-events: write
+
+jobs:
+  deps:
+    name: Re-audit shipped deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - id: audit
+        run: |
+          set +e
+          npx audit-ci --config audit-ci.json --report-type full > audit.txt 2>&1
+          echo "exit=$?" >> $GITHUB_OUTPUT
+          cat audit.txt
+      - name: Open issue if regression
+        if: steps.audit.outputs.exit != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = '```\n' + fs.readFileSync('audit.txt', 'utf8').slice(0, 60000) + '\n```';
+            await github.rest.issues.create({
+              ...context.repo,
+              title: `[nightly] new dependency vulnerability detected (${new Date().toISOString().slice(0,10)})`,
+              body,
+              labels: ['quality:nightly', 'severity:high'],
+            });
+
+  gitleaks-history:
+    name: gitleaks (full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+
+  zap-baseline:
+    name: ZAP baseline (staging)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'https://mshnctrl.lovable.app'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a -j -m 5 -T 10'
+          fail_action: false # nightly is reporting only
+          allow_issue_writing: true

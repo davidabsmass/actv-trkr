@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+public/downloads/
+src/integrations/supabase/types.ts
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+mission-metrics-wp-plugin/
+supabase/functions/serve-plugin-zip/plugin-template/

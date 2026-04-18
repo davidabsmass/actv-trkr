@@ -1,0 +1,9 @@
+# OWASP ZAP baseline ignore rules
+# Format: <pluginId>	<threshold>	<comment>
+# Threshold: IGNORE | WARN | FAIL
+#
+# Each entry MUST have a written justification — no silent suppressions.
+
+10049	WARN	Non-storable content (Cache-Control) — acceptable for SPA HTML responses
+10027	WARN	Information disclosure - suspicious comments — react/vite output contains source-map comments by design
+10063	IGNORE	Permissions Policy header missing — tracked separately, will add via vite plugin

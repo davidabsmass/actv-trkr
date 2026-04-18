@@ -127,6 +127,19 @@ class ACTV_CLI_Command {
 			WP_CLI::log( '  none' );
 		}
 		WP_CLI::log( '' );
+
+		// Update health.
+		if ( ! empty( $snap['update_health'] ) ) {
+			$uh = $snap['update_health'];
+			WP_CLI::log( sprintf(
+				'Update health     : last-good=%s   blocked=%d   this-version: %d clean / %d fail',
+				(string) ( $uh['last_healthy_version'] ?: 'none' ),
+				is_array( $uh['blocked_versions'] ?? null ) ? count( $uh['blocked_versions'] ) : 0,
+				(int) ( $uh['current_clean_boots'] ?? 0 ),
+				(int) ( $uh['current_failure_boots'] ?? 0 )
+			) );
+			WP_CLI::log( '' );
+		}
 	}
 
 	/**

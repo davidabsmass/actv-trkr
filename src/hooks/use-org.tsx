@@ -54,12 +54,20 @@ export function OrgProvider({ children }: { children: React.ReactNode }) {
     : (!authLoading && !!user && status === "success");
 
   useEffect(() => {
-    if (effectiveOrgs.length > 0 && !orgId) {
-      const saved = localStorage.getItem("mm_active_org");
-      const match = effectiveOrgs.find((o) => o.id === saved);
-      // Default to APYX if no saved selection, otherwise first org
-      const apyx = findApyxOrg(effectiveOrgs);
-      setOrgId(match ? match.id : apyx ? apyx.id : effectiveOrgs[0].id);
+    if (effectiveOrgs.length === 0) return;
+
+    // If current orgId is stale (no longer in the list — e.g. preview-fallback
+    // ID lingering after auth completed), reset and re-pick.
+    const currentIsValid = orgId && effectiveOrgs.some((o) => o.id === orgId);
+    if (currentIsValid) return;
+
+    const saved = localStorage.getItem("mm_active_org");
+    const match = effectiveOrgs.find((o) => o.id === saved);
+    const apyx = findApyxOrg(effectiveOrgs);
+    const nextId = match ? match.id : apyx ? apyx.id : effectiveOrgs[0].id;
+    setOrgId(nextId);
+    if (!match && nextId) {
+      localStorage.setItem("mm_active_org", nextId);
     }
   }, [effectiveOrgs, orgId]);
 

@@ -73,8 +73,9 @@ export function CustomerProfilePrompt() {
       });
       setSubmitted(true);
       setTimeout(() => setOpen(false), 1500);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not save your answers. Please try again.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not save your answers. Please try again.";
+      toast.error(msg);
     }
   };
 

@@ -58,39 +58,43 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
         body: { email, subscriber_id: subscriberId },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      return data as any;
+      const payload = data as Record<string, unknown> | null;
+      if (payload?.error) throw new Error(String(payload.error));
+      return payload as Record<string, unknown> | null;
     },
     enabled: open && !!(email || subscriberId),
   });
 
-  const subscriber = data?.subscriber;
-  const profile = data?.profile;
-  const auth = data?.auth;
-  const orgs: any[] = data?.orgs ?? [];
-  const sites: any[] = data?.sites ?? [];
-  const importJobs: any[] = data?.import_jobs ?? [];
-  const recentAlerts: any[] = data?.recent_alerts ?? [];
-  const consentConfigs: any[] = data?.consent_configs ?? [];
-  const teamMembers: any[] = data?.team_members ?? [];
-  const notes: any[] = data?.notes ?? [];
-  const stripe = data?.stripe;
+  type Row = Record<string, unknown>;
+  const subscriber = data?.subscriber as Row | undefined;
+  const profile = data?.profile as Row | undefined;
+  const auth = data?.auth as Row | undefined;
+  const orgs = (data?.orgs ?? []) as Row[];
+  const sites = (data?.sites ?? []) as Row[];
+  const importJobs = (data?.import_jobs ?? []) as Row[];
+  const recentAlerts = (data?.recent_alerts ?? []) as Row[];
+  const consentConfigs = (data?.consent_configs ?? []) as Row[];
+  const teamMembers = (data?.team_members ?? []) as Row[];
+  const notes = (data?.notes ?? []) as Row[];
+  const stripe = data?.stripe as Row | undefined;
 
   const primarySite = sites[0];
   const consentByOrg = (orgId: string) =>
-    consentConfigs.find((c) => c.org_id === orgId)?.consent_mode || "strict";
+    (consentConfigs.find((c) => c.org_id === orgId)?.consent_mode as string | undefined) || "strict";
 
   // ── Action handlers ─────────────────────────────────────────────────
-  const callAction = async (actionKey: string, body: any, successMsg: string) => {
+  const callAction = async (actionKey: string, body: Record<string, unknown>, successMsg: string) => {
     setActionLoading(actionKey);
     try {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", { body });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const payload = data as { error?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
       toast.success(successMsg);
       refetch();
-    } catch (e: any) {
-      toast.error(e.message || `Failed: ${actionKey}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : `Failed: ${actionKey}`;
+      toast.error(msg);
     } finally {
       setActionLoading(null);
     }

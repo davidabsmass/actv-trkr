@@ -9,6 +9,7 @@ import SeoVisibilitySection from "@/components/settings/SeoVisibilitySection";
 import NotificationsSection from "@/components/settings/NotificationsSection";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 import FormImportPanel from "@/components/settings/FormImportPanel";
+import FormsSection from "@/components/settings/FormsSection";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -48,6 +49,7 @@ export default function SettingsPage() {
             <SitesSection />
             <NotificationsSection />
             <SeoVisibilitySection />
+            <FormsSection />
             {showAdminSections && <FormImportPanel />}
           </div>
         </TabsContent>

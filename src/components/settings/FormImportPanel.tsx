@@ -44,6 +44,11 @@ interface ImportJob {
   locked_at?: string | null;
 }
 
+interface SiteRecord {
+  id: string;
+  domain: string;
+}
+
 function useIntegrations(orgId: string | null) {
   return useQuery({
     queryKey: ["form_integrations", orgId],
@@ -59,6 +64,23 @@ function useIntegrations(orgId: string | null) {
     },
     enabled: !!orgId,
     refetchInterval: 10_000,
+  });
+}
+
+function useSites(orgId: string | null) {
+  return useQuery({
+    queryKey: ["sites", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("sites")
+        .select("id, domain")
+        .eq("org_id", orgId)
+        .order("domain");
+      if (error) throw error;
+      return (data || []) as SiteRecord[];
+    },
+    enabled: !!orgId,
   });
 }
 
@@ -94,8 +116,9 @@ export default function FormImportPanel() {
   const { orgId } = useOrg();
   const queryClient = useQueryClient();
   const { data: integrations, isLoading } = useIntegrations(orgId);
+  const { data: sites } = useSites(orgId);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [processingJobId, setProcessingJobId] = useState<string | null>(null);
+  const [rescanningSiteId, setRescanningSiteId] = useState<string | null>(null);
 
   const invokeAction = useCallback(async (action: string, body: any) => {
     const { data, error } = await supabase.functions.invoke(
@@ -106,7 +129,40 @@ export default function FormImportPanel() {
     return data;
   }, []);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["form_integrations"] });
+  const invalidate = () => {
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["form_integrations"] }),
+      queryClient.invalidateQueries({ queryKey: ["forms", orgId] }),
+      queryClient.invalidateQueries({ queryKey: ["sites", orgId] }),
+    ]);
+  };
+
+  const rescanSite = async (siteId: string) => {
+    try {
+      setRescanningSiteId(siteId);
+      const { data, error } = await supabase.functions.invoke("trigger-site-sync", {
+        body: { site_id: siteId, force_backfill: true },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      invalidate();
+      toast({
+        title: "Form re-scan started",
+        description: data?.backfill_in_progress
+          ? "We restarted discovery and background form sync for this site."
+          : "We restarted form discovery for this site.",
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Re-scan failed",
+        description: err?.message || "We couldn’t re-scan this site right now.",
+      });
+    } finally {
+      setRescanningSiteId(null);
+    }
+  };
 
   const startImport = async (integration: FormIntegration) => {
     try {
@@ -158,7 +214,6 @@ export default function FormImportPanel() {
     }
   };
 
-  // Summaries
   const allJobs = integrations?.flatMap(i => i.form_import_jobs || []) || [];
   const summary = {
     detected: integrations?.filter(i => i.status === "detected").length || 0,
@@ -168,6 +223,9 @@ export default function FormImportPanel() {
     stalled: allJobs.filter(j => j.status === "stalled").length,
     active: allJobs.filter(j => ["pending", "running"].includes(j.status)).length,
   };
+
+  const siteIdsWithIntegrations = new Set((integrations || []).map((integration) => integration.site_id));
+  const sitesNeedingRescan = (sites || []).filter((site) => !siteIdsWithIntegrations.has(site.id));
 
   if (isLoading) {
     return (
@@ -179,21 +237,45 @@ export default function FormImportPanel() {
 
   if (!integrations || integrations.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card p-5">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
           <Download className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Form Import</h3>
         </div>
-        <p className="text-xs text-muted-foreground">
-          No form integrations detected yet. Forms are discovered automatically when your WordPress plugin syncs.
-        </p>
+
+        <div className="rounded-md border border-border bg-muted/20 p-4 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            No form integrations detected yet. If this site already has forms, run a manual re-scan now.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {(sites || []).map((site) => (
+            <div key={site.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{site.domain}</p>
+                <p className="text-xs text-muted-foreground">Retry WordPress form discovery and background backfill.</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => rescanSite(site.id)}
+                disabled={rescanningSiteId === site.id}
+                className="gap-1"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${rescanningSiteId === site.id ? "animate-spin" : ""}`} />
+                {rescanningSiteId === site.id ? "Re-scanning…" : "Re-scan Forms"}
+              </Button>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Download className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Form Import</h3>
@@ -207,13 +289,38 @@ export default function FormImportPanel() {
         </div>
       </div>
 
-      {/* Background processing notice */}
       {summary.active > 0 && (
         <div className="flex items-center gap-2 rounded-md bg-primary/5 border border-primary/20 p-2.5">
           <Zap className="h-3.5 w-3.5 text-primary flex-shrink-0" />
           <p className="text-xs text-primary">
             Imports run in the background — you can close this tab safely.
           </p>
+        </div>
+      )}
+
+      {sitesNeedingRescan.length > 0 && (
+        <div className="space-y-2 rounded-md border border-border bg-muted/20 p-4">
+          <p className="text-xs font-medium text-foreground">Missing forms on a live site?</p>
+          <p className="text-xs text-muted-foreground">
+            Run a manual re-scan for any connected site where auto-discovery missed forms.
+          </p>
+          <div className="space-y-2 pt-1">
+            {sitesNeedingRescan.map((site) => (
+              <div key={site.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-3">
+                <p className="text-sm text-foreground truncate">{site.domain}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => rescanSite(site.id)}
+                  disabled={rescanningSiteId === site.id}
+                  className="gap-1"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${rescanningSiteId === site.id ? "animate-spin" : ""}`} />
+                  {rescanningSiteId === site.id ? "Re-scanning…" : "Re-scan Forms"}
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -257,7 +364,6 @@ export default function FormImportPanel() {
 
               {isExpanded && (
                 <div className="px-3 pb-3 space-y-3 border-t border-border pt-3">
-                  {/* Progress bar */}
                   {(integration.status === "importing" || integration.status === "synced") && (
                     <div className="space-y-1">
                       <Progress value={progress} className="h-2" />
@@ -265,14 +371,12 @@ export default function FormImportPanel() {
                     </div>
                   )}
 
-                  {/* Error display */}
                   {integration.last_error && (
                     <div className="bg-destructive/5 border border-destructive/20 rounded p-2">
                       <p className="text-xs text-destructive">{integration.last_error}</p>
                     </div>
                   )}
 
-                  {/* Job details */}
                   {latestJob && (
                     <div className="text-xs text-muted-foreground space-y-1.5">
                       <div className="flex items-center gap-2">
@@ -316,7 +420,6 @@ export default function FormImportPanel() {
                     </div>
                   )}
 
-                  {/* CF7 warning */}
                   {integration.builder_type === "cf7" && (
                     <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2">
                       <p className="text-xs text-amber-600">
@@ -325,7 +428,6 @@ export default function FormImportPanel() {
                     </div>
                   )}
 
-                  {/* Actions */}
                   <div className="flex gap-2 flex-wrap">
                     {integration.status === "detected" && (
                       <Button size="sm" variant="default" onClick={() => startImport(integration)} className="text-xs h-7">

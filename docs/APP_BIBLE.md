@@ -26,7 +26,7 @@ The full path a paying customer takes, from checkout to active monitoring.
 
 **Failure recovery**:
 - Stripe webhook missed → Owner can manually create the org via `/admin-setup → Clients`.
-- Plugin never reports → "Re-scan Forms" button on `/monitoring → Form Checks` triggers `trigger-site-sync` with `force_backfill: true`.
+- Plugin never reports → "Re-scan Forms" button on `/settings → Form Import` calls `manage-import-job?action=discover` (see §4 for fallback behavior).
 
 ---
 
@@ -56,8 +56,27 @@ The full path a paying customer takes, from checkout to active monitoring.
 - **3-layer architecture**: Discovery (REST scan) → Background Backfill (`sync-forms`) → Real-time webhook.
 - **Supported builders**: Gravity Forms (strict authoritative), Avada/Fusion (post type `fusion_form`, strict authoritative), WPForms, Contact Form 7, Ninja Forms.
 - **Field mapping**: canonical attributes (`name`, `email`, `phone`, `company`, `message`) editable per form in `/forms → Field Mapping`.
-- **Manual recovery**: "Re-scan Forms" button in `/monitoring → Form Checks`.
 - **Stability lock**: per `mem://data/form-parsing-stability`, parsing logic is finalized. No structural changes without explicit approval.
+
+### Two-table model
+
+The forms pipeline maintains two distinct tables. They are NOT interchangeable:
+
+| Table | Populated by | Read by |
+|---|---|---|
+| `forms` | `trigger-site-sync`, real-time webhook, tracker auto-discovery | Dashboard widgets, `/forms` page, conversion analytics |
+| `form_integrations` | `manage-import-job?action=discover` only | `/settings → Form Import` panel (the re-scan UI) |
+
+If `forms` has rows but `form_integrations` is empty, the Settings UI will show "0 forms" even though forms exist elsewhere in the app. The fix is to run discover (next section).
+
+### Re-scan / discovery flow
+
+The "Re-scan Forms" button in `/settings → Form Import` calls `manage-import-job?action=discover`. The function uses a two-step strategy:
+
+1. **Primary**: POST to the WP plugin's `/actv-trkr/v1/import-discover` endpoint (60s timeout). On success, upserts results into `form_integrations`.
+2. **Fallback** (when WP plugin times out, returns 5xx, or returns 0 forms): backfill `form_integrations` from any non-archived rows already present in the `forms` table for that site.
+
+The fallback guarantees the Settings UI never displays "0 forms" when forms already exist in the database. The response includes `source: "wp_plugin" | "forms_table"` and `wp_plugin_error` so the UI can surface why the fallback path was taken.
 
 ---
 

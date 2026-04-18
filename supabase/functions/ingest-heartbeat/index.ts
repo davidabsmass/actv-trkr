@@ -35,8 +35,8 @@ const BOOTSTRAP_RETRY_WINDOW_MS = 6 * 60 * 60 * 1000;
 const INSTALL_BOOTSTRAP_SOURCES = new Set(["cron", "wp_connection_test", "wp_admin_recovery"]);
 
 async function maybeTriggerPostInstallBootstrap(params: {
-  supabase: ReturnType<typeof createClient>;
-  site: { id: string; plugin_version: string | null; last_heartbeat_at: string | null };
+  supabase: any;
+  site: { id: string; plugin_version: string | null; last_heartbeat_at?: string | null };
   pluginVersion: string | null;
   signalSource: string;
 }) {
@@ -146,11 +146,13 @@ Deno.serve(async (req) => {
     const rawDomain = sanitizeStr(body.domain, 253);
     if (!rawDomain) return new Response(JSON.stringify({ error: "Missing domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const signalSource = sanitizeStr(body.source, 64) || "unknown";
+
     // Normalize domain
     const domain = rawDomain.replace(/^www\./i, "");
 
     // Resolve or auto-create site
-    let site = (await supabase.from("sites").select("id, status, plugin_version, allowed_domains").eq("org_id", orgId).eq("domain", domain).maybeSingle()).data;
+    let site = (await supabase.from("sites").select("id, status, plugin_version, last_heartbeat_at, allowed_domains").eq("org_id", orgId).eq("domain", domain).maybeSingle()).data;
     if (!site) {
       const pluginVer = sanitizeStr(body.plugin_version || body.pluginVersion, 32);
       const { data: newSite, error: insertErr } = await supabase.from("sites")
@@ -160,13 +162,14 @@ Deno.serve(async (req) => {
           url: sanitizeStr(body.url, 2048) || `https://${domain}`,
           allowed_domains: [domain],
         })
-        .select("id, status, plugin_version, allowed_domains").single();
+        .select("id, status, plugin_version, last_heartbeat_at, allowed_domains").single();
       if (insertErr || !newSite) {
         console.error("Failed to auto-create site:", insertErr);
         return new Response(JSON.stringify({ error: "Could not register site" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       site = newSite;
-      console.log(`Auto-created site ${site.id} for domain ${domain}`);
+      const siteId = newSite.id;
+      console.log(`Auto-created site ${siteId} for domain ${domain}`);
 
       // Auto-rename generic org to site domain
       const { data: orgRow } = await supabase.from("orgs").select("name").eq("id", orgId).maybeSingle();
@@ -197,8 +200,8 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${serviceKey}`,
           },
-          body: JSON.stringify({ site_id: site.id, force_form_probe: true }),
-        }).then(r => console.log(`Auto-sync triggered for new site ${site.id}: ${r.status}`))
+          body: JSON.stringify({ site_id: siteId, force_form_probe: true }),
+        }).then(r => console.log(`Auto-sync triggered for new site ${siteId}: ${r.status}`))
           .catch(e => console.error("Auto-sync fire-and-forget failed:", e));
 
         fetch(`${supabaseUrl}/functions/v1/check-domain-ssl`, {
@@ -207,8 +210,8 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${serviceKey}`,
           },
-          body: JSON.stringify({ site_id: site.id }),
-        }).then(r => console.log(`Domain/SSL check triggered for new site ${site.id}: ${r.status}`))
+          body: JSON.stringify({ site_id: siteId }),
+        }).then(r => console.log(`Domain/SSL check triggered for new site ${siteId}: ${r.status}`))
           .catch(e => console.error("Domain/SSL check fire-and-forget failed:", e));
 
         fetch(`${supabaseUrl}/functions/v1/scan-site-seo`, {
@@ -217,8 +220,8 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${serviceKey}`,
           },
-          body: JSON.stringify({ url: `https://${domain}`, site_id: site.id, org_id: orgId }),
-        }).then(r => console.log(`SEO scan triggered for new site ${site.id}: ${r.status}`))
+          body: JSON.stringify({ url: `https://${domain}`, site_id: siteId, org_id: orgId }),
+        }).then(r => console.log(`SEO scan triggered for new site ${siteId}: ${r.status}`))
           .catch(e => console.error("SEO scan fire-and-forget failed:", e));
       } catch (e) {
         console.error("Failed to trigger auto-sync:", e);

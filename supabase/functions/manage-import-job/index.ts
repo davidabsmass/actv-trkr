@@ -142,10 +142,24 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
   let autoStartedJobs = 0;
   let skippedJobs = 0;
 
-  for (const form of forms) {
-    const estimated = form.entry_count || 0;
+  // Junk-form guard: if a form reports >50,000 entries it's almost always a
+  // spam-bombed contact form. We still register it so the user can see it,
+  // but we skip auto-import (they can manually start it from the UI).
+  const JUNK_THRESHOLD = 50_000;
+  let junkSkipped = 0;
 
-    // Upsert integration but DON'T overwrite total_entries_imported.
+  for (const form of forms) {
+    let estimated = form.entry_count || 0;
+    const isJunk = estimated > JUNK_THRESHOLD;
+    if (isJunk) {
+      junkSkipped++;
+      // Record real count for visibility but treat as 0 for auto-import.
+      estimated = 0;
+    }
+
+    // Upsert integration. CRITICAL: also overwrite org_id on conflict so a
+    // site that was re-assigned to a new org gets its form_integrations
+    // re-linked to the current owner.
     const { data: integration } = await supabase
       .from("form_integrations")
       .upsert({
@@ -154,8 +168,9 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
         builder_type: form.builder_type,
         external_form_id: form.external_form_id,
         form_name: form.form_name,
-        total_entries_estimated: estimated,
-        status: "detected",
+        total_entries_estimated: isJunk ? form.entry_count : estimated,
+        status: isJunk ? "needs_review" : "detected",
+        last_error: isJunk ? `Reported ${form.entry_count} entries — exceeds safety threshold of ${JUNK_THRESHOLD}; manual import required` : null,
       }, { onConflict: "site_id,builder_type,external_form_id" })
       .select("id, total_entries_imported, status")
       .single();

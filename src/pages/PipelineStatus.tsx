@@ -324,3 +324,195 @@ function SkeletonRows() {
     </div>
   );
 }
+
+type CodeFinding = {
+  number: number;
+  state: string;
+  html_url: string;
+  tool: string;
+  rule_name: string;
+  severity: string;
+  description: string | null;
+  message: string | null;
+  path: string | null;
+  line: number | null;
+};
+type DepFinding = {
+  number: number;
+  html_url: string;
+  package: string;
+  ecosystem: string | null;
+  manifest: string | null;
+  severity: string;
+  summary: string | null;
+  cve: string | null;
+  ghsa: string | null;
+  vulnerable_range: string | null;
+  patched_version: string | null;
+};
+type CodeHealthResponse = {
+  repo: string;
+  generated_at: string;
+  counts: { code: Record<string, number>; dependencies: Record<string, number> };
+  code_findings: CodeFinding[];
+  dep_findings: DepFinding[];
+  errors?: Record<string, { status: number; detail: string }>;
+};
+
+function severityVariant(sev: string): "default" | "destructive" | "secondary" | "outline" {
+  const s = sev?.toLowerCase();
+  if (s === "critical" || s === "high" || s === "error") return "destructive";
+  if (s === "medium" || s === "warning") return "default";
+  return "secondary";
+}
+
+function CodeHealthTab() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["code-health"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke<CodeHealthResponse | { error: string; detail?: string }>(
+        "code-health",
+      );
+      if (error) throw error;
+      if (data && "error" in data) throw new Error(`${data.error}${data.detail ? ` — ${data.detail}` : ""}`);
+      return data as CodeHealthResponse;
+    },
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <SkeletonRows />;
+  if (error) {
+    return (
+      <Card className="border-destructive/50">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <XCircle className="h-5 w-5 text-destructive mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Could not load code health</p>
+              <p className="text-xs text-muted-foreground">{(error as Error).message}</p>
+              <p className="text-xs text-muted-foreground">
+                The GitHub token needs <code className="bg-muted px-1 rounded">security_events: read</code> scope to read Code Scanning alerts.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const code = data?.code_findings ?? [];
+  const deps = data?.dep_findings ?? [];
+
+  return (
+    <div className="space-y-6">
+      {data?.errors && (
+        <Card className="border-warning/50">
+          <CardContent className="p-3 text-xs text-muted-foreground space-y-1">
+            {Object.entries(data.errors).map(([k, v]) => (
+              <p key={k}>
+                <span className="font-medium text-foreground">{k}:</span> {v.status} — {v.detail.slice(0, 200)}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Code scanning */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Bug className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Code scanning ({code.length})</h2>
+          <span className="text-xs text-muted-foreground">Semgrep + CodeQL findings on open code</span>
+        </div>
+        {code.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" /> No open code-scanning alerts.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {code.map((f) => (
+                  <div key={`${f.tool}-${f.number}`} className="p-3 text-sm space-y-1">
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <Badge variant={severityVariant(f.severity)}>{f.severity}</Badge>
+                      <Badge variant="outline" className="font-mono text-[10px]">{f.tool}</Badge>
+                      <span className="font-medium text-foreground">{f.rule_name}</span>
+                      <a
+                        href={f.html_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-auto text-primary hover:underline text-xs flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" /> View
+                      </a>
+                    </div>
+                    {(f.message || f.description) && (
+                      <p className="text-xs text-muted-foreground">{f.message ?? f.description}</p>
+                    )}
+                    {f.path && (
+                      <p className="text-xs font-mono text-muted-foreground flex items-center gap-1">
+                        <FileCode className="h-3 w-3" />
+                        {f.path}{f.line ? `:${f.line}` : ""}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* Dependency alerts */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">Vulnerable dependencies ({deps.length})</h2>
+          <span className="text-xs text-muted-foreground">Open Dependabot alerts</span>
+        </div>
+        {deps.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" /> No open dependency alerts.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {deps.map((d) => (
+                  <div key={d.number} className="p-3 text-sm space-y-1">
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <Badge variant={severityVariant(d.severity)}>{d.severity}</Badge>
+                      <span className="font-mono font-medium text-foreground">{d.package}</span>
+                      {d.ecosystem && (
+                        <Badge variant="outline" className="text-[10px]">{d.ecosystem}</Badge>
+                      )}
+                      <a
+                        href={d.html_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ml-auto text-primary hover:underline text-xs flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" /> View
+                      </a>
+                    </div>
+                    {d.summary && <p className="text-xs text-muted-foreground">{d.summary}</p>}
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                      {d.vulnerable_range && <span>Affects: <span className="font-mono">{d.vulnerable_range}</span></span>}
+                      {d.patched_version && <span className="text-success">Patched: <span className="font-mono">{d.patched_version}</span></span>}
+                      {d.cve && <span className="font-mono">{d.cve}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}

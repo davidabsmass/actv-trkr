@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.16.2
+ * Version:     1.16.3
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -13,9 +13,54 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.16.2' );
+define( 'MM_PLUGIN_VERSION', '1.16.3' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+/**
+ * Detect whether WordPress is currently activating this plugin.
+ *
+ * During activation, WordPress loads the plugin file before calling the
+ * activation hook. We must avoid running the full bootstrap here because it
+ * can trigger migrations and schema setup on slow shared hosts, causing a
+ * 500/timeout before activation completes.
+ *
+ * @return bool
+ */
+function mm_is_plugin_activation_request() {
+	if ( defined( 'WP_CLI' ) && WP_CLI ) {
+		return false;
+	}
+
+	$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+	if ( 'activate' !== $action && 'activate-selected' !== $action ) {
+		return false;
+	}
+
+	$targets = array();
+
+	if ( isset( $_REQUEST['plugin'] ) ) {
+		$targets[] = sanitize_text_field( wp_unslash( $_REQUEST['plugin'] ) );
+	}
+
+	if ( isset( $_REQUEST['checked'] ) && is_array( $_REQUEST['checked'] ) ) {
+		foreach ( wp_unslash( $_REQUEST['checked'] ) as $checked_plugin ) {
+			$targets[] = sanitize_text_field( $checked_plugin );
+		}
+	}
+
+	foreach ( $targets as $target ) {
+		$target = trim( (string) $target );
+		if ( '' === $target ) {
+			continue;
+		}
+
+		if ( false !== strpos( $target, 'actv-trkr.php' ) || false !== strpos( $target, 'mission-metrics.php' ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 /*
  * ─────────────────────────────────────────────────────────────────
@@ -163,40 +208,45 @@ add_filter( 'cron_schedules', function ( $schedules ) {
 } );
 
 /*
- * Boot via the contained bootstrap. Any escape is swallowed below.
+ * Boot via the contained bootstrap.
+ * IMPORTANT: skip the full bootstrap during the activation request itself.
+ * WordPress includes the plugin file before calling the activation hook, so
+ * any heavy work here can 500 the activation page before `mm_activate()` runs.
  */
-try {
-	ACTV_Bootstrap::run( __FILE__ );
-} catch ( \Throwable $boot_error ) {
-	// Truly last-resort fallback. This block runs ONLY if Bootstrap itself
-	// throws something not caught by its internal handler. Load the
-	// minimum needed to keep the product working.
-	if ( class_exists( 'ACTV_Logger' ) ) {
-		ACTV_Logger::fatal( 'core', 'bootstrap_outer_exception', array(
-			'message' => $boot_error->getMessage(),
-			'file'    => $boot_error->getFile(),
-			'line'    => $boot_error->getLine(),
-		) );
-	}
-	// Best-effort minimal init of critical modules. Each is wrapped so
-	// one failure does not block the next.
-	$critical_init = array(
-		'tracker'        => array( MM_PLUGIN_DIR . 'includes/class-tracker.php',        'MM_Tracker' ),
-		'forms'          => array( MM_PLUGIN_DIR . 'includes/class-forms.php',          'MM_Forms' ),
-		'consent_banner' => array( MM_PLUGIN_DIR . 'includes/class-consent-banner.php', 'MM_Consent_Banner' ),
-		'recovery_banner'=> array( MM_PLUGIN_DIR . 'includes/class-recovery-banner.php', 'MM_Recovery_Banner' ),
-	);
-	foreach ( $critical_init as $key => $pair ) {
-		list( $file, $class ) = $pair;
-		try {
-			if ( file_exists( $file ) ) {
-				require_once $file;
+if ( ! mm_is_plugin_activation_request() ) {
+	try {
+		ACTV_Bootstrap::run( __FILE__ );
+	} catch ( \Throwable $boot_error ) {
+		// Truly last-resort fallback. This block runs ONLY if Bootstrap itself
+		// throws something not caught by its internal handler. Load the
+		// minimum needed to keep the product working.
+		if ( class_exists( 'ACTV_Logger' ) ) {
+			ACTV_Logger::fatal( 'core', 'bootstrap_outer_exception', array(
+				'message' => $boot_error->getMessage(),
+				'file'    => $boot_error->getFile(),
+				'line'    => $boot_error->getLine(),
+			) );
+		}
+		// Best-effort minimal init of critical modules. Each is wrapped so
+		// one failure does not block the next.
+		$critical_init = array(
+			'tracker'        => array( MM_PLUGIN_DIR . 'includes/class-tracker.php',        'MM_Tracker' ),
+			'forms'          => array( MM_PLUGIN_DIR . 'includes/class-forms.php',          'MM_Forms' ),
+			'consent_banner' => array( MM_PLUGIN_DIR . 'includes/class-consent-banner.php', 'MM_Consent_Banner' ),
+			'recovery_banner'=> array( MM_PLUGIN_DIR . 'includes/class-recovery-banner.php', 'MM_Recovery_Banner' ),
+		);
+		foreach ( $critical_init as $key => $pair ) {
+			list( $file, $class ) = $pair;
+			try {
+				if ( file_exists( $file ) ) {
+					require_once $file;
+				}
+				if ( class_exists( $class ) && method_exists( $class, 'init' ) ) {
+					call_user_func( array( $class, 'init' ) );
+				}
+			} catch ( \Throwable $module_error ) {
+				// Continue to next critical module.
 			}
-			if ( class_exists( $class ) && method_exists( $class, 'init' ) ) {
-				call_user_func( array( $class, 'init' ) );
-			}
-		} catch ( \Throwable $module_error ) {
-			// Continue to next critical module.
 		}
 	}
 }

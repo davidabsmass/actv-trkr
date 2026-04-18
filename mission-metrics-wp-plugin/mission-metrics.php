@@ -15,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'MM_PLUGIN_VERSION', '1.16.5' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 /**
  * Detect whether WordPress is currently activating this plugin.

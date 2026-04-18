@@ -146,6 +146,8 @@ Deno.serve(async (req) => {
     const rawDomain = sanitizeStr(body.domain, 253);
     if (!rawDomain) return new Response(JSON.stringify({ error: "Missing domain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const signalSource = sanitizeStr(body.source, 64) || "unknown";
+
     // Normalize domain
     const domain = rawDomain.replace(/^www\./i, "");
 

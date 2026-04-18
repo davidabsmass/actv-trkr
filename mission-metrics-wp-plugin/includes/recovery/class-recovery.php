@@ -249,6 +249,9 @@ class ACTV_Recovery {
 			return array( 'ok' => false, 'error' => $e->getMessage() );
 		}
 	}
+
+	/**
+	 * Tail the most recent rows from the health log.
 	 *
 	 * @param int $limit
 	 * @return array

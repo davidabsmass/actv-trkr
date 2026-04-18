@@ -83,7 +83,7 @@ class MM_Broken_Links {
 		$endpoint = rtrim( $opts['endpoint_url'], '/' ) . '/ingest-broken-links';
 		$domain   = wp_parse_url( home_url(), PHP_URL_HOST );
 
-		$response = wp_remote_post( $endpoint, array(
+		$post_args = array(
 			'timeout' => 30,
 			'headers' => array(
 				'Content-Type'   => 'application/json',
@@ -93,7 +93,13 @@ class MM_Broken_Links {
 				'domain' => $domain,
 				'links'  => $broken,
 			) ),
-		) );
+		);
+		// Guarded by cron_links breaker.
+		if ( class_exists( 'ACTV_Safe_HTTP' ) ) {
+			$response = ACTV_Safe_HTTP::post( 'cron_links', $endpoint, $post_args );
+		} else {
+			$response = wp_remote_post( $endpoint, $post_args );
+		}
 
 		return array(
 			'pages_checked' => $checked,

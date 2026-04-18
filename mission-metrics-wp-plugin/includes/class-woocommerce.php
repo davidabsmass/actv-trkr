@@ -77,19 +77,25 @@ class MM_WooCommerce {
 		// Replace the function path for ingest-order
 		$url = preg_replace( '/\/functions\/v1\/.*$/', '/functions/v1/ingest-order', $endpoint );
 
-		$response = wp_remote_post( $url, array(
+		$args = array(
 			'timeout' => 10,
 			'headers' => array(
 				'Content-Type' => 'application/json',
 				'x-api-key'    => $settings['api_key'],
 			),
 			'body'    => wp_json_encode( $payload ),
-		) );
+		);
+
+		// Guarded by remote_sync breaker — orders still get queued for retry
+		// when the breaker is open, so no order data is dropped.
+		$response = class_exists( 'ACTV_Safe_HTTP' )
+			? ACTV_Safe_HTTP::post( 'remote_sync', $url, $args )
+			: wp_remote_post( $url, $args );
 
 		if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) === 200 ) {
 			update_post_meta( $order_id, '_mm_order_sent', 'yes' );
 		} else {
-			// Queue for retry
+			// Queue for retry (covers WP_Error, breaker-open, and non-200 responses).
 			if ( class_exists( 'MM_Retry_Queue' ) ) {
 				MM_Retry_Queue::enqueue( $url, $payload );
 			}

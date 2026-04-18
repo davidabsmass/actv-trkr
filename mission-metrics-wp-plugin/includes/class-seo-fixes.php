@@ -58,14 +58,25 @@ class MM_SEO_Fixes {
 		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
 		$domain = preg_replace( '/^www\./', '', $domain );
 
-		$response = wp_remote_post( $api_url . '/functions/v1/seo-fix-poll', array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'x-api-key'   => $api_key,
-			),
-			'body'    => wp_json_encode( array( 'domain' => $domain ) ),
-			'timeout' => 15,
-		) );
+		// Guarded by cron_seo_fix breaker — repeated 5xx/timeouts trip the
+		// breaker so we stop hammering a failing endpoint each cron tick.
+		$response = class_exists( 'ACTV_Safe_HTTP' )
+			? ACTV_Safe_HTTP::post( 'cron_seo_fix', $api_url . '/functions/v1/seo-fix-poll', array(
+				'headers' => array(
+					'Content-Type' => 'application/json',
+					'x-api-key'    => $api_key,
+				),
+				'body'    => wp_json_encode( array( 'domain' => $domain ) ),
+				'timeout' => 15,
+			) )
+			: wp_remote_post( $api_url . '/functions/v1/seo-fix-poll', array(
+				'headers' => array(
+					'Content-Type' => 'application/json',
+					'x-api-key'    => $api_key,
+				),
+				'body'    => wp_json_encode( array( 'domain' => $domain ) ),
+				'timeout' => 15,
+			) );
 
 		if ( is_wp_error( $response ) ) {
 			return;
@@ -140,10 +151,10 @@ class MM_SEO_Fixes {
 	/* ─── Confirm back ─── */
 
 	private static function confirm( $fix_id, $status, $note, $api_key, $api_url ) {
-		wp_remote_post( $api_url . '/functions/v1/seo-fix-confirm', array(
+		$args = array(
 			'headers' => array(
 				'Content-Type' => 'application/json',
-				'x-api-key'   => $api_key,
+				'x-api-key'    => $api_key,
 			),
 			'body'    => wp_json_encode( array(
 				'fix_id' => $fix_id,
@@ -151,7 +162,12 @@ class MM_SEO_Fixes {
 				'note'   => $note,
 			) ),
 			'timeout' => 10,
-		) );
+		);
+		if ( class_exists( 'ACTV_Safe_HTTP' ) ) {
+			ACTV_Safe_HTTP::post( 'cron_seo_fix', $api_url . '/functions/v1/seo-fix-confirm', $args );
+		} else {
+			wp_remote_post( $api_url . '/functions/v1/seo-fix-confirm', $args );
+		}
 	}
 
 	/* ─── SEO plugin detection ─── */

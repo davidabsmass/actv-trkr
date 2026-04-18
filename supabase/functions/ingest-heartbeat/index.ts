@@ -35,8 +35,8 @@ const BOOTSTRAP_RETRY_WINDOW_MS = 6 * 60 * 60 * 1000;
 const INSTALL_BOOTSTRAP_SOURCES = new Set(["cron", "wp_connection_test", "wp_admin_recovery"]);
 
 async function maybeTriggerPostInstallBootstrap(params: {
-  supabase: ReturnType<typeof createClient>;
-  site: { id: string; plugin_version: string | null; last_heartbeat_at: string | null };
+  supabase: any;
+  site: { id: string; plugin_version: string | null; last_heartbeat_at?: string | null };
   pluginVersion: string | null;
   signalSource: string;
 }) {

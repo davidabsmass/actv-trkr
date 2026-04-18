@@ -1,17 +1,26 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+/**
+ * ACTV TRKR — Settings page
+ *
+ * 4-tab admin UI (General / Privacy / Tools / Advanced) with a top
+ * status bar. All legal/CMP copy lives in MM_Legal_Copy and is shown
+ * via Tools-tab modals. Renderers below are intentionally short — the
+ * heavy detail (consent diagnostics, privacy detection) is delegated
+ * to the existing helper classes.
+ */
 class MM_Settings {
 
 	const OPTION_GROUP = 'mm_settings';
 	const OPTION_NAME  = 'mm_options';
 
 	public static function init() {
-		add_action( 'admin_menu', array( __CLASS__, 'add_menu' ) );
-		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
-		add_action( 'wp_ajax_mm_test_connection', array( __CLASS__, 'ajax_test_connection' ) );
-		add_action( 'wp_ajax_mm_sync_forms', array( __CLASS__, 'ajax_sync_forms' ) );
-		
+		add_action( 'admin_menu',                          array( __CLASS__, 'add_menu' ) );
+		add_action( 'admin_init',                          array( __CLASS__, 'register_settings' ) );
+		add_action( 'admin_enqueue_scripts',               array( __CLASS__, 'enqueue_assets' ) );
+		add_action( 'wp_ajax_mm_test_connection',          array( __CLASS__, 'ajax_test_connection' ) );
+		add_action( 'wp_ajax_mm_sync_forms',               array( __CLASS__, 'ajax_sync_forms' ) );
 	}
 
 	public static function defaults() {
@@ -59,150 +68,587 @@ class MM_Settings {
 		return $clean;
 	}
 
+	/* ── Asset enqueue (settings page only) ──────────────── */
+	public static function enqueue_assets( $hook ) {
+		if ( 'settings_page_actv-trkr' !== $hook ) return;
+		wp_enqueue_style(
+			'mm-admin-settings',
+			MM_PLUGIN_URL . 'assets/admin-settings.css',
+			array(),
+			MM_PLUGIN_VERSION
+		);
+		wp_enqueue_script(
+			'mm-admin-settings',
+			MM_PLUGIN_URL . 'assets/admin-settings.js',
+			array(),
+			MM_PLUGIN_VERSION,
+			true
+		);
+		wp_localize_script( 'mm-admin-settings', 'mmSettingsAdmin', array(
+			'ajaxurl' => admin_url( 'admin-ajax.php' ),
+			'nonces'  => array(
+				'test'  => wp_create_nonce( 'mm_test' ),
+				'sync'  => wp_create_nonce( 'mm_sync_forms' ),
+				'links' => wp_create_nonce( 'mm_scan_links' ),
+			),
+		) );
+	}
+
+	/* ── Page shell: tab nav + status bar ─────────────────── */
 	public static function render_page() {
+		$tabs = array(
+			'general'  => 'General',
+			'privacy'  => 'Privacy',
+			'tools'    => 'Tools',
+			'advanced' => 'Advanced',
+		);
+		$active = isset( $_GET['tab'] ) && isset( $tabs[ $_GET['tab'] ] ) ? sanitize_key( $_GET['tab'] ) : 'general';
+		$base   = admin_url( 'options-general.php?page=actv-trkr' );
+		?>
+		<div class="wrap mm-settings-wrap">
+			<h1>
+				ACTV TRKR
+				<span class="mm-version-badge">v<?php echo esc_html( defined( 'MM_PLUGIN_VERSION' ) ? MM_PLUGIN_VERSION : '' ); ?></span>
+			</h1>
+
+			<?php self::render_status_bar(); ?>
+
+			<h2 class="nav-tab-wrapper">
+				<?php foreach ( $tabs as $key => $label ) : ?>
+					<a href="<?php echo esc_url( $base . '&tab=' . $key ); ?>"
+					   class="nav-tab <?php echo $active === $key ? 'nav-tab-active' : ''; ?>">
+						<?php echo esc_html( $label ); ?>
+					</a>
+				<?php endforeach; ?>
+			</h2>
+
+			<div style="margin-top:18px">
+				<?php
+				switch ( $active ) {
+					case 'privacy':  self::render_tab_privacy();  break;
+					case 'tools':    self::render_tab_tools();    break;
+					case 'advanced': self::render_tab_advanced(); break;
+					case 'general':
+					default:         self::render_tab_general();  break;
+				}
+				?>
+			</div>
+
+			<?php self::render_legal_modals(); ?>
+		</div>
+		<?php
+	}
+
+	/* ── Status bar ───────────────────────────────────────── */
+	private static function render_status_bar() {
+		$opts      = self::get();
+		$connected = ! empty( $opts['api_key'] ) && ! empty( $opts['endpoint_url'] );
+		$tracking  = $opts['enable_tracking'] === '1';
+
+		$banner = class_exists( 'MM_Consent_Banner' ) ? MM_Consent_Banner::get() : array();
+		$consent_configured = ! empty( $banner['enabled'] ) && $banner['enabled'] === '1';
+
+		$privacy_found = false;
+		$cookie_found  = false;
+		if ( class_exists( 'MM_Privacy_Setup' ) ) {
+			$pp = MM_Privacy_Setup::detect_privacy_policy();
+			$cp = MM_Privacy_Setup::detect_cookie_policy();
+			$privacy_found = ( $pp['found'] || ! empty( $banner['privacy_url'] ) );
+			$cookie_found  = ( $cp['found'] || ! empty( $banner['cookie_url'] ) );
+		}
+
+		$pill = function ( $ok, $okText, $badText, $tone = null ) {
+			$cls = $ok ? 'mm-pill-ok' : ( $tone ?: 'mm-pill-warn' );
+			$txt = $ok ? $okText : $badText;
+			return '<span class="mm-pill ' . esc_attr( $cls ) . '"><span class="mm-dot"></span>' . esc_html( $txt ) . '</span>';
+		};
+		?>
+		<div class="mm-status-bar" role="status" aria-label="ACTV TRKR connection status">
+			<?php
+			echo $pill( $connected, 'Connected', 'Not connected', 'mm-pill-err' );
+			echo $pill( $tracking, 'Tracking on', 'Tracking off', 'mm-pill-muted' );
+			echo $pill( $consent_configured, 'Consent configured', 'Consent needs attention' );
+			echo $pill( $privacy_found, 'Privacy Policy found', 'Privacy Policy missing' );
+			echo $pill( $cookie_found,  'Cookie Policy found',  'Cookie Policy missing' );
+			?>
+		</div>
+		<?php
+	}
+
+	/* ── TAB 1: GENERAL ───────────────────────────────────── */
+	private static function render_tab_general() {
 		$opts = self::get();
 		?>
-		<div class="wrap">
-			<h1>ACTV TRKR</h1>
-			<form method="post" action="options.php">
-				<?php settings_fields( self::OPTION_GROUP ); ?>
+		<form method="post" action="options.php">
+			<?php settings_fields( self::OPTION_GROUP ); ?>
+
+			<div class="mm-card">
+				<h2>Connection</h2>
+				<p class="mm-card-desc">Link this site to your ACTV TRKR dashboard.</p>
 				<table class="form-table">
 					<tr>
 						<th scope="row"><label for="mm_api_key">API Key</label></th>
 						<td>
-							<input type="password" id="mm_api_key" name="<?php echo self::OPTION_NAME; ?>[api_key]"
+							<input type="password" id="mm_api_key" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[api_key]"
 								value="<?php echo esc_attr( $opts['api_key'] ); ?>" class="regular-text" autocomplete="off" />
-							<p class="description">Paste the API key from your ACTV TRKR dashboard.</p>
+							<p class="description">From your ACTV TRKR dashboard.</p>
 						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="mm_endpoint">Endpoint URL</label></th>
 						<td>
-							<input type="url" id="mm_endpoint" name="<?php echo self::OPTION_NAME; ?>[endpoint_url]"
+							<input type="url" id="mm_endpoint" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[endpoint_url]"
 								value="<?php echo esc_attr( $opts['endpoint_url'] ); ?>" class="regular-text" />
 						</td>
 					</tr>
 					<tr>
+						<th scope="row">Verify</th>
+						<td>
+							<button type="button" id="mm-test-btn" class="button button-secondary">Test Connection</button>
+							<span id="mm-test-result" class="mm-tool-result" style="margin-left:10px"></span>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="mm-card">
+				<h2>Tracking</h2>
+				<p class="mm-card-desc">Core data ACTV TRKR collects from this site.</p>
+				<table class="form-table">
+					<tr>
 						<th scope="row">Enable Tracking</th>
 						<td>
 							<label>
-								<input type="checkbox" name="<?php echo self::OPTION_NAME; ?>[enable_tracking]" value="1"
+								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[enable_tracking]" value="1"
 									<?php checked( $opts['enable_tracking'], '1' ); ?> />
-								Inject tracker.js on all front-end pages
+								Inject the tracker on front-end pages
 							</label>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row">Enable Gravity Forms</th>
+						<th scope="row">Gravity Forms</th>
 						<td>
 							<label>
-								<input type="checkbox" name="<?php echo self::OPTION_NAME; ?>[enable_gravity]" value="1"
+								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[enable_gravity]" value="1"
 									<?php checked( $opts['enable_gravity'], '1' ); ?> />
 								Send Gravity Forms submissions to ACTV TRKR
 							</label>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row">Enable Signal</th>
+						<th scope="row">Uptime Signal</th>
 						<td>
 							<label>
-								<input type="checkbox" name="<?php echo self::OPTION_NAME; ?>[enable_heartbeat]" value="1"
+								<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[enable_heartbeat]" value="1"
 									<?php checked( $opts['enable_heartbeat'], '1' ); ?> />
-								Send uptime signal (WP-Cron)
+								Report a periodic uptime signal via WP-Cron
+							</label>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<?php submit_button(); ?>
+		</form>
+		<?php
+	}
+
+	/* ── TAB 2: PRIVACY ───────────────────────────────────── */
+	private static function render_tab_privacy() {
+		if ( ! class_exists( 'MM_Consent_Banner' ) ) {
+			echo '<div class="notice notice-error inline"><p>Consent module unavailable.</p></div>';
+			return;
+		}
+		$banner = MM_Consent_Banner::get();
+		$main   = self::get();
+		$name   = MM_Consent_Banner::OPTION_NAME;
+
+		$privacy = class_exists( 'MM_Privacy_Setup' ) ? MM_Privacy_Setup::detect_privacy_policy() : array( 'found' => false, 'url' => '', 'title' => '' );
+		$cookie  = class_exists( 'MM_Privacy_Setup' ) ? MM_Privacy_Setup::detect_cookie_policy()  : array( 'found' => false, 'url' => '', 'title' => '' );
+
+		$external_cmps = array();
+		if ( method_exists( 'MM_Consent_Banner', 'detect_external_cmps_public' ) ) {
+			$external_cmps = MM_Consent_Banner::detect_external_cmps_public();
+		}
+
+		// Determine consent source for the radio (display-only, derived from current state).
+		$consent_source = ! empty( $external_cmps ) ? 'external'
+			: ( $banner['enabled'] === '1' ? 'builtin' : 'disabled' );
+		?>
+		<form method="post" action="options.php">
+			<?php settings_fields( self::OPTION_GROUP ); ?>
+
+			<!-- External CMP detection card -->
+			<?php if ( ! empty( $external_cmps ) ) : ?>
+			<div class="mm-card" style="border-color:#fbbf24;background:#fffbeb">
+				<h3>External consent plugin detected</h3>
+				<p class="mm-card-desc" style="color:#78350f">
+					<?php
+					$names = array_map( function( $c ) { return $c['name']; }, $external_cmps );
+					echo esc_html( implode( ', ', $names ) );
+					?>
+					— add ACTV TRKR to your tool's <em>Analytics / Statistics</em> category. The built-in banner will stay off.
+				</p>
+				<p style="margin:0">
+					<button type="button" class="button button-small" data-mm-open-modal="mm-modal-consent-tool">
+						View consent-tool copy →
+					</button>
+				</p>
+			</div>
+			<?php endif; ?>
+
+			<!-- Consent setup card -->
+			<div class="mm-card">
+				<h2>Consent Setup</h2>
+				<p class="mm-card-desc">How visitors give consent for ACTV TRKR analytics.</p>
+
+				<table class="form-table">
+					<tr>
+						<th scope="row">Consent Mode</th>
+						<td>
+							<label style="display:block;margin-bottom:4px">
+								<input type="radio" id="mm-consent-source" name="mm_consent_source" value="builtin" <?php checked( $consent_source, 'builtin' ); ?> />
+								Built-in banner (recommended)
+							</label>
+							<label style="display:block;margin-bottom:4px">
+								<input type="radio" name="mm_consent_source" value="external" <?php checked( $consent_source, 'external' ); ?> />
+								External consent plugin
+							</label>
+							<label style="display:block">
+								<input type="radio" name="mm_consent_source" value="disabled" <?php checked( $consent_source, 'disabled' ); ?> />
+								Disabled
+							</label>
+							<!-- Hidden field actually persisted -->
+							<input type="hidden" name="<?php echo esc_attr( $name ); ?>[enabled]" value="0" />
+							<label style="display:none">
+								<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[enabled]" value="1" <?php checked( $banner['enabled'], '1' ); ?> />
 							</label>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="mm_consent_mode">Consent Mode</label></th>
+						<th scope="row"><label for="mm_compliance_mode">Compliance Mode</label></th>
 						<td>
-							<select id="mm_consent_mode" name="<?php echo self::OPTION_NAME; ?>[consent_mode]">
-								<option value="strict" <?php selected( $opts['consent_mode'], 'strict' ); ?>>Strict (GDPR — no tracking before consent)</option>
-								<option value="relaxed" <?php selected( $opts['consent_mode'], 'relaxed' ); ?>>Relaxed (tracking starts immediately)</option>
+							<select id="mm_compliance_mode" name="<?php echo esc_attr( $name ); ?>[compliance_mode]">
+								<option value="global_strict" <?php selected( $banner['compliance_mode'], 'global_strict' ); ?>>Global Strict</option>
+								<option value="eu_us"         <?php selected( $banner['compliance_mode'], 'eu_us' ); ?>>EU/UK Strict + US Opt-Out</option>
+								<option value="custom"        <?php selected( $banner['compliance_mode'], 'custom' ); ?>>Custom</option>
 							</select>
-							<p class="description">Strict mode blocks all analytics cookies and events until the visitor grants consent via a CMP (e.g. Complianz).</p>
+							<p class="description">EU/UK + US Opt-Out is recommended.</p>
+						</td>
+					</tr>
+					<tr data-mm-row="other-fallback">
+						<th scope="row">Other Regions Fallback</th>
+						<td>
+							<select name="<?php echo esc_attr( $name ); ?>[other_region_fallback]">
+								<option value="strict"  <?php selected( $banner['other_region_fallback'], 'strict' ); ?>>Strict</option>
+								<option value="relaxed" <?php selected( $banner['other_region_fallback'], 'relaxed' ); ?>>Relaxed</option>
+							</select>
+							<p class="description">Used when a visitor isn't in the EU/UK or US.</p>
 						</td>
 					</tr>
 				</table>
-				<?php MM_Consent_Banner::render_settings_section(); ?>
-				<?php submit_button(); ?>
-			</form>
+			</div>
 
-		<hr />
-			<h2>Test Connection</h2>
-			<p><button type="button" id="mm-test-btn" class="button button-secondary">Test Connection</button></p>
-			<div id="mm-test-result"></div>
+			<!-- Visitor controls card -->
+			<div class="mm-card" data-mm-section="us-controls">
+				<h2>Visitor Controls</h2>
+				<p class="mm-card-desc">Optional opt-out controls for US-style privacy laws.</p>
+				<table class="form-table">
+					<tr>
+						<th scope="row">Privacy Settings Link</th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[us_privacy_link]" value="1" <?php checked( $banner['us_privacy_link'], '1' ); ?> />
+								Show a footer link for US visitors to opt out
+							</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label>Link Label</label></th>
+						<td>
+							<input type="text" name="<?php echo esc_attr( $name ); ?>[us_privacy_label]" value="<?php echo esc_attr( $banner['us_privacy_label'] ); ?>" class="regular-text" />
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">US Notice</th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[us_show_notice]" value="1" <?php checked( $banner['us_show_notice'], '1' ); ?> />
+								Show a small, non-blocking notice
+							</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label>Notice Text</label></th>
+						<td>
+							<input type="text" name="<?php echo esc_attr( $name ); ?>[us_notice_text]" value="<?php echo esc_attr( $banner['us_notice_text'] ); ?>" class="large-text" />
+						</td>
+					</tr>
+				</table>
+			</div>
 
-			<hr />
-			<h2>Sync Forms</h2>
-			<p class="description">Scan your site for all installed form plugins and register them with ACTV TRKR — even before any submissions.</p>
-			<p><button type="button" id="mm-sync-btn" class="button button-secondary">Sync Forms Now</button></p>
-			<div id="mm-sync-result"></div>
+			<!-- Policy URLs card -->
+			<div class="mm-card">
+				<h2>Policy Links</h2>
+				<p class="mm-card-desc">
+					Privacy:
+					<?php echo $privacy['found']
+						? '<span style="color:#047857">✅ Detected (' . esc_html( $privacy['title'] ) . ')</span>'
+						: '<span style="color:#b45309">⚠️ Not detected</span>'; ?>
+					&nbsp;·&nbsp;
+					Cookie:
+					<?php echo $cookie['found']
+						? '<span style="color:#047857">✅ Detected</span>'
+						: '<span style="color:#b45309">⚠️ Not detected</span>'; ?>
+				</p>
+				<table class="form-table">
+					<tr>
+						<th scope="row"><label>Privacy Policy URL</label></th>
+						<td>
+							<input type="url" name="<?php echo esc_attr( $name ); ?>[privacy_url]" value="<?php echo esc_attr( $banner['privacy_url'] ); ?>" class="regular-text"
+								placeholder="<?php echo esc_attr( $privacy['url'] ?: 'https://yoursite.com/privacy-policy' ); ?>" />
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label>Cookie Policy URL</label></th>
+						<td>
+							<input type="url" name="<?php echo esc_attr( $name ); ?>[cookie_url]" value="<?php echo esc_attr( $banner['cookie_url'] ); ?>" class="regular-text"
+								placeholder="<?php echo esc_attr( $cookie['url'] ?: 'https://yoursite.com/cookie-policy' ); ?>" />
+						</td>
+					</tr>
+				</table>
+			</div>
 
-			<hr />
-			<h2>Broken Link Scan</h2>
-			<p class="description">Crawl your sitemap and check for broken internal links (404/5xx).</p>
-			<p><button type="button" id="mm-links-btn" class="button button-secondary">Scan Broken Links</button></p>
-			<div id="mm-links-result"></div>
+			<!-- Banner content card (only when built-in banner active) -->
+			<div class="mm-card mm-conditional" data-mm-section="banner-content">
+				<h2>Banner Content</h2>
+				<p class="mm-card-desc">Wording shown in the built-in consent banner.</p>
+				<table class="form-table">
+					<tr><th scope="row"><label>Banner Title</label></th>
+						<td><input type="text" name="<?php echo esc_attr( $name ); ?>[title]" value="<?php echo esc_attr( $banner['title'] ); ?>" class="regular-text" /></td></tr>
+					<tr><th scope="row"><label>Banner Description</label></th>
+						<td><textarea name="<?php echo esc_attr( $name ); ?>[description]" rows="3" class="large-text"><?php echo esc_textarea( $banner['description'] ); ?></textarea></td></tr>
+					<tr><th scope="row"><label>Accept Button</label></th>
+						<td><input type="text" name="<?php echo esc_attr( $name ); ?>[accept_label]" value="<?php echo esc_attr( $banner['accept_label'] ); ?>" class="regular-text" /></td></tr>
+					<tr><th scope="row"><label>Reject Button</label></th>
+						<td><input type="text" name="<?php echo esc_attr( $name ); ?>[reject_label]" value="<?php echo esc_attr( $banner['reject_label'] ); ?>" class="regular-text" /></td></tr>
+					<tr><th scope="row"><label>Manage Preferences</label></th>
+						<td><input type="text" name="<?php echo esc_attr( $name ); ?>[prefs_label]" value="<?php echo esc_attr( $banner['prefs_label'] ); ?>" class="regular-text" /></td></tr>
+				</table>
+			</div>
 
-			<script>
-			document.getElementById('mm-test-btn').addEventListener('click', function(){
-				var btn = this;
-				btn.disabled = true;
-				document.getElementById('mm-test-result').textContent = 'Testing…';
-				fetch(ajaxurl + '?action=mm_test_connection&_wpnonce=<?php echo wp_create_nonce('mm_test'); ?>')
-					.then(r => r.json())
-					.then(d => {
-						document.getElementById('mm-test-result').textContent = d.success ? '✅ Connected!' : '❌ ' + (d.data || 'Failed');
-						btn.disabled = false;
-					})
-					.catch(() => {
-						document.getElementById('mm-test-result').textContent = '❌ Request failed';
-						btn.disabled = false;
-					});
-			});
-			document.getElementById('mm-sync-btn').addEventListener('click', function(){
-				var btn = this;
-				btn.disabled = true;
-				document.getElementById('mm-sync-result').textContent = 'Scanning…';
-				fetch(ajaxurl + '?action=mm_sync_forms&_wpnonce=<?php echo wp_create_nonce('mm_sync_forms'); ?>')
-					.then(r => r.json())
-					.then(d => {
-						if (d.success) {
-							document.getElementById('mm-sync-result').textContent = '✅ Discovered ' + d.data.discovered + ' form(s), synced ' + d.data.synced + '.';
-						} else {
-							document.getElementById('mm-sync-result').textContent = '❌ ' + (d.data || 'Failed');
-						}
-						btn.disabled = false;
-					})
-					.catch(() => {
-						document.getElementById('mm-sync-result').textContent = '❌ Request failed';
-						btn.disabled = false;
-					});
-			});
-			document.getElementById('mm-links-btn').addEventListener('click', function(){
-				var btn = this;
-				btn.disabled = true;
-				document.getElementById('mm-links-result').textContent = 'Scanning… This may take a minute.';
-				fetch(ajaxurl + '?action=mm_scan_broken_links&_wpnonce=<?php echo wp_create_nonce('mm_scan_links'); ?>')
-					.then(r => r.json())
-					.then(d => {
-						if (d.success) {
-							document.getElementById('mm-links-result').textContent = '✅ Checked ' + d.data.pages_checked + ' page(s), found ' + d.data.broken_found + ' broken link(s).';
-						} else {
-							document.getElementById('mm-links-result').textContent = '❌ ' + (d.data || 'Failed');
-						}
-						btn.disabled = false;
-					})
-					.catch(() => {
-						document.getElementById('mm-links-result').textContent = '❌ Request failed';
-						btn.disabled = false;
-					});
-			});
-			</script>
+			<!-- Banner display card -->
+			<div class="mm-card mm-conditional" data-mm-section="banner-display">
+				<h2>Banner Display</h2>
+				<p class="mm-card-desc">Where the banner appears and how long consent lasts.</p>
+				<table class="form-table">
+					<tr><th scope="row"><label>Position</label></th>
+						<td>
+							<select name="<?php echo esc_attr( $name ); ?>[position]">
+								<option value="bottom" <?php selected( $banner['position'], 'bottom' ); ?>>Bottom</option>
+								<option value="top"    <?php selected( $banner['position'], 'top' ); ?>>Top</option>
+							</select>
+						</td></tr>
+					<tr><th scope="row"><label>Consent Expiry (days)</label></th>
+						<td><input type="number" name="<?php echo esc_attr( $name ); ?>[expiry_days]" value="<?php echo esc_attr( $banner['expiry_days'] ); ?>" min="1" max="730" class="small-text" /></td></tr>
+					<tr><th scope="row">Footer Cookie Settings Link</th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[show_footer_cookie_link]" value="1" <?php checked( $banner['show_footer_cookie_link'], '1' ); ?> />
+								Show the built-in footer link
+							</label>
+							<br>
+							<input type="text" name="<?php echo esc_attr( $name ); ?>[reopener_label]" value="<?php echo esc_attr( $banner['reopener_label'] ); ?>" class="regular-text" style="margin-top:6px" placeholder="Cookie Settings" />
+						</td></tr>
+				</table>
+			</div>
 
+			<?php submit_button(); ?>
+		</form>
+		<?php
+	}
+
+	/* ── TAB 3: TOOLS ─────────────────────────────────────── */
+	private static function render_tab_tools() {
+		?>
+		<div class="mm-card">
+			<h2>Utilities</h2>
+			<p class="mm-card-desc">One-off actions and helpers.</p>
+			<div class="mm-tool-grid">
+				<div class="mm-tool-tile">
+					<strong>Sync Forms Now</strong>
+					<span class="mm-tile-desc">Scan installed form plugins and register them.</span>
+					<button type="button" id="mm-sync-btn" class="button button-primary">Sync Forms</button>
+					<span id="mm-sync-result" class="mm-tool-result"></span>
+				</div>
+				<div class="mm-tool-tile">
+					<strong>Broken Link Scan</strong>
+					<span class="mm-tile-desc">Crawl your sitemap for 404/5xx links.</span>
+					<button type="button" id="mm-links-btn" class="button button-primary">Scan Links</button>
+					<span id="mm-links-result" class="mm-tool-result"></span>
+				</div>
+				<div class="mm-tool-tile">
+					<strong>Privacy Policy Text</strong>
+					<span class="mm-tile-desc">Copy ready-made text for your Privacy Policy.</span>
+					<button type="button" class="button" data-mm-open-modal="mm-modal-privacy">Open</button>
+				</div>
+				<div class="mm-tool-tile">
+					<strong>Consent Tool Text</strong>
+					<span class="mm-tile-desc">Copy descriptions for an external CMP.</span>
+					<button type="button" class="button" data-mm-open-modal="mm-modal-consent-tool">Open</button>
+				</div>
+			</div>
 		</div>
 		<?php
 	}
+
+	/* ── TAB 4: ADVANCED ──────────────────────────────────── */
+	private static function render_tab_advanced() {
+		$banner = class_exists( 'MM_Consent_Banner' ) ? MM_Consent_Banner::get() : array();
+		$main   = self::get();
+		$name   = MM_Consent_Banner::OPTION_NAME;
+
+		// Build diagnostics via the public helper if available.
+		$diag = array();
+		if ( class_exists( 'MM_Consent_Banner' ) && method_exists( 'MM_Consent_Banner', 'public_diagnostics' ) ) {
+			$diag = MM_Consent_Banner::public_diagnostics();
+		}
+
+		$snippets = MM_Legal_Copy::custom_link_snippets();
+		?>
+		<form method="post" action="options.php">
+			<?php settings_fields( self::OPTION_GROUP ); ?>
+
+			<details class="mm-acc" open>
+				<summary>Debug &amp; Region Override</summary>
+				<div class="mm-acc-body">
+					<table class="form-table">
+						<tr>
+							<th scope="row">Debug Mode</th>
+							<td>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[debug_mode]" value="1" <?php checked( $banner['debug_mode'] ?? '0', '1' ); ?> />
+									Log banner lifecycle to browser console (admins only)
+								</label>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">Region Override</th>
+							<td>
+								<select name="<?php echo esc_attr( $name ); ?>[region_debug_override]">
+									<option value=""      <?php selected( $banner['region_debug_override'] ?? '', '' ); ?>>Auto-detect (production)</option>
+									<option value="eu"    <?php selected( $banner['region_debug_override'] ?? '', 'eu' ); ?>>Test as EU/UK</option>
+									<option value="us"    <?php selected( $banner['region_debug_override'] ?? '', 'us' ); ?>>Test as US</option>
+									<option value="other" <?php selected( $banner['region_debug_override'] ?? '', 'other' ); ?>>Test as Other</option>
+								</select>
+								<p class="description">Admin testing only — does not affect other visitors.</p>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</details>
+
+			<?php submit_button( 'Save Advanced Settings' ); ?>
+		</form>
+
+		<details class="mm-acc">
+			<summary>Diagnostics</summary>
+			<div class="mm-acc-body">
+				<?php if ( empty( $diag ) ) : ?>
+					<p class="description">Diagnostics unavailable.</p>
+				<?php else : ?>
+					<table class="widefat striped">
+						<tbody>
+							<?php foreach ( $diag as $k => $v ) :
+								if ( is_array( $v ) ) $v = wp_json_encode( $v );
+								if ( is_bool( $v ) )  $v = $v ? 'true' : 'false';
+								?>
+								<tr>
+									<td style="width:240px"><code><?php echo esc_html( $k ); ?></code></td>
+									<td><?php echo esc_html( (string) $v ); ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php endif; ?>
+			</div>
+		</details>
+
+		<details class="mm-acc">
+			<summary>Custom Cookie Settings link/code snippets</summary>
+			<div class="mm-acc-body">
+				<p class="description">Trigger the consent preferences modal from your own footer link or button.</p>
+				<div class="mm-modal-block">
+					<label>Footer link</label>
+					<textarea id="mm-snip-link" readonly rows="3"><?php echo esc_textarea( $snippets['link'] ); ?></textarea>
+					<button type="button" class="button button-small mm-copy-btn" data-mm-copy-target="mm-snip-link">Copy link</button>
+				</div>
+				<div class="mm-modal-block">
+					<label>Button</label>
+					<textarea id="mm-snip-btn" readonly rows="3"><?php echo esc_textarea( $snippets['button'] ); ?></textarea>
+					<button type="button" class="button button-small mm-copy-btn" data-mm-copy-target="mm-snip-btn">Copy button</button>
+				</div>
+			</div>
+		</details>
+
+		<details class="mm-acc">
+			<summary>Known Limitations</summary>
+			<div class="mm-acc-body">
+				<ul style="list-style:disc;padding-left:20px;margin:0">
+					<li>Region detection is most accurate when your CDN sends a country header (e.g. Cloudflare <code>CF-IPCountry</code>). Without it, browser timezone is used as a fallback.</li>
+					<li>This banner controls ACTV TRKR analytics only. Other tracking (Google Analytics, Meta Pixel, etc.) needs its own consent handling.</li>
+					<li>US opt-out is not retroactive — events sent before opt-out are not removed.</li>
+					<li>Aggressive full-page caching may serve the same banner config to all visitors. Consider cache-splitting by region header.</li>
+				</ul>
+			</div>
+		</details>
+		<?php
+	}
+
+	/* ── Legal-copy modals (rendered once on every tab) ─── */
+	private static function render_legal_modals() {
+		$pp = MM_Legal_Copy::privacy_policy_blocks();
+		$ct = MM_Legal_Copy::consent_tool_blocks();
+		?>
+		<dialog id="mm-modal-privacy" class="mm-modal">
+			<div class="mm-modal-head">
+				<h3>Privacy Policy text</h3>
+				<button type="button" class="mm-modal-close" aria-label="Close">×</button>
+			</div>
+			<div class="mm-modal-body">
+				<p class="description">Paste one of these into your site's Privacy Policy page.</p>
+				<?php self::render_copy_block( 'mm-pp-short', 'Short version', $pp['short'] ); ?>
+				<?php self::render_copy_block( 'mm-pp-full',  'Full version', $pp['full'] ); ?>
+				<?php self::render_copy_block( 'mm-pp-tech',  'Technical version', $pp['technical'] ); ?>
+			</div>
+		</dialog>
+
+		<dialog id="mm-modal-consent-tool" class="mm-modal">
+			<div class="mm-modal-head">
+				<h3>Consent tool text</h3>
+				<button type="button" class="mm-modal-close" aria-label="Close">×</button>
+			</div>
+			<div class="mm-modal-body">
+				<p class="description">Paste into the Analytics / Statistics category of your CMP.</p>
+				<?php self::render_copy_block( 'mm-ct-short', 'Short version', $ct['short'] ); ?>
+				<?php self::render_copy_block( 'mm-ct-full',  'Full version', $ct['full'] ); ?>
+				<?php self::render_copy_block( 'mm-ct-tech',  'Technical version', $ct['technical'] ); ?>
+			</div>
+		</dialog>
+		<?php
+	}
+
+	private static function render_copy_block( $id, $label, $text ) {
+		?>
+		<div class="mm-modal-block">
+			<label><?php echo esc_html( $label ); ?></label>
+			<textarea id="<?php echo esc_attr( $id ); ?>" readonly rows="3"><?php echo esc_textarea( $text ); ?></textarea>
+			<button type="button" class="button button-small mm-copy-btn" data-mm-copy-target="<?php echo esc_attr( $id ); ?>">Copy</button>
+		</div>
+		<?php
+	}
+
+	/* ───────────────────────── AJAX (unchanged) ───────────────────────── */
 
 	public static function ajax_test_connection() {
 		check_ajax_referer( 'mm_test', '_wpnonce' );
@@ -260,7 +706,7 @@ class MM_Settings {
 			wp_send_json_error( 'Token mint failed (HTTP ' . $token_code . '): ' . wp_remote_retrieve_body( $token_response ) );
 		}
 
-		$token_body = json_decode( wp_remote_retrieve_body( $token_response ), true );
+		$token_body   = json_decode( wp_remote_retrieve_body( $token_response ), true );
 		$ingest_token = is_array( $token_body ) ? preg_replace( '/[^a-f0-9]/i', '', (string) ( $token_body['ingest_token'] ?? '' ) ) : '';
 
 		if ( empty( $ingest_token ) || strlen( $ingest_token ) < 32 ) {
@@ -312,12 +758,10 @@ class MM_Settings {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Unauthorized' );
 		}
-
 		$result = MM_Forms::scan_all_forms();
 		if ( ! empty( $result['error'] ) ) {
 			wp_send_json_error( $result['error'] );
 		}
 		wp_send_json_success( $result );
 	}
-
 }

@@ -64,32 +64,37 @@ export default function MonitoringPage() {
     enabled: !!orgId,
   });
 
+  // Filter health tables by site_id (not org_id) to avoid stale org_id mismatches
+  // when a site has been moved between orgs but historical health rows kept the
+  // original org_id. RLS still enforces access.
+  const siteIds = sites?.map((s) => s.id) ?? [];
+
   const { data: domainHealth } = useQuery({
-    queryKey: ["domain_health", orgId],
+    queryKey: ["domain_health", siteIds],
     queryFn: async () => {
-      if (!orgId) return [];
+      if (siteIds.length === 0) return [];
       const { data, error } = await supabase
         .from("domain_health")
         .select("*")
-        .eq("org_id", orgId);
+        .in("site_id", siteIds);
       if (error) throw error;
       return data;
     },
-    enabled: !!orgId,
+    enabled: siteIds.length > 0,
   });
 
   const { data: sslHealth } = useQuery({
-    queryKey: ["ssl_health", orgId],
+    queryKey: ["ssl_health", siteIds],
     queryFn: async () => {
-      if (!orgId) return [];
+      if (siteIds.length === 0) return [];
       const { data, error } = await supabase
         .from("ssl_health")
         .select("*")
-        .eq("org_id", orgId);
+        .in("site_id", siteIds);
       if (error) throw error;
       return data;
     },
-    enabled: !!orgId,
+    enabled: siteIds.length > 0,
   });
 
   const selectedSite = sites?.find(s => s.id === selectedSiteId) || null;

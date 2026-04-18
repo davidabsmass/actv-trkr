@@ -17,10 +17,12 @@ class MM_Forms {
 		// Register REST API route for dashboard-triggered sync
 		add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ) );
 
-		// Auto-sync forms only on our own settings page, never across all admin pages.
-		if ( is_admin() && ! empty( $opts['api_key'] ) ) {
-			add_action( 'load-settings_page_actv-trkr', array( __CLASS__, 'maybe_auto_sync' ) );
-		}
+		// NOTE: Auto-sync on settings page load was removed in v1.16.5.
+		// It performed blocking wp_remote_post calls (timeout up to 120s)
+		// during render, causing the settings page to spin/hang on slow
+		// hosts. Sync now runs ONLY via:
+		//   1. The hourly mm_form_probe_cron / scheduled jobs.
+		//   2. The manual "Sync Forms" button on the settings page (AJAX).
 
 		if ( $opts['enable_gravity'] !== '1' || empty( $opts['api_key'] ) ) return;
 

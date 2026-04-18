@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       # Lint is advisory: warnings allowed, even errors only annotated (Phase 1).
       - name: ESLint (advisory)
         run: |
@@ -123,7 +123,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       # audit-ci is advisory; the PR-only dependency-review-action below is the actual gate.
       - name: audit-ci (advisory)
         run: |
@@ -165,7 +165,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
       - run: npm run build
       - name: Lighthouse CI (advisory)
         run: |

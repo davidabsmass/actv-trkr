@@ -213,6 +213,7 @@ class ACTV_Bootstrap {
 			'class-consent-banner.php',
 			'class-privacy-setup.php',
 			'class-recovery-banner.php',
+			'class-health-reporter.php',
 		);
 		foreach ( $files as $rel ) {
 			$path = $base . $rel;
@@ -274,6 +275,7 @@ class ACTV_Bootstrap {
 		$wrap( 'import_engine',    'Import Engine',    'MM_Import_Engine' );
 		$wrap( 'privacy_setup',    'Privacy Setup',    'MM_Privacy_Setup' );
 		$wrap( 'recovery_banner',  'Recovery Banner',  'MM_Recovery_Banner' );
+		$wrap( 'health_reporter',  'Health Reporter',  'MM_Health_Reporter' );
 
 		// WooCommerce conditional.
 		if ( class_exists( 'MM_WooCommerce' ) ) {

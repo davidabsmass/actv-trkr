@@ -11,9 +11,14 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.14.0";
+const CURRENT_PLUGIN_VERSION = "1.15.0";
 
 const CHANGELOG = `
+## 1.15.0
+- NEW: Daily fleet-health beacon — plugin reports its mode, boot loop state, migration status, disabled modules, and blocked versions to the dashboard so operators can see crash-contained sites at a glance
+- NEW: Dashboard widget surfaces sites in reduced_mode or migration_locked across the entire fleet (admin-only)
+- FIX: Repaired a malformed docblock in the recovery class that was preventing the recovery layer from loading on some PHP versions
+
 ## 1.9.18
 - FIX: Plugin ZIP now ships with the correct main file name so WordPress updates no longer break wp-admin
 - FIX: Dashboard downloads now inject the real API key you copied, not its stored hash

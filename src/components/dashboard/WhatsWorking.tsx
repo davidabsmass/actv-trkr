@@ -99,18 +99,20 @@ export const WhatsWorking = React.forwardRef<HTMLDivElement>(function WhatsWorki
   });
 
   return (
-    <div ref={ref} className="glass-card p-5 animate-slide-up h-full">
-      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-        <CheckCircle2 className="h-4 w-4 text-success" />
-        {t("dashboard.whatsWorking")}
-      </h3>
+    <div ref={ref} className="glass-card-elevated p-5 animate-slide-up h-full">
+      <div className="panel-heading">
+        <span className="icon-chip" data-tone="success"><CheckCircle2 className="h-4 w-4" /></span>
+        <h3>{t("dashboard.whatsWorking")}</h3>
+      </div>
       {findings && findings.length > 0 ? (
         <div className="space-y-2.5">
           {findings.map((f: any, i: number) => (
-            <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-success/5 border border-success/10">
-              <TrendingUp className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
+            <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-success/5 border border-success/15">
+              <span className="icon-chip shrink-0 w-7 h-7" data-tone="success">
+                <TrendingUp className="h-3.5 w-3.5" />
+              </span>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-foreground">{f.title}</p>
+                <p className="text-xs font-semibold text-foreground">{f.title}</p>
                 {f.explanation && (
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{f.explanation}</p>
                 )}

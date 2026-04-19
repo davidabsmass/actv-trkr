@@ -322,19 +322,37 @@ async function processJob(supabase: any, job: any) {
 
   // Determine final state
   if (!hasMore) {
-    // Completed (either fully synced or capped)
-    const cappedNote = isCapped
-      ? `Capped at ${IMPORT_CAP.toLocaleString()} most-recent of ${(integration.total_entries_estimated || 0).toLocaleString()} entries`
-      : null;
-    await releaseLock(supabase, job.id, lockToken, "completed", cappedNote);
-    await supabase.from("form_integrations").update({
-      status: "synced",
-      total_entries_imported: totalProcessed,
-      last_synced_at: new Date().toISOString(),
-      last_error: cappedNote,
-    }).eq("id", job.form_integration_id);
+    const expected = currentJob?.total_processed != null
+      ? (await supabase.from("form_import_jobs").select("total_expected").eq("id", job.id).single()).data?.total_expected || 0
+      : 0;
+    const gap = expected - totalProcessed;
+    const meaningfulGap = !isCapped && expected > 0 && gap >= 5; // ignore tiny rounding gaps
 
-    console.log(`Job ${job.id} completed. Total: ${totalProcessed}${isCapped ? " (capped)" : ""}`);
+    if (meaningfulGap) {
+      // WP returned no more entries but we're short of expected — likely a
+      // stale cursor or transient WP-side issue. Reset cursor and retry once
+      // with longer backoff instead of marking synced at the wrong number.
+      await releaseLock(supabase, job.id, lockToken, "pending",
+        `Reached end of pagination at ${totalProcessed}/${expected}; resetting cursor for re-scan`, {
+        cursor: null,
+        next_run_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5-min backoff
+      });
+      console.log(`Job ${job.id} short of expected (${totalProcessed}/${expected}) — cursor reset, retry in 5min`);
+    } else {
+      // Truly completed (either fully synced or capped)
+      const cappedNote = isCapped
+        ? `Capped at ${IMPORT_CAP.toLocaleString()} most-recent of ${(integration.total_entries_estimated || 0).toLocaleString()} entries`
+        : null;
+      await releaseLock(supabase, job.id, lockToken, "completed", cappedNote);
+      await supabase.from("form_integrations").update({
+        status: "synced",
+        total_entries_imported: totalProcessed,
+        last_synced_at: new Date().toISOString(),
+        last_error: cappedNote,
+      }).eq("id", job.form_integration_id);
+
+      console.log(`Job ${job.id} completed. Total: ${totalProcessed}${isCapped ? " (capped)" : ""}`);
+    }
   } else {
     // More to do — schedule next run
     await releaseLock(supabase, job.id, lockToken, "pending", null, {

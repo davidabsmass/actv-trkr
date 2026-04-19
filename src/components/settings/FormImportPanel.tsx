@@ -447,10 +447,18 @@ export default function FormImportPanel() {
                   {integration.status === "needs_review" && (
                     <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
                       <p className="text-xs font-medium text-amber-600">
-                        ⚠️ Spam-bombed — manual review required
+                        ⚠️ Oversized form — capped import available
                       </p>
                       <p className="text-xs text-amber-600/80">
-                        This form reports {integration.total_entries_estimated.toLocaleString()} entries, which exceeds the safety threshold of 50,000. Most are likely spam. Clean up the form in WordPress, or click <strong>Force import</strong> to import them anyway.
+                        This form reports <strong>{integration.total_entries_estimated.toLocaleString()}</strong> entries, exceeding the 50,000 safety threshold. Click <strong>Import most recent 8,000</strong> to backfill the most recent entries only — viewing and exporting will be limited to that capped set.
+                      </p>
+                    </div>
+                  )}
+
+                  {integration.status === "synced" && integration.total_entries_estimated > 50000 && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded p-2">
+                      <p className="text-xs text-blue-600">
+                        ℹ️ Capped import — showing most recent <strong>{integration.total_entries_imported.toLocaleString()}</strong> of <strong>{integration.total_entries_estimated.toLocaleString()}</strong> entries.
                       </p>
                     </div>
                   )}
@@ -464,7 +472,7 @@ export default function FormImportPanel() {
 
                     {integration.status === "needs_review" && (
                       <Button size="sm" variant="outline" onClick={() => startImport(integration)} className="text-xs h-7 border-amber-500/40 text-amber-600 hover:bg-amber-500/10">
-                        <Play className="h-3 w-3 mr-1" /> Force import anyway
+                        <Play className="h-3 w-3 mr-1" /> Import most recent 8,000
                       </Button>
                     )}
 

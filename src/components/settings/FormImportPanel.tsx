@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { callManageImportJob } from "@/lib/manage-import-job";
 
 interface FormIntegration {
   id: string;
@@ -120,13 +121,8 @@ export default function FormImportPanel() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [rescanningSiteId, setRescanningSiteId] = useState<string | null>(null);
 
-  const invokeAction = useCallback(async (action: string, body: any) => {
-    const { data, error } = await supabase.functions.invoke(
-      `manage-import-job?action=${action}`,
-      { body }
-    );
-    if (error) throw error;
-    return data;
+  const invokeAction = useCallback((action: string, body: any) => {
+    return callManageImportJob(action, { body });
   }, []);
 
   const invalidate = () => {
@@ -145,12 +141,11 @@ export default function FormImportPanel() {
       // single-click entry point: discover + import.
       // The discover action falls back to the existing `forms` table when
       // the WP plugin is unreachable so the UI never shows 0 forms.
-      const { data, error } = await supabase.functions.invoke(
-        "manage-import-job?action=discover",
-        { body: { site_id: siteId } }
-      );
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const data = await callManageImportJob<{
+        discovered?: number;
+        auto_started_jobs?: number;
+        source?: string;
+      }>("discover", { body: { site_id: siteId } });
 
       invalidate();
 

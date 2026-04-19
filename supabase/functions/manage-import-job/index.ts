@@ -227,6 +227,10 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     }
   }
 
+  const queueTriggered = autoStartedJobs > 0
+    ? await triggerQueueProcessor()
+    : false;
+
   return json({
     ok: true,
     discovered: forms.length,
@@ -235,6 +239,7 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     junk_skipped: junkSkipped,
     source,
     wp_plugin_error: wpError,
+    queue_triggered: queueTriggered,
     forms,
   });
 }
@@ -293,7 +298,9 @@ async function handleCreate(supabase: any, user: any, req: Request) {
     .update({ status: "importing", total_entries_estimated: totalExpected })
     .eq("id", integrationId);
 
-  return json({ ok: true, job });
+  const queueTriggered = await triggerQueueProcessor();
+
+  return json({ ok: true, job, queue_triggered: queueTriggered });
 }
 
 // ── Process next batch (UI-triggered, still supported) ──
@@ -502,7 +509,9 @@ async function handleRestart(supabase: any, user: any, req: Request) {
     .update({ status: "importing", total_entries_imported: 0 })
     .eq("id", job.form_integration_id);
 
-  return json({ ok: true, status: "pending" });
+  const queueTriggered = await triggerQueueProcessor();
+
+  return json({ ok: true, status: "pending", queue_triggered: queueTriggered });
 }
 
 // ── Status ──
@@ -598,6 +607,40 @@ async function callWpPlugin(supabase: any, site: any, route: string, body: any):
     return await res.json();
   } catch (err) {
     return { ok: false, error: String(err).slice(0, 200) };
+  }
+}
+
+async function triggerQueueProcessor(): Promise<boolean> {
+  const baseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const cronSecret = Deno.env.get("CRON_SECRET");
+
+  if (!baseUrl || !anonKey || !cronSecret) {
+    console.warn("manage-import-job: queue trigger skipped due to missing env");
+    return false;
+  }
+
+  try {
+    const res = await fetch(`${baseUrl}/functions/v1/process-import-queue`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${anonKey}`,
+        "x-cron-secret": cronSecret,
+      },
+      body: JSON.stringify({ triggered_by: "manage-import-job", triggered_at: new Date().toISOString() }),
+      signal: AbortSignal.timeout(20_000),
+    });
+
+    if (!res.ok) {
+      console.warn(`manage-import-job: queue trigger failed with HTTP ${res.status}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn("manage-import-job: queue trigger failed", error);
+    return false;
   }
 }
 

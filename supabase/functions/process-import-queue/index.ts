@@ -244,7 +244,20 @@ async function processJob(supabase: any, job: any) {
       if (!wpResult.ok) {
         lastError = wpResult.error || "WP plugin error";
 
-        // Adaptive: reduce batch size on failure
+        // Detect WP host rate-limiting (HTTP 429). Treat as transient: don't
+        // shrink batch, don't count toward MAX_RETRIES — just back off long.
+        const isRateLimited = /HTTP 429/i.test(lastError) || /rate.?limit/i.test(lastError);
+
+        if (isRateLimited) {
+          const backoffMs = 2 * 60 * 1000; // 2-minute fixed backoff for 429
+          await releaseLock(supabase, job.id, lockToken, "pending", `Rate-limited by host — backing off 2 min`, {
+            next_run_at: new Date(Date.now() + backoffMs).toISOString(),
+          });
+          console.log(`Job ${job.id} rate-limited (429) — retry in 2 min`);
+          return { job_id: job.id, error: "rate_limited", batches: batchesProcessed };
+        }
+
+        // Adaptive: reduce batch size on non-429 failure
         const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.floor(currentBatchSize * 0.5));
         const newRetry = (job.retry_count || 0) + 1;
 

@@ -475,7 +475,9 @@ async function handleResume(supabase: any, user: any, req: Request) {
 
   await supabase.from("form_integrations").update({ status: "importing" }).eq("id", job.form_integration_id);
 
-  return json({ ok: true, status: "pending" });
+  const queueTriggered = await triggerQueueProcessor();
+
+  return json({ ok: true, status: "pending", queue_triggered: queueTriggered });
 }
 
 // ── Restart ──

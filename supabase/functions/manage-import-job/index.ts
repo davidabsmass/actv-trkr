@@ -280,7 +280,6 @@ async function handleCreate(supabase: any, user: any, req: Request) {
 
   // Cap-aware total_expected: oversized forms only import the most recent
   // IMPORT_CAP entries, so progress bars should reflect that — not 8K of 755K.
-  const IMPORT_CAP = 8_000;
   const isCapped = actualCount > JUNK_THRESHOLD;
   const totalExpected = isCapped ? Math.min(IMPORT_CAP, actualCount) : actualCount;
   const batchSize = Math.min(body.batch_size || DEFAULT_BATCH_SIZE, MAX_BATCH_SIZE);

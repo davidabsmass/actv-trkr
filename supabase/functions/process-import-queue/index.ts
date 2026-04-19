@@ -309,16 +309,19 @@ async function processJob(supabase: any, job: any) {
 
   // Determine final state
   if (!hasMore) {
-    // Completed
-    await releaseLock(supabase, job.id, lockToken, "completed", null);
+    // Completed (either fully synced or capped)
+    const cappedNote = isCapped
+      ? `Capped at ${IMPORT_CAP.toLocaleString()} most-recent of ${(integration.total_entries_estimated || 0).toLocaleString()} entries`
+      : null;
+    await releaseLock(supabase, job.id, lockToken, "completed", cappedNote);
     await supabase.from("form_integrations").update({
       status: "synced",
       total_entries_imported: totalProcessed,
       last_synced_at: new Date().toISOString(),
-      last_error: null,
+      last_error: cappedNote,
     }).eq("id", job.form_integration_id);
 
-    console.log(`Job ${job.id} completed. Total: ${totalProcessed}`);
+    console.log(`Job ${job.id} completed. Total: ${totalProcessed}${isCapped ? " (capped)" : ""}`);
   } else {
     // More to do — schedule next run
     await releaseLock(supabase, job.id, lockToken, "pending", null, {

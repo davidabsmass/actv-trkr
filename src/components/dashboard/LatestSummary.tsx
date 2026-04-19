@@ -28,10 +28,10 @@ export function LatestSummary() {
 
   if (!summary) {
     return (
-      <div className="glass-card p-6 animate-slide-up">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">{t("dashboard.latestSummary")}</h3>
+      <div className="glass-card-elevated p-6 animate-slide-up">
+        <div className="panel-heading">
+          <span className="icon-chip"><Sparkles className="h-4 w-4" /></span>
+          <h3>{t("dashboard.latestSummary")}</h3>
         </div>
         <p className="text-sm text-foreground/80 leading-relaxed mb-3">{t("dashboard.latestSummaryPreparing")}</p>
         <ul className="space-y-1.5">
@@ -55,16 +55,16 @@ export function LatestSummary() {
   const insights = (summary.insights as string[]) || [];
 
   return (
-    <div className="glass-card p-6 animate-slide-up">
+    <div className="glass-card-elevated p-6 animate-slide-up">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">{t("dashboard.latestSummary")}</h3>
+        <div className="flex items-center gap-2.5">
+          <span className="icon-chip"><Sparkles className="h-4 w-4" /></span>
+          <h3 className="text-sm font-semibold text-foreground tracking-tight">{t("dashboard.latestSummary")}</h3>
         </div>
         <div className="flex items-center gap-2">
           <Clock className="h-3 w-3 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">{new Date(summary.generated_at).toLocaleDateString()}</span>
-          <Link to="/reports" className="text-xs font-medium text-primary hover:underline ml-2">{t("dashboard.fullReport")}</Link>
+          <Link to="/reports" className="text-xs font-medium text-primary hover:underline ml-2">{t("dashboard.fullReport")} →</Link>
         </div>
       </div>
       {summary.summary_text && <p className="text-sm text-foreground/80 leading-relaxed mb-3">{summary.summary_text}</p>}

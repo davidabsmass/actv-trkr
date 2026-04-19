@@ -160,41 +160,37 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
     })();
 
     return (
-      <div ref={ref} className="glass-card p-5 animate-slide-up h-full">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-primary" />
-          {t("dashboard.topPagesAndSources")}
-        </h3>
+      <div ref={ref} className="glass-card-elevated p-5 animate-slide-up h-full">
+        <div className="panel-heading">
+          <span className="icon-chip"><BarChart3 className="h-4 w-4" /></span>
+          <h3>{t("dashboard.topPagesAndSources")}</h3>
+        </div>
 
         {/* Top Pages */}
-        <div className="mb-4">
-          <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">
+        <div className="mb-5">
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
             {t("dashboard.pages")} ({rangeLabel})
           </p>
           {isLoading ? (
             <div className="space-y-1.5">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-5 rounded bg-muted/30 animate-pulse" />
+                <div key={i} className="h-6 rounded bg-muted/30 animate-pulse" />
               ))}
             </div>
           ) : pages.length > 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {pages.map((p) => (
-                <div key={p.path} className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="relative h-5 rounded bg-muted/30 overflow-hidden">
-                      <div
-                        className="absolute inset-y-0 left-0 bg-primary/15 rounded"
-                        style={{ width: `${(p.views / maxViews) * 100}%` }}
-                      />
-                      <span className="relative px-2 text-xs font-medium text-foreground truncate block leading-5">
-                        {p.path}
-                      </span>
-                    </div>
+                <div key={p.path}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-foreground truncate flex-1 min-w-0 pr-2">{p.path}</span>
+                    <span className="text-xs font-mono-data font-semibold text-foreground shrink-0">{p.views.toLocaleString()}</span>
                   </div>
-                  <span className="text-xs font-mono-data text-muted-foreground w-10 text-right shrink-0">
-                    {p.views}
-                  </span>
+                  <div className="meter-track">
+                    <div
+                      className="meter-fill"
+                      style={{ width: `${(p.views / maxViews) * 100}%`, background: "var(--gradient-primary)" }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -205,33 +201,29 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
 
         {/* Top Sources */}
         <div>
-          <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
             {t("dashboard.sources")} ({rangeLabel})
           </p>
           {isLoading ? (
             <div className="space-y-1.5">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-5 rounded bg-muted/30 animate-pulse" />
+                <div key={i} className="h-6 rounded bg-muted/30 animate-pulse" />
               ))}
             </div>
           ) : sources.length > 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {sources.map((s) => (
-                <div key={s.source} className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="relative h-5 rounded bg-muted/30 overflow-hidden">
-                      <div
-                        className="absolute inset-y-0 left-0 bg-accent/30 rounded"
-                        style={{ width: `${(s.sessions / maxSessions) * 100}%` }}
-                      />
-                      <span className="relative px-2 text-xs font-medium text-foreground truncate block leading-5">
-                        {s.source}
-                      </span>
-                    </div>
+                <div key={s.source}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-foreground truncate flex-1 min-w-0 pr-2">{s.source}</span>
+                    <span className="text-xs font-mono-data font-semibold text-foreground shrink-0">{s.sessions.toLocaleString()}</span>
                   </div>
-                  <span className="text-xs font-mono-data text-muted-foreground w-10 text-right shrink-0">
-                    {s.sessions}
-                  </span>
+                  <div className="meter-track">
+                    <div
+                      className="meter-fill"
+                      style={{ width: `${(s.sessions / maxSessions) * 100}%`, background: "var(--gradient-info)" }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

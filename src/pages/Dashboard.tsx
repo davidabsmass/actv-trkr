@@ -13,6 +13,7 @@ import { TopPagesAndSources } from "@/components/dashboard/TopPagesAndSources";
 import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
 import { FunnelWidget, type GoalFunnelEntry } from "@/components/dashboard/FunnelWidget";
 import { RevenueWidget } from "@/components/dashboard/RevenueWidget";
+import { Sparkline } from "@/components/dashboard/Sparkline";
 import { useOrg } from "@/hooks/use-org";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
@@ -27,6 +28,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ─── KPI Card ─── */
+type KpiVariant = "primary" | "success" | "warning" | "info";
+
 interface KPICardProps {
   label: string;
   value: string | number;
@@ -36,15 +39,26 @@ interface KPICardProps {
   accent?: string;
   valueClassName?: string;
   valueTitle?: string;
+  variant?: KpiVariant;
+  series?: number[];
 }
 
-function KPICard({ label, value, sub, trend, icon, accent, valueClassName, valueTitle }: KPICardProps) {
+const KPI_VARIANT_COLOR: Record<KpiVariant, string> = {
+  primary: "hsl(var(--primary))",
+  success: "hsl(var(--success))",
+  warning: "hsl(var(--warning))",
+  info: "hsl(var(--info))",
+};
+
+function KPICard({ label, value, sub, trend, icon, accent, valueClassName, valueTitle, variant = "primary", series }: KPICardProps) {
   return (
-    <div className="glass-card p-4 animate-slide-up">
+    <div className="kpi-card p-4 animate-slide-up min-h-[132px] flex flex-col" data-variant={variant}>
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
+        <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
         <IconTooltip label={label}>
-          <span className={accent || "text-primary"}>{icon}</span>
+          <span className="icon-chip" data-tone={variant === "primary" ? undefined : variant}>
+            {icon}
+          </span>
         </IconTooltip>
       </div>
       <p
@@ -63,8 +77,13 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
           </>
         )}
         {trend === 0 && <Minus className="h-3 w-3 kpi-neutral" />}
-        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+        {sub && <span className="text-xs text-muted-foreground truncate">{sub}</span>}
       </div>
+      {series && series.length > 1 && (
+        <div className="mt-auto -mx-1 pt-1.5">
+          <Sparkline data={series} color={KPI_VARIANT_COLOR[variant]} height={24} />
+        </div>
+      )}
     </div>
   );
 }
@@ -439,6 +458,18 @@ const Dashboard = () => {
     };
   }, [realtimeData, prevPeriodData, goalFunnelData]);
 
+  // Per-KPI sparkline series, derived from dailyMap if available
+  const kpiSeries = useMemo(() => {
+    const dailyMap = (realtimeData as any)?.dailyMap as Record<string, { sessions: number; leads: number; pageviews: number }> | undefined;
+    if (!dailyMap) return { sessions: [] as number[], leads: [] as number[], cvr: [] as number[] };
+    const ordered = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b));
+    return {
+      sessions: ordered.map(([, v]) => v.sessions),
+      leads: ordered.map(([, v]) => v.leads),
+      cvr: ordered.map(([, v]) => (v.sessions > 0 ? (v.leads / v.sessions) * 100 : 0)),
+    };
+  }, [realtimeData]);
+
   const topSource = useMemo(() => {
     const sources = realtimeData?.sources || [];
     if (sources.length === 0) return null;
@@ -563,36 +594,48 @@ const Dashboard = () => {
           {/* Row 1 – 6 KPI Cards */}
           <div className={`grid grid-cols-2 md:grid-cols-3 ${seoAdvanced ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
             <KPICard
+              variant="primary"
               label={`${t("dashboard.sessions")} (${days}d)`}
               value={periodData.sessions.current.toLocaleString()}
               trend={orgTooNewForComparison ? null : pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
+              series={kpiSeries.sessions}
             />
             <KPICard
+              variant="success"
               label={`${t("dashboard.leads")} (${days}d)`}
               value={periodData.leads.current}
               trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
+              series={kpiSeries.leads}
             />
             <KPICard
+              variant="warning"
               label={t("dashboard.conversionRate")}
               value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
               trend={orgTooNewForComparison ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
+              series={kpiSeries.cvr}
             />
             <KPICard
+              variant="info"
               label={t("dashboard.topSource")}
               value={topSource?.source || "—"}
               valueClassName="text-xs font-medium truncate"
               valueTitle={topSource?.source || undefined}
               sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : undefined}
               icon={<Megaphone className="h-4 w-4" />}
-              accent="text-accent-foreground"
             />
-            <div className="glass-card p-4 animate-slide-up">
+            <div
+              className="kpi-card p-4 animate-slide-up min-h-[132px] flex flex-col"
+              data-variant={attentionItems.length === 0 ? "success" : attentionItems.some(i => i.severity === "critical") ? "warning" : "warning"}
+            >
               <div className="flex items-start justify-between mb-2">
-                <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("dashboard.needsAttention")}</span>
-                <span className={attentionItems.length === 0 ? "text-success" : attentionItems.some(i => i.severity === "critical") ? "text-destructive" : "text-warning"}>
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{t("dashboard.needsAttention")}</span>
+                <span
+                  className="icon-chip"
+                  data-tone={attentionItems.length === 0 ? "success" : attentionItems.some(i => i.severity === "critical") ? "warning" : "warning"}
+                >
                   {attentionItems.length === 0 ? (
                     <CheckCircle2 className="h-4 w-4" />
                   ) : attentionItems.some(i => i.severity === "critical") ? (
@@ -612,7 +655,10 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-2xl font-bold font-mono-data text-success">0</span>
+                  <span className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</span>
+                </div>
               )}
             </div>
             {seoAdvanced && (

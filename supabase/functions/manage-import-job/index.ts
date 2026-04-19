@@ -151,10 +151,8 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
   let autoStartedJobs = 0;
   let skippedJobs = 0;
 
-  // Junk-form guard: if a form reports >50,000 entries it's almost always a
-  // spam-bombed contact form. We still register it so the user can see it,
-  // but we skip auto-import (they can manually start it from the UI).
-  const JUNK_THRESHOLD = 50_000;
+  // Junk-form guard: forms above JUNK_THRESHOLD are spam-bombed; we register
+  // them but skip auto-import (manual force-import will use the capped path).
   let junkSkipped = 0;
 
   forms = Array.from(new Map(forms.map((form: any) => [

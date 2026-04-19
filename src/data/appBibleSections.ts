@@ -49,13 +49,14 @@ export const APP_BIBLE_SECTIONS: AppBibleSection[] = [
   {
     key: "forms",
     title: "4. Forms ingestion",
-    summary: "3-layer architecture across 5+ form builders.",
+    summary: "3-layer architecture across 6 form builders, with drift watchdog and spam quarantine.",
     bullets: [
       "Discovery → Background Backfill → Real-time webhook.",
-      "Gravity, Avada/Fusion (strict authoritative), WPForms, CF7, Ninja.",
-      "Field mapping editable per form in /forms.",
-      "Re-scan Forms button in /monitoring → Form Checks for manual recovery.",
-      "Parsing logic is finalized — no structural changes without explicit approval.",
+      "Gravity, Avada/Fusion (strict authoritative), WPForms, CF7, Ninja, Fluent (v1.16.9+).",
+      "Spam threshold: forms over 50k entries auto-quarantine as needs_review with a Force import override.",
+      "form-import-watchdog (every 10 min) detects drift, releases stuck jobs, and heals cleaned-up forms.",
+      "Admin observability: /admin-setup → Form Import Health surfaces drift and manual triggers.",
+      "Field mapping editable per form in /forms; parsing logic finalized — no structural changes without approval.",
     ],
   },
   {

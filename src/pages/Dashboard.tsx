@@ -594,31 +594,37 @@ const Dashboard = () => {
           {/* Row 1 – 6 KPI Cards */}
           <div className={`grid grid-cols-2 md:grid-cols-3 ${seoAdvanced ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
             <KPICard
+              variant="primary"
               label={`${t("dashboard.sessions")} (${days}d)`}
               value={periodData.sessions.current.toLocaleString()}
               trend={orgTooNewForComparison ? null : pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
+              series={kpiSeries.sessions}
             />
             <KPICard
+              variant="success"
               label={`${t("dashboard.leads")} (${days}d)`}
               value={periodData.leads.current}
               trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
+              series={kpiSeries.leads}
             />
             <KPICard
+              variant="warning"
               label={t("dashboard.conversionRate")}
               value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
               trend={orgTooNewForComparison ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
+              series={kpiSeries.cvr}
             />
             <KPICard
+              variant="info"
               label={t("dashboard.topSource")}
               value={topSource?.source || "—"}
               valueClassName="text-xs font-medium truncate"
               valueTitle={topSource?.source || undefined}
               sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : undefined}
               icon={<Megaphone className="h-4 w-4" />}
-              accent="text-accent-foreground"
             />
             <div className="glass-card p-4 animate-slide-up">
               <div className="flex items-start justify-between mb-2">

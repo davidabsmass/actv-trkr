@@ -458,6 +458,18 @@ const Dashboard = () => {
     };
   }, [realtimeData, prevPeriodData, goalFunnelData]);
 
+  // Per-KPI sparkline series, derived from dailyMap if available
+  const kpiSeries = useMemo(() => {
+    const dailyMap = (realtimeData as any)?.dailyMap as Record<string, { sessions: number; leads: number; pageviews: number }> | undefined;
+    if (!dailyMap) return { sessions: [] as number[], leads: [] as number[], cvr: [] as number[] };
+    const ordered = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b));
+    return {
+      sessions: ordered.map(([, v]) => v.sessions),
+      leads: ordered.map(([, v]) => v.leads),
+      cvr: ordered.map(([, v]) => (v.sessions > 0 ? (v.leads / v.sessions) * 100 : 0)),
+    };
+  }, [realtimeData]);
+
   const topSource = useMemo(() => {
     const sources = realtimeData?.sources || [];
     if (sources.length === 0) return null;

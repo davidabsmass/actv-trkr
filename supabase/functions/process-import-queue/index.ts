@@ -22,6 +22,12 @@ const MIN_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 250;
 const MAX_RETRIES = 10;
 
+// Oversized-form safety: forms above JUNK_THRESHOLD are imported newest-first
+// and capped at IMPORT_CAP entries to keep the dataset useful and the
+// download cost bounded.
+const JUNK_THRESHOLD = 50_000;
+const IMPORT_CAP = 8_000;
+
 function getWpBaseUrl(site: { url?: string | null; domain?: string | null }) {
   const siteUrl = site.url || (site.domain ? `https://${site.domain}` : "");
   return `${siteUrl.replace(/\/$/, "")}/wp-json`;
@@ -175,10 +181,10 @@ async function processJob(supabase: any, job: any) {
     return { job_id: job.id, error: "Site not found" };
   }
 
-  // Get integration info
+  // Get integration info (need total_entries_estimated for cap detection)
   const { data: integration } = await supabase
     .from("form_integrations")
-    .select("builder_type, external_form_id")
+    .select("builder_type, external_form_id, total_entries_estimated")
     .eq("id", job.form_integration_id)
     .single();
 
@@ -186,6 +192,12 @@ async function processJob(supabase: any, job: any) {
     await releaseLock(supabase, job.id, lockToken, "failed", "Integration not found");
     return { job_id: job.id, error: "Integration not found" };
   }
+
+  // Capped-mode flag — applies to oversized forms (e.g. 755k spam tables).
+  // We import the most recent entries first and stop once we hit IMPORT_CAP.
+  const isCapped = (integration.total_entries_estimated || 0) > JUNK_THRESHOLD;
+  const direction = isCapped ? "DESC" : "ASC";
+  const effectiveCap = isCapped ? IMPORT_CAP : Number.POSITIVE_INFINITY;
 
   // Get current cursor
   const { data: currentJob } = await supabase

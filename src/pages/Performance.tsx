@@ -178,7 +178,7 @@ const Performance = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} />
+              <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} dailyMap={realtimeData?.dailyMap} />
               <TrendsChart data={processedData.dailyData} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <VisitorEngagement orgId={orgId} startDate={startDate} endDate={endDate} />

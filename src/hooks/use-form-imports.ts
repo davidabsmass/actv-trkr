@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
+import { callManageImportJob } from "@/lib/manage-import-job";
 
 export interface FormIntegration {
   id: string;
@@ -36,17 +36,12 @@ export function useFormIntegrations() {
   return useQuery({
     queryKey: ["form_integrations", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("manage-import-job", {
-        body: {},
+      if (!orgId) return [];
+      const data = await callManageImportJob<{ integrations?: FormIntegration[] }>("list", {
         method: "GET",
-        headers: {},
+        query: { org_id: orgId },
       });
-      // Use query param approach
-      const res = await supabase.functions.invoke(`manage-import-job?action=list&org_id=${orgId}`, {
-        method: "GET",
-      });
-      if (res.error) throw res.error;
-      return (res.data?.integrations || []) as FormIntegration[];
+      return (data.integrations || []) as FormIntegration[];
     },
     enabled: !!orgId,
     refetchInterval: 10_000, // poll every 10s while importing
@@ -58,11 +53,7 @@ export function useDiscoverForms() {
 
   return useMutation({
     mutationFn: async (siteId: string) => {
-      const res = await supabase.functions.invoke("manage-import-job?action=discover", {
-        body: { site_id: siteId },
-      });
-      if (res.error) throw res.error;
-      return res.data;
+      return callManageImportJob("discover", { body: { site_id: siteId } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["form_integrations"] });
@@ -75,11 +66,7 @@ export function useCreateImportJob() {
 
   return useMutation({
     mutationFn: async (params: { form_integration_id: string; batch_size?: number }) => {
-      const res = await supabase.functions.invoke("manage-import-job?action=create", {
-        body: params,
-      });
-      if (res.error) throw res.error;
-      return res.data;
+      return callManageImportJob("create", { body: params });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["form_integrations"] });
@@ -92,11 +79,7 @@ export function useProcessImportBatch() {
 
   return useMutation({
     mutationFn: async (jobId: string) => {
-      const res = await supabase.functions.invoke("manage-import-job?action=process", {
-        body: { job_id: jobId },
-      });
-      if (res.error) throw res.error;
-      return res.data;
+      return callManageImportJob("process", { body: { job_id: jobId } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["form_integrations"] });
@@ -109,11 +92,7 @@ export function useResumeImportJob() {
 
   return useMutation({
     mutationFn: async (jobId: string) => {
-      const res = await supabase.functions.invoke("manage-import-job?action=resume", {
-        body: { job_id: jobId },
-      });
-      if (res.error) throw res.error;
-      return res.data;
+      return callManageImportJob("resume", { body: { job_id: jobId } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["form_integrations"] });
@@ -126,11 +105,7 @@ export function useRestartImportJob() {
 
   return useMutation({
     mutationFn: async (jobId: string) => {
-      const res = await supabase.functions.invoke("manage-import-job?action=restart", {
-        body: { job_id: jobId },
-      });
-      if (res.error) throw res.error;
-      return res.data;
+      return callManageImportJob("restart", { body: { job_id: jobId } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["form_integrations"] });

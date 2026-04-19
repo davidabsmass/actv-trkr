@@ -19,6 +19,11 @@ const MIN_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 250;
 const DEFAULT_BATCH_SIZE = 100;
 
+// Oversized form safety: forms above JUNK_THRESHOLD are imported newest-first
+// and capped at IMPORT_CAP entries (see process-import-queue for batch logic).
+const JUNK_THRESHOLD = 50_000;
+const IMPORT_CAP = 8_000;
+
 function getWpBaseUrl(site: { url?: string | null; domain?: string | null }) {
   const siteUrl = site.url || (site.domain ? `https://${site.domain}` : "");
   return `${siteUrl.replace(/\/$/, "")}/wp-json`;
@@ -146,10 +151,8 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
   let autoStartedJobs = 0;
   let skippedJobs = 0;
 
-  // Junk-form guard: if a form reports >50,000 entries it's almost always a
-  // spam-bombed contact form. We still register it so the user can see it,
-  // but we skip auto-import (they can manually start it from the UI).
-  const JUNK_THRESHOLD = 50_000;
+  // Junk-form guard: forms above JUNK_THRESHOLD are spam-bombed; we register
+  // them but skip auto-import (manual force-import will use the capped path).
   let junkSkipped = 0;
 
   forms = Array.from(new Map(forms.map((form: any) => [
@@ -273,7 +276,12 @@ async function handleCreate(supabase: any, user: any, req: Request) {
     form_id: integration.external_form_id,
   });
 
-  const totalExpected = wpCount?.count ?? integration.total_entries_estimated;
+  const actualCount = wpCount?.count ?? integration.total_entries_estimated ?? 0;
+
+  // Cap-aware total_expected: oversized forms only import the most recent
+  // IMPORT_CAP entries, so progress bars should reflect that — not 8K of 755K.
+  const isCapped = actualCount > JUNK_THRESHOLD;
+  const totalExpected = isCapped ? Math.min(IMPORT_CAP, actualCount) : actualCount;
   const batchSize = Math.min(body.batch_size || DEFAULT_BATCH_SIZE, MAX_BATCH_SIZE);
 
   const { data: job, error } = await supabase
@@ -294,8 +302,13 @@ async function handleCreate(supabase: any, user: any, req: Request) {
 
   if (error) return json({ error: error.message }, 500);
 
+  // Preserve real estimate for display; just flip to importing.
   await supabase.from("form_integrations")
-    .update({ status: "importing", total_entries_estimated: totalExpected })
+    .update({
+      status: "importing",
+      total_entries_estimated: actualCount,
+      last_error: isCapped ? `Capped import — most-recent ${IMPORT_CAP.toLocaleString()} of ${actualCount.toLocaleString()}` : null,
+    })
     .eq("id", integrationId);
 
   const queueTriggered = await triggerQueueProcessor();

@@ -110,6 +110,7 @@ class MM_Import_Engine {
 		$form_id      = sanitize_text_field( $body['form_id'] ?? '' );
 		$cursor       = isset( $body['cursor'] ) ? sanitize_text_field( $body['cursor'] ) : null;
 		$batch_size   = min( (int) ( $body['batch_size'] ?? 100 ), self::MAX_BATCH_SIZE );
+		$direction    = strtoupper( sanitize_text_field( $body['direction'] ?? 'ASC' ) ) === 'DESC' ? 'DESC' : 'ASC';
 
 		if ( ! $builder_type || ! $form_id ) {
 			return new \WP_REST_Response( array( 'error' => 'Missing builder_type or form_id' ), 400 );
@@ -123,7 +124,7 @@ class MM_Import_Engine {
 
 		try {
 			// Fetch page of entries
-			$page = $adapter->fetch_entries_page( $form_id, $cursor, $batch_size );
+			$page = $adapter->fetch_entries_page( $form_id, $cursor, $batch_size, $direction );
 			$entries     = $page['entries'] ?? array();
 			$next_cursor = $page['next_cursor'] ?? null;
 

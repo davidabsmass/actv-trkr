@@ -22,6 +22,12 @@ const MIN_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 250;
 const MAX_RETRIES = 10;
 
+// Oversized-form safety: forms above JUNK_THRESHOLD are imported newest-first
+// and capped at IMPORT_CAP entries to keep the dataset useful and the
+// download cost bounded.
+const JUNK_THRESHOLD = 50_000;
+const IMPORT_CAP = 8_000;
+
 function getWpBaseUrl(site: { url?: string | null; domain?: string | null }) {
   const siteUrl = site.url || (site.domain ? `https://${site.domain}` : "");
   return `${siteUrl.replace(/\/$/, "")}/wp-json`;
@@ -175,10 +181,10 @@ async function processJob(supabase: any, job: any) {
     return { job_id: job.id, error: "Site not found" };
   }
 
-  // Get integration info
+  // Get integration info (need total_entries_estimated for cap detection)
   const { data: integration } = await supabase
     .from("form_integrations")
-    .select("builder_type, external_form_id")
+    .select("builder_type, external_form_id, total_entries_estimated")
     .eq("id", job.form_integration_id)
     .single();
 
@@ -186,6 +192,12 @@ async function processJob(supabase: any, job: any) {
     await releaseLock(supabase, job.id, lockToken, "failed", "Integration not found");
     return { job_id: job.id, error: "Integration not found" };
   }
+
+  // Capped-mode flag — applies to oversized forms (e.g. 755k spam tables).
+  // We import the most recent entries first and stop once we hit IMPORT_CAP.
+  const isCapped = (integration.total_entries_estimated || 0) > JUNK_THRESHOLD;
+  const direction = isCapped ? "DESC" : "ASC";
+  const effectiveCap = isCapped ? IMPORT_CAP : Number.POSITIVE_INFINITY;
 
   // Get current cursor
   const { data: currentJob } = await supabase
@@ -216,12 +228,17 @@ async function processJob(supabase: any, job: any) {
         return { job_id: job.id, cancelled: true };
       }
 
+      // Cap-aware batch sizing — never request more than the remaining cap
+      const remainingCap = isCapped ? Math.max(1, IMPORT_CAP - totalProcessed) : currentBatchSize;
+      const requestBatchSize = Math.min(currentBatchSize, remainingCap);
+
       // Call WP plugin for batch
       const wpResult = await callWpPlugin(supabase, site, "import-batch", {
         builder_type: integration.builder_type,
         form_id: integration.external_form_id,
         cursor,
-        batch_size: currentBatchSize,
+        batch_size: requestBatchSize,
+        direction,
       });
 
       if (!wpResult.ok) {
@@ -275,6 +292,12 @@ async function processJob(supabase: any, job: any) {
         last_error: null,
         adaptive_batch_size: currentBatchSize,
       }).eq("id", job.id).eq("lock_token", lockToken);
+
+      // Stop if we've hit the cap
+      if (isCapped && totalProcessed >= effectiveCap) {
+        hasMore = false;
+        break;
+      }
     }
   } catch (err) {
     lastError = String(err).slice(0, 500);
@@ -286,16 +309,19 @@ async function processJob(supabase: any, job: any) {
 
   // Determine final state
   if (!hasMore) {
-    // Completed
-    await releaseLock(supabase, job.id, lockToken, "completed", null);
+    // Completed (either fully synced or capped)
+    const cappedNote = isCapped
+      ? `Capped at ${IMPORT_CAP.toLocaleString()} most-recent of ${(integration.total_entries_estimated || 0).toLocaleString()} entries`
+      : null;
+    await releaseLock(supabase, job.id, lockToken, "completed", cappedNote);
     await supabase.from("form_integrations").update({
       status: "synced",
       total_entries_imported: totalProcessed,
       last_synced_at: new Date().toISOString(),
-      last_error: null,
+      last_error: cappedNote,
     }).eq("id", job.form_integration_id);
 
-    console.log(`Job ${job.id} completed. Total: ${totalProcessed}`);
+    console.log(`Job ${job.id} completed. Total: ${totalProcessed}${isCapped ? " (capped)" : ""}`);
   } else {
     // More to do — schedule next run
     await releaseLock(supabase, job.id, lockToken, "pending", null, {

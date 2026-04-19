@@ -11,9 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.16.9";
+const CURRENT_PLUGIN_VERSION = "1.17.0";
 
 const CHANGELOG = `
+## 1.17.0
+- NEW: Import adapters now accept a \`direction\` parameter (ASC/DESC), enabling newest-first imports for capped backfills
+- NEW: Oversized form imports (50k+) capped at 8,000 most-recent entries — gives a representative recent sample without ingesting six-figure spam tables
+
 ## 1.16.1
 - FIX: Repaired a malformed docblock in the WP-CLI recovery class that prevented \`wp actv-trkr log\` from registering on some PHP versions
 - DOCS: Shipped RECOVERY.md operator runbook covering safe-mode override, every \`wp actv-trkr\` command, and symptom-driven recipes

@@ -11,7 +11,7 @@ interface MM_Import_Adapter {
 	public function get_builder_type(): string;
 	public function discover_forms(): array;
 	public function count_entries( string $form_id ): int;
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array;
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array;
 	public function normalize_entry( array $raw_entry, string $form_id ): array;
 	public function get_stable_entry_id( array $raw_entry ): string;
 	public function supports_cursor_pagination(): bool;
@@ -43,15 +43,18 @@ class MM_Adapter_Gravity implements MM_Import_Adapter {
 		return (int) \GFAPI::count_entries( $form_id, array( 'status' => 'active' ) );
 	}
 
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array {
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array {
 		if ( ! class_exists( 'GFAPI' ) ) return array( 'entries' => array(), 'next_cursor' => null );
 
+		$dir = ( strtoupper( $direction ) === 'DESC' ) ? 'DESC' : 'ASC';
+		$op  = ( $dir === 'DESC' ) ? '<' : '>';
+
 		$search = array( 'status' => 'active' );
-		$sorting = array( 'key' => 'id', 'direction' => 'ASC' );
+		$sorting = array( 'key' => 'id', 'direction' => $dir );
 
 		if ( $cursor ) {
 			$search['field_filters'] = array(
-				array( 'key' => 'id', 'operator' => '>', 'value' => $cursor ),
+				array( 'key' => 'id', 'operator' => $op, 'value' => $cursor ),
 			);
 		}
 
@@ -130,21 +133,23 @@ class MM_Adapter_Avada implements MM_Import_Adapter {
 		) );
 	}
 
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array {
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array {
 		global $wpdb;
 		$table = $this->get_submissions_table();
 		if ( ! $table ) return array( 'entries' => array(), 'next_cursor' => null );
 
 		$resolved_id = $this->resolve_form_id( $form_id );
+		$dir = ( strtoupper( $direction ) === 'DESC' ) ? 'DESC' : 'ASC';
+		$op  = ( $dir === 'DESC' ) ? '<' : '>';
 
 		if ( $cursor ) {
 			$rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT * FROM {$table} WHERE form_id = %s AND id > %d ORDER BY id ASC LIMIT %d",
+				"SELECT * FROM {$table} WHERE form_id = %s AND id {$op} %d ORDER BY id {$dir} LIMIT %d",
 				$resolved_id, (int) $cursor, $limit
 			), ARRAY_A );
 		} else {
 			$rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT * FROM {$table} WHERE form_id = %s ORDER BY id ASC LIMIT %d",
+				"SELECT * FROM {$table} WHERE form_id = %s ORDER BY id {$dir} LIMIT %d",
 				$resolved_id, $limit
 			), ARRAY_A );
 		}
@@ -371,7 +376,7 @@ class MM_Adapter_WPForms implements MM_Import_Adapter {
 		return (int) wpforms()->entry->get_entries( array( 'form_id' => $form_id ), true );
 	}
 
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array {
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array {
 		if ( ! function_exists( 'wpforms' ) || ! isset( wpforms()->entry ) ) {
 			return array( 'entries' => array(), 'next_cursor' => null );
 		}
@@ -466,7 +471,7 @@ class MM_Adapter_CF7 implements MM_Import_Adapter {
 		) );
 	}
 
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array {
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array {
 		if ( ! post_type_exists( 'flamingo_inbound' ) ) {
 			return array( 'entries' => array(), 'next_cursor' => null );
 		}
@@ -570,7 +575,7 @@ class MM_Adapter_Ninja implements MM_Import_Adapter {
 		}
 	}
 
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array {
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array {
 		if ( ! function_exists( 'Ninja_Forms' ) ) {
 			return array( 'entries' => array(), 'next_cursor' => null );
 		}
@@ -687,7 +692,7 @@ class MM_Adapter_Fluent implements MM_Import_Adapter {
 		) );
 	}
 
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array {
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array {
 		global $wpdb;
 		$t = $this->table();
 		if ( ! $t ) return array( 'entries' => array(), 'next_cursor' => null );

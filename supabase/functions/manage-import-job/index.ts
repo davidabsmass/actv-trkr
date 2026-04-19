@@ -273,7 +273,13 @@ async function handleCreate(supabase: any, user: any, req: Request) {
     form_id: integration.external_form_id,
   });
 
-  const totalExpected = wpCount?.count ?? integration.total_entries_estimated;
+  const actualCount = wpCount?.count ?? integration.total_entries_estimated ?? 0;
+
+  // Cap-aware total_expected: oversized forms only import the most recent
+  // IMPORT_CAP entries, so progress bars should reflect that — not 8K of 755K.
+  const IMPORT_CAP = 8_000;
+  const isCapped = actualCount > JUNK_THRESHOLD;
+  const totalExpected = isCapped ? Math.min(IMPORT_CAP, actualCount) : actualCount;
   const batchSize = Math.min(body.batch_size || DEFAULT_BATCH_SIZE, MAX_BATCH_SIZE);
 
   const { data: job, error } = await supabase
@@ -294,8 +300,13 @@ async function handleCreate(supabase: any, user: any, req: Request) {
 
   if (error) return json({ error: error.message }, 500);
 
+  // Preserve real estimate for display; just flip to importing.
   await supabase.from("form_integrations")
-    .update({ status: "importing", total_entries_estimated: totalExpected })
+    .update({
+      status: "importing",
+      total_entries_estimated: actualCount,
+      last_error: isCapped ? `Capped import — most-recent ${IMPORT_CAP.toLocaleString()} of ${actualCount.toLocaleString()}` : null,
+    })
     .eq("id", integrationId);
 
   const queueTriggered = await triggerQueueProcessor();

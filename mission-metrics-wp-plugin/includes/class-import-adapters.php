@@ -43,15 +43,18 @@ class MM_Adapter_Gravity implements MM_Import_Adapter {
 		return (int) \GFAPI::count_entries( $form_id, array( 'status' => 'active' ) );
 	}
 
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array {
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array {
 		if ( ! class_exists( 'GFAPI' ) ) return array( 'entries' => array(), 'next_cursor' => null );
 
+		$dir = ( strtoupper( $direction ) === 'DESC' ) ? 'DESC' : 'ASC';
+		$op  = ( $dir === 'DESC' ) ? '<' : '>';
+
 		$search = array( 'status' => 'active' );
-		$sorting = array( 'key' => 'id', 'direction' => 'ASC' );
+		$sorting = array( 'key' => 'id', 'direction' => $dir );
 
 		if ( $cursor ) {
 			$search['field_filters'] = array(
-				array( 'key' => 'id', 'operator' => '>', 'value' => $cursor ),
+				array( 'key' => 'id', 'operator' => $op, 'value' => $cursor ),
 			);
 		}
 

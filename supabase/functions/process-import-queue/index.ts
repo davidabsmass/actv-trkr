@@ -228,12 +228,17 @@ async function processJob(supabase: any, job: any) {
         return { job_id: job.id, cancelled: true };
       }
 
+      // Cap-aware batch sizing — never request more than the remaining cap
+      const remainingCap = isCapped ? Math.max(1, IMPORT_CAP - totalProcessed) : currentBatchSize;
+      const requestBatchSize = Math.min(currentBatchSize, remainingCap);
+
       // Call WP plugin for batch
       const wpResult = await callWpPlugin(supabase, site, "import-batch", {
         builder_type: integration.builder_type,
         form_id: integration.external_form_id,
         cursor,
-        batch_size: currentBatchSize,
+        batch_size: requestBatchSize,
+        direction,
       });
 
       if (!wpResult.ok) {
@@ -287,6 +292,12 @@ async function processJob(supabase: any, job: any) {
         last_error: null,
         adaptive_batch_size: currentBatchSize,
       }).eq("id", job.id).eq("lock_token", lockToken);
+
+      // Stop if we've hit the cap
+      if (isCapped && totalProcessed >= effectiveCap) {
+        hasMore = false;
+        break;
+      }
     }
   } catch (err) {
     lastError = String(err).slice(0, 500);

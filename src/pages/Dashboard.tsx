@@ -13,6 +13,7 @@ import { TopPagesAndSources } from "@/components/dashboard/TopPagesAndSources";
 import { TrendsMiniChart } from "@/components/dashboard/TrendsMiniChart";
 import { FunnelWidget, type GoalFunnelEntry } from "@/components/dashboard/FunnelWidget";
 import { RevenueWidget } from "@/components/dashboard/RevenueWidget";
+import { Sparkline } from "@/components/dashboard/Sparkline";
 import { useOrg } from "@/hooks/use-org";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
@@ -27,6 +28,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ─── KPI Card ─── */
+type KpiVariant = "primary" | "success" | "warning" | "info";
+
 interface KPICardProps {
   label: string;
   value: string | number;
@@ -36,15 +39,26 @@ interface KPICardProps {
   accent?: string;
   valueClassName?: string;
   valueTitle?: string;
+  variant?: KpiVariant;
+  series?: number[];
 }
 
-function KPICard({ label, value, sub, trend, icon, accent, valueClassName, valueTitle }: KPICardProps) {
+const KPI_VARIANT_COLOR: Record<KpiVariant, string> = {
+  primary: "hsl(var(--primary))",
+  success: "hsl(var(--success))",
+  warning: "hsl(var(--warning))",
+  info: "hsl(var(--info))",
+};
+
+function KPICard({ label, value, sub, trend, icon, accent, valueClassName, valueTitle, variant = "primary", series }: KPICardProps) {
   return (
-    <div className="glass-card p-4 animate-slide-up">
+    <div className="kpi-card p-4 animate-slide-up min-h-[132px] flex flex-col" data-variant={variant}>
       <div className="flex items-start justify-between mb-2">
-        <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
+        <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</span>
         <IconTooltip label={label}>
-          <span className={accent || "text-primary"}>{icon}</span>
+          <span className="icon-chip" data-tone={variant === "primary" ? undefined : variant}>
+            {icon}
+          </span>
         </IconTooltip>
       </div>
       <p
@@ -63,8 +77,13 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
           </>
         )}
         {trend === 0 && <Minus className="h-3 w-3 kpi-neutral" />}
-        {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
+        {sub && <span className="text-xs text-muted-foreground truncate">{sub}</span>}
       </div>
+      {series && series.length > 1 && (
+        <div className="mt-auto -mx-1 pt-1.5">
+          <Sparkline data={series} color={KPI_VARIANT_COLOR[variant]} height={24} />
+        </div>
+      )}
     </div>
   );
 }

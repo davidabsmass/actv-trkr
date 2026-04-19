@@ -100,6 +100,7 @@ const STATUS_CONFIG: Record<string, { color: string; icon: any; label: string }>
   synced: { color: "bg-green-500/10 text-green-600", icon: CheckCircle2, label: "Synced" },
   error: { color: "bg-destructive/10 text-destructive", icon: AlertTriangle, label: "Error" },
   connected: { color: "bg-blue-500/10 text-blue-600", icon: CheckCircle2, label: "Connected" },
+  needs_review: { color: "bg-amber-500/10 text-amber-600", icon: AlertTriangle, label: "Manual review" },
 };
 
 function getJobHealth(job: ImportJob): { label: string; color: string; icon: any } {
@@ -443,10 +444,27 @@ export default function FormImportPanel() {
                     </div>
                   )}
 
+                  {integration.status === "needs_review" && (
+                    <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2 space-y-1">
+                      <p className="text-xs font-medium text-amber-600">
+                        ⚠️ Spam-bombed — manual review required
+                      </p>
+                      <p className="text-xs text-amber-600/80">
+                        This form reports {integration.total_entries_estimated.toLocaleString()} entries, which exceeds the safety threshold of 50,000. Most are likely spam. Clean up the form in WordPress, or click <strong>Force import</strong> to import them anyway.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 flex-wrap">
                     {integration.status === "detected" && (
                       <Button size="sm" variant="default" onClick={() => startImport(integration)} className="text-xs h-7">
                         <Play className="h-3 w-3 mr-1" /> Start Import
+                      </Button>
+                    )}
+
+                    {integration.status === "needs_review" && (
+                      <Button size="sm" variant="outline" onClick={() => startImport(integration)} className="text-xs h-7 border-amber-500/40 text-amber-600 hover:bg-amber-500/10">
+                        <Play className="h-3 w-3 mr-1" /> Force import anyway
                       </Button>
                     )}
 

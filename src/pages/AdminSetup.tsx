@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { AdminCustomerDetail } from "@/components/admin/AdminCustomerDetail";
 import AppBibleChecklist from "@/components/admin/AppBibleChecklist";
 import AppBibleReviewBanner from "@/components/admin/AppBibleReviewBanner";
+import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
@@ -845,6 +846,12 @@ export default function AdminSetup() {
 
       {activeMainTab === "app-bible" && isOwner && (
         <AppBibleChecklist />
+      )}
+
+      {(activeMainTab === "metrics" || activeMainTab === "clients") && isOwner && (
+        <div className="mb-6">
+          <ImportHealthPanel />
+        </div>
       )}
 
       {activeMainTab === "clients" && (

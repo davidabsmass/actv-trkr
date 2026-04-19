@@ -54,9 +54,18 @@ The full path a paying customer takes, from checkout to active monitoring.
 ## 4. Forms ingestion  *(key: `forms`)*
 
 - **3-layer architecture**: Discovery (REST scan) → Background Backfill (`sync-forms`) → Real-time webhook.
-- **Supported builders**: Gravity Forms (strict authoritative), Avada/Fusion (post type `fusion_form`, strict authoritative), WPForms, Contact Form 7, Ninja Forms.
+- **Supported builders (v1.16.9+)**: Gravity Forms (strict authoritative), Avada/Fusion (post type `fusion_form`, strict authoritative), WPForms, Contact Form 7 (requires Flamingo for entry storage), **Ninja Forms**, **Fluent Forms**. All six register through `MM_Adapter_Registry::init()` and implement the `MM_Import_Adapter` interface (`discover_forms`, `count_entries`, `fetch_entries`).
 - **Field mapping**: canonical attributes (`name`, `email`, `phone`, `company`, `message`) editable per form in `/forms → Field Mapping`.
 - **Stability lock**: per `mem://data/form-parsing-stability`, parsing logic is finalized. No structural changes without explicit approval.
+
+### Pipeline guarantees (the contract)
+
+1. **Spam threshold**: any form reporting > 50,000 entries is auto-quarantined as `needs_review`. The Settings UI shows a yellow "Spam-bombed — manual review required" badge with a **Force import anyway** action that bypasses the threshold.
+2. **Junk integrations are not auto-jobbed**: discovery and the watchdog both refuse to create jobs for forms above the junk threshold. Only an explicit Force import creates one.
+3. **No silent failures**: every job records `last_error` on failure. Stuck jobs (>30 min in `pending`/`running` with no signal) are released by the watchdog and surfaced in `/admin-setup → Form Import Health`.
+4. **Drift detection**: the `form-import-watchdog` cron (every 10 min) compares live WP entry count vs `total_entries_imported` for every active integration. Any gap > 0 with no active job triggers a new pending job, then kicks `process-import-queue`.
+5. **Self-healing of needs_review**: if a previously junk form drops below the threshold (cleaned up in WP), the watchdog flips it back to `detected`.
+6. **Admin observability**: `/admin-setup` (owner-only) renders the Form Import Health panel with per-integration drift, stuck-job badges, and "Run queue now" / "Run watchdog" manual triggers.
 
 ### Two-table model
 

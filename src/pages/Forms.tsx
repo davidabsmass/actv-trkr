@@ -32,6 +32,7 @@ import { FormLeaderboard } from "@/components/dashboard/FormLeaderboard";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
+import { callManageImportJob } from "@/lib/manage-import-job";
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary border-primary/20",
@@ -455,24 +456,26 @@ export default function Forms() {
             supabase.functions.invoke("trigger-site-sync", {
               body: { site_id: siteId, force_backfill: true },
             }),
-            supabase.functions.invoke("manage-import-job?action=discover", {
+            callManageImportJob<{
+              discovered?: number;
+              auto_started_jobs?: number;
+              source?: string;
+              wp_plugin_error?: string | null;
+            }>("discover", {
               body: { site_id: siteId },
             }),
           ]);
 
           if (siteSyncResult.error) throw siteSyncResult.error;
           if (siteSyncResult.data?.error) throw new Error(siteSyncResult.data.error);
-          if (discoverResult.error) throw discoverResult.error;
-          if (discoverResult.data?.error) throw new Error(discoverResult.data.error);
-
           return {
             data: {
               ...siteSyncResult.data,
-              import_discovered: discoverResult.data?.discovered ?? 0,
-              auto_started_jobs: discoverResult.data?.auto_started_jobs ?? 0,
-              import_source: discoverResult.data?.source,
-              import_wp_plugin_error: discoverResult.data?.wp_plugin_error,
-              backfill_in_progress: Boolean(siteSyncResult.data?.backfill_in_progress || discoverResult.data?.auto_started_jobs > 0),
+              import_discovered: discoverResult?.discovered ?? 0,
+              auto_started_jobs: discoverResult?.auto_started_jobs ?? 0,
+              import_source: discoverResult?.source,
+              import_wp_plugin_error: discoverResult?.wp_plugin_error,
+              backfill_in_progress: Boolean(siteSyncResult.data?.backfill_in_progress || discoverResult?.auto_started_jobs > 0),
             },
             error: null,
           };

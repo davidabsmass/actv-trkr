@@ -22,6 +22,7 @@ import WpEnvironmentTab from "@/components/monitoring/WpEnvironmentTab";
 import { TrackingStatusCard, TrackingAlertsPanel, TrackingInterruptionsTable, SiteHealthBanner } from "@/components/monitoring/TrackingHealthPanel";
 import { ConsentStatusIndicator, DataIntegrityNotice, ComplianceWarnings } from "@/components/monitoring/ComplianceStatusPanel";
 import { FleetHealthWidget } from "@/components/monitoring/FleetHealthWidget";
+import { callManageImportJob } from "@/lib/manage-import-job";
 
 export default function MonitoringPage() {
   const { orgId } = useOrg();
@@ -574,24 +575,21 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
         supabase.functions.invoke("trigger-site-sync", {
           body: { site_id: siteId, force_backfill: true },
         }),
-        supabase.functions.invoke("manage-import-job?action=discover", {
+        callManageImportJob<{ discovered?: number; auto_started_jobs?: number }>("discover", {
           body: { site_id: siteId },
         }),
       ]);
 
       if (siteSyncResult.error) throw siteSyncResult.error;
       if (siteSyncResult.data?.error) throw new Error(siteSyncResult.data.error);
-      if (discoverResult.error) throw discoverResult.error;
-      if (discoverResult.data?.error) throw new Error(discoverResult.data.error);
-
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] }),
         queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] }),
         queryClient.invalidateQueries({ queryKey: ["form_integrations"] }),
       ]);
 
-      const discovered = discoverResult.data?.discovered ?? 0;
-      const autoStartedJobs = discoverResult.data?.auto_started_jobs ?? 0;
+      const discovered = discoverResult?.discovered ?? 0;
+      const autoStartedJobs = discoverResult?.auto_started_jobs ?? 0;
       const backfillInProgress = Boolean(siteSyncResult.data?.backfill_in_progress || autoStartedJobs > 0);
 
       toast({

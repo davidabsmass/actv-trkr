@@ -11,7 +11,7 @@ interface MM_Import_Adapter {
 	public function get_builder_type(): string;
 	public function discover_forms(): array;
 	public function count_entries( string $form_id ): int;
-	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit ): array;
+	public function fetch_entries_page( string $form_id, ?string $cursor, int $limit, string $direction = 'ASC' ): array;
 	public function normalize_entry( array $raw_entry, string $form_id ): array;
 	public function get_stable_entry_id( array $raw_entry ): string;
 	public function supports_cursor_pagination(): bool;

@@ -626,10 +626,16 @@ const Dashboard = () => {
               sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : undefined}
               icon={<Megaphone className="h-4 w-4" />}
             />
-            <div className="glass-card p-4 animate-slide-up">
+            <div
+              className="kpi-card p-4 animate-slide-up min-h-[132px] flex flex-col"
+              data-variant={attentionItems.length === 0 ? "success" : attentionItems.some(i => i.severity === "critical") ? "warning" : "warning"}
+            >
               <div className="flex items-start justify-between mb-2">
-                <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("dashboard.needsAttention")}</span>
-                <span className={attentionItems.length === 0 ? "text-success" : attentionItems.some(i => i.severity === "critical") ? "text-destructive" : "text-warning"}>
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{t("dashboard.needsAttention")}</span>
+                <span
+                  className="icon-chip"
+                  data-tone={attentionItems.length === 0 ? "success" : attentionItems.some(i => i.severity === "critical") ? "warning" : "warning"}
+                >
                   {attentionItems.length === 0 ? (
                     <CheckCircle2 className="h-4 w-4" />
                   ) : attentionItems.some(i => i.severity === "critical") ? (
@@ -649,7 +655,10 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-2xl font-bold font-mono-data text-success">0</span>
+                  <span className="text-xs font-medium text-success">{t("dashboard.allClearShort")}</span>
+                </div>
               )}
             </div>
             {seoAdvanced && (

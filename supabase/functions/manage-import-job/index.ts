@@ -19,6 +19,11 @@ const MIN_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 250;
 const DEFAULT_BATCH_SIZE = 100;
 
+// Oversized form safety: forms above JUNK_THRESHOLD are imported newest-first
+// and capped at IMPORT_CAP entries (see process-import-queue for batch logic).
+const JUNK_THRESHOLD = 50_000;
+const IMPORT_CAP = 8_000;
+
 function getWpBaseUrl(site: { url?: string | null; domain?: string | null }) {
   const siteUrl = site.url || (site.domain ? `https://${site.domain}` : "");
   return `${siteUrl.replace(/\/$/, "")}/wp-json`;

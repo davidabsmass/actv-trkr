@@ -129,13 +129,19 @@ Deno.serve(async (req) => {
     }
 
     // Step 3: Email the code via existing transactional pipeline.
-    // send-transactional-email has verify_jwt=true at the gateway. Use
-    // supabase-js functions.invoke() with the service-role client so the JWT
-    // is formatted correctly (raw fetch with the service-role key produced
-    // UNAUTHORIZED_INVALID_JWT_FORMAT 401s).
+    // This endpoint is protected at the gateway with verify_jwt=true.
+    // In this project, the anon key is the valid JWT-shaped token for gateway
+    // auth, while the service-role secret is used inside the function for DB work.
+    // Raw fetch with the anon JWT reliably reaches the function.
     const ipHint = ipRaw ? ipRaw.replace(/\.\d+$/, '.x') : undefined
-    const { error: emailErr } = await admin.functions.invoke('send-transactional-email', {
-      body: {
+    const emailResp = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
         templateName: 'login-2fa-code',
         recipientEmail: userEmail,
         idempotencyKey: `mfa-${userId}-${challengeTokenHash.slice(0, 16)}`,
@@ -145,10 +151,11 @@ Deno.serve(async (req) => {
           ipHint,
           userAgentHint: userAgent ? userAgent.slice(0, 80) : undefined,
         },
-      },
+      }),
     })
-    if (emailErr) {
-      console.error('send-transactional-email failed:', emailErr.message ?? emailErr)
+    if (!emailResp.ok) {
+      const errBody = await emailResp.text().catch(() => '')
+      console.error('send-transactional-email failed:', emailResp.status, errBody)
       return new Response(JSON.stringify({ error: 'email_send_failed' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

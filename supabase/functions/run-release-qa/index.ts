@@ -599,7 +599,7 @@ const runners: Record<string, Runner> = {
     if (errored.length > 0) {
       return result(def, "warn",
         `Queue introspection failed for ${errored.length} queue(s)`,
-        { queues: rows, introspection_errors: errored.map((q) => q.queue_name) }, t);
+        { queues: rows, introspection_errors: errored.map((q) => q.qname) }, t);
     }
     if (stalled.length === 0) {
       return result(def, "pass",

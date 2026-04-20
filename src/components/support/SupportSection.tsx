@@ -316,7 +316,10 @@ function SubmitTicketForm({ onCancel, onSuccess }: { onCancel: () => void; onSuc
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base">Submit Request</CardTitle>
-            <CardDescription>Tell us what's going on. We'll get back to you as soon as we can.</CardDescription>
+            <CardDescription>
+              Tell us what's going on. We'll get back to you as soon as we can.
+              Many issues are answered in <span className="text-foreground font-medium">Quick Help</span> above — worth a glance first.
+            </CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={onCancel}><X className="h-4 w-4" /></Button>
         </div>

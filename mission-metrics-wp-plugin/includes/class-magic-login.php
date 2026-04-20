@@ -159,21 +159,43 @@ class MM_Magic_Login {
 			);
 		}
 
-		$admins = get_users( array(
-			'role'    => 'administrator',
-			'number'  => 1,
-			'orderby' => 'ID',
-			'order'   => 'ASC',
-		) );
+		// SECURITY (C-1): Bind the login to the dashboard user who issued
+		// the token, not the first administrator on the site. The backend
+		// returns `requested_by_email`; we map that to a WP user with
+		// administrator OR equivalent management capability. If no match
+		// exists, the login is REFUSED and the event is logged — we do
+		// NOT silently fall back to the first admin.
+		$requestor_email = isset( $verify['requested_by_email'] ) && is_string( $verify['requested_by_email'] )
+			? sanitize_email( $verify['requested_by_email'] )
+			: '';
 
-		if ( empty( $admins ) ) {
-			wp_die( 'No administrator account found.', 'Login Failed', array( 'response' => 500 ) );
+		$target_user = null;
+		if ( ! empty( $requestor_email ) ) {
+			$candidate = get_user_by( 'email', $requestor_email );
+			if ( $candidate && user_can( $candidate->ID, 'manage_options' ) ) {
+				$target_user = $candidate;
+			}
 		}
 
-		$admin = $admins[0];
-		wp_set_current_user( $admin->ID );
-		wp_set_auth_cookie( $admin->ID, false );
-		do_action( 'wp_login', $admin->user_login, $admin );
+		if ( ! $target_user ) {
+			// Audit the refusal so admins can see why the login failed.
+			if ( function_exists( 'do_action' ) ) {
+				do_action( 'mm_magic_login_no_match', $requestor_email );
+			}
+			error_log( sprintf(
+				'[mm-magic-login] No matching admin for requestor email "%s" — refusing login.',
+				$requestor_email
+			) );
+			wp_die(
+				'<h2>Login refused</h2><p>The dashboard user who initiated this login does not have a matching administrator account on this WordPress site. Please ensure your dashboard email matches a WP admin email and try again.</p>',
+				'Login Failed',
+				array( 'response' => 403 )
+			);
+		}
+
+		wp_set_current_user( $target_user->ID );
+		wp_set_auth_cookie( $target_user->ID, false );
+		do_action( 'wp_login', $target_user->user_login, $target_user );
 
 		wp_safe_redirect( admin_url() );
 		exit;

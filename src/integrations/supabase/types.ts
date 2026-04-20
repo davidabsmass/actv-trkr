@@ -3213,6 +3213,7 @@ export type Database = {
           id: string
           issued_at: string
           org_id: string
+          requested_by_email: string | null
           requested_by_user_id: string
           requestor_ip_hash: string | null
           requestor_user_agent: string | null
@@ -3228,6 +3229,7 @@ export type Database = {
           id?: string
           issued_at?: string
           org_id: string
+          requested_by_email?: string | null
           requested_by_user_id: string
           requestor_ip_hash?: string | null
           requestor_user_agent?: string | null
@@ -3243,6 +3245,7 @@ export type Database = {
           id?: string
           issued_at?: string
           org_id?: string
+          requested_by_email?: string | null
           requested_by_user_id?: string
           requestor_ip_hash?: string | null
           requestor_user_agent?: string | null

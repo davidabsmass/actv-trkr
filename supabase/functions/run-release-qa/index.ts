@@ -530,13 +530,29 @@ const runners: Record<string, Runner> = {
   },
   "autosync.email_queue_processing": async (def) => {
     const t = Date.now();
-    const since = new Date(Date.now() - 5 * 60_000).toISOString();
-    const { count } = await admin.from("email_send_log").select("id", { count: "exact", head: true })
-      .eq("status", "queued").lt("created_at", since);
-    const n = count ?? 0;
-    return result(def, n === 0 ? "pass" : "fail",
-      n === 0 ? "Queue draining within 5 min" : `${n} messages stalled >5 min`,
-      { stalled_count: n }, t);
+    // Real check: pgmq queue depth + oldest message age (the actual queue lives in pgmq, not email_send_log)
+    const { data: queues, error } = await admin.rpc("qa_check_pgmq_queue_depth");
+    if (error) {
+      return result(def, "fail",
+        `pgmq helper failed: ${error.message}`,
+        { error: error.message }, t);
+    }
+    const rows = (queues || []) as Array<{ queue_name: string; queue_length: number; oldest_msg_age_seconds: number }>;
+    const stalled = rows.filter((q) => q.queue_length > 0 && q.oldest_msg_age_seconds > 300);
+    const errored = rows.filter((q) => q.queue_length === -1);
+    if (errored.length > 0) {
+      return result(def, "warn",
+        `Queue introspection failed for ${errored.length} queue(s)`,
+        { queues: rows, introspection_errors: errored.map((q) => q.queue_name) }, t);
+    }
+    if (stalled.length === 0) {
+      return result(def, "pass",
+        `All ${rows.length} queues draining within 5 min`,
+        { queues: rows }, t);
+    }
+    return result(def, "fail",
+      `${stalled.length} queue(s) stalled with messages older than 5 min`,
+      { queues: rows, stalled }, t);
   },
 
   // ── auth ──

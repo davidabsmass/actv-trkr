@@ -338,6 +338,7 @@ export default function SubscriberSitesPanel() {
                 <TableHead>Organization</TableHead>
                 <TableHead>Domain(s)</TableHead>
                 <TableHead>API Key</TableHead>
+                <TableHead>Lifecycle</TableHead>
                 <TableHead>Last Signal</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -345,7 +346,7 @@ export default function SubscriberSitesPanel() {
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
                     No subscriber sites match your filters.
                   </TableCell>
                 </TableRow>
@@ -404,23 +405,74 @@ export default function SubscriberSitesPanel() {
                           </Badge>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const status = (r.org as any).status || "active";
+                          const exempt = (r.org as any).billing_exempt === true;
+                          const wouldBe = exempt && status !== "active" ? ` (would be ${status})` : "";
+                          const displayStatus = exempt ? "active" : status;
+                          const variant: "default" | "secondary" | "destructive" =
+                            displayStatus === "active" ? "default" : displayStatus === "grace_period" ? "secondary" : "destructive";
+                          return (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant={variant} className="w-fit text-[10px] capitalize">
+                                {displayStatus.replace("_", " ")}{exempt ? " · exempt" : ""}
+                              </Badge>
+                              {wouldBe && <span className="text-[10px] text-muted-foreground">{wouldBe}</span>}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {r.lastSignal ? new Date(r.lastSignal).toLocaleString() : "Never"}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="h-7 text-xs"
-                          onClick={() => setAddUserOrg({ id: r.org.id, name: r.org.name })}
-                        >
-                          <UserPlus className="h-3 w-3 mr-1" /> Add User
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 text-xs"
+                            onClick={() => setAddUserOrg({ id: r.org.id, name: r.org.name })}
+                          >
+                            <UserPlus className="h-3 w-3 mr-1" /> Add User
+                          </Button>
+                          <Select
+                            value=""
+                            onValueChange={async (newStatus) => {
+                              if (!newStatus) return;
+                              const current = (r.org as any).status || "active";
+                              if (newStatus === current) return;
+                              if (!confirm(`Change ${r.org.name} from "${current}" to "${newStatus}"?`)) return;
+                              setActionLoading(`status-${r.org.id}`);
+                              try {
+                                const { error } = await supabase.functions.invoke("admin-manage-user", {
+                                  body: { action: "set_org_lifecycle_status", org_id: r.org.id, status: newStatus },
+                                });
+                                if (error) throw error;
+                                toast.success(`Status set to ${newStatus}`);
+                                queryClient.invalidateQueries({ queryKey: ["admin_subscriber_sites_all"] });
+                              } catch (err: any) {
+                                toast.error(err.message || "Failed to update status");
+                              } finally {
+                                setActionLoading(null);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-7 w-[110px] text-xs" disabled={actionLoading === `status-${r.org.id}`}>
+                              <SelectValue placeholder="Override…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Set Active</SelectItem>
+                              <SelectItem value="grace_period">Set Grace</SelectItem>
+                              <SelectItem value="archived">Set Archived</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {expanded && (
                       <TableRow key={`${r.org.id}-members`}>
-                        <TableCell colSpan={6} className="bg-muted/30 p-4">
+                        <TableCell colSpan={7} className="bg-muted/30 p-4">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <h4 className="text-sm font-semibold text-foreground">

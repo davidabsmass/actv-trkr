@@ -61,6 +61,9 @@ export default function SubscriberSitesPanel() {
   const [filter, setFilter] = useState<"active_key" | "all">("active_key");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState<"member" | "admin">("member");
 
   // Add user dialog state
   const [addUserOrg, setAddUserOrg] = useState<{ id: string; name: string } | null>(null);
@@ -205,6 +208,41 @@ export default function SubscriberSitesPanel() {
       refreshMembers();
     } catch (err: any) {
       toast.error(err.message || "Failed to remove user");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const startEditMember = (m: Member) => {
+    setEditingMember(m.user_id);
+    setEditName(m.full_name || "");
+    setEditRole((m.role === "admin" ? "admin" : "member"));
+  };
+
+  const cancelEditMember = () => {
+    setEditingMember(null);
+    setEditName("");
+    setEditRole("member");
+  };
+
+  const handleSaveMember = async (orgId: string, userId: string) => {
+    setActionLoading(`save-${userId}`);
+    try {
+      const { error } = await supabase.functions.invoke("admin-manage-user", {
+        body: {
+          action: "update_org_member",
+          org_id: orgId,
+          user_id: userId,
+          full_name: editName.trim(),
+          role: editRole,
+        },
+      });
+      if (error) throw error;
+      toast.success("Member updated");
+      cancelEditMember();
+      refreshMembers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update member");
     } finally {
       setActionLoading(null);
     }
@@ -543,58 +581,127 @@ export default function SubscriberSitesPanel() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {members.map((m) => (
+                                    {members.map((m) => {
+                                      const isEditing = editingMember === m.user_id;
+                                      const saving = actionLoading === `save-${m.user_id}`;
+                                      return (
                                       <TableRow key={m.user_id}>
                                         <TableCell className="text-xs font-medium">
-                                          {m.full_name || "—"}
+                                          {isEditing ? (
+                                            <Input
+                                              value={editName}
+                                              onChange={(e) => setEditName(e.target.value)}
+                                              placeholder="Full name"
+                                              className="h-7 text-xs"
+                                              disabled={saving}
+                                            />
+                                          ) : (
+                                            m.full_name || "—"
+                                          )}
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
                                           {m.email || <span className="text-muted-foreground">unknown</span>}
                                         </TableCell>
                                         <TableCell>
-                                          <Badge variant={m.role === "admin" ? "default" : "outline"}>
-                                            {m.role}
-                                          </Badge>
+                                          {isEditing ? (
+                                            <Select
+                                              value={editRole}
+                                              onValueChange={(v) => setEditRole(v as "member" | "admin")}
+                                              disabled={saving}
+                                            >
+                                              <SelectTrigger className="h-7 w-[100px] text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="member">member</SelectItem>
+                                                <SelectItem value="admin">admin</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          ) : (
+                                            <Badge variant={m.role === "admin" ? "default" : "outline"}>
+                                              {m.role}
+                                            </Badge>
+                                          )}
                                         </TableCell>
                                         <TableCell className="text-xs">
                                           {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "—"}
                                         </TableCell>
                                         <TableCell>
-                                          <div className="flex gap-1">
-                                            {m.email && (
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs"
-                                                onClick={() => handleSendReset(m.email!)}
-                                                disabled={actionLoading === `reset-${m.email}`}
-                                              >
-                                                {actionLoading === `reset-${m.email}` ? (
-                                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                                ) : (
-                                                  <KeyRound className="h-3 w-3 mr-1" />
+                                          <div className="flex gap-1 flex-wrap">
+                                            {isEditing ? (
+                                              <>
+                                                <Button
+                                                  size="sm"
+                                                  variant="default"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => handleSaveMember(r.org.id, m.user_id)}
+                                                  disabled={saving}
+                                                >
+                                                  {saving ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <Check className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Save
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-7 text-xs"
+                                                  onClick={cancelEditMember}
+                                                  disabled={saving}
+                                                >
+                                                  <X className="h-3 w-3 mr-1" />
+                                                  Cancel
+                                                </Button>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => startEditMember(m)}
+                                                >
+                                                  Edit
+                                                </Button>
+                                                {m.email && (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => handleSendReset(m.email!)}
+                                                    disabled={actionLoading === `reset-${m.email}`}
+                                                  >
+                                                    {actionLoading === `reset-${m.email}` ? (
+                                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                      <KeyRound className="h-3 w-3 mr-1" />
+                                                    )}
+                                                    Reset Password
+                                                  </Button>
                                                 )}
-                                                Reset Password
-                                              </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="destructive"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => handleRemove(r.org.id, m.user_id, m.email)}
+                                                  disabled={actionLoading === `remove-${m.user_id}`}
+                                                >
+                                                  {actionLoading === `remove-${m.user_id}` ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <UserMinus className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Remove
+                                                </Button>
+                                              </>
                                             )}
-                                            <Button
-                                              size="sm"
-                                              variant="destructive"
-                                              className="h-7 text-xs"
-                                              onClick={() => handleRemove(r.org.id, m.user_id, m.email)}
-                                              disabled={actionLoading === `remove-${m.user_id}`}
-                                            >
-                                              {actionLoading === `remove-${m.user_id}` ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                              ) : (
-                                                <UserMinus className="h-3 w-3 mr-1" />
-                                              )}
-                                              Remove
-                                            </Button>
                                           </div>
                                         </TableCell>
                                       </TableRow>
-                                    ))}
+                                      );
+                                    })}
                                   </TableBody>
                                 </Table>
                               </div>

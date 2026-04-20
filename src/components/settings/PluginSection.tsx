@@ -142,8 +142,6 @@ export default function PluginSection() {
           {siteVersion && (
             <span className="text-xs text-muted-foreground font-mono">
               {siteDomain ? `${siteDomain} · ` : ""}v{siteVersion}
-              {heartbeatAgeLabel ? ` · ${heartbeatAgeLabel}` : ""}
-              {heartbeatIsStale ? " (stale)" : ""}
             </span>
           )}
           {needsUpdate && (

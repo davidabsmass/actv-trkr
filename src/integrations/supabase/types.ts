@@ -4492,6 +4492,7 @@ export type Database = {
           id: string
           notes: string | null
           scope: string
+          ship_blocked: boolean
           started_at: string
           started_by: string | null
           started_by_email: string | null
@@ -4504,6 +4505,7 @@ export type Database = {
           id?: string
           notes?: string | null
           scope?: string
+          ship_blocked?: boolean
           started_at?: string
           started_by?: string | null
           started_by_email?: string | null
@@ -4516,6 +4518,7 @@ export type Database = {
           id?: string
           notes?: string | null
           scope?: string
+          ship_blocked?: boolean
           started_at?: string
           started_by?: string | null
           started_by_email?: string | null
@@ -7708,6 +7711,39 @@ export type Database = {
         Returns: number
       }
       purge_expired_mfa_codes: { Args: never; Returns: undefined }
+      qa_check_has_role_definer: {
+        Args: never
+        Returns: {
+          exists_flag: boolean
+          is_security_definer: boolean
+          prosrc_excerpt: string
+        }[]
+      }
+      qa_check_pgmq_queue_depth: {
+        Args: never
+        Returns: {
+          oldest_msg_age_seconds: number
+          queue_length: number
+          queue_name: string
+        }[]
+      }
+      qa_check_rls_status: {
+        Args: never
+        Returns: {
+          rls_enabled: boolean
+          table_name: string
+        }[]
+      }
+      qa_list_cron_jobs: {
+        Args: never
+        Returns: {
+          active: boolean
+          jobname: string
+          last_run_started_at: string
+          last_run_status: string
+          schedule: string
+        }[]
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

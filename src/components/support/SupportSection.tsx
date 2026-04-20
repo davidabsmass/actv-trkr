@@ -350,6 +350,8 @@ function SubmitTicketForm({ onCancel, onSuccess }: { onCancel: () => void; onSuc
           </div>
         </div>
 
+        <SuggestedArticles type={type} />
+
         <div className="space-y-1.5">
           <Label className="text-xs">Affected Site</Label>
           {sites && sites.length > 0 ? (

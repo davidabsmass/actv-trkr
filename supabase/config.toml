@@ -113,3 +113,7 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = true
   [functions.detect-acquisition-anomalies]
     verify_jwt = false
+  [functions.mfa-issue-code]
+    verify_jwt = false
+  [functions.mfa-verify-code]
+    verify_jwt = false

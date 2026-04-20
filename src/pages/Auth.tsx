@@ -6,7 +6,7 @@ import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
 
-type ActivePanel = "main" | "otp" | "forgot";
+type ActivePanel = "main" | "otp" | "forgot" | "mfa";
 
 const PENDING_OTP_KEY = "actvtrkr_pending_otp";
 
@@ -34,6 +34,10 @@ const Auth = () => {
   const [pendingPassword, setPendingPassword] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaEmail, setMfaEmail] = useState("");
+  const [mfaResendCooldown, setMfaResendCooldown] = useState(0);
   const navigate = useNavigate();
 
   // Restore pending OTP state on mount so refresh / tab switch doesn't lose it.
@@ -60,6 +64,12 @@ const Auth = () => {
     const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [resendCooldown]);
+
+  useEffect(() => {
+    if (mfaResendCooldown <= 0) return;
+    const t = setTimeout(() => setMfaResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [mfaResendCooldown]);
 
   const clearMessages = () => { setError(null); setMessage(null); };
 
@@ -123,6 +133,69 @@ const Auth = () => {
     }
   };
 
+  const handleVerifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearMessages();
+    setLoading(true);
+    try {
+      if (!mfaChallengeToken) throw new Error("Session expired. Sign in again.");
+      const { data, error: verifyErr } = await supabase.functions.invoke("mfa-verify-code", {
+        body: { challengeToken: mfaChallengeToken, code: mfaCode.trim() },
+      });
+      if (verifyErr) {
+        const ctx: any = (verifyErr as any).context;
+        let msg = "Invalid code. Try again.";
+        try {
+          const body = ctx && typeof ctx.json === "function" ? await ctx.json() : null;
+          if (body?.error === "expired") msg = "Code expired. Request a new one.";
+          else if (body?.error === "too_many_attempts") msg = "Too many wrong codes. Sign in again.";
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      if (!data?.access_token || !data?.refresh_token) throw new Error("Could not complete sign-in.");
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (setErr) throw setErr;
+
+      const pendingCode = localStorage.getItem("pending_invite_code");
+      if (pendingCode) {
+        localStorage.removeItem("pending_invite_code");
+        try { await supabase.functions.invoke("redeem-invite", { body: { code: pendingCode } }); }
+        catch (e) { console.error("Pending invite redeem failed:", e); }
+      }
+      setMfaChallengeToken(null);
+      setMfaCode("");
+      setPendingPassword("");
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendMfa = async () => {
+    if (mfaResendCooldown > 0 || !pendingEmail || !pendingPassword) return;
+    clearMessages();
+    setLoading(true);
+    try {
+      const { data, error: issueErr } = await supabase.functions.invoke("mfa-issue-code", {
+        body: { email: pendingEmail, password: pendingPassword },
+      });
+      if (issueErr || !data?.challengeToken) throw new Error("Couldn't resend the code.");
+      setMfaChallengeToken(data.challengeToken);
+      setMfaCode("");
+      setMessage("A new code has been sent to your email.");
+      setMfaResendCooldown(30);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();
@@ -150,18 +223,28 @@ const Auth = () => {
       const normalizedEmail = email.trim().toLowerCase();
 
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-        if (error) throw error;
-        const pendingCode = localStorage.getItem("pending_invite_code");
-        if (pendingCode) {
-          localStorage.removeItem("pending_invite_code");
+        // Step 1: verify password + issue email 2FA code (server-side).
+        const { data: issued, error: issueErr } = await supabase.functions.invoke("mfa-issue-code", {
+          body: { email: normalizedEmail, password },
+        });
+        if (issueErr) {
+          const ctx: any = (issueErr as any).context;
+          let msg = "Invalid email or password.";
           try {
-            await supabase.functions.invoke("redeem-invite", { body: { code: pendingCode } });
-          } catch (e) {
-            console.error("Pending invite redeem failed:", e);
-          }
+            const body = ctx && typeof ctx.json === "function" ? await ctx.json() : null;
+            if (body?.error === "rate_limited") msg = "Too many sign-in attempts. Wait a few minutes and try again.";
+            else if (body?.error === "email_send_failed") msg = "Couldn't send verification code. Try again in a moment.";
+          } catch { /* ignore */ }
+          throw new Error(msg);
         }
-        navigate("/dashboard");
+        if (!issued?.challengeToken) throw new Error("Could not start verification.");
+        setMfaChallengeToken(issued.challengeToken);
+        setMfaEmail(issued.email || normalizedEmail);
+        setPendingPassword(password);
+        setPendingEmail(normalizedEmail);
+        setMfaCode("");
+        setMfaResendCooldown(30);
+        goToPanel("mfa");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: normalizedEmail,

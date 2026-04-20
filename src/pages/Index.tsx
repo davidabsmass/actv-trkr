@@ -65,6 +65,7 @@ import visBehaviorGraphic from "@/assets/vis-behavior-graphic-1.png";
 import visBehaviorSmall from "@/assets/vis-behavior-graphic-small.png";
 import everythingBgd from "@/assets/everything-bgd.jpg";
 import faqsBgd from "@/assets/faqs-bgd.jpg";
+import { ContactDialog } from "@/components/landing/ContactDialog";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -83,6 +84,7 @@ const Index = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const [showNav, setShowNav] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   const handleDirectCheckout = async () => {
     setCheckoutLoading(true);
@@ -699,7 +701,13 @@ const Index = () => {
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <a href="/privacy" className="cursor-pointer hover:text-foreground transition-colors">Privacy</a>
                 <a href="/terms" className="cursor-pointer hover:text-foreground transition-colors">Terms</a>
-                <span className="cursor-pointer hover:text-foreground transition-colors">Contact</span>
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(true)}
+                  className="cursor-pointer hover:text-foreground transition-colors bg-transparent border-0 p-0 text-inherit"
+                >
+                  Contact
+                </button>
               </div>
             </div>
             <div className="mt-8 pt-6 border-t border-border flex items-center justify-center gap-2">
@@ -711,6 +719,8 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      <ContactDialog open={contactOpen} onOpenChange={setContactOpen} />
     </div>
   );
 };

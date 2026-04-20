@@ -31,14 +31,14 @@ const contactSchema = z.object({
 });
 
 export function ContactDialog({ open, onOpenChange }: ContactDialogProps) {
-  const [reason, setReason] = useState<string>("");
+  const [reason, setReason] = useState<string>("General question");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
-    setReason("");
+    setReason("General question");
     setName("");
     setEmail("");
     setMessage("");

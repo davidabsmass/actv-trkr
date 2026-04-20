@@ -248,7 +248,7 @@ export default function SubscriberSitesPanel() {
     }
   };
 
-
+  const handleRevokeKey = async (apiKeyId: string, orgName: string) => {
     if (!confirm(`Revoke the active API key for ${orgName}? The site will stop reporting until a new key is generated.`)) return;
     setActionLoading(`revoke-${apiKeyId}`);
     try {

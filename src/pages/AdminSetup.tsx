@@ -17,6 +17,7 @@ import AppBibleChecklist from "@/components/admin/AppBibleChecklist";
 import AppBibleReviewBanner from "@/components/admin/AppBibleReviewBanner";
 import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
 import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
+import ReleaseQAPanel from "@/components/admin/ReleaseQAPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 

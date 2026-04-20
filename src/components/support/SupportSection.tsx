@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LifeBuoy, Plus, MessageSquare, Paperclip, ArrowLeft, Send, CheckCircle2, ThumbsUp, ThumbsDown, X } from "lucide-react";
+import { LifeBuoy, Plus, MessageSquare, Paperclip, ArrowLeft, Send, CheckCircle2, ThumbsUp, ThumbsDown, X, Lightbulb } from "lucide-react";
 import { format } from "date-fns";
+import { articlesForType } from "./helpContent";
 
 const TYPE_LABELS: Record<string, string> = {
   bug: "Bug Report",

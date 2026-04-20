@@ -488,6 +488,8 @@ const Auth = () => {
                   <button onClick={() => goToPanel("main")} className="text-xs text-white/50 hover:underline">
                     Back to sign in
                   </button>
+                </div>
+              </div>
             </div>
 
             {/* Spacer */}

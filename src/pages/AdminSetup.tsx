@@ -16,6 +16,7 @@ import { AdminCustomerDetail } from "@/components/admin/AdminCustomerDetail";
 import AppBibleChecklist from "@/components/admin/AppBibleChecklist";
 import AppBibleReviewBanner from "@/components/admin/AppBibleReviewBanner";
 import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
+import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 

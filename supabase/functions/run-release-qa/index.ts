@@ -354,12 +354,13 @@ const runners: Record<string, Runner> = {
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const { count: pvCount } = await admin
       .from("pageviews").select("id", { count: "exact", head: true }).gte("occurred_at", since);
-    // Use last_heartbeat_at (real column) instead of nonexistent tracker_last_seen_at
-    const { count: activeSites } = await admin
-      .from("sites").select("id", { count: "exact", head: true })
+    // Sites that have heartbeated in the last 7d.
+    const { data: activeSiteRows } = await admin
+      .from("sites").select("id, org_id, domain, last_heartbeat_at")
       .gte("last_heartbeat_at", sevenDaysAgo);
+    const sites = activeSiteRows?.length ?? 0;
     const n = pvCount ?? 0;
-    const sites = activeSites ?? 0;
+
     if (n > 0) {
       return result(def, "pass", `${n} pageviews in last hour (${sites} active sites)`,
         { last_hour_count: n, active_sites_7d: sites }, t);
@@ -369,6 +370,56 @@ const runners: Record<string, Runner> = {
         "No pageviews — but no active sites in last 7d either (acceptable if pre-launch)",
         { last_hour_count: 0, active_sites_7d: 0 }, t);
     }
+
+    // Sites are heartbeating but no pageviews arrived. Before declaring
+    // the pipeline "broken", check whether those sites' orgs actually have
+    // working ingestion credentials. Customers without a valid API key OR
+    // ingest token cannot send pageviews — that's a customer-state issue
+    // (deliberately revoked / churned / never installed), NOT a tech failure
+    // in our pipeline.
+    const orgIds = Array.from(new Set((activeSiteRows ?? []).map((s: any) => s.org_id).filter(Boolean)));
+    let credentialedOrgIds = new Set<string>();
+    if (orgIds.length > 0) {
+      const [keysRes, tokensRes] = await Promise.all([
+        admin.from("api_keys").select("org_id").in("org_id", orgIds).is("revoked_at", null),
+        admin.from("site_ingest_tokens").select("org_id").in("org_id", orgIds)
+          .eq("status", "active").is("revoked_at", null),
+      ]);
+      for (const r of (keysRes.data ?? []) as any[]) credentialedOrgIds.add(r.org_id);
+      for (const r of (tokensRes.data ?? []) as any[]) credentialedOrgIds.add(r.org_id);
+    }
+    const sitesWithCreds = (activeSiteRows ?? []).filter(
+      (s: any) => credentialedOrgIds.has(s.org_id)
+    ).length;
+    const sitesWithoutCreds = sites - sitesWithCreds;
+
+    if (sitesWithCreds === 0) {
+      // All heartbeating sites are de-credentialed. Plugin pings still arrive
+      // (heartbeats may use a different path) but pageviews cannot land.
+      // This is a billing/lifecycle state, not a launch blocker.
+      return result(def, "warn",
+        `${sitesWithoutCreds} active site(s) lack valid credentials — no pageviews possible until customers regenerate API keys (not a pipeline failure)`,
+        {
+          last_hour_count: 0,
+          active_sites_7d: sites,
+          sites_with_credentials: 0,
+          sites_without_credentials: sitesWithoutCreds,
+        }, t);
+    }
+
+    if (sitesWithCreds > 0 && n === 0) {
+      // Some sites have credentials but no pageviews landed. This is a
+      // softer warning — could just mean no real visitors in the last hour.
+      return result(def, "warn",
+        `${sitesWithCreds} credentialed site(s) but 0 pageviews in last hour (likely low traffic, ${sitesWithoutCreds} site(s) need new keys)`,
+        {
+          last_hour_count: 0,
+          active_sites_7d: sites,
+          sites_with_credentials: sitesWithCreds,
+          sites_without_credentials: sitesWithoutCreds,
+        }, t);
+    }
+
     return result(def, "fail",
       `Pipeline broken: ${sites} active sites but 0 pageviews in last hour`,
       { last_hour_count: 0, active_sites_7d: sites }, t);

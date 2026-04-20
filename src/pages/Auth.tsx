@@ -488,8 +488,75 @@ const Auth = () => {
                   <button onClick={() => goToPanel("main")} className="text-xs text-white/50 hover:underline">
                     Back to sign in
                   </button>
+            </div>
+
+            {/* Spacer */}
+            <div className="w-6 flex-shrink-0" />
+
+            {/* Panel 4: MFA Email Code */}
+            <div className="w-full flex-shrink-0">
+              <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-white">Two-factor verification</h2>
+                </div>
+                <p className="text-sm text-white/60 mb-5">
+                  We sent a 6-digit code to{" "}
+                  <span className="font-medium text-white">{mfaEmail || pendingEmail}</span>. Enter it below to finish signing in.
+                </p>
+
+                <form onSubmit={handleVerifyMfa} className="space-y-3">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="Enter 6-digit code"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    required
+                    maxLength={6}
+                    className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/40 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+
+                  {error && activePanel === "mfa" && (
+                    <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
+                  )}
+                  {message && activePanel === "mfa" && (
+                    <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading || mfaCode.length < 6}
+                    className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? "Verifying..." : "Verify & Sign in"}
+                  </button>
+                </form>
+
+                <div className="flex items-center justify-between mt-4">
+                  <button
+                    onClick={handleResendMfa}
+                    disabled={loading || mfaResendCooldown > 0}
+                    className="text-xs text-primary hover:underline font-medium disabled:opacity-50 disabled:no-underline"
+                  >
+                    {mfaResendCooldown > 0 ? `Resend code (${mfaResendCooldown}s)` : "Resend code"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMfaChallengeToken(null);
+                      setMfaCode("");
+                      setPendingPassword("");
+                      goToPanel("main");
+                    }}
+                    className="text-xs text-white/50 hover:underline"
+                  >
+                    Back
+                  </button>
                 </div>
               </div>
+            </div>
+          </div>
             </div>
           </div>
         </div>

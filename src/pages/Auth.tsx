@@ -287,7 +287,14 @@ const Auth = () => {
   const inputClass =
     "w-full pl-10 pr-3 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50";
 
-  const translateX = activePanel === "main" ? "0" : activePanel === "otp" ? "calc(-100% - 1.5rem)" : "calc(-200% - 3rem)";
+  const translateX =
+    activePanel === "main"
+      ? "0"
+      : activePanel === "otp"
+      ? "calc(-100% - 1.5rem)"
+      : activePanel === "forgot"
+      ? "calc(-200% - 3rem)"
+      : "calc(-300% - 4.5rem)";
 
   return (
     <div

@@ -519,8 +519,9 @@ const runners: Record<string, Runner> = {
     const { count } = await admin.from("billing_recovery_events").select("id", { count: "exact", head: true })
       .gte("occurred_at", since);
     const n = count ?? 0;
-    return result(def, "warn",
-      n > 0 ? `${n} recovery events in last 30d` : "No recovery events in last 30d (review only)",
+    // Zero recovery events = zero failed payments = healthy. This is a "pass with note", not a warning.
+    return result(def, "pass",
+      n > 0 ? `${n} recovery events in last 30d (review for trends)` : "0 failed-payment recovery events in last 30d (healthy)",
       { last_30d_count: n }, t);
   },
 

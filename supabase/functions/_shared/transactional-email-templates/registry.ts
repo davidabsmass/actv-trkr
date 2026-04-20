@@ -17,6 +17,7 @@ import { template as supportTicketUpdate } from './support-ticket-update.tsx'
 import { template as adminNewSupportTicket } from './admin-new-support-ticket.tsx'
 import { template as acquisitionWeeklyDigest } from './acquisition-weekly-digest.tsx'
 import { template as contactMessage } from './contact-message.tsx'
+import { template as login2faCode } from './login-2fa-code.tsx'
 
 // Retention add-on templates
 import { template as retentionWelcome } from './retention-welcome.tsx'
@@ -37,6 +38,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'admin-new-support-ticket': adminNewSupportTicket,
   'acquisition-weekly-digest': acquisitionWeeklyDigest,
   'contact-message': contactMessage,
+  'login-2fa-code': login2faCode,
   // Retention
   'retention-welcome': retentionWelcome,
   'retention-connection-success': retentionConnectionSuccess,

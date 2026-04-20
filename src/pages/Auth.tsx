@@ -160,18 +160,28 @@ const Auth = () => {
       const normalizedEmail = email.trim().toLowerCase();
 
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-        if (error) throw error;
-        const pendingCode = localStorage.getItem("pending_invite_code");
-        if (pendingCode) {
-          localStorage.removeItem("pending_invite_code");
+        // Step 1: verify password + issue email 2FA code (server-side).
+        const { data: issued, error: issueErr } = await supabase.functions.invoke("mfa-issue-code", {
+          body: { email: normalizedEmail, password },
+        });
+        if (issueErr) {
+          const ctx: any = (issueErr as any).context;
+          let msg = "Invalid email or password.";
           try {
-            await supabase.functions.invoke("redeem-invite", { body: { code: pendingCode } });
-          } catch (e) {
-            console.error("Pending invite redeem failed:", e);
-          }
+            const body = ctx && typeof ctx.json === "function" ? await ctx.json() : null;
+            if (body?.error === "rate_limited") msg = "Too many sign-in attempts. Wait a few minutes and try again.";
+            else if (body?.error === "email_send_failed") msg = "Couldn't send verification code. Try again in a moment.";
+          } catch { /* ignore */ }
+          throw new Error(msg);
         }
-        navigate("/dashboard");
+        if (!issued?.challengeToken) throw new Error("Could not start verification.");
+        setMfaChallengeToken(issued.challengeToken);
+        setMfaEmail(issued.email || normalizedEmail);
+        setPendingPassword(password);
+        setPendingEmail(normalizedEmail);
+        setMfaCode("");
+        setMfaResendCooldown(30);
+        goToPanel("mfa");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: normalizedEmail,

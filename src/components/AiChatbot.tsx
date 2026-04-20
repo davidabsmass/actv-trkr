@@ -10,23 +10,93 @@ import { useOrg } from "@/hooks/use-org";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chatbot`;
+const HISTORY_KEY = "actv_nova_history_v1";
+const MAX_PERSISTED_MSGS = 30; // keep last ~30 turns
+
+function loadHistory(): Msg[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(msgs: Msg[]) {
+  try {
+    const trimmed = msgs.slice(-MAX_PERSISTED_MSGS);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  } catch { /* ignore quota */ }
+}
+
+// Panel dimensions (must match JSX classes below)
+const PANEL_WIDTH = 380;
+const PANEL_MAX_HEIGHT = 520;
+const BUTTON_SIZE = 72;
+const GRIP_WIDTH = 20;
+const EDGE_PADDING = 8;
 
 export function AiChatbot() {
   const { t, i18n } = useTranslation();
   const { orgId } = useOrg();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Persist messages on change
+  useEffect(() => {
+    saveHistory(messages);
+  }, [messages]);
+
   // Drag state
   const [position, setPosition] = useState({ x: 0, y: 0 }); // offset from default bottom-right
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posAtDragStart = useRef({ x: 0, y: 0 });
+
+  // Clamp position so the chat panel stays fully on-screen.
+  // Default anchor is bottom-right (24px inset). position.x/y is the drag offset
+  // (positive x = moved left, positive y = moved up).
+  const clampPosition = useCallback((pos: { x: number; y: number }) => {
+    if (typeof window === "undefined") return pos;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // The widest fixed element is the panel (when open) — use it for bounds
+    // so the bubble can't be dragged off-screen even when collapsed.
+    const effectiveWidth = Math.max(PANEL_WIDTH, BUTTON_SIZE + GRIP_WIDTH);
+    const effectiveHeight = open ? PANEL_MAX_HEIGHT + BUTTON_SIZE + 16 : BUTTON_SIZE;
+
+    // X bounds: right edge sits at (24 - x). Must keep effectiveWidth visible.
+    // min x (rightmost): can't go past right edge → x >= -(vw - effectiveWidth - 24 - EDGE_PADDING) ... but right inset is 24, so:
+    // right offset >= EDGE_PADDING → 24 - x >= EDGE_PADDING → x <= 24 - EDGE_PADDING
+    const maxX = 24 - EDGE_PADDING;
+    // left edge >= EDGE_PADDING → vw - (24 - x) - effectiveWidth >= EDGE_PADDING → x <= 24 + effectiveWidth + EDGE_PADDING - vw ... we need x >= ...
+    const minX = -(vw - effectiveWidth - 24 - EDGE_PADDING);
+
+    const maxY = 24 - EDGE_PADDING; // can't drag below bottom
+    const minY = -(vh - effectiveHeight - 24 - EDGE_PADDING);
+
+    return {
+      x: Math.min(maxX, Math.max(minX, pos.x)),
+      y: Math.min(maxY, Math.max(minY, pos.y)),
+    };
+  }, [open]);
+
+  // Re-clamp when window resizes or panel opens/closes
+  useEffect(() => {
+    const onResize = () => setPosition((p) => clampPosition(p));
+    window.addEventListener("resize", onResize);
+    setPosition((p) => clampPosition(p));
+    return () => window.removeEventListener("resize", onResize);
+  }, [clampPosition]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

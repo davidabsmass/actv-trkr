@@ -54,40 +54,20 @@ export default function SubscriberSitesPanel() {
   const [newUserRole, setNewUserRole] = useState<"member" | "admin">("member");
   const [addUserSubmitting, setAddUserSubmitting] = useState(false);
 
-  const { data: orgs } = useQuery({
-    queryKey: ["admin_subscriber_sites_orgs"],
+  const { data: subscriberData, isLoading: dataLoading } = useQuery({
+    queryKey: ["admin_subscriber_sites_all"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orgs")
-        .select("id, name, created_at")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "list_subscriber_sites" },
+      });
       if (error) throw error;
-      return data as Org[];
+      return data as { orgs: Org[]; sites: Site[]; api_keys: ApiKey[] };
     },
   });
 
-  const { data: sites } = useQuery({
-    queryKey: ["admin_subscriber_sites_sites"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sites")
-        .select("id, domain, org_id, last_heartbeat_at");
-      if (error) throw error;
-      return data as Site[];
-    },
-  });
-
-  const { data: apiKeys } = useQuery({
-    queryKey: ["admin_subscriber_sites_apikeys"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("api_keys")
-        .select("id, org_id, created_at, revoked_at, label")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as ApiKey[];
-    },
-  });
+  const orgs = subscriberData?.orgs;
+  const sites = subscriberData?.sites;
+  const apiKeys = subscriberData?.api_keys;
 
   const sitesByOrg = useMemo(() => {
     const m = new Map<string, Site[]>();

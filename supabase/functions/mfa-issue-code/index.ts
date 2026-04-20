@@ -4,7 +4,10 @@
 // to the user's address. The client must POST the code to mfa-verify-code to
 // receive a real session.
 
+import * as React from 'npm:react@18.3.1'
+import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { template as login2faCodeTemplate } from '../_shared/transactional-email-templates/login-2fa-code.tsx'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +18,9 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
+const SITE_NAME = 'ACTV TRKR'
+const SENDER_DOMAIN = 'notify.actvtrkr.com'
+const FROM_DOMAIN = 'actvtrkr.com'
 
 const CODE_TTL_MINUTES = 10
 const MAX_ACTIVE_PER_USER = 3
@@ -128,34 +134,54 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Step 3: Email the code via existing transactional pipeline.
-    // This endpoint is protected at the gateway with verify_jwt=true.
-    // In this project, the anon key is the valid JWT-shaped token for gateway
-    // auth, while the service-role secret is used inside the function for DB work.
-    // Raw fetch with the anon JWT reliably reaches the function.
+    // Step 3: Render and enqueue the code directly on the auth queue.
     const ipHint = ipRaw ? ipRaw.replace(/\.\d+$/, '.x') : undefined
-    const emailResp = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'apikey': SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({
-        templateName: 'login-2fa-code',
-        recipientEmail: userEmail,
-        idempotencyKey: `mfa-${userId}-${challengeTokenHash.slice(0, 16)}`,
-        templateData: {
-          code,
-          expiresInMinutes: CODE_TTL_MINUTES,
-          ipHint,
-          userAgentHint: userAgent ? userAgent.slice(0, 80) : undefined,
-        },
-      }),
+    const templateData = {
+      code,
+      expiresInMinutes: CODE_TTL_MINUTES,
+      ipHint,
+      userAgentHint: userAgent ? userAgent.slice(0, 80) : undefined,
+    }
+    const messageId = crypto.randomUUID()
+    const idempotencyKey = `mfa-${userId}-${challengeTokenHash.slice(0, 16)}`
+
+    const html = await renderAsync(React.createElement(login2faCodeTemplate.component, templateData))
+    const text = await renderAsync(React.createElement(login2faCodeTemplate.component, templateData), {
+      plainText: true,
     })
-    if (!emailResp.ok) {
-      const errBody = await emailResp.text().catch(() => '')
-      console.error('send-transactional-email failed:', emailResp.status, errBody)
+
+    await admin.from('email_send_log').insert({
+      message_id: messageId,
+      template_name: 'login-2fa-code',
+      recipient_email: userEmail,
+      status: 'pending',
+    })
+
+    const { error: enqueueError } = await admin.rpc('enqueue_email', {
+      queue_name: 'auth_emails',
+      payload: {
+        message_id: messageId,
+        to: userEmail,
+        from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+        sender_domain: SENDER_DOMAIN,
+        subject: login2faCodeTemplate.subject(templateData),
+        html,
+        text,
+        purpose: 'transactional',
+        label: 'login-2fa-code',
+        idempotency_key: idempotencyKey,
+        queued_at: new Date().toISOString(),
+      },
+    })
+    if (enqueueError) {
+      console.error('enqueue_email failed for login-2fa-code:', enqueueError.message)
+      await admin.from('email_send_log').insert({
+        message_id: messageId,
+        template_name: 'login-2fa-code',
+        recipient_email: userEmail,
+        status: 'failed',
+        error_message: 'Failed to enqueue login MFA email',
+      })
       return new Response(JSON.stringify({ error: 'email_send_failed' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, AlertTriangle, Clock, Loader2, RefreshCw, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { callManageImportJob } from "@/lib/manage-import-job";
 
 type Site = {
   id: string;
@@ -121,10 +122,7 @@ export default function SyncStatusCard() {
     setBusy((prev) => ({ ...prev, [siteId]: area }));
     try {
       if (area === "forms") {
-        const { error } = await supabase.functions.invoke("manage-import-job?action=discover", {
-          body: { site_id: siteId },
-        });
-        if (error) throw error;
+        await callManageImportJob("discover", { body: { site_id: siteId } });
       } else if (area === "seo") {
         const { error } = await supabase.functions.invoke("seo-scan", {
           body: { site_id: siteId, force: true },

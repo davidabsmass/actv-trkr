@@ -17,10 +17,12 @@ class MM_Forms {
 		// Register REST API route for dashboard-triggered sync
 		add_action( 'rest_api_init', array( __CLASS__, 'register_rest_routes' ) );
 
-		// Auto-sync forms on admin pages (once per 6 hours)
-		if ( is_admin() && ! empty( $opts['api_key'] ) ) {
-			add_action( 'admin_init', array( __CLASS__, 'maybe_auto_sync' ) );
-		}
+		// NOTE: Auto-sync on settings page load was removed in v1.16.5.
+		// It performed blocking wp_remote_post calls (timeout up to 120s)
+		// during render, causing the settings page to spin/hang on slow
+		// hosts. Sync now runs ONLY via:
+		//   1. The hourly mm_form_probe_cron / scheduled jobs.
+		//   2. The manual "Sync Forms" button on the settings page (AJAX).
 
 		if ( $opts['enable_gravity'] !== '1' || empty( $opts['api_key'] ) ) return;
 
@@ -31,8 +33,15 @@ class MM_Forms {
 	// ── REST API ───────────────────────────────────────────────────
 
 	/**
-	 * Verify API key hash from request body (used as permission_callback).
-	 * Rejects requests before the callback runs, reducing attack surface.
+	 * Verify the request via HMAC signature (preferred) or legacy key hash
+	 * (accepted during the v1.18.x rollout window).
+	 *
+	 * SECURITY (C-2):
+	 *   The legacy `key_hash` body field is the SHA-256 of the API key
+	 *   stored in `api_keys.key_hash` server-side. Accepting it as a
+	 *   credential means anyone with read access to that column could
+	 *   impersonate the backend. v1.18.x logs every legacy hit so we can
+	 *   measure adoption before flipping to signed-only in v1.19.0.
 	 */
 	public static function verify_key_hash( $request ) {
 		$opts = MM_Settings::get();
@@ -49,12 +58,33 @@ class MM_Forms {
 		}
 		set_transient( $transient_key, $hits + 1, 60 );
 
+		// 1. Try the signed-request path (v1.18.x preferred).
+		if ( class_exists( 'MM_Hmac' ) ) {
+			$signed = MM_Hmac::verify( $request );
+			if ( $signed === true ) {
+				return true;
+			}
+			if ( is_wp_error( $signed ) ) {
+				// Signature was attempted but invalid — refuse.
+				return $signed;
+			}
+			// $signed === null → no signature attempted; fall through to legacy.
+		}
+
+		// 2. Legacy key_hash body field (deprecated; will be removed in v1.19.0).
 		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
+		$key_hash = is_array( $body ) && isset( $body['key_hash'] ) ? (string) $body['key_hash'] : '';
 		$stored_hash = hash( 'sha256', $opts['api_key'] );
 
 		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
 			return new \WP_Error( 'forbidden', 'Invalid key', array( 'status' => 403 ) );
+		}
+
+		// Telemetry: legacy auth used. Helps decide when to flip the switch.
+		if ( class_exists( 'ACTV_Logger' ) ) {
+			ACTV_Logger::warn( 'core', 'legacy_hash_auth_used', array(
+				'route' => $request->get_route(),
+			) );
 		}
 		return true;
 	}
@@ -2417,11 +2447,12 @@ class MM_Forms {
 		// Auth already verified by permission_callback
 		$opts = MM_Settings::get();
 		$body = $request->get_json_params();
+		$known_form_mappings = is_array( $body['known_form_mappings'] ?? null ) ? $body['known_form_mappings'] : array();
 
-		$domain    = wp_parse_url( home_url(), PHP_URL_HOST );
-		$page_size = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;
+		$domain      = wp_parse_url( home_url(), PHP_URL_HOST );
+		$page_size   = isset( $body['page_size'] ) ? max( 10, min( 100, intval( $body['page_size'] ) ) ) : 50;
 		$max_seconds = isset( $body['max_seconds'] ) ? max( 5, min( 55, intval( $body['max_seconds'] ) ) ) : 20;
-		$jobs      = self::get_entry_backfill_jobs();
+		$jobs        = self::get_entry_backfill_jobs( $known_form_mappings );
 
 		if ( empty( $jobs ) ) {
 			return new \WP_REST_Response( array(
@@ -2451,9 +2482,9 @@ class MM_Forms {
 		$next_page      = 1;
 
 		for ( $ji = $resume_job_index; $ji < count( $jobs ); $ji++ ) {
-			$job     = $jobs[ $ji ];
-			$offset  = ( $ji === $resume_job_index ) ? $resume_offset : 0;
-			$page    = ( $ji === $resume_job_index ) ? $resume_page : 1;
+			$job      = $jobs[ $ji ];
+			$offset   = ( $ji === $resume_job_index ) ? $resume_offset : 0;
+			$page     = ( $ji === $resume_job_index ) ? $resume_page : 1;
 			$has_more = true;
 
 			while ( $has_more ) {
@@ -2522,7 +2553,7 @@ class MM_Forms {
 		);
 	}
 
-	private static function get_entry_backfill_jobs() {
+	private static function get_entry_backfill_jobs( $known_form_mappings = array() ) {
 		$jobs = array();
 
 		if ( class_exists( 'GFAPI' ) ) {
@@ -2569,12 +2600,32 @@ class MM_Forms {
 			'fields'         => 'ids',
 		) );
 		if ( is_array( $avada_forms ) && ! empty( $avada_forms ) ) {
+			$discovered = array();
 			foreach ( $avada_forms as $form_post_id ) {
-				$title = get_the_title( $form_post_id ) ?: 'Avada Form';
+				$discovered[] = array(
+					'form_id'    => (string) $form_post_id,
+					'provider'   => 'avada',
+					'form_title' => get_the_title( $form_post_id ) ?: 'Avada Form',
+				);
+			}
+
+			$discovered = self::enrich_with_page_urls( $discovered, $known_form_mappings );
+
+			foreach ( $discovered as $form_info ) {
+				$form_id = (string) ( $form_info['form_id'] ?? '' );
+				if ( '' === $form_id ) {
+					continue;
+				}
+
 				$jobs[] = array(
 					'provider' => 'avada',
-					'form_id'  => (string) $form_post_id,
-					'form'     => array( 'id' => $form_post_id, 'title' => $title ),
+					'form_id'  => $form_id,
+					'form'     => array(
+						'id'                  => intval( $form_id ),
+						'title'               => $form_info['form_title'] ?? ( get_the_title( intval( $form_id ) ) ?: 'Avada Form' ),
+						'page_url'            => $form_info['page_url'] ?? null,
+						'page_url_candidates' => is_array( $form_info['page_url_candidates'] ?? null ) ? $form_info['page_url_candidates'] : array(),
+					),
 				);
 			}
 		}
@@ -2639,196 +2690,117 @@ class MM_Forms {
 			$has_more_current = count( $entries ) === $page_size;
 			$next_page        = intval( $state['page'] ) + 1;
 		} elseif ( 'avada' === $job['provider'] ) {
-			global $wpdb;
-			$form_post_id = (string) $job['form_id'];
-			$form_title   = $job['form']['title'] ?? get_the_title( intval( $form_post_id ) ) ?: 'Avada Form';
+			$form_post_id         = (string) $job['form_id'];
+			$form_title           = $job['form']['title'] ?? get_the_title( intval( $form_post_id ) ) ?: 'Avada Form';
+			$page_url             = $job['form']['page_url'] ?? null;
+			$page_url_candidates  = is_array( $job['form']['page_url_candidates'] ?? null ) ? $job['form']['page_url_candidates'] : array();
+			$existing_tables      = self::get_avada_submission_tables();
 
-			// ── Resolve internal ID (same as get_active_entry_ids) ──
-			$existing_tables = self::get_avada_submission_tables();
-			$resolved_internal_id = null;
-
-			// postmeta resolution
-			$meta_candidates = array( 'form_id', '_fusion_form_id', 'fusion_form_id' );
-			foreach ( $meta_candidates as $meta_key ) {
-				$meta_val = get_post_meta( (int) $form_post_id, $meta_key, true );
-				if ( ! empty( $meta_val ) && is_numeric( $meta_val ) && intval( $meta_val ) !== intval( $form_post_id ) ) {
-					$resolved_internal_id = intval( $meta_val );
-					break;
-				}
-			}
-
-			// URL candidates for source_url matching
-			$url_candidates = array();
-			$page_url_raw = $job['form']['page_url'] ?? '';
-			if ( ! empty( $page_url_raw ) ) {
-				$parsed_path = wp_parse_url( $page_url_raw, PHP_URL_PATH );
-				if ( $parsed_path ) {
-					$url_candidates[] = trim( $parsed_path, '/' );
-				}
-			}
-
-			// ── Multi-table search: iterate ALL tables, merge results ──
-			$all_merged_rows = array();
-
-			foreach ( $existing_tables as $table ) {
-				$cols = $wpdb->get_col( "SHOW COLUMNS FROM {$table}", 0 );
-				if ( ! is_array( $cols ) || empty( $cols ) ) continue;
-
-				// Detect timestamp column
-				$ts_col = 'id';
-				$ts_candidates = array( 'date_time', 'created_at', 'submitted_at', 'date', 'created', 'updated_at' );
-				foreach ( $ts_candidates as $tc ) {
-					if ( in_array( $tc, $cols, true ) ) { $ts_col = $tc; break; }
+			if ( ! empty( $existing_tables ) ) {
+				$entry_refs = self::get_active_entry_ids( 'avada', $form_post_id, $page_url, $form_title, $page_url_candidates );
+				if ( ! is_array( $entry_refs ) ) {
+					$entry_refs = array();
 				}
 
-				$has_source_url_col = in_array( 'source_url', $cols, true );
-				$form_ref_candidates = array( 'form_id', 'fusion_form_id', 'post_id', 'parent_id', 'form_post_id' );
-				$rows = array();
-
-				// Layer 0.5: resolved internal ID
-				if ( $resolved_internal_id && in_array( 'form_id', $cols, true ) ) {
-					$rows = $wpdb->get_results( $wpdb->prepare(
-						"SELECT * FROM {$table} WHERE form_id = %d ORDER BY id ASC LIMIT 5000",
-						$resolved_internal_id
-					), ARRAY_A );
-					if ( ! is_array( $rows ) || empty( $rows ) ) $rows = array();
-				}
-
-				// Layer 1: form-ref column match with original post ID
-				if ( empty( $rows ) ) {
-					foreach ( $form_ref_candidates as $frc ) {
-						if ( ! in_array( $frc, $cols, true ) ) continue;
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT * FROM {$table} WHERE {$frc} = %d ORDER BY id ASC LIMIT 5000",
-							intval( $form_post_id )
-						), ARRAY_A );
-						if ( is_array( $rows ) && ! empty( $rows ) ) break;
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT * FROM {$table} WHERE {$frc} = %s ORDER BY id ASC LIMIT 5000",
-							$form_post_id
-						), ARRAY_A );
-						if ( is_array( $rows ) && ! empty( $rows ) ) break;
-						$rows = array();
-					}
-				}
-
-				// Layer 1.5: source_url match
-				if ( empty( $rows ) && ! empty( $url_candidates ) && $has_source_url_col ) {
-					foreach ( $url_candidates as $url_candidate ) {
-						$like = '%' . $wpdb->esc_like( $url_candidate ) . '%';
-						$rows = $wpdb->get_results( $wpdb->prepare(
-							"SELECT * FROM {$table} WHERE source_url LIKE %s ORDER BY id ASC LIMIT 5000",
-							$like
-						), ARRAY_A );
-						if ( is_array( $rows ) && ! empty( $rows ) ) break;
-						$rows = array();
-					}
-				}
-
-				if ( ! is_array( $rows ) || empty( $rows ) ) continue;
-
-				// Merge rows, deduplicating by entry DB id
-				foreach ( $rows as $row ) {
-					$db_id = (string) ( $row['id'] ?? '' );
-					$entry_key = 'avada_db_' . $db_id;
-					if ( isset( $all_merged_rows[ $entry_key ] ) ) continue;
-					$all_merged_rows[ $entry_key ] = array(
-						'row'              => $row,
-						'table'            => $table,
-						'ts_col'           => $ts_col,
-						'has_source_url'   => $has_source_url_col,
-					);
-				}
-
-				error_log( '[MissionMetrics] Avada backfill: form_id=' . $form_post_id . ' table=' . $table . ' — found ' . count( $rows ) . ' rows' );
-			}
-
-			error_log( '[MissionMetrics] Avada backfill: form_id=' . $form_post_id . ' — total merged ' . count( $all_merged_rows ) . ' entries from ' . count( $existing_tables ) . ' tables' );
-
-			// Paginate across merged set
-			$merged_values = array_values( $all_merged_rows );
-			$offset        = intval( $state['offset'] );
-			$page_slice    = array_slice( $merged_values, $offset, $page_size );
-
-			foreach ( $page_slice as $item ) {
-				$row            = $item['row'];
-				$ts_col         = $item['ts_col'];
-				$has_source_url = $item['has_source_url'];
-				$db_id          = (string) ( $row['id'] ?? '' );
-				$entry_id       = 'avada_db_' . $db_id;
-				$submitted_at   = ( $ts_col !== 'id' && ! empty( $row[ $ts_col ] ) ) ? $row[ $ts_col ] : null;
-
-				// Extract fields from primary row
-				$fields = array();
-				if ( ! empty( $row['data'] ) ) {
-					$parsed = maybe_unserialize( $row['data'] );
-					if ( is_array( $parsed ) ) {
-						$idx = 0;
-						foreach ( $parsed as $k => $v ) {
-							if ( is_scalar( $v ) && trim( (string) $v ) !== '' ) {
-								$fields[] = array( 'id' => $idx++, 'name' => $k, 'label' => $k, 'type' => 'text', 'value' => (string) $v );
-							}
+				$numeric_ids = array();
+				foreach ( $entry_refs as $entry_ref ) {
+					if ( is_array( $entry_ref ) && ! empty( $entry_ref['id'] ) ) {
+						$rid = intval( str_replace( 'avada_db_', '', (string) $entry_ref['id'] ) );
+						if ( $rid > 0 ) {
+							$numeric_ids[] = $rid;
+						}
+					} elseif ( is_string( $entry_ref ) ) {
+						$rid = intval( str_replace( 'avada_db_', '', $entry_ref ) );
+						if ( $rid > 0 ) {
+							$numeric_ids[] = $rid;
 						}
 					}
 				}
-				if ( ! empty( $row['submission'] ) ) {
-					$parsed = json_decode( $row['submission'], true );
-					if ( ! is_array( $parsed ) ) $parsed = maybe_unserialize( $row['submission'] );
-					if ( is_array( $parsed ) ) {
-						$idx = count( $fields );
-						foreach ( $parsed as $k => $v ) {
-							if ( is_scalar( $v ) && trim( (string) $v ) !== '' ) {
-								$fields[] = array( 'id' => $idx++, 'name' => $k, 'label' => $k, 'type' => 'text', 'value' => (string) $v );
-							}
-						}
-					}
-				}
+				$numeric_ids = array_values( array_unique( $numeric_ids ) );
+				$row_candidates_by_id = self::get_avada_row_candidates_by_id( $numeric_ids, $existing_tables );
 
-				// Enrich from secondary tables
-				if ( intval( $db_id ) > 0 ) {
-					$secondary_fields = self::extract_avada_secondary_fields( intval( $db_id ) );
-					if ( ! empty( $secondary_fields ) ) {
-						if ( empty( $fields ) ) {
-							$fields = $secondary_fields;
-						} else {
-							$existing_labels = array_map( function( $f ) {
-								return strtolower( trim( $f['label'] ?? $f['name'] ?? '' ) );
-							}, $fields );
-							$next_id = count( $fields );
-							foreach ( $secondary_fields as $sf ) {
-								$sf_label = strtolower( trim( $sf['label'] ?? $sf['name'] ?? '' ) );
-								if ( $sf_label !== '' && ! in_array( $sf_label, $existing_labels, true ) ) {
-									$sf['id'] = $next_id++;
-									$fields[]  = $sf;
-									$existing_labels[] = $sf_label;
+				$offset     = intval( $state['offset'] );
+				$page_slice = array_slice( $entry_refs, $offset, $page_size );
+
+				foreach ( $page_slice as $entry_ref ) {
+					$entry_id     = null;
+					$submitted_at = null;
+
+					if ( is_array( $entry_ref ) && ! empty( $entry_ref['id'] ) ) {
+						$entry_id     = (string) $entry_ref['id'];
+						$submitted_at = $entry_ref['ts'] ?? null;
+					} elseif ( is_string( $entry_ref ) ) {
+						$entry_id = (string) $entry_ref;
+					}
+
+					if ( ! $entry_id ) {
+						continue;
+					}
+
+					$rid = intval( str_replace( 'avada_db_', '', $entry_id ) );
+					$best_candidate = ( $rid > 0 && isset( $row_candidates_by_id[ (string) $rid ] ) )
+						? self::select_best_avada_row_candidate( $row_candidates_by_id[ (string) $rid ] )
+						: null;
+					$row            = $best_candidate['row'] ?? null;
+					$ts_col         = $best_candidate['ts_col'] ?? null;
+					$has_source_url = ! empty( $best_candidate['has_source_url'] );
+
+					if ( ! $submitted_at && $row && $ts_col && isset( $row->$ts_col ) ) {
+						$submitted_at = $row->$ts_col;
+					}
+
+					$fields = $best_candidate['fields'] ?? array();
+
+					if ( $rid > 0 ) {
+						$secondary_fields = self::extract_avada_secondary_fields( $rid );
+						if ( ! empty( $secondary_fields ) ) {
+							if ( empty( $fields ) ) {
+								$fields = $secondary_fields;
+							} else {
+								$existing_labels = array();
+								foreach ( $fields as $field ) {
+									$existing_labels[] = strtolower( trim( $field['label'] ?? $field['name'] ?? '' ) );
+								}
+								$next_id = count( $fields );
+								foreach ( $secondary_fields as $secondary_field ) {
+									$secondary_label = strtolower( trim( $secondary_field['label'] ?? $secondary_field['name'] ?? '' ) );
+									if ( $secondary_label !== '' && ! in_array( $secondary_label, $existing_labels, true ) ) {
+										$secondary_field['id'] = $next_id++;
+										$fields[] = $secondary_field;
+										$existing_labels[] = $secondary_label;
+									}
 								}
 							}
 						}
 					}
+
+					$source_url = ( $row && $has_source_url && ! empty( $row->source_url ) )
+						? $row->source_url
+						: ( $page_url_candidates[0] ?? $page_url );
+
+					$payloads[] = array(
+						'provider' => 'avada',
+						'entry'    => array(
+							'form_id'      => $form_post_id,
+							'form_title'   => $form_title,
+							'entry_id'     => $entry_id,
+							'source_url'   => $source_url,
+							'submitted_at' => $submitted_at,
+						),
+						'context' => array(
+							'domain'         => $domain,
+							'plugin_version' => MM_PLUGIN_VERSION,
+							'backfill'       => true,
+						),
+						'fields' => $fields,
+					);
 				}
 
-				$source_url = ( $has_source_url && ! empty( $row['source_url'] ) ) ? $row['source_url'] : null;
+				$has_more_current = ( $offset + count( $page_slice ) ) < count( $entry_refs );
+				$next_offset      = $offset + count( $page_slice );
 
-				$payloads[] = array(
-					'provider' => 'avada',
-					'entry'    => array(
-						'form_id'      => $form_post_id,
-						'form_title'   => $form_title,
-						'entry_id'     => $entry_id,
-						'source_url'   => $source_url,
-						'submitted_at' => $submitted_at,
-					),
-					'context' => array(
-						'domain'         => $domain,
-						'plugin_version' => MM_PLUGIN_VERSION,
-						'backfill'       => true,
-					),
-					'fields' => $fields,
-				);
+				error_log( '[MissionMetrics] Avada backfill: form_id=' . $form_post_id . ' — authoritative entry_refs=' . count( $entry_refs ) . ', page_slice=' . count( $page_slice ) . ', offset=' . $offset );
 			}
-
-			$has_more_current = ( $offset + count( $page_slice ) ) < count( $merged_values );
-			$next_offset      = $offset + count( $page_slice );
 		}
 
 		// Send payloads in batches of 25 to the batch endpoint

@@ -25,7 +25,50 @@ class MM_Hmac {
 	const NONCE_TRANSIENT_PREFIX = 'mm_nonce_';
 	const NONCE_TTL = 600; // 10 minutes — must exceed TIMESTAMP_TOLERANCE * 2
 
+	public static function init() {
+		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+	}
+
+	public static function register_routes() {
+		// One-time bootstrap: backend pushes the signing secret to the plugin.
+		// Guarded by the LEGACY hash credential — this is the single transitional
+		// call where the legacy credential is intentionally accepted.
+		register_rest_route( 'actv-trkr/v1', '/bootstrap-signing-secret', array(
+			'methods'             => 'POST',
+			'callback'            => array( __CLASS__, 'bootstrap_route' ),
+			'permission_callback' => array( __CLASS__, 'verify_bootstrap_legacy' ),
+		) );
+	}
+
 	/**
+	 * Permission callback for the bootstrap route — accepts the legacy hash
+	 * credential ONLY (not HMAC, since the secret hasn't been provisioned yet).
+	 * Once a signing_secret is stored, this route refuses further calls so an
+	 * attacker cannot rotate the secret without admin intervention.
+	 */
+	public static function verify_bootstrap_legacy( $request ) {
+		$opts = MM_Settings::get();
+		if ( empty( $opts['api_key'] ) ) {
+			return new WP_Error( 'not_configured', 'Plugin not configured', array( 'status' => 400 ) );
+		}
+		// Lock-out: refuse to overwrite an existing secret.
+		if ( ! empty( $opts['signing_secret'] ) ) {
+			return new WP_Error( 'already_provisioned', 'Signing secret already set', array( 'status' => 409 ) );
+		}
+		$auth = $request->get_header( 'X-Api-Key' );
+		if ( empty( $auth ) ) {
+			$body = $request->get_json_params();
+			$auth = is_array( $body ) && isset( $body['key_hash'] ) ? (string) $body['key_hash'] : '';
+		}
+		if ( empty( $auth ) ) {
+			return new WP_Error( 'unauthorized', 'Missing credential', array( 'status' => 401 ) );
+		}
+		$stored_hash = hash( 'sha256', $opts['api_key'] );
+		if ( hash_equals( $opts['api_key'], $auth ) || hash_equals( $stored_hash, $auth ) ) {
+			return true;
+		}
+		return new WP_Error( 'forbidden', 'Invalid credential', array( 'status' => 403 ) );
+	}
 	 * Verify a signed request. Returns true on success, WP_Error on failure.
 	 * Returns null if no signing headers are present (caller decides whether
 	 * to fall back to the legacy hash check).

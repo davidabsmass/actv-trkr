@@ -25,14 +25,22 @@ class MM_Adapter_Gravity implements MM_Import_Adapter {
 	public function get_builder_type(): string { return 'gravity_forms'; }
 
 	public function discover_forms(): array {
+		// NOTE: Pass `false, false` to GFAPI to include INACTIVE and TRASHED forms.
+		// We need the full set so we can report each form's is_active state to
+		// the dashboard (otherwise toggled-off forms would silently disappear
+		// instead of being marked inactive).
 		if ( ! class_exists( 'GFAPI' ) ) return array();
-		$forms = \GFAPI::get_forms();
+		$forms = \GFAPI::get_forms( false, false );
 		if ( ! is_array( $forms ) ) return array();
 		$result = array();
 		foreach ( $forms as $form ) {
+			$is_trash  = ! empty( $form['is_trash'] );
+			$is_active = ! empty( $form['is_active'] ) && ! $is_trash;
+			if ( $is_trash ) continue; // Trashed forms are deleted from the dashboard's POV
 			$result[] = array(
 				'external_form_id' => (string) ( $form['id'] ?? '' ),
 				'form_name'        => $form['title'] ?? 'Gravity Form',
+				'is_active'        => $is_active,
 			);
 		}
 		return $result;
@@ -105,18 +113,22 @@ class MM_Adapter_Avada implements MM_Import_Adapter {
 	public function get_builder_type(): string { return 'avada'; }
 
 	public function discover_forms(): array {
+		// Include draft/inactive forms so we can report the is_active flag.
 		$posts = get_posts( array(
 			'post_type'      => 'fusion_form',
-			'post_status'    => 'publish',
+			'post_status'    => array( 'publish', 'draft', 'private' ),
 			'posts_per_page' => -1,
 			'fields'         => 'ids',
 		) );
 		if ( ! is_array( $posts ) || empty( $posts ) ) return array();
 		$result = array();
 		foreach ( $posts as $pid ) {
+			$status    = get_post_status( $pid );
+			$is_active = ( $status === 'publish' );
 			$result[] = array(
 				'external_form_id' => (string) $pid,
 				'form_name'        => get_the_title( $pid ) ?: 'Avada Form',
+				'is_active'        => $is_active,
 			);
 		}
 		return $result;
@@ -359,13 +371,21 @@ class MM_Adapter_WPForms implements MM_Import_Adapter {
 
 	public function discover_forms(): array {
 		if ( ! function_exists( 'wpforms' ) || ! isset( wpforms()->form ) ) return array();
-		$forms = wpforms()->form->get( '', array( 'posts_per_page' => -1 ) );
+		// post_status array forces inclusion of draft/trashed; we then mark status per form.
+		$forms = wpforms()->form->get( '', array(
+			'posts_per_page' => -1,
+			'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+		) );
 		if ( ! is_array( $forms ) ) return array();
 		$result = array();
 		foreach ( $forms as $form ) {
+			$post_status = $form->post_status ?? 'publish';
+			$disabled    = get_post_meta( $form->ID, 'wpforms_disabled', true );
+			$is_active   = ( $post_status === 'publish' ) && ( $disabled !== '1' && $disabled !== 1 && $disabled !== true );
 			$result[] = array(
 				'external_form_id' => (string) $form->ID,
 				'form_name'        => $form->post_title ?: 'WPForm',
+				'is_active'        => $is_active,
 			);
 		}
 		return $result;
@@ -441,6 +461,7 @@ class MM_Adapter_CF7 implements MM_Import_Adapter {
 	public function get_builder_type(): string { return 'cf7'; }
 
 	public function discover_forms(): array {
+		// CF7 has no built-in active/inactive toggle; published forms are always active.
 		if ( ! class_exists( 'WPCF7_ContactForm' ) ) return array();
 		$forms = \WPCF7_ContactForm::find();
 		if ( ! is_array( $forms ) ) return array();
@@ -449,6 +470,7 @@ class MM_Adapter_CF7 implements MM_Import_Adapter {
 			$result[] = array(
 				'external_form_id' => (string) $form->id(),
 				'form_name'        => $form->title(),
+				'is_active'        => true,
 			);
 		}
 		return $result;
@@ -557,9 +579,13 @@ class MM_Adapter_Ninja implements MM_Import_Adapter {
 			$id = method_exists( $form, 'get_id' ) ? $form->get_id() : ( $form->id ?? null );
 			if ( ! $id ) continue;
 			$title = method_exists( $form, 'get_setting' ) ? ( $form->get_setting( 'title' ) ?: 'Ninja Form' ) : 'Ninja Form';
+			// Ninja Forms exposes a "form_title_status" setting; treat anything other than 'trash' as active.
+			$status = method_exists( $form, 'get_setting' ) ? $form->get_setting( 'status' ) : null;
+			$is_active = ( $status === null || $status === 'active' || $status === 'publish' || $status === '' );
 			$result[] = array(
 				'external_form_id' => (string) $id,
 				'form_name'        => $title,
+				'is_active'        => $is_active,
 			);
 		}
 		return $result;
@@ -667,16 +693,21 @@ class MM_Adapter_Fluent implements MM_Import_Adapter {
 	public function get_builder_type(): string { return 'fluent_forms'; }
 
 	public function discover_forms(): array {
+		// Include unpublished/trashed Fluent forms so we can flag them as inactive.
 		global $wpdb;
 		$ft = $this->forms_table();
 		if ( ! $ft ) return array();
-		$rows = $wpdb->get_results( "SELECT id, title FROM {$ft} WHERE status = 'published' ORDER BY id ASC", ARRAY_A );
+		$rows = $wpdb->get_results( "SELECT id, title, status FROM {$ft} ORDER BY id ASC", ARRAY_A );
 		if ( ! is_array( $rows ) ) return array();
 		$result = array();
 		foreach ( $rows as $r ) {
+			$status    = $r['status'] ?? 'published';
+			if ( $status === 'trash' ) continue; // Treat trashed as deleted entirely
+			$is_active = ( $status === 'published' );
 			$result[] = array(
 				'external_form_id' => (string) $r['id'],
 				'form_name'        => $r['title'] ?: 'Fluent Form',
+				'is_active'        => $is_active,
 			);
 		}
 		return $result;

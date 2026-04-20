@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, MapPin } from "lucide-react";
 import TeamSection from "@/components/account/TeamSection";
+import TwoFactorSection from "@/components/account/TwoFactorSection";
 import SupportSection from "@/components/support/SupportSection";
 import { CancellationSaveDialog } from "@/components/account/CancellationSaveDialog";
 import { useTranslation } from "react-i18next";
@@ -229,6 +230,9 @@ export default function Account() {
             )}
           </CardContent>
         </Card>
+        {/* Two-Factor Authentication */}
+        <TwoFactorSection />
+
         {/* Team Members */}
         <TeamSection />
 

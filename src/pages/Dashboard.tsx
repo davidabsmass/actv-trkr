@@ -450,11 +450,15 @@ const Dashboard = () => {
   const periodData = useMemo(() => {
     const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
     const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
-    // Include goal conversions in overall CVR
+    // Include goal conversions in overall CVR.
+    // NOTE: A single session can fire multiple goal events (e.g. mailto + form),
+    // so we cap conversions at the session count to keep CVR ≤ 100% until we
+    // have proper session-level dedup of goal events.
     const goalTotal = (goalFunnelData || []).reduce((s: number, g: any) => s + (g.count || 0), 0);
-    const currConversions = curr.totalLeads + goalTotal;
+    const rawConversions = curr.totalLeads + goalTotal;
+    const currConversions = Math.min(rawConversions, curr.totalSessions);
     const currCvr = curr.totalSessions > 0 ? currConversions / curr.totalSessions : 0;
-    const prevCvr = prev.totalSessions > 0 ? prev.totalLeads / prev.totalSessions : 0;
+    const prevCvr = prev.totalSessions > 0 ? Math.min(prev.totalLeads, prev.totalSessions) / prev.totalSessions : 0;
     return {
       sessions: { current: curr.totalSessions, previous: prev.totalSessions },
       leads: { current: curr.totalLeads, previous: prev.totalLeads },
@@ -610,7 +614,7 @@ const Dashboard = () => {
             />
             <KPICard
               variant="success"
-              label={`${t("dashboard.leads")} (${days}d)`}
+              label={`${t("dashboard.formFills")} (${days}d)`}
               value={periodData.leads.current}
               trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}

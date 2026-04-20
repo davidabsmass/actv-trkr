@@ -990,10 +990,26 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fire-and-forget: check domain/SSL health if no records exist yet
+    // Fire-and-forget: check domain/SSL health on first sync and periodically refresh stale records
     try {
-      const { count: dhCount } = await supabase.from("domain_health").select("id", { count: "exact", head: true }).eq("site_id", site.id);
-      if ((dhCount || 0) === 0) {
+      const staleBeforeIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const [{ data: domainHealth }, { data: sslHealth }] = await Promise.all([
+        supabase
+          .from("domain_health")
+          .select("id, last_checked_at")
+          .eq("site_id", site.id)
+          .maybeSingle(),
+        supabase
+          .from("ssl_health")
+          .select("id, last_checked_at")
+          .eq("site_id", site.id)
+          .maybeSingle(),
+      ]);
+
+      const domainStale = !domainHealth?.last_checked_at || domainHealth.last_checked_at < staleBeforeIso;
+      const sslStale = !sslHealth?.last_checked_at || sslHealth.last_checked_at < staleBeforeIso;
+
+      if (domainStale || sslStale) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const srvKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         fetch(`${supabaseUrl}/functions/v1/check-domain-ssl`, {

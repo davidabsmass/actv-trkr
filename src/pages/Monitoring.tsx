@@ -222,6 +222,45 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
   const { orgId } = useOrg();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [autoCheckingDomainSsl, setAutoCheckingDomainSsl] = useState(false);
+
+  useEffect(() => {
+    const needsDomainRefresh = !domainHealth?.last_checked_at || (Date.now() - new Date(domainHealth.last_checked_at).getTime()) > 24 * 60 * 60 * 1000;
+    const needsSslRefresh = !sslHealth?.last_checked_at || (Date.now() - new Date(sslHealth.last_checked_at).getTime()) > 24 * 60 * 60 * 1000;
+
+    if ((!needsDomainRefresh && !needsSslRefresh) || autoCheckingDomainSsl) return;
+
+    let cancelled = false;
+
+    const refresh = async () => {
+      setAutoCheckingDomainSsl(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("check-domain-ssl", {
+          body: { site_id: site.id },
+        });
+
+        if (error) throw error;
+        if (!data?.ok) throw new Error(data?.error || "Automatic domain and SSL check failed.");
+
+        if (!cancelled) {
+          queryClient.invalidateQueries({ queryKey: ["domain_health"] });
+          queryClient.invalidateQueries({ queryKey: ["ssl_health"] });
+        }
+      } catch (err) {
+        console.error("Automatic domain/SSL refresh failed", err);
+      } finally {
+        if (!cancelled) {
+          setAutoCheckingDomainSsl(false);
+        }
+      }
+    };
+
+    void refresh();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [site.id, domainHealth?.last_checked_at, sslHealth?.last_checked_at, autoCheckingDomainSsl, queryClient]);
 
   const { data: brokenLinks } = useQuery({
     queryKey: ["broken_links", site.id],
@@ -425,7 +464,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
                   <div className="flex justify-between"><span className="text-muted-foreground">Last checked</span><span className="text-foreground">{format(new Date(domainHealth.last_checked_at), "MMM d, HH:mm")}</span></div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">No domain data yet. Click "Check Now" above.</p>
+                <p className="text-xs text-muted-foreground">Checking automatically…</p>
               )}
             </div>
 
@@ -445,7 +484,7 @@ function SiteDetail({ site, incidents, domainHealth, sslHealth, onBack, initialT
                   <div className="flex justify-between"><span className="text-muted-foreground">Last checked</span><span className="text-foreground">{format(new Date(sslHealth.last_checked_at), "MMM d, HH:mm")}</span></div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">No SSL data yet. Click "Check Now" above.</p>
+                <p className="text-xs text-muted-foreground">Checking automatically…</p>
               )}
             </div>
           </div>

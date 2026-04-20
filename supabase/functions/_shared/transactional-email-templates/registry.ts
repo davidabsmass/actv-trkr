@@ -13,6 +13,7 @@ import { template as welcomeEmail } from './welcome.tsx'
 import { template as subscriptionCancelled } from './subscription-cancelled.tsx'
 import { template as trackingStalled } from './tracking-stalled.tsx'
 import { template as adminTrackingDigest } from './admin-tracking-digest.tsx'
+import { template as adminUserExport } from './admin-user-export.tsx'
 import { template as supportTicketUpdate } from './support-ticket-update.tsx'
 import { template as adminNewSupportTicket } from './admin-new-support-ticket.tsx'
 import { template as acquisitionWeeklyDigest } from './acquisition-weekly-digest.tsx'
@@ -34,6 +35,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'subscription-cancelled': subscriptionCancelled,
   'tracking-stalled': trackingStalled,
   'admin-tracking-digest': adminTrackingDigest,
+  'admin-user-export': adminUserExport,
   'support-ticket-update': supportTicketUpdate,
   'admin-new-support-ticket': adminNewSupportTicket,
   'acquisition-weekly-digest': acquisitionWeeklyDigest,

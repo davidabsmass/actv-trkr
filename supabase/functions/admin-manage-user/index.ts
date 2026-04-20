@@ -809,6 +809,110 @@ Deno.serve(async (req) => {
       }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
+    // ── REVOKE API KEY ──
+    if (action === "revoke_api_key") {
+      const apiKeyId = String(body.api_key_id || "").trim();
+      if (!apiKeyId) {
+        return new Response(JSON.stringify({ error: "api_key_id is required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { data: existing, error: lookupErr } = await adminClient
+        .from("api_keys")
+        .select("id, revoked_at, org_id, label")
+        .eq("id", apiKeyId)
+        .maybeSingle();
+      if (lookupErr || !existing) {
+        return new Response(JSON.stringify({ error: lookupErr?.message || "API key not found" }), {
+          status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      if (existing.revoked_at) {
+        return new Response(JSON.stringify({ success: true, already_revoked: true }), {
+          headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { error: updErr } = await adminClient
+        .from("api_keys")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", apiKeyId);
+      if (updErr) {
+        return new Response(JSON.stringify({ error: updErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // ── EXPORT USERS (CSV) ──
+    if (action === "export_users") {
+      const [profilesRes, orgUsersRes, orgsRes, rolesRes, loginsRes] = await Promise.all([
+        adminClient.from("profiles").select("user_id, email, full_name, created_at"),
+        adminClient.from("org_users").select("user_id, org_id, role, created_at"),
+        adminClient.from("orgs").select("id, name"),
+        adminClient.from("user_roles").select("user_id, role"),
+        adminClient.from("login_events").select("email, logged_in_at"),
+      ]);
+
+      const profiles = profilesRes.data || [];
+      const orgUsers = orgUsersRes.data || [];
+      const orgs = orgsRes.data || [];
+      const roles = rolesRes.data || [];
+      const logins = loginsRes.data || [];
+
+      const orgMap = new Map(orgs.map((o: any) => [o.id, o.name]));
+      const orgsByUser = new Map<string, string[]>();
+      orgUsers.forEach((ou: any) => {
+        const orgName = orgMap.get(ou.org_id) || ou.org_id;
+        const label = `${orgName} (${ou.role})`;
+        if (!orgsByUser.has(ou.user_id)) orgsByUser.set(ou.user_id, []);
+        orgsByUser.get(ou.user_id)!.push(label);
+      });
+      const sysRoleByUser = new Map<string, string[]>();
+      roles.forEach((r: any) => {
+        if (!sysRoleByUser.has(r.user_id)) sysRoleByUser.set(r.user_id, []);
+        sysRoleByUser.get(r.user_id)!.push(r.role);
+      });
+      const lastLoginByEmail = new Map<string, string>();
+      logins.forEach((l: any) => {
+        const e = (l.email || "").toLowerCase();
+        if (!e) return;
+        const prev = lastLoginByEmail.get(e);
+        if (!prev || l.logged_in_at > prev) lastLoginByEmail.set(e, l.logged_in_at);
+      });
+
+      const escape = (v: any) => {
+        if (v === null || v === undefined) return "";
+        const s = String(v);
+        if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+      };
+
+      const header = ["email", "full_name", "user_id", "system_roles", "organizations", "created_at", "last_login_at"];
+      const rows = profiles.map((p: any) => {
+        const email = (p.email || "").toLowerCase();
+        return [
+          p.email || "",
+          p.full_name || "",
+          p.user_id,
+          (sysRoleByUser.get(p.user_id) || []).join("; "),
+          (orgsByUser.get(p.user_id) || []).join("; "),
+          p.created_at || "",
+          lastLoginByEmail.get(email) || "",
+        ].map(escape).join(",");
+      });
+      const csv = [header.join(","), ...rows].join("\n");
+
+      return new Response(JSON.stringify({
+        success: true,
+        csv,
+        row_count: profiles.length,
+        generated_at: new Date().toISOString(),
+      }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
+    }
+
     // ── REMOVE USER FROM ORG (detach only; does not delete auth account) ──
     if (action === "remove_user_from_org") {
       const orgId = String(body.org_id || "").trim();

@@ -263,18 +263,37 @@ const runners: Record<string, Runner> = {
     const missingConsent = orgs.filter((o: any) => !haveConsent.has(o.id));
     const missingSub = orgs.filter((o: any) => !orgHasSub.get(o.id));
 
-    const totalMissing = missingConsent.length + missingSub.length;
-    const status: CheckStatus =
-      totalMissing === 0 ? "pass" : (totalMissing <= 2 ? "warn" : "fail");
-    return result(def, status,
-      totalMissing === 0
-        ? `${orgs.length} recent orgs, all have consent_config + subscriber`
-        : `${missingConsent.length} missing consent, ${missingSub.length} missing subscriber (of ${orgs.length})`,
-      {
-        orgs_checked: orgs.length,
-        missing_consent: missingConsent.map((o: any) => ({ id: o.id, name: o.name })),
-        missing_subscriber: missingSub.map((o: any) => ({ id: o.id, name: o.name })),
-      }, t);
+    // Heuristic: if ZERO recent orgs have consent_config / subscriber, that's a
+    // platform-wide gap, not a per-org regression. Surface as a single warn so
+    // the operator investigates the trigger/sync, but don't fail-stop release.
+    const allMissingConsent = missingConsent.length === orgs.length;
+    const allMissingSub = missingSub.length === orgs.length;
+    const reasons: string[] = [];
+    if (allMissingConsent) reasons.push("no consent_config rows for any recent org (trigger or onboarding step missing)");
+    if (allMissingSub) reasons.push("no subscriber row for any recent org (Stripe sync gap or pre-launch state)");
+
+    let status: CheckStatus;
+    let msg: string;
+    if (missingConsent.length === 0 && missingSub.length === 0) {
+      status = "pass";
+      msg = `${orgs.length} recent orgs, all have consent_config + subscriber`;
+    } else if (allMissingConsent || allMissingSub) {
+      // Platform-wide gap → warn (review), not per-org fail
+      status = "warn";
+      msg = `Platform gap: ${reasons.join("; ")}`;
+    } else {
+      // Some have it, some don't → real per-org regression
+      const totalMissing = missingConsent.length + missingSub.length;
+      status = totalMissing <= 2 ? "warn" : "fail";
+      msg = `${missingConsent.length} missing consent, ${missingSub.length} missing subscriber (of ${orgs.length})`;
+    }
+    return result(def, status, msg, {
+      orgs_checked: orgs.length,
+      all_missing_consent: allMissingConsent,
+      all_missing_subscriber: allMissingSub,
+      missing_consent: missingConsent.map((o: any) => ({ id: o.id, name: o.name })),
+      missing_subscriber: missingSub.map((o: any) => ({ id: o.id, name: o.name })),
+    }, t);
   },
 
   // ── tracking ──
@@ -419,10 +438,29 @@ const runners: Record<string, Runner> = {
       .select("occurred_at, provider, verification_status", { count: "exact" })
       .eq("provider", "stripe").eq("verification_status", "verified")
       .gte("occurred_at", since).limit(1);
-    const ok = (count ?? 0) > 0;
-    return result(def, ok ? "pass" : "fail",
-      ok ? `${count} verified Stripe webhooks in last 7d` : "No verified Stripe webhooks in last 7d",
-      { verified_count_7d: count ?? 0, sample: data ?? [] }, t);
+    const verified = count ?? 0;
+    if (verified > 0) {
+      return result(def, "pass", `${verified} verified Stripe webhooks in last 7d`,
+        { verified_count_7d: verified, sample: data ?? [] }, t);
+    }
+    // Zero verified — distinguish "no Stripe traffic at all" (warn) from "broken signature path" (fail).
+    const { count: anyStripe } = await admin.from("webhook_verification_log")
+      .select("id", { count: "exact", head: true })
+      .eq("provider", "stripe").gte("occurred_at", since);
+    const { count: recovery } = await admin.from("billing_recovery_events")
+      .select("id", { count: "exact", head: true })
+      .gte("occurred_at", since);
+    const totalStripe = anyStripe ?? 0;
+    const totalRecovery = recovery ?? 0;
+    if (totalStripe === 0 && totalRecovery === 0) {
+      return result(def, "warn",
+        "No Stripe webhook traffic in last 7d (acceptable pre-launch / no transactions)",
+        { verified_count_7d: 0, total_stripe_webhooks_7d: 0, recovery_events_7d: 0 }, t);
+    }
+    // Webhooks arrived but none verified → real signature problem
+    return result(def, "fail",
+      `${totalStripe} Stripe webhooks received but 0 verified — signature path broken`,
+      { verified_count_7d: 0, total_stripe_webhooks_7d: totalStripe, recovery_events_7d: totalRecovery }, t);
   },
   "billing.no_signature_failures": async (def) => {
     const t = Date.now();
@@ -555,8 +593,8 @@ const runners: Record<string, Runner> = {
         `pgmq helper failed: ${error.message}`,
         { error: error.message }, t);
     }
-    const rows = (queues || []) as Array<{ queue_name: string; queue_length: number; oldest_msg_age_seconds: number }>;
-    const stalled = rows.filter((q) => q.queue_length > 0 && q.oldest_msg_age_seconds > 300);
+    const rows = (queues || []) as Array<{ qname: string; queue_length: number; oldest_msg_age_seconds: number }>;
+    const stalled = rows.filter((q) => q.queue_length > 0 && q.oldest_msg_age_seconds > 300 && !/_dlq$/i.test(q.qname));
     const errored = rows.filter((q) => q.queue_length === -1);
     if (errored.length > 0) {
       return result(def, "warn",

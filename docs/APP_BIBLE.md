@@ -22,11 +22,20 @@ The full path a paying customer takes, from checkout to active monitoring.
 - **Onboarding flow** — `/onboarding` collects website count range, customer type, primary focus. Personal email domains (gmail, etc.) are auto-routed to the personal-tier path.
 - **Plugin install** — Subscriber downloads `actv-trkr-latest.zip` from `/settings → Plugin`. Plugin auto-registers the site on first heartbeat; no manual URL entry required.
 - **Site verification** — `check-site-status` runs after install, then `check-tracking-health` every 5 minutes determines tracker status.
+- **First-touch auto-sync (NEW CUSTOMER GUARANTEE)** — within 10 minutes of the first heartbeat from a new site, the platform MUST automatically:
+  1. Register the site in `sites` (domain-normalized).
+  2. Run `check-site-status` + `check-tracking-health` to populate uptime/tracker state.
+  3. Run `manage-import-job?action=discover` to populate `form_integrations` AND auto-create `form_import_jobs` for every form with un-imported entries.
+  4. Run `check-domain-ssl` to populate domain/SSL expiry.
+  5. Trigger `seo-scan` to seed the SEO module with at least a Summary tier baseline.
+  6. Enqueue a "welcome — your site is live" transactional email.
+  No subscriber should ever land on `/dashboard`, `/monitoring`, `/forms`, or `/seo` and see "no data" for a site that has reported a heartbeat. If they do, that is a bug — see §19 (Auto-sync contract).
 - **Active state** — Site appears in dashboard, monitoring, and reports surfaces.
 
 **Failure recovery**:
 - Stripe webhook missed → Owner can manually create the org via `/admin-setup → Clients`.
 - Plugin never reports → "Re-scan Forms" button on `/settings → Form Import` calls `manage-import-job?action=discover`, which (a) discovers forms via the WP plugin (or falls back to the existing `forms` table), AND (b) auto-creates `form_import_jobs` for every form with un-imported entries. The `process-import-queue` cron worker (every 2 min) drains the jobs. See §4 for full details.
+- First-touch auto-sync failed → `/admin-setup → New Customer Health` surfaces any new site (<7 days old) that is missing forms discovery, monitoring data, or SEO baseline, with a one-click "Re-run onboarding sync" action.
 
 ---
 
@@ -55,6 +64,7 @@ The full path a paying customer takes, from checkout to active monitoring.
 
 - **3-layer architecture**: Discovery (REST scan) → Background Backfill (`sync-forms`) → Real-time webhook.
 - **Supported builders (v1.16.9+)**: Gravity Forms (strict authoritative), Avada/Fusion (post type `fusion_form`, strict authoritative), WPForms, Contact Form 7 (requires Flamingo for entry storage), **Ninja Forms**, **Fluent Forms**. All six register through `MM_Adapter_Registry::init()` and implement the `MM_Import_Adapter` interface (`discover_forms`, `count_entries`, `fetch_entries`).
+- **Form Capture (formerly "Universal Form Capture")**: the user-facing label on the landing page is **"Form Capture"**. The plugin still describes itself internally as "first-party pageview tracking and universal form capture" in `mission-metrics.php` — that string is internal copy and is intentionally left unchanged.
 - **Field mapping**: canonical attributes (`name`, `email`, `phone`, `company`, `message`) editable per form in `/forms → Field Mapping`.
 - **Stability lock**: per `mem://data/form-parsing-stability`, parsing logic is finalized. No structural changes without explicit approval.
 
@@ -66,6 +76,7 @@ The full path a paying customer takes, from checkout to active monitoring.
 4. **Drift detection**: the `form-import-watchdog` cron (every 10 min) compares live WP entry count vs `total_entries_imported` for every active integration. Any gap > 0 with no active job triggers a new pending job, then kicks `process-import-queue`.
 5. **Self-healing of needs_review**: if a previously junk form drops below the threshold (cleaned up in WP), the watchdog flips it back to `detected`.
 6. **Admin observability**: `/admin-setup` (owner-only) renders the Form Import Health panel with per-integration drift, stuck-job badges, and "Run queue now" / "Run watchdog" manual triggers.
+7. **Auto-discovery on first heartbeat**: a new site MUST get a `manage-import-job?action=discover` call within 10 min of its first heartbeat. This is enforced by §19 Auto-sync contract.
 
 ### Two-table model
 
@@ -128,6 +139,8 @@ Tabs: Overview, Form Checks, Broken Links, Domain & SSL, Plugin & WordPress, Not
 - **Active HTTP pinging**: HEAD with GET fallback, two-strike confirmation before flagging.
 - **Domain/SSL queries** filter by `site_id` (not `org_id`) to survive org reassignment.
 - **Plugin update check**: `plugin-update-check` edge function compares installed vs. `pluginManifest.version`.
+- **Auto-sync on first heartbeat**: a brand-new site MUST get its first uptime ping, domain/SSL lookup, and plugin-version check within 10 minutes of registration. Without this, `/monitoring` would show empty cards on day 1 — that is a regression. Enforced by §19.
+- **Continuous freshness contract**: every monitoring data point has a maximum staleness budget — uptime ≤ 5 min, tracker health ≤ 5 min, domain/SSL ≤ 24 h, broken-link scan ≤ 7 d. The `monitoring-freshness-watchdog` cron (every 30 min) flags any site that breaches its budget and re-enqueues the appropriate refresh job.
 
 ---
 
@@ -143,6 +156,9 @@ Requires plugin v1.4.0+. Real-time WordPress integrity events.
 ## 9. SEO suite  *(key: `seo`)*
 
 Tiered visibility: **No Insights Yet** → **Summary** → **Advanced**. New orgs default to `summary`. AI fix suggestions via `seo-suggest-fix` (cap: 10/mo).
+
+- **Auto-baseline on first heartbeat**: a new site MUST be queued for an initial `seo-scan` within 10 minutes of registration so the SEO module never opens with "No Insights Yet" for an active site. Enforced by §19.
+- **Periodic refresh**: `seo-scan` re-runs weekly per site (or on-demand from `/seo`). Stale baselines (>14 d) are surfaced with a "Refresh now" CTA.
 
 ---
 
@@ -239,3 +255,60 @@ Before sign-off, the reviewing admin must spot-check:
 8. Stripe webhook for `invoice.payment_succeeded` updates `subscribers`.
 9. White-label preview applies primary color across dashboard + emails.
 10. RLS smoke test: a user from Org A cannot read Org B's `events`, `forms`, or `subscribers` rows.
+11. **New-customer auto-sync**: from a brand-new install, within 10 min `/dashboard`, `/monitoring`, `/forms`, and `/seo` all show real data (or a documented "still syncing" state) — never blank.
+12. **Email 2FA**: signing in requires entering a 6-digit code emailed to the user before a session is granted (verified end-to-end).
+13. **Form Capture label**: landing page reads "Form Capture" (not "Universal Form Capture").
+
+---
+
+## 19. Auto-sync contract  *(key: `autosync`)*
+
+This section is the **single source of truth** for "things should not be empty for a paying customer." If any surface (Dashboard, Monitoring, Forms, SEO, Reports) is blank for a site that has reported a heartbeat, the cause MUST be one of the documented states below — never an unexplained gap.
+
+### 19.1 First-touch sync (new sites)
+
+When a site sends its **first** heartbeat (i.e., no prior row in `sites`, or `first_seen_at` is within the last 24 h), the platform fans out the following jobs within 10 minutes:
+
+| # | Job | Purpose | Surface unblocked |
+|---|-----|---------|-------------------|
+| 1 | `provision-site` | Insert/normalize `sites` row | All |
+| 2 | `check-site-status` | First uptime ping | `/monitoring` Overview |
+| 3 | `check-tracking-health` | Tracker state Active/Warning/Inactive | Dashboard Needs Attention |
+| 4 | `check-domain-ssl` | Domain + SSL expiry | `/monitoring` Domain & SSL |
+| 5 | `manage-import-job?action=discover` | Populate `form_integrations`, auto-job non-empty forms | `/forms`, `/settings → Form Import` |
+| 6 | `seo-scan` (initial) | Seed Summary baseline | `/seo` |
+| 7 | `aggregate-daily` (today only) | Backfill today's KPI tiles | Dashboard |
+| 8 | `send-transactional-email` (welcome) | Notify owner site is live | Inbox |
+
+Orchestrated by the `new-site-bootstrap` edge function, triggered by the heartbeat ingestion endpoint when it detects a new site. Idempotent — safe to re-run.
+
+### 19.2 Steady-state freshness budgets
+
+Every long-lived data point has a maximum staleness budget. If exceeded with no active job, the relevant watchdog cron MUST re-enqueue the refresh:
+
+| Data point | Budget | Watchdog | Recovery action |
+|------------|--------|----------|-----------------|
+| Uptime ping | 5 min | `check-tracking-health` (5 min) | Re-ping |
+| Tracker health | 5 min | `check-tracking-health` (5 min) | Re-evaluate |
+| Form drift (live count vs. imported) | 10 min | `form-import-watchdog` (10 min) | Insert pending job, kick `process-import-queue` |
+| Domain/SSL | 24 h | `monitoring-freshness-watchdog` (30 min) | Re-run `check-domain-ssl` |
+| Broken-link scan | 7 d | `monitoring-freshness-watchdog` (30 min) | Re-run scan |
+| SEO baseline | 14 d | `seo-freshness-watchdog` (daily) | Re-run `seo-scan` |
+| Plugin version | 24 h | `plugin-update-check` on demand | Compare to `pluginManifest.version` |
+| Daily aggregates | 24 h | `aggregate-daily` (nightly) | Backfill missing day |
+
+### 19.3 Admin observability
+
+`/admin-setup → New Customer Health` (owner-only) lists every site < 7 days old and shows a green/red matrix for each of the 8 first-touch jobs. Any red cell exposes a "Re-run" button that re-invokes that single job for that single site.
+
+`/admin-setup → Freshness Watchdog` shows the current count of sites breaching each staleness budget with one-click "Re-run watchdog now" actions.
+
+### 19.4 Empty-state policy (UI contract)
+
+A page MUST render one of these three states — never a silent blank:
+
+1. **Real data** — the happy path.
+2. **"Still syncing — first data in ~N minutes"** — only valid for sites < 24 h old. Renders a progress hint pointing to which auto-sync job is still pending.
+3. **"No data — last sync failed"** — renders the timestamp of the failed job and a "Retry" CTA. Triggers an entry on the New Customer Health panel.
+
+Any blank/whitespace render outside these three is a bug.

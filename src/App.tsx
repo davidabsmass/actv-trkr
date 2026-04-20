@@ -42,6 +42,8 @@ const ComplianceSetup = lazy(() => import("./pages/ComplianceSetup"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const DataRoomView = lazy(() => import("./pages/DataRoomView"));
 const PipelineStatus = lazy(() => import("./pages/PipelineStatus"));
+const VisitorJourneys = lazy(() => import("./pages/VisitorJourneys"));
+const DataRights = lazy(() => import("./pages/DataRights"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,6 +142,7 @@ const App = () => (
             >
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="performance" element={<Performance />} />
+              <Route path="visitor-journeys" element={<VisitorJourneys />} />
               <Route path="forms" element={<Forms />} />
               <Route path="entries" element={<Navigate to="/forms" replace />} />
               <Route path="reports" element={<Reports />} />
@@ -170,6 +173,7 @@ const App = () => (
             <Route path="/terms" element={<Terms />} />
             <Route path="/dpa" element={<Dpa />} />
             <Route path="/cookie-policy" element={<CookiePolicy />} />
+            <Route path="/data-rights" element={<DataRights />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/data-room/:token" element={<DataRoomView />} />
             <Route path="*" element={<NotFound />} />

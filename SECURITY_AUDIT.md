@@ -363,4 +363,18 @@ I.e., **add new model alongside, hard-deprecate the old credential within a sing
 | **C-3** | ✅ Resolved | Already implemented end-to-end: `MM_Ingest_Token::get()` mints narrow-scope tokens stored in `site_ingest_tokens`. Tracker uses `ingestToken` exclusively; admin `api_key` is no longer in page source. Verified in `class-tracker.php` v1.9.17+. |
 | **C-1** | ✅ Resolved (v1.18.0) | Magic-login binds to the requesting dashboard user via `requested_by_email`. Plugin maps to a WP admin with `manage_options`; refuses login if no match. All issuance + consumption + denials audited via `log_security_event`. |
 | **C-2** | 🟡 Phase 1 of 2 (v1.18.1) | New `api_keys.signing_secret` column + `signed_request_nonces` replay table. Backend (`generate-wp-login`) now sends HMAC-signed headers when secret present. Plugin's `MM_Hmac::verify` accepts signed requests; legacy hash still accepted with `legacy_hash_auth_used` telemetry. New `provision-signing-secret` edge function pushes the secret per-site (idempotent). **Phase 2 (v1.19.0)**: flip plugin to signed-only after observed adoption. |
-| **C-4** | ⏸ Deferred to Phase 2 | Plugin ZIP signing/verification — larger effort, separate PR. |
+| **C-4** | ✅ Resolved (v1.18.1) | `plugin-update-check` already HMAC-signs the `(version, download_url, signed_at)` tuple via `PLUGIN_RELEASE_SIGNING_SECRET`. This pass adds **SHA-256 digest** of the canonical ZIP to `scripts/plugin-artifacts.mjs`, the manifest, and the update-check response. Plugin updater verifies digest after download (mismatch → install refused). Full Ed25519 signing remains a future follow-up. |
+
+---
+
+## 8. Critical hotfix in this pass
+
+`mission-metrics-wp-plugin/includes/class-hmac.php` (and the `serve-plugin-zip/plugin-template/` mirror) shipped with a **fatal PHP syntax error** in v1.18.1: the `verify_bootstrap_legacy()` method was missing its closing `}` and the `verify()` docblock had no opening `/**`. This would have caused every plugin install to white-screen on activation. **Fixed**; both copies parse cleanly. Re-run of `node scripts/plugin-artifacts.mjs` confirmed all 4 version targets at v1.18.1 with new SHA-256 in manifest.
+
+## 9. New documentation
+
+- `docs/security/auth.md` — trust boundaries, magic-login (C-1), HMAC signing (C-2)
+- `docs/security/key-management.md` — publishable vs server-only secret split (C-3)
+- `docs/security/webhooks.md` — Stripe idempotency (H-7), backend → plugin signing
+- `docs/runbooks/release-rollback.md` — release sequence, C-2 phased rollout gate, rollback procedures
+

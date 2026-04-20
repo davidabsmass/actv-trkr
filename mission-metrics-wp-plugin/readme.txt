@@ -4,12 +4,17 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.9.1
+Stable tag: 1.19.0
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.19.0 =
+* NEW: Form discovery now reports each form's `is_active` state so the dashboard can distinguish enabled vs. disabled forms in WordPress (Gravity, WPForms, Ninja, Fluent, Avada, CF7).
+* NEW: Forms toggled off in WordPress now propagate to the dashboard automatically — they're hidden from active counts and Form Health, but historical leads stay accessible.
+* Backward compatible: older dashboards that don't read `is_active` are unaffected.
 
 = 1.9.1 =
 * NEW: Built-in cookie consent banner — no third-party plugin required.

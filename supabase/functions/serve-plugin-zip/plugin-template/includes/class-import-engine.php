@@ -54,6 +54,11 @@ class MM_Import_Engine {
 				foreach ( $forms as $form ) {
 					$form['builder_type'] = $adapter->get_builder_type();
 					$form['entry_count']  = $adapter->count_entries( $form['external_form_id'] );
+					// Default is_active to true for backward compat with adapters
+					// that don't yet set it (CF7 etc. already set it explicitly).
+					if ( ! isset( $form['is_active'] ) ) {
+						$form['is_active'] = true;
+					}
 					$all_forms[] = $form;
 				}
 			} catch ( \Throwable $e ) {

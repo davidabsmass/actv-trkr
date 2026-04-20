@@ -126,8 +126,8 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       // Determine if previous period has meaningful data to compare against
       const hasPreviousData = (prevSessAgg.data && prevSessAgg.data.length > 0) || (prevLeadsAgg.data && prevLeadsAgg.data.length > 0) || previousSessions > 0 || previousLeads > 0;
 
-      const currentCvr = currentSessions > 0 ? Math.round((currentLeads / currentSessions) * 10000) / 100 : 0;
-      const previousCvr = previousSessions > 0 ? Math.round((previousLeads / previousSessions) * 10000) / 100 : 0;
+      const currentCvr = currentSessions > 0 ? Math.min(100, Math.round((currentLeads / currentSessions) * 10000) / 100) : 0;
+      const previousCvr = previousSessions > 0 ? Math.min(100, Math.round((previousLeads / previousSessions) * 10000) / 100) : 0;
 
       const effectivePrevSessions = hasPreviousData ? previousSessions : 0;
       const effectivePrevLeads = hasPreviousData ? previousLeads : 0;

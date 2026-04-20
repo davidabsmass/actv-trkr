@@ -55,8 +55,8 @@ export default function MonthlyTab() {
       const previousSessions = sum(prevSessRes.data || []);
       const currentLeads = sum(leadsRes.data || []);
       const previousLeads = sum(prevLeadsRes.data || []);
-      const currentCvr = currentSessions > 0 ? Math.round((currentLeads / currentSessions) * 10000) / 100 : 0;
-      const previousCvr = previousSessions > 0 ? Math.round((previousLeads / previousSessions) * 10000) / 100 : 0;
+      const currentCvr = currentSessions > 0 ? Math.min(100, Math.round((currentLeads / currentSessions) * 10000) / 100) : 0;
+      const previousCvr = previousSessions > 0 ? Math.min(100, Math.round((previousLeads / previousSessions) * 10000) / 100) : 0;
 
       return { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr };
     },

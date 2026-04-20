@@ -122,7 +122,7 @@ export function KPIRow({ kpis, totalSessions, totalLeads, dailyMap }: KPIRowProp
       sessions: ordered.map(([, v]) => v.sessions),
       leads: ordered.map(([, v]) => v.leads),
       pageviews: ordered.map(([, v]) => v.pageviews),
-      cvr: ordered.map(([, v]) => (v.sessions > 0 ? v.leads / v.sessions : 0)),
+      cvr: ordered.map(([, v]) => (v.sessions > 0 ? Math.min(1, v.leads / v.sessions) : 0)),
     };
   }, [dailyMap]);
 

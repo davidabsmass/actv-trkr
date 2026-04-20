@@ -83,13 +83,13 @@ const Performance = () => {
     const totalLeads = overviewData?.totalLeads ?? realtimeData.totalLeads;
     const totalPageviews = overviewData?.totalPageviews ?? realtimeData.totalPageviews;
     const { dailyMap, sources, campaigns, pages } = realtimeData;
-    const cvr = totalSessions > 0 ? totalLeads / totalSessions : 0;
+    const cvr = totalSessions > 0 ? Math.min(1, totalLeads / totalSessions) : 0;
 
     // Previous period values
     const prevSessions = prevOverviewData?.totalSessions ?? 0;
     const prevLeads = prevOverviewData?.totalLeads ?? 0;
     const prevPageviews = prevOverviewData?.totalPageviews ?? 0;
-    const prevCvr = prevSessions > 0 ? prevLeads / prevSessions : 0;
+    const prevCvr = prevSessions > 0 ? Math.min(1, prevLeads / prevSessions) : 0;
 
     const dailyData = Object.entries(dailyMap)
       .sort(([a], [b]) => a.localeCompare(b))

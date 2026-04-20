@@ -252,8 +252,14 @@ export default function SubscriberSitesPanel() {
   const handleAddUser = async () => {
     if (!addUserOrg) return;
     const email = newUserEmail.trim().toLowerCase();
+    const fullName = newUserName.trim();
+    const tempPassword = newUserTempPassword.trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error("Please enter a valid email address");
+      return;
+    }
+    if (tempPassword && tempPassword.length < 8) {
+      toast.error("Temporary password must be at least 8 characters");
       return;
     }
     setAddUserSubmitting(true);
@@ -263,19 +269,34 @@ export default function SubscriberSitesPanel() {
           action: "add_existing_user_to_org",
           org_id: addUserOrg.id,
           email,
+          full_name: fullName || undefined,
+          temp_password: tempPassword || undefined,
           role: newUserRole,
-          send_invite_email: true,
+          send_invite_email: !tempPassword, // skip the reset email when admin sets a temp password
         },
       });
       if (error) throw error;
-      toast.success(
-        data?.was_created
-          ? `Created account for ${email} and added to ${addUserOrg.name}. Password setup email sent.`
-          : `${email} added to ${addUserOrg.name}. Password setup email sent.`,
-      );
+
+      if (tempPassword) {
+        // Copy to clipboard for the admin to share
+        try { await navigator.clipboard.writeText(tempPassword); } catch { /* noop */ }
+        toast.success(
+          `${email} added to ${addUserOrg.name}. Temporary password copied to clipboard — share it securely.`,
+          { duration: 8000 },
+        );
+      } else {
+        toast.success(
+          data?.was_created
+            ? `Created account for ${email} and added to ${addUserOrg.name}. Password setup email sent.`
+            : `${email} added to ${addUserOrg.name}. Password setup email sent.`,
+        );
+      }
       setAddUserOrg(null);
       setNewUserEmail("");
+      setNewUserName("");
       setNewUserRole("member");
+      setNewUserTempPassword("");
+      setShowTempPassword(false);
       refreshMembers();
     } catch (err: any) {
       toast.error(err.message || "Failed to add user");

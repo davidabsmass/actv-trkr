@@ -581,58 +581,127 @@ export default function SubscriberSitesPanel() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {members.map((m) => (
+                                    {members.map((m) => {
+                                      const isEditing = editingMember === m.user_id;
+                                      const saving = actionLoading === `save-${m.user_id}`;
+                                      return (
                                       <TableRow key={m.user_id}>
                                         <TableCell className="text-xs font-medium">
-                                          {m.full_name || "—"}
+                                          {isEditing ? (
+                                            <Input
+                                              value={editName}
+                                              onChange={(e) => setEditName(e.target.value)}
+                                              placeholder="Full name"
+                                              className="h-7 text-xs"
+                                              disabled={saving}
+                                            />
+                                          ) : (
+                                            m.full_name || "—"
+                                          )}
                                         </TableCell>
                                         <TableCell className="font-mono text-xs">
                                           {m.email || <span className="text-muted-foreground">unknown</span>}
                                         </TableCell>
                                         <TableCell>
-                                          <Badge variant={m.role === "admin" ? "default" : "outline"}>
-                                            {m.role}
-                                          </Badge>
+                                          {isEditing ? (
+                                            <Select
+                                              value={editRole}
+                                              onValueChange={(v) => setEditRole(v as "member" | "admin")}
+                                              disabled={saving}
+                                            >
+                                              <SelectTrigger className="h-7 w-[100px] text-xs">
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="member">member</SelectItem>
+                                                <SelectItem value="admin">admin</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          ) : (
+                                            <Badge variant={m.role === "admin" ? "default" : "outline"}>
+                                              {m.role}
+                                            </Badge>
+                                          )}
                                         </TableCell>
                                         <TableCell className="text-xs">
                                           {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "—"}
                                         </TableCell>
                                         <TableCell>
-                                          <div className="flex gap-1">
-                                            {m.email && (
-                                              <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-7 text-xs"
-                                                onClick={() => handleSendReset(m.email!)}
-                                                disabled={actionLoading === `reset-${m.email}`}
-                                              >
-                                                {actionLoading === `reset-${m.email}` ? (
-                                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                                ) : (
-                                                  <KeyRound className="h-3 w-3 mr-1" />
+                                          <div className="flex gap-1 flex-wrap">
+                                            {isEditing ? (
+                                              <>
+                                                <Button
+                                                  size="sm"
+                                                  variant="default"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => handleSaveMember(r.org.id, m.user_id)}
+                                                  disabled={saving}
+                                                >
+                                                  {saving ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <Check className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Save
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-7 text-xs"
+                                                  onClick={cancelEditMember}
+                                                  disabled={saving}
+                                                >
+                                                  <X className="h-3 w-3 mr-1" />
+                                                  Cancel
+                                                </Button>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => startEditMember(m)}
+                                                >
+                                                  Edit
+                                                </Button>
+                                                {m.email && (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => handleSendReset(m.email!)}
+                                                    disabled={actionLoading === `reset-${m.email}`}
+                                                  >
+                                                    {actionLoading === `reset-${m.email}` ? (
+                                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                      <KeyRound className="h-3 w-3 mr-1" />
+                                                    )}
+                                                    Reset Password
+                                                  </Button>
                                                 )}
-                                                Reset Password
-                                              </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="destructive"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => handleRemove(r.org.id, m.user_id, m.email)}
+                                                  disabled={actionLoading === `remove-${m.user_id}`}
+                                                >
+                                                  {actionLoading === `remove-${m.user_id}` ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <UserMinus className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Remove
+                                                </Button>
+                                              </>
                                             )}
-                                            <Button
-                                              size="sm"
-                                              variant="destructive"
-                                              className="h-7 text-xs"
-                                              onClick={() => handleRemove(r.org.id, m.user_id, m.email)}
-                                              disabled={actionLoading === `remove-${m.user_id}`}
-                                            >
-                                              {actionLoading === `remove-${m.user_id}` ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                              ) : (
-                                                <UserMinus className="h-3 w-3 mr-1" />
-                                              )}
-                                              Remove
-                                            </Button>
                                           </div>
                                         </TableCell>
                                       </TableRow>
-                                    ))}
+                                      );
+                                    })}
                                   </TableBody>
                                 </Table>
                               </div>

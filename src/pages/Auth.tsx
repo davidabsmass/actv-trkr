@@ -186,6 +186,12 @@ const Auth = () => {
 
         setPendingEmail(normalizedEmail);
         setPendingPassword(password);
+        try {
+          sessionStorage.setItem(
+            PENDING_OTP_KEY,
+            JSON.stringify({ email: normalizedEmail, password, inviteCode: inviteCode || undefined } satisfies PendingOtpState),
+          );
+        } catch { /* ignore quota */ }
         goToPanel("otp");
       }
     } catch (err: any) {

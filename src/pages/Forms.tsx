@@ -33,6 +33,8 @@ import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { callManageImportJob } from "@/lib/manage-import-job";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_FORMS } from "@/components/howto/page-content";
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary border-primary/20",

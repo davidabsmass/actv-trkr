@@ -8,6 +8,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_SECURITY } from "@/components/howto/page-content";
 
 const severityStyles: Record<string, string> = {
   critical: "bg-destructive/10 text-destructive border-destructive/20",

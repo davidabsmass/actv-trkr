@@ -23,6 +23,8 @@ import { TrackingStatusCard, TrackingAlertsPanel, TrackingInterruptionsTable, Si
 import { ConsentStatusIndicator, DataIntegrityNotice, ComplianceWarnings } from "@/components/monitoring/ComplianceStatusPanel";
 import { FleetHealthWidget } from "@/components/monitoring/FleetHealthWidget";
 import { callManageImportJob } from "@/lib/manage-import-job";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_MONITORING } from "@/components/howto/page-content";
 
 export default function MonitoringPage() {
   const { orgId } = useOrg();

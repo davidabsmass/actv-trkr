@@ -13,6 +13,8 @@ import FormsSection from "@/components/settings/FormsSection";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_SETTINGS } from "@/components/howto/page-content";
 import { useEffect } from "react";
 
 export default function SettingsPage() {

@@ -21,6 +21,8 @@ import { useOrg } from "@/hooks/use-org";
 import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { usePlanTier } from "@/hooks/use-plan-tier";
 import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
 
 const Reports = lazy(() => import("./Reports"));
 

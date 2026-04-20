@@ -3,6 +3,8 @@ import { format, subDays, startOfDay } from "date-fns";
 import { useOrg } from "@/hooks/use-org";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_VISITOR_JOURNEYS } from "@/components/howto/page-content";
 
 export default function VisitorJourneys() {
   const { orgId, orgName } = useOrg();

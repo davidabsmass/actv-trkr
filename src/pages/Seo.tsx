@@ -6,6 +6,8 @@ import SeoSummaryView from "@/components/seo/SeoSummaryView";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_SEO } from "@/components/howto/page-content";
 
 export default function Seo() {
   const { orgName, orgId, loading: orgLoading } = useOrg();

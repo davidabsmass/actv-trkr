@@ -1111,7 +1111,6 @@ Deno.serve(async (req) => {
       wp_sync_status_code: wpSyncStatus,
       wp_sync_error: wpSyncErrorText,
       endpoint_attempted: wpEndpoint,
-      ...fallback,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

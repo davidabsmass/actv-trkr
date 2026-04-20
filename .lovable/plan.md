@@ -1,39 +1,69 @@
 
-The user is right to question this. Let me think about MRR semantics and what's actually happening.
+The user approved the previous plan and added one requirement: **the active/inactive scan must also run during initial plugin connection**, not just on manual re-scan or hourly watchdog.
 
-**MRR semantics:**
-- Churned subscribers should contribute $0 to MRR (they're not paying anymore).
-- Subscribers with a 100% forever discount should contribute $0 (they're paying nothing).
-- The MRR column on each row should reflect what THAT subscriber contributes monthly.
+Looking at where initial discovery happens:
+- When a site first connects, the plugin reports in via heartbeat/sync
+- `manage-import-job` `handleDiscover` is called either manually from the dashboard or programmatically
+- For first-time setup, the dashboard's auto-discovery flow already calls `discover` once the plugin is detected
 
-**Why all rows show $45:**
-Looking at the recalc function — it pulls `stripe_subscription_id` and recomputes from Stripe. But:
+So the "first-add" path is already covered by `handleDiscover` — as long as I include the `is_active` reconciliation logic there (which the plan already does), it runs automatically on first plugin connection. I'll just make this explicit in the implementation and verify the auto-discovery trigger fires on initial site registration.
 
-1. **Churned subscribers**: Their `stripe_subscription_id` may still point to a (now-canceled) subscription. The recalc function doesn't check status — it just retrieves the sub and computes the price. A canceled sub still has `unit_amount: 4500`, so we write $45 back even though they're not paying.
+## What I'll build
 
-2. **100% discount subscribers**: Looking at `computeMrrFromSubscription`, it does handle `percent_off` and `amount_off`. BUT — Stripe stores the active discount on `subscription.discount` only in older API versions. In API `2025-08-27.basil`, discounts moved to `subscription.discounts[]` (an array of discount IDs that need expanding). The code reads `sub.discount?.coupon` which is likely `undefined` in this API version → no discount applied → full $45.
+### 1. Plugin v1.15.0 — report `is_active` per form
+Update `class-import-adapters.php` (both plugin mirrors) so each adapter's `discover_forms()` returns an `is_active` boolean:
+- **Gravity Forms**: `!is_trash && is_active`
+- **WPForms**: `post_status === 'publish'` and not disabled via meta
+- **Ninja Forms**: not in trash, status check
+- **Fluent / Avada / CF7**: already filter by published status — pass `true` through
 
-3. The recalc only filters `not("stripe_subscription_id", "is", null)` — it processes churned rows too and overwrites their MRR with the list price.
+Bump plugin to 1.15.0 across all 4 version files via `scripts/plugin-artifacts.mjs`.
 
-**The fix:**
+### 2. Database migration
+Add `is_active boolean not null default true` to `forms` and `form_integrations`. Keep `archived` as a separate user-controlled flag.
 
-1. **Update `computeMrrFromSubscription`** in both `recalc-subscriber-mrr` and `actv-webhook` to:
-   - Read discounts from the new `subscription.discounts[]` array (expand them to get coupon details).
-   - Fall back to legacy `sub.discount` for safety.
+### 3. Backend reconciliation in `manage-import-job/handleDiscover`
+- For every form returned by the plugin → upsert with `is_active` from payload.
+- For every form previously known but **missing from the new scan** → set `is_active = false` (treats deletion as inactive).
+- Backward compatible: if the plugin is older than 1.15.0 and doesn't send `is_active`, default to `true` (current behavior).
 
-2. **Respect subscription status in recalc**:
-   - If `stripeSub.status` is `canceled` / `incomplete_expired` → set MRR to 0.
-   - If subscriber row's `status` is `churned` → force MRR to 0 regardless of Stripe.
+### 4. First-connect auto-trigger
+Verify and ensure that when a new site is registered (`trigger-site-sync` / first plugin heartbeat), `handleDiscover` is called once automatically — so the very first scan populates `is_active` correctly.
 
-3. **Re-run Recalc MRR** after deploying — the four affected rows should then show:
-   - 2 churned → $0
-   - 2 with 100% lifetime discount → $0
-   - Everyone else → correct discounted amount.
+### 5. Hourly watchdog re-discovery
+Extend `form-import-watchdog` to call `discover` once per site per hour so WP toggles propagate within ~1 hour without a manual click.
 
-**Files to edit:**
-- `supabase/functions/recalc-subscriber-mrr/index.ts` — fix discount parsing + zero out churned/canceled.
-- `supabase/functions/actv-webhook/index.ts` — same discount-parsing fix so future events compute correctly.
+### 6. UI changes
+- **Settings → Discovered Forms**: add three tabs/filters → "Active (4) · Inactive (11) · Archived (0)". Inactive forms get a "Disabled in WordPress" badge.
+- **Form Health widget**: filter to `is_active = true AND archived = false`.
+- **Forms page + Leaderboard**: exclude inactive from active counts; historical entries remain accessible.
+- **`useForms` hook**: surface the new `is_active` field.
 
-**After deploy:** Click **Recalc MRR** again and verify the 4 rows drop to $0 and the dashboard MRR total decreases by $180.
+## What you'll see
 
-**Answer to your question:** You're not misunderstanding — MRR should be $0 for both churned and 100%-discount subscribers. The current code is wrong on both counts. The bug is that (a) the Stripe API version we use returns discounts in `discounts[]` not `discount`, and (b) the recalc doesn't zero out canceled subs.
+- Re-scan now reconciles inactive/deleted forms, not just additions.
+- New plugin installs scan active state on first connection.
+- Toggling a form off in WP shows up on the dashboard within ~1 hour automatically (or instantly on manual re-scan).
+- Toggling a form back on auto-restores it.
+- All historical lead data preserved regardless of active state.
+
+## Files
+
+**Plugin (both mirrors + version sync):**
+- `mission-metrics-wp-plugin/includes/class-import-adapters.php`
+- `mission-metrics-wp-plugin/includes/class-import-engine.php`
+- `supabase/functions/serve-plugin-zip/plugin-template/includes/class-import-adapters.php`
+- `supabase/functions/serve-plugin-zip/plugin-template/includes/class-import-engine.php`
+- Run `node scripts/plugin-artifacts.mjs` to bump to 1.15.0
+
+**Backend:**
+- New migration: `is_active` columns
+- `supabase/functions/manage-import-job/index.ts` — reconcile is_active on discover
+- `supabase/functions/form-import-watchdog/index.ts` — hourly re-discover per site
+- Verify `trigger-site-sync` (or first-heartbeat path) calls discover on first connect
+
+**Frontend:**
+- `src/components/settings/FormsSection.tsx` — Active/Inactive/Archived tabs
+- `src/components/dashboard/FormHealthPanel.tsx` — filter active
+- `src/pages/Forms.tsx` + `src/components/dashboard/FormLeaderboard.tsx` — exclude inactive from counts
+- `src/hooks/use-dashboard-data.ts` — surface `is_active`

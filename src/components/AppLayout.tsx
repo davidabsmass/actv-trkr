@@ -13,6 +13,7 @@ import { Shield } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AiChatbot } from "@/components/AiChatbot";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
+import { HelpButton } from "@/components/support/HelpButton";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();
@@ -81,6 +82,7 @@ function LayoutInner() {
             </ErrorBoundary>
           </div>
           <AiChatbot />
+          <HelpButton />
         </main>
       </div>
     </SidebarProvider>

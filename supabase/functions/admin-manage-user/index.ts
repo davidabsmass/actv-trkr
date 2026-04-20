@@ -677,6 +677,25 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── LIST SUBSCRIBER SITES (admin: see all orgs/sites/api keys) ──
+    if (action === "list_subscriber_sites") {
+      const [orgsRes, sitesRes, keysRes] = await Promise.all([
+        adminClient.from("orgs").select("id, name, created_at").order("created_at", { ascending: false }),
+        adminClient.from("sites").select("id, domain, org_id, last_heartbeat_at"),
+        adminClient.from("api_keys").select("id, org_id, created_at, revoked_at, label").order("created_at", { ascending: false }),
+      ]);
+      if (orgsRes.error || sitesRes.error || keysRes.error) {
+        return new Response(
+          JSON.stringify({ error: orgsRes.error?.message || sitesRes.error?.message || keysRes.error?.message }),
+          { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ orgs: orgsRes.data || [], sites: sitesRes.data || [], api_keys: keysRes.data || [] }),
+        { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
     // ── LIST ORG MEMBERS ──
     if (action === "list_org_members") {
       const orgId = String(body.org_id || "").trim();

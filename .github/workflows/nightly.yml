@@ -15,8 +15,8 @@ jobs:
     name: Re-audit shipped deps
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'npm'
@@ -45,20 +45,23 @@ jobs:
     name: gitleaks (full history)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_CONFIG: .gitleaks.toml
+          # Honor repo allowlist (e.g., UUIDs in supabase/migrations/*.sql that
+          # the generic-api-key heuristic mis-flags). Without this var the action
+          # ignores .gitleaks.toml and surfaces benign matches.
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
 
   zap-baseline:
     name: ZAP baseline (staging)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: zaproxy/action-baseline@v0.12.0
         with:
           target: 'https://mshnctrl.lovable.app'

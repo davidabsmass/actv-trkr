@@ -494,6 +494,24 @@ serve(async (req) => {
           if (error) logStep("Churn update error", { error });
           else logStep("Subscriber churned", { customerId });
 
+          // ── Lifecycle: flip orgs to grace_period (30-day countdown) ──
+          try {
+            const { data: subRow } = await supabase.from("subscribers").select("email").eq("stripe_customer_id", customerId).maybeSingle();
+            if (subRow?.email) {
+              const { data: profile } = await supabase.from("profiles").select("user_id").ilike("email", subRow.email).maybeSingle();
+              if (profile?.user_id) {
+                const { data: ous } = await supabase.from("org_users").select("org_id").eq("user_id", profile.user_id);
+                for (const ou of ous || []) {
+                  // Skip billing-exempt orgs
+                  const { data: o } = await supabase.from("orgs").select("billing_exempt").eq("id", ou.org_id).maybeSingle();
+                  if (o?.billing_exempt) continue;
+                  await supabase.rpc("set_org_lifecycle_status", { p_org_id: ou.org_id, p_status: "grace_period", p_reason: "stripe_subscription_deleted" });
+                }
+                logStep("Org(s) moved to grace_period", { customerId, count: ous?.length || 0 });
+              }
+            }
+          } catch (lifeErr) { logStep("Lifecycle grace transition failed (non-fatal)", { error: String(lifeErr) }); }
+
           // Send cancellation email
           try {
             const { data: subscriber } = await supabase

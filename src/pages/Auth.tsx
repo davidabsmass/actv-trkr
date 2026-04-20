@@ -133,6 +133,69 @@ const Auth = () => {
     }
   };
 
+  const handleVerifyMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearMessages();
+    setLoading(true);
+    try {
+      if (!mfaChallengeToken) throw new Error("Session expired. Sign in again.");
+      const { data, error: verifyErr } = await supabase.functions.invoke("mfa-verify-code", {
+        body: { challengeToken: mfaChallengeToken, code: mfaCode.trim() },
+      });
+      if (verifyErr) {
+        const ctx: any = (verifyErr as any).context;
+        let msg = "Invalid code. Try again.";
+        try {
+          const body = ctx && typeof ctx.json === "function" ? await ctx.json() : null;
+          if (body?.error === "expired") msg = "Code expired. Request a new one.";
+          else if (body?.error === "too_many_attempts") msg = "Too many wrong codes. Sign in again.";
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      if (!data?.access_token || !data?.refresh_token) throw new Error("Could not complete sign-in.");
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (setErr) throw setErr;
+
+      const pendingCode = localStorage.getItem("pending_invite_code");
+      if (pendingCode) {
+        localStorage.removeItem("pending_invite_code");
+        try { await supabase.functions.invoke("redeem-invite", { body: { code: pendingCode } }); }
+        catch (e) { console.error("Pending invite redeem failed:", e); }
+      }
+      setMfaChallengeToken(null);
+      setMfaCode("");
+      setPendingPassword("");
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendMfa = async () => {
+    if (mfaResendCooldown > 0 || !pendingEmail || !pendingPassword) return;
+    clearMessages();
+    setLoading(true);
+    try {
+      const { data, error: issueErr } = await supabase.functions.invoke("mfa-issue-code", {
+        body: { email: pendingEmail, password: pendingPassword },
+      });
+      if (issueErr || !data?.challengeToken) throw new Error("Couldn't resend the code.");
+      setMfaChallengeToken(data.challengeToken);
+      setMfaCode("");
+      setMessage("A new code has been sent to your email.");
+      setMfaResendCooldown(30);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearMessages();

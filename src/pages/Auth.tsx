@@ -6,7 +6,7 @@ import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
 
-type ActivePanel = "main" | "otp" | "forgot";
+type ActivePanel = "main" | "otp" | "forgot" | "mfa";
 
 const PENDING_OTP_KEY = "actvtrkr_pending_otp";
 
@@ -34,6 +34,10 @@ const Auth = () => {
   const [pendingPassword, setPendingPassword] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaEmail, setMfaEmail] = useState("");
+  const [mfaResendCooldown, setMfaResendCooldown] = useState(0);
   const navigate = useNavigate();
 
   // Restore pending OTP state on mount so refresh / tab switch doesn't lose it.
@@ -60,6 +64,12 @@ const Auth = () => {
     const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [resendCooldown]);
+
+  useEffect(() => {
+    if (mfaResendCooldown <= 0) return;
+    const t = setTimeout(() => setMfaResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [mfaResendCooldown]);
 
   const clearMessages = () => { setError(null); setMessage(null); };
 

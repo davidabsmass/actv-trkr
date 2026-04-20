@@ -52,6 +52,8 @@ Deno.serve(async (req) => {
     jobs_created: 0,
     stuck_jobs_released: 0,
     needs_review_healed: 0,
+    rediscovers_run: 0,
+    forms_marked_inactive: 0,
     errors: [] as string[],
   };
 
@@ -74,6 +76,28 @@ Deno.serve(async (req) => {
         last_error: "Watchdog: released stuck lock",
       }).eq("id", job.id);
       summary.stuck_jobs_released++;
+    }
+
+    // ── Phase 1.5: Hourly per-site re-discovery ──
+    // Calls handleDiscover via the manage-import-job function for any site
+    // whose last discovery scan was >55 min ago. This is what propagates
+    // active/inactive form toggles from WP without manual re-scan.
+    const rediscoverCutoff = new Date(Date.now() - 55 * 60 * 1000).toISOString();
+    const { data: dueSites } = await supabase
+      .from("sites")
+      .select("id, org_id, domain, url, last_form_discovery_at")
+      .or(`last_form_discovery_at.is.null,last_form_discovery_at.lt.${rediscoverCutoff}`)
+      .limit(20);
+
+    for (const site of dueSites || []) {
+      const result = await rediscoverSite(supabase, site);
+      if (result.ok) {
+        summary.rediscovers_run++;
+        summary.forms_marked_inactive += result.marked_inactive || 0;
+        await supabase.from("sites")
+          .update({ last_form_discovery_at: new Date().toISOString() })
+          .eq("id", site.id);
+      }
     }
 
     // ── Phase 2: Drift detection across all active integrations ──

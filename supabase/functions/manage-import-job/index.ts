@@ -305,6 +305,7 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     auto_started_jobs: autoStartedJobs,
     skipped_jobs: skippedJobs,
     junk_skipped: junkSkipped,
+    marked_inactive: markedInactive,
     source,
     wp_plugin_error: wpError,
     queue_triggered: queueTriggered,

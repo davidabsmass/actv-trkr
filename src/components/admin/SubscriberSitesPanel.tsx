@@ -302,10 +302,24 @@ export default function SubscriberSitesPanel() {
                   className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExportUsers}
+                disabled={actionLoading === "export-users"}
+                className="h-9"
+              >
+                {actionLoading === "export-users" ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                )}
+                Export Users CSV
+              </Button>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Manage user access for any subscriber site. Add users, remove users, or send password-reset emails.
+            Manage user access for any subscriber site. Add users, remove users, send password resets, or revoke API keys. A daily user export is also emailed automatically to david@absmass.com.
           </p>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
@@ -353,9 +367,29 @@ export default function SubscriberSitesPanel() {
                       </TableCell>
                       <TableCell>
                         {r.activeKey ? (
-                          <Badge variant="default" className="gap-1">
-                            <Check className="h-3 w-3" /> Active
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="default" className="gap-1">
+                              <Check className="h-3 w-3" /> Active
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRevokeKey(r.activeKey!.id, r.org.name);
+                              }}
+                              disabled={actionLoading === `revoke-${r.activeKey.id}`}
+                              title="Revoke this API key"
+                            >
+                              {actionLoading === `revoke-${r.activeKey.id}` ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Ban className="h-3 w-3 mr-1" />
+                              )}
+                              Revoke
+                            </Button>
+                          </div>
                         ) : (
                           <Badge variant="secondary" className="gap-1">
                             <X className="h-3 w-3" /> None

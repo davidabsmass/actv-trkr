@@ -12,7 +12,7 @@ function getZipUrl(req: Request): string {
 }
 
 const CURRENT_PLUGIN_VERSION = "1.19.0";
-const CURRENT_PLUGIN_SHA256 = "dfcee931b84d46edc0704e5ffd409d27f85f3a8b06f58b989bf4849bac74ffc6";
+const CURRENT_PLUGIN_SHA256 = "fd69c913344fa98ba733bdd3e67c6206e97f4615dc1b97bcfa5d27df503a7843";
 
 const CHANGELOG = `
 ## 1.18.1

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, Eye, EyeOff, Ticket, ShieldCheck, KeyRound } from "lucide-react";
@@ -7,6 +7,14 @@ import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
 
 type ActivePanel = "main" | "otp" | "forgot";
+
+const PENDING_OTP_KEY = "actvtrkr_pending_otp";
+
+type PendingOtpState = {
+  email: string;
+  password: string;
+  inviteCode?: string;
+};
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -25,7 +33,33 @@ const Auth = () => {
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingPassword, setPendingPassword] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
+
+  // Restore pending OTP state on mount so refresh / tab switch doesn't lose it.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_OTP_KEY);
+      if (!raw) return;
+      const saved: PendingOtpState = JSON.parse(raw);
+      if (saved?.email && saved?.password) {
+        setPendingEmail(saved.email);
+        setPendingPassword(saved.password);
+        if (saved.inviteCode) setInviteCode(saved.inviteCode);
+        setActivePanel("otp");
+        setIsLogin(false);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Tick resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   const clearMessages = () => { setError(null); setMessage(null); };
 
@@ -64,6 +98,7 @@ const Auth = () => {
         }
       }
 
+      sessionStorage.removeItem(PENDING_OTP_KEY);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message);
@@ -73,12 +108,14 @@ const Auth = () => {
   };
 
   const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
     clearMessages();
     setLoading(true);
     try {
       const { error } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
       if (error) throw error;
       setMessage("A new verification code has been sent to your email.");
+      setResendCooldown(30);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -149,6 +186,12 @@ const Auth = () => {
 
         setPendingEmail(normalizedEmail);
         setPendingPassword(password);
+        try {
+          sessionStorage.setItem(
+            PENDING_OTP_KEY,
+            JSON.stringify({ email: normalizedEmail, password, inviteCode: inviteCode || undefined } satisfies PendingOtpState),
+          );
+        } catch { /* ignore quota */ }
         goToPanel("otp");
       }
     } catch (err: any) {
@@ -296,10 +339,23 @@ const Auth = () => {
                 </form>
 
                 <div className="flex items-center justify-between mt-4">
-                  <button onClick={handleResendCode} disabled={loading} className="text-xs text-primary hover:underline font-medium disabled:opacity-50">
-                    Resend code
+                  <button
+                    onClick={handleResendCode}
+                    disabled={loading || resendCooldown > 0}
+                    className="text-xs text-primary hover:underline font-medium disabled:opacity-50 disabled:no-underline"
+                  >
+                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
                   </button>
-                  <button onClick={() => { goToPanel("main"); setOtpCode(""); }} className="text-xs text-white/50 hover:underline">
+                  <button
+                    onClick={() => {
+                      sessionStorage.removeItem(PENDING_OTP_KEY);
+                      setOtpCode("");
+                      setPendingEmail("");
+                      setPendingPassword("");
+                      goToPanel("main");
+                    }}
+                    className="text-xs text-white/50 hover:underline"
+                  >
                     Back
                   </button>
                 </div>

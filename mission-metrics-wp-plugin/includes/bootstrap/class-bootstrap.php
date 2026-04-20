@@ -204,6 +204,7 @@ class ACTV_Bootstrap {
 		$files = array(
 			'class-legal-copy.php',
 			'class-settings.php',
+			'class-hmac.php',
 			'class-ingest-token.php',
 			'class-tracker.php',
 			'class-forms.php',

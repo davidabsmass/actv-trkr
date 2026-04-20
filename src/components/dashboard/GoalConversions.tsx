@@ -393,22 +393,31 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           const isExpanded = expandedGoal === goal.id;
           return (
             <div key={goal.id}>
-              <button
-                onClick={() => setExpandedGoal(isExpanded ? null : goal.id)}
-                className="flex items-center gap-3 w-full text-left hover:bg-muted/50 rounded-md px-1 py-0.5 transition-colors"
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                ) : (
-                  <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                )}
-                <span className="text-sm flex-shrink-0">{typeInfo?.icon || "🎯"}</span>
-                <span className="text-xs font-medium text-foreground truncate w-[35%]">{goal.name}</span>
-                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-primary/50" style={{ width: `${(goal.count / maxCount) * 100}%` }} />
-                </div>
-                <span className="text-xs font-mono-data text-muted-foreground w-8 text-right">{goal.count}</span>
-              </button>
+              <div className="flex items-center gap-1 group">
+                <button
+                  onClick={() => setExpandedGoal(isExpanded ? null : goal.id)}
+                  className="flex items-center gap-3 flex-1 text-left hover:bg-muted/50 rounded-md px-1 py-0.5 transition-colors"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  )}
+                  <span className="text-sm flex-shrink-0">{typeInfo?.icon || "🎯"}</span>
+                  <span className="text-xs font-medium text-foreground truncate w-[35%]">{goal.name}</span>
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-primary/50" style={{ width: `${(goal.count / maxCount) * 100}%` }} />
+                  </div>
+                  <span className="text-xs font-mono-data text-muted-foreground w-8 text-right">{goal.count}</span>
+                </button>
+                <Link
+                  to={`/settings?tab=goals&goal=${goal.id}`}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-primary hover:underline px-1.5 py-0.5"
+                  title="Edit this goal"
+                >
+                  Edit
+                </Link>
+              </div>
               {isExpanded && orgId && (
                 <GoalDrillDown goalId={goal.id} orgId={orgId} startDate={startDate} endDate={endDate} />
               )}

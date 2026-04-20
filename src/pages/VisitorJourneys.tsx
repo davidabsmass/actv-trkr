@@ -5,6 +5,7 @@ import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_VISITOR_JOURNEYS } from "@/components/howto/page-content";
+import { Badge } from "@/components/ui/badge";
 
 export default function VisitorJourneys() {
   const { orgId, orgName } = useOrg();
@@ -23,8 +24,11 @@ export default function VisitorJourneys() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-foreground">Visitor Journeys</h1>
+            <Badge variant="outline" className="text-xs uppercase tracking-wider px-1.5 py-0 h-4 text-primary border-primary/30">
+              Beta
+            </Badge>
             <HowToButton {...HOWTO_VISITOR_JOURNEYS} />
           </div>
           <p className="text-sm text-muted-foreground">

@@ -110,10 +110,35 @@ class MM_Forms {
 		$body = $request->get_json_params();
 		$known_form_mappings = is_array( $body['known_form_mappings'] ?? null ) ? $body['known_form_mappings'] : array();
 
-		// Run the full sync
-		$result = self::scan_all_forms( $known_form_mappings );
+		// Respond IMMEDIATELY with 202 Accepted so the dashboard never times out
+		// on slow hosts. The actual scan runs after the response is flushed.
+		$response = new \WP_REST_Response( array(
+			'ok'       => true,
+			'queued'   => true,
+			'message'  => 'Sync accepted; running in background',
+		), 202 );
 
-		return new \WP_REST_Response( array( 'ok' => true, 'result' => $result ), 200 );
+		// Schedule deferred work to run after the HTTP response is sent.
+		add_action( 'shutdown', function () use ( $known_form_mappings ) {
+			// Flush response to client first if FastCGI is available.
+			if ( function_exists( 'fastcgi_finish_request' ) ) {
+				@fastcgi_finish_request();
+			} elseif ( function_exists( 'litespeed_finish_request' ) ) {
+				@litespeed_finish_request();
+			}
+
+			// Lift PHP limits for the background scan since we no longer block the client.
+			@set_time_limit( 300 );
+			@ignore_user_abort( true );
+
+			try {
+				self::scan_all_forms( $known_form_mappings );
+			} catch ( \Throwable $e ) {
+				error_log( '[ACTV TRKR] Background sync error: ' . $e->getMessage() );
+			}
+		}, 1 );
+
+		return $response;
 	}
 
 	// ── Form Discovery / Sync ───────────────────────────────────────

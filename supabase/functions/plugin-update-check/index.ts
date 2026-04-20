@@ -11,9 +11,12 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.17.0";
+const CURRENT_PLUGIN_VERSION = "1.17.1";
 
 const CHANGELOG = `
+## 1.17.1
+- FIX: /sync REST endpoint now responds with 202 immediately and runs the form scan in the background, eliminating dashboard timeouts on slow hosts (no more "Edge Function returned a non-2xx status code" on large sites)
+
 ## 1.17.0
 - NEW: Import adapters now accept a \`direction\` parameter (ASC/DESC), enabling newest-first imports for capped backfills
 - NEW: Oversized form imports (50k+) capped at 8,000 most-recent entries — gives a representative recent sample without ingesting six-figure spam tables

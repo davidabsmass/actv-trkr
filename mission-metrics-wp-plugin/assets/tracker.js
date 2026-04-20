@@ -863,6 +863,43 @@
     getState: function () { return consentState; },
   };
 
+  // ── Public Custom Event API ───────────────────────────────────
+  // Lets sites fire arbitrary named events for "custom_event" goals.
+  //   window.actvTrkr.track("signup_complete", { plan: "pro" })
+  // Subject to the same consent gate and per-session cap as built-ins.
+  // Returns true if queued, false if rejected.
+  function trackCustomEvent(eventName, meta) {
+    if (typeof eventName !== 'string') return false;
+    var name = eventName.trim();
+    if (!name) return false;
+    if (name.length > 80) name = name.substring(0, 80);
+    if (!trackerInitialized) return false; // consent gate
+    if (sessionEventCount >= MAX_EVENTS_PER_SESSION) return false;
+    sessionEventCount++;
+    var vid = getCookie(COOKIE_VID);
+    var sid = getCookie(COOKIE_SID);
+    var evt = {
+      event_type: name,
+      page_url: window.location.href,
+      page_path: window.location.pathname,
+      session_id: sid,
+      visitor_id: vid,
+    };
+    if (meta && typeof meta === 'object') {
+      try {
+        var safe = JSON.parse(JSON.stringify(meta));
+        var asStr = JSON.stringify(safe);
+        if (asStr.length <= 4000) evt.meta = safe;
+      } catch (err) { /* ignore bad meta */ }
+    }
+    enqueueEvent(evt);
+    return true;
+  }
+
+  window.actvTrkr = window.actvTrkr || {};
+  window.actvTrkr.track = trackCustomEvent;
+  window.actvTrkr.event = trackCustomEvent;
+
   // Complianz integration
   document.addEventListener('cmplz_fire_categories', function (e) {
     if (e.detail && e.detail.categories && e.detail.categories.indexOf('statistics') !== -1) {

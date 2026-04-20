@@ -339,10 +339,23 @@ const Auth = () => {
                 </form>
 
                 <div className="flex items-center justify-between mt-4">
-                  <button onClick={handleResendCode} disabled={loading} className="text-xs text-primary hover:underline font-medium disabled:opacity-50">
-                    Resend code
+                  <button
+                    onClick={handleResendCode}
+                    disabled={loading || resendCooldown > 0}
+                    className="text-xs text-primary hover:underline font-medium disabled:opacity-50 disabled:no-underline"
+                  >
+                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
                   </button>
-                  <button onClick={() => { goToPanel("main"); setOtpCode(""); }} className="text-xs text-white/50 hover:underline">
+                  <button
+                    onClick={() => {
+                      sessionStorage.removeItem(PENDING_OTP_KEY);
+                      setOtpCode("");
+                      setPendingEmail("");
+                      setPendingPassword("");
+                      goToPanel("main");
+                    }}
+                    className="text-xs text-white/50 hover:underline"
+                  >
                     Back
                   </button>
                 </div>

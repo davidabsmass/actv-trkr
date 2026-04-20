@@ -470,11 +470,15 @@ export default function AdminSetup() {
     enabled: isOwner,
   });
 
+  // A sub only counts toward MRR if status is active AND mrr > 0.
+  // The mrr > 0 check excludes free-code / 100%-discount subscribers whose
+  // recalculated effective MRR is zero.
   const activeSubs = useMemo(() => subscribers.filter((s: any) => s.status === "active"), [subscribers]);
+  const payingSubs = useMemo(() => activeSubs.filter((s: any) => Number(s.mrr || 0) > 0), [activeSubs]);
   const churnedSubs = useMemo(() => subscribers.filter((s: any) => s.status === "churned"), [subscribers]);
   const pastDueSubs = useMemo(() => subscribers.filter((s: any) => s.status === "past_due"), [subscribers]);
-  const totalMrr = useMemo(() => activeSubs.reduce((sum: number, s: any) => sum + Number(s.mrr || 0), 0), [activeSubs]);
-  const avgArpu = activeSubs.length ? totalMrr / activeSubs.length : 0;
+  const totalMrr = useMemo(() => payingSubs.reduce((sum: number, s: any) => sum + Number(s.mrr || 0), 0), [payingSubs]);
+  const avgArpu = payingSubs.length ? totalMrr / payingSubs.length : 0;
   const churnRateVal = subscribers.length ? ((churnedSubs.length / subscribers.length) * 100).toFixed(1) : "0";
 
   const nowDate = new Date();

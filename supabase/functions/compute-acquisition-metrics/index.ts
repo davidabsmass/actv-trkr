@@ -42,15 +42,27 @@ function buildArr(subs: Subscriber[], months = 24) {
     const [y, m] = k.split("-").map(Number);
     return new Date(Date.UTC(y, m - 1, 1));
   });
+  const now = new Date();
   return keys.map((k, i) => {
     const start = monthStarts[i];
     const end = i + 1 < monthStarts.length ? monthStarts[i + 1] : new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+    const isCurrentMonth = now >= start && now < end;
     const active = subs.filter((s) => {
+      // Exclude free-code / 100%-discounted rows — they contribute zero MRR.
+      if (Number(s.mrr || 0) <= 0) return false;
       const created = new Date(s.created_at);
+      if (created >= end) return false;
+      // CURRENT month: drop churned/canceled/paused/past_due immediately.
+      if (isCurrentMonth) {
+        const status = (s.status || "").toLowerCase();
+        if (status === "churned" || status === "canceled" || status === "paused" || status === "past_due") return false;
+        return true;
+      }
+      // HISTORICAL months: count anyone whose churn_date is after month-end.
       const churned = s.churn_date ? new Date(s.churn_date) : null;
-      return created < end && (!churned || churned >= end);
+      return !churned || churned >= end;
     });
-    const fresh = subs.filter((s) => { const c = new Date(s.created_at); return c >= start && c < end; });
+    const fresh = subs.filter((s) => { if (Number(s.mrr || 0) <= 0) return false; const c = new Date(s.created_at); return c >= start && c < end; });
     const churned = subs.filter((s) => { if (!s.churn_date) return false; const c = new Date(s.churn_date); return c >= start && c < end; });
     const mrr = active.reduce((s, x) => s + Number(x.mrr || 0), 0);
     const new_arr = fresh.reduce((s, x) => s + Number(x.mrr || 0) * 12, 0);

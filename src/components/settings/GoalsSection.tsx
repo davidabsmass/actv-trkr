@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOrg } from "@/hooks/use-org";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import { useForms } from "@/hooks/use-dashboard-data";
 import {
   useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal,
@@ -325,7 +326,7 @@ export function CreateGoalDialog({ orgId, forms }: { orgId: string; forms: any[]
 }
 
 /* ─── Edit Goal Dialog ─── */
-function EditGoalDialog({ goal, orgId, forms }: { goal: ConversionGoal; orgId: string; forms: any[] }) {
+function EditGoalDialog({ goal, orgId, forms, autoOpen, onAutoOpenConsumed }: { goal: ConversionGoal; orgId: string; forms: any[]; autoOpen?: boolean; onAutoOpenConsumed?: () => void }) {
   const { t } = useTranslation();
   const updateGoal = useUpdateGoal(orgId);
   const [open, setOpen] = useState(false);
@@ -335,6 +336,20 @@ function EditGoalDialog({ goal, orgId, forms }: { goal: ConversionGoal; orgId: s
   const [rules, setRules] = useState<Record<string, any>>(goal.tracking_rules || {});
   const [isConversion, setIsConversion] = useState(goal.is_conversion);
   const [conversionValue, setConversionValue] = useState(goal.conversion_value?.toString() || "");
+
+  useEffect(() => {
+    if (autoOpen && !open) {
+      setName(goal.name);
+      setDescription(goal.description || "");
+      setGoalType(goal.goal_type as GoalType);
+      setRules(goal.tracking_rules || {});
+      setIsConversion(goal.is_conversion);
+      setConversionValue(goal.conversion_value?.toString() || "");
+      setOpen(true);
+      onAutoOpenConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   const handleOpen = (v: boolean) => {
     if (v) {

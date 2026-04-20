@@ -728,6 +728,9 @@ export default function Forms() {
                       {form.archived && (
                         <Badge variant="outline" className="text-xs uppercase text-muted-foreground border-border">Archived</Badge>
                       )}
+                      {!form.archived && form.is_active === false && (
+                        <Badge variant="outline" className="text-xs uppercase text-warning border-warning/40">Disabled in WP</Badge>
+                      )}
                       {form.lead_weight < 1 && (
                         <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}

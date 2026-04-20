@@ -42,6 +42,45 @@ function generateChallengeToken(): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+function generateUnsubscribeToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32))
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function getOrCreateUnsubscribeToken(
+  admin: ReturnType<typeof createClient>,
+  email: string,
+): Promise<string> {
+  const normalizedEmail = email.trim().toLowerCase()
+
+  const { data: existingToken, error: lookupError } = await admin
+    .from('email_unsubscribe_tokens')
+    .select('token, used_at')
+    .eq('email', normalizedEmail)
+    .maybeSingle()
+
+  if (lookupError) throw lookupError
+  if (existingToken && !existingToken.used_at) return existingToken.token
+
+  const unsubscribeToken = generateUnsubscribeToken()
+  const { error: upsertError } = await admin
+    .from('email_unsubscribe_tokens')
+    .upsert({ token: unsubscribeToken, email: normalizedEmail }, { onConflict: 'email', ignoreDuplicates: true })
+  if (upsertError) throw upsertError
+
+  const { data: storedToken, error: storedTokenError } = await admin
+    .from('email_unsubscribe_tokens')
+    .select('token')
+    .eq('email', normalizedEmail)
+    .maybeSingle()
+
+  if (storedTokenError || !storedToken?.token) {
+    throw storedTokenError ?? new Error('Failed to confirm unsubscribe token')
+  }
+
+  return storedToken.token
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') {
@@ -144,6 +183,7 @@ Deno.serve(async (req) => {
     }
     const messageId = crypto.randomUUID()
     const idempotencyKey = `mfa-${userId}-${challengeTokenHash.slice(0, 16)}`
+    const unsubscribeToken = await getOrCreateUnsubscribeToken(admin, userEmail)
 
     const html = await renderAsync(React.createElement(login2faCodeTemplate.component, templateData))
     const text = await renderAsync(React.createElement(login2faCodeTemplate.component, templateData), {
@@ -170,6 +210,7 @@ Deno.serve(async (req) => {
         purpose: 'transactional',
         label: 'login-2fa-code',
         idempotency_key: idempotencyKey,
+        unsubscribe_token: unsubscribeToken,
         queued_at: new Date().toISOString(),
       },
     })

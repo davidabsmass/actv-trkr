@@ -40,11 +40,13 @@ export default function Privacy() {
               Our tracking plugin collects the following from End Users visiting Tracked Sites:
             </p>
             <ul className="list-disc pl-6 text-muted-foreground space-y-1 mt-2">
-              <li>Pages visited, time on page, and scroll depth</li>
-              <li>Click events (buttons, CTAs, phone links, email links, outbound links)</li>
+              <li>Pages visited (URL and path), page title, and the order in which pages were viewed</li>
+              <li>Time spent on each page (active seconds), session duration, and entry/exit pages</li>
+              <li>Click events (buttons, CTAs, phone links, email links, outbound links, downloads)</li>
               <li>Traffic source, referrer domain, and UTM parameters</li>
               <li>Device type, browser, and country (derived from IP)</li>
               <li>A randomly generated visitor ID stored in a first-party cookie</li>
+              <li>A randomly generated session ID grouping pageviews within a single visit</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-2">
               <strong className="text-foreground">We do not collect IP addresses.</strong> We store a one-way hash of the IP for session grouping only; the raw IP is never retained.
@@ -147,7 +149,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold mb-3">10. End User Rights</h2>
             <p className="text-muted-foreground leading-relaxed">
-              End Users who wish to exercise their privacy rights (access, correction, deletion, objection, or portability) should contact the Customer (the website operator) directly. Customers may contact us at the email below to facilitate data subject requests.
+              End Users who wish to exercise their privacy rights (access, correction, deletion, objection, or portability) should contact the Customer (the website operator) directly. Customers may contact us at the email below to facilitate data subject requests. See our <Link to="/data-rights" className="text-primary underline">Data Rights</Link> page for full instructions on how to submit a request.
             </p>
             <p className="text-muted-foreground leading-relaxed mt-2">
               End Users can clear their browser cookies at any time to reset their visitor ID and break the link between their identity and future browsing activity.

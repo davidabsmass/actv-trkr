@@ -13,6 +13,7 @@ import { VisitorEngagement } from "@/components/dashboard/VisitorEngagement";
 import { ClickActivity } from "@/components/dashboard/ClickActivity";
 import { GoalConversions } from "@/components/dashboard/GoalConversions";
 import { TopExitPages } from "@/components/dashboard/TopExitPages";
+import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
 import { ConversionBreakdown } from "@/components/dashboard/ConversionBreakdown";
 import { KPIRow } from "@/components/dashboard/KPIRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -186,6 +187,7 @@ const Performance = () => {
               </div>
               <ConversionBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
               <TopExitPages orgId={orgId} startDate={startDate} endDate={endDate} />
+              <VisitorJourneysList orgId={orgId} startDate={startDate} endDate={endDate} compact />
               <GoalConversions orgId={orgId} startDate={startDate} endDate={endDate} />
               {renderSections()}
             </div>

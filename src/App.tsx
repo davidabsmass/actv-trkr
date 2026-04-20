@@ -28,7 +28,7 @@ const SnapshotView = lazy(() => import("./pages/SnapshotView"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Monitoring = lazy(() => import("./pages/Monitoring"));
 const Security = lazy(() => import("./pages/Security"));
-const Notifications = lazy(() => import("./pages/Notifications"));
+
 const Account = lazy(() => import("./pages/Account"));
 const GetStarted = lazy(() => import("./pages/GetStarted"));
 const Index = lazy(() => import("./pages/Index"));
@@ -153,7 +153,7 @@ const App = () => (
               <Route path="settings" element={<SettingsPage />} />
               <Route path="monitoring" element={<Monitoring />} />
               <Route path="security" element={<Security />} />
-              <Route path="notifications" element={<Notifications />} />
+              <Route path="notifications" element={<Navigate to="/settings?tab=notifications" replace />} />
               <Route path="admin-setup" element={<AdminSetup />} />
               <Route path="pipeline-status" element={<PipelineStatus />} />
               <Route path="account" element={<Account />} />

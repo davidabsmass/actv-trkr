@@ -53,8 +53,8 @@ async function extractPluginVersion(pluginMainFilePath) {
   throw new Error(`Unable to determine plugin version from ${pluginMainFilePath}`);
 }
 
-function buildManifestSource(version) {
-  return `export const pluginManifest = {\n  version: ${JSON.stringify(version)},\n  downloadFileName: ${JSON.stringify(LATEST_ZIP_FILE_NAME)},\n} as const;\n`;
+function buildManifestSource(version, sha256) {
+  return `export const pluginManifest = {\n  version: ${JSON.stringify(version)},\n  downloadFileName: ${JSON.stringify(LATEST_ZIP_FILE_NAME)},\n  sha256: ${JSON.stringify(sha256)},\n} as const;\n`;
 }
 
 async function writeIfChanged(filePath, nextContent) {
@@ -176,12 +176,23 @@ Deno.serve(async (req) => {
 
 // ── plugin-update-check version patcher ───────────────────────────
 
-async function patchUpdateCheckVersion(filePath, version) {
+async function patchUpdateCheckVersion(filePath, version, sha256) {
   const content = await fs.readFile(filePath, "utf8");
-  const patched = content.replace(
+  let patched = content.replace(
     /const CURRENT_PLUGIN_VERSION = "[^"]+";/,
     `const CURRENT_PLUGIN_VERSION = ${JSON.stringify(version)};`
   );
+  if (/const CURRENT_PLUGIN_SHA256 = "[^"]*";/.test(patched)) {
+    patched = patched.replace(
+      /const CURRENT_PLUGIN_SHA256 = "[^"]*";/,
+      `const CURRENT_PLUGIN_SHA256 = ${JSON.stringify(sha256)};`
+    );
+  } else {
+    patched = patched.replace(
+      /(const CURRENT_PLUGIN_VERSION = "[^"]+";)/,
+      `$1\nconst CURRENT_PLUGIN_SHA256 = ${JSON.stringify(sha256)};`
+    );
+  }
   return writeIfChanged(filePath, patched);
 }
 
@@ -221,11 +232,17 @@ export async function syncPluginArtifacts(root = process.cwd()) {
   const serveZipPath = path.resolve(root, SERVE_ZIP_RELATIVE_PATH);
   const updateCheckPath = path.resolve(root, UPDATE_CHECK_RELATIVE_PATH);
 
+  // C-4: Compute SHA-256 of the canonical ZIP. Published in the manifest
+  // and in the plugin-update-check response so the WP updater can verify
+  // integrity before installing. Any tampering or cache poisoning produces
+  // a mismatching digest and the update is refused.
+  const zipSha256 = crypto.createHash("sha256").update(zipBuffer).digest("hex");
+
   const [zipChanged, manifestChanged, serveZipChanged, updateCheckChanged] = await Promise.all([
     writeIfChanged(zipPath, zipBuffer),
-    writeIfChanged(manifestPath, buildManifestSource(version)),
+    writeIfChanged(manifestPath, buildManifestSource(version, zipSha256)),
     writeIfChanged(serveZipPath, buildServePluginZipSource(version, pluginFilesMap)),
-    patchUpdateCheckVersion(updateCheckPath, version),
+    patchUpdateCheckVersion(updateCheckPath, version, zipSha256),
   ]);
 
   const changed = zipChanged || manifestChanged || serveZipChanged || updateCheckChanged;

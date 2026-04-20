@@ -20,6 +20,10 @@ paths = [
   '''.*\.spec\.tsx?$''',
   # Generated Supabase types — never contain real secrets, but include "key" strings.
   '''src/integrations/supabase/types\.ts$''',
+  # SQL migrations contain UUIDs (user IDs, row IDs) that trip generic-api-key
+  # heuristics. Migrations are reviewed at write time and never contain secrets
+  # (they're checked into version control by design).
+  '''supabase/migrations/.*\.sql$''',
 ]
 
 regexes = [

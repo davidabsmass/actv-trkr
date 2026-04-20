@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
         subject: login2faCodeTemplate.subject(templateData),
         html,
         text,
-        purpose: 'transactional',
+        purpose: 'auth',
         label: 'login-2fa-code',
         idempotency_key: idempotencyKey,
         queued_at: new Date().toISOString(),

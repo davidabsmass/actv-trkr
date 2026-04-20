@@ -870,11 +870,21 @@ export default function AdminSetup() {
           >
             App Bible
           </button>
+          <button
+            onClick={() => switchMainTab("release-qa")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "release-qa" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Release QA
+          </button>
         </div>
       )}
 
       {activeMainTab === "app-bible" && isOwner && (
         <AppBibleChecklist />
+      )}
+
+      {activeMainTab === "release-qa" && isOwner && (
+        <ReleaseQAPanel />
       )}
 
       {activeMainTab === "subscriber-sites" && isOwner && (

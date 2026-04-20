@@ -67,8 +67,11 @@ class ACTV_Bootstrap {
 				}
 			}
 
-			// 4c. Run pending schema migrations (skipped while migration_locked).
-			if ( $mode !== ACTV_Mode::MIGRATION_LOCKED && class_exists( 'ACTV_Migration_Runner' ) ) {
+			// 4c. Run pending schema migrations only after deferred setup has completed.
+			// Fresh installs set `actv_trkr_pending_setup` during activation so wp-admin
+			// pages like Plugins do not block on migrations before admin_init runs.
+			$pending_setup = function_exists( 'get_option' ) && get_option( 'actv_trkr_pending_setup' ) === '1';
+			if ( ! $pending_setup && $mode !== ACTV_Mode::MIGRATION_LOCKED && class_exists( 'ACTV_Migration_Runner' ) ) {
 				$mig_dir = plugin_dir_path( $plugin_main_file ) . 'includes/migrations/versions';
 				$mig_res = ACTV_Migration_Runner::ensure_pending( $mig_dir );
 				if ( ! empty( $mig_res['error'] ) && empty( $mig_res['skipped'] ) ) {
@@ -179,10 +182,12 @@ class ACTV_Bootstrap {
 			}
 		}
 
-		// Ensure log table exists. Cheap CREATE IF NOT EXISTS.
+		// Ensure log table exists only after deferred setup is done.
+		// Avoid dbDelta on the Plugins page immediately after upload/activation.
 		if ( class_exists( 'ACTV_Logger' ) && function_exists( 'get_option' ) ) {
 			$schema_marker = (int) get_option( 'actv_trkr_log_schema', 0 );
-			if ( $schema_marker < 1 ) {
+			$pending_setup = get_option( 'actv_trkr_pending_setup' ) === '1';
+			if ( ! $pending_setup && $schema_marker < 1 ) {
 				ACTV_Logger::create_table();
 				update_option( 'actv_trkr_log_schema', 1, true );
 			}
@@ -199,6 +204,7 @@ class ACTV_Bootstrap {
 		$files = array(
 			'class-legal-copy.php',
 			'class-settings.php',
+			'class-hmac.php',
 			'class-ingest-token.php',
 			'class-tracker.php',
 			'class-forms.php',
@@ -257,6 +263,9 @@ class ACTV_Bootstrap {
 
 		// Settings/admin first (no deps).
 		$wrap( 'settings',         'Settings',         'MM_Settings' );
+
+		// HMAC verifier (registers its bootstrap REST route).
+		$wrap( 'hmac',             'HMAC Verifier',    'MM_Hmac' );
 
 		// Critical user-facing modules.
 		$wrap( 'tracker',          'Tracker',          'MM_Tracker',         null, array(), true );

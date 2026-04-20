@@ -204,6 +204,7 @@ class ACTV_Bootstrap {
 		$files = array(
 			'class-legal-copy.php',
 			'class-settings.php',
+			'class-hmac.php',
 			'class-ingest-token.php',
 			'class-tracker.php',
 			'class-forms.php',
@@ -262,6 +263,9 @@ class ACTV_Bootstrap {
 
 		// Settings/admin first (no deps).
 		$wrap( 'settings',         'Settings',         'MM_Settings' );
+
+		// HMAC verifier (registers its bootstrap REST route).
+		$wrap( 'hmac',             'HMAC Verifier',    'MM_Hmac' );
 
 		// Critical user-facing modules.
 		$wrap( 'tracker',          'Tracker',          'MM_Tracker',         null, array(), true );

@@ -352,3 +352,15 @@ I.e., **add new model alongside, hard-deprecate the old credential within a sing
 ### Deferred secret setup required
 - Add `PLUGIN_RELEASE_SIGNING_SECRET` to Lovable Cloud secrets (used by `plugin-update-check` to sign payloads). Until set, the function falls back to `signature: null` and the plugin will refuse the update — fail-closed, as designed.
 - The same secret value must be embedded in plugin builds (via the `release_signing_secret` plugin option or `MM_RELEASE_SIGNING_SECRET` constant). Recommend distributing via the `serve-plugin-zip` flow on next plugin re-download.
+
+---
+
+## 11. Resolved Findings (2026-04-20 update)
+
+| # | Status | Resolution |
+|---|---|---|
+| **H-7** | ✅ Resolved | `processed_stripe_events` ledger inserted at top of `actv-webhook`. Was already coded but writing to a non-existent column (`payload_summary` vs actual `summary`); fixed in this pass. Stripe retries now short-circuit. |
+| **C-3** | ✅ Resolved | Already implemented end-to-end: `MM_Ingest_Token::get()` mints narrow-scope tokens stored in `site_ingest_tokens`. Tracker uses `ingestToken` exclusively; admin `api_key` is no longer in page source. Verified in `class-tracker.php` v1.9.17+. |
+| **C-1** | ✅ Resolved (v1.18.0) | Magic-login binds to the requesting dashboard user via `requested_by_email`. Plugin maps to a WP admin with `manage_options`; refuses login if no match. All issuance + consumption + denials audited via `log_security_event`. |
+| **C-2** | 🟡 Phase 1 of 2 (v1.18.1) | New `api_keys.signing_secret` column + `signed_request_nonces` replay table. Backend (`generate-wp-login`) now sends HMAC-signed headers when secret present. Plugin's `MM_Hmac::verify` accepts signed requests; legacy hash still accepted with `legacy_hash_auth_used` telemetry. New `provision-signing-secret` edge function pushes the secret per-site (idempotent). **Phase 2 (v1.19.0)**: flip plugin to signed-only after observed adoption. |
+| **C-4** | ⏸ Deferred to Phase 2 | Plugin ZIP signing/verification — larger effort, separate PR. |

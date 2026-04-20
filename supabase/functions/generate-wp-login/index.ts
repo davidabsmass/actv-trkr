@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { buildSignedHeaders } from "../_shared/hmac-sign.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,7 +131,7 @@ Deno.serve(async (req) => {
     // Look up the org's API key (used to authenticate to the WP REST endpoint)
     const { data: apiKeyRow } = await adminClient
       .from("api_keys")
-      .select("key_hash")
+      .select("key_hash, signing_secret")
       .eq("org_id", site.org_id)
       .is("revoked_at", null)
       .order("created_at", { ascending: false })
@@ -150,6 +151,7 @@ Deno.serve(async (req) => {
       );
     }
     const apiKey = apiKeyRow.key_hash;
+    const signingSecret = apiKeyRow.signing_secret as string | null;
 
     // C-1 FIX: bind the magic-login token to the requestor BEFORE handing
     // it to WordPress. We mint the token here, register it in our DB,
@@ -203,20 +205,24 @@ Deno.serve(async (req) => {
     // field and mint their own — for those, we still record the
     // server-side token but the plugin's autonomous flow is preserved.
     const wpUrl = `https://${site.domain}/wp-json/actv-trkr/v1/magic-login`;
+    const wpBody = JSON.stringify({
+      token,
+      expires_at: expiresAt.toISOString(),
+      ttl_seconds: TOKEN_TTL_SECONDS,
+    });
+    const signedHeaders = await buildSignedHeaders(signingSecret, null, wpBody);
     let wpResponse: Response;
     try {
       wpResponse = await fetch(wpUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // Legacy hash header — accepted by v1.18.x for backwards compat,
+          // ignored when the signed headers below verify successfully.
           "X-Api-Key": apiKey,
+          ...signedHeaders,
         },
-        body: JSON.stringify({
-          // New protocol: plugin v1.9.16+ uses this token verbatim
-          token,
-          expires_at: expiresAt.toISOString(),
-          ttl_seconds: TOKEN_TTL_SECONDS,
-        }),
+        body: wpBody,
       });
     } catch (e) {
       log("wp_unreachable", { error: String(e) });

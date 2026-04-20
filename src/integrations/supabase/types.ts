@@ -504,6 +504,7 @@ export type Database = {
           label: string
           org_id: string
           revoked_at: string | null
+          signing_secret: string
         }
         Insert: {
           created_at?: string
@@ -512,6 +513,7 @@ export type Database = {
           label?: string
           org_id: string
           revoked_at?: string | null
+          signing_secret?: string
         }
         Update: {
           created_at?: string
@@ -520,6 +522,7 @@ export type Database = {
           label?: string
           org_id?: string
           revoked_at?: string | null
+          signing_secret?: string
         }
         Relationships: [
           {
@@ -5483,6 +5486,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      signed_request_nonces: {
+        Row: {
+          nonce: string
+          org_id: string
+          seen_at: string
+        }
+        Insert: {
+          nonce: string
+          org_id: string
+          seen_at?: string
+        }
+        Update: {
+          nonce?: string
+          org_id?: string
+          seen_at?: string
+        }
+        Relationships: []
       }
       site_credentials: {
         Row: {

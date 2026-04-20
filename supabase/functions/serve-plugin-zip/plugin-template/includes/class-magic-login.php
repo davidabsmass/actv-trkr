@@ -35,6 +35,18 @@ class MM_Magic_Login {
 	}
 
 	public static function verify_api_key( $request ) {
+		// 1. Try the signed-request path (v1.18.x preferred).
+		if ( class_exists( 'MM_Hmac' ) ) {
+			$signed = MM_Hmac::verify( $request );
+			if ( $signed === true ) {
+				return true;
+			}
+			if ( is_wp_error( $signed ) ) {
+				return $signed;
+			}
+		}
+
+		// 2. Legacy header-based hash check (deprecated; will be removed in v1.19.0).
 		$auth = $request->get_header( 'X-Api-Key' );
 		if ( empty( $auth ) ) {
 			return new WP_Error( 'unauthorized', 'Missing API key', array( 'status' => 401 ) );
@@ -46,6 +58,11 @@ class MM_Magic_Login {
 		}
 		$stored_hash = hash( 'sha256', $api_key );
 		if ( hash_equals( $api_key, $auth ) || hash_equals( $stored_hash, $auth ) ) {
+			if ( class_exists( 'ACTV_Logger' ) ) {
+				ACTV_Logger::warn( 'core', 'legacy_hash_auth_used', array(
+					'route' => $request->get_route(),
+				) );
+			}
 			return true;
 		}
 		return new WP_Error( 'forbidden', 'Invalid API key', array( 'status' => 403 ) );
@@ -54,7 +71,6 @@ class MM_Magic_Login {
 	public static function generate_token( $request ) {
 		$body = $request->get_json_params();
 
-		// New protocol: backend pre-mints the token and we just record it.
 		if ( ! empty( $body['token'] ) && is_string( $body['token'] ) ) {
 			$token = preg_replace( '/[^a-f0-9]/i', '', $body['token'] );
 			if ( strlen( $token ) < 32 ) {
@@ -62,7 +78,6 @@ class MM_Magic_Login {
 			}
 			$ttl = isset( $body['ttl_seconds'] ) ? max( 60, min( 3600, (int) $body['ttl_seconds'] ) ) : self::TOKEN_TTL;
 		} else {
-			// Legacy fallback: mint locally. Backend verification still applies.
 			$token = wp_generate_password( 64, false );
 			$ttl   = self::TOKEN_TTL;
 		}
@@ -84,10 +99,6 @@ class MM_Magic_Login {
 		) );
 	}
 
-	/**
-	 * Call the ACTV TRKR backend to verify a token before honoring it.
-	 * Returns array on success, WP_Error on failure.
-	 */
 	private static function backend_verify( $token ) {
 		$opts        = MM_Settings::get();
 		$endpoint    = rtrim( $opts['endpoint_url'] ?? '', '/' );
@@ -126,7 +137,6 @@ class MM_Magic_Login {
 		}
 
 		$token = sanitize_text_field( wp_unslash( $_GET['actv_magic_token'] ) );
-		// Strict format guard: only hex/alnum, length-bounded.
 		if ( ! preg_match( '/^[A-Za-z0-9]{32,256}$/', $token ) ) {
 			wp_die(
 				'<h2>Invalid login link format</h2>',
@@ -155,12 +165,8 @@ class MM_Magic_Login {
 			);
 		}
 
-		// Burn the local transient FIRST so concurrent requests can't both proceed.
 		delete_transient( self::TRANSIENT_PREFIX . $hash );
 
-		// SECURITY: ask the backend to verify and atomically consume.
-		// This is the authoritative single-use enforcement and binds
-		// the magic login to the requestor recorded at issuance time.
 		$verify = self::backend_verify( $token );
 		if ( is_wp_error( $verify ) ) {
 			wp_die(
@@ -189,6 +195,7 @@ class MM_Magic_Login {
 		}
 
 		if ( ! $target_user ) {
+			// Audit the refusal so admins can see why the login failed.
 			if ( function_exists( 'do_action' ) ) {
 				do_action( 'mm_magic_login_no_match', $requestor_email );
 			}

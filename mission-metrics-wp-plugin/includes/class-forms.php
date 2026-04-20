@@ -33,8 +33,15 @@ class MM_Forms {
 	// ── REST API ───────────────────────────────────────────────────
 
 	/**
-	 * Verify API key hash from request body (used as permission_callback).
-	 * Rejects requests before the callback runs, reducing attack surface.
+	 * Verify the request via HMAC signature (preferred) or legacy key hash
+	 * (accepted during the v1.18.x rollout window).
+	 *
+	 * SECURITY (C-2):
+	 *   The legacy `key_hash` body field is the SHA-256 of the API key
+	 *   stored in `api_keys.key_hash` server-side. Accepting it as a
+	 *   credential means anyone with read access to that column could
+	 *   impersonate the backend. v1.18.x logs every legacy hit so we can
+	 *   measure adoption before flipping to signed-only in v1.19.0.
 	 */
 	public static function verify_key_hash( $request ) {
 		$opts = MM_Settings::get();
@@ -51,12 +58,33 @@ class MM_Forms {
 		}
 		set_transient( $transient_key, $hits + 1, 60 );
 
+		// 1. Try the signed-request path (v1.18.x preferred).
+		if ( class_exists( 'MM_Hmac' ) ) {
+			$signed = MM_Hmac::verify( $request );
+			if ( $signed === true ) {
+				return true;
+			}
+			if ( is_wp_error( $signed ) ) {
+				// Signature was attempted but invalid — refuse.
+				return $signed;
+			}
+			// $signed === null → no signature attempted; fall through to legacy.
+		}
+
+		// 2. Legacy key_hash body field (deprecated; will be removed in v1.19.0).
 		$body     = $request->get_json_params();
-		$key_hash = $body['key_hash'] ?? '';
+		$key_hash = is_array( $body ) && isset( $body['key_hash'] ) ? (string) $body['key_hash'] : '';
 		$stored_hash = hash( 'sha256', $opts['api_key'] );
 
 		if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
 			return new \WP_Error( 'forbidden', 'Invalid key', array( 'status' => 403 ) );
+		}
+
+		// Telemetry: legacy auth used. Helps decide when to flip the switch.
+		if ( class_exists( 'ACTV_Logger' ) ) {
+			ACTV_Logger::warn( 'core', 'legacy_hash_auth_used', array(
+				'route' => $request->get_route(),
+			) );
 		}
 		return true;
 	}

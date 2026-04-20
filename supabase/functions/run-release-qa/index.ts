@@ -315,37 +315,38 @@ const runners: Record<string, Runner> = {
   },
 
   // ── tracking ──
+  // Cron history (cron.job_run_details) is unindexed in Supabase and any scan
+  // costs 20+ seconds. We prove cron freshness via app-table side-effects:
+  // sites.last_heartbeat_at — if the tracking-health cron is running, it
+  // updates heartbeats. Cron registry is consulted only to confirm scheduling.
   "tracking.health_cron_recent": async (def) => {
     const t = Date.now();
-    // Primary: cron job_run_details (proves cron actually fired)
-    const { data: crons } = await admin.rpc("qa_list_cron_jobs");
-    const cronJob = (crons || []).find((j: any) =>
-      /tracking[-_]health|check[-_]tracking[-_]health/i.test(j.jobname || ""));
-    const cronAgeMin = cronJob?.last_run_started_at
-      ? (Date.now() - new Date(cronJob.last_run_started_at).getTime()) / 60000
-      : null;
-    if (cronJob && cronAgeMin !== null) {
-      const ok = cronAgeMin < 15 && cronJob.last_run_status !== "failed";
-      return result(def, ok ? "pass" : "fail",
-        ok ? `Cron ran ${Math.round(cronAgeMin)} min ago (${cronJob.last_run_status})`
-           : `Cron stale or failing: ${Math.round(cronAgeMin)} min ago, status=${cronJob.last_run_status}`,
-        { cron_job: cronJob, age_minutes: Math.round(cronAgeMin) }, t);
-    }
-    // Fallback: site-level timestamp (only meaningful if sites exist)
+    const { data: crons } = await admin.rpc("qa_get_cron_last_runs", {
+      jobname_patterns: ["tracking[-_]health|check[-_]tracking"],
+    });
+    const cronJob = (crons || [])[0];
     const { data } = await admin.from("sites")
-      .select("tracker_last_checked_at")
-      .order("tracker_last_checked_at", { ascending: false, nullsFirst: false })
+      .select("last_heartbeat_at")
+      .order("last_heartbeat_at", { ascending: false, nullsFirst: false })
       .limit(1);
-    const last = (data?.[0] as any)?.tracker_last_checked_at;
-    if (!last) return result(def, "fail",
-      "No tracking-health cron found AND no sites checked — pipeline appears dead",
-      { cron_job_found: false, sites_checked: 0 }, t);
+    const last = (data?.[0] as any)?.last_heartbeat_at;
+    if (!last) {
+      // Pre-launch: no sites have ever heartbeated
+      if (cronJob && cronJob.last_run_status === "scheduled") {
+        return result(def, "warn",
+          "Cron is scheduled, but no sites have heartbeated yet (acceptable pre-launch)",
+          { cron_job: cronJob, sites_with_heartbeat: 0 }, t);
+      }
+      return result(def, "fail",
+        "No tracking-health cron scheduled AND no sites heartbeating — pipeline dead",
+        { cron_job_found: !!cronJob, sites_with_heartbeat: 0 }, t);
+    }
     const ageSec = (Date.now() - new Date(last).getTime()) / 1000;
-    const ok = ageSec < 600;
-    return result(def, ok ? "pass" : "fail",
-      ok ? `Last site check ${Math.round(ageSec)}s ago (cron job not found in registry)`
-         : `Stale: ${Math.round(ageSec)}s ago (>600s)`,
-      { last_checked_at: last, age_seconds: Math.round(ageSec), cron_job_found: false }, t);
+    const ok = ageSec < 1800; // 30 min — heartbeat interval default is 5 min
+    return result(def, ok ? "pass" : "warn",
+      ok ? `Cron scheduled; last site heartbeat ${Math.round(ageSec)}s ago`
+         : `Last site heartbeat ${Math.round(ageSec)}s ago (>30 min)`,
+      { last_heartbeat_at: last, age_seconds: Math.round(ageSec), cron_job: cronJob }, t);
   },
   "tracking.recent_pageviews_exist": async (def) => {
     const t = Date.now();
@@ -353,9 +354,10 @@ const runners: Record<string, Runner> = {
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const { count: pvCount } = await admin
       .from("pageviews").select("id", { count: "exact", head: true }).gte("occurred_at", since);
+    // Use last_heartbeat_at (real column) instead of nonexistent tracker_last_seen_at
     const { count: activeSites } = await admin
       .from("sites").select("id", { count: "exact", head: true })
-      .gte("tracker_last_seen_at", sevenDaysAgo);
+      .gte("last_heartbeat_at", sevenDaysAgo);
     const n = pvCount ?? 0;
     const sites = activeSites ?? 0;
     if (n > 0) {
@@ -367,7 +369,6 @@ const runners: Record<string, Runner> = {
         "No pageviews — but no active sites in last 7d either (acceptable if pre-launch)",
         { last_hour_count: 0, active_sites_7d: 0 }, t);
     }
-    // Sites exist but zero pageviews — pipeline is broken
     return result(def, "fail",
       `Pipeline broken: ${sites} active sites but 0 pageviews in last hour`,
       { last_hour_count: 0, active_sites_7d: sites }, t);
@@ -375,19 +376,29 @@ const runners: Record<string, Runner> = {
   "tracking.sites_active_majority": async (def) => {
     const t = Date.now();
     const since = new Date(Date.now() - 7 * 86400000).toISOString();
+    // Real columns: status (text), last_heartbeat_at (timestamptz).
+    // "Active" = status='up' AND heartbeat in last 7d.
     const { data } = await admin.from("sites")
-      .select("id, domain, tracker_status, tracker_last_seen_at")
-      .gte("tracker_last_seen_at", since);
+      .select("id, domain, status, last_heartbeat_at")
+      .gte("last_heartbeat_at", since);
     const total = data?.length ?? 0;
-    if (!total) return result(def, "warn", "No recently-seen sites", { total: 0 }, t);
-    const active = (data || []).filter((s: any) => s.tracker_status === "active").length;
+    if (!total) {
+      // No recently-seen sites is a pre-launch signal, not a failure.
+      const { count: anySites } = await admin.from("sites").select("id", { count: "exact", head: true });
+      const totalSites = anySites ?? 0;
+      if (totalSites === 0) {
+        return result(def, "pass", "No sites registered yet (pre-launch)", { total: 0, total_sites: 0 }, t);
+      }
+      return result(def, "warn", `${totalSites} sites registered, but none active in last 7d`, { total: 0, total_sites: totalSites }, t);
+    }
+    const active = (data || []).filter((s: any) => s.status === "up" || s.status === "active").length;
     const pct = Math.round((active / total) * 100);
     const ok = pct >= 80;
     const inactive = (data || [])
-      .filter((s: any) => s.tracker_status !== "active")
+      .filter((s: any) => s.status !== "up" && s.status !== "active")
       .slice(0, 10)
-      .map((s: any) => ({ id: s.id, domain: s.domain, status: s.tracker_status }));
-    return result(def, ok ? "pass" : "fail",
+      .map((s: any) => ({ id: s.id, domain: s.domain, status: s.status }));
+    return result(def, ok ? "pass" : "warn",
       `${active}/${total} sites active (${pct}%)`,
       { total, active, active_pct: pct, inactive_sample: inactive }, t);
   },

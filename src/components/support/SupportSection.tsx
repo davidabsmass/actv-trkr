@@ -424,6 +424,32 @@ function SubmitTicketForm({ onCancel, onSuccess }: { onCancel: () => void; onSuc
   );
 }
 
+function SuggestedArticles({ type }: { type: string }) {
+  const articles = articlesForType(type);
+  if (articles.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+        <Lightbulb className="h-3.5 w-3.5 text-primary" />
+        Before you submit — these might already answer your question:
+      </div>
+      <ul className="space-y-1.5">
+        {articles.map((a) => (
+          <li key={a.id}>
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-foreground hover:text-primary list-none flex items-start gap-1.5">
+                <span className="text-primary mt-0.5">›</span>
+                <span className="group-open:font-medium">{a.question}</span>
+              </summary>
+              <p className="text-xs text-muted-foreground mt-1.5 ml-4 leading-relaxed">{a.answer}</p>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function ConditionalField({ label, value, setValue, rows = 2 }: { label: string; value: string; setValue: (v: string) => void; rows?: number }) {
   return (
     <div className="space-y-1.5">

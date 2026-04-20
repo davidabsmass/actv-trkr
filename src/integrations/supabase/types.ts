@@ -4402,6 +4402,128 @@ export type Database = {
         }
         Relationships: []
       }
+      release_qa_manual_signoff: {
+        Row: {
+          app_version: string
+          check_key: string
+          evidence: Json
+          id: string
+          notes: string | null
+          signed_off_at: string
+          signed_off_by: string | null
+          signed_off_by_email: string | null
+        }
+        Insert: {
+          app_version: string
+          check_key: string
+          evidence?: Json
+          id?: string
+          notes?: string | null
+          signed_off_at?: string
+          signed_off_by?: string | null
+          signed_off_by_email?: string | null
+        }
+        Update: {
+          app_version?: string
+          check_key?: string
+          evidence?: Json
+          id?: string
+          notes?: string | null
+          signed_off_at?: string
+          signed_off_by?: string | null
+          signed_off_by_email?: string | null
+        }
+        Relationships: []
+      }
+      release_qa_results: {
+        Row: {
+          category_key: string
+          check_key: string
+          check_type: string
+          duration_ms: number | null
+          evidence: Json
+          id: string
+          message: string | null
+          ran_at: string
+          run_id: string
+          severity: string
+          status: Database["public"]["Enums"]["release_qa_check_status"]
+        }
+        Insert: {
+          category_key: string
+          check_key: string
+          check_type: string
+          duration_ms?: number | null
+          evidence?: Json
+          id?: string
+          message?: string | null
+          ran_at?: string
+          run_id: string
+          severity: string
+          status: Database["public"]["Enums"]["release_qa_check_status"]
+        }
+        Update: {
+          category_key?: string
+          check_key?: string
+          check_type?: string
+          duration_ms?: number | null
+          evidence?: Json
+          id?: string
+          message?: string | null
+          ran_at?: string
+          run_id?: string
+          severity?: string
+          status?: Database["public"]["Enums"]["release_qa_check_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_qa_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "release_qa_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      release_qa_runs: {
+        Row: {
+          app_version: string
+          completed_at: string | null
+          id: string
+          notes: string | null
+          scope: string
+          started_at: string
+          started_by: string | null
+          started_by_email: string | null
+          status: Database["public"]["Enums"]["release_qa_status"]
+          totals: Json
+        }
+        Insert: {
+          app_version: string
+          completed_at?: string | null
+          id?: string
+          notes?: string | null
+          scope?: string
+          started_at?: string
+          started_by?: string | null
+          started_by_email?: string | null
+          status?: Database["public"]["Enums"]["release_qa_status"]
+          totals?: Json
+        }
+        Update: {
+          app_version?: string
+          completed_at?: string | null
+          id?: string
+          notes?: string | null
+          scope?: string
+          started_at?: string
+          started_by?: string | null
+          started_by_email?: string | null
+          status?: Database["public"]["Enums"]["release_qa_status"]
+          totals?: Json
+        }
+        Relationships: []
+      }
       renewals: {
         Row: {
           auto_renew: boolean
@@ -7631,6 +7753,19 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       org_lifecycle_status: "active" | "grace_period" | "archived"
+      release_qa_check_status:
+        | "pass"
+        | "fail"
+        | "warn"
+        | "not_run"
+        | "manual_pending"
+        | "error"
+      release_qa_status:
+        | "running"
+        | "passed"
+        | "passed_with_warnings"
+        | "failed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7760,6 +7895,21 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       org_lifecycle_status: ["active", "grace_period", "archived"],
+      release_qa_check_status: [
+        "pass",
+        "fail",
+        "warn",
+        "not_run",
+        "manual_pending",
+        "error",
+      ],
+      release_qa_status: [
+        "running",
+        "passed",
+        "passed_with_warnings",
+        "failed",
+        "cancelled",
+      ],
     },
   },
 } as const

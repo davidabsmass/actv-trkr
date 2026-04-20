@@ -669,11 +669,44 @@ const runners: Record<string, Runner> = {
   // ── backend crons ──
   "backend.critical_crons_scheduled": async (def) => {
     const t = Date.now();
-    // Fall back to a heuristic: presence of recent run side-effects (already covered elsewhere).
-    // We can't read cron.job through PostgREST, so report as warn with reasoning.
-    return result(def, "warn",
-      "Cron presence inferred via downstream freshness checks (aggregate-daily, email-queue, tracking-health)",
-      { note: "Direct cron.job inspection requires DB-side helper" }, t);
+    const { data, error } = await admin.rpc("qa_list_cron_jobs");
+    if (error) {
+      return result(def, "fail",
+        `Cron registry helper failed: ${error.message}`,
+        { error: error.message }, t);
+    }
+    const jobs = (data || []) as Array<{ jobname: string; active: boolean; last_run_started_at: string | null; last_run_status: string | null }>;
+    // Required job patterns (regex match — flexible on naming)
+    const required = [
+      { pattern: /nightly[-_]summary|daily[-_]summary/i, name: "nightly-summary" },
+      { pattern: /aggregate[-_]daily/i, name: "aggregate-daily" },
+      { pattern: /tracking[-_]health|check[-_]tracking/i, name: "check-tracking-health" },
+      { pattern: /process[-_]email[-_]queue|email[-_]queue/i, name: "process-email-queue" },
+      { pattern: /billing[-_]state[-_]manager|lifecycle/i, name: "billing-state-manager" },
+    ];
+    const checked = required.map((req) => {
+      const found = jobs.find((j) => req.pattern.test(j.jobname || ""));
+      const ageMin = found?.last_run_started_at
+        ? (Date.now() - new Date(found.last_run_started_at).getTime()) / 60000
+        : null;
+      return {
+        name: req.name,
+        found: !!found,
+        active: found?.active ?? false,
+        jobname: found?.jobname,
+        last_run_status: found?.last_run_status,
+        last_run_minutes_ago: ageMin === null ? null : Math.round(ageMin),
+      };
+    });
+    const missing = checked.filter((c) => !c.found || !c.active);
+    if (missing.length === 0) {
+      return result(def, "pass",
+        `All ${checked.length} required cron jobs scheduled and active`,
+        { required_jobs: checked, total_cron_jobs: jobs.length }, t);
+    }
+    return result(def, "fail",
+      `${missing.length} required cron job(s) missing or inactive`,
+      { required_jobs: checked, missing: missing.map((c) => c.name), total_cron_jobs: jobs.length }, t);
   },
 
   // ── plugin ──

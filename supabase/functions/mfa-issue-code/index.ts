@@ -129,9 +129,19 @@ Deno.serve(async (req) => {
     }
 
     // Step 3: Email the code via existing transactional pipeline.
+    // NOTE: send-transactional-email has verify_jwt=true. supabase-js
+    // functions.invoke() does NOT reliably attach the service-role key as a
+    // bearer when no user session exists, which produced 401s and surfaced as
+    // "email_send_failed" in the UI. Call via fetch with explicit headers.
     const ipHint = ipRaw ? ipRaw.replace(/\.\d+$/, '.x') : undefined
-    const { error: emailErr } = await admin.functions.invoke('send-transactional-email', {
-      body: {
+    const emailResp = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({
         templateName: 'login-2fa-code',
         recipientEmail: userEmail,
         idempotencyKey: `mfa-${userId}-${challengeTokenHash.slice(0, 16)}`,
@@ -141,11 +151,11 @@ Deno.serve(async (req) => {
           ipHint,
           userAgentHint: userAgent ? userAgent.slice(0, 80) : undefined,
         },
-      },
+      }),
     })
-    if (emailErr) {
-      console.error('send-transactional-email failed:', emailErr.message)
-      // Don't leak the code path failure to the user; surface generic.
+    if (!emailResp.ok) {
+      const errBody = await emailResp.text().catch(() => '')
+      console.error('send-transactional-email failed:', emailResp.status, errBody)
       return new Response(JSON.stringify({ error: 'email_send_failed' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

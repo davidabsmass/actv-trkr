@@ -9,6 +9,46 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ACTV-WEBHOOK] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
 };
 
+/**
+ * Compute the *effective* MRR for a Stripe subscription, taking into account
+ * any active discount (percent_off or amount_off, recurring or forever).
+ *
+ * Returns dollars/month. A 100% off coupon → 0. A $10/mo off on a $49/mo plan → 39.
+ * One-off (`once`) discounts are NOT applied to MRR — they're a temporary credit,
+ * not a recurring rate change.
+ */
+function computeMrrFromSubscription(sub: Stripe.Subscription): number {
+  const item = sub.items?.data?.[0];
+  const price = item?.price;
+  const unitAmount = price?.unit_amount || 0;
+  const interval = price?.recurring?.interval;
+  const intervalCount = price?.recurring?.interval_count || 1;
+
+  // Base monthly amount in cents
+  let monthlyCents = unitAmount;
+  if (interval === "year") monthlyCents = unitAmount / (12 * intervalCount);
+  else if (interval === "week") monthlyCents = (unitAmount * 52) / (12 * intervalCount);
+  else if (interval === "day") monthlyCents = (unitAmount * 365) / (12 * intervalCount);
+  else if (interval === "month") monthlyCents = unitAmount / intervalCount;
+
+  // Apply discount if it persists beyond the current invoice
+  const discount = sub.discount;
+  if (discount?.coupon) {
+    const coupon = discount.coupon;
+    const duration = coupon.duration; // "forever" | "once" | "repeating"
+    // "once" is a one-time credit, not an MRR change. Skip it.
+    if (duration === "forever" || duration === "repeating") {
+      if (typeof coupon.percent_off === "number" && coupon.percent_off > 0) {
+        monthlyCents = monthlyCents * (1 - coupon.percent_off / 100);
+      } else if (typeof coupon.amount_off === "number" && coupon.amount_off > 0) {
+        monthlyCents = Math.max(0, monthlyCents - coupon.amount_off);
+      }
+    }
+  }
+
+  return Math.max(0, monthlyCents / 100);
+}
+
 serve(async (req) => {
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
     apiVersion: "2025-08-27.basil",
@@ -87,15 +127,20 @@ serve(async (req) => {
         const plan = metadata.plan || "monthly";
         const siteUrl = metadata.site_url || null;
 
-        // Derive MRR from the actual Stripe subscription price (no hardcoded fallbacks)
+        // Derive effective MRR from the Stripe subscription, applying any active discount
         let mrr = 0;
         if (subscriptionId) {
           try {
-            const sub = await stripe.subscriptions.retrieve(subscriptionId);
-            const price = sub.items.data[0]?.price;
-            const unitAmount = price?.unit_amount || 0;
-            const interval = price?.recurring?.interval;
-            mrr = interval === "year" ? (unitAmount / 100) / 12 : unitAmount / 100;
+            const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+              expand: ["discount.coupon"],
+            });
+            mrr = computeMrrFromSubscription(sub);
+            logStep("MRR derived from subscription", {
+              subscriptionId,
+              mrr,
+              hasDiscount: !!sub.discount,
+              couponId: sub.discount?.coupon?.id,
+            });
           } catch (priceErr) {
             logStep("Failed to derive MRR from subscription", { error: String(priceErr) });
           }
@@ -326,6 +371,46 @@ serve(async (req) => {
         break;
       }
 
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        // Recalculate MRR whenever the subscription changes — including when a
+        // discount/coupon is applied, removed, or expires. This ensures the MRR
+        // column always reflects the *effective* recurring revenue.
+        const sub = event.data.object as Stripe.Subscription;
+        const customerId = typeof sub.customer === "string" ? sub.customer : "";
+        if (!customerId) break;
+
+        // Re-fetch with the discount expanded (webhook payload may not include the full coupon)
+        let fullSub: Stripe.Subscription = sub;
+        try {
+          fullSub = await stripe.subscriptions.retrieve(sub.id, { expand: ["discount.coupon"] });
+        } catch (e) {
+          logStep("Failed to expand subscription for MRR recompute", { error: String(e) });
+        }
+
+        const newMrr = computeMrrFromSubscription(fullSub);
+        const isActive = ["active", "trialing", "past_due"].includes(fullSub.status);
+
+        const { error } = await supabase
+          .from("subscribers")
+          .update({
+            mrr: newMrr,
+            stripe_subscription_id: fullSub.id,
+            ...(isActive ? { status: "active" } : {}),
+          })
+          .eq("stripe_customer_id", customerId);
+
+        if (error) logStep("MRR recompute update error", { error });
+        else logStep("MRR recomputed for subscription change", {
+          customerId,
+          subscriptionId: fullSub.id,
+          mrr: newMrr,
+          hasDiscount: !!fullSub.discount,
+          couponId: fullSub.discount?.coupon?.id,
+        });
+        break;
+      }
+
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = typeof sub.customer === "string" ? sub.customer : "";
@@ -335,14 +420,13 @@ serve(async (req) => {
           customer: customerId,
           status: "active",
           limit: 1,
+          expand: ["data.discount.coupon"],
         });
 
         if (remainingSubs.data.length > 0) {
-          // Still has an active subscription — recalculate MRR from remaining sub
+          // Still has an active subscription — recalculate effective MRR (with discounts)
           const activeSub = remainingSubs.data[0];
-          const priceAmount = activeSub.items.data[0]?.price?.unit_amount || 0;
-          const interval = activeSub.items.data[0]?.price?.recurring?.interval;
-          const recalculatedMrr = interval === "year" ? (priceAmount / 100) / 12 : priceAmount / 100;
+          const recalculatedMrr = computeMrrFromSubscription(activeSub);
 
           const { error } = await supabase
             .from("subscribers")

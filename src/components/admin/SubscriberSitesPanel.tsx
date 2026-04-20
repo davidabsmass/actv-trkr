@@ -38,7 +38,15 @@ import {
   Download,
 } from "lucide-react";
 
-type Org = { id: string; name: string; created_at: string };
+type Org = {
+  id: string;
+  name: string;
+  created_at: string;
+  status?: "active" | "grace_period" | "archived" | null;
+  billing_exempt?: boolean | null;
+  grace_period_ends_at?: string | null;
+  archived_at?: string | null;
+};
 type Site = { id: string; domain: string; org_id: string; last_heartbeat_at: string | null };
 type ApiKey = { id: string; org_id: string; created_at: string; revoked_at: string | null; label: string };
 type Member = { user_id: string; role: string; joined_at: string; email: string | null; full_name: string | null };

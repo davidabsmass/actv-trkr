@@ -213,6 +213,23 @@ export const APP_BIBLE_SECTIONS: AppBibleSection[] = [
       "Stripe invoice.payment_succeeded updates subscribers.",
       "White-label preview applies across dashboard + emails.",
       "RLS smoke test: Org A cannot read Org B's events/forms/subscribers.",
+      "New customer auto-sync: within 10 min Dashboard, Monitoring, Forms, SEO all show data (or documented 'still syncing').",
+      "Email 2FA: login requires a 6-digit code emailed to the user before a session is granted.",
+      "Landing page label reads 'Form Capture' (not 'Universal Form Capture').",
+    ],
+  },
+  {
+    key: "autosync",
+    title: "19. Auto-sync contract",
+    summary:
+      "Single source of truth for 'no surface should be empty for a paying customer.' First-touch fan-out + steady-state freshness budgets.",
+    bullets: [
+      "First heartbeat triggers new-site-bootstrap: provision-site, check-site-status, check-tracking-health, check-domain-ssl, manage-import-job?action=discover, seo-scan, aggregate-daily, welcome email — all within 10 min.",
+      "Steady-state freshness budgets: uptime/tracker 5 min, form drift 10 min, domain/SSL 24 h, broken-link 7 d, SEO baseline 14 d, plugin version 24 h.",
+      "Watchdogs re-enqueue on budget breach: form-import-watchdog (10 min), monitoring-freshness-watchdog (30 min), seo-freshness-watchdog (daily).",
+      "/admin-setup → New Customer Health: green/red matrix per first-touch job for sites <7 days old, with one-click re-run.",
+      "/admin-setup → Freshness Watchdog: counts of sites breaching each budget, manual re-run.",
+      "Empty-state UI contract: every page renders one of {real data, 'still syncing — first data in ~N min', 'no data — last sync failed + Retry'}. Silent blanks are bugs.",
     ],
   },
 ];

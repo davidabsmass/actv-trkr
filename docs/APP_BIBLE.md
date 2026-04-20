@@ -255,3 +255,60 @@ Before sign-off, the reviewing admin must spot-check:
 8. Stripe webhook for `invoice.payment_succeeded` updates `subscribers`.
 9. White-label preview applies primary color across dashboard + emails.
 10. RLS smoke test: a user from Org A cannot read Org B's `events`, `forms`, or `subscribers` rows.
+11. **New-customer auto-sync**: from a brand-new install, within 10 min `/dashboard`, `/monitoring`, `/forms`, and `/seo` all show real data (or a documented "still syncing" state) — never blank.
+12. **Email 2FA**: signing in requires entering a 6-digit code emailed to the user before a session is granted (verified end-to-end).
+13. **Form Capture label**: landing page reads "Form Capture" (not "Universal Form Capture").
+
+---
+
+## 19. Auto-sync contract  *(key: `autosync`)*
+
+This section is the **single source of truth** for "things should not be empty for a paying customer." If any surface (Dashboard, Monitoring, Forms, SEO, Reports) is blank for a site that has reported a heartbeat, the cause MUST be one of the documented states below — never an unexplained gap.
+
+### 19.1 First-touch sync (new sites)
+
+When a site sends its **first** heartbeat (i.e., no prior row in `sites`, or `first_seen_at` is within the last 24 h), the platform fans out the following jobs within 10 minutes:
+
+| # | Job | Purpose | Surface unblocked |
+|---|-----|---------|-------------------|
+| 1 | `provision-site` | Insert/normalize `sites` row | All |
+| 2 | `check-site-status` | First uptime ping | `/monitoring` Overview |
+| 3 | `check-tracking-health` | Tracker state Active/Warning/Inactive | Dashboard Needs Attention |
+| 4 | `check-domain-ssl` | Domain + SSL expiry | `/monitoring` Domain & SSL |
+| 5 | `manage-import-job?action=discover` | Populate `form_integrations`, auto-job non-empty forms | `/forms`, `/settings → Form Import` |
+| 6 | `seo-scan` (initial) | Seed Summary baseline | `/seo` |
+| 7 | `aggregate-daily` (today only) | Backfill today's KPI tiles | Dashboard |
+| 8 | `send-transactional-email` (welcome) | Notify owner site is live | Inbox |
+
+Orchestrated by the `new-site-bootstrap` edge function, triggered by the heartbeat ingestion endpoint when it detects a new site. Idempotent — safe to re-run.
+
+### 19.2 Steady-state freshness budgets
+
+Every long-lived data point has a maximum staleness budget. If exceeded with no active job, the relevant watchdog cron MUST re-enqueue the refresh:
+
+| Data point | Budget | Watchdog | Recovery action |
+|------------|--------|----------|-----------------|
+| Uptime ping | 5 min | `check-tracking-health` (5 min) | Re-ping |
+| Tracker health | 5 min | `check-tracking-health` (5 min) | Re-evaluate |
+| Form drift (live count vs. imported) | 10 min | `form-import-watchdog` (10 min) | Insert pending job, kick `process-import-queue` |
+| Domain/SSL | 24 h | `monitoring-freshness-watchdog` (30 min) | Re-run `check-domain-ssl` |
+| Broken-link scan | 7 d | `monitoring-freshness-watchdog` (30 min) | Re-run scan |
+| SEO baseline | 14 d | `seo-freshness-watchdog` (daily) | Re-run `seo-scan` |
+| Plugin version | 24 h | `plugin-update-check` on demand | Compare to `pluginManifest.version` |
+| Daily aggregates | 24 h | `aggregate-daily` (nightly) | Backfill missing day |
+
+### 19.3 Admin observability
+
+`/admin-setup → New Customer Health` (owner-only) lists every site < 7 days old and shows a green/red matrix for each of the 8 first-touch jobs. Any red cell exposes a "Re-run" button that re-invokes that single job for that single site.
+
+`/admin-setup → Freshness Watchdog` shows the current count of sites breaching each staleness budget with one-click "Re-run watchdog now" actions.
+
+### 19.4 Empty-state policy (UI contract)
+
+A page MUST render one of these three states — never a silent blank:
+
+1. **Real data** — the happy path.
+2. **"Still syncing — first data in ~N minutes"** — only valid for sites < 24 h old. Renders a progress hint pointing to which auto-sync job is still pending.
+3. **"No data — last sync failed"** — renders the timestamp of the failed job and a "Retry" CTA. Triggers an entry on the New Customer Health panel.
+
+Any blank/whitespace render outside these three is a bug.

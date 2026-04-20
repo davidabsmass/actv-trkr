@@ -166,6 +166,7 @@ Deno.serve(async (req) => {
         org_id: site.org_id,
         site_id: site.id,
         requested_by_user_id: user.id,
+        requested_by_email: user.email ?? null,
         token_hash: tokenHash,
         requestor_ip_hash: ipHash,
         requestor_user_agent: userAgent,

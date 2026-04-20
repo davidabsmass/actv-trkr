@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     const { data: tokenRow } = await adminClient
       .from("magic_login_tokens")
       .select(
-        "id, org_id, site_id, requested_by_user_id, expires_at, consumed_at, revoked_at"
+        "id, org_id, site_id, requested_by_user_id, requested_by_email, expires_at, consumed_at, revoked_at"
       )
       .eq("token_hash", tokenHash)
       .maybeSingle();
@@ -225,7 +225,11 @@ Deno.serve(async (req) => {
     });
 
     return new Response(
-      JSON.stringify({ valid: true, requested_by: tokenRow.requested_by_user_id }),
+      JSON.stringify({
+        valid: true,
+        requested_by: tokenRow.requested_by_user_id,
+        requested_by_email: tokenRow.requested_by_email ?? null,
+      }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

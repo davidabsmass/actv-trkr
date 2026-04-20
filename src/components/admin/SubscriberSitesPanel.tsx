@@ -61,8 +61,26 @@ export default function SubscriberSitesPanel() {
   // Add user dialog state
   const [addUserOrg, setAddUserOrg] = useState<{ id: string; name: string } | null>(null);
   const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserName, setNewUserName] = useState("");
   const [newUserRole, setNewUserRole] = useState<"member" | "admin">("member");
+  const [newUserTempPassword, setNewUserTempPassword] = useState("");
+  const [showTempPassword, setShowTempPassword] = useState(false);
   const [addUserSubmitting, setAddUserSubmitting] = useState(false);
+
+  const generateTempPassword = () => {
+    // 14-char password with mixed case, digits, and a symbol — safe for clipboard sharing
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const symbols = "!@#$%^&*";
+    let pw = "";
+    const arr = new Uint32Array(12);
+    crypto.getRandomValues(arr);
+    for (let i = 0; i < 12; i++) pw += chars[arr[i] % chars.length];
+    // Guarantee complexity
+    pw += symbols[Math.floor(Math.random() * symbols.length)];
+    pw += String(Math.floor(Math.random() * 10));
+    setNewUserTempPassword(pw);
+    setShowTempPassword(true);
+  };
 
   const { data: subscriberData, isLoading: dataLoading } = useQuery({
     queryKey: ["admin_subscriber_sites_all"],

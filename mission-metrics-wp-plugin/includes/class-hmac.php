@@ -69,6 +69,8 @@ class MM_Hmac {
 		}
 		return new WP_Error( 'forbidden', 'Invalid credential', array( 'status' => 403 ) );
 	}
+
+	/**
 	 * Verify a signed request. Returns true on success, WP_Error on failure.
 	 * Returns null if no signing headers are present (caller decides whether
 	 * to fall back to the legacy hash check).

@@ -67,6 +67,7 @@ function LayoutInner() {
               </IconTooltip>
             </div>
             <div className="flex items-center gap-2">
+              <HelpButton />
               <NotificationBell />
               {isAdmin && (
                 <Button variant="outline" size="sm" onClick={() => navigate("/admin-setup")} className="gap-1.5">
@@ -82,7 +83,6 @@ function LayoutInner() {
             </ErrorBoundary>
           </div>
           <AiChatbot />
-          <HelpButton />
         </main>
       </div>
     </SidebarProvider>

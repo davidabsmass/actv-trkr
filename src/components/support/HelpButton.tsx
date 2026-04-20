@@ -35,19 +35,17 @@ export function HelpButton() {
 
   return (
     <>
-      <div className="fixed bottom-6 left-6 z-40">
-        <IconTooltip label="Help & support">
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-11 w-11 rounded-full shadow-md bg-background hover:bg-muted"
-            onClick={() => setOpen(true)}
-            aria-label="Open help"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </Button>
-        </IconTooltip>
-      </div>
+      <IconTooltip label="Help & support">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9"
+          onClick={() => setOpen(true)}
+          aria-label="Open help"
+        >
+          <HelpCircle className="h-5 w-5" />
+        </Button>
+      </IconTooltip>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">

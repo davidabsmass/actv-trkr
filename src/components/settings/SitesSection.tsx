@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useSites } from "@/hooks/use-dashboard-data";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Globe, CheckCircle, AlertTriangle, Settings, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -15,6 +15,99 @@ export default function SitesSection() {
   const { data: sites, isLoading } = useSites(orgId);
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [refreshingSiteIds, setRefreshingSiteIds] = useState<string[]>([]);
+  const siteIds = sites?.map((site) => site.id) ?? [];
+
+  const { data: domainHealth } = useQuery({
+    queryKey: ["settings_domain_health", siteIds],
+    queryFn: async () => {
+      if (siteIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("domain_health")
+        .select("site_id, domain_expiry_date, days_to_domain_expiry, last_checked_at")
+        .in("site_id", siteIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: siteIds.length > 0,
+  });
+
+  const { data: sslHealth } = useQuery({
+    queryKey: ["settings_ssl_health", siteIds],
+    queryFn: async () => {
+      if (siteIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("ssl_health")
+        .select("site_id, ssl_expiry_date, days_to_ssl_expiry, last_checked_at")
+        .in("site_id", siteIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: siteIds.length > 0,
+  });
+
+  const domainHealthBySite = useMemo(
+    () => new Map((domainHealth ?? []).map((row) => [row.site_id, row])),
+    [domainHealth],
+  );
+
+  const sslHealthBySite = useMemo(
+    () => new Map((sslHealth ?? []).map((row) => [row.site_id, row])),
+    [sslHealth],
+  );
+
+  useEffect(() => {
+    if (siteIds.length === 0 || refreshingSiteIds.length > 0) return;
+
+    const staleWindowMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const needsRefresh = (lastCheckedAt?: string | null) => {
+      if (!lastCheckedAt) return true;
+      const checkedAtMs = new Date(lastCheckedAt).getTime();
+      return !Number.isFinite(checkedAtMs) || now - checkedAtMs > staleWindowMs;
+    };
+
+    const pendingSiteIds = siteIds.filter((siteId) => {
+      const domain = domainHealthBySite.get(siteId);
+      const ssl = sslHealthBySite.get(siteId);
+      return needsRefresh(domain?.last_checked_at) || needsRefresh(ssl?.last_checked_at);
+    });
+
+    if (pendingSiteIds.length === 0) return;
+
+    let cancelled = false;
+
+    const refresh = async () => {
+      setRefreshingSiteIds(pendingSiteIds);
+      try {
+        await Promise.allSettled(
+          pendingSiteIds.map(async (siteId) => {
+            const { data, error } = await supabase.functions.invoke("check-domain-ssl", {
+              body: { site_id: siteId },
+            });
+
+            if (error) throw error;
+            if (!data?.ok) throw new Error(data?.error || "Automatic domain and SSL check failed.");
+          }),
+        );
+
+        if (!cancelled) {
+          queryClient.invalidateQueries({ queryKey: ["settings_domain_health"] });
+          queryClient.invalidateQueries({ queryKey: ["settings_ssl_health"] });
+        }
+      } finally {
+        if (!cancelled) {
+          setRefreshingSiteIds([]);
+        }
+      }
+    };
+
+    void refresh();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [siteIds, domainHealthBySite, sslHealthBySite, refreshingSiteIds.length, queryClient]);
 
   const handleDelete = async (siteId: string, domain: string) => {
     if (!confirm(t("settings.removeSiteConfirm", { domain }))) return;
@@ -65,7 +158,16 @@ export default function SitesSection() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sites.map((site) => (
+          {sites.map((site) => {
+            const domain = domainHealthBySite.get(site.id);
+            const ssl = sslHealthBySite.get(site.id);
+            const isRefreshing = refreshingSiteIds.includes(site.id);
+            const formatExpiry = (date?: string | null, days?: number | null) => {
+              if (date) return days != null ? `${date} · ${days}d` : date;
+              return isRefreshing ? t("settings.loading") : t("monitoring.unknown");
+            };
+
+            return (
             <div key={site.id} className="flex items-start gap-3 group">
               <CheckCircle className="h-4 w-4 text-success flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -76,6 +178,16 @@ export default function SitesSection() {
                     return d && !isNaN(d.getTime()) ? format(d, "MMM d, yyyy") : "—";
                   })()}
                 </p>
+                <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2 sm:gap-x-4">
+                  <div className="flex items-center justify-between gap-3 sm:block">
+                    <span>{t("monitoring.domainExpiry")}</span>
+                    <span className="text-foreground sm:block sm:mt-0.5">{formatExpiry(domain?.domain_expiry_date, domain?.days_to_domain_expiry)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 sm:block">
+                    <span>{t("monitoring.sslExpiry")}</span>
+                    <span className="text-foreground sm:block sm:mt-0.5">{formatExpiry(ssl?.ssl_expiry_date, ssl?.days_to_ssl_expiry)}</span>
+                  </div>
+                </div>
               </div>
               <button
                 onClick={() => handleDelete(site.id, site.domain)}
@@ -85,7 +197,7 @@ export default function SitesSection() {
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>

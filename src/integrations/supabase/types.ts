@@ -5953,6 +5953,7 @@ export type Database = {
           fail_count: number
           heartbeat_interval_minutes: number
           id: string
+          last_form_discovery_at: string | null
           last_heartbeat_at: string | null
           name: string | null
           org_id: string
@@ -5970,6 +5971,7 @@ export type Database = {
           fail_count?: number
           heartbeat_interval_minutes?: number
           id?: string
+          last_form_discovery_at?: string | null
           last_heartbeat_at?: string | null
           name?: string | null
           org_id: string
@@ -5987,6 +5989,7 @@ export type Database = {
           fail_count?: number
           heartbeat_interval_minutes?: number
           id?: string
+          last_form_discovery_at?: string | null
           last_heartbeat_at?: string | null
           name?: string | null
           org_id?: string

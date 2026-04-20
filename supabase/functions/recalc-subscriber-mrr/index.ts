@@ -13,7 +13,31 @@ const log = (step: string, details?: unknown) => {
   console.log(`[RECALC-MRR] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
 };
 
+// Stripe API 2025+ moved discounts from `subscription.discount` (single object)
+// to `subscription.discounts[]` (array). Support both.
+function extractRecurringCoupon(sub: Stripe.Subscription): Stripe.Coupon | null {
+  const discounts = (sub as any).discounts as Array<Stripe.Discount | string> | undefined;
+  if (Array.isArray(discounts)) {
+    for (const d of discounts) {
+      if (typeof d === "string") continue;
+      const c = d.coupon;
+      if (c && (c.duration === "forever" || c.duration === "repeating")) return c;
+    }
+  }
+  const legacy = (sub as any).discount as Stripe.Discount | null | undefined;
+  if (legacy?.coupon) {
+    const c = legacy.coupon;
+    if (c.duration === "forever" || c.duration === "repeating") return c;
+  }
+  return null;
+}
+
 function computeMrrFromSubscription(sub: Stripe.Subscription): number {
+  // Dead subscriptions contribute zero MRR
+  if (sub.status === "canceled" || sub.status === "incomplete_expired" || sub.status === "unpaid") {
+    return 0;
+  }
+
   const item = sub.items?.data?.[0];
   const price = item?.price;
   const unitAmount = price?.unit_amount || 0;
@@ -26,15 +50,12 @@ function computeMrrFromSubscription(sub: Stripe.Subscription): number {
   else if (interval === "day") monthlyCents = (unitAmount * 365) / (12 * intervalCount);
   else if (interval === "month") monthlyCents = unitAmount / intervalCount;
 
-  const discount = sub.discount;
-  if (discount?.coupon) {
-    const c = discount.coupon;
-    if (c.duration === "forever" || c.duration === "repeating") {
-      if (typeof c.percent_off === "number" && c.percent_off > 0) {
-        monthlyCents = monthlyCents * (1 - c.percent_off / 100);
-      } else if (typeof c.amount_off === "number" && c.amount_off > 0) {
-        monthlyCents = Math.max(0, monthlyCents - c.amount_off);
-      }
+  const coupon = extractRecurringCoupon(sub);
+  if (coupon) {
+    if (typeof coupon.percent_off === "number" && coupon.percent_off > 0) {
+      monthlyCents = monthlyCents * (1 - coupon.percent_off / 100);
+    } else if (typeof coupon.amount_off === "number" && coupon.amount_off > 0) {
+      monthlyCents = Math.max(0, monthlyCents - coupon.amount_off);
     }
   }
 
@@ -79,7 +100,7 @@ serve(async (req) => {
     // Pull every subscriber row that has a Stripe subscription
     const { data: subs, error: subsErr } = await supabase
       .from("subscribers")
-      .select("id, email, stripe_subscription_id, stripe_customer_id, mrr")
+      .select("id, email, status, stripe_subscription_id, stripe_customer_id, mrr")
       .not("stripe_subscription_id", "is", null);
     if (subsErr) throw subsErr;
 
@@ -90,17 +111,37 @@ serve(async (req) => {
       old_mrr: number;
       new_mrr: number;
       changed: boolean;
+      reason?: string;
       discount?: string | null;
+      sub_status?: string | null;
       error?: string;
     }> = [];
 
     for (const row of subs || []) {
       try {
+        const oldMrr = Number(row.mrr || 0);
+
+        // If the subscriber row is marked churned/paused, force MRR to 0 — they
+        // aren't paying recurring revenue regardless of what Stripe says.
+        if (row.status === "churned" || row.status === "canceled" || row.status === "paused") {
+          const changed = Math.abs(0 - oldMrr) > 0.01;
+          if (changed) {
+            await supabase.from("subscribers").update({ mrr: 0 }).eq("id", row.id);
+          }
+          results.push({
+            email: row.email,
+            old_mrr: oldMrr,
+            new_mrr: 0,
+            changed,
+            reason: `subscriber status=${row.status}`,
+          });
+          continue;
+        }
+
         const stripeSub = await stripe.subscriptions.retrieve(row.stripe_subscription_id as string, {
-          expand: ["discount.coupon"],
+          expand: ["discounts.coupon", "discount.coupon"],
         });
         const newMrr = computeMrrFromSubscription(stripeSub);
-        const oldMrr = Number(row.mrr || 0);
         const changed = Math.abs(newMrr - oldMrr) > 0.01;
 
         if (changed) {
@@ -110,12 +151,14 @@ serve(async (req) => {
             .eq("id", row.id);
         }
 
+        const coupon = extractRecurringCoupon(stripeSub);
         results.push({
           email: row.email,
           old_mrr: oldMrr,
           new_mrr: newMrr,
           changed,
-          discount: stripeSub.discount?.coupon?.id ?? null,
+          discount: coupon?.id ?? null,
+          sub_status: stripeSub.status,
         });
       } catch (e) {
         results.push({

@@ -10,14 +10,48 @@ const logStep = (step: string, details?: any) => {
 };
 
 /**
+ * Extract the active recurring coupon from a Stripe subscription.
+ * Stripe API 2025+ moved discounts from `subscription.discount` to
+ * `subscription.discounts[]` (array of discount IDs or expanded objects).
+ * We support both for forward/back compatibility.
+ *
+ * Caller must expand `discounts.coupon` (or legacy `discount.coupon`) before calling.
+ */
+function extractRecurringCoupon(sub: Stripe.Subscription): Stripe.Coupon | null {
+  // New API: discounts[] array
+  const discounts = (sub as any).discounts as Array<Stripe.Discount | string> | undefined;
+  if (Array.isArray(discounts)) {
+    for (const d of discounts) {
+      if (typeof d === "string") continue; // not expanded — skip
+      const c = d.coupon;
+      if (c && (c.duration === "forever" || c.duration === "repeating")) return c;
+    }
+  }
+  // Legacy API: single discount object
+  const legacy = (sub as any).discount as Stripe.Discount | null | undefined;
+  if (legacy?.coupon) {
+    const c = legacy.coupon;
+    if (c.duration === "forever" || c.duration === "repeating") return c;
+  }
+  return null;
+}
+
+/**
  * Compute the *effective* MRR for a Stripe subscription, taking into account
  * any active discount (percent_off or amount_off, recurring or forever).
  *
  * Returns dollars/month. A 100% off coupon → 0. A $10/mo off on a $49/mo plan → 39.
  * One-off (`once`) discounts are NOT applied to MRR — they're a temporary credit,
  * not a recurring rate change.
+ *
+ * Canceled / incomplete_expired subscriptions return 0 (no recurring revenue).
  */
 function computeMrrFromSubscription(sub: Stripe.Subscription): number {
+  // Dead subscriptions contribute zero MRR
+  if (sub.status === "canceled" || sub.status === "incomplete_expired" || sub.status === "unpaid") {
+    return 0;
+  }
+
   const item = sub.items?.data?.[0];
   const price = item?.price;
   const unitAmount = price?.unit_amount || 0;
@@ -32,17 +66,12 @@ function computeMrrFromSubscription(sub: Stripe.Subscription): number {
   else if (interval === "month") monthlyCents = unitAmount / intervalCount;
 
   // Apply discount if it persists beyond the current invoice
-  const discount = sub.discount;
-  if (discount?.coupon) {
-    const coupon = discount.coupon;
-    const duration = coupon.duration; // "forever" | "once" | "repeating"
-    // "once" is a one-time credit, not an MRR change. Skip it.
-    if (duration === "forever" || duration === "repeating") {
-      if (typeof coupon.percent_off === "number" && coupon.percent_off > 0) {
-        monthlyCents = monthlyCents * (1 - coupon.percent_off / 100);
-      } else if (typeof coupon.amount_off === "number" && coupon.amount_off > 0) {
-        monthlyCents = Math.max(0, monthlyCents - coupon.amount_off);
-      }
+  const coupon = extractRecurringCoupon(sub);
+  if (coupon) {
+    if (typeof coupon.percent_off === "number" && coupon.percent_off > 0) {
+      monthlyCents = monthlyCents * (1 - coupon.percent_off / 100);
+    } else if (typeof coupon.amount_off === "number" && coupon.amount_off > 0) {
+      monthlyCents = Math.max(0, monthlyCents - coupon.amount_off);
     }
   }
 
@@ -132,7 +161,7 @@ serve(async (req) => {
         if (subscriptionId) {
           try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId, {
-              expand: ["discount.coupon"],
+              expand: ["discounts.coupon", "discount.coupon"],
             });
             mrr = computeMrrFromSubscription(sub);
             logStep("MRR derived from subscription", {
@@ -383,7 +412,7 @@ serve(async (req) => {
         // Re-fetch with the discount expanded (webhook payload may not include the full coupon)
         let fullSub: Stripe.Subscription = sub;
         try {
-          fullSub = await stripe.subscriptions.retrieve(sub.id, { expand: ["discount.coupon"] });
+          fullSub = await stripe.subscriptions.retrieve(sub.id, { expand: ["discounts.coupon", "discount.coupon"] });
         } catch (e) {
           logStep("Failed to expand subscription for MRR recompute", { error: String(e) });
         }
@@ -420,7 +449,7 @@ serve(async (req) => {
           customer: customerId,
           status: "active",
           limit: 1,
-          expand: ["data.discount.coupon"],
+          expand: ["data.discounts.coupon", "data.discount.coupon"],
         });
 
         if (remainingSubs.data.length > 0) {

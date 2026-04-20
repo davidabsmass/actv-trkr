@@ -19,7 +19,7 @@ export default function AppBibleReviewBanner() {
       <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-foreground">
-          <span className="font-medium">App Bible review pending for v{version}.</span>{" "}
+          <span className="font-medium">Launch Checklist review pending for v{version}.</span>{" "}
           {unreviewedCount} of {totalSections} section(s) still need admin sign-off
           before this release is considered verified.
         </p>
@@ -27,7 +27,7 @@ export default function AppBibleReviewBanner() {
           to="/admin-setup?tab=app-bible"
           className="text-xs text-primary hover:underline mt-1 inline-block"
         >
-          Open the App Bible checklist →
+          Open the Launch Checklist →
         </Link>
       </div>
     </div>

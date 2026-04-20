@@ -11,6 +11,7 @@ import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, Ma
 import TeamSection from "@/components/account/TeamSection";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
 import SupportSection from "@/components/support/SupportSection";
+import { QuickHelpPanel } from "@/components/support/QuickHelpPanel";
 import { CancellationSaveDialog } from "@/components/account/CancellationSaveDialog";
 import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -113,8 +114,11 @@ export default function Account() {
         </TabsList>
 
         <TabsContent value="support">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <SupportSection />
+          <div className="space-y-4">
+            <QuickHelpPanel />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <SupportSection />
+            </div>
           </div>
         </TabsContent>
 

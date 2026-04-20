@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { LifeBuoy, Plus, MessageSquare, Paperclip, ArrowLeft, Send, CheckCircle2, ThumbsUp, ThumbsDown, X } from "lucide-react";
+import { LifeBuoy, Plus, MessageSquare, Paperclip, ArrowLeft, Send, CheckCircle2, ThumbsUp, ThumbsDown, X, Lightbulb } from "lucide-react";
 import { format } from "date-fns";
+import { articlesForType } from "./helpContent";
 
 const TYPE_LABELS: Record<string, string> = {
   bug: "Bug Report",
@@ -315,7 +316,10 @@ function SubmitTicketForm({ onCancel, onSuccess }: { onCancel: () => void; onSuc
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base">Submit Request</CardTitle>
-            <CardDescription>Tell us what's going on. We'll get back to you as soon as we can.</CardDescription>
+            <CardDescription>
+              Tell us what's going on. We'll get back to you as soon as we can.
+              Many issues are answered in <span className="text-foreground font-medium">Quick Help</span> above — worth a glance first.
+            </CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={onCancel}><X className="h-4 w-4" /></Button>
         </div>
@@ -348,6 +352,8 @@ function SubmitTicketForm({ onCancel, onSuccess }: { onCancel: () => void; onSuc
             </Select>
           </div>
         </div>
+
+        <SuggestedArticles type={type} />
 
         <div className="space-y-1.5">
           <Label className="text-xs">Affected Site</Label>
@@ -415,6 +421,32 @@ function SubmitTicketForm({ onCancel, onSuccess }: { onCancel: () => void; onSuc
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function SuggestedArticles({ type }: { type: string }) {
+  const articles = articlesForType(type);
+  if (articles.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+        <Lightbulb className="h-3.5 w-3.5 text-primary" />
+        Before you submit — these might already answer your question:
+      </div>
+      <ul className="space-y-1.5">
+        {articles.map((a) => (
+          <li key={a.id}>
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-foreground hover:text-primary list-none flex items-start gap-1.5">
+                <span className="text-primary mt-0.5">›</span>
+                <span className="group-open:font-medium">{a.question}</span>
+              </summary>
+              <p className="text-xs text-muted-foreground mt-1.5 ml-4 leading-relaxed">{a.answer}</p>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

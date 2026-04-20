@@ -712,8 +712,9 @@ const runners: Record<string, Runner> = {
     const { count } = await admin.from("security_findings").select("id", { count: "exact", head: true })
       .gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString());
     const n = count ?? 0;
-    return result(def, "warn",
-      n > 0 ? `${n} findings in last 30d` : "0 findings in last 30d (review)",
+    // Pipeline is "alive" if it has produced findings. Zero in 30d = pipeline likely dead.
+    return result(def, n > 0 ? "pass" : "warn",
+      n > 0 ? `${n} findings in last 30d (pipeline alive)` : "0 findings in last 30d — pipeline may be dead (review)",
       { last_30d_count: n }, t);
   },
 

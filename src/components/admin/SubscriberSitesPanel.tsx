@@ -222,6 +222,8 @@ export default function SubscriberSitesPanel() {
       setActionLoading(null);
     }
   };
+
+  const handleAddUser = async () => {
     if (!addUserOrg) return;
     const email = newUserEmail.trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

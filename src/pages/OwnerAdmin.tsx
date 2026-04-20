@@ -80,8 +80,11 @@ export default function OwnerAdmin() {
   const churned = useMemo(() => subscribers.filter((s) => s.status === "churned"), [subscribers]);
   const pastDue = useMemo(() => subscribers.filter((s) => s.status === "past_due"), [subscribers]);
 
-  const mrr = useMemo(() => active.reduce((sum, s) => sum + Number(s.mrr), 0), [active]);
-  const arpu = active.length ? mrr / active.length : 0;
+  // Only paying subscribers (mrr > 0) count toward MRR — excludes free-code
+  // and 100%-discount subscribers whose effective MRR is zero.
+  const paying = useMemo(() => active.filter((s) => Number(s.mrr || 0) > 0), [active]);
+  const mrr = useMemo(() => paying.reduce((sum, s) => sum + Number(s.mrr), 0), [paying]);
+  const arpu = paying.length ? mrr / paying.length : 0;
 
   const now = new Date();
   const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

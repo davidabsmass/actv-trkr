@@ -22,17 +22,35 @@ export function buildMonthlyArr(subs: Subscriber[], months = 24): MonthlyArrPoin
     return new Date(Date.UTC(y, m - 1, 1));
   });
 
+  const now = new Date();
+
   return keys.map((k, i) => {
     const start = monthStarts[i];
     const end = i + 1 < monthStarts.length ? monthStarts[i + 1] : new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+    const isCurrentMonth = now >= start && now < end;
 
     const activeAtMonthEnd = subs.filter((s) => {
+      // Exclude free-code / 100%-discount rows entirely — they never contribute MRR.
+      if (Number(s.mrr || 0) <= 0) return false;
+
       const created = new Date(s.created_at);
+      if (created >= end) return false;
+
+      // For the CURRENT month, use real-time status. A sub that churned today
+      // should drop out of MRR immediately, not wait until month-end.
+      if (isCurrentMonth) {
+        const status = (s.status || "").toLowerCase();
+        if (status === "churned" || status === "canceled" || status === "paused" || status === "past_due") return false;
+        return true;
+      }
+
+      // For HISTORICAL months, use the standard "still paying at month-end" rule.
       const churned = s.churn_date ? new Date(s.churn_date) : null;
-      return created < end && (!churned || churned >= end);
+      return !churned || churned >= end;
     });
 
     const newThisMonth = subs.filter((s) => {
+      if (Number(s.mrr || 0) <= 0) return false;
       const created = new Date(s.created_at);
       return created >= start && created < end;
     });

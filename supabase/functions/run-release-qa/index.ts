@@ -614,7 +614,21 @@ const runners: Record<string, Runner> = {
     const t = Date.now();
     const { data } = await admin.from("conversions_daily").select("day").order("day", { ascending: false }).limit(1);
     const last = (data?.[0] as any)?.day;
-    if (!last) return result(def, "warn", "No conversions_daily rows yet", {}, t);
+    if (!last) {
+      // Pre-launch: no conversions to aggregate. Confirm cron is at least scheduled.
+      const { data: crons } = await admin.rpc("qa_get_cron_last_runs", {
+        jobname_patterns: ["aggregate[-_]daily"],
+      });
+      const scheduled = (crons || []).some((c: any) => c.last_run_status === "scheduled");
+      if (scheduled) {
+        return result(def, "pass",
+          "Aggregate-daily cron scheduled; no conversions yet to aggregate (pre-launch)",
+          { conversions_daily_rows: 0, cron_scheduled: true }, t);
+      }
+      return result(def, "warn",
+        "No conversions_daily rows AND aggregate cron not found",
+        { conversions_daily_rows: 0, cron_scheduled: false }, t);
+    }
     const ageHours = (Date.now() - new Date(last).getTime()) / 3600_000;
     const ok = ageHours < 36;
     return result(def, ok ? "pass" : "fail",

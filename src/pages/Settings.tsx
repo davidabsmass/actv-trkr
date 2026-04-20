@@ -10,6 +10,7 @@ import NotificationsHub from "@/components/settings/NotificationsHub";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 import FormImportPanel from "@/components/settings/FormImportPanel";
 import FormsSection from "@/components/settings/FormsSection";
+import GoalsSection from "@/components/settings/GoalsSection";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -43,6 +44,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
           <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.general")}</TabsTrigger>
+          <TabsTrigger value="goals" className="flex-shrink-0 text-xs sm:text-sm">Goals</TabsTrigger>
           <TabsTrigger value="notifications" className="flex-shrink-0 text-xs sm:text-sm">Notifications</TabsTrigger>
           <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.whiteLabel")}</TabsTrigger>
           <TabsTrigger value="setup" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.websiteSetup")}</TabsTrigger>
@@ -56,6 +58,12 @@ export default function SettingsPage() {
             <SeoVisibilitySection />
             <FormsSection />
             {showAdminSections && <FormImportPanel />}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="goals">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <GoalsSection />
           </div>
         </TabsContent>
 

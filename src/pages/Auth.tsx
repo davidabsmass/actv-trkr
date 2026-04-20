@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Lock, User, Eye, EyeOff, Ticket, ShieldCheck, KeyRound } from "lucide-react";
@@ -7,6 +7,14 @@ import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
 
 type ActivePanel = "main" | "otp" | "forgot";
+
+const PENDING_OTP_KEY = "actvtrkr_pending_otp";
+
+type PendingOtpState = {
+  email: string;
+  password: string;
+  inviteCode?: string;
+};
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -25,7 +33,33 @@ const Auth = () => {
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingPassword, setPendingPassword] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
+
+  // Restore pending OTP state on mount so refresh / tab switch doesn't lose it.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_OTP_KEY);
+      if (!raw) return;
+      const saved: PendingOtpState = JSON.parse(raw);
+      if (saved?.email && saved?.password) {
+        setPendingEmail(saved.email);
+        setPendingPassword(saved.password);
+        if (saved.inviteCode) setInviteCode(saved.inviteCode);
+        setActivePanel("otp");
+        setIsLogin(false);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Tick resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   const clearMessages = () => { setError(null); setMessage(null); };
 

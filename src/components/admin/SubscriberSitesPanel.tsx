@@ -34,6 +34,8 @@ import {
   Globe,
   Check,
   X,
+  Ban,
+  Download,
 } from "lucide-react";
 
 type Org = { id: string; name: string; created_at: string };
@@ -178,7 +180,48 @@ export default function SubscriberSitesPanel() {
     }
   };
 
-  const handleAddUser = async () => {
+  const handleRevokeKey = async (apiKeyId: string, orgName: string) => {
+    if (!confirm(`Revoke the active API key for ${orgName}? The site will stop reporting until a new key is generated.`)) return;
+    setActionLoading(`revoke-${apiKeyId}`);
+    try {
+      const { error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "revoke_api_key", api_key_id: apiKeyId },
+      });
+      if (error) throw error;
+      toast.success("API key revoked");
+      queryClient.invalidateQueries({ queryKey: ["admin_subscriber_sites_all"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to revoke API key");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleExportUsers = async () => {
+    setActionLoading("export-users");
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "export_users" },
+      });
+      if (error) throw error;
+      const csv: string = data?.csv || "";
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const ts = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `actv-trkr-users-${ts}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${data?.row_count ?? "?"} users`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export users");
+    } finally {
+      setActionLoading(null);
+    }
+  };
     if (!addUserOrg) return;
     const email = newUserEmail.trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

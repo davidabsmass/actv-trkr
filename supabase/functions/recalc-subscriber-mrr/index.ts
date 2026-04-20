@@ -7,11 +7,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { appCorsHeaders } from "../_shared/cors.ts";
 
 const log = (step: string, details?: unknown) => {
   console.log(`[RECALC-MRR] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
@@ -46,6 +42,7 @@ function computeMrrFromSubscription(sub: Stripe.Subscription): number {
 }
 
 serve(async (req) => {
+  const corsHeaders = appCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {

@@ -224,7 +224,7 @@ export function AiChatbot() {
     }
   }, [input, isLoading, messages, i18n.language, t, orgId]);
 
-  // Compute button style with drag offset
+  // Compute button style with drag offset (bubble stays exactly where dropped)
   const buttonStyle: React.CSSProperties = {
     position: "fixed",
     bottom: `${24 - position.y}px`,
@@ -233,13 +233,49 @@ export function AiChatbot() {
     touchAction: "none",
   };
 
-  // Chat panel position follows the button
-  const panelStyle: React.CSSProperties = {
-    position: "fixed",
-    bottom: `${96 - position.y}px`,
-    right: `${24 - position.x}px`,
-    zIndex: 50,
+  // Panel position: anchor near the bubble, but shift inward to stay fully on-screen.
+  // We compute absolute left/top in pixels so the panel can move independently of the bubble.
+  const computePanelStyle = (): React.CSSProperties => {
+    if (typeof window === "undefined") {
+      return { position: "fixed", bottom: "96px", right: "24px", zIndex: 50 };
+    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Bubble's actual screen rect (approx)
+    const bubbleRight = 24 - position.x;            // px from right edge
+    const bubbleBottom = 24 - position.y;           // px from bottom edge
+    const bubbleLeft = vw - bubbleRight - (BUTTON_SIZE + GRIP_WIDTH);
+    const bubbleTop = vh - bubbleBottom - BUTTON_SIZE;
+
+    // Preferred: panel sits ABOVE the bubble, right-aligned with it
+    let left = bubbleLeft + (BUTTON_SIZE + GRIP_WIDTH) - PANEL_WIDTH; // align right edges
+    let top = bubbleTop - PANEL_MAX_HEIGHT - 12; // 12px gap above bubble
+
+    // If no room above, place BELOW the bubble
+    if (top < EDGE_PADDING) {
+      top = bubbleTop + BUTTON_SIZE + 12;
+      // If also no room below, pin to top
+      if (top + PANEL_MAX_HEIGHT > vh - EDGE_PADDING) {
+        top = Math.max(EDGE_PADDING, vh - PANEL_MAX_HEIGHT - EDGE_PADDING);
+      }
+    }
+
+    // Horizontal clamp — keep panel fully visible
+    if (left < EDGE_PADDING) left = EDGE_PADDING;
+    if (left + PANEL_WIDTH > vw - EDGE_PADDING) {
+      left = vw - PANEL_WIDTH - EDGE_PADDING;
+    }
+
+    return {
+      position: "fixed",
+      left: `${left}px`,
+      top: `${top}px`,
+      zIndex: 50,
+    };
   };
+
+  const panelStyle = computePanelStyle();
 
   return (
     <>

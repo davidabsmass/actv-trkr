@@ -36,6 +36,10 @@ import {
   X,
   Ban,
   Download,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Copy,
 } from "lucide-react";
 
 type Org = {
@@ -61,8 +65,26 @@ export default function SubscriberSitesPanel() {
   // Add user dialog state
   const [addUserOrg, setAddUserOrg] = useState<{ id: string; name: string } | null>(null);
   const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserName, setNewUserName] = useState("");
   const [newUserRole, setNewUserRole] = useState<"member" | "admin">("member");
+  const [newUserTempPassword, setNewUserTempPassword] = useState("");
+  const [showTempPassword, setShowTempPassword] = useState(false);
   const [addUserSubmitting, setAddUserSubmitting] = useState(false);
+
+  const generateTempPassword = () => {
+    // 14-char password with mixed case, digits, and a symbol — safe for clipboard sharing
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const symbols = "!@#$%^&*";
+    let pw = "";
+    const arr = new Uint32Array(12);
+    crypto.getRandomValues(arr);
+    for (let i = 0; i < 12; i++) pw += chars[arr[i] % chars.length];
+    // Guarantee complexity
+    pw += symbols[Math.floor(Math.random() * symbols.length)];
+    pw += String(Math.floor(Math.random() * 10));
+    setNewUserTempPassword(pw);
+    setShowTempPassword(true);
+  };
 
   const { data: subscriberData, isLoading: dataLoading } = useQuery({
     queryKey: ["admin_subscriber_sites_all"],
@@ -234,8 +256,14 @@ export default function SubscriberSitesPanel() {
   const handleAddUser = async () => {
     if (!addUserOrg) return;
     const email = newUserEmail.trim().toLowerCase();
+    const fullName = newUserName.trim();
+    const tempPassword = newUserTempPassword.trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast.error("Please enter a valid email address");
+      return;
+    }
+    if (tempPassword && tempPassword.length < 8) {
+      toast.error("Temporary password must be at least 8 characters");
       return;
     }
     setAddUserSubmitting(true);
@@ -245,19 +273,34 @@ export default function SubscriberSitesPanel() {
           action: "add_existing_user_to_org",
           org_id: addUserOrg.id,
           email,
+          full_name: fullName || undefined,
+          temp_password: tempPassword || undefined,
           role: newUserRole,
-          send_invite_email: true,
+          send_invite_email: !tempPassword, // skip the reset email when admin sets a temp password
         },
       });
       if (error) throw error;
-      toast.success(
-        data?.was_created
-          ? `Created account for ${email} and added to ${addUserOrg.name}. Password setup email sent.`
-          : `${email} added to ${addUserOrg.name}. Password setup email sent.`,
-      );
+
+      if (tempPassword) {
+        // Copy to clipboard for the admin to share
+        try { await navigator.clipboard.writeText(tempPassword); } catch { /* noop */ }
+        toast.success(
+          `${email} added to ${addUserOrg.name}. Temporary password copied to clipboard — share it securely.`,
+          { duration: 8000 },
+        );
+      } else {
+        toast.success(
+          data?.was_created
+            ? `Created account for ${email} and added to ${addUserOrg.name}. Password setup email sent.`
+            : `${email} added to ${addUserOrg.name}. Password setup email sent.`,
+        );
+      }
       setAddUserOrg(null);
       setNewUserEmail("");
+      setNewUserName("");
       setNewUserRole("member");
+      setNewUserTempPassword("");
+      setShowTempPassword(false);
       refreshMembers();
     } catch (err: any) {
       toast.error(err.message || "Failed to add user");
@@ -575,7 +618,10 @@ export default function SubscriberSitesPanel() {
           if (!open) {
             setAddUserOrg(null);
             setNewUserEmail("");
+            setNewUserName("");
             setNewUserRole("member");
+            setNewUserTempPassword("");
+            setShowTempPassword(false);
           }
         }}
       >
@@ -583,10 +629,23 @@ export default function SubscriberSitesPanel() {
           <DialogHeader>
             <DialogTitle>Add user to {addUserOrg?.name}</DialogTitle>
             <DialogDescription>
-              The user will receive an email with a link to set their password. If they don't have an account yet, one will be created automatically.
+              {newUserTempPassword
+                ? "A temporary password will be set on the account. Share it securely — the user can change it after their first login."
+                : "The user will receive an email with a link to set their password. If they don't have an account yet, one will be created automatically."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-user-name">Full name</Label>
+              <Input
+                id="new-user-name"
+                type="text"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                placeholder="Jane Doe"
+                autoComplete="off"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="new-user-email">Email address</Label>
               <Input
@@ -609,6 +668,64 @@ export default function SubscriberSitesPanel() {
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="new-user-temp-password">Temporary password (optional)</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={generateTempPassword}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" /> Generate
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="new-user-temp-password"
+                    type={showTempPassword ? "text" : "password"}
+                    value={newUserTempPassword}
+                    onChange={(e) => setNewUserTempPassword(e.target.value)}
+                    placeholder="Leave blank to email a setup link"
+                    autoComplete="new-password"
+                    className="pr-10 font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTempPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showTempPassword ? "Hide password" : "Show password"}
+                  >
+                    {showTempPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {newUserTempPassword && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(newUserTempPassword);
+                        toast.success("Copied to clipboard");
+                      } catch {
+                        toast.error("Could not copy");
+                      }
+                    }}
+                    aria-label="Copy password"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {newUserTempPassword
+                  ? "Skips the password-setup email. Share this with the user securely."
+                  : "If left blank, the user gets an email link to choose their own password."}
+              </p>
             </div>
           </div>
           <DialogFooter>

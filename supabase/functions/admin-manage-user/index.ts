@@ -768,14 +768,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── ADD EXISTING USER TO ORG (by email; creates auth user if missing, no password) ──
+    // ── ADD EXISTING USER TO ORG (by email; creates auth user if missing, optional temp password) ──
     if (action === "add_existing_user_to_org") {
       const orgId = String(body.org_id || "").trim();
       const email = String(body.email || "").trim().toLowerCase();
       const role = String(body.role || "member").trim();
+      const fullName = String(body.full_name || "").trim();
+      const tempPassword = String(body.temp_password || "").trim();
       const sendInviteEmail = body.send_invite_email !== false;
       if (!orgId || !email) {
         return new Response(JSON.stringify({ error: "org_id and email are required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      if (tempPassword && tempPassword.length < 8) {
+        return new Response(JSON.stringify({ error: "Temporary password must be at least 8 characters" }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
@@ -789,10 +796,10 @@ Deno.serve(async (req) => {
       let wasCreated = false;
 
       if (!targetUserId) {
-        const tempPassword = crypto.randomUUID() + "Aa1!";
+        const passwordToUse = tempPassword || (crypto.randomUUID() + "Aa1!");
         const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
-          email, password: tempPassword, email_confirm: true,
-          user_metadata: { full_name: "" },
+          email, password: passwordToUse, email_confirm: true,
+          user_metadata: { full_name: fullName },
         });
         if (createErr || !newUser?.user) {
           return new Response(JSON.stringify({ error: createErr?.message || "Failed to create user" }), {
@@ -801,6 +808,22 @@ Deno.serve(async (req) => {
         }
         targetUserId = newUser.user.id;
         wasCreated = true;
+      } else {
+        // Existing user — update name and/or password if admin provided them
+        const updates: Record<string, unknown> = {};
+        if (tempPassword) updates.password = tempPassword;
+        if (fullName) updates.user_metadata = { full_name: fullName };
+        if (Object.keys(updates).length > 0) {
+          await adminClient.auth.admin.updateUserById(targetUserId, updates);
+        }
+      }
+
+      // Always sync the profiles table so the name shows up in the UI
+      if (fullName) {
+        await adminClient
+          .from("profiles")
+          .update({ full_name: fullName })
+          .eq("user_id", targetUserId);
       }
 
       // Check if already a member
@@ -820,21 +843,29 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Send password-reset / welcome email so they can set their password
-      if (sendInviteEmail) {
+      // Email handling:
+      // - If a temp password was set, DON'T email a recovery link (admin will share the temp password directly)
+      // - Otherwise, send the password-setup email so they can choose their own password
+      if (sendInviteEmail && !tempPassword) {
         try {
           const { data: linkData } = await adminClient.auth.admin.generateLink({
             type: "recovery", email,
             options: { redirectTo: "https://actvtrkr.com/reset-password" },
           });
           const setPasswordUrl = linkData?.properties?.action_link || "https://actvtrkr.com/reset-password";
-          await adminClient.functions.invoke("send-transactional-email", {
-            body: {
+          await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${serviceRoleKey}`,
+              "apikey": serviceRoleKey,
+            },
+            body: JSON.stringify({
               templateName: "welcome",
               recipientEmail: email,
               idempotencyKey: `add-org-${targetUserId}-${orgId}-${Date.now()}`,
-              templateData: { setPasswordUrl },
-            },
+              templateData: { name: fullName || undefined, setPasswordUrl },
+            }),
           });
         } catch { /* non-fatal */ }
       }
@@ -844,6 +875,7 @@ Deno.serve(async (req) => {
         user_id: targetUserId,
         was_created: wasCreated,
         role: assignRole,
+        temp_password_set: Boolean(tempPassword),
       }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 

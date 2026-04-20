@@ -784,8 +784,7 @@ const runners: Record<string, Runner> = {
         `Cron registry helper failed: ${error.message}`,
         { error: error.message }, t);
     }
-    const jobs = (data || []) as Array<{ jobname: string; active: boolean; last_run_started_at: string | null; last_run_status: string | null }>;
-    // Required job patterns (regex match — flexible on naming)
+    const jobs = (data || []) as Array<{ jobname: string; schedule: string; active: boolean }>;
     const required = [
       { pattern: /nightly[-_]summary|daily[-_]summary/i, name: "nightly-summary" },
       { pattern: /aggregate[-_]daily/i, name: "aggregate-daily" },
@@ -795,16 +794,12 @@ const runners: Record<string, Runner> = {
     ];
     const checked = required.map((req) => {
       const found = jobs.find((j) => req.pattern.test(j.jobname || ""));
-      const ageMin = found?.last_run_started_at
-        ? (Date.now() - new Date(found.last_run_started_at).getTime()) / 60000
-        : null;
       return {
         name: req.name,
         found: !!found,
         active: found?.active ?? false,
         jobname: found?.jobname,
-        last_run_status: found?.last_run_status,
-        last_run_minutes_ago: ageMin === null ? null : Math.round(ageMin),
+        schedule: found?.schedule,
       };
     });
     const missing = checked.filter((c) => !c.found || !c.active);

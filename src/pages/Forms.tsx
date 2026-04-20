@@ -33,6 +33,8 @@ import { useRealtimeDashboard } from "@/hooks/use-realtime-dashboard";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { callManageImportJob } from "@/lib/manage-import-job";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_FORMS } from "@/components/howto/page-content";
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary border-primary/20",
@@ -656,7 +658,10 @@ export default function Forms() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("forms.formsTitle")}</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold text-foreground">{t("forms.formsTitle")}</h1>
+            <HowToButton {...HOWTO_FORMS} />
+          </div>
           <p className="text-sm text-muted-foreground">{t("forms.leadSubmissions", { orgName })}</p>
         </div>
         <div className="flex items-center gap-2">

@@ -23,6 +23,8 @@ import { TrackingStatusCard, TrackingAlertsPanel, TrackingInterruptionsTable, Si
 import { ConsentStatusIndicator, DataIntegrityNotice, ComplianceWarnings } from "@/components/monitoring/ComplianceStatusPanel";
 import { FleetHealthWidget } from "@/components/monitoring/FleetHealthWidget";
 import { callManageImportJob } from "@/lib/manage-import-job";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_MONITORING } from "@/components/howto/page-content";
 
 export default function MonitoringPage() {
   const { orgId } = useOrg();
@@ -136,7 +138,10 @@ export default function MonitoringPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">{t("monitoring.title")}</h1>
+      <div className="flex items-center gap-1.5 mb-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("monitoring.title")}</h1>
+        <HowToButton {...HOWTO_MONITORING} />
+      </div>
       <p className="text-sm text-muted-foreground mb-6">{t("monitoring.subtitle")}</p>
 
       {/* Sites overview grid */}

@@ -6,6 +6,8 @@ import SeoSummaryView from "@/components/seo/SeoSummaryView";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_SEO } from "@/components/howto/page-content";
 
 export default function Seo() {
   const { orgName, orgId, loading: orgLoading } = useOrg();
@@ -39,6 +41,7 @@ export default function Seo() {
         <Badge variant="outline" className="text-xs uppercase tracking-wider px-1.5 py-0 h-4 text-primary border-primary/30">
           {t("sidebar.beta")}
         </Badge>
+        <HowToButton {...HOWTO_SEO} />
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         {seoAdvanced

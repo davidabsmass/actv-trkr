@@ -13,6 +13,8 @@ import FormsSection from "@/components/settings/FormsSection";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { HowToButton } from "@/components/HowToButton";
+import { HOWTO_SETTINGS } from "@/components/howto/page-content";
 import { useEffect } from "react";
 
 export default function SettingsPage() {
@@ -30,7 +32,10 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">{t("settings.title")}</h1>
+      <div className="flex items-center gap-1.5 mb-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
+        <HowToButton {...HOWTO_SETTINGS} />
+      </div>
       <p className="text-sm text-muted-foreground mb-6">
         {t("settings.configFor", { orgName })}
       </p>

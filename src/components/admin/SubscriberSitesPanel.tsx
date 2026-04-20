@@ -213,7 +213,42 @@ export default function SubscriberSitesPanel() {
     }
   };
 
-  const handleRevokeKey = async (apiKeyId: string, orgName: string) => {
+  const startEditMember = (m: Member) => {
+    setEditingMember(m.user_id);
+    setEditName(m.full_name || "");
+    setEditRole((m.role === "admin" ? "admin" : "member"));
+  };
+
+  const cancelEditMember = () => {
+    setEditingMember(null);
+    setEditName("");
+    setEditRole("member");
+  };
+
+  const handleSaveMember = async (orgId: string, userId: string) => {
+    setActionLoading(`save-${userId}`);
+    try {
+      const { error } = await supabase.functions.invoke("admin-manage-user", {
+        body: {
+          action: "update_org_member",
+          org_id: orgId,
+          user_id: userId,
+          full_name: editName.trim(),
+          role: editRole,
+        },
+      });
+      if (error) throw error;
+      toast.success("Member updated");
+      cancelEditMember();
+      refreshMembers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update member");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+
     if (!confirm(`Revoke the active API key for ${orgName}? The site will stop reporting until a new key is generated.`)) return;
     setActionLoading(`revoke-${apiKeyId}`);
     try {

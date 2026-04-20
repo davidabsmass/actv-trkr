@@ -613,9 +613,10 @@ export default function Forms() {
   };
 
   const selectedForm = forms?.find((f) => f.id === selectedFormId);
-  const activeForms = forms?.filter((f) => !f.archived) || [];
+  const activeForms = forms?.filter((f) => !f.archived && f.is_active !== false) || [];
+  const inactiveForms = forms?.filter((f) => !f.archived && f.is_active === false) || [];
   const archivedForms = forms?.filter((f) => f.archived) || [];
-  const displayedForms = showArchived ? archivedForms : activeForms;
+  const displayedForms = showArchived ? archivedForms : [...activeForms, ...inactiveForms];
 
   const { data: leadCounts } = useQuery({
     queryKey: ["lead_counts_by_form_entries", orgId],
@@ -726,6 +727,9 @@ export default function Forms() {
                       </Badge>
                       {form.archived && (
                         <Badge variant="outline" className="text-xs uppercase text-muted-foreground border-border">Archived</Badge>
+                      )}
+                      {!form.archived && form.is_active === false && (
+                        <Badge variant="outline" className="text-xs uppercase text-warning border-warning/40">Disabled in WP</Badge>
                       )}
                       {form.lead_weight < 1 && (
                         <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>

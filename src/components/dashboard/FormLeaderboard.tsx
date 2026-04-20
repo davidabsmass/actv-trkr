@@ -16,7 +16,7 @@ interface FormStat {
 }
 
 interface FormLeaderboardProps {
-  forms: Array<{ id: string; name: string; estimated_value?: number; archived?: boolean }>;
+  forms: Array<{ id: string; name: string; estimated_value?: number; archived?: boolean; is_active?: boolean }>;
   leads: Array<{ form_id: string; submitted_at: string; source?: string | null; session_id?: string | null }>;
   sessions: number;
   deviceData?: DeviceData;
@@ -49,7 +49,7 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData, leadCounts
 
   const stats = useMemo(() => {
     const formMap: Record<string, FormStat> = {};
-    const activeForms = forms.filter((f) => !f.archived);
+    const activeForms = forms.filter((f) => !f.archived && f.is_active !== false);
     activeForms.forEach((f) => {
       let deviceSplit: { desktop: number; mobile: number } | null = null;
       if (deviceData && deviceData[f.id]) {

@@ -24,10 +24,10 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
       const thirtyDaysAgo = format(subDays(now, 30), "yyyy-MM-dd");
       const sevenDaysAgo = format(subDays(now, 7), "yyyy-MM-dd");
 
-      // Get active forms
+      // Get active forms (not archived AND active in WordPress)
       const { data: forms } = await supabase
         .from("forms").select("id, name")
-        .eq("org_id", orgId).eq("archived", false);
+        .eq("org_id", orgId).eq("archived", false).neq("is_active", false);
       if (!forms || forms.length === 0) return [];
 
       // Get form health checks (liveness probes)

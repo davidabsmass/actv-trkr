@@ -7734,13 +7734,19 @@ export type Database = {
           table_name: string
         }[]
       }
+      qa_get_cron_last_runs: {
+        Args: { jobname_patterns: string[] }
+        Returns: {
+          jobname: string
+          last_run_started_at: string
+          last_run_status: string
+        }[]
+      }
       qa_list_cron_jobs: {
         Args: never
         Returns: {
           active: boolean
           jobname: string
-          last_run_started_at: string
-          last_run_status: string
           schedule: string
         }[]
       }

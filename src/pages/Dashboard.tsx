@@ -439,9 +439,11 @@ const Dashboard = () => {
     if (!orgCreatedAt) return Infinity;
     return Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24));
   }, [orgCreatedAt]);
-  // Only suppress comparisons if the org is truly too new AND the prior period has zero data
-  const prevHasData = prevPeriodData && (prevPeriodData.totalSessions > 0 || prevPeriodData.totalLeads > 0);
-  const orgTooNewForComparison = orgAgeDays < days * 2 && !prevHasData;
+  // Suppress period-over-period comparisons unless we have at least a full prior
+  // period of tracking history. Showing "+1350% vs last period" when the prior
+  // window only had 1 session is misleading — wait until the org has been
+  // tracking for at least 2× the selected range so the comparison is meaningful.
+  const orgTooNewForComparison = orgAgeDays < days * 2;
 
   const isLoading = !realtimeData;
 

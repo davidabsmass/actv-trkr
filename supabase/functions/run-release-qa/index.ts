@@ -224,22 +224,41 @@ const runners: Record<string, Runner> = {
   "lifecycle.recent_signup_health": async (def) => {
     const t = Date.now();
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
-    const { data: orgs } = await admin
+    const { data: allOrgs } = await admin
       .from("orgs").select("id, name, created_at").gte("created_at", since);
-    if (!orgs?.length) {
+    if (!allOrgs?.length) {
       return result(def, "warn", "No orgs created in last 30d", { orgs_checked: 0 }, t);
     }
+    const allOrgIds = allOrgs.map((o: any) => o.id);
+
+    // Find all org→user mappings up front so we can filter to "real signups"
+    // (an org with at least one member). Orphan orgs (no members) are leftover
+    // test/abandoned data, not real signups, and shouldn't gate releases.
+    const { data: orgUsers } = await admin
+      .from("org_users").select("org_id, user_id").in("org_id", allOrgIds);
+    const orgHasMember = new Set((orgUsers || []).map((ou: any) => ou.org_id));
+
+    // Real signups = recent orgs that have at least one member
+    const orgs = allOrgs.filter((o: any) => orgHasMember.has(o.id));
+    const orphanCount = allOrgs.length - orgs.length;
+
+    if (!orgs.length) {
+      return result(def, "warn",
+        `${allOrgs.length} recent orgs but all are orphan (no members) — pre-launch / test data`,
+        { orgs_checked: 0, orphan_count: orphanCount, total_recent_orgs: allOrgs.length }, t);
+    }
+
     const orgIds = orgs.map((o: any) => o.id);
 
-    // Verify consent_config exists per org
+    // Verify consent_config exists per real-signup org
     const { data: consent } = await admin
       .from("consent_config").select("org_id").in("org_id", orgIds);
     const haveConsent = new Set((consent || []).map((c: any) => c.org_id));
 
     // Verify subscriber row exists (mapped via profiles.email -> org_users)
-    const { data: orgUsers } = await admin
-      .from("org_users").select("org_id, user_id").in("org_id", orgIds);
-    const userIds = Array.from(new Set((orgUsers || []).map((ou: any) => ou.user_id)));
+    const userIds = Array.from(new Set(
+      (orgUsers || []).filter((ou: any) => orgIds.includes(ou.org_id)).map((ou: any) => ou.user_id)
+    ));
     const { data: profiles } = userIds.length
       ? await admin.from("profiles").select("user_id, email").in("user_id", userIds)
       : { data: [] as any[] };
@@ -263,32 +282,31 @@ const runners: Record<string, Runner> = {
     const missingConsent = orgs.filter((o: any) => !haveConsent.has(o.id));
     const missingSub = orgs.filter((o: any) => !orgHasSub.get(o.id));
 
-    // Heuristic: if ZERO recent orgs have consent_config / subscriber, that's a
-    // platform-wide gap, not a per-org regression. Surface as a single warn so
-    // the operator investigates the trigger/sync, but don't fail-stop release.
+    // Heuristic: if ZERO real-signup orgs have a subscriber, that's a
+    // platform-wide gap (e.g. Stripe sync not running), not per-org regression.
     const allMissingConsent = missingConsent.length === orgs.length;
     const allMissingSub = missingSub.length === orgs.length;
     const reasons: string[] = [];
-    if (allMissingConsent) reasons.push("no consent_config rows for any recent org (trigger or onboarding step missing)");
-    if (allMissingSub) reasons.push("no subscriber row for any recent org (Stripe sync gap or pre-launch state)");
+    if (allMissingConsent) reasons.push("no consent_config rows for any real signup (trigger missing)");
+    if (allMissingSub) reasons.push("no subscriber row for any real signup (Stripe sync gap or pre-launch)");
 
     let status: CheckStatus;
     let msg: string;
     if (missingConsent.length === 0 && missingSub.length === 0) {
       status = "pass";
-      msg = `${orgs.length} recent orgs, all have consent_config + subscriber`;
+      msg = `${orgs.length} real signups (last 30d), all have consent_config + subscriber${orphanCount ? ` (${orphanCount} orphan orgs ignored)` : ""}`;
     } else if (allMissingConsent || allMissingSub) {
-      // Platform-wide gap → warn (review), not per-org fail
       status = "warn";
       msg = `Platform gap: ${reasons.join("; ")}`;
     } else {
-      // Some have it, some don't → real per-org regression
       const totalMissing = missingConsent.length + missingSub.length;
       status = totalMissing <= 2 ? "warn" : "fail";
-      msg = `${missingConsent.length} missing consent, ${missingSub.length} missing subscriber (of ${orgs.length})`;
+      msg = `${missingConsent.length} missing consent, ${missingSub.length} missing subscriber (of ${orgs.length} real signups)`;
     }
     return result(def, status, msg, {
       orgs_checked: orgs.length,
+      orphan_count: orphanCount,
+      total_recent_orgs: allOrgs.length,
       all_missing_consent: allMissingConsent,
       all_missing_subscriber: allMissingSub,
       missing_consent: missingConsent.map((o: any) => ({ id: o.id, name: o.name })),

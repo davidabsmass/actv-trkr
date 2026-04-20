@@ -38,7 +38,7 @@ const telemetryItems: NavItem[] = [
   { titleKey: "sidebar.reports", url: "/reports", icon: FileText },
   { titleKey: "sidebar.forms", url: "/forms", icon: TableProperties },
   { titleKey: "sidebar.monitoring", url: "/monitoring", icon: Activity },
-  { titleKey: "sidebar.security", url: "/security", icon: ShieldAlert },
+  { titleKey: "Site Integrity", url: "/site-integrity", icon: ShieldAlert },
   { titleKey: "sidebar.seo", url: "/seo", icon: Search },
 ];
 

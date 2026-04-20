@@ -27,6 +27,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const SnapshotView = lazy(() => import("./pages/SnapshotView"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Monitoring = lazy(() => import("./pages/Monitoring"));
+const SiteIntegrity = lazy(() => import("./pages/SiteIntegrity"));
 const Security = lazy(() => import("./pages/Security"));
 
 const Account = lazy(() => import("./pages/Account"));
@@ -152,6 +153,7 @@ const App = () => (
               <Route path="clients" element={<Clients />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="monitoring" element={<Monitoring />} />
+              <Route path="site-integrity" element={<SiteIntegrity />} />
               <Route path="security" element={<Security />} />
               <Route path="notifications" element={<Navigate to="/settings?tab=notifications" replace />} />
               <Route path="admin-setup" element={<AdminSetup />} />

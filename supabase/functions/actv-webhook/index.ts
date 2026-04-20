@@ -430,13 +430,24 @@ serve(async (req) => {
           .eq("stripe_customer_id", customerId);
 
         if (error) logStep("MRR recompute update error", { error });
-        else logStep("MRR recomputed for subscription change", {
-          customerId,
-          subscriptionId: fullSub.id,
-          mrr: newMrr,
-          hasDiscount: !!fullSub.discount,
-          couponId: fullSub.discount?.coupon?.id,
-        });
+        else logStep("MRR recomputed for subscription change", { customerId, mrr: newMrr });
+
+        // ── Lifecycle reactivation: if subscription is active, restore org to active ──
+        if (fullSub.status === "active") {
+          try {
+            const { data: subRow } = await supabase.from("subscribers").select("email").eq("stripe_customer_id", customerId).maybeSingle();
+            if (subRow?.email) {
+              const { data: profile } = await supabase.from("profiles").select("user_id").ilike("email", subRow.email).maybeSingle();
+              if (profile?.user_id) {
+                const { data: ous } = await supabase.from("org_users").select("org_id").eq("user_id", profile.user_id);
+                for (const ou of ous || []) {
+                  await supabase.rpc("set_org_lifecycle_status", { p_org_id: ou.org_id, p_status: "active", p_reason: "stripe_subscription_active" });
+                }
+                logStep("Org(s) restored to active via subscription reactivation", { customerId, count: ous?.length || 0 });
+              }
+            }
+          } catch (lifeErr) { logStep("Lifecycle reactivation failed (non-fatal)", { error: String(lifeErr) }); }
+        }
         break;
       }
 

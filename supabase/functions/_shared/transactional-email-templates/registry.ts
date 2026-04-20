@@ -30,6 +30,11 @@ import { template as retentionFailedPayment } from './retention-failed-payment.t
 import { template as retentionCancellationSave } from './retention-cancellation-save.tsx'
 import { template as retentionWeeklySummary } from './retention-weekly-summary.tsx'
 
+// Lifecycle (cancellation / grace / archive) emails
+import { template as lifecycleCancellation } from './lifecycle-cancellation.tsx'
+import { template as lifecycleArchiveWarning } from './lifecycle-archive-warning.tsx'
+import { template as lifecycleFinalNotice } from './lifecycle-final-notice.tsx'
+
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome': welcomeEmail,
   'subscription-cancelled': subscriptionCancelled,
@@ -50,4 +55,8 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'retention-failed-payment': retentionFailedPayment,
   'retention-cancellation-save': retentionCancellationSave,
   'retention-weekly-summary': retentionWeeklySummary,
+  // Lifecycle
+  'lifecycle-cancellation': lifecycleCancellation,
+  'lifecycle-archive-warning': lifecycleArchiveWarning,
+  'lifecycle-final-notice': lifecycleFinalNotice,
 }

@@ -680,7 +680,12 @@ Deno.serve(async (req) => {
     // ── LIST SUBSCRIBER SITES (admin: see all orgs/sites/api keys) ──
     if (action === "list_subscriber_sites") {
       const [orgsRes, sitesRes, keysRes] = await Promise.all([
-        adminClient.from("orgs").select("id, name, created_at").order("created_at", { ascending: false }),
+        adminClient
+          .from("orgs")
+          .select(
+            "id, name, created_at, status, billing_exempt, grace_period_ends_at, archived_at"
+          )
+          .order("created_at", { ascending: false }),
         adminClient.from("sites").select("id, domain, org_id, last_heartbeat_at"),
         adminClient.from("api_keys").select("id, org_id, created_at, revoked_at, label").order("created_at", { ascending: false }),
       ]);
@@ -694,6 +699,39 @@ Deno.serve(async (req) => {
         JSON.stringify({ orgs: orgsRes.data || [], sites: sitesRes.data || [], api_keys: keysRes.data || [] }),
         { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } },
       );
+    }
+
+    // ── ADMIN OVERRIDE: manually set org lifecycle status ──
+    if (action === "set_org_lifecycle_status") {
+      const orgId = String(body.org_id || "").trim();
+      const status = String(body.status || "").trim();
+      if (!orgId || !["active", "grace_period", "archived"].includes(status)) {
+        return new Response(
+          JSON.stringify({ error: "org_id and valid status (active/grace_period/archived) required" }),
+          { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } },
+        );
+      }
+      const { error: rpcErr } = await adminClient.rpc("set_org_lifecycle_status", {
+        p_org_id: orgId,
+        p_status: status,
+        p_reason: `admin_manual_override:${user.email}`,
+      });
+      if (rpcErr) {
+        return new Response(JSON.stringify({ error: rpcErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      // If reactivating, also clear lifecycle email-sent timestamps so future cancellations re-send fresh notifications.
+      if (status === "active") {
+        await adminClient.from("orgs").update({
+          cancellation_email_sent_at: null,
+          day25_email_sent_at: null,
+          day80_email_sent_at: null,
+        }).eq("id", orgId);
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
     }
 
     // ── LIST ORG MEMBERS ──

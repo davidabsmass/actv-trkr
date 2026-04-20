@@ -3897,7 +3897,10 @@ export type Database = {
         Row: {
           archived_at: string | null
           billing_exempt: boolean
+          cancellation_email_sent_at: string | null
           created_at: string
+          day25_email_sent_at: string | null
+          day80_email_sent_at: string | null
           grace_period_ends_at: string | null
           id: string
           lifecycle_email_cancelled_sent_at: string | null
@@ -3913,7 +3916,10 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           billing_exempt?: boolean
+          cancellation_email_sent_at?: string | null
           created_at?: string
+          day25_email_sent_at?: string | null
+          day80_email_sent_at?: string | null
           grace_period_ends_at?: string | null
           id?: string
           lifecycle_email_cancelled_sent_at?: string | null
@@ -3929,7 +3935,10 @@ export type Database = {
         Update: {
           archived_at?: string | null
           billing_exempt?: boolean
+          cancellation_email_sent_at?: string | null
           created_at?: string
+          day25_email_sent_at?: string | null
+          day80_email_sent_at?: string | null
           grace_period_ends_at?: string | null
           id?: string
           lifecycle_email_cancelled_sent_at?: string | null

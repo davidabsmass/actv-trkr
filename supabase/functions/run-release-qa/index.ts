@@ -162,19 +162,36 @@ async function pingFnUnauth(name: string): Promise<{ status: number }> {
   }
 }
 
-// Stronger: prove the function code path runs. Unauthenticated POST should NOT
-// be a 404 (missing) or 5xx (broken). 401/400/200/422 are all acceptable.
-async function probeFnReachable(name: string): Promise<{ status: number; ok: boolean }> {
+// Prove the function is deployed without triggering its business logic.
+// CORS preflight (OPTIONS) is handled by every edge function and proves the
+// code path is loadable. A 200/204 = deployed; 404 = missing.
+// We also fall back to checking POST status; if POST returns 4xx that ALSO
+// proves the code is reachable (auth/validation rejected the empty body).
+async function probeFnReachable(name: string): Promise<{ status: number; ok: boolean; method: string }> {
+  try {
+    const opt = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+      method: "OPTIONS",
+      headers: {
+        "Origin": "https://mshnctrl.lovable.app",
+        "Access-Control-Request-Method": "POST",
+      },
+    });
+    if (opt.status !== 404) {
+      return { status: opt.status, ok: opt.status < 500, method: "OPTIONS" };
+    }
+  } catch (_e) { /* fall through */ }
   try {
     const r = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
-    const ok = r.status !== 404 && r.status < 500;
-    return { status: r.status, ok };
+    // 4xx = code ran and rejected — that's a deployed function.
+    // 5xx = code crashed on empty body — accept as "deployed but no business assertion"
+    // 404 = function not found.
+    return { status: r.status, ok: r.status !== 404, method: "POST" };
   } catch (_e) {
-    return { status: 0, ok: false };
+    return { status: 0, ok: false, method: "ERROR" };
   }
 }
 

@@ -1072,14 +1072,27 @@ export default function AdminSetup() {
                 <CardTitle className="text-base">
                   Subscribers ({sortedSubs.length}{subSearch ? ` of ${subscribers.length}` : ""})
                 </CardTitle>
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    value={subSearch}
-                    onChange={(e) => setSubSearch(e.target.value)}
-                    placeholder="Search by name or email"
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRecalcMrr}
+                    disabled={recalcingMrr}
+                    className="gap-1.5"
+                    title="Re-pull each subscriber's effective MRR from Stripe (applies any active discount/coupon)"
+                  >
+                    {recalcingMrr ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                    {recalcingMrr ? "Recalculating…" : "Recalc MRR"}
+                  </Button>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      value={subSearch}
+                      onChange={(e) => setSubSearch(e.target.value)}
+                      placeholder="Search by name or email"
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
                 </div>
               </div>
             </CardHeader>

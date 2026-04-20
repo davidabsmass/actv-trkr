@@ -7267,6 +7267,41 @@ export type Database = {
           week_offset: number
         }[]
       }
+      get_session_journeys: {
+        Args: {
+          p_end: string
+          p_limit?: number
+          p_offset?: number
+          p_org_id: string
+          p_outcome?: string
+          p_site_id?: string
+          p_start: string
+        }
+        Returns: {
+          active_seconds: number
+          country_code: string
+          device: string
+          duration_seconds: number
+          ended_at: string
+          engagement_score: number
+          exit_at: string
+          exit_page_path: string
+          exit_page_title: string
+          has_conversion: boolean
+          has_lead: boolean
+          landing_page_path: string
+          landing_referrer_domain: string
+          pageview_count: number
+          session_id: string
+          site_id: string
+          started_at: string
+          total_count: number
+          utm_campaign: string
+          utm_medium: string
+          utm_source: string
+          visitor_id: string
+        }[]
+      }
       get_top_exit_pages: {
         Args: {
           p_end_date: string

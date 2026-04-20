@@ -22,11 +22,20 @@ The full path a paying customer takes, from checkout to active monitoring.
 - **Onboarding flow** — `/onboarding` collects website count range, customer type, primary focus. Personal email domains (gmail, etc.) are auto-routed to the personal-tier path.
 - **Plugin install** — Subscriber downloads `actv-trkr-latest.zip` from `/settings → Plugin`. Plugin auto-registers the site on first heartbeat; no manual URL entry required.
 - **Site verification** — `check-site-status` runs after install, then `check-tracking-health` every 5 minutes determines tracker status.
+- **First-touch auto-sync (NEW CUSTOMER GUARANTEE)** — within 10 minutes of the first heartbeat from a new site, the platform MUST automatically:
+  1. Register the site in `sites` (domain-normalized).
+  2. Run `check-site-status` + `check-tracking-health` to populate uptime/tracker state.
+  3. Run `manage-import-job?action=discover` to populate `form_integrations` AND auto-create `form_import_jobs` for every form with un-imported entries.
+  4. Run `check-domain-ssl` to populate domain/SSL expiry.
+  5. Trigger `seo-scan` to seed the SEO module with at least a Summary tier baseline.
+  6. Enqueue a "welcome — your site is live" transactional email.
+  No subscriber should ever land on `/dashboard`, `/monitoring`, `/forms`, or `/seo` and see "no data" for a site that has reported a heartbeat. If they do, that is a bug — see §19 (Auto-sync contract).
 - **Active state** — Site appears in dashboard, monitoring, and reports surfaces.
 
 **Failure recovery**:
 - Stripe webhook missed → Owner can manually create the org via `/admin-setup → Clients`.
 - Plugin never reports → "Re-scan Forms" button on `/settings → Form Import` calls `manage-import-job?action=discover`, which (a) discovers forms via the WP plugin (or falls back to the existing `forms` table), AND (b) auto-creates `form_import_jobs` for every form with un-imported entries. The `process-import-queue` cron worker (every 2 min) drains the jobs. See §4 for full details.
+- First-touch auto-sync failed → `/admin-setup → New Customer Health` surfaces any new site (<7 days old) that is missing forms discovery, monitoring data, or SEO baseline, with a one-click "Re-run onboarding sync" action.
 
 ---
 

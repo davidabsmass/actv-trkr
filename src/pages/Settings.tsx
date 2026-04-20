@@ -30,7 +30,10 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">{t("settings.title")}</h1>
+      <div className="flex items-center gap-1.5 mb-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
+        <HowToButton {...HOWTO_SETTINGS} />
+      </div>
       <p className="text-sm text-muted-foreground mb-6">
         {t("settings.configFor", { orgName })}
       </p>

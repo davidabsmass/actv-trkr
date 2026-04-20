@@ -39,6 +39,7 @@ export default function Seo() {
         <Badge variant="outline" className="text-xs uppercase tracking-wider px-1.5 py-0 h-4 text-primary border-primary/30">
           {t("sidebar.beta")}
         </Badge>
+        <HowToButton {...HOWTO_SEO} />
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         {seoAdvanced

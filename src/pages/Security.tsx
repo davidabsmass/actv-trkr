@@ -146,6 +146,7 @@ export default function Security() {
       <div className="flex items-center gap-3 mb-1">
         <ShieldAlert className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold text-foreground">{t("security.title")}</h1>
+        <HowToButton {...HOWTO_SECURITY} />
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         {t("security.subtitle", { orgName })}

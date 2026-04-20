@@ -136,7 +136,10 @@ export default function MonitoringPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-1">{t("monitoring.title")}</h1>
+      <div className="flex items-center gap-1.5 mb-1">
+        <h1 className="text-2xl font-bold text-foreground">{t("monitoring.title")}</h1>
+        <HowToButton {...HOWTO_MONITORING} />
+      </div>
       <p className="text-sm text-muted-foreground mb-6">{t("monitoring.subtitle")}</p>
 
       {/* Sites overview grid */}

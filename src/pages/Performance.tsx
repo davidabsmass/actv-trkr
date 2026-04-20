@@ -150,7 +150,10 @@ const Performance = () => {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("performance.title")}</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold text-foreground">{t("performance.title")}</h1>
+            <HowToButton {...HOWTO_PERFORMANCE} />
+          </div>
           <p className="text-sm text-muted-foreground">{orgName} · {t("performance.subtitle")}</p>
         </div>
         <DateRangeSelector

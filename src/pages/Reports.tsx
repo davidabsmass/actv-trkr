@@ -623,7 +623,10 @@ export default function Reports() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
+          <HowToButton {...HOWTO_REPORTS} />
+        </div>
       </div>
       <p className="text-sm text-muted-foreground mb-6">{t("reports.insightsFor", { orgName })}</p>
 

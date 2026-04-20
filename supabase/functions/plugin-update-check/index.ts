@@ -12,6 +12,7 @@ function getZipUrl(req: Request): string {
 }
 
 const CURRENT_PLUGIN_VERSION = "1.18.1";
+const CURRENT_PLUGIN_SHA256 = "415c9f2954fc9e6495f7ee3c9005a7ce27973013cd556c57f045377881c5fa04";
 
 const CHANGELOG = `
 ## 1.18.1
@@ -264,6 +265,9 @@ Deno.serve(async (req) => {
           signature: sig?.signature || null,
           signature_alg: sig?.alg || null,
           signed_at: sig ? issuedAt : null,
+          // C-4: SHA-256 of the canonical plugin ZIP. The plugin updater
+          // recomputes this after download and refuses to install on mismatch.
+          sha256: typeof CURRENT_PLUGIN_SHA256 === "string" ? CURRENT_PLUGIN_SHA256 : null,
           message: hasUpdate
             ? `Version ${latestVersion} is available. Click "Update Now" in your WordPress admin.`
             : "You are running the latest version.",

@@ -30,7 +30,7 @@ const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
       <Container style={container}>
         {/* Header */}
         <Section style={headerSection}>
-          <Img src={HEADER_URL} alt={SITE_NAME} width="600" height="auto" style={headerImg} />
+          <Img src={HEADER_URL} alt={SITE_NAME} width="600" height="200" style={headerImg} />
         </Section>
 
         <Section style={contentSection}>
@@ -99,7 +99,12 @@ const headerSection = {
 
 const headerImg = {
   width: '100%',
+  maxWidth: '600px',
+  height: 'auto' as const,
   display: 'block' as const,
+  border: '0',
+  outline: 'none',
+  textDecoration: 'none',
   borderRadius: '12px 12px 0 0',
 }
 

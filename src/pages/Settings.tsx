@@ -6,7 +6,7 @@ import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
 import SeoVisibilitySection from "@/components/settings/SeoVisibilitySection";
-import NotificationsSection from "@/components/settings/NotificationsSection";
+import NotificationsHub from "@/components/settings/NotificationsHub";
 import WebsiteSetup from "@/pages/WebsiteSetup";
 import FormImportPanel from "@/components/settings/FormImportPanel";
 import FormsSection from "@/components/settings/FormsSection";
@@ -43,6 +43,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
           <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.general")}</TabsTrigger>
+          <TabsTrigger value="notifications" className="flex-shrink-0 text-xs sm:text-sm">Notifications</TabsTrigger>
           <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.whiteLabel")}</TabsTrigger>
           <TabsTrigger value="setup" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.websiteSetup")}</TabsTrigger>
         </TabsList>
@@ -52,11 +53,14 @@ export default function SettingsPage() {
             {showAdminSections && <PluginSection />}
             {showAdminSections && <ApiKeysSection />}
             <SitesSection />
-            <NotificationsSection />
             <SeoVisibilitySection />
             <FormsSection />
             {showAdminSections && <FormImportPanel />}
           </div>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationsHub />
         </TabsContent>
 
         <TabsContent value="white-label">

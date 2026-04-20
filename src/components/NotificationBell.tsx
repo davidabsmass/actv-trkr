@@ -40,7 +40,7 @@ export function NotificationBell() {
   return (
     <IconTooltip label={t("sidebar.notifications", "Notifications")}>
       <button
-        onClick={() => navigate("/notifications")}
+        onClick={() => navigate("/settings?tab=notifications")}
         className="relative p-2 rounded-md hover:bg-muted transition-colors"
         aria-label="Notifications"
       >

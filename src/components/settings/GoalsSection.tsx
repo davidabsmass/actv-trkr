@@ -526,9 +526,27 @@ export default function GoalsSection() {
   const { orgId } = useOrg();
   const { data: goals = [], isLoading } = useGoals(orgId);
   const { data: forms = [] } = useForms(orgId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusGoalId = searchParams.get("goal");
 
   const activeGoals = goals.filter((g) => g.is_active);
   const conversionGoals = goals.filter((g) => g.is_conversion && g.is_active);
+
+  // Scroll the focused goal into view once goals load
+  useEffect(() => {
+    if (!focusGoalId || isLoading) return;
+    const el = document.getElementById(`goal-${focusGoalId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [focusGoalId, isLoading]);
+
+  const clearFocus = () => {
+    if (!focusGoalId) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("goal");
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <div className="glass-card p-6 lg:col-span-2">
@@ -574,7 +592,14 @@ export default function GoalsSection() {
       ) : (
         <div className="space-y-2">
           {goals.map((g) => (
-            <GoalCard key={g.id} goal={g} orgId={orgId!} forms={forms} />
+            <GoalCard
+              key={g.id}
+              goal={g}
+              orgId={orgId!}
+              forms={forms}
+              autoOpen={focusGoalId === g.id}
+              onAutoOpenConsumed={clearFocus}
+            />
           ))}
         </div>
       )}

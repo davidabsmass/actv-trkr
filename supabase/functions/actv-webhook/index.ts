@@ -54,7 +54,7 @@ serve(async (req) => {
       .insert({
         event_id: event.id,
         event_type: event.type,
-        payload_summary: {
+        summary: {
           object: (event.data?.object as any)?.object || null,
           customer: (event.data?.object as any)?.customer || null,
           subscription: (event.data?.object as any)?.subscription || null,

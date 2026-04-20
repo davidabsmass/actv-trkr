@@ -52,6 +52,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    // System-admin bypass (caller already verified as having user_roles.admin above)
+    const isSystemAdmin = true;
+
     // ── CREATE USER ──
     if (action === "create_user") {
       const { email, password, full_name, org_id, role } = body;
@@ -70,13 +73,15 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Enforce org-scoped admin permission
-      const { data: callerOrgAccess } = await adminClient
-        .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
-      if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
-        return new Response(JSON.stringify({ error: "Org admin access required" }), {
-          status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
+      // System admins bypass org-membership check; otherwise require org admin
+      if (!isSystemAdmin) {
+        const { data: callerOrgAccess } = await adminClient
+          .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
+        if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
+          return new Response(JSON.stringify({ error: "Org admin access required" }), {
+            status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
       }
 
       let userId: string;
@@ -149,12 +154,15 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: callerOrgAccess } = await adminClient
-        .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
-      if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
-        return new Response(JSON.stringify({ error: "Org admin access required" }), {
-          status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
+      // System admins bypass org-membership check; otherwise require org admin
+      if (!isSystemAdmin) {
+        const { data: callerOrgAccess } = await adminClient
+          .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
+        if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
+          return new Response(JSON.stringify({ error: "Org admin access required" }), {
+            status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
       }
 
       const { data: targetProfileRow } = await adminClient

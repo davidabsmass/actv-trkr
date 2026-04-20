@@ -1260,6 +1260,7 @@ export type Database = {
           error_message: string | null
           id: string
           ip_address: string | null
+          ip_hash: string | null
           link_id: string | null
           occurred_at: string
           referrer: string | null
@@ -1272,6 +1273,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           ip_address?: string | null
+          ip_hash?: string | null
           link_id?: string | null
           occurred_at?: string
           referrer?: string | null
@@ -1284,6 +1286,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           ip_address?: string | null
+          ip_hash?: string | null
           link_id?: string | null
           occurred_at?: string
           referrer?: string | null
@@ -3360,6 +3363,48 @@ export type Database = {
           source_systems?: string | null
           unit?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      mfa_email_codes: {
+        Row: {
+          attempts: number
+          challenge_token_hash: string
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          ip_hash: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          challenge_token_hash: string
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          ip_hash?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          challenge_token_hash?: string
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_hash?: string | null
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -7507,6 +7552,7 @@ export type Database = {
         }
         Returns: number
       }
+      purge_expired_mfa_codes: { Args: never; Returns: undefined }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

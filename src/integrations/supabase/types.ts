@@ -2347,6 +2347,7 @@ export type Database = {
           external_form_id: string
           form_name: string
           id: string
+          is_active: boolean
           last_error: string | null
           last_synced_at: string | null
           org_id: string
@@ -2362,6 +2363,7 @@ export type Database = {
           external_form_id: string
           form_name?: string
           id?: string
+          is_active?: boolean
           last_error?: string | null
           last_synced_at?: string | null
           org_id: string
@@ -2377,6 +2379,7 @@ export type Database = {
           external_form_id?: string
           form_name?: string
           id?: string
+          is_active?: boolean
           last_error?: string | null
           last_synced_at?: string | null
           org_id?: string
@@ -2469,6 +2472,7 @@ export type Database = {
           external_form_id: string
           form_category: string
           id: string
+          is_active: boolean
           is_primary_lead: boolean
           lead_weight: number
           name: string
@@ -2484,6 +2488,7 @@ export type Database = {
           external_form_id: string
           form_category?: string
           id?: string
+          is_active?: boolean
           is_primary_lead?: boolean
           lead_weight?: number
           name?: string
@@ -2499,6 +2504,7 @@ export type Database = {
           external_form_id?: string
           form_category?: string
           id?: string
+          is_active?: boolean
           is_primary_lead?: boolean
           lead_weight?: number
           name?: string

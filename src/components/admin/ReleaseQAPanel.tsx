@@ -43,6 +43,7 @@ type RunRow = {
   status: "running" | "passed" | "passed_with_warnings" | "failed" | "cancelled";
   scope: string;
   totals: Record<string, number>;
+  ship_blocked?: boolean | null;
 };
 
 const statusColor: Record<string, string> = {

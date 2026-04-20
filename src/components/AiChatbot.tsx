@@ -119,11 +119,11 @@ export function AiChatbot() {
     if (!isDragging.current) return;
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
-    setPosition({
+    setPosition(clampPosition({
       x: posAtDragStart.current.x + dx,
       y: posAtDragStart.current.y + dy,
-    });
-  }, []);
+    }));
+  }, [clampPosition]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current) return;

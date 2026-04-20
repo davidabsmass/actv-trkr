@@ -629,6 +629,44 @@ export type Database = {
           },
         ]
       }
+      backup_health: {
+        Row: {
+          id: string
+          last_backup_at: string | null
+          last_restore_test_at: string | null
+          metadata: Json
+          org_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_backup_at?: string | null
+          last_restore_test_at?: string | null
+          metadata?: Json
+          org_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_backup_at?: string | null
+          last_restore_test_at?: string | null
+          metadata?: Json
+          org_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backup_health_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_recovery_events: {
         Row: {
           amount: number | null
@@ -5225,6 +5263,68 @@ export type Database = {
           },
         ]
       }
+      security_findings: {
+        Row: {
+          created_at: string
+          dedupe_key: string | null
+          description: string
+          id: string
+          metadata: Json
+          org_id: string
+          recommended_fix: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          source: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key?: string | null
+          description: string
+          id?: string
+          metadata?: Json
+          org_id: string
+          recommended_fix?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          source?: string | null
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string | null
+          description?: string
+          id?: string
+          metadata?: Json
+          org_id?: string
+          recommended_fix?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          source?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_findings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_incidents: {
         Row: {
           created_at: string
@@ -5266,6 +5366,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      security_release_checks: {
+        Row: {
+          checked_by: string | null
+          created_at: string
+          id: string
+          org_id: string
+          reasons: Json
+          score: number
+          status: string
+        }
+        Insert: {
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          org_id: string
+          reasons?: Json
+          score: number
+          status: string
+        }
+        Update: {
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          org_id?: string
+          reasons?: Json
+          score?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_release_checks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seo_fix_history: {
         Row: {
@@ -7239,6 +7377,7 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: string
       }
+      compute_security_score: { Args: { p_org_id: string }; Returns: Json }
       create_org_with_admin: {
         Args: { p_name: string; p_org_id: string; p_timezone?: string }
         Returns: string
@@ -7381,6 +7520,10 @@ export type Database = {
         Returns: undefined
       }
       recompute_all_account_health: { Args: never; Returns: number }
+      record_security_release_check: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
       upsert_session: {
         Args: {
           p_occurred_at: string

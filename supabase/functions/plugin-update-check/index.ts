@@ -11,9 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.18.0";
+const CURRENT_PLUGIN_VERSION = "1.18.1";
 
 const CHANGELOG = `
+## 1.18.1
+- SECURITY (C-2): HMAC-signed backend↔plugin requests. New \`MM_Hmac\` class verifies X-Actv-Timestamp/Nonce/Signature headers; legacy hash credential still accepted during this rollout window so existing sites keep working. v1.19.0 will enforce signed-only.
+- New REST route \`/bootstrap-signing-secret\` accepts the per-org signing key from the dashboard (one-time, idempotent).
+
 ## 1.18.0
 - SECURITY (C-1): Magic-login from the dashboard now logs in as the **specific** dashboard user who initiated the login (matched by email), instead of always logging in as the first administrator on the site. If no matching WP admin exists, the login is refused and audited.
 

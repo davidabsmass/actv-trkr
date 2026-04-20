@@ -306,6 +306,11 @@ Deno.serve(async (req) => {
         continue
       }
 
+      const resolvedPurpose =
+        !payload?.run_id && payload?.purpose === 'auth' && hasValidIdempotencyKey
+          ? 'transactional'
+          : payload?.purpose
+
       try {
         await sendLovableEmail(
           {
@@ -316,7 +321,7 @@ Deno.serve(async (req) => {
             subject: payload.subject,
             html: emailHtml,
             text: emailText,
-            purpose: payload.purpose,
+            purpose: resolvedPurpose,
             label: payload.label,
             idempotency_key: payload.idempotency_key,
             unsubscribe_token: payload.unsubscribe_token,

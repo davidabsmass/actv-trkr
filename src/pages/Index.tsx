@@ -243,7 +243,7 @@ const Index = () => {
 
               <div className="w-full md:w-3/5 lg:w-1/2 text-center md:text-left order-1 md:order-2 hero-copy-block">
                 <h1 className="hero-headline text-lg md:text-[1.6rem] lg:text-[3.05rem] font-normal text-white mb-4 tracking-normal drop-shadow-lg" style={{ lineHeight: '1.1', fontFamily: "'Funnel Display', sans-serif" }}>
-                  Everything That Matters on Your Website. Finally in One Place.
+                  WordPress Activity. Lead Tracking. Site Health.
                 </h1>
                 
                 <p className="text-base md:text-lg text-white/90 mb-8 md:mb-12 leading-relaxed drop-shadow-md font-light max-w-[38ch] md:max-w-none lg:max-w-[42ch]">

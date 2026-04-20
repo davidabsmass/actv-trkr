@@ -139,6 +139,8 @@ Tabs: Overview, Form Checks, Broken Links, Domain & SSL, Plugin & WordPress, Not
 - **Active HTTP pinging**: HEAD with GET fallback, two-strike confirmation before flagging.
 - **Domain/SSL queries** filter by `site_id` (not `org_id`) to survive org reassignment.
 - **Plugin update check**: `plugin-update-check` edge function compares installed vs. `pluginManifest.version`.
+- **Auto-sync on first heartbeat**: a brand-new site MUST get its first uptime ping, domain/SSL lookup, and plugin-version check within 10 minutes of registration. Without this, `/monitoring` would show empty cards on day 1 — that is a regression. Enforced by §19.
+- **Continuous freshness contract**: every monitoring data point has a maximum staleness budget — uptime ≤ 5 min, tracker health ≤ 5 min, domain/SSL ≤ 24 h, broken-link scan ≤ 7 d. The `monitoring-freshness-watchdog` cron (every 30 min) flags any site that breaches its budget and re-enqueues the appropriate refresh job.
 
 ---
 
@@ -154,6 +156,9 @@ Requires plugin v1.4.0+. Real-time WordPress integrity events.
 ## 9. SEO suite  *(key: `seo`)*
 
 Tiered visibility: **No Insights Yet** → **Summary** → **Advanced**. New orgs default to `summary`. AI fix suggestions via `seo-suggest-fix` (cap: 10/mo).
+
+- **Auto-baseline on first heartbeat**: a new site MUST be queued for an initial `seo-scan` within 10 minutes of registration so the SEO module never opens with "No Insights Yet" for an active site. Enforced by §19.
+- **Periodic refresh**: `seo-scan` re-runs weekly per site (or on-demand from `/seo`). Stale baselines (>14 d) are surfaced with a "Refresh now" CTA.
 
 ---
 

@@ -160,6 +160,13 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     form,
   ])).values());
 
+  // Track which (provider, external_form_id) pairs the plugin reported in this
+  // scan. Anything previously known but missing must be marked inactive
+  // (deleted in WP). Only safe to do when source === "wp_plugin" — fallback
+  // path doesn't have authoritative knowledge.
+  const reportedKeys = new Set<string>();
+  const reportedExternalIds = new Set<string>();
+
   for (const form of forms) {
     let estimated = form.entry_count || 0;
     const isJunk = estimated > JUNK_THRESHOLD;
@@ -168,6 +175,12 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
       // Record real count for visibility but treat as 0 for auto-import.
       estimated = 0;
     }
+
+    // Default to true for older plugins that don't send is_active yet.
+    const isActive = form.is_active === false ? false : true;
+
+    reportedKeys.add(`${form.builder_type}::${String(form.external_form_id)}`);
+    reportedExternalIds.add(String(form.external_form_id));
 
     // Upsert integration. CRITICAL: also overwrite org_id on conflict so a
     // site that was re-assigned to a new org gets its form_integrations
@@ -180,6 +193,7 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
         builder_type: form.builder_type,
         external_form_id: form.external_form_id,
         form_name: form.form_name,
+        is_active: isActive,
         total_entries_estimated: isJunk ? form.entry_count : estimated,
         status: isJunk ? "needs_review" : "detected",
         last_error: isJunk ? `Reported ${form.entry_count} entries — exceeds safety threshold of ${JUNK_THRESHOLD}; manual import required` : null,
@@ -189,12 +203,23 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
 
     if (!integration) continue;
 
+    // Also sync is_active onto the corresponding `forms` row (matched by
+    // provider + external_form_id within this site).
+    await supabase
+      .from("forms")
+      .update({ is_active: isActive })
+      .eq("site_id", siteId)
+      .eq("provider", form.builder_type)
+      .eq("external_form_id", String(form.external_form_id));
+
     // Skip auto-import when:
+    //  - form is inactive in WP (don't auto-import disabled forms), or
     //  - form has no entries to import, or
     //  - it's already fully synced, or
     //  - source was the forms-table fallback (no real count, would create a
     //    junk job for every form), or
     //  - an active job already exists.
+    if (!isActive) { skippedJobs++; continue; }
     if (estimated === 0) { skippedJobs++; continue; }
     if (source === "forms_table") { skippedJobs++; continue; }
     if ((integration.total_entries_imported || 0) >= estimated) { skippedJobs++; continue; }
@@ -227,6 +252,46 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
         .update({ status: "importing" })
         .eq("id", integration.id);
       autoStartedJobs++;
+    }
+  }
+
+  // ── Reconciliation: mark missing forms as inactive ──
+  // Only when the plugin actually responded; the fallback path can't tell us
+  // what's truly active. This correctly handles both "toggled off" and
+  // "deleted in WP" — both vanish from the discover payload.
+  let markedInactive = 0;
+  if (source === "wp_plugin") {
+    const { data: existingForms } = await supabase
+      .from("forms")
+      .select("id, external_form_id, provider, is_active")
+      .eq("site_id", siteId);
+
+    const toDeactivate: string[] = [];
+    (existingForms || []).forEach((f: any) => {
+      const key = `${f.provider}::${String(f.external_form_id)}`;
+      if (!reportedKeys.has(key) && f.is_active !== false) {
+        toDeactivate.push(f.id);
+      }
+    });
+    if (toDeactivate.length > 0) {
+      await supabase.from("forms").update({ is_active: false }).in("id", toDeactivate);
+      markedInactive = toDeactivate.length;
+    }
+
+    // Also reconcile form_integrations
+    const { data: existingIntegrations } = await supabase
+      .from("form_integrations")
+      .select("id, external_form_id, builder_type, is_active")
+      .eq("site_id", siteId);
+    const integrationsToDeactivate: string[] = [];
+    (existingIntegrations || []).forEach((i: any) => {
+      const key = `${i.builder_type}::${String(i.external_form_id)}`;
+      if (!reportedKeys.has(key) && i.is_active !== false) {
+        integrationsToDeactivate.push(i.id);
+      }
+    });
+    if (integrationsToDeactivate.length > 0) {
+      await supabase.from("form_integrations").update({ is_active: false }).in("id", integrationsToDeactivate);
     }
   }
 

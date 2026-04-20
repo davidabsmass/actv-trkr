@@ -65,8 +65,11 @@ async function maybeTriggerPostInstallBootstrap(params: {
   const domainHealthCount = domainHealthCountResult.count || 0;
   const sslHealthCount = sslHealthCountResult.count || 0;
 
+  const staleBeforeIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const domainHealthStale = !domainHealth?.last_checked_at || domainHealth.last_checked_at < staleBeforeIso;
+  const sslHealthStale = !sslHealth?.last_checked_at || sslHealth.last_checked_at < staleBeforeIso;
   const needsFormBootstrap = formsCount === 0 || formsMissingPageUrls > 0 || (formsCount > 0 && formHealthCount < formsCount);
-  const needsDomainBootstrap = domainHealthCount === 0 || sslHealthCount === 0;
+  const needsDomainBootstrap = domainHealthCount === 0 || sslHealthCount === 0 || domainHealthStale || sslHealthStale;
 
   if (!needsFormBootstrap && !needsDomainBootstrap) {
     return;

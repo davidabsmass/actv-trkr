@@ -196,6 +196,37 @@ export default function SubscriberSitesPanel() {
     }
   };
 
+  const handleSetPassword = async (orgId: string, email: string) => {
+    if (!confirm(`Generate a new temporary password for ${email}? Their current password will be replaced and copied to your clipboard.`)) return;
+    // Generate a 14-char password
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const symbols = "!@#$%^&*";
+    const arr = new Uint32Array(12);
+    crypto.getRandomValues(arr);
+    let pw = "";
+    for (let i = 0; i < 12; i++) pw += chars[arr[i] % chars.length];
+    pw += symbols[Math.floor(Math.random() * symbols.length)];
+    pw += String(Math.floor(Math.random() * 10));
+
+    setActionLoading(`setpw-${email}`);
+    try {
+      const { error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "reset_password", email, new_password: pw, org_id: orgId },
+      });
+      if (error) throw error;
+      try {
+        await navigator.clipboard.writeText(pw);
+        toast.success(`New password set & copied to clipboard: ${pw}`, { duration: 15000 });
+      } catch {
+        toast.success(`Password set. Copy it now: ${pw}`, { duration: 30000 });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to set password");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleRemove = async (orgId: string, userId: string, email: string | null) => {
     if (!confirm(`Remove ${email || "this user"} from the organization? Their account will not be deleted.`)) return;
     setActionLoading(`remove-${userId}`);

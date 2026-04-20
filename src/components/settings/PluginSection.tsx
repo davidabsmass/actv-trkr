@@ -83,11 +83,11 @@ export default function PluginSection() {
 
   const siteVersion = latestReportedSite?.plugin_version ?? null;
   const siteDomain = latestReportedSite?.domain ?? null;
-  const lastHeartbeatAt = latestReportedSite?.last_heartbeat_at ?? null;
+  const lastSignalAt = latestReportedSite?.last_heartbeat_at ?? null;
 
-  const heartbeatAgeLabel = (() => {
-    if (!lastHeartbeatAt) return null;
-    const ageMs = Date.now() - new Date(lastHeartbeatAt).getTime();
+  const signalAgeLabel = (() => {
+    if (!lastSignalAt) return null;
+    const ageMs = Date.now() - new Date(lastSignalAt).getTime();
     const mins = Math.floor(ageMs / 60000);
     if (mins < 1) return "just now";
     if (mins < 60) return `${mins}m ago`;
@@ -97,14 +97,14 @@ export default function PluginSection() {
     return `${days}d ago`;
   })();
 
-  const heartbeatIsStale = (() => {
-    if (!lastHeartbeatAt) return true;
-    const ageMs = Date.now() - new Date(lastHeartbeatAt).getTime();
+  const signalIsStale = (() => {
+    if (!lastSignalAt) return true;
+    const ageMs = Date.now() - new Date(lastSignalAt).getTime();
     return ageMs >= 30 * 60 * 1000; // 30 minutes
   })();
 
-  // Show update badge whenever the reported version is behind, regardless of heartbeat age.
-  // A stale heartbeat is surfaced separately so users can tell what they're looking at.
+  // Show update badge whenever the reported version is behind, regardless of signal age.
+  // A stale signal is surfaced separately so users can tell what they're looking at.
   const needsUpdate = Boolean(
     siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
   );

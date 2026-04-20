@@ -322,14 +322,14 @@ export function useRealtimeDashboard(
           .map(([source, v]) => ({
             source,
             ...v,
-            cvr: v.sessions > 0 ? v.leads / v.sessions : 0,
+            cvr: v.sessions > 0 ? Math.min(1, v.leads / v.sessions) : 0,
           }))
           .sort((a, b) => b.sessions - a.sessions),
         campaigns: Object.entries(campaignMap)
           .map(([campaign, v]) => ({
             campaign,
             ...v,
-            cvr: v.sessions > 0 ? v.leads / v.sessions : 0,
+            cvr: v.sessions > 0 ? Math.min(1, v.leads / v.sessions) : 0,
           }))
           .sort((a, b) => b.sessions - a.sessions),
         pages: Object.entries(pageMap)
@@ -341,7 +341,7 @@ export function useRealtimeDashboard(
             return {
               path,
               ...v,
-              cvr: v.sessions > 0 ? v.leads / v.sessions : 0,
+              cvr: v.sessions > 0 ? Math.min(1, v.leads / v.sessions) : 0,
               avgActiveSeconds,
             };
           })

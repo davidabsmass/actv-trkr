@@ -60,7 +60,7 @@ export function FunnelWidget({
   }, [goalConversions]);
 
   const maxValue = Math.max(...steps.map((s) => s.value), 1);
-  const overallCvr = totalSessions > 0 ? (totalLeads / totalSessions) * 100 : 0;
+  const overallCvr = totalSessions > 0 ? Math.min(100, (totalLeads / totalSessions) * 100) : 0;
 
   return (
     <div className="glass-card-elevated p-5 animate-slide-up h-full">

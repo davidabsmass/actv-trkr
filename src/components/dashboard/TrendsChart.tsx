@@ -63,7 +63,7 @@ export function TrendsChart({ data }: TrendsChartProps) {
       dateLabel: bucketLabel(key, granularity),
       sessions: buckets[key].sessions,
       leads: buckets[key].leads,
-      cvr: buckets[key].sessions > 0 ? buckets[key].leads / buckets[key].sessions : 0,
+      cvr: buckets[key].sessions > 0 ? Math.min(1, buckets[key].leads / buckets[key].sessions) : 0,
     }));
   }, [data, granularity]);
 

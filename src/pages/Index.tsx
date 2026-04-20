@@ -549,7 +549,7 @@ const Index = () => {
             {([
               { icon: TrendingUp, label: "Lead Attribution" },
               { icon: Activity, label: "Real-Time Visitor Activity" },
-              { icon: FileCheck, label: "Universal Form Capture" },
+              { icon: FileCheck, label: "Form Capture" },
               { icon: Search, label: "AI-Powered Insights" },
               { icon: Sparkles, label: "SEO Signals" },
               { icon: Shield, label: "Site Health Monitoring" },

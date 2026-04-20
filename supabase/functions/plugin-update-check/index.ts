@@ -14,6 +14,9 @@ function getZipUrl(req: Request): string {
 const CURRENT_PLUGIN_VERSION = "1.18.0";
 
 const CHANGELOG = `
+## 1.18.0
+- SECURITY (C-1): Magic-login from the dashboard now logs in as the **specific** dashboard user who initiated the login (matched by email), instead of always logging in as the first administrator on the site. If no matching WP admin exists, the login is refused and audited.
+
 ## 1.17.1
 - FIX: /sync REST endpoint now responds with 202 immediately and runs the form scan in the background, eliminating dashboard timeouts on slow hosts (no more "Edge Function returned a non-2xx status code" on large sites)
 

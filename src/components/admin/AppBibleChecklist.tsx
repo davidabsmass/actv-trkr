@@ -103,7 +103,7 @@ export default function AppBibleChecklist() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
-            <CardTitle className="text-base">App Bible — Release Sign-Off</CardTitle>
+            <CardTitle className="text-base">Launch Checklist — Release Sign-Off</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">

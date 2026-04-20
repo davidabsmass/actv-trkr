@@ -868,7 +868,7 @@ export default function AdminSetup() {
             onClick={() => switchMainTab("app-bible")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "app-bible" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
-            App Bible
+            Launch Checklist
           </button>
           <button
             onClick={() => switchMainTab("release-qa")}

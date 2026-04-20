@@ -36,6 +36,10 @@ import {
   X,
   Ban,
   Download,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Copy,
 } from "lucide-react";
 
 type Org = {

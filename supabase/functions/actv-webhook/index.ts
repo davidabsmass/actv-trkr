@@ -9,6 +9,46 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ACTV-WEBHOOK] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
 };
 
+/**
+ * Compute the *effective* MRR for a Stripe subscription, taking into account
+ * any active discount (percent_off or amount_off, recurring or forever).
+ *
+ * Returns dollars/month. A 100% off coupon → 0. A $10/mo off on a $49/mo plan → 39.
+ * One-off (`once`) discounts are NOT applied to MRR — they're a temporary credit,
+ * not a recurring rate change.
+ */
+function computeMrrFromSubscription(sub: Stripe.Subscription): number {
+  const item = sub.items?.data?.[0];
+  const price = item?.price;
+  const unitAmount = price?.unit_amount || 0;
+  const interval = price?.recurring?.interval;
+  const intervalCount = price?.recurring?.interval_count || 1;
+
+  // Base monthly amount in cents
+  let monthlyCents = unitAmount;
+  if (interval === "year") monthlyCents = unitAmount / (12 * intervalCount);
+  else if (interval === "week") monthlyCents = (unitAmount * 52) / (12 * intervalCount);
+  else if (interval === "day") monthlyCents = (unitAmount * 365) / (12 * intervalCount);
+  else if (interval === "month") monthlyCents = unitAmount / intervalCount;
+
+  // Apply discount if it persists beyond the current invoice
+  const discount = sub.discount;
+  if (discount?.coupon) {
+    const coupon = discount.coupon;
+    const duration = coupon.duration; // "forever" | "once" | "repeating"
+    // "once" is a one-time credit, not an MRR change. Skip it.
+    if (duration === "forever" || duration === "repeating") {
+      if (typeof coupon.percent_off === "number" && coupon.percent_off > 0) {
+        monthlyCents = monthlyCents * (1 - coupon.percent_off / 100);
+      } else if (typeof coupon.amount_off === "number" && coupon.amount_off > 0) {
+        monthlyCents = Math.max(0, monthlyCents - coupon.amount_off);
+      }
+    }
+  }
+
+  return Math.max(0, monthlyCents / 100);
+}
+
 serve(async (req) => {
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
     apiVersion: "2025-08-27.basil",

@@ -61,36 +61,30 @@ export function AiChatbot() {
   const dragStart = useRef({ x: 0, y: 0 });
   const posAtDragStart = useRef({ x: 0, y: 0 });
 
-  // Clamp position so the chat panel stays fully on-screen.
-  // Default anchor is bottom-right (24px inset). position.x/y is the drag offset
-  // (positive x = moved left, positive y = moved up).
+  // Clamp BUBBLE position so the avatar+grip stay on-screen.
+  // The bubble sits flush in the corner the user drops it in — independent of the panel.
   const clampPosition = useCallback((pos: { x: number; y: number }) => {
     if (typeof window === "undefined") return pos;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // The widest fixed element is the panel (when open) — use it for bounds
-    // so the bubble can't be dragged off-screen even when collapsed.
-    const effectiveWidth = Math.max(PANEL_WIDTH, BUTTON_SIZE + GRIP_WIDTH);
-    const effectiveHeight = open ? PANEL_MAX_HEIGHT + BUTTON_SIZE + 16 : BUTTON_SIZE;
+    const bubbleWidth = BUTTON_SIZE + GRIP_WIDTH;
+    const bubbleHeight = BUTTON_SIZE;
 
-    // X bounds: right edge sits at (24 - x). Must keep effectiveWidth visible.
-    // min x (rightmost): can't go past right edge → x >= -(vw - effectiveWidth - 24 - EDGE_PADDING) ... but right inset is 24, so:
-    // right offset >= EDGE_PADDING → 24 - x >= EDGE_PADDING → x <= 24 - EDGE_PADDING
-    const maxX = 24 - EDGE_PADDING;
-    // left edge >= EDGE_PADDING → vw - (24 - x) - effectiveWidth >= EDGE_PADDING → x <= 24 + effectiveWidth + EDGE_PADDING - vw ... we need x >= ...
-    const minX = -(vw - effectiveWidth - 24 - EDGE_PADDING);
+    // right offset = 24 - x. Keep bubble visible.
+    const maxX = 24 - EDGE_PADDING; // can't pass right edge
+    const minX = -(vw - bubbleWidth - 24 - EDGE_PADDING); // can't pass left edge
 
-    const maxY = 24 - EDGE_PADDING; // can't drag below bottom
-    const minY = -(vh - effectiveHeight - 24 - EDGE_PADDING);
+    const maxY = 24 - EDGE_PADDING; // can't pass bottom edge
+    const minY = -(vh - bubbleHeight - 24 - EDGE_PADDING); // can't pass top edge
 
     return {
       x: Math.min(maxX, Math.max(minX, pos.x)),
       y: Math.min(maxY, Math.max(minY, pos.y)),
     };
-  }, [open]);
+  }, []);
 
-  // Re-clamp when window resizes or panel opens/closes
+  // Re-clamp when window resizes
   useEffect(() => {
     const onResize = () => setPosition((p) => clampPosition(p));
     window.addEventListener("resize", onResize);

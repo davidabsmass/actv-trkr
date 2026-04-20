@@ -167,6 +167,25 @@ export default function PluginSection() {
         {t("settings.pluginDownloadDesc")}
       </p>
 
+      {siteDomain && (
+        <div className="mb-3 rounded-md border border-border bg-background/40 px-3 py-2 text-xs">
+          {signalIsStale ? (
+            <span className="text-warning">
+              ⚠️ {siteDomain} hasn't sent a signal in {signalAgeLabel}. Sync may be paused — check the Sync Status panel below.
+            </span>
+          ) : (
+            <span className="text-muted-foreground">
+              ✓ {siteDomain} is connected. Last signal {signalAgeLabel}. Initial sync can take up to 10 minutes after install.
+            </span>
+          )}
+        </div>
+      )}
+      {!siteDomain && activeKey && (
+        <div className="mb-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground">
+          API key is active. Once the plugin is installed and activated, this site will appear here within a few minutes.
+        </div>
+      )}
+
       {needsUpdate && (
         <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 mb-5">
           <ArrowUp className="h-4 w-4 text-primary mt-0.5 shrink-0" />

@@ -54,6 +54,7 @@ export default function SettingsPage() {
         <TabsContent value="general">
           <div className="grid gap-4 lg:grid-cols-2">
             {showAdminSections && <PluginSection />}
+            <SyncStatusCard />
             {showAdminSections && <ApiKeysSection />}
             <SitesSection />
             <SeoVisibilitySection />

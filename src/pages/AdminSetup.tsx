@@ -271,15 +271,15 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "app-bible">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "app-bible" | "release-qa">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "app-bible" || tab === "clients" || tab === "metrics" || tab === "subscriber-sites") {
+    if (tab === "app-bible" || tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa") {
       setActiveMainTab(tab);
     }
   }, [searchParams]);
-  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "app-bible") => {
+  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "app-bible" | "release-qa") => {
     setActiveMainTab(tab);
     setSearchParams({ tab }, { replace: true });
   };

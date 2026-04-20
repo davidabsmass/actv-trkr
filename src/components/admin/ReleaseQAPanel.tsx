@@ -43,6 +43,7 @@ type RunRow = {
   status: "running" | "passed" | "passed_with_warnings" | "failed" | "cancelled";
   scope: string;
   totals: Record<string, number>;
+  ship_blocked?: boolean | null;
 };
 
 const statusColor: Record<string, string> = {
@@ -230,19 +231,32 @@ export default function ReleaseQAPanel() {
         </CardHeader>
         <CardContent>
           {latestRun ? (
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <VerdictBadge status={latestRun.status} />
-              <span className="text-muted-foreground">
-                {format(new Date(latestRun.started_at), "PPp")}
-                {latestRun.started_by_email ? ` · ${latestRun.started_by_email}` : ""}
-              </span>
-              <div className="flex items-center gap-2 text-xs ml-auto">
-                <Badge variant="outline" className="text-success">✅ {totals.pass}</Badge>
-                <Badge variant="outline" className="text-warning">⚠️ {totals.warn}</Badge>
-                <Badge variant="outline" className="text-warning">⏳ {totals.manual_pending}</Badge>
-                <Badge variant="outline" className="text-destructive">
-                  ❌ {(totals.fail ?? 0) + (totals.error ?? 0)}
-                </Badge>
+            <div className="space-y-2">
+              {latestRun.ship_blocked && (
+                <div className="flex items-center gap-2 rounded-md border-2 border-destructive bg-destructive/10 px-3 py-2">
+                  <XCircle className="h-5 w-5 text-destructive" />
+                  <div>
+                    <p className="text-sm font-bold text-destructive">⛔ STOP SHIP</p>
+                    <p className="text-xs text-destructive/80">
+                      One or more critical checks failed. Do not release v{version} until resolved.
+                    </p>
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <VerdictBadge status={latestRun.status} />
+                <span className="text-muted-foreground">
+                  {format(new Date(latestRun.started_at), "PPp")}
+                  {latestRun.started_by_email ? ` · ${latestRun.started_by_email}` : ""}
+                </span>
+                <div className="flex items-center gap-2 text-xs ml-auto">
+                  <Badge variant="outline" className="text-success">✅ {totals.pass}</Badge>
+                  <Badge variant="outline" className="text-warning">⚠️ {totals.warn}</Badge>
+                  <Badge variant="outline" className="text-warning">⏳ {totals.manual_pending}</Badge>
+                  <Badge variant="outline" className="text-destructive">
+                    ❌ {(totals.fail ?? 0) + (totals.error ?? 0)}
+                  </Badge>
+                </div>
               </div>
             </div>
           ) : (

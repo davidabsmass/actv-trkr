@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
 import PluginSection from "@/components/settings/PluginSection";
+import SyncStatusCard from "@/components/settings/SyncStatusCard";
 import SeoVisibilitySection from "@/components/settings/SeoVisibilitySection";
 import NotificationsHub from "@/components/settings/NotificationsHub";
 import WebsiteSetup from "@/pages/WebsiteSetup";

@@ -79,7 +79,9 @@ const GOAL_HELP: Record<string, { title: string; steps: string[]; example: strin
     title: "Track a custom JavaScript event you fire from your site",
     steps: [
       "Enter the exact event name your code dispatches — e.g. \"signup_complete\".",
-      "Fire it from your site with: window.actvTrkr?.track(\"signup_complete\")",
+      "Fire it from your site with: window.actvTrkr.track(\"signup_complete\", { plan: \"pro\" })",
+      "The optional second argument is metadata (object) — kept under 4KB.",
+      "Requires the ACTV TRKR plugin v1.20.0+ on your site.",
       "This is for advanced use when none of the built-in types cover your scenario.",
     ],
     example: "Example: Track a \"video_watched_75pct\" event to measure video engagement.",

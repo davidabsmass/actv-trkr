@@ -450,7 +450,7 @@ function EditGoalDialog({ goal, orgId, forms, autoOpen, onAutoOpenConsumed }: { 
 }
 
 /* ─── Goal Card ─── */
-function GoalCard({ goal, orgId, forms }: { goal: ConversionGoal; orgId: string; forms: any[] }) {
+function GoalCard({ goal, orgId, forms, autoOpen, onAutoOpenConsumed }: { goal: ConversionGoal; orgId: string; forms: any[]; autoOpen?: boolean; onAutoOpenConsumed?: () => void }) {
   const { t } = useTranslation();
   const updateGoal = useUpdateGoal(orgId);
   const deleteGoal = useDeleteGoal(orgId);
@@ -472,7 +472,7 @@ function GoalCard({ goal, orgId, forms }: { goal: ConversionGoal; orgId: string;
   };
 
   return (
-    <div className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors ${goal.is_active ? "border-border bg-card" : "border-border/50 bg-muted/30 opacity-60"}`}>
+    <div id={`goal-${goal.id}`} className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors ${autoOpen ? "ring-2 ring-primary" : ""} ${goal.is_active ? "border-border bg-card" : "border-border/50 bg-muted/30 opacity-60"}`}>
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <span className="text-lg flex-shrink-0">{typeInfo?.icon || "🎯"}</span>
         <div className="min-w-0">
@@ -497,7 +497,7 @@ function GoalCard({ goal, orgId, forms }: { goal: ConversionGoal; orgId: string;
       </div>
 
       <div className="flex items-center gap-1 ml-3 flex-shrink-0">
-        <EditGoalDialog goal={goal} orgId={orgId} forms={forms} />
+        <EditGoalDialog goal={goal} orgId={orgId} forms={forms} autoOpen={autoOpen} onAutoOpenConsumed={onAutoOpenConsumed} />
         <Button
           variant="ghost" size="icon" className="h-7 w-7"
           title={goal.is_active ? t("goals.deactivate") : t("goals.activate")}

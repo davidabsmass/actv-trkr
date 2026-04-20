@@ -52,6 +52,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
+    // System-admin bypass (caller already verified as having user_roles.admin above)
+    const isSystemAdmin = true;
+
     // ── CREATE USER ──
     if (action === "create_user") {
       const { email, password, full_name, org_id, role } = body;
@@ -70,13 +73,15 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Enforce org-scoped admin permission
-      const { data: callerOrgAccess } = await adminClient
-        .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
-      if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
-        return new Response(JSON.stringify({ error: "Org admin access required" }), {
-          status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
+      // System admins bypass org-membership check; otherwise require org admin
+      if (!isSystemAdmin) {
+        const { data: callerOrgAccess } = await adminClient
+          .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
+        if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
+          return new Response(JSON.stringify({ error: "Org admin access required" }), {
+            status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
       }
 
       let userId: string;
@@ -149,12 +154,15 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: callerOrgAccess } = await adminClient
-        .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
-      if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
-        return new Response(JSON.stringify({ error: "Org admin access required" }), {
-          status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
+      // System admins bypass org-membership check; otherwise require org admin
+      if (!isSystemAdmin) {
+        const { data: callerOrgAccess } = await adminClient
+          .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
+        if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
+          return new Response(JSON.stringify({ error: "Org admin access required" }), {
+            status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
       }
 
       const { data: targetProfileRow } = await adminClient
@@ -661,6 +669,140 @@ Deno.serve(async (req) => {
         .from("subscribers").update(patch).eq("id", subscriberId);
       if (upErr) {
         return new Response(JSON.stringify({ error: upErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // ── LIST ORG MEMBERS ──
+    if (action === "list_org_members") {
+      const orgId = String(body.org_id || "").trim();
+      if (!orgId) {
+        return new Response(JSON.stringify({ error: "org_id is required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { data: members, error: mErr } = await adminClient
+        .from("org_users")
+        .select("user_id, role, created_at")
+        .eq("org_id", orgId);
+      if (mErr) {
+        return new Response(JSON.stringify({ error: mErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const userIds = (members || []).map((m: any) => m.user_id);
+      const { data: profiles } = userIds.length
+        ? await adminClient.from("profiles").select("user_id, email, full_name").in("user_id", userIds)
+        : { data: [] };
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const enriched = (members || []).map((m: any) => ({
+        user_id: m.user_id,
+        role: m.role,
+        joined_at: m.created_at,
+        email: profileMap.get(m.user_id)?.email || null,
+        full_name: profileMap.get(m.user_id)?.full_name || null,
+      }));
+      return new Response(JSON.stringify({ members: enriched }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
+    // ── ADD EXISTING USER TO ORG (by email; creates auth user if missing, no password) ──
+    if (action === "add_existing_user_to_org") {
+      const orgId = String(body.org_id || "").trim();
+      const email = String(body.email || "").trim().toLowerCase();
+      const role = String(body.role || "member").trim();
+      const sendInviteEmail = body.send_invite_email !== false;
+      if (!orgId || !email) {
+        return new Response(JSON.stringify({ error: "org_id and email are required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const validRoles = ["member", "admin"];
+      const assignRole = validRoles.includes(role) ? role : "member";
+
+      // Find or create the user
+      const { data: profileRow } = await adminClient
+        .from("profiles").select("user_id").ilike("email", email).maybeSingle();
+      let targetUserId = profileRow?.user_id || null;
+      let wasCreated = false;
+
+      if (!targetUserId) {
+        const tempPassword = crypto.randomUUID() + "Aa1!";
+        const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
+          email, password: tempPassword, email_confirm: true,
+          user_metadata: { full_name: "" },
+        });
+        if (createErr || !newUser?.user) {
+          return new Response(JSON.stringify({ error: createErr?.message || "Failed to create user" }), {
+            status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+        targetUserId = newUser.user.id;
+        wasCreated = true;
+      }
+
+      // Check if already a member
+      const { data: existing } = await adminClient
+        .from("org_users").select("id, role").eq("org_id", orgId).eq("user_id", targetUserId).maybeSingle();
+      if (existing) {
+        return new Response(JSON.stringify({ error: "User is already a member of this organization" }), {
+          status: 409, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: insErr } = await adminClient.from("org_users")
+        .insert({ org_id: orgId, user_id: targetUserId, role: assignRole });
+      if (insErr) {
+        return new Response(JSON.stringify({ error: insErr.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
+      // Send password-reset / welcome email so they can set their password
+      if (sendInviteEmail) {
+        try {
+          const { data: linkData } = await adminClient.auth.admin.generateLink({
+            type: "recovery", email,
+            options: { redirectTo: "https://actvtrkr.com/reset-password" },
+          });
+          const setPasswordUrl = linkData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+          await adminClient.functions.invoke("send-transactional-email", {
+            body: {
+              templateName: "welcome",
+              recipientEmail: email,
+              idempotencyKey: `add-org-${targetUserId}-${orgId}-${Date.now()}`,
+              templateData: { setPasswordUrl },
+            },
+          });
+        } catch { /* non-fatal */ }
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        user_id: targetUserId,
+        was_created: wasCreated,
+        role: assignRole,
+      }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
+    }
+
+    // ── REMOVE USER FROM ORG (detach only; does not delete auth account) ──
+    if (action === "remove_user_from_org") {
+      const orgId = String(body.org_id || "").trim();
+      const userId = String(body.user_id || "").trim();
+      if (!orgId || !userId) {
+        return new Response(JSON.stringify({ error: "org_id and user_id are required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      const { error: delErr } = await adminClient
+        .from("org_users").delete().eq("org_id", orgId).eq("user_id", userId);
+      if (delErr) {
+        return new Response(JSON.stringify({ error: delErr.message }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }

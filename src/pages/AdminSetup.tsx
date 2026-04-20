@@ -16,6 +16,7 @@ import { AdminCustomerDetail } from "@/components/admin/AdminCustomerDetail";
 import AppBibleChecklist from "@/components/admin/AppBibleChecklist";
 import AppBibleReviewBanner from "@/components/admin/AppBibleReviewBanner";
 import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
+import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
@@ -269,15 +270,15 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "app-bible">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "app-bible">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "app-bible" || tab === "clients" || tab === "metrics") {
+    if (tab === "app-bible" || tab === "clients" || tab === "metrics" || tab === "subscriber-sites") {
       setActiveMainTab(tab);
     }
   }, [searchParams]);
-  const switchMainTab = (tab: "clients" | "metrics" | "app-bible") => {
+  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "app-bible") => {
     setActiveMainTab(tab);
     setSearchParams({ tab }, { replace: true });
   };
@@ -851,6 +852,12 @@ export default function AdminSetup() {
             Business Metrics
           </button>
           <button
+            onClick={() => switchMainTab("subscriber-sites")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "subscriber-sites" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Subscriber Sites
+          </button>
+          <button
             onClick={() => switchMainTab("clients")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
@@ -867,6 +874,10 @@ export default function AdminSetup() {
 
       {activeMainTab === "app-bible" && isOwner && (
         <AppBibleChecklist />
+      )}
+
+      {activeMainTab === "subscriber-sites" && isOwner && (
+        <SubscriberSitesPanel />
       )}
 
       {(activeMainTab === "metrics" || activeMainTab === "clients") && isOwner && (

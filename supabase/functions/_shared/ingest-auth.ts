@@ -29,6 +29,7 @@ export type IngestAuthResult =
       ok: false;
       status: number;
       error: string;
+      payload?: Record<string, unknown>;
     };
 
 async function sha256Hex(input: string): Promise<string> {

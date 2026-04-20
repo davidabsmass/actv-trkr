@@ -7723,8 +7723,8 @@ export type Database = {
         Args: never
         Returns: {
           oldest_msg_age_seconds: number
+          qname: string
           queue_length: number
-          queue_name: string
         }[]
       }
       qa_check_rls_status: {

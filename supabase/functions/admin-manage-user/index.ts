@@ -1004,6 +1004,63 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── UPDATE ORG MEMBER (name + role) ──
+    if (action === "update_org_member") {
+      const orgId = String(body.org_id || "").trim();
+      const userId = String(body.user_id || "").trim();
+      const fullName = body.full_name !== undefined ? String(body.full_name).trim() : undefined;
+      const role = body.role !== undefined ? String(body.role).trim() : undefined;
+
+      if (!orgId || !userId) {
+        return new Response(JSON.stringify({ error: "org_id and user_id are required" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+      if (role !== undefined && !["member", "admin"].includes(role)) {
+        return new Response(JSON.stringify({ error: "Invalid role. Must be 'member' or 'admin'." }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
+      // Update role on org_users
+      if (role !== undefined) {
+        const { error: roleErr } = await adminClient
+          .from("org_users")
+          .update({ role })
+          .eq("org_id", orgId)
+          .eq("user_id", userId);
+        if (roleErr) {
+          return new Response(JSON.stringify({ error: `Failed to update role: ${roleErr.message}` }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // Update full_name on profiles + auth user metadata
+      if (fullName !== undefined) {
+        const { error: profErr } = await adminClient
+          .from("profiles")
+          .update({ full_name: fullName })
+          .eq("user_id", userId);
+        if (profErr) {
+          return new Response(JSON.stringify({ error: `Failed to update profile: ${profErr.message}` }), {
+            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+          });
+        }
+        try {
+          await adminClient.auth.admin.updateUserById(userId, {
+            user_metadata: { full_name: fullName },
+          });
+        } catch (_e) {
+          // non-fatal — profile is the source of truth in the UI
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });

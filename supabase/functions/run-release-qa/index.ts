@@ -162,6 +162,22 @@ async function pingFnUnauth(name: string): Promise<{ status: number }> {
   }
 }
 
+// Stronger: prove the function code path runs. Unauthenticated POST should NOT
+// be a 404 (missing) or 5xx (broken). 401/400/200/422 are all acceptable.
+async function probeFnReachable(name: string): Promise<{ status: number; ok: boolean }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const ok = r.status !== 404 && r.status < 500;
+    return { status: r.status, ok };
+  } catch (_e) {
+    return { status: 0, ok: false };
+  }
+}
+
 // ─── Individual check runners ───
 type Runner = (def: CheckDef, ctx: { app_version: string }) => Promise<CheckResult>;
 
@@ -169,10 +185,10 @@ const runners: Record<string, Runner> = {
   // ── lifecycle ──
   "lifecycle.create_checkout_deployed": async (def) => {
     const t = Date.now();
-    const r = await pingFn("create-checkout");
+    const r = await probeFnReachable("create-checkout");
     return result(def, r.ok ? "pass" : "fail",
-      r.ok ? `Reachable (HTTP ${r.status})` : `Unreachable (HTTP ${r.status})`,
-      { http_status: r.status }, t);
+      r.ok ? `Function code reachable (HTTP ${r.status})` : `Unreachable / broken (HTTP ${r.status})`,
+      { http_status: r.status, probe: "POST {} unauthenticated" }, t);
   },
   "lifecycle.org_provisioning_rpc": async (def) => {
     const t = Date.now();
@@ -190,74 +206,165 @@ const runners: Record<string, Runner> = {
   "lifecycle.recent_signup_health": async (def) => {
     const t = Date.now();
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
-    const { data: orgs } = await admin.from("orgs").select("id, name, created_at").gte("created_at", since);
+    const { data: orgs } = await admin
+      .from("orgs").select("id, name, created_at").gte("created_at", since);
     if (!orgs?.length) {
       return result(def, "warn", "No orgs created in last 30d", { orgs_checked: 0 }, t);
     }
     const orgIds = orgs.map((o: any) => o.id);
-    const { data: consent } = await admin.from("consent_config").select("org_id").in("org_id", orgIds);
+
+    // Verify consent_config exists per org
+    const { data: consent } = await admin
+      .from("consent_config").select("org_id").in("org_id", orgIds);
     const haveConsent = new Set((consent || []).map((c: any) => c.org_id));
-    const missing = orgs.filter((o: any) => !haveConsent.has(o.id));
-    const status = missing.length === 0 ? "pass" : (missing.length <= 2 ? "warn" : "fail");
+
+    // Verify subscriber row exists (mapped via profiles.email -> org_users)
+    const { data: orgUsers } = await admin
+      .from("org_users").select("org_id, user_id").in("org_id", orgIds);
+    const userIds = Array.from(new Set((orgUsers || []).map((ou: any) => ou.user_id)));
+    const { data: profiles } = userIds.length
+      ? await admin.from("profiles").select("user_id, email").in("user_id", userIds)
+      : { data: [] as any[] };
+    const emails = Array.from(
+      new Set((profiles || []).map((p: any) => (p.email || "").toLowerCase()).filter(Boolean))
+    );
+    const { data: subs } = emails.length
+      ? await admin.from("subscribers").select("email").in("email", emails)
+      : { data: [] as any[] };
+    const haveSubByEmail = new Set((subs || []).map((s: any) => (s.email || "").toLowerCase()));
+
+    // Per-org: does ANY associated user have a subscriber row?
+    const userToEmail = new Map<string, string>();
+    (profiles || []).forEach((p: any) => userToEmail.set(p.user_id, (p.email || "").toLowerCase()));
+    const orgHasSub = new Map<string, boolean>();
+    (orgUsers || []).forEach((ou: any) => {
+      const e = userToEmail.get(ou.user_id);
+      if (e && haveSubByEmail.has(e)) orgHasSub.set(ou.org_id, true);
+    });
+
+    const missingConsent = orgs.filter((o: any) => !haveConsent.has(o.id));
+    const missingSub = orgs.filter((o: any) => !orgHasSub.get(o.id));
+
+    const totalMissing = missingConsent.length + missingSub.length;
+    const status: CheckStatus =
+      totalMissing === 0 ? "pass" : (totalMissing <= 2 ? "warn" : "fail");
     return result(def, status,
-      missing.length === 0
-        ? `${orgs.length} recent orgs, all have consent_config`
-        : `${missing.length}/${orgs.length} recent orgs missing consent_config`,
-      { orgs_checked: orgs.length, missing_consent: missing.map((o: any) => ({ id: o.id, name: o.name })) }, t);
+      totalMissing === 0
+        ? `${orgs.length} recent orgs, all have consent_config + subscriber`
+        : `${missingConsent.length} missing consent, ${missingSub.length} missing subscriber (of ${orgs.length})`,
+      {
+        orgs_checked: orgs.length,
+        missing_consent: missingConsent.map((o: any) => ({ id: o.id, name: o.name })),
+        missing_subscriber: missingSub.map((o: any) => ({ id: o.id, name: o.name })),
+      }, t);
   },
 
   // ── tracking ──
   "tracking.health_cron_recent": async (def) => {
     const t = Date.now();
+    // Primary: cron job_run_details (proves cron actually fired)
+    const { data: crons } = await admin.rpc("qa_list_cron_jobs");
+    const cronJob = (crons || []).find((j: any) =>
+      /tracking[-_]health|check[-_]tracking[-_]health/i.test(j.jobname || ""));
+    const cronAgeMin = cronJob?.last_run_started_at
+      ? (Date.now() - new Date(cronJob.last_run_started_at).getTime()) / 60000
+      : null;
+    if (cronJob && cronAgeMin !== null) {
+      const ok = cronAgeMin < 15 && cronJob.last_run_status !== "failed";
+      return result(def, ok ? "pass" : "fail",
+        ok ? `Cron ran ${Math.round(cronAgeMin)} min ago (${cronJob.last_run_status})`
+           : `Cron stale or failing: ${Math.round(cronAgeMin)} min ago, status=${cronJob.last_run_status}`,
+        { cron_job: cronJob, age_minutes: Math.round(cronAgeMin) }, t);
+    }
+    // Fallback: site-level timestamp (only meaningful if sites exist)
     const { data } = await admin.from("sites")
       .select("tracker_last_checked_at")
       .order("tracker_last_checked_at", { ascending: false, nullsFirst: false })
       .limit(1);
     const last = (data?.[0] as any)?.tracker_last_checked_at;
-    if (!last) return result(def, "warn", "No tracker check timestamps yet", {}, t);
+    if (!last) return result(def, "fail",
+      "No tracking-health cron found AND no sites checked — pipeline appears dead",
+      { cron_job_found: false, sites_checked: 0 }, t);
     const ageSec = (Date.now() - new Date(last).getTime()) / 1000;
     const ok = ageSec < 600;
     return result(def, ok ? "pass" : "fail",
-      ok ? `Last check ${Math.round(ageSec)}s ago` : `Stale: last check ${Math.round(ageSec)}s ago (>600s)`,
-      { last_checked_at: last, age_seconds: Math.round(ageSec) }, t);
+      ok ? `Last site check ${Math.round(ageSec)}s ago (cron job not found in registry)`
+         : `Stale: ${Math.round(ageSec)}s ago (>600s)`,
+      { last_checked_at: last, age_seconds: Math.round(ageSec), cron_job_found: false }, t);
   },
   "tracking.recent_pageviews_exist": async (def) => {
     const t = Date.now();
     const since = new Date(Date.now() - 3600_000).toISOString();
-    const { count } = await admin.from("pageviews").select("id", { count: "exact", head: true }).gte("occurred_at", since);
-    const ok = (count ?? 0) > 0;
-    return result(def, ok ? "pass" : "warn",
-      ok ? `${count} pageviews in last hour` : "No pageviews in last hour",
-      { last_hour_count: count ?? 0 }, t);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { count: pvCount } = await admin
+      .from("pageviews").select("id", { count: "exact", head: true }).gte("occurred_at", since);
+    const { count: activeSites } = await admin
+      .from("sites").select("id", { count: "exact", head: true })
+      .gte("tracker_last_seen_at", sevenDaysAgo);
+    const n = pvCount ?? 0;
+    const sites = activeSites ?? 0;
+    if (n > 0) {
+      return result(def, "pass", `${n} pageviews in last hour (${sites} active sites)`,
+        { last_hour_count: n, active_sites_7d: sites }, t);
+    }
+    if (sites === 0) {
+      return result(def, "warn",
+        "No pageviews — but no active sites in last 7d either (acceptable if pre-launch)",
+        { last_hour_count: 0, active_sites_7d: 0 }, t);
+    }
+    // Sites exist but zero pageviews — pipeline is broken
+    return result(def, "fail",
+      `Pipeline broken: ${sites} active sites but 0 pageviews in last hour`,
+      { last_hour_count: 0, active_sites_7d: sites }, t);
   },
   "tracking.sites_active_majority": async (def) => {
     const t = Date.now();
     const since = new Date(Date.now() - 7 * 86400000).toISOString();
     const { data } = await admin.from("sites")
-      .select("tracker_status, tracker_last_seen_at")
+      .select("id, domain, tracker_status, tracker_last_seen_at")
       .gte("tracker_last_seen_at", since);
     const total = data?.length ?? 0;
     if (!total) return result(def, "warn", "No recently-seen sites", { total: 0 }, t);
     const active = (data || []).filter((s: any) => s.tracker_status === "active").length;
     const pct = Math.round((active / total) * 100);
     const ok = pct >= 80;
+    const inactive = (data || [])
+      .filter((s: any) => s.tracker_status !== "active")
+      .slice(0, 10)
+      .map((s: any) => ({ id: s.id, domain: s.domain, status: s.tracker_status }));
     return result(def, ok ? "pass" : "fail",
       `${active}/${total} sites active (${pct}%)`,
-      { total, active, active_pct: pct }, t);
+      { total, active, active_pct: pct, inactive_sample: inactive }, t);
   },
 
   // ── forms ──
   "forms.import_watchdog_recent": async (def) => {
     const t = Date.now();
+    // Primary: cron registry
+    const { data: crons } = await admin.rpc("qa_list_cron_jobs");
+    const cronJob = (crons || []).find((j: any) =>
+      /form[-_]import[-_]watchdog|form[-_]watchdog/i.test(j.jobname || ""));
+    if (cronJob && cronJob.last_run_started_at) {
+      const ageMin = (Date.now() - new Date(cronJob.last_run_started_at).getTime()) / 60000;
+      const ok = ageMin < 30 && cronJob.last_run_status !== "failed";
+      return result(def, ok ? "pass" : "fail",
+        ok ? `Watchdog cron ran ${Math.round(ageMin)} min ago (${cronJob.last_run_status})`
+           : `Watchdog cron stale or failing: ${Math.round(ageMin)} min ago, status=${cronJob.last_run_status}`,
+        { cron_job: cronJob, age_minutes: Math.round(ageMin) }, t);
+    }
+    // Fallback: form_jobs activity
     const { data } = await admin.from("form_jobs")
       .select("updated_at, status").order("updated_at", { ascending: false }).limit(1);
     const last = (data?.[0] as any)?.updated_at;
-    if (!last) return result(def, "pass", "No form jobs to process (acceptable)", {}, t);
+    if (!last) return result(def, "warn",
+      "No form watchdog cron found AND no form_jobs activity (acceptable only pre-launch)",
+      { cron_job_found: false }, t);
     const ageMin = (Date.now() - new Date(last).getTime()) / 60000;
     const ok = ageMin < 30;
     return result(def, ok ? "pass" : "warn",
-      ok ? `Last activity ${Math.round(ageMin)} min ago` : `Stale: ${Math.round(ageMin)} min ago`,
-      { last_activity: last, age_minutes: Math.round(ageMin) }, t);
+      ok ? `Form jobs activity ${Math.round(ageMin)} min ago (cron not found in registry)`
+         : `Stale: ${Math.round(ageMin)} min ago`,
+      { last_activity: last, age_minutes: Math.round(ageMin), cron_job_found: false }, t);
   },
   "forms.no_stuck_jobs": async (def) => {
     const t = Date.now();
@@ -302,14 +409,16 @@ const runners: Record<string, Runner> = {
   "billing.no_signature_failures": async (def) => {
     const t = Date.now();
     const since = new Date(Date.now() - 86400000).toISOString();
-    const { count } = await admin.from("webhook_verification_log").select("id", { count: "exact", head: true })
+    const { data, count } = await admin.from("webhook_verification_log")
+      .select("occurred_at, provider, verification_status", { count: "exact" })
       .in("verification_status", ["signature_invalid", "replay_rejected"])
-      .gte("occurred_at", since);
+      .gte("occurred_at", since)
+      .order("occurred_at", { ascending: false }).limit(10);
     const n = count ?? 0;
     const status: CheckStatus = n === 0 ? "pass" : (n < 5 ? "warn" : "fail");
     return result(def, status,
       n === 0 ? "0 invalid signatures in last 24h" : `${n} invalid signatures in last 24h`,
-      { failures_24h: n }, t);
+      { failures_24h: n, sample: data ?? [] }, t);
   },
   "billing.recovery_events_recent": async (def) => {
     const t = Date.now();
@@ -325,43 +434,58 @@ const runners: Record<string, Runner> = {
   // ── security_boundaries ──
   "security_boundaries.rls_enabled_all_tables": async (def) => {
     const t = Date.now();
-    const { data, error } = await admin.rpc("execute_sql_admin_qa", {}).maybeSingle?.() ?? { data: null, error: null } as any;
-    // No execute_sql RPC by design. Use information_schema via REST is not possible directly,
-    // so we rely on a pg_meta-style query via a SECURITY DEFINER helper if added later.
-    // Fallback: query pg_tables through Supabase REST is not available — fall back to a
-    // listing-based heuristic: read public tables we can SELECT 0 from.
-    const tables = ["orgs","sites","subscribers","leads","events","pageviews","forms","form_entries",
-                    "user_roles","profiles","api_keys","release_qa_runs","release_qa_results",
-                    "release_qa_manual_signoff","app_bible_reviews","webhook_verification_log",
-                    "consent_config","conversion_goals","goal_completions"];
-    // RLS check via SQL is not available without a helper function; expose presence + RLS status
-    // through a meta query by querying pg_class via PostgREST is not exposed.
-    // For evidence, we record that the platform model assumes RLS-on-by-default and surface
-    // the linter results location.
-    return result(def, "warn",
-      "RLS programmatic check requires DB-side helper; verify via Supabase linter",
-      { sampled_tables: tables, helper_data: data, helper_error: error?.message }, t);
+    const { data, error } = await admin.rpc("qa_check_rls_status");
+    if (error) {
+      return result(def, "fail",
+        `RLS check helper failed: ${error.message}`,
+        { error: error.message }, t);
+    }
+    const rows = (data || []) as Array<{ table_name: string; rls_enabled: boolean }>;
+    const total = rows.length;
+    const disabled = rows.filter((r) => !r.rls_enabled);
+    const ok = disabled.length === 0;
+    return result(def, ok ? "pass" : "fail",
+      ok ? `RLS enabled on all ${total} public tables`
+         : `${disabled.length}/${total} public tables have RLS DISABLED`,
+      {
+        total_tables: total,
+        rls_disabled_count: disabled.length,
+        rls_disabled_tables: disabled.map((r) => r.table_name),
+      }, t);
   },
   "security_boundaries.has_role_function": async (def) => {
     const t = Date.now();
-    // Probe: call has_role with a random user — should return false (function exists)
-    const { error } = await admin.rpc("has_role", {
-      _user_id: "00000000-0000-0000-0000-000000000000",
-      _role: "admin",
-    });
-    const exists = !error || !/does not exist|undefined function/i.test(error.message || "");
-    return result(def, exists ? "pass" : "fail",
-      exists ? "has_role() callable" : `Missing: ${error?.message}`,
-      { probe_error: error?.message }, t);
+    // Real check: pg_proc.prosecdef must be true
+    const { data, error } = await admin.rpc("qa_check_has_role_definer");
+    if (error) {
+      return result(def, "fail",
+        `Helper failed: ${error.message}`,
+        { error: error.message }, t);
+    }
+    const row = (data || [])[0] as any;
+    if (!row?.exists_flag) {
+      return result(def, "fail", "has_role() function NOT FOUND in public schema",
+        { exists: false }, t);
+    }
+    if (!row.is_security_definer) {
+      return result(def, "fail",
+        "has_role() exists but is NOT SECURITY DEFINER (privilege escalation risk)",
+        { exists: true, is_security_definer: false, prosrc_excerpt: row.prosrc_excerpt }, t);
+    }
+    return result(def, "pass",
+      "has_role() exists and is SECURITY DEFINER",
+      { exists: true, is_security_definer: true, prosrc_excerpt: row.prosrc_excerpt }, t);
   },
   "security_boundaries.no_critical_findings": async (def) => {
     const t = Date.now();
-    const { count } = await admin.from("security_findings").select("id", { count: "exact", head: true })
-      .eq("status", "open").eq("severity", "critical");
+    const { data, count } = await admin.from("security_findings")
+      .select("id, name, type, created_at", { count: "exact" })
+      .eq("status", "open").eq("severity", "critical")
+      .order("created_at", { ascending: false }).limit(10);
     const n = count ?? 0;
     return result(def, n === 0 ? "pass" : "fail",
       n === 0 ? "0 open critical findings" : `${n} open critical findings`,
-      { open_critical_count: n }, t);
+      { open_critical_count: n, sample: data ?? [] }, t);
   },
   "security_boundaries.api_keys_hashed": async (def) => {
     const t = Date.now();
@@ -406,13 +530,29 @@ const runners: Record<string, Runner> = {
   },
   "autosync.email_queue_processing": async (def) => {
     const t = Date.now();
-    const since = new Date(Date.now() - 5 * 60_000).toISOString();
-    const { count } = await admin.from("email_send_log").select("id", { count: "exact", head: true })
-      .eq("status", "queued").lt("created_at", since);
-    const n = count ?? 0;
-    return result(def, n === 0 ? "pass" : "fail",
-      n === 0 ? "Queue draining within 5 min" : `${n} messages stalled >5 min`,
-      { stalled_count: n }, t);
+    // Real check: pgmq queue depth + oldest message age (the actual queue lives in pgmq, not email_send_log)
+    const { data: queues, error } = await admin.rpc("qa_check_pgmq_queue_depth");
+    if (error) {
+      return result(def, "fail",
+        `pgmq helper failed: ${error.message}`,
+        { error: error.message }, t);
+    }
+    const rows = (queues || []) as Array<{ queue_name: string; queue_length: number; oldest_msg_age_seconds: number }>;
+    const stalled = rows.filter((q) => q.queue_length > 0 && q.oldest_msg_age_seconds > 300);
+    const errored = rows.filter((q) => q.queue_length === -1);
+    if (errored.length > 0) {
+      return result(def, "warn",
+        `Queue introspection failed for ${errored.length} queue(s)`,
+        { queues: rows, introspection_errors: errored.map((q) => q.queue_name) }, t);
+    }
+    if (stalled.length === 0) {
+      return result(def, "pass",
+        `All ${rows.length} queues draining within 5 min`,
+        { queues: rows }, t);
+    }
+    return result(def, "fail",
+      `${stalled.length} queue(s) stalled with messages older than 5 min`,
+      { queues: rows, stalled }, t);
   },
 
   // ── auth ──
@@ -529,11 +669,44 @@ const runners: Record<string, Runner> = {
   // ── backend crons ──
   "backend.critical_crons_scheduled": async (def) => {
     const t = Date.now();
-    // Fall back to a heuristic: presence of recent run side-effects (already covered elsewhere).
-    // We can't read cron.job through PostgREST, so report as warn with reasoning.
-    return result(def, "warn",
-      "Cron presence inferred via downstream freshness checks (aggregate-daily, email-queue, tracking-health)",
-      { note: "Direct cron.job inspection requires DB-side helper" }, t);
+    const { data, error } = await admin.rpc("qa_list_cron_jobs");
+    if (error) {
+      return result(def, "fail",
+        `Cron registry helper failed: ${error.message}`,
+        { error: error.message }, t);
+    }
+    const jobs = (data || []) as Array<{ jobname: string; active: boolean; last_run_started_at: string | null; last_run_status: string | null }>;
+    // Required job patterns (regex match — flexible on naming)
+    const required = [
+      { pattern: /nightly[-_]summary|daily[-_]summary/i, name: "nightly-summary" },
+      { pattern: /aggregate[-_]daily/i, name: "aggregate-daily" },
+      { pattern: /tracking[-_]health|check[-_]tracking/i, name: "check-tracking-health" },
+      { pattern: /process[-_]email[-_]queue|email[-_]queue/i, name: "process-email-queue" },
+      { pattern: /billing[-_]state[-_]manager|lifecycle/i, name: "billing-state-manager" },
+    ];
+    const checked = required.map((req) => {
+      const found = jobs.find((j) => req.pattern.test(j.jobname || ""));
+      const ageMin = found?.last_run_started_at
+        ? (Date.now() - new Date(found.last_run_started_at).getTime()) / 60000
+        : null;
+      return {
+        name: req.name,
+        found: !!found,
+        active: found?.active ?? false,
+        jobname: found?.jobname,
+        last_run_status: found?.last_run_status,
+        last_run_minutes_ago: ageMin === null ? null : Math.round(ageMin),
+      };
+    });
+    const missing = checked.filter((c) => !c.found || !c.active);
+    if (missing.length === 0) {
+      return result(def, "pass",
+        `All ${checked.length} required cron jobs scheduled and active`,
+        { required_jobs: checked, total_cron_jobs: jobs.length }, t);
+    }
+    return result(def, "fail",
+      `${missing.length} required cron job(s) missing or inactive`,
+      { required_jobs: checked, missing: missing.map((c) => c.name), total_cron_jobs: jobs.length }, t);
   },
 
   // ── plugin ──
@@ -596,27 +769,32 @@ async function buildManualResult(def: CheckDef, app_version: string): Promise<Ch
 }
 
 // ─── Verdict computation ───
+// Stop-ship rule: ANY critical-severity fail/error blocks the release.
+// High/medium/low fails are recorded but DO NOT block ship — they degrade verdict
+// to "passed_with_warnings" so the team can ship and follow up.
 function computeVerdict(results: CheckResult[]): {
   status: "passed" | "passed_with_warnings" | "failed";
+  ship_blocked: boolean;
   totals: Record<string, number>;
 } {
   const totals = { pass: 0, fail: 0, warn: 0, not_run: 0, manual_pending: 0, error: 0 };
   let hasCriticalFail = false;
-  let hasAnyFail = false;
+  let hasNonCriticalFail = false;
   let hasWarn = false;
   let hasPending = false;
   for (const r of results) {
     totals[r.status] = (totals[r.status] ?? 0) + 1;
     if (r.status === "fail" || r.status === "error") {
-      hasAnyFail = true;
       if (r.severity === "critical") hasCriticalFail = true;
+      else hasNonCriticalFail = true;
     }
     if (r.status === "warn") hasWarn = true;
     if (r.status === "manual_pending") hasPending = true;
   }
-  if (hasCriticalFail || hasAnyFail) return { status: "failed", totals };
-  if (hasWarn || hasPending) return { status: "passed_with_warnings", totals };
-  return { status: "passed", totals };
+  const ship_blocked = hasCriticalFail;
+  if (hasCriticalFail) return { status: "failed", ship_blocked, totals };
+  if (hasNonCriticalFail || hasWarn || hasPending) return { status: "passed_with_warnings", ship_blocked, totals };
+  return { status: "passed", ship_blocked, totals };
 }
 
 // ─── HTTP entry ───
@@ -701,10 +879,18 @@ Deno.serve(async (req) => {
 
     const verdict = computeVerdict(results);
     await admin.from("release_qa_runs").update({
-      status: verdict.status, totals: verdict.totals, completed_at: new Date().toISOString(),
+      status: verdict.status, totals: verdict.totals,
+      ship_blocked: verdict.ship_blocked,
+      completed_at: new Date().toISOString(),
     }).eq("id", run.id);
 
-    return json({ run_id: run.id, status: verdict.status, totals: verdict.totals, results });
+    return json({
+      run_id: run.id,
+      status: verdict.status,
+      ship_blocked: verdict.ship_blocked,
+      totals: verdict.totals,
+      results,
+    });
   } catch (e) {
     return json({ error: "Internal error", detail: (e as Error).message }, 500);
   }

@@ -115,7 +115,7 @@ export const RELEASE_QA_CHECKS: ReleaseQACheck[] = [
       "Complete signup confirmation email + auth",
       "Complete /onboarding form",
       "Confirm new org appears in /admin-setup → Subscriber Sites with status=active",
-      "Paste the new org name + Stripe customer id in the notes",
+      "EVIDENCE REQUIRED in notes: (a) new org name, (b) Stripe customer id (cus_…), (c) timestamp signup completed",
     ],
   },
 
@@ -164,6 +164,7 @@ export const RELEASE_QA_CHECKS: ReleaseQACheck[] = [
       "Filter for 'track-pageview' and 'track-event'",
       "Reload — confirm zero requests fire before consent banner click",
       "Click Accept — confirm requests start flowing",
+      "EVIDENCE REQUIRED in notes: (a) test site URL, (b) screenshot link of empty network panel pre-consent, (c) screenshot link of requests post-consent",
     ],
   },
 
@@ -211,7 +212,7 @@ export const RELEASE_QA_CHECKS: ReleaseQACheck[] = [
       "Connect plugin on test WP site that has Gravity Forms + Avada/Fusion + CF7 installed",
       "Wait 10 minutes",
       "Open /forms — confirm forms from all 3 builders are listed",
-      "Paste form counts per builder in notes",
+      "EVIDENCE REQUIRED in notes: (a) site URL, (b) form count per builder (e.g. 'Gravity: 2, Avada: 1, CF7: 1'), (c) screenshot link of /forms page",
     ],
   },
 
@@ -269,6 +270,7 @@ export const RELEASE_QA_CHECKS: ReleaseQACheck[] = [
       "Confirm org status = grace_period in /admin-setup",
       "Click Reactivate banner CTA — confirm Stripe portal opens or fresh checkout",
       "Complete reactivation; confirm org status = active",
+      "EVIDENCE REQUIRED in notes: (a) test org id, (b) Stripe sub id (sub_…), (c) timestamps of cancel + reactivate events",
     ],
   },
   {
@@ -284,6 +286,7 @@ export const RELEASE_QA_CHECKS: ReleaseQACheck[] = [
       "Sign in as a paying test user",
       "Open /account → Manage Billing",
       "Confirm Stripe portal loads",
+      "EVIDENCE REQUIRED in notes: (a) test user email, (b) portal URL prefix shown (billing.stripe.com/p/session/…), (c) HTTP status from network panel",
     ],
   },
 
@@ -341,6 +344,7 @@ export const RELEASE_QA_CHECKS: ReleaseQACheck[] = [
       "Open Network tab; load /dashboard, /forms, /performance",
       "Inspect responses: no rows referencing Org B's id, sites, or emails",
       "Repeat for /entries (form leads)",
+      "EVIDENCE REQUIRED in notes: (a) Org A id, (b) Org B id used for comparison, (c) sample of 1 response payload confirming only Org A data, (d) tester email",
     ],
   },
 

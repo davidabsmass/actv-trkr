@@ -98,6 +98,7 @@ const Auth = () => {
         }
       }
 
+      sessionStorage.removeItem(PENDING_OTP_KEY);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message);
@@ -107,12 +108,14 @@ const Auth = () => {
   };
 
   const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
     clearMessages();
     setLoading(true);
     try {
       const { error } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
       if (error) throw error;
       setMessage("A new verification code has been sent to your email.");
+      setResendCooldown(30);
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -61,6 +61,9 @@ export default function SubscriberSitesPanel() {
   const [filter, setFilter] = useState<"active_key" | "all">("active_key");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState<"member" | "admin">("member");
 
   // Add user dialog state
   const [addUserOrg, setAddUserOrg] = useState<{ id: string; name: string } | null>(null);

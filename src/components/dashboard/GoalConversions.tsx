@@ -355,7 +355,7 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
           <IconTooltip label="Tracks how many times visitors complete your defined goals — page visits, button clicks, form submissions, etc.">
             <Info className="h-3.5 w-3.5 text-muted-foreground" />
           </IconTooltip>
-          <Link to="/settings?tab=general" className="text-[11px] text-primary hover:underline flex items-center gap-1">
+          <Link to="/settings?tab=goals" className="text-[11px] text-primary hover:underline flex items-center gap-1">
             <Settings2 className="h-3 w-3" /> Manage Goals
           </Link>
         </div>
@@ -379,7 +379,7 @@ export function GoalConversions({ orgId, startDate, endDate }: { orgId: string |
             <Info className="h-3.5 w-3.5 text-muted-foreground" />
           </IconTooltip>
           <span className="text-xs font-mono-data text-muted-foreground">{total} {t("dashboard.total")}</span>
-          <Link to="/settings?tab=general" className="text-[11px] text-primary hover:underline flex items-center gap-1">
+          <Link to="/settings?tab=goals" className="text-[11px] text-primary hover:underline flex items-center gap-1">
             <Settings2 className="h-3 w-3" /> Manage
           </Link>
         </div>

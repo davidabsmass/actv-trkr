@@ -390,11 +390,28 @@ export default function AdminSetup() {
   const [detailEmail, setDetailEmail] = useState<string | null>(null);
   const [detailSubscriberId, setDetailSubscriberId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const [recalcingMrr, setRecalcingMrr] = useState(false);
 
   const openDetail = (sub: any) => {
     setDetailEmail(sub.email);
     setDetailSubscriberId(sub.id);
     setDetailOpen(true);
+  };
+
+  const handleRecalcMrr = async () => {
+    setRecalcingMrr(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("recalc-subscriber-mrr");
+      if (error) throw error;
+      const updated = (data as any)?.updated ?? 0;
+      const processed = (data as any)?.processed ?? 0;
+      toast.success(`Recalculated MRR — ${updated} of ${processed} subscribers updated`);
+      queryClient.invalidateQueries({ queryKey: ["owner_subscribers"] });
+    } catch (e: any) {
+      toast.error(e?.message || "MRR recalculation failed");
+    } finally {
+      setRecalcingMrr(false);
+    }
   };
 
   const handleDeleteOrg = async (orgId: string, orgName: string) => {

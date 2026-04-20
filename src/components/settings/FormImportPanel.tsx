@@ -95,7 +95,7 @@ const BUILDER_LABELS: Record<string, string> = {
 };
 
 const STATUS_CONFIG: Record<string, { color: string; icon: any; label: string }> = {
-  detected: { color: "bg-muted text-muted-foreground", icon: FileText, label: "Detected" },
+  detected: { color: "bg-muted text-muted-foreground group-hover:bg-foreground group-hover:text-background", icon: FileText, label: "Detected" },
   importing: { color: "bg-primary/10 text-primary", icon: Loader2, label: "Importing" },
   synced: { color: "bg-green-500/10 text-green-600", icon: CheckCircle2, label: "Synced" },
   error: { color: "bg-destructive/10 text-destructive", icon: AlertTriangle, label: "Error" },
@@ -182,11 +182,28 @@ export default function FormImportPanel() {
 
   const startImport = async (integration: FormIntegration) => {
     try {
+      // Clear any stale terminal-state jobs for this integration so a retry
+      // never collides with a leftover failed/cancelled/completed row that
+      // could confuse the active-job guard.
+      const staleJobs = (integration.form_import_jobs || []).filter(j =>
+        ["failed", "cancelled", "stalled"].includes(j.status)
+      );
+      for (const j of staleJobs) {
+        try { await invokeAction("cancel", { job_id: j.id }); } catch { /* best-effort */ }
+      }
+
       await invokeAction("create", { form_integration_id: integration.id, batch_size: 100 });
       toast({ title: "Import started", description: `Background processing will handle ${integration.form_name}. You can close this tab.` });
       invalidate();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err?.message || "Failed to start import" });
+      const raw = err?.message || "Failed to start import";
+      // Surface known server errors in a friendlier way
+      const friendly = /already active/i.test(raw)
+        ? "An import is already running for this form. Open the form to pause or cancel it first."
+        : /Site not found|Access denied/i.test(raw)
+          ? "We couldn't access this site. Make sure the WP plugin is connected and try a Re-scan."
+          : raw;
+      toast({ variant: "destructive", title: "Couldn't start import", description: friendly });
     }
   };
 
@@ -357,7 +374,7 @@ export default function FormImportPanel() {
             <div key={integration.id} className="border border-border rounded-md">
               <button
                 onClick={() => setExpandedId(isExpanded ? null : integration.id)}
-                className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/50 transition-colors"
+                className="group w-full flex items-center gap-3 p-3 text-left hover:bg-muted/50 transition-colors"
               >
                 <StatusIcon className={`h-4 w-4 flex-shrink-0 ${integration.status === "importing" ? "animate-spin" : ""}`} />
                 <div className="min-w-0 flex-1">
@@ -471,7 +488,7 @@ export default function FormImportPanel() {
                     )}
 
                     {integration.status === "needs_review" && (
-                      <Button size="sm" variant="outline" onClick={() => startImport(integration)} className="text-xs h-7 border-amber-500/40 text-amber-600 hover:bg-amber-500/10">
+                      <Button size="sm" variant="outline" onClick={() => startImport(integration)} className="text-xs h-7 border-amber-500/40 text-amber-600 bg-transparent hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/60">
                         <Play className="h-3 w-3 mr-1" /> Import most recent 8,000
                       </Button>
                     )}

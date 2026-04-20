@@ -217,11 +217,14 @@ Deno.serve(async (req) => {
       const payload = msg.message
 
       const isTransactionalEmail = payload?.purpose === 'transactional'
+      const isAuthQueue = queue === 'auth_emails'
       const hasValidIdempotencyKey = typeof payload?.idempotency_key === 'string' && payload.idempotency_key.length > 0
       const hasValidRunId = typeof payload?.run_id === 'string' && payload.run_id.length > 0
       const hasValidRecipient = typeof payload?.to === 'string' && payload.to.length > 0
+      const hasValidAuthIdentifier = hasValidRunId || (isAuthQueue && hasValidIdempotencyKey)
+      const hasValidTransactionalIdentifier = isTransactionalEmail && hasValidIdempotencyKey
 
-      if (!hasValidRecipient || (!hasValidRunId && !(isTransactionalEmail && hasValidIdempotencyKey))) {
+      if (!hasValidRecipient || (!hasValidAuthIdentifier && !hasValidTransactionalIdentifier)) {
         await moveToDlq(
           supabase,
           queue,

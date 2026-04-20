@@ -204,8 +204,9 @@ const runners: Record<string, Runner> = {
     const t = Date.now();
     const r = await probeFnReachable("create-checkout");
     return result(def, r.ok ? "pass" : "fail",
-      r.ok ? `Function code reachable (HTTP ${r.status})` : `Unreachable / broken (HTTP ${r.status})`,
-      { http_status: r.status, probe: "POST {} unauthenticated" }, t);
+      r.ok ? `Function deployed (HTTP ${r.status} via ${r.method})`
+           : `Unreachable / not deployed (HTTP ${r.status} via ${r.method})`,
+      { http_status: r.status, probe_method: r.method }, t);
   },
   "lifecycle.org_provisioning_rpc": async (def) => {
     const t = Date.now();

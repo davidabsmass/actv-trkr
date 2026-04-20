@@ -769,27 +769,32 @@ async function buildManualResult(def: CheckDef, app_version: string): Promise<Ch
 }
 
 // ─── Verdict computation ───
+// Stop-ship rule: ANY critical-severity fail/error blocks the release.
+// High/medium/low fails are recorded but DO NOT block ship — they degrade verdict
+// to "passed_with_warnings" so the team can ship and follow up.
 function computeVerdict(results: CheckResult[]): {
   status: "passed" | "passed_with_warnings" | "failed";
+  ship_blocked: boolean;
   totals: Record<string, number>;
 } {
   const totals = { pass: 0, fail: 0, warn: 0, not_run: 0, manual_pending: 0, error: 0 };
   let hasCriticalFail = false;
-  let hasAnyFail = false;
+  let hasNonCriticalFail = false;
   let hasWarn = false;
   let hasPending = false;
   for (const r of results) {
     totals[r.status] = (totals[r.status] ?? 0) + 1;
     if (r.status === "fail" || r.status === "error") {
-      hasAnyFail = true;
       if (r.severity === "critical") hasCriticalFail = true;
+      else hasNonCriticalFail = true;
     }
     if (r.status === "warn") hasWarn = true;
     if (r.status === "manual_pending") hasPending = true;
   }
-  if (hasCriticalFail || hasAnyFail) return { status: "failed", totals };
-  if (hasWarn || hasPending) return { status: "passed_with_warnings", totals };
-  return { status: "passed", totals };
+  const ship_blocked = hasCriticalFail;
+  if (hasCriticalFail) return { status: "failed", ship_blocked, totals };
+  if (hasNonCriticalFail || hasWarn || hasPending) return { status: "passed_with_warnings", ship_blocked, totals };
+  return { status: "passed", ship_blocked, totals };
 }
 
 // ─── HTTP entry ───
@@ -874,10 +879,18 @@ Deno.serve(async (req) => {
 
     const verdict = computeVerdict(results);
     await admin.from("release_qa_runs").update({
-      status: verdict.status, totals: verdict.totals, completed_at: new Date().toISOString(),
+      status: verdict.status, totals: verdict.totals,
+      ship_blocked: verdict.ship_blocked,
+      completed_at: new Date().toISOString(),
     }).eq("id", run.id);
 
-    return json({ run_id: run.id, status: verdict.status, totals: verdict.totals, results });
+    return json({
+      run_id: run.id,
+      status: verdict.status,
+      ship_blocked: verdict.ship_blocked,
+      totals: verdict.totals,
+      results,
+    });
   } catch (e) {
     return json({ error: "Internal error", detail: (e as Error).message }, 500);
   }

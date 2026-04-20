@@ -264,6 +264,9 @@ class ACTV_Bootstrap {
 		// Settings/admin first (no deps).
 		$wrap( 'settings',         'Settings',         'MM_Settings' );
 
+		// HMAC verifier (registers its bootstrap REST route).
+		$wrap( 'hmac',             'HMAC Verifier',    'MM_Hmac' );
+
 		// Critical user-facing modules.
 		$wrap( 'tracker',          'Tracker',          'MM_Tracker',         null, array(), true );
 		$wrap( 'forms',            'Forms',            'MM_Forms',           null, array(), true );

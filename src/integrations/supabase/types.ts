@@ -3895,27 +3895,51 @@ export type Database = {
       }
       orgs: {
         Row: {
+          archived_at: string | null
           billing_exempt: boolean
           created_at: string
+          grace_period_ends_at: string | null
           id: string
+          lifecycle_email_cancelled_sent_at: string | null
+          lifecycle_email_day25_sent_at: string | null
+          lifecycle_email_day80_sent_at: string | null
           name: string
           seo_visibility_level: string
+          status: Database["public"]["Enums"]["org_lifecycle_status"]
+          status_change_reason: string | null
+          status_changed_at: string
           timezone: string
         }
         Insert: {
+          archived_at?: string | null
           billing_exempt?: boolean
           created_at?: string
+          grace_period_ends_at?: string | null
           id?: string
+          lifecycle_email_cancelled_sent_at?: string | null
+          lifecycle_email_day25_sent_at?: string | null
+          lifecycle_email_day80_sent_at?: string | null
           name: string
           seo_visibility_level?: string
+          status?: Database["public"]["Enums"]["org_lifecycle_status"]
+          status_change_reason?: string | null
+          status_changed_at?: string
           timezone?: string
         }
         Update: {
+          archived_at?: string | null
           billing_exempt?: boolean
           created_at?: string
+          grace_period_ends_at?: string | null
           id?: string
+          lifecycle_email_cancelled_sent_at?: string | null
+          lifecycle_email_day25_sent_at?: string | null
+          lifecycle_email_day80_sent_at?: string | null
           name?: string
           seo_visibility_level?: string
+          status?: Database["public"]["Enums"]["org_lifecycle_status"]
+          status_change_reason?: string | null
+          status_changed_at?: string
           timezone?: string
         }
         Relationships: []
@@ -7570,6 +7594,14 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      set_org_lifecycle_status: {
+        Args: {
+          p_org_id: string
+          p_reason?: string
+          p_status: Database["public"]["Enums"]["org_lifecycle_status"]
+        }
+        Returns: undefined
+      }
       upsert_session: {
         Args: {
           p_occurred_at: string
@@ -7589,6 +7621,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      org_lifecycle_status: "active" | "grace_period" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -7717,6 +7750,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      org_lifecycle_status: ["active", "grace_period", "archived"],
     },
   },
 } as const

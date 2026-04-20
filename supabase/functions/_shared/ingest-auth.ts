@@ -29,6 +29,7 @@ export type IngestAuthResult =
       ok: false;
       status: number;
       error: string;
+      payload?: Record<string, unknown>;
     };
 
 async function sha256Hex(input: string): Promise<string> {
@@ -61,6 +62,43 @@ function extractLegacyApiKey(req: Request, body: any): string | null {
   return null;
 }
 
+/**
+ * Verify the resolved org is in 'active' status. Billing-exempt orgs are
+ * always allowed regardless of status. Returns null if allowed, or an
+ * error result with 402 + structured payload (so plugin can show
+ * "Tracking paused. Reactivate your subscription." notice).
+ */
+async function checkOrgLifecycle(supabase: any, orgId: string): Promise<IngestAuthResult | null> {
+  const { data: org } = await supabase
+    .from("orgs")
+    .select("status, billing_exempt, grace_period_ends_at, archived_at")
+    .eq("id", orgId)
+    .maybeSingle();
+  if (!org) {
+    return { ok: false, status: 404, error: "Unknown org" };
+  }
+  if (org.billing_exempt === true) return null; // exempt orgs always allowed
+  if (org.status === "active") return null;
+
+  const message =
+    org.status === "grace_period"
+      ? "Subscription inactive. Reactivate to resume tracking."
+      : "Account archived. Reactivate to restore access and resume tracking.";
+
+  return {
+    ok: false,
+    status: 402,
+    error: message,
+    payload: {
+      status: "inactive",
+      org_status: org.status,
+      message,
+      grace_period_ends_at: org.grace_period_ends_at,
+      archived_at: org.archived_at,
+    },
+  };
+}
+
 export async function authenticateIngestRequest(opts: {
   req: Request;
   body: any;
@@ -89,6 +127,10 @@ export async function authenticateIngestRequest(opts: {
       return { ok: false, status: 401, error: "Invalid or revoked ingest token" };
     }
 
+    // Lifecycle gate (billing/grace/archived)
+    const lifecycleErr = await checkOrgLifecycle(supabase, tokenRow.org_id);
+    if (lifecycleErr) return lifecycleErr;
+
     // Best-effort last_used_at update (non-blocking)
     supabase
       .from("site_ingest_tokens")
@@ -115,13 +157,6 @@ export async function authenticateIngestRequest(opts: {
     return { ok: false, status: 401, error: "Invalid credential format" };
   }
 
-  // NOTE: We previously rejected 64-char hex strings here on the assumption
-  // that they must be the stored key_hash being replayed. That guard
-  // produced false positives because legitimately-minted raw keys are
-  // also 64 hex chars. The hash lookup below is the real protection —
-  // feeding a hash as the credential would just sha256 it again and
-  // fail to match any stored row.
-
   const keyHash = await sha256Hex(legacyKey);
   const { data: akRow } = await supabase
     .from("api_keys")
@@ -132,6 +167,10 @@ export async function authenticateIngestRequest(opts: {
   if (!akRow) {
     return { ok: false, status: 401, error: "Invalid API key" };
   }
+
+  // Lifecycle gate
+  const lifecycleErr = await checkOrgLifecycle(supabase, akRow.org_id);
+  if (lifecycleErr) return lifecycleErr;
 
   // Log the deprecated usage so we can hunt down sites still leaking
   // the admin key in page source. Fire-and-forget.

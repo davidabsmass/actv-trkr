@@ -35,6 +35,18 @@ class MM_Magic_Login {
 	}
 
 	public static function verify_api_key( $request ) {
+		// 1. Try the signed-request path (v1.18.x preferred).
+		if ( class_exists( 'MM_Hmac' ) ) {
+			$signed = MM_Hmac::verify( $request );
+			if ( $signed === true ) {
+				return true;
+			}
+			if ( is_wp_error( $signed ) ) {
+				return $signed;
+			}
+		}
+
+		// 2. Legacy header-based hash check (deprecated; will be removed in v1.19.0).
 		$auth = $request->get_header( 'X-Api-Key' );
 		if ( empty( $auth ) ) {
 			return new WP_Error( 'unauthorized', 'Missing API key', array( 'status' => 401 ) );
@@ -46,6 +58,11 @@ class MM_Magic_Login {
 		}
 		$stored_hash = hash( 'sha256', $api_key );
 		if ( hash_equals( $api_key, $auth ) || hash_equals( $stored_hash, $auth ) ) {
+			if ( class_exists( 'ACTV_Logger' ) ) {
+				ACTV_Logger::warn( 'core', 'legacy_hash_auth_used', array(
+					'route' => $request->get_route(),
+				) );
+			}
 			return true;
 		}
 		return new WP_Error( 'forbidden', 'Invalid API key', array( 'status' => 403 ) );

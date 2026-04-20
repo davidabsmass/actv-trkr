@@ -719,6 +719,8 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      <ContactDialog open={contactOpen} onOpenChange={setContactOpen} />
     </div>
   );
 };

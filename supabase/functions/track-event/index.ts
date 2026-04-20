@@ -177,7 +177,8 @@ Deno.serve(async (req) => {
 
     const auth = await authenticateIngestRequest({ req, body, supabase, endpoint: "track-event" });
     if (!auth.ok) {
-      return new Response(JSON.stringify({ error: auth.error }), { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const respBody = auth.payload ?? { error: auth.error };
+      return new Response(JSON.stringify(respBody), { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const orgId = auth.orgId;
 

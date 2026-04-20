@@ -5760,6 +5760,7 @@ export type Database = {
       }
       site_tracking_status: {
         Row: {
+          consecutive_silent_checks: number
           events_last_hour: number
           heartbeats_last_hour: number
           id: string
@@ -5775,6 +5776,7 @@ export type Database = {
           verifier_last_status: string | null
         }
         Insert: {
+          consecutive_silent_checks?: number
           events_last_hour?: number
           heartbeats_last_hour?: number
           id?: string
@@ -5790,6 +5792,7 @@ export type Database = {
           verifier_last_status?: string | null
         }
         Update: {
+          consecutive_silent_checks?: number
           events_last_hour?: number
           heartbeats_last_hour?: number
           id?: string

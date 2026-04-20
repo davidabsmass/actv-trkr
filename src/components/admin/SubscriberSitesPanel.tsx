@@ -618,7 +618,10 @@ export default function SubscriberSitesPanel() {
           if (!open) {
             setAddUserOrg(null);
             setNewUserEmail("");
+            setNewUserName("");
             setNewUserRole("member");
+            setNewUserTempPassword("");
+            setShowTempPassword(false);
           }
         }}
       >
@@ -626,10 +629,23 @@ export default function SubscriberSitesPanel() {
           <DialogHeader>
             <DialogTitle>Add user to {addUserOrg?.name}</DialogTitle>
             <DialogDescription>
-              The user will receive an email with a link to set their password. If they don't have an account yet, one will be created automatically.
+              {newUserTempPassword
+                ? "A temporary password will be set on the account. Share it securely — the user can change it after their first login."
+                : "The user will receive an email with a link to set their password. If they don't have an account yet, one will be created automatically."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-user-name">Full name</Label>
+              <Input
+                id="new-user-name"
+                type="text"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                placeholder="Jane Doe"
+                autoComplete="off"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="new-user-email">Email address</Label>
               <Input
@@ -652,6 +668,64 @@ export default function SubscriberSitesPanel() {
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="new-user-temp-password">Temporary password (optional)</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={generateTempPassword}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" /> Generate
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="new-user-temp-password"
+                    type={showTempPassword ? "text" : "password"}
+                    value={newUserTempPassword}
+                    onChange={(e) => setNewUserTempPassword(e.target.value)}
+                    placeholder="Leave blank to email a setup link"
+                    autoComplete="new-password"
+                    className="pr-10 font-mono text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTempPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showTempPassword ? "Hide password" : "Show password"}
+                  >
+                    {showTempPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {newUserTempPassword && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(newUserTempPassword);
+                        toast.success("Copied to clipboard");
+                      } catch {
+                        toast.error("Could not copy");
+                      }
+                    }}
+                    aria-label="Copy password"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {newUserTempPassword
+                  ? "Skips the password-setup email. Share this with the user securely."
+                  : "If left blank, the user gets an email link to choose their own password."}
+              </p>
             </div>
           </div>
           <DialogFooter>

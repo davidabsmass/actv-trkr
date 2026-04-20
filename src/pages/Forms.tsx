@@ -7,7 +7,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
-import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore, AlertCircle, RefreshCw, Upload, ArrowUpCircle, Trash2 } from "lucide-react";
+import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore, AlertCircle, RefreshCw, Upload, ArrowUpCircle, Trash2, PowerOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -336,7 +336,7 @@ export default function Forms() {
       setSearchParams(searchParams, { replace: true });
     }
   };
-  const [showArchived, setShowArchived] = useState(false);
+  const [listTab, setListTab] = useState<"active" | "disabled" | "archived">("active");
   const [days, setDays] = useState<number | null>(30);
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
 
@@ -616,7 +616,7 @@ export default function Forms() {
   const activeForms = forms?.filter((f) => !f.archived && f.is_active !== false) || [];
   const inactiveForms = forms?.filter((f) => !f.archived && f.is_active === false) || [];
   const archivedForms = forms?.filter((f) => f.archived) || [];
-  const displayedForms = showArchived ? archivedForms : [...activeForms, ...inactiveForms];
+  const displayedForms = listTab === "active" ? activeForms : listTab === "disabled" ? inactiveForms : archivedForms;
 
   const { data: leadCounts } = useQuery({
     queryKey: ["lead_counts_by_form_entries", orgId],
@@ -692,22 +692,25 @@ export default function Forms() {
       <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">{t("forms.formsTitle")}</h3>
-          {archivedForms.length > 0 && (
-            <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setShowArchived(!showArchived)}>
-              <Archive className="h-3.5 w-3.5" />
-              {showArchived ? t("forms.showActive") : `${t("forms.archived")} (${archivedForms.length})`}
-            </Button>
-          )}
+          <Tabs value={listTab} onValueChange={(value) => setListTab(value as "active" | "disabled" | "archived")}>
+            <TabsList className="h-9">
+              <TabsTrigger value="active" className="text-xs">Active ({activeForms.length})</TabsTrigger>
+              <TabsTrigger value="disabled" className="text-xs">Disabled ({inactiveForms.length})</TabsTrigger>
+              <TabsTrigger value="archived" className="text-xs">Archived ({archivedForms.length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
         {formsLoading ? (
           <div className="p-8 text-center text-muted-foreground text-sm">{t("forms.loadingForms")}</div>
         ) : displayedForms.length === 0 ? (
            <div className="p-8 text-center text-muted-foreground text-sm">
-            {showArchived
+            {listTab === "archived"
               ? t("forms.noArchivedForms")
-              : !forms || forms.length === 0
-                ? `${t("forms.noFormsYet")} ${t("forms.noFormsSyncedDesc")}`
-                : t("forms.allFormsArchived")}
+              : listTab === "disabled"
+                ? "No disabled forms in WordPress."
+                : !forms || forms.length === 0
+                  ? `${t("forms.noFormsYet")} ${t("forms.noFormsSyncedDesc")}`
+                  : "No active forms available."}
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -718,7 +721,11 @@ export default function Forms() {
                 className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
-                  <FileText className={`h-4 w-4 flex-shrink-0 ${form.archived ? "text-muted-foreground" : "text-primary"}`} />
+                  {form.is_active === false && !form.archived ? (
+                    <PowerOff className="h-4 w-4 flex-shrink-0 text-warning" />
+                  ) : (
+                    <FileText className={`h-4 w-4 flex-shrink-0 ${form.archived ? "text-muted-foreground" : "text-primary"}`} />
+                  )}
                   <div>
                     <div className="flex items-center gap-2">
                       <p className={`text-sm font-medium ${form.archived ? "text-muted-foreground" : "text-foreground"}`}>{form.name}</p>

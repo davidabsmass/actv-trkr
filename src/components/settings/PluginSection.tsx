@@ -83,16 +83,30 @@ export default function PluginSection() {
 
   const siteVersion = latestReportedSite?.plugin_version ?? null;
   const siteDomain = latestReportedSite?.domain ?? null;
+  const lastHeartbeatAt = latestReportedSite?.last_heartbeat_at ?? null;
 
-  // Only show update banner if the heartbeat is recent enough to trust the reported version
-  const heartbeatIsRecent = (() => {
-    if (!latestReportedSite?.last_heartbeat_at) return false;
-    const ageMs = Date.now() - new Date(latestReportedSite.last_heartbeat_at).getTime();
-    return ageMs < 30 * 60 * 1000; // 30 minutes
+  const heartbeatAgeLabel = (() => {
+    if (!lastHeartbeatAt) return null;
+    const ageMs = Date.now() - new Date(lastHeartbeatAt).getTime();
+    const mins = Math.floor(ageMs / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   })();
 
+  const heartbeatIsStale = (() => {
+    if (!lastHeartbeatAt) return true;
+    const ageMs = Date.now() - new Date(lastHeartbeatAt).getTime();
+    return ageMs >= 30 * 60 * 1000; // 30 minutes
+  })();
+
+  // Show update badge whenever the reported version is behind, regardless of heartbeat age.
+  // A stale heartbeat is surfaced separately so users can tell what they're looking at.
   const needsUpdate = Boolean(
-    heartbeatIsRecent && siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
+    siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
   );
 
   const handleDownload = async () => {
@@ -127,7 +141,9 @@ export default function PluginSection() {
         <div className="flex items-center gap-2">
           {siteVersion && (
             <span className="text-xs text-muted-foreground font-mono">
-              Last reported v{siteVersion}
+              {siteDomain ? `${siteDomain} · ` : ""}v{siteVersion}
+              {heartbeatAgeLabel ? ` · ${heartbeatAgeLabel}` : ""}
+              {heartbeatIsStale ? " (stale)" : ""}
             </span>
           )}
           {needsUpdate && (

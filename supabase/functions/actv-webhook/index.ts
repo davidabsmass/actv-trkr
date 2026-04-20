@@ -161,7 +161,7 @@ serve(async (req) => {
         if (subscriptionId) {
           try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId, {
-              expand: ["discount.coupon"],
+              expand: ["discounts.coupon", "discount.coupon"],
             });
             mrr = computeMrrFromSubscription(sub);
             logStep("MRR derived from subscription", {
@@ -412,7 +412,7 @@ serve(async (req) => {
         // Re-fetch with the discount expanded (webhook payload may not include the full coupon)
         let fullSub: Stripe.Subscription = sub;
         try {
-          fullSub = await stripe.subscriptions.retrieve(sub.id, { expand: ["discount.coupon"] });
+          fullSub = await stripe.subscriptions.retrieve(sub.id, { expand: ["discounts.coupon", "discount.coupon"] });
         } catch (e) {
           logStep("Failed to expand subscription for MRR recompute", { error: String(e) });
         }
@@ -449,7 +449,7 @@ serve(async (req) => {
           customer: customerId,
           status: "active",
           limit: 1,
-          expand: ["data.discount.coupon"],
+          expand: ["data.discounts.coupon", "data.discount.coupon"],
         });
 
         if (remainingSubs.data.length > 0) {

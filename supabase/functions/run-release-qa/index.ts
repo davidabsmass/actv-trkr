@@ -162,6 +162,22 @@ async function pingFnUnauth(name: string): Promise<{ status: number }> {
   }
 }
 
+// Stronger: prove the function code path runs. Unauthenticated POST should NOT
+// be a 404 (missing) or 5xx (broken). 401/400/200/422 are all acceptable.
+async function probeFnReachable(name: string): Promise<{ status: number; ok: boolean }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const ok = r.status !== 404 && r.status < 500;
+    return { status: r.status, ok };
+  } catch (_e) {
+    return { status: 0, ok: false };
+  }
+}
+
 // ─── Individual check runners ───
 type Runner = (def: CheckDef, ctx: { app_version: string }) => Promise<CheckResult>;
 
@@ -169,10 +185,10 @@ const runners: Record<string, Runner> = {
   // ── lifecycle ──
   "lifecycle.create_checkout_deployed": async (def) => {
     const t = Date.now();
-    const r = await pingFn("create-checkout");
+    const r = await probeFnReachable("create-checkout");
     return result(def, r.ok ? "pass" : "fail",
-      r.ok ? `Reachable (HTTP ${r.status})` : `Unreachable (HTTP ${r.status})`,
-      { http_status: r.status }, t);
+      r.ok ? `Function code reachable (HTTP ${r.status})` : `Unreachable / broken (HTTP ${r.status})`,
+      { http_status: r.status, probe: "POST {} unauthenticated" }, t);
   },
   "lifecycle.org_provisioning_rpc": async (def) => {
     const t = Date.now();
@@ -190,20 +206,57 @@ const runners: Record<string, Runner> = {
   "lifecycle.recent_signup_health": async (def) => {
     const t = Date.now();
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
-    const { data: orgs } = await admin.from("orgs").select("id, name, created_at").gte("created_at", since);
+    const { data: orgs } = await admin
+      .from("orgs").select("id, name, created_at").gte("created_at", since);
     if (!orgs?.length) {
       return result(def, "warn", "No orgs created in last 30d", { orgs_checked: 0 }, t);
     }
     const orgIds = orgs.map((o: any) => o.id);
-    const { data: consent } = await admin.from("consent_config").select("org_id").in("org_id", orgIds);
+
+    // Verify consent_config exists per org
+    const { data: consent } = await admin
+      .from("consent_config").select("org_id").in("org_id", orgIds);
     const haveConsent = new Set((consent || []).map((c: any) => c.org_id));
-    const missing = orgs.filter((o: any) => !haveConsent.has(o.id));
-    const status = missing.length === 0 ? "pass" : (missing.length <= 2 ? "warn" : "fail");
+
+    // Verify subscriber row exists (mapped via profiles.email -> org_users)
+    const { data: orgUsers } = await admin
+      .from("org_users").select("org_id, user_id").in("org_id", orgIds);
+    const userIds = Array.from(new Set((orgUsers || []).map((ou: any) => ou.user_id)));
+    const { data: profiles } = userIds.length
+      ? await admin.from("profiles").select("user_id, email").in("user_id", userIds)
+      : { data: [] as any[] };
+    const emails = Array.from(
+      new Set((profiles || []).map((p: any) => (p.email || "").toLowerCase()).filter(Boolean))
+    );
+    const { data: subs } = emails.length
+      ? await admin.from("subscribers").select("email").in("email", emails)
+      : { data: [] as any[] };
+    const haveSubByEmail = new Set((subs || []).map((s: any) => (s.email || "").toLowerCase()));
+
+    // Per-org: does ANY associated user have a subscriber row?
+    const userToEmail = new Map<string, string>();
+    (profiles || []).forEach((p: any) => userToEmail.set(p.user_id, (p.email || "").toLowerCase()));
+    const orgHasSub = new Map<string, boolean>();
+    (orgUsers || []).forEach((ou: any) => {
+      const e = userToEmail.get(ou.user_id);
+      if (e && haveSubByEmail.has(e)) orgHasSub.set(ou.org_id, true);
+    });
+
+    const missingConsent = orgs.filter((o: any) => !haveConsent.has(o.id));
+    const missingSub = orgs.filter((o: any) => !orgHasSub.get(o.id));
+
+    const totalMissing = missingConsent.length + missingSub.length;
+    const status: CheckStatus =
+      totalMissing === 0 ? "pass" : (totalMissing <= 2 ? "warn" : "fail");
     return result(def, status,
-      missing.length === 0
-        ? `${orgs.length} recent orgs, all have consent_config`
-        : `${missing.length}/${orgs.length} recent orgs missing consent_config`,
-      { orgs_checked: orgs.length, missing_consent: missing.map((o: any) => ({ id: o.id, name: o.name })) }, t);
+      totalMissing === 0
+        ? `${orgs.length} recent orgs, all have consent_config + subscriber`
+        : `${missingConsent.length} missing consent, ${missingSub.length} missing subscriber (of ${orgs.length})`,
+      {
+        orgs_checked: orgs.length,
+        missing_consent: missingConsent.map((o: any) => ({ id: o.id, name: o.name })),
+        missing_subscriber: missingSub.map((o: any) => ({ id: o.id, name: o.name })),
+      }, t);
   },
 
   // ── tracking ──

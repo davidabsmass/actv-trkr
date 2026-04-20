@@ -127,15 +127,20 @@ serve(async (req) => {
         const plan = metadata.plan || "monthly";
         const siteUrl = metadata.site_url || null;
 
-        // Derive MRR from the actual Stripe subscription price (no hardcoded fallbacks)
+        // Derive effective MRR from the Stripe subscription, applying any active discount
         let mrr = 0;
         if (subscriptionId) {
           try {
-            const sub = await stripe.subscriptions.retrieve(subscriptionId);
-            const price = sub.items.data[0]?.price;
-            const unitAmount = price?.unit_amount || 0;
-            const interval = price?.recurring?.interval;
-            mrr = interval === "year" ? (unitAmount / 100) / 12 : unitAmount / 100;
+            const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+              expand: ["discount.coupon"],
+            });
+            mrr = computeMrrFromSubscription(sub);
+            logStep("MRR derived from subscription", {
+              subscriptionId,
+              mrr,
+              hasDiscount: !!sub.discount,
+              couponId: sub.discount?.coupon?.id,
+            });
           } catch (priceErr) {
             logStep("Failed to derive MRR from subscription", { error: String(priceErr) });
           }

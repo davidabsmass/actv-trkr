@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { gateOrgLifecycle } from "../_shared/org-lifecycle-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -391,6 +392,12 @@ Deno.serve(async (req) => {
     const { data: akRow } = await supabase.from("api_keys").select("org_id").eq("key_hash", keyHash).is("revoked_at", null).maybeSingle();
     if (!akRow) return new Response(JSON.stringify({ error: "Invalid API key" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const orgId = akRow.org_id;
+
+    // ── Org lifecycle gate (cancel/grace/archived) ──
+    const gate = await gateOrgLifecycle(supabase, orgId);
+    if (gate) {
+      return new Response(JSON.stringify(gate.body), { status: gate.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const body = await req.json();
     const { entry, context, fields, provider } = body;

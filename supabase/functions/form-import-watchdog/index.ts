@@ -287,7 +287,18 @@ async function rediscoverSite(supabase: any, site: any): Promise<{ ok: boolean; 
     if (toDeactivate.length > 0) {
       await supabase.from("forms").update({ is_active: false }).in("id", toDeactivate);
     }
-    return { ok: true, marked_inactive: toDeactivate.length };
+
+    const { data: existingIntegrations } = await supabase
+      .from("form_integrations").select("id, external_form_id, builder_type, is_active")
+      .eq("site_id", site.id);
+    const integrationsToDeactivate = (existingIntegrations || [])
+      .filter((i: any) => !reportedKeys.has(`${i.builder_type}::${String(i.external_form_id)}`) && i.is_active !== false)
+      .map((i: any) => i.id);
+    if (integrationsToDeactivate.length > 0) {
+      await supabase.from("form_integrations").update({ is_active: false }).in("id", integrationsToDeactivate);
+    }
+
+    return { ok: true, marked_inactive: Math.max(toDeactivate.length, integrationsToDeactivate.length) };
   } catch {
     return { ok: false };
   }

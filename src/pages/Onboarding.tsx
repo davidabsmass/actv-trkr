@@ -77,14 +77,18 @@ const Onboarding = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const orgId = crypto.randomUUID();
+      const requestedOrgId = crypto.randomUUID();
 
-      // Atomically create org + admin membership via security-definer RPC
-      const { error: orgErr } = await supabase.rpc("create_org_with_admin", {
-        p_org_id: orgId,
+      // Atomically create org + admin membership via security-definer RPC.
+      // The RPC is idempotent: if the user already belongs to an org, it
+      // returns that existing org_id instead of creating a duplicate.
+      const { data: rpcOrgId, error: orgErr } = await supabase.rpc("create_org_with_admin", {
+        p_org_id: requestedOrgId,
         p_name: name,
       });
       if (orgErr) throw orgErr;
+
+      const orgId = (rpcOrgId as string) || requestedOrgId;
 
       // Generate API key and store hash
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))

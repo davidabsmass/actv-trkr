@@ -152,12 +152,27 @@ export default function ReleaseQAPanel() {
 
   const grouped = useMemo(() => {
     const out: Record<string, ReleaseQACheck[]> = {};
-    for (const c of RELEASE_QA_CHECKS) {
+    const source = shipBlockersOnly
+      ? RELEASE_QA_CHECKS.filter((c) => SHIP_BLOCKER_KEYS.has(c.key))
+      : RELEASE_QA_CHECKS;
+    for (const c of source) {
       if (!out[c.category]) out[c.category] = [];
       out[c.category].push(c);
     }
     return out;
-  }, []);
+  }, [shipBlockersOnly]);
+
+  // Ship-blocker progress: how many of the 4 are signed off / passing?
+  const shipBlockerStats = useMemo(() => {
+    const total = SHIP_BLOCKER_KEYS.size;
+    let done = 0;
+    for (const key of SHIP_BLOCKER_KEYS) {
+      const r = resultMap.get(key);
+      const so = signoffMap.get(key);
+      if (so || r?.status === "pass") done += 1;
+    }
+    return { done, total, complete: done === total };
+  }, [resultMap, signoffMap]);
 
   const runQA = async (scope: string) => {
     setRunningScope(scope);

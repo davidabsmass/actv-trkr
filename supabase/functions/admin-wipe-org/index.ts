@@ -163,7 +163,16 @@ serve(async (req) => {
     const { data: org, error: orgErr } = await admin
       .from("orgs").select("id, name").eq("id", orgId).maybeSingle();
     if (orgErr) throw orgErr;
-    if (!org) return json({ error: "Organization not found" }, 404);
+    if (!org) {
+      // Already wiped — treat as success so the UI can refresh cleanly.
+      return json({
+        ok: true,
+        org_name: confirmName || "(already removed)",
+        org_id: orgId,
+        report: { note: "Organization was already removed — nothing to do." },
+        errors: [],
+      });
+    }
 
     if (typeof confirmName !== "string" || confirmName.trim() !== org.name) {
       return json({ error: "Confirmation name does not match organization name" }, 400);

@@ -37,7 +37,7 @@ export const SignupEmail = ({
         <Section style={headerSection}>
           <a href="https://actvtrkr.com" style={{ textDecoration: 'none', display: 'block' }}>
             <Img
-              src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/render/image/public/email-assets/actv-trkr-email-header.jpg?width=600&quality=85&format=origin"
+              src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header-v2.jpg?v=20260421b"
               alt="ACTV TRKR"
               width="600"
               height="200"

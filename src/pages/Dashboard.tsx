@@ -4,7 +4,7 @@ import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_DASHBOARD } from "@/components/howto/page-content";
 import { GetStartedBanner } from "@/components/dashboard/GetStartedBanner";
-import { FirstSyncBanner } from "@/components/dashboard/FirstSyncBanner";
+
 import { useNavigate, Link } from "react-router-dom";
 import { format, subDays, startOfDay } from "date-fns";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
@@ -564,8 +564,6 @@ const Dashboard = () => {
   return (
     <div>
       {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
-
-      <FirstSyncBanner />
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>

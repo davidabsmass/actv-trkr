@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrg } from "@/hooks/use-org";
@@ -12,7 +13,13 @@ import { useOrg } from "@/hooks/use-org";
  */
 export function FirstSyncBanner() {
   const { orgId, orgCreatedAt } = useOrg();
+  const { pathname } = useLocation();
   const [dismissed, setDismissed] = useState(false);
+
+  // The Settings page renders its own, more specific connecting notice
+  // (`SettingsConnectingNotice`). Suppress this generic banner there to
+  // avoid duplicating the same message in two stacked cards.
+  const isSettings = pathname.startsWith("/settings");
 
   const storageKey = orgId ? `firstSyncBanner:dismissed:${orgId}` : null;
 
@@ -22,7 +29,7 @@ export function FirstSyncBanner() {
     setDismissed(localStorage.getItem(storageKey) === "1");
   }, [storageKey]);
 
-  if (!orgId || !orgCreatedAt || dismissed) return null;
+  if (!orgId || !orgCreatedAt || dismissed || isSettings) return null;
 
   // Only show during the first 24 hours after the org was created.
   const ageMs = Date.now() - new Date(orgCreatedAt).getTime();

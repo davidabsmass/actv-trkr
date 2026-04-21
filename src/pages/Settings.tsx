@@ -12,6 +12,7 @@ import WebsiteSetup from "@/pages/WebsiteSetup";
 import FormImportPanel from "@/components/settings/FormImportPanel";
 import FormsSection from "@/components/settings/FormsSection";
 import GoalsSection from "@/components/settings/GoalsSection";
+import { SettingsConnectingNotice } from "@/components/settings/SettingsConnectingNotice";
 
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -41,6 +42,8 @@ export default function SettingsPage() {
       <p className="text-sm text-muted-foreground mb-6">
         {t("settings.configFor", { orgName })}
       </p>
+
+      <SettingsConnectingNotice />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">

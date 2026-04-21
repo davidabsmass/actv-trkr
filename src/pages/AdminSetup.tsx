@@ -13,8 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { AdminCustomerDetail } from "@/components/admin/AdminCustomerDetail";
-import AppBibleChecklist from "@/components/admin/AppBibleChecklist";
-import AppBibleReviewBanner from "@/components/admin/AppBibleReviewBanner";
 import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
 import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
 import ReleaseQAPanel from "@/components/admin/ReleaseQAPanel";

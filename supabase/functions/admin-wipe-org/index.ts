@@ -206,7 +206,7 @@ serve(async (req) => {
     //    keeps every database statement well under the HTTP/edge timeout, so
     //    even very large organizations (10k+ leads, 40k+ lead_fields) wipe
     //    cleanly without "canceling statement due to statement timeout".
-    const BATCH = 5000;
+    const BATCH = 500;
     const MAX_ITERS_PER_TABLE = 400; // 2M rows safety cap
     for (const tbl of ORG_SCOPED_TABLES) {
       let totalForTable = 0;

@@ -7582,10 +7582,20 @@ export type Database = {
         Returns: string
       }
       compute_security_score: { Args: { p_org_id: string }; Returns: Json }
-      create_org_with_admin: {
-        Args: { p_name: string; p_org_id: string; p_timezone?: string }
-        Returns: string
-      }
+      create_org_with_admin:
+        | {
+            Args: { p_name: string; p_org_id: string; p_timezone?: string }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_allow_existing?: boolean
+              p_name: string
+              p_org_id: string
+              p_timezone?: string
+            }
+            Returns: string
+          }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

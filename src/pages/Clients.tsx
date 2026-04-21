@@ -110,6 +110,7 @@ function CreateOrgForm({
         p_org_id: orgId,
         p_name: newOrgName,
         p_timezone: newOrgTimezone,
+        p_allow_existing: false,
       });
       if (orgErr) throw orgErr;
       return { id: orgId, name: newOrgName };

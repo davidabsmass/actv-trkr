@@ -43,38 +43,12 @@ export default function DataWipePanel() {
   const { data: orgs, isLoading } = useQuery({
     queryKey: ["data_wipe_orgs"],
     queryFn: async (): Promise<OrgRow[]> => {
-      const { data: orgRows, error } = await supabase
-        .from("orgs")
-        .select("id, name, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const ids = (orgRows ?? []).map((o) => o.id);
-      if (ids.length === 0) return [];
-
-      const [{ data: members }, { data: sites }, { data: profiles }] = await Promise.all([
-        supabase.from("org_users").select("org_id, user_id").in("org_id", ids),
-        supabase.from("sites").select("org_id").in("org_id", ids),
-        supabase.from("profiles").select("user_id, email"),
-      ]);
-
-      const profMap = new Map<string, string>(
-        (profiles ?? []).map((p: any) => [p.user_id, p.email]),
-      );
-
-      return (orgRows ?? []).map((o: any) => {
-        const orgMembers = (members ?? []).filter((m: any) => m.org_id === o.id);
-        const orgSites = (sites ?? []).filter((s: any) => s.org_id === o.id);
-        return {
-          id: o.id,
-          name: o.name,
-          created_at: o.created_at,
-          member_count: orgMembers.length,
-          site_count: orgSites.length,
-          member_emails: orgMembers
-            .map((m: any) => profMap.get(m.user_id) || "—")
-            .filter(Boolean),
-        };
+      const { data, error } = await supabase.functions.invoke("admin-wipe-org", {
+        body: { action: "list" },
       });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return ((data as any)?.orgs ?? []) as OrgRow[];
     },
   });
 

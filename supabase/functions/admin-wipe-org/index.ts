@@ -117,11 +117,47 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
+    const action: string = body?.action || "wipe";
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    // ---- LIST MODE: return every org with member + site counts (owner-only) ----
+    if (action === "list") {
+      const { data: orgRows, error: lErr } = await admin
+        .from("orgs")
+        .select("id, name, created_at")
+        .order("created_at", { ascending: false });
+      if (lErr) throw lErr;
+      const ids = (orgRows ?? []).map((o: any) => o.id);
+      if (ids.length === 0) return json({ ok: true, orgs: [] });
+
+      const [{ data: mems }, { data: sts }, { data: profs }] = await Promise.all([
+        admin.from("org_users").select("org_id, user_id").in("org_id", ids),
+        admin.from("sites").select("org_id").in("org_id", ids),
+        admin.from("profiles").select("user_id, email"),
+      ]);
+      const profMap = new Map<string, string>(
+        (profs ?? []).map((p: any) => [p.user_id, p.email]),
+      );
+      const orgs = (orgRows ?? []).map((o: any) => {
+        const orgMembers = (mems ?? []).filter((m: any) => m.org_id === o.id);
+        const orgSites = (sts ?? []).filter((s: any) => s.org_id === o.id);
+        return {
+          id: o.id,
+          name: o.name,
+          created_at: o.created_at,
+          member_count: orgMembers.length,
+          site_count: orgSites.length,
+          member_emails: orgMembers
+            .map((m: any) => profMap.get(m.user_id) || "—")
+            .filter(Boolean),
+        };
+      });
+      return json({ ok: true, orgs });
+    }
+
     const orgId: string | undefined = body?.orgId;
     const confirmName: string | undefined = body?.confirmName;
     if (!orgId) return json({ error: "Missing orgId" }, 400);
-
-    const admin = createClient(supabaseUrl, serviceKey);
 
     // Verify org exists + name confirmation matches
     const { data: org, error: orgErr } = await admin

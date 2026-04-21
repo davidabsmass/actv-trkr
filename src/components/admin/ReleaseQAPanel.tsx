@@ -15,10 +15,21 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle2, XCircle, AlertTriangle, CircleDashed, PlayCircle,
-  RotateCcw, ChevronDown, ChevronRight, ShieldCheck, Loader2, Clock,
+  RotateCcw, ChevronDown, ChevronRight, ShieldCheck, Loader2, Clock, Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+
+/**
+ * Ship-blocker checks — the 4 critical manual/hybrid items that MUST be
+ * verified before pushing a release. Surfaced with a 🔴 badge + filter toggle.
+ */
+const SHIP_BLOCKER_KEYS = new Set<string>([
+  "lifecycle.checkout_to_active_manual",
+  "security_boundaries.rls_smoke_test_manual",
+  "plugin.install_manual",
+  "tracking.consent_strict_inert_manual",
+]);
 
 type ResultRow = {
   id: string;

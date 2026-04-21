@@ -16,6 +16,7 @@ import { AdminCustomerDetail } from "@/components/admin/AdminCustomerDetail";
 import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
 import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
 import ReleaseQAPanel from "@/components/admin/ReleaseQAPanel";
+import DataWipePanel from "@/components/admin/DataWipePanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
@@ -269,11 +270,11 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa") {
+    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa" || tab === "data-wipe") {
       setActiveMainTab(tab);
     } else if (tab === "app-bible") {
       // Legacy redirect: Launch Checklist removed, send users to Release QA
@@ -281,7 +282,7 @@ export default function AdminSetup() {
       setSearchParams({ tab: "release-qa" }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa") => {
+  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe") => {
     setActiveMainTab(tab);
     setSearchParams({ tab }, { replace: true });
   };
@@ -870,11 +871,21 @@ export default function AdminSetup() {
           >
             Release QA
           </button>
+          <button
+            onClick={() => switchMainTab("data-wipe")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "data-wipe" ? "border-destructive text-destructive" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Data Wipe
+          </button>
         </div>
       )}
 
       {activeMainTab === "release-qa" && isOwner && (
         <ReleaseQAPanel />
+      )}
+
+      {activeMainTab === "data-wipe" && isOwner && (
+        <DataWipePanel />
       )}
 
       {activeMainTab === "subscriber-sites" && isOwner && (

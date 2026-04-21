@@ -23,6 +23,7 @@ import { usePlanTier } from "@/hooks/use-plan-tier";
 import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
+import { FirstSyncBanner } from "@/components/dashboard/FirstSyncBanner";
 
 const Reports = lazy(() => import("./Reports"));
 
@@ -150,6 +151,7 @@ const Performance = () => {
 
   return (
     <div>
+      <FirstSyncBanner />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <div className="flex items-center gap-1.5">

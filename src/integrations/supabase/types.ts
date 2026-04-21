@@ -7568,6 +7568,11 @@ export type Database = {
       }
     }
     Functions: {
+      admin_delete_org_record: { Args: { p_org_id: string }; Returns: Json }
+      admin_wipe_org_chunk: {
+        Args: { p_batch_size?: number; p_org_id: string; p_table: string }
+        Returns: Json
+      }
       admin_wipe_org_data: { Args: { p_org_id: string }; Returns: Json }
       calculate_engagement_score: {
         Args: { p_org_id: string; p_session_id: string }

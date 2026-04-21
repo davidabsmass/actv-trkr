@@ -35,7 +35,7 @@ import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { callManageImportJob } from "@/lib/manage-import-job";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_FORMS } from "@/components/howto/page-content";
-import { FirstSyncBanner } from "@/components/dashboard/FirstSyncBanner";
+
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary border-primary/20",
@@ -658,7 +658,6 @@ export default function Forms() {
 
   return (
     <div>
-      <FirstSyncBanner />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <div className="flex items-center gap-1.5">

@@ -292,6 +292,38 @@ export default function ReleaseQAPanel() {
         </CardContent>
       </Card>
 
+      {/* Ship-blocker focus card — the 4 critical items that gate release */}
+      <Card className={shipBlockerStats.complete ? "border-success/50" : "border-destructive/60"}>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Flame className={`h-5 w-5 ${shipBlockerStats.complete ? "text-success" : "text-destructive"}`} />
+              <CardTitle className="text-sm">
+                Ship-blockers — {shipBlockerStats.done} / {shipBlockerStats.total} cleared
+              </CardTitle>
+              {shipBlockerStats.complete ? (
+                <Badge className="bg-success text-success-foreground text-[10px]">All clear</Badge>
+              ) : (
+                <Badge variant="destructive" className="text-[10px]">
+                  {shipBlockerStats.total - shipBlockerStats.done} remaining
+                </Badge>
+              )}
+            </div>
+            <Button
+              variant={shipBlockersOnly ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setShipBlockersOnly((v) => !v)}
+            >
+              {shipBlockersOnly ? "Show all checks" : "Show ship-blockers only"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            These 4 critical items must be verified before pushing v{version}. Everything else can be signed off post-launch.
+          </p>
+        </CardHeader>
+      </Card>
+
       {/* Grouped checks by category */}
       {(Object.keys(grouped) as CheckCategoryKey[]).map((cat) => {
         const checks = grouped[cat];

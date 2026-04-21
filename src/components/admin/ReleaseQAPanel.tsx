@@ -95,6 +95,7 @@ export default function ReleaseQAPanel() {
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({});
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
   const [signoffNotes, setSignoffNotes] = useState<Record<string, string>>({});
+  const [shipBlockersOnly, setShipBlockersOnly] = useState(false);
 
   const { data: runs } = useQuery({
     queryKey: ["release_qa_runs"],

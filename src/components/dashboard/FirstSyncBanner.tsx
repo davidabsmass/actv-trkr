@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrg } from "@/hooks/use-org";
@@ -22,7 +23,7 @@ export function FirstSyncBanner() {
     setDismissed(localStorage.getItem(storageKey) === "1");
   }, [storageKey]);
 
-  if (!orgId || !orgCreatedAt || dismissed) return null;
+  if (!orgId || !orgCreatedAt || dismissed || isSettings) return null;
 
   // Only show during the first 24 hours after the org was created.
   const ageMs = Date.now() - new Date(orgCreatedAt).getTime();

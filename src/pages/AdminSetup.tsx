@@ -271,15 +271,19 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "app-bible" | "release-qa">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "app-bible" || tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa") {
+    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa") {
       setActiveMainTab(tab);
+    } else if (tab === "app-bible") {
+      // Legacy redirect: Launch Checklist removed, send users to Release QA
+      setActiveMainTab("release-qa");
+      setSearchParams({ tab: "release-qa" }, { replace: true });
     }
-  }, [searchParams]);
-  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "app-bible" | "release-qa") => {
+  }, [searchParams, setSearchParams]);
+  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa") => {
     setActiveMainTab(tab);
     setSearchParams({ tab }, { replace: true });
   };
@@ -841,8 +845,6 @@ export default function AdminSetup() {
       </div>
       <p className="text-sm text-muted-foreground mb-6">{t("admin.setupInputsDesc")}</p>
 
-      <AppBibleReviewBanner />
-
       {/* Owner-only tab switcher */}
       {isOwner && (
         <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
@@ -865,22 +867,12 @@ export default function AdminSetup() {
             Clients
           </button>
           <button
-            onClick={() => switchMainTab("app-bible")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "app-bible" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Launch Checklist
-          </button>
-          <button
             onClick={() => switchMainTab("release-qa")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "release-qa" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
             Release QA
           </button>
         </div>
-      )}
-
-      {activeMainTab === "app-bible" && isOwner && (
-        <AppBibleChecklist />
       )}
 
       {activeMainTab === "release-qa" && isOwner && (

@@ -34,7 +34,7 @@ const ORG_SCOPED_TABLES = [
   "weekly_summaries", "traffic_daily", "conversions_daily",
   "ingestion_anomalies", "tracking_interruptions",
   "user_input_events", "user_activity_log",
-  "site_visitors", "site_visitors_safe",
+  "site_visitors",
 
   // Forms / leads pipeline
   "lead_fields_flat", "lead_events_raw", "leads",
@@ -207,11 +207,10 @@ serve(async (req) => {
     //    even very large organizations (10k+ leads, 40k+ lead_fields) wipe
     //    cleanly without "canceling statement due to statement timeout".
     const BATCH = 5000;
-    const MAX_ITERS_PER_TABLE = 200; // 1M rows safety cap
+    const MAX_ITERS_PER_TABLE = 400; // 2M rows safety cap
     for (const tbl of ORG_SCOPED_TABLES) {
       let totalForTable = 0;
       let iter = 0;
-      let lastRemaining = -1;
       while (iter < MAX_ITERS_PER_TABLE) {
         const { data: chunkRes, error: chunkErr } = await admin.rpc(
           "admin_wipe_org_chunk",
@@ -224,12 +223,9 @@ serve(async (req) => {
         const r = (chunkRes as any) || {};
         if (r.skipped) break;
         const deleted = Number(r.deleted || 0);
-        const remaining = Number(r.remaining || 0);
         totalForTable += deleted;
+        // done === true when the last batch was not full (no more rows for this org).
         if (r.done || deleted === 0) break;
-        // Safety: if remaining count is not decreasing, stop to avoid infinite loop.
-        if (lastRemaining >= 0 && remaining >= lastRemaining) break;
-        lastRemaining = remaining;
         iter += 1;
       }
       if (totalForTable > 0) report[`tbl_${tbl}`] = totalForTable;

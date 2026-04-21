@@ -255,45 +255,20 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     }
   }
 
-  // ── Reconciliation: mark missing forms as inactive ──
-  // Only when the plugin actually responded; the fallback path can't tell us
-  // what's truly active. This correctly handles both "toggled off" and
-  // "deleted in WP" — both vanish from the discover payload.
-  let markedInactive = 0;
-  if (source === "wp_plugin") {
-    const { data: existingForms } = await supabase
-      .from("forms")
-      .select("id, external_form_id, provider, is_active")
-      .eq("site_id", siteId);
-
-    const toDeactivate: string[] = [];
-    (existingForms || []).forEach((f: any) => {
-      const key = `${f.provider}::${String(f.external_form_id)}`;
-      if (!reportedKeys.has(key) && f.is_active !== false) {
-        toDeactivate.push(f.id);
-      }
-    });
-    if (toDeactivate.length > 0) {
-      await supabase.from("forms").update({ is_active: false }).in("id", toDeactivate);
-      markedInactive = toDeactivate.length;
-    }
-
-    // Also reconcile form_integrations
-    const { data: existingIntegrations } = await supabase
-      .from("form_integrations")
-      .select("id, external_form_id, builder_type, is_active")
-      .eq("site_id", siteId);
-    const integrationsToDeactivate: string[] = [];
-    (existingIntegrations || []).forEach((i: any) => {
-      const key = `${i.builder_type}::${String(i.external_form_id)}`;
-      if (!reportedKeys.has(key) && i.is_active !== false) {
-        integrationsToDeactivate.push(i.id);
-      }
-    });
-    if (integrationsToDeactivate.length > 0) {
-      await supabase.from("form_integrations").update({ is_active: false }).in("id", integrationsToDeactivate);
-    }
-  }
+  // ── Reconciliation: handle forms EXPLICITLY disabled in WP ──
+  //
+  // PRIOR BEHAVIOR (removed): if the plugin's discover payload didn't include
+  // a form, we marked it inactive. That was destructive — a partial/paged
+  // response, a builder adapter skipping a form, or any transient WP glitch
+  // could silently hide healthy forms from the user's "Active" tab right
+  // after they clicked "Sync".
+  //
+  // NEW BEHAVIOR: deactivation only happens when the plugin EXPLICITLY tells
+  // us a form is disabled (form.is_active === false in the discover payload).
+  // That's already handled per-form in the upsert loop above. Re-scan is now
+  // strictly additive — it can only ADD or UPDATE forms, never silently HIDE
+  // a form just because it wasn't in this scan's payload.
+  const markedInactive = 0;
 
   const queueTriggered = autoStartedJobs > 0
     ? await triggerQueueProcessor()

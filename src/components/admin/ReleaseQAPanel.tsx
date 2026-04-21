@@ -374,6 +374,11 @@ export default function ReleaseQAPanel() {
                           <StatusIcon status={status} />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
+                              {SHIP_BLOCKER_KEYS.has(check.key) && (
+                                <Badge variant="destructive" className="text-[10px] gap-1">
+                                  <Flame className="h-2.5 w-2.5" /> Ship-blocker
+                                </Badge>
+                              )}
                               <p className="text-sm font-medium">{check.title}</p>
                               <Badge variant="outline" className="text-[10px]">{check.type}</Badge>
                               <Badge

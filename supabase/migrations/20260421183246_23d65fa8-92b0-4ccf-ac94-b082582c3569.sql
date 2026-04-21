@@ -1,0 +1,1 @@
+UPDATE public.orgs SET name = 'bbbedu.com' WHERE id = '84511202-7a78-463a-bb17-d8d211cfc581';

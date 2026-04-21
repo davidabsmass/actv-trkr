@@ -35,11 +35,12 @@ export const SignupEmail = ({
     <Body style={main}>
       <Container style={container}>
         <Section style={headerSection}>
-          <a href="https://actvtrkr.com" style={{ textDecoration: 'none' }}>
+          <a href="https://actvtrkr.com" style={{ textDecoration: 'none', display: 'block' }}>
             <Img
               src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/render/image/public/email-assets/actv-trkr-email-header.jpg?width=600&quality=85&format=origin"
               alt="ACTV TRKR"
               width="600"
+              height="200"
               style={headerImg}
             />
           </a>
@@ -64,9 +65,9 @@ export const SignupEmail = ({
 export default SignupEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }
-const container = { padding: '40px 25px' }
-const headerSection = { marginBottom: '0' }
-const headerImg = { width: '100%', maxWidth: '600px', height: 'auto' as const, display: 'block' as const, border: '0', outline: 'none', textDecoration: 'none', borderRadius: '12px 12px 0 0' }
+const container = { padding: '0', maxWidth: '600px', width: '100%', margin: '0 auto' }
+const headerSection = { marginBottom: '0', width: '100%', maxWidth: '600px' }
+const headerImg = { width: '100%', maxWidth: '600px', height: 'auto' as const, display: 'block' as const, border: '0', outline: 'none', textDecoration: 'none', objectFit: 'cover' as const }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 16px' }
 const text = { fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: '0 0 24px' }
 const link = { color: '#6C5CE7', textDecoration: 'underline' }

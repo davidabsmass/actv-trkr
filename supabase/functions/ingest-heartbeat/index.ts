@@ -243,11 +243,40 @@ Deno.serve(async (req) => {
         console.error("Failed to trigger auto-sync:", e);
       }
     } else {
+      // Existing site path. Two safety nets run on every heartbeat:
+      //   1. Org-name reconciliation: if the org name doesn't match any of its
+      //      sites' domains (e.g. it was reused from a prior install), rename
+      //      it to the primary site's domain so the dashboard never lies.
+      //   2. Bootstrap reconciliation: if forms exist but form_integrations
+      //      are missing (or domain/SSL health is stale), re-trigger discovery.
+      try {
+        await reconcileOrgName({ supabase, orgId, currentSiteDomain: domain });
+      } catch (renameErr) {
+        console.error(JSON.stringify({
+          level: "error",
+          event: "org_rename_reconcile_failed",
+          site_id: site.id,
+          org_id: orgId,
+          domain,
+          error: String(renameErr),
+        }));
+      }
       try {
         const pluginVersion = sanitizeStr(body.plugin_version || body.pluginVersion, 32);
         await maybeTriggerPostInstallBootstrap({ supabase, site, pluginVersion, signalSource });
       } catch (bootstrapErr) {
-        console.error("Existing-site bootstrap check failed (non-fatal):", bootstrapErr);
+        // Surface as structured ERROR so it shows up in log search and alerts.
+        // We still don't want to fail the heartbeat (the WP plugin would retry
+        // forever), but the failure must be loud, not silent.
+        console.error(JSON.stringify({
+          level: "error",
+          event: "bootstrap_reconcile_failed",
+          site_id: site.id,
+          org_id: orgId,
+          domain,
+          error: String(bootstrapErr),
+          stack: bootstrapErr instanceof Error ? bootstrapErr.stack : undefined,
+        }));
       }
     }
 

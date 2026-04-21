@@ -15,10 +15,21 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle2, XCircle, AlertTriangle, CircleDashed, PlayCircle,
-  RotateCcw, ChevronDown, ChevronRight, ShieldCheck, Loader2, Clock,
+  RotateCcw, ChevronDown, ChevronRight, ShieldCheck, Loader2, Clock, Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+
+/**
+ * Ship-blocker checks — the 4 critical manual/hybrid items that MUST be
+ * verified before pushing a release. Surfaced with a 🔴 badge + filter toggle.
+ */
+const SHIP_BLOCKER_KEYS = new Set<string>([
+  "lifecycle.checkout_to_active_manual",
+  "security_boundaries.rls_smoke_test_manual",
+  "plugin.install_manual",
+  "tracking.consent_strict_inert_manual",
+]);
 
 type ResultRow = {
   id: string;
@@ -84,6 +95,7 @@ export default function ReleaseQAPanel() {
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({});
   const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
   const [signoffNotes, setSignoffNotes] = useState<Record<string, string>>({});
+  const [shipBlockersOnly, setShipBlockersOnly] = useState(false);
 
   const { data: runs } = useQuery({
     queryKey: ["release_qa_runs"],
@@ -140,12 +152,27 @@ export default function ReleaseQAPanel() {
 
   const grouped = useMemo(() => {
     const out: Record<string, ReleaseQACheck[]> = {};
-    for (const c of RELEASE_QA_CHECKS) {
+    const source = shipBlockersOnly
+      ? RELEASE_QA_CHECKS.filter((c) => SHIP_BLOCKER_KEYS.has(c.key))
+      : RELEASE_QA_CHECKS;
+    for (const c of source) {
       if (!out[c.category]) out[c.category] = [];
       out[c.category].push(c);
     }
     return out;
-  }, []);
+  }, [shipBlockersOnly]);
+
+  // Ship-blocker progress: how many of the 4 are signed off / passing?
+  const shipBlockerStats = useMemo(() => {
+    const total = SHIP_BLOCKER_KEYS.size;
+    let done = 0;
+    for (const key of SHIP_BLOCKER_KEYS) {
+      const r = resultMap.get(key);
+      const so = signoffMap.get(key);
+      if (so || r?.status === "pass") done += 1;
+    }
+    return { done, total, complete: done === total };
+  }, [resultMap, signoffMap]);
 
   const runQA = async (scope: string) => {
     setRunningScope(scope);
@@ -265,6 +292,38 @@ export default function ReleaseQAPanel() {
         </CardContent>
       </Card>
 
+      {/* Ship-blocker focus card — the 4 critical items that gate release */}
+      <Card className={shipBlockerStats.complete ? "border-success/50" : "border-destructive/60"}>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Flame className={`h-5 w-5 ${shipBlockerStats.complete ? "text-success" : "text-destructive"}`} />
+              <CardTitle className="text-sm">
+                Ship-blockers — {shipBlockerStats.done} / {shipBlockerStats.total} cleared
+              </CardTitle>
+              {shipBlockerStats.complete ? (
+                <Badge className="bg-success text-success-foreground text-[10px]">All clear</Badge>
+              ) : (
+                <Badge variant="destructive" className="text-[10px]">
+                  {shipBlockerStats.total - shipBlockerStats.done} remaining
+                </Badge>
+              )}
+            </div>
+            <Button
+              variant={shipBlockersOnly ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setShipBlockersOnly((v) => !v)}
+            >
+              {shipBlockersOnly ? "Show all checks" : "Show ship-blockers only"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            These 4 critical items must be verified before pushing v{version}. Everything else can be signed off post-launch.
+          </p>
+        </CardHeader>
+      </Card>
+
       {/* Grouped checks by category */}
       {(Object.keys(grouped) as CheckCategoryKey[]).map((cat) => {
         const checks = grouped[cat];
@@ -315,6 +374,11 @@ export default function ReleaseQAPanel() {
                           <StatusIcon status={status} />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
+                              {SHIP_BLOCKER_KEYS.has(check.key) && (
+                                <Badge variant="destructive" className="text-[10px] gap-1">
+                                  <Flame className="h-2.5 w-2.5" /> Ship-blocker
+                                </Badge>
+                              )}
                               <p className="text-sm font-medium">{check.title}</p>
                               <Badge variant="outline" className="text-[10px]">{check.type}</Badge>
                               <Badge

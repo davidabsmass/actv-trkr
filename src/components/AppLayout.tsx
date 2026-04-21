@@ -15,6 +15,7 @@ import { AiChatbot } from "@/components/AiChatbot";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { HelpButton } from "@/components/support/HelpButton";
 import { LifecycleBanner } from "@/components/LifecycleBanner";
+import { FirstSyncBanner } from "@/components/dashboard/FirstSyncBanner";
 
 function LayoutInner() {
   const { orgId, orgs, loading } = useOrg();
@@ -81,6 +82,7 @@ function LayoutInner() {
           <div className="flex-1 overflow-auto p-6">
             <ErrorBoundary fallbackMessage="This page encountered an error. Click retry or navigate to another page.">
               <LifecycleBanner />
+              <FirstSyncBanner />
               <Outlet />
             </ErrorBoundary>
           </div>

@@ -192,26 +192,22 @@ serve(async (req) => {
     report.member_count = memberUserIds.length;
     report.member_emails = memberEmails.join(", ") || "(none)";
 
-    // 2. Delete all org-scoped tables.
-    for (const table of ORG_SCOPED_TABLES) {
-      const { error, count } = await admin
-        .from(table).delete({ count: "exact" }).eq("org_id", orgId);
-      if (error) {
-        // Some listed tables may not exist in every environment — log + continue.
-        errors.push(`${table}: ${error.message}`);
-        report[`tbl_${table}`] = `error: ${error.message}`;
-      } else {
-        report[`tbl_${table}`] = count ?? 0;
+    // 2. Delete all org-scoped data + the org itself in a single DB-side
+    //    transaction (allows a longer statement_timeout than an Edge Function
+    //    loop of separate DELETEs, which was timing out on tables like leads).
+    const { data: wipeResult, error: wipeErr } = await admin.rpc(
+      "admin_wipe_org_data",
+      { p_org_id: orgId },
+    );
+    if (wipeErr) {
+      errors.push(`admin_wipe_org_data: ${wipeErr.message}`);
+    } else if (wipeResult && typeof wipeResult === "object") {
+      const r = (wipeResult as any).report || {};
+      for (const [k, v] of Object.entries(r)) {
+        report[k] = v as number | string;
       }
-    }
-
-    // 3. Delete the org itself.
-    const { error: delOrgErr } = await admin.from("orgs").delete().eq("id", orgId);
-    if (delOrgErr) {
-      errors.push(`orgs: ${delOrgErr.message}`);
-      report.tbl_orgs = `error: ${delOrgErr.message}`;
-    } else {
-      report.tbl_orgs = 1;
+      const e = (wipeResult as any).errors || [];
+      if (Array.isArray(e)) for (const msg of e) errors.push(String(msg));
     }
 
     // 4. For each member email: figure out which users have NO other org

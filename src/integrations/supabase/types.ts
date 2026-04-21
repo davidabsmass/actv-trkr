@@ -7568,6 +7568,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_wipe_org_data: { Args: { p_org_id: string }; Returns: Json }
       calculate_engagement_score: {
         Args: { p_org_id: string; p_session_id: string }
         Returns: number

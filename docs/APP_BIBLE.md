@@ -313,3 +313,56 @@ A page MUST render one of these three states — never a silent blank:
 3. **"No data — last sync failed"** — renders the timestamp of the failed job and a "Retry" CTA. Triggers an entry on the New Customer Health panel.
 
 Any blank/whitespace render outside these three is a bug.
+
+---
+
+## 20. Install integrity (the "ghoulspodcast → bbbedu" lesson)  *(key: `install_integrity`)*
+
+This section exists because of a specific class of bug: **an install silently succeeded but produced inconsistent state** — wrong org name, missing `form_integrations`, dashboard showed "nothing wrong" while the user saw nothing right.
+
+The root cause was three failures stacking:
+1. `create_org_with_admin` reused an old org for a new install (idempotency guard had no scope).
+2. `ingest-heartbeat` post-install bootstrap threw a `ReferenceError` (undefined `domainHealth`) but was wrapped in a swallow-all `try/catch` logged as "non-fatal."
+3. The `forms` ↔ `form_integrations` two-table model had no integrity check.
+
+### 20.1 Invariants enforced on every heartbeat
+
+The `ingest-heartbeat` function MUST:
+
+- **Reconcile org name** (`reconcileOrgName`): if the org name does not match any of its sites' domains, rename to the oldest site's domain. Rules:
+  - Skip if name matches some site domain (multi-site is fine).
+  - Always rename if name is generic (`""`, `"My Organization"`, etc.).
+  - Otherwise rename if name matches no site domain at all.
+- **Surface bootstrap failures as structured ERROR logs** with `site_id`, `org_id`, `domain`, `error`, and `stack`. No `console.error("non-fatal:", e)` — those are forbidden.
+- **Re-trigger discovery** when `forms` exist but `form_integrations` are missing.
+
+### 20.2 Self-healing reconciler (every 15 min)
+
+`reconcile-install-integrity` runs as a pg_cron job and:
+
+1. Scans every `UP` site for forms-vs-integrations drift; triggers `trigger-site-sync` for any drift detected.
+2. Scans every site for missing `domain_health` / `ssl_health`; triggers `check-domain-ssl`.
+3. Scans every org for name mismatch; renames to oldest site's domain.
+
+Returns a JSON report visible in edge function logs — auditable.
+
+### 20.3 Post-install smoke test (`verify-install`)
+
+User-callable edge function (org members only) that runs 8 deterministic checks for a given `org_id` (+ optional `site_id`):
+
+1. Site is registered.
+2. Org name matches at least one site domain.
+3. Site has a heartbeat in the last 24 h.
+4. Forms have been discovered (warn if 0).
+5. Every active form has a matching `form_integration` (fail otherwise).
+6. `domain_health` row exists.
+7. `ssl_health` row exists.
+8. Tracking pixel reported a pageview in the last 24 h.
+
+Returns `overall: "pass" | "warn" | "fail"`. Surfaced in `/admin-setup` under "Install Verification" so any install drift is visible without digging through logs.
+
+### 20.4 What is FORBIDDEN
+
+- Catching errors and logging them as "non-fatal" without a structured ERROR log.
+- Adding new two-table models (parent/child split) without a corresponding entry in §20.1's reconciler scan.
+- Using `create_org_with_admin`'s idempotency reuse for any code path other than the original onboarding flow. New installs from any other entry point MUST pass `p_allow_existing := false`.

@@ -52,25 +52,31 @@ async function maybeTriggerPostInstallBootstrap(params: {
     return;
   }
 
-  const [formsCountResult, formsMissingPageUrlsResult, formHealthCountResult, domainHealthCountResult, sslHealthCountResult] = await Promise.all([
+  const [formsCountResult, formsMissingPageUrlsResult, formHealthCountResult, formIntegrationsCountResult, domainHealthRowResult, sslHealthRowResult] = await Promise.all([
     supabase.from("forms").select("id", { count: "exact", head: true }).eq("site_id", site.id).eq("archived", false),
     supabase.from("forms").select("id", { count: "exact", head: true }).eq("site_id", site.id).eq("archived", false).is("page_url", null),
     supabase.from("form_health_checks").select("id", { count: "exact", head: true }).eq("site_id", site.id),
-    supabase.from("domain_health").select("id", { count: "exact", head: true }).eq("site_id", site.id),
-    supabase.from("ssl_health").select("id", { count: "exact", head: true }).eq("site_id", site.id),
+    supabase.from("form_integrations").select("id", { count: "exact", head: true }).eq("site_id", site.id),
+    supabase.from("domain_health").select("last_checked_at").eq("site_id", site.id).maybeSingle(),
+    supabase.from("ssl_health").select("last_checked_at").eq("site_id", site.id).maybeSingle(),
   ]);
 
   const formsCount = formsCountResult.count || 0;
   const formsMissingPageUrls = formsMissingPageUrlsResult.count || 0;
   const formHealthCount = formHealthCountResult.count || 0;
-  const domainHealthCount = domainHealthCountResult.count || 0;
-  const sslHealthCount = sslHealthCountResult.count || 0;
+  const formIntegrationsCount = formIntegrationsCountResult.count || 0;
+  const domainHealth = domainHealthRowResult.data as { last_checked_at?: string | null } | null;
+  const sslHealth = sslHealthRowResult.data as { last_checked_at?: string | null } | null;
 
   const staleBeforeIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const domainHealthStale = !domainHealth?.last_checked_at || domainHealth.last_checked_at < staleBeforeIso;
   const sslHealthStale = !sslHealth?.last_checked_at || sslHealth.last_checked_at < staleBeforeIso;
-  const needsFormBootstrap = formsCount === 0 || formsMissingPageUrls > 0 || (formsCount > 0 && formHealthCount < formsCount);
-  const needsDomainBootstrap = domainHealthCount === 0 || sslHealthCount === 0 || domainHealthStale || sslHealthStale;
+  // Re-run discovery if we have no forms, missing page URLs, missing health rows,
+  // OR if forms exist but their integration records are missing (so the imports UI shows nothing).
+  const needsFormBootstrap = formsCount === 0 || formsMissingPageUrls > 0
+    || (formsCount > 0 && formHealthCount < formsCount)
+    || (formsCount > 0 && formIntegrationsCount === 0);
+  const needsDomainBootstrap = !domainHealth || !sslHealth || domainHealthStale || sslHealthStale;
 
   if (!needsFormBootstrap && !needsDomainBootstrap) {
     return;

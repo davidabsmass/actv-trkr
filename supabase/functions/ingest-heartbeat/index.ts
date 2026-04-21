@@ -35,6 +35,78 @@ const MAX_SIGNAL_PAYLOAD = 102400; // 100KB for signal (includes wp_environment)
 const BOOTSTRAP_RETRY_WINDOW_MS = 6 * 60 * 60 * 1000;
 const INSTALL_BOOTSTRAP_SOURCES = new Set(["cron", "wp_connection_test", "wp_admin_recovery"]);
 
+// Org names that we consider "generic" / safe to overwrite with a site domain.
+// Anything else is left alone — we never overwrite a name the user might have set.
+const GENERIC_ORG_NAMES = new Set(["", "my organization", "untitled", "new organization"]);
+
+/**
+ * Org-name reconciliation. If the org name doesn't match any of the org's
+ * actual site domains, rename it to the primary site domain. This catches
+ * the case where create_org_with_admin reused an old org for a new install
+ * (e.g. user signs up for a 2nd site, gets attached to their 1st org).
+ *
+ * Rules:
+ *   - If the org has only one site, the name should equal that site's domain.
+ *   - If the org name is generic ("My Organization" etc.), always rename.
+ *   - If the org name matches some site's domain, leave it alone (multi-site).
+ *   - Never silently rename a name the user set themselves *unless* it doesn't
+ *     match any site at all (the ghoulspodcast → bbbedu case).
+ */
+async function reconcileOrgName(params: {
+  supabase: any;
+  orgId: string;
+  currentSiteDomain: string;
+}) {
+  const { supabase, orgId, currentSiteDomain } = params;
+
+  const { data: orgRow } = await supabase.from("orgs").select("name").eq("id", orgId).maybeSingle();
+  if (!orgRow) return;
+  const currentName = (orgRow.name || "").trim();
+  const currentNameLower = currentName.toLowerCase();
+
+  const { data: sitesRows } = await supabase.from("sites").select("domain, created_at").eq("org_id", orgId);
+  const siteDomains = (sitesRows || []).map((s: any) => (s.domain || "").toLowerCase()).filter(Boolean);
+  if (siteDomains.length === 0) return;
+
+  // If name matches any site domain, we're consistent — done.
+  if (siteDomains.includes(currentNameLower)) return;
+
+  // If name is generic, always rename.
+  // Otherwise rename only when no site domain matches (the failure mode).
+  const shouldRename = GENERIC_ORG_NAMES.has(currentNameLower) || !siteDomains.includes(currentNameLower);
+  if (!shouldRename) return;
+
+  // Pick the oldest site as the canonical name (most likely the primary).
+  const oldest = (sitesRows || []).slice().sort((a: any, b: any) => {
+    const at = a.created_at ? Date.parse(a.created_at) : 0;
+    const bt = b.created_at ? Date.parse(b.created_at) : 0;
+    return at - bt;
+  })[0];
+  const newName = (oldest?.domain || currentSiteDomain).toLowerCase();
+  if (!newName || newName === currentNameLower) return;
+
+  const { error: updateErr } = await supabase.from("orgs").update({ name: newName }).eq("id", orgId);
+  if (updateErr) {
+    console.error(JSON.stringify({
+      level: "error",
+      event: "org_rename_failed",
+      org_id: orgId,
+      from: currentName,
+      to: newName,
+      error: updateErr.message,
+    }));
+    return;
+  }
+  console.log(JSON.stringify({
+    level: "info",
+    event: "org_renamed_to_match_site",
+    org_id: orgId,
+    from: currentName,
+    to: newName,
+    site_count: siteDomains.length,
+  }));
+}
+
 async function maybeTriggerPostInstallBootstrap(params: {
   supabase: any;
   site: { id: string; plugin_version: string | null; last_heartbeat_at?: string | null };
@@ -243,11 +315,40 @@ Deno.serve(async (req) => {
         console.error("Failed to trigger auto-sync:", e);
       }
     } else {
+      // Existing site path. Two safety nets run on every heartbeat:
+      //   1. Org-name reconciliation: if the org name doesn't match any of its
+      //      sites' domains (e.g. it was reused from a prior install), rename
+      //      it to the primary site's domain so the dashboard never lies.
+      //   2. Bootstrap reconciliation: if forms exist but form_integrations
+      //      are missing (or domain/SSL health is stale), re-trigger discovery.
+      try {
+        await reconcileOrgName({ supabase, orgId, currentSiteDomain: domain });
+      } catch (renameErr) {
+        console.error(JSON.stringify({
+          level: "error",
+          event: "org_rename_reconcile_failed",
+          site_id: site.id,
+          org_id: orgId,
+          domain,
+          error: String(renameErr),
+        }));
+      }
       try {
         const pluginVersion = sanitizeStr(body.plugin_version || body.pluginVersion, 32);
         await maybeTriggerPostInstallBootstrap({ supabase, site, pluginVersion, signalSource });
       } catch (bootstrapErr) {
-        console.error("Existing-site bootstrap check failed (non-fatal):", bootstrapErr);
+        // Surface as structured ERROR so it shows up in log search and alerts.
+        // We still don't want to fail the heartbeat (the WP plugin would retry
+        // forever), but the failure must be loud, not silent.
+        console.error(JSON.stringify({
+          level: "error",
+          event: "bootstrap_reconcile_failed",
+          site_id: site.id,
+          org_id: orgId,
+          domain,
+          error: String(bootstrapErr),
+          stack: bootstrapErr instanceof Error ? bootstrapErr.stack : undefined,
+        }));
       }
     }
 

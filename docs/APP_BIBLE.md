@@ -258,6 +258,7 @@ Before sign-off, the reviewing admin must spot-check:
 11. **New-customer auto-sync**: from a brand-new install, within 10 min `/dashboard`, `/monitoring`, `/forms`, and `/seo` all show real data (or a documented "still syncing" state) — never blank.
 12. **Email 2FA**: signing in requires entering a 6-digit code emailed to the user before a session is granted (verified end-to-end).
 13. **Form Capture label**: landing page reads "Form Capture" (not "Universal Form Capture").
+14. **Install integrity**: `verify-install` returns `overall: "pass"` for at least one freshly-connected test site (see §20).
 
 ---
 

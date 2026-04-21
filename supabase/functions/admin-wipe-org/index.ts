@@ -201,22 +201,49 @@ serve(async (req) => {
     report.member_count = memberUserIds.length;
     report.member_emails = memberEmails.join(", ") || "(none)";
 
-    // 2. Delete all org-scoped data + the org itself in a single DB-side
-    //    transaction (allows a longer statement_timeout than an Edge Function
-    //    loop of separate DELETEs, which was timing out on tables like leads).
-    const { data: wipeResult, error: wipeErr } = await admin.rpc(
-      "admin_wipe_org_data",
+    // 2. Delete all org-scoped data in chunks. Each RPC call deletes up to
+    //    5,000 rows from a single table and returns whether more remain. This
+    //    keeps every database statement well under the HTTP/edge timeout, so
+    //    even very large organizations (10k+ leads, 40k+ lead_fields) wipe
+    //    cleanly without "canceling statement due to statement timeout".
+    const BATCH = 5000;
+    const MAX_ITERS_PER_TABLE = 200; // 1M rows safety cap
+    for (const tbl of ORG_SCOPED_TABLES) {
+      let totalForTable = 0;
+      let iter = 0;
+      let lastRemaining = -1;
+      while (iter < MAX_ITERS_PER_TABLE) {
+        const { data: chunkRes, error: chunkErr } = await admin.rpc(
+          "admin_wipe_org_chunk",
+          { p_org_id: orgId, p_table: tbl, p_batch_size: BATCH },
+        );
+        if (chunkErr) {
+          errors.push(`${tbl}: ${chunkErr.message}`);
+          break;
+        }
+        const r = (chunkRes as any) || {};
+        if (r.skipped) break;
+        const deleted = Number(r.deleted || 0);
+        const remaining = Number(r.remaining || 0);
+        totalForTable += deleted;
+        if (r.done || deleted === 0) break;
+        // Safety: if remaining count is not decreasing, stop to avoid infinite loop.
+        if (lastRemaining >= 0 && remaining >= lastRemaining) break;
+        lastRemaining = remaining;
+        iter += 1;
+      }
+      if (totalForTable > 0) report[`tbl_${tbl}`] = totalForTable;
+    }
+
+    // Finally drop the org record itself.
+    const { data: orgDelRes, error: orgDelErr } = await admin.rpc(
+      "admin_delete_org_record",
       { p_org_id: orgId },
     );
-    if (wipeErr) {
-      errors.push(`admin_wipe_org_data: ${wipeErr.message}`);
-    } else if (wipeResult && typeof wipeResult === "object") {
-      const r = (wipeResult as any).report || {};
-      for (const [k, v] of Object.entries(r)) {
-        report[k] = v as number | string;
-      }
-      const e = (wipeResult as any).errors || [];
-      if (Array.isArray(e)) for (const msg of e) errors.push(String(msg));
+    if (orgDelErr) {
+      errors.push(`orgs: ${orgDelErr.message}`);
+    } else {
+      report.tbl_orgs = Number((orgDelRes as any)?.deleted || 0);
     }
 
     // 4. For each member email: figure out which users have NO other org

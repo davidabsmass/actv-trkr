@@ -35,7 +35,14 @@ export const SignupEmail = ({
     <Body style={main}>
       <Container style={container}>
         <Section style={headerSection}>
-          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header.jpg" alt="ACTV TRKR" width="600" height="200" style={headerImg} />
+          <a href="https://actvtrkr.com" style={{ textDecoration: 'none' }}>
+            <Img
+              src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/render/image/public/email-assets/actv-trkr-email-header.jpg?width=600&quality=85&format=origin"
+              alt="ACTV TRKR"
+              width="600"
+              style={headerImg}
+            />
+          </a>
         </Section>
         <Heading style={h1}>Confirm your email</Heading>
         <Text style={text}>

@@ -15,7 +15,7 @@ import {
 import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'ACTV TRKR'
-const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header.jpg'
+const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/render/image/public/email-assets/actv-trkr-email-header.jpg?width=600&quality=85&format=origin'
 
 interface WelcomeEmailProps {
   name?: string
@@ -30,7 +30,14 @@ const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
       <Container style={container}>
         {/* Header */}
         <Section style={headerSection}>
-          <Img src={HEADER_URL} alt={SITE_NAME} width="600" height="200" style={headerImg} />
+          <a href="https://actvtrkr.com" style={{ textDecoration: 'none' }}>
+            <Img
+              src={HEADER_URL}
+              alt={SITE_NAME}
+              width="600"
+              style={headerImg}
+            />
+          </a>
         </Section>
 
         <Section style={contentSection}>
@@ -106,6 +113,7 @@ const headerImg = {
   outline: 'none',
   textDecoration: 'none',
   borderRadius: '12px 12px 0 0',
+  msInterpolationMode: 'bicubic' as const,
 }
 
 const contentSection = {

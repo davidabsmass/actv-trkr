@@ -13,7 +13,13 @@ import { useOrg } from "@/hooks/use-org";
  */
 export function FirstSyncBanner() {
   const { orgId, orgCreatedAt } = useOrg();
+  const { pathname } = useLocation();
   const [dismissed, setDismissed] = useState(false);
+
+  // The Settings page renders its own, more specific connecting notice
+  // (`SettingsConnectingNotice`). Suppress this generic banner there to
+  // avoid duplicating the same message in two stacked cards.
+  const isSettings = pathname.startsWith("/settings");
 
   const storageKey = orgId ? `firstSyncBanner:dismissed:${orgId}` : null;
 

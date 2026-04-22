@@ -129,9 +129,13 @@ class MM_Tracker {
 		if ( ! is_user_logged_in() ) return false;
 		if ( ! current_user_can( 'manage_options' ) ) return false;
 
-		$opts = MM_Settings::get();
-		$toggle_on = ! empty( $opts['debug_mode'] ) && $opts['debug_mode'] === '1';
-		$url_on    = isset( $_GET['actv_debug'] ) && $_GET['actv_debug'] === '1';
+		// debug_mode lives on the consent banner option group.
+		$toggle_on = false;
+		if ( class_exists( 'MM_Consent_Banner' ) ) {
+			$banner = MM_Consent_Banner::get();
+			$toggle_on = ! empty( $banner['debug_mode'] ) && $banner['debug_mode'] === '1';
+		}
+		$url_on = isset( $_GET['actv_debug'] ) && $_GET['actv_debug'] === '1';
 
 		return $toggle_on || $url_on;
 	}

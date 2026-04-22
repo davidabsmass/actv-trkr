@@ -28,9 +28,9 @@ function isProtectedOrg(org: OrgRow): boolean {
   const name = (org.name || "").toLowerCase();
   if (PROTECTED_CLIENTS.some((p) => name.includes(p))) return true;
   const emails = (org.member_emails || []).map((e) => e.toLowerCase());
-  return emails.some((email) =>
-    PROTECTED_CLIENTS.some((p) => email.includes(p)),
-  );
+  if (emails.some((e) => PROTECTED_CLIENTS.some((p) => e.includes(p)))) return true;
+  const domains = (org.site_domains || []).map((d) => d.toLowerCase());
+  return domains.some((d) => PROTECTED_CLIENTS.some((p) => d.includes(p)));
 }
 
 interface WipeReport {

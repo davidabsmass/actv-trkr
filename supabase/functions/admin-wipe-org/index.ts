@@ -23,6 +23,26 @@ const PROTECTED_EMAILS = new Set<string>([
   "annie@newuniformdesign.com",
 ]);
 
+// Active production clients that must NEVER be wiped under any circumstance.
+// Match is case-insensitive substring against org name, any member email,
+// or any site domain belonging to the org.
+const PROTECTED_CLIENT_TOKENS = ["apyxmedical.com", "apyxmedical"];
+
+function isProtectedOrgRow(row: {
+  name?: string | null;
+  member_emails?: string[];
+  site_domains?: string[];
+}): boolean {
+  const haystacks = [
+    (row.name || "").toLowerCase(),
+    ...(row.member_emails || []).map((e) => (e || "").toLowerCase()),
+    ...(row.site_domains || []).map((d) => (d || "").toLowerCase()),
+  ];
+  return haystacks.some((h) =>
+    PROTECTED_CLIENT_TOKENS.some((t) => h.includes(t)),
+  );
+}
+
 // All public.* tables that have an org_id column. Order doesn't really matter
 // because we delete by org_id which never has FKs into other org_id rows of
 // other tables — but children of leads / forms / sites need to be handled
@@ -132,26 +152,31 @@ serve(async (req) => {
 
       const [{ data: mems }, { data: sts }, { data: profs }] = await Promise.all([
         admin.from("org_users").select("org_id, user_id").in("org_id", ids),
-        admin.from("sites").select("org_id").in("org_id", ids),
+        admin.from("sites").select("org_id, domain").in("org_id", ids),
         admin.from("profiles").select("user_id, email"),
       ]);
       const profMap = new Map<string, string>(
         (profs ?? []).map((p: any) => [p.user_id, p.email]),
       );
-      const orgs = (orgRows ?? []).map((o: any) => {
-        const orgMembers = (mems ?? []).filter((m: any) => m.org_id === o.id);
-        const orgSites = (sts ?? []).filter((s: any) => s.org_id === o.id);
-        return {
-          id: o.id,
-          name: o.name,
-          created_at: o.created_at,
-          member_count: orgMembers.length,
-          site_count: orgSites.length,
-          member_emails: orgMembers
-            .map((m: any) => profMap.get(m.user_id) || "—")
-            .filter(Boolean),
-        };
-      });
+      const orgs = (orgRows ?? [])
+        .map((o: any) => {
+          const orgMembers = (mems ?? []).filter((m: any) => m.org_id === o.id);
+          const orgSites = (sts ?? []).filter((s: any) => s.org_id === o.id);
+          return {
+            id: o.id,
+            name: o.name,
+            created_at: o.created_at,
+            member_count: orgMembers.length,
+            site_count: orgSites.length,
+            member_emails: orgMembers
+              .map((m: any) => profMap.get(m.user_id) || "—")
+              .filter(Boolean),
+            site_domains: orgSites.map((s: any) => s.domain).filter(Boolean),
+          };
+        })
+        // Hard filter: protected production clients (e.g., apyxmedical.com)
+        // must never appear in the wipe UI.
+        .filter((o: any) => !isProtectedOrgRow(o));
       return json({ ok: true, orgs });
     }
 
@@ -172,6 +197,32 @@ serve(async (req) => {
         report: { note: "Organization was already removed — nothing to do." },
         errors: [],
       });
+    }
+
+    // Belt-and-suspenders: re-check protection against name + emails + domains
+    // on the wipe path itself, even though the UI never lists protected orgs.
+    const [{ data: protMems }, { data: protSites }] = await Promise.all([
+      admin.from("org_users").select("user_id").eq("org_id", orgId),
+      admin.from("sites").select("domain").eq("org_id", orgId),
+    ]);
+    const protUserIds = (protMems ?? []).map((m: any) => m.user_id);
+    let protEmails: string[] = [];
+    if (protUserIds.length > 0) {
+      const { data: protProfs } = await admin
+        .from("profiles").select("email").in("user_id", protUserIds);
+      protEmails = (protProfs ?? []).map((p: any) => p.email).filter(Boolean);
+    }
+    if (
+      isProtectedOrgRow({
+        name: org.name,
+        member_emails: protEmails,
+        site_domains: (protSites ?? []).map((s: any) => s.domain).filter(Boolean),
+      })
+    ) {
+      return json(
+        { error: `"${org.name}" is a protected active client and cannot be wiped.` },
+        403,
+      );
     }
 
     if (typeof confirmName !== "string" || confirmName.trim() !== org.name) {

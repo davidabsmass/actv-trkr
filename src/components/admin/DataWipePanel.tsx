@@ -15,6 +15,7 @@ interface OrgRow {
   member_count: number;
   site_count: number;
   member_emails: string[];
+  site_domains?: string[];
 }
 
 /**
@@ -27,9 +28,9 @@ function isProtectedOrg(org: OrgRow): boolean {
   const name = (org.name || "").toLowerCase();
   if (PROTECTED_CLIENTS.some((p) => name.includes(p))) return true;
   const emails = (org.member_emails || []).map((e) => e.toLowerCase());
-  return emails.some((email) =>
-    PROTECTED_CLIENTS.some((p) => email.includes(p)),
-  );
+  if (emails.some((e) => PROTECTED_CLIENTS.some((p) => e.includes(p)))) return true;
+  const domains = (org.site_domains || []).map((d) => d.toLowerCase());
+  return domains.some((d) => PROTECTED_CLIENTS.some((p) => d.includes(p)));
 }
 
 interface WipeReport {
@@ -131,6 +132,11 @@ export default function DataWipePanel() {
             never deleted. Users belonging to other orgs are kept; only their membership in the
             wiped org is removed. Everything else is gone for good.
           </p>
+          <p className="rounded-md border border-success/40 bg-success/10 p-2 text-foreground">
+            <strong>Protected active clients:</strong>{" "}
+            {PROTECTED_CLIENTS.filter((p) => p.includes(".")).join(", ")}{" "}
+            — hidden from this list and blocked server-side. They cannot be wiped.
+          </p>
         </CardContent>
       </Card>
 
@@ -139,7 +145,7 @@ export default function DataWipePanel() {
       )}
 
       <div className="space-y-3">
-        {(orgs ?? []).map((org) => {
+        {(orgs ?? []).filter((o) => !isProtectedOrg(o)).map((org) => {
           const isWiping = wipingOrgId === org.id;
           const typed = confirmName[org.id] || "";
           const matches = typed.trim() === org.name;

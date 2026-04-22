@@ -23,6 +23,26 @@ const PROTECTED_EMAILS = new Set<string>([
   "annie@newuniformdesign.com",
 ]);
 
+// Active production clients that must NEVER be wiped under any circumstance.
+// Match is case-insensitive substring against org name, any member email,
+// or any site domain belonging to the org.
+const PROTECTED_CLIENT_TOKENS = ["apyxmedical.com", "apyxmedical"];
+
+function isProtectedOrgRow(row: {
+  name?: string | null;
+  member_emails?: string[];
+  site_domains?: string[];
+}): boolean {
+  const haystacks = [
+    (row.name || "").toLowerCase(),
+    ...(row.member_emails || []).map((e) => (e || "").toLowerCase()),
+    ...(row.site_domains || []).map((d) => (d || "").toLowerCase()),
+  ];
+  return haystacks.some((h) =>
+    PROTECTED_CLIENT_TOKENS.some((t) => h.includes(t)),
+  );
+}
+
 // All public.* tables that have an org_id column. Order doesn't really matter
 // because we delete by org_id which never has FKs into other org_id rows of
 // other tables — but children of leads / forms / sites need to be handled

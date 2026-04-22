@@ -15,7 +15,7 @@
  *
  *   Caller: org admin from the dashboard. Plugin must be v1.18.1+.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

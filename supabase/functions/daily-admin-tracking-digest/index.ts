@@ -1,7 +1,7 @@
 // Daily 8am admin digest — lists every site stalled >1 hour across all orgs.
 // Sent to system admin(s). Idempotent per (digest_date, recipient).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

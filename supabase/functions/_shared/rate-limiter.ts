@@ -4,7 +4,7 @@
  * Falls back to in-memory for non-critical paths.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 /** Default limits per function category */
 const FUNCTION_LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {

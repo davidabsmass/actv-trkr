@@ -1,7 +1,7 @@
 // Daily admin user export — uploads a CSV of all platform users to storage,
 // then emails a signed download link to system admins.
 // Idempotent per (digest_date, recipient).
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

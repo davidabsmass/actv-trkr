@@ -8,7 +8,7 @@
  * Auth: site API key (x-api-key) — same scheme as other ingestion endpoints.
  * Wildcard CORS so it can be called from any plugin install.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { wildcardCorsHeaders } from "../_shared/cors.ts";
 
 interface HealthPayload {

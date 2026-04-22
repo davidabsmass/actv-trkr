@@ -11,7 +11,7 @@
  * must not break the parent request.
  */
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 let _adminClient: ReturnType<typeof createClient> | null = null;
 function adminClient() {

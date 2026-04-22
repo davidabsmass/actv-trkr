@@ -7,7 +7,7 @@
  * Does NOT duplicate ingestion — calls manage-import-job?action=process
  * for actual batch work, which in turn calls the WP plugin.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

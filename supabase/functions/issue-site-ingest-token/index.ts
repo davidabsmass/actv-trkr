@@ -21,7 +21,7 @@
  *   - Tokens are stored as SHA-256 hashes; the raw token is returned exactly
  *     once and never recoverable.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { logSecurityEvent, hashIp, extractClientIp, newRequestId } from "../_shared/security-audit.ts";
 
 const corsHeaders = {

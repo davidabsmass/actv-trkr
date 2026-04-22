@@ -15,6 +15,7 @@ interface OrgRow {
   member_count: number;
   site_count: number;
   member_emails: string[];
+  site_domains?: string[];
 }
 
 /**

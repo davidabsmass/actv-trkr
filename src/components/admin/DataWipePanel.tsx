@@ -68,6 +68,10 @@ export default function DataWipePanel() {
   });
 
   const handleWipe = async (org: OrgRow) => {
+    if (isProtectedOrg(org)) {
+      toast.error(`"${org.name}" is a protected active client and cannot be wiped.`);
+      return;
+    }
     const typed = (confirmName[org.id] || "").trim();
     if (typed !== org.name) {
       toast.error("Type the exact organization name to confirm.");

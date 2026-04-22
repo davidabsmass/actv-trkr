@@ -17,6 +17,21 @@ interface OrgRow {
   member_emails: string[];
 }
 
+/**
+ * Active production clients that must NEVER appear in the data-wipe list.
+ * Match is case-insensitive against org name OR any member email domain.
+ */
+const PROTECTED_CLIENTS = ["apyxmedical.com", "apyxmedical"];
+
+function isProtectedOrg(org: OrgRow): boolean {
+  const name = (org.name || "").toLowerCase();
+  if (PROTECTED_CLIENTS.some((p) => name.includes(p))) return true;
+  const emails = (org.member_emails || []).map((e) => e.toLowerCase());
+  return emails.some((email) =>
+    PROTECTED_CLIENTS.some((p) => email.includes(p)),
+  );
+}
+
 interface WipeReport {
   ok: boolean;
   org_name: string;
@@ -53,6 +68,10 @@ export default function DataWipePanel() {
   });
 
   const handleWipe = async (org: OrgRow) => {
+    if (isProtectedOrg(org)) {
+      toast.error(`"${org.name}" is a protected active client and cannot be wiped.`);
+      return;
+    }
     const typed = (confirmName[org.id] || "").trim();
     if (typed !== org.name) {
       toast.error("Type the exact organization name to confirm.");

@@ -6,7 +6,7 @@
 //   - suspicious_activity (>20 auth failures in 24h for org's users)
 // Idempotent: if an open finding of (org_id, type) exists, it is updated, not duplicated.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -5,7 +5,7 @@
  * 
  * Security: max 100 entries per batch, payload size capped at 2MB.
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { checkRateLimit, extractClientIp, logAnomaly } from "../_shared/ingestion-security.ts";
 import { gateOrgLifecycle } from "../_shared/org-lifecycle-gate.ts";
 

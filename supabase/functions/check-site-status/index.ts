@@ -2,7 +2,7 @@
 // Authenticated by site API key. Returns whether tracking is currently
 // stalled and a short human-readable reason.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -12,7 +12,7 @@
 //   7. ssl_health row exists
 //   8. Tracking pixel has reported a pageview in the last 24h
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -20,7 +20,7 @@
  *   - We never echo the verification reason back to the caller.
  */
 // deno-lint-ignore-file no-explicit-any
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const REPLAY_WINDOW_SEC = 300; // ±5 minutes
 

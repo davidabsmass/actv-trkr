@@ -1,5 +1,5 @@
 import { appCorsHeaders } from "../_shared/cors.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 
 // Aggregates everything support needs about a customer in ONE response.

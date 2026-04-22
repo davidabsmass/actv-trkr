@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { gateOrgLifecycle } from "../_shared/org-lifecycle-gate.ts";
 
 const corsHeaders = {

@@ -7,7 +7,7 @@
 // Read-only on success (idempotent triggers). Always returns a JSON report so
 // it's auditable from edge function logs.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

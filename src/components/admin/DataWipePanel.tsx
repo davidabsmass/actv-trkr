@@ -132,6 +132,11 @@ export default function DataWipePanel() {
             never deleted. Users belonging to other orgs are kept; only their membership in the
             wiped org is removed. Everything else is gone for good.
           </p>
+          <p className="rounded-md border border-success/40 bg-success/10 p-2 text-foreground">
+            <strong>Protected active clients:</strong>{" "}
+            {PROTECTED_CLIENTS.filter((p) => p.includes(".")).join(", ")}{" "}
+            — hidden from this list and blocked server-side. They cannot be wiped.
+          </p>
         </CardContent>
       </Card>
 

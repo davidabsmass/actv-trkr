@@ -139,7 +139,7 @@ export default function DataWipePanel() {
       )}
 
       <div className="space-y-3">
-        {(orgs ?? []).map((org) => {
+        {(orgs ?? []).filter((o) => !isProtectedOrg(o)).map((org) => {
           const isWiping = wipingOrgId === org.id;
           const typed = confirmName[org.id] || "";
           const matches = typed.trim() === org.name;

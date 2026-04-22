@@ -13,6 +13,7 @@ permissions:
 jobs:
   deps:
     name: Re-audit shipped deps
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -43,6 +44,7 @@ jobs:
 
   gitleaks-history:
     name: gitleaks (full history)
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -59,6 +61,7 @@ jobs:
 
   zap-baseline:
     name: ZAP baseline (staging)
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

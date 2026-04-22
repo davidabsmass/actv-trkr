@@ -6,6 +6,10 @@
  */
 (function () {
   'use strict';
+  // SAFETY: outer try/catch guarantees the host page is unaffected if any
+  // internal code throws. Errors are swallowed; debug info goes to console
+  // only when the banner's debugMode is on.
+  try {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
   // ── Diagnostics state ──────────────────────────────────────
@@ -746,16 +750,29 @@
 
   // ── Boot ────────────────────────────────────────────────────
 
+  function safeInit() {
+    try { init(); } catch (e) {
+      try { if (window.console && window.console.warn) window.console.warn('[ACTV consent] init failed (host page unaffected):', e); } catch (_) {}
+    }
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', safeInit);
   } else {
-    init();
+    safeInit();
   }
 
   window.addEventListener('load', function () {
-    if (!diag.dom_mount_attempted) {
-      debugLog('Init did not run by window.load — running now');
-      init();
-    }
+    try {
+      if (!diag.dom_mount_attempted) {
+        debugLog('Init did not run by window.load — running now');
+        safeInit();
+      }
+    } catch (_) {}
   });
+
+  } catch (outerErr) {
+    // Last-resort guard. Host page MUST keep working.
+    try { if (window.console && window.console.warn) window.console.warn('[ACTV consent] bootstrap failed (host page unaffected):', outerErr); } catch (_) {}
+  }
 })();

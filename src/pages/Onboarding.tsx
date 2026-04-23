@@ -101,6 +101,8 @@ const Onboarding = () => {
       const { data: rpcOrgId, error: orgErr } = await supabase.rpc("create_org_with_admin", {
         p_org_id: requestedOrgId,
         p_name: orgName,
+        p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        p_allow_existing: true,
       });
       if (orgErr) throw orgErr;
 

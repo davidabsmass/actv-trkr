@@ -75,6 +75,15 @@ export function useAuth() {
     supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       if (!isMounted) return;
 
+      // Recovery flow: do not surface the recovery session to the rest of
+      // the app. ResetPassword owns the lifecycle and will sign out at the
+      // end (or on unmount).
+      if (initialSession && isRecoveryFlow()) {
+        setSession(null);
+        setLoading(false);
+        return;
+      }
+
       // If we have a session token, verify the user still exists. If the row
       // was deleted, getUser() returns a user_not_found / 403 error and we
       // must purge the stale token before any protected route renders.

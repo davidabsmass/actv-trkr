@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.8";
-const CURRENT_PLUGIN_SHA256 = "bf87f2f7f328014db58697a7121bdd35444a735f51ba0f03e823f3b47aadcad8";
+const CURRENT_PLUGIN_VERSION = "1.20.9";
+const CURRENT_PLUGIN_SHA256 = "6f8ff53959285584d3522b78948ef6990b5b769c0b7828fe83046fb0296cb967";
 
 const CHANGELOG = `
+## 1.20.9
+- NEW (Optional): "Limited Pre-Consent Tracking" toggle in Privacy/Consent tab. OFF by default. When enabled, allows anonymous pageview metadata (path, timestamp, referrer domain, coarse device) to be sent before consent — never visitor IDs, sessions, cookies, or journey stitching. Strict mode behavior is unchanged unless this is explicitly turned on. Backend ingestion strips identifying fields server-side as defense-in-depth.
+
 ## 1.20.8
 - FIX: Built-in consent banner state now persists correctly in WordPress admin. Saving now respects the selected consent source server-side, preserves existing banner fields on partial saves, and no longer appears to revert when the built-in banner is already enabled.
 

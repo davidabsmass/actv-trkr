@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
           forms: formsN,
           integrations: intN,
         }));
-        // Fire-and-forget sync trigger.
+        // Fire-and-forget sync trigger (refreshes the `forms` table).
         fetch(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
           method: "POST",
           headers: {
@@ -92,6 +92,47 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({ site_id: site.id, force_form_probe: true }),
         }).catch((e) => console.error(`reconciler: sync trigger failed for ${site.id}:`, e));
+
+        // ── Bootstrap missing form_integrations directly ──
+        // trigger-site-sync only refreshes the `forms` table; it does NOT
+        // create `form_integrations`. Without integrations, no import jobs run
+        // and Overview/leads stay empty even though raw events arrive.
+        // We backfill integrations here using the same logic as the Settings
+        // "Re-scan" button, but server-side and idempotent.
+        try {
+          const { data: existingForms } = await supabase
+            .from("forms")
+            .select("provider, external_form_id, name")
+            .eq("site_id", site.id)
+            .eq("archived", false)
+            .eq("is_active", true);
+
+          for (const f of existingForms || []) {
+            await supabase
+              .from("form_integrations")
+              .upsert({
+                site_id: site.id,
+                org_id: site.org_id,
+                builder_type: f.provider || "gravity_forms",
+                external_form_id: String(f.external_form_id),
+                form_name: f.name || `Form ${f.external_form_id}`,
+                is_active: true,
+                status: "detected",
+              }, { onConflict: "site_id,builder_type,external_form_id" });
+          }
+          console.log(JSON.stringify({
+            level: "info",
+            event: "reconciler_bootstrapped_integrations",
+            site_id: site.id,
+            count: existingForms?.length || 0,
+          }));
+        } catch (e) {
+          report.errors.push({
+            where: "integration_bootstrap",
+            site_id: site.id,
+            error: String(e),
+          });
+        }
       }
 
       // Domain/SSL health presence

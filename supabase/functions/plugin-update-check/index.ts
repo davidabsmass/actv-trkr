@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.3";
+const CURRENT_PLUGIN_VERSION = "1.20.4";
 const CURRENT_PLUGIN_SHA256 = "02c44428e047956584b9b7d3c1decf632e2a2823fbf52df51787d35d14813c30";
 
 const CHANGELOG = `
+## 1.20.4
+- FIX: Tracking, Gravity Forms, and Uptime Signal checkboxes now default to ON for both new and upgraded installs. Legacy installs with missing or empty values will be self-healed to enabled on next page load.
+
 ## 1.20.3
 - FIX (CRITICAL): Saving settings from the Privacy/Banner tab no longer wipes out the API Key. The sanitize callback now preserves any field that isn't part of the submitted form, and refuses to overwrite a saved API key with an empty value.
 - IMPROVED: Once an API key is saved, the General tab shows it as locked (•••• + last 4) with a "Replace key" button. The only way to change the key is to explicitly paste a new one.

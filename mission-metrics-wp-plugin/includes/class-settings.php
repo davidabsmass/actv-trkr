@@ -60,17 +60,46 @@ class MM_Settings {
 	}
 
 	public static function sanitize( $input ) {
-		$clean = array();
-		$clean['api_key']          = sanitize_text_field( $input['api_key'] ?? '' );
-		$clean['endpoint_url']     = ! empty( $input['endpoint_url'] )
-			? esc_url_raw( $input['endpoint_url'] )
-			: 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
-		$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
-		$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
-		$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';
-		$clean['consent_mode']     = in_array( ( $input['consent_mode'] ?? '' ), array( 'strict', 'relaxed' ), true )
-			? $input['consent_mode']
-			: 'strict';
+		// Always start from the existing saved options. Settings forms on
+		// other tabs (e.g. Privacy/Banner) don't include hidden inputs for
+		// every field, so an unprefixed key would be wiped out on save.
+		// Treat any field NOT present in $input as "unchanged".
+		$existing = wp_parse_args( get_option( self::OPTION_NAME, array() ), self::defaults() );
+		$clean    = $existing;
+
+		// API KEY: never overwrite an existing key with an empty value.
+		// The only way to clear/replace it is to paste a new non-empty value.
+		if ( array_key_exists( 'api_key', (array) $input ) ) {
+			$submitted_key = sanitize_text_field( $input['api_key'] );
+			if ( $submitted_key !== '' ) {
+				$clean['api_key'] = $submitted_key;
+			}
+			// else: keep $existing['api_key'] (do NOT clear)
+		}
+
+		// ENDPOINT URL: only update if the field is submitted AND non-empty.
+		if ( array_key_exists( 'endpoint_url', (array) $input ) && ! empty( $input['endpoint_url'] ) ) {
+			$clean['endpoint_url'] = esc_url_raw( $input['endpoint_url'] );
+		}
+		if ( empty( $clean['endpoint_url'] ) ) {
+			$clean['endpoint_url'] = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+		}
+
+		// Checkboxes only have a meaning when the form rendered them. We
+		// detect that via a hidden marker (`_mm_general_section`) so saves
+		// from OTHER tabs don't silently flip these off.
+		if ( ! empty( $input['_mm_general_section'] ) ) {
+			$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
+			$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
+			$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';
+		}
+
+		// Consent mode: only update when explicitly submitted with a valid value.
+		if ( array_key_exists( 'consent_mode', (array) $input )
+			&& in_array( $input['consent_mode'], array( 'strict', 'relaxed' ), true ) ) {
+			$clean['consent_mode'] = $input['consent_mode'];
+		}
+
 		return $clean;
 	}
 

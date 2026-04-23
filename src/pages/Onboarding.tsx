@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +8,23 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
+
+/**
+ * Derive a sensible default org name from the authenticated user.
+ * Prefer full name from auth metadata, else the email local-part, else "My Workspace".
+ */
+function deriveDefaultOrgName(user: { email?: string | null; user_metadata?: any } | null): string {
+  if (!user) return "My Workspace";
+  const meta = user.user_metadata || {};
+  const fullName = (meta.full_name || meta.name || "").toString().trim();
+  if (fullName) return fullName;
+  const email = (user.email || "").toString();
+  if (email.includes("@")) {
+    const local = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+    if (local) return local.charAt(0).toUpperCase() + local.slice(1);
+  }
+  return "My Workspace";
+}
 
 const COMPLIANCE_MODES = [
   {
@@ -35,7 +52,6 @@ const Onboarding = () => {
   const { data: orgs, status, refetch } = useOrgs();
   const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(user?.id);
 
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [createdOrg, setCreatedOrg] = useState<any>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -44,6 +60,7 @@ const Onboarding = () => {
   const [savingSite, setSavingSite] = useState(false);
   const [siteSaved, setSiteSaved] = useState(false);
   const [complianceMode, setComplianceMode] = useState("eu_us");
+  const provisioningRef = useRef(false);
 
   const alreadyPaid = subscribed || billingExempt;
 
@@ -70,12 +87,11 @@ const Onboarding = () => {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async (orgName: string) => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { user: authedUser } } = await supabase.auth.getUser();
+      if (!authedUser) throw new Error("Not authenticated");
 
       const requestedOrgId = crypto.randomUUID();
 
@@ -84,11 +100,11 @@ const Onboarding = () => {
       // returns that existing org_id instead of creating a duplicate.
       const { data: rpcOrgId, error: orgErr } = await supabase.rpc("create_org_with_admin", {
         p_org_id: requestedOrgId,
-        p_name: name,
+        p_name: orgName,
       });
       if (orgErr) throw orgErr;
 
-      const orgId = (rpcOrgId as string) || requestedOrgId;
+      const orgId = (rpcOrgId as unknown as string) || requestedOrgId;
 
       // Generate API key and store hash
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
@@ -115,7 +131,7 @@ const Onboarding = () => {
           { onConflict: "org_id" }
         );
 
-      // Save compliance mode to consent_config
+      // Save compliance mode to consent_config (default region/EU+US)
       await supabase
         .from("consent_config")
         .upsert(
@@ -126,16 +142,31 @@ const Onboarding = () => {
           { onConflict: "org_id" }
         );
 
-      setCreatedOrg({ id: orgId, name });
+      setCreatedOrg({ id: orgId, name: orgName });
       setApiKey(rawKey);
       refetch();
     } catch (err: any) {
       console.error(err);
-      toast({ variant: "destructive", title: "Error creating organization", description: err?.message || "Something went wrong" });
+      toast({ variant: "destructive", title: "Error setting up workspace", description: err?.message || "Something went wrong" });
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-provision an org silently as soon as we know the user has none.
+  // The org name is derived from the user's profile/email — users do NOT
+  // need to fill out a form. This makes the onboarding step invisible.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (status !== "success") return;
+    if (orgs && orgs.length > 0) return;
+    if (createdOrg) return;
+    if (provisioningRef.current) return;
+    provisioningRef.current = true;
+    handleCreate(deriveDefaultOrgName(user));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, status, orgs, createdOrg]);
+
 
   const copyApiKey = () => {
     if (apiKey) {
@@ -300,31 +331,16 @@ const Onboarding = () => {
     );
   }
 
+  // Auto-provisioning in progress — never show a form. The user shouldn't
+  // need to "set up an organization"; their workspace is created silently.
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
-            <Zap className="h-5 w-5 text-primary" />
-          </div>
-          <span className="text-xl font-bold text-foreground tracking-tight">ACTV TRKR</span>
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
+          <Zap className="h-5 w-5 text-primary" />
         </div>
-        <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Set up your organization</h2>
-          <p className="text-sm text-muted-foreground mb-5">Create an org to start tracking analytics.</p>
-          <form onSubmit={handleCreate} className="space-y-3">
-            <input
-              type="text" placeholder="Organization name (e.g., Example Ortho)" value={name}
-              onChange={(e) => setName(e.target.value)} required
-              className="w-full px-3 py-2.5 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            <button type="submit" disabled={loading || !name}
-              className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-              <Plus className="h-4 w-4" />
-              {loading ? "Creating..." : "Create Organization"}
-            </button>
-          </form>
-        </div>
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-muted-foreground">Setting up your workspace…</p>
       </div>
     </div>
   );

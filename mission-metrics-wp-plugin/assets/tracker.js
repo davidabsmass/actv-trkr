@@ -86,9 +86,11 @@
     function authHeaders(extra) {
       var h = extra || {};
       h['Content-Type'] = 'application/json';
-      if (USE_INGEST_TOKEN) {
-        h['X-Ingest-Token'] = INGEST_CRED;
-      } else if (INGEST_CRED) {
+      // IMPORTANT: fetch requests must not rely on X-Ingest-Token because that
+      // header triggers a CORS preflight our ingest endpoints do not allow.
+      // Keep credentials in the JSON body via withAuthBody(); only legacy API
+      // key auth may ride in Authorization for backward compatibility.
+      if (!USE_INGEST_TOKEN && INGEST_CRED) {
         h['Authorization'] = 'Bearer ' + INGEST_CRED;
       }
       return h;

@@ -147,6 +147,18 @@ Deno.serve(async (req) => {
     // Dual-mode auth: prefer narrow-scope ingest token, fall back to legacy admin key.
     const auth = await authenticateIngestRequest({ req, body, supabase, endpoint: "track-pageview" });
     if (!auth.ok) {
+      // Diagnostic logging for 401 storms: helps identify whether sites are
+      // sending pageviews without credentials (e.g. stale cached HTML where
+      // mmConfig wasn't injected) vs. invalid/revoked tokens.
+      if (auth.status === 401) {
+        const hasIngestHeader = !!req.headers.get("x-ingest-token");
+        const hasAuthHeader = !!req.headers.get("authorization");
+        const hasIngestBody = !!body?.ingest_token;
+        const hasApiKeyBody = !!body?.api_key;
+        const domain = body?.source?.domain || "unknown";
+        const pluginVersion = body?.source?.plugin_version || "unknown";
+        console.log(`[track-pageview 401] reason="${auth.error}" domain=${domain} v=${pluginVersion} hdr_ingest=${hasIngestHeader} hdr_auth=${hasAuthHeader} body_ingest=${hasIngestBody} body_apikey=${hasApiKeyBody}`);
+      }
       const respBody = auth.payload ?? { error: auth.error };
       return new Response(JSON.stringify(respBody), { status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

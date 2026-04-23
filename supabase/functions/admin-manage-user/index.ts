@@ -567,6 +567,18 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
+      // Encrypt the note body at rest. We attempt encryption first; if the
+      // key is not configured (encrypt_admin_note raises), fall back to
+      // plaintext storage so existing flows do not break.
+      const trimmedBody = noteBody.slice(0, 4000);
+      let bodyEncrypted: string | null = null;
+      try {
+        const { data: enc, error: encErr } = await adminClient.rpc("encrypt_admin_note", {
+          p_plaintext: trimmedBody,
+        });
+        if (!encErr && enc) bodyEncrypted = enc as unknown as string;
+      } catch { /* key not configured — fall through to plaintext */ }
+
       const { data: inserted, error: insertErr } = await adminClient
         .from("admin_notes")
         .insert({
@@ -576,7 +588,10 @@ Deno.serve(async (req) => {
           author_id: caller.id,
           author_email: caller.email,
           category,
-          body: noteBody.slice(0, 4000),
+          // Keep `body` only if encryption is unavailable; otherwise store empty
+          // string so plaintext is not duplicated alongside the ciphertext.
+          body: bodyEncrypted ? "" : trimmedBody,
+          body_encrypted: bodyEncrypted,
         })
         .select()
         .single();

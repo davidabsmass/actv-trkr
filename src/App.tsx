@@ -72,6 +72,21 @@ function isPreviewEnvironment() {
 }
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
+const RECOVERY_FLAG = "pw_recovery_in_progress";
+const RECOVERY_TS_KEY = "pw_recovery_started_at";
+
+if (typeof window !== "undefined") {
+  const isResetPasswordPath = window.location.pathname.startsWith("/reset-password");
+  const hash = window.location.hash || "";
+  const looksLikeRecoveryLink = hash.includes("type=recovery") || hash.includes("access_token=") || hash.includes("refresh_token=");
+  if (isResetPasswordPath && looksLikeRecoveryLink) {
+    try {
+      sessionStorage.setItem(RECOVERY_FLAG, "1");
+      localStorage.setItem(RECOVERY_FLAG, "1");
+      localStorage.setItem(RECOVERY_TS_KEY, String(Date.now()));
+    } catch {}
+  }
+}
 
 function isOwnerEmail(email?: string | null) {
   return email?.toLowerCase() === OWNER_EMAIL.toLowerCase();

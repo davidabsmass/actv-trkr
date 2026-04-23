@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.10";
-const CURRENT_PLUGIN_SHA256 = "fe1065e4f22cda47ce143701e2f88b6a36afde4da921c492ae21fc1ca2681618";
+const CURRENT_PLUGIN_VERSION = "1.20.11";
+const CURRENT_PLUGIN_SHA256 = "0f344576d5c5c1410da20526f5a4a81209508e45e11d263142f4a6df51b60e98";
 
 const CHANGELOG = `
+## 1.20.11
+- FIX: Normal pageviews and click events now use fetch as the primary transport instead of relying on sendBeacon, so interactive tracking no longer fails silently when the browser accepts a beacon but the ingestion request never lands.
+
 ## 1.20.9
 - NEW (Optional): "Limited Pre-Consent Tracking" toggle in Privacy/Consent tab. OFF by default. When enabled, allows anonymous pageview metadata (path, timestamp, referrer domain, coarse device) to be sent before consent — never visitor IDs, sessions, cookies, or journey stitching. Strict mode behavior is unchanged unless this is explicitly turned on. Backend ingestion strips identifying fields server-side as defense-in-depth.
 

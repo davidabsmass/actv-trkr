@@ -19,13 +19,18 @@ interface KPICardProps {
   sparkColor?: string;
 }
 
-function humanizeDelta(delta: number | null, t: (key: string) => string): { text: string; className: string } {
+function humanizeDelta(delta: number | null, t: (key: string) => string): { text: string; className: string; explain?: string } {
   if (delta === null) return { text: "—", className: "text-muted-foreground" };
   const pct = Math.abs(delta * 100);
   if (pct < 1) return { text: t("dashboard.noChange"), className: "kpi-neutral" };
   if (delta > 0.15) return { text: t("dashboard.strongGrowth"), className: "kpi-up" };
   if (delta > 0) return { text: `+${(delta * 100).toFixed(1)}%`, className: "kpi-up" };
-  if (delta < -0.15) return { text: t("dashboard.attentionNeeded"), className: "kpi-down" };
+  if (delta < -0.15)
+    return {
+      text: t("dashboard.attentionNeeded"),
+      className: "kpi-down",
+      explain: `Down ${pct.toFixed(1)}% vs. the previous period — a drop of more than 15% is worth a quick look.`,
+    };
   return { text: `${(delta * 100).toFixed(1)}%`, className: "kpi-down" };
 }
 

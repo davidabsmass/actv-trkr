@@ -15,6 +15,9 @@ const CURRENT_PLUGIN_VERSION = "1.20.11";
 const CURRENT_PLUGIN_SHA256 = "9758967109e7e0ba5c91f849d6e84f37ad6c749d61be91bee2f251ad58757136";
 
 const CHANGELOG = `
+## 1.20.12
+- FIX (CRITICAL): Restored real-time pageviews, sessions, and click tracking for sites using ingest tokens. The tracker no longer sends the token in a custom fetch header that browsers block during CORS preflight; credentials now stay in the request body so Overview data can flow again.
+
 ## 1.20.11
 - FIX: Normal pageviews and click events now use fetch as the primary transport instead of relying on sendBeacon, so interactive tracking no longer fails silently when the browser accepts a beacon but the ingestion request never lands.
 

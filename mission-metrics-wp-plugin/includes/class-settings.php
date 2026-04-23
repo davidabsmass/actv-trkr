@@ -60,17 +60,46 @@ class MM_Settings {
 	}
 
 	public static function sanitize( $input ) {
-		$clean = array();
-		$clean['api_key']          = sanitize_text_field( $input['api_key'] ?? '' );
-		$clean['endpoint_url']     = ! empty( $input['endpoint_url'] )
-			? esc_url_raw( $input['endpoint_url'] )
-			: 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
-		$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
-		$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
-		$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';
-		$clean['consent_mode']     = in_array( ( $input['consent_mode'] ?? '' ), array( 'strict', 'relaxed' ), true )
-			? $input['consent_mode']
-			: 'strict';
+		// Always start from the existing saved options. Settings forms on
+		// other tabs (e.g. Privacy/Banner) don't include hidden inputs for
+		// every field, so an unprefixed key would be wiped out on save.
+		// Treat any field NOT present in $input as "unchanged".
+		$existing = wp_parse_args( get_option( self::OPTION_NAME, array() ), self::defaults() );
+		$clean    = $existing;
+
+		// API KEY: never overwrite an existing key with an empty value.
+		// The only way to clear/replace it is to paste a new non-empty value.
+		if ( array_key_exists( 'api_key', (array) $input ) ) {
+			$submitted_key = sanitize_text_field( $input['api_key'] );
+			if ( $submitted_key !== '' ) {
+				$clean['api_key'] = $submitted_key;
+			}
+			// else: keep $existing['api_key'] (do NOT clear)
+		}
+
+		// ENDPOINT URL: only update if the field is submitted AND non-empty.
+		if ( array_key_exists( 'endpoint_url', (array) $input ) && ! empty( $input['endpoint_url'] ) ) {
+			$clean['endpoint_url'] = esc_url_raw( $input['endpoint_url'] );
+		}
+		if ( empty( $clean['endpoint_url'] ) ) {
+			$clean['endpoint_url'] = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+		}
+
+		// Checkboxes only have a meaning when the form rendered them. We
+		// detect that via a hidden marker (`_mm_general_section`) so saves
+		// from OTHER tabs don't silently flip these off.
+		if ( ! empty( $input['_mm_general_section'] ) ) {
+			$clean['enable_tracking']  = ! empty( $input['enable_tracking'] ) ? '1' : '0';
+			$clean['enable_gravity']   = ! empty( $input['enable_gravity'] ) ? '1' : '0';
+			$clean['enable_heartbeat'] = ! empty( $input['enable_heartbeat'] ) ? '1' : '0';
+		}
+
+		// Consent mode: only update when explicitly submitted with a valid value.
+		if ( array_key_exists( 'consent_mode', (array) $input )
+			&& in_array( $input['consent_mode'], array( 'strict', 'relaxed' ), true ) ) {
+			$clean['consent_mode'] = $input['consent_mode'];
+		}
+
 		return $clean;
 	}
 
@@ -187,6 +216,7 @@ class MM_Settings {
 		?>
 		<form method="post" action="options.php">
 			<?php settings_fields( self::OPTION_GROUP ); ?>
+			<input type="hidden" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[_mm_general_section]" value="1" />
 
 			<div class="mm-card">
 				<h2>Connection</h2>
@@ -195,9 +225,37 @@ class MM_Settings {
 					<tr>
 						<th scope="row"><label for="mm_api_key">API Key</label></th>
 						<td>
-							<input type="password" id="mm_api_key" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[api_key]"
-								value="<?php echo esc_attr( $opts['api_key'] ); ?>" class="regular-text" autocomplete="off" />
-							<p class="description">From your ACTV TRKR dashboard.</p>
+							<?php $has_key = ! empty( $opts['api_key'] ); ?>
+							<?php if ( $has_key ) : ?>
+								<div id="mm-api-key-locked" style="display:flex;align-items:center;gap:10px">
+									<code style="font-family:Menlo,Consolas,monospace;background:#f6f7f7;padding:6px 10px;border-radius:4px;border:1px solid #dcdcde">
+										<?php echo esc_html( str_repeat( '•', 8 ) . substr( $opts['api_key'], -4 ) ); ?>
+									</code>
+									<span style="color:#16a34a;font-weight:600">✓ Saved</span>
+									<a href="#" id="mm-replace-api-key" class="button button-small">Replace key</a>
+								</div>
+								<div id="mm-api-key-edit" style="display:none">
+									<input type="password" id="mm_api_key" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[api_key]"
+										value="" class="regular-text" autocomplete="off" placeholder="Paste new API key" />
+									<a href="#" id="mm-cancel-replace-api-key" style="margin-left:8px">Cancel</a>
+									<p class="description" style="color:#b91c1c">Saving will replace your current key. Leaving this blank keeps the existing key.</p>
+								</div>
+								<script>
+								(function(){
+									var lock = document.getElementById('mm-api-key-locked');
+									var edit = document.getElementById('mm-api-key-edit');
+									var rep  = document.getElementById('mm-replace-api-key');
+									var cancel = document.getElementById('mm-cancel-replace-api-key');
+									var input = document.getElementById('mm_api_key');
+									if ( rep ) rep.addEventListener('click', function(e){ e.preventDefault(); lock.style.display='none'; edit.style.display='block'; if(input) input.focus(); });
+									if ( cancel ) cancel.addEventListener('click', function(e){ e.preventDefault(); edit.style.display='none'; lock.style.display='flex'; if(input) input.value=''; });
+								})();
+								</script>
+							<?php else : ?>
+								<input type="password" id="mm_api_key" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[api_key]"
+									value="" class="regular-text" autocomplete="off" />
+								<p class="description">From your ACTV TRKR dashboard.</p>
+							<?php endif; ?>
 						</td>
 					</tr>
 					<tr>

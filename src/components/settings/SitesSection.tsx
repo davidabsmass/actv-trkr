@@ -70,7 +70,11 @@ export default function SitesSection() {
     const pendingSiteIds = siteIds.filter((siteId) => {
       const domain = domainHealthBySite.get(siteId);
       const ssl = sslHealthBySite.get(siteId);
-      return needsRefresh(domain?.last_checked_at) || needsRefresh(ssl?.last_checked_at);
+      // Refresh if the data is stale OR if a previous check left expiry NULL
+      // (e.g. crt.sh was down). The new certspotter source is more reliable.
+      const sslMissing = !!ssl && ssl.ssl_expiry_date == null;
+      const domainMissing = !!domain && domain.domain_expiry_date == null;
+      return needsRefresh(domain?.last_checked_at) || needsRefresh(ssl?.last_checked_at) || sslMissing || domainMissing;
     });
 
     if (pendingSiteIds.length === 0) return;

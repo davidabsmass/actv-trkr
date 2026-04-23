@@ -694,7 +694,7 @@
 
       pageTimer.start(eventId);
 
-      send(CFG.endpoint, {
+      send(CFG.endpoint, withAuthBody({
         source: {
           domain: CFG.domain,
           type: 'wordpress',
@@ -712,7 +712,7 @@
         },
         attribution: attribution,
         visitor: buildVisitor(vid),
-      });
+      }));
     }
 
     // ── Listeners ────────────────────────────────────────────────

@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { RetentionPanel } from "@/components/admin/RetentionPanel";
+import { MaskedId } from "@/components/admin/MaskedId";
 
 interface Props {
   open: boolean;
@@ -576,9 +577,15 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
                           />
                           <Row label="Coupon" value={stripe.coupon?.name || stripe.coupon?.id || "—"} />
                           <Separator className="my-2" />
-                          <Row label="Customer ID" value={stripe.customer_id} mono />
+                          <div className="flex justify-between gap-3 items-center">
+                            <span className="text-muted-foreground text-xs shrink-0">Customer ID</span>
+                            <MaskedId value={stripe.customer_id} />
+                          </div>
                           {stripe.subscription?.id && (
-                            <Row label="Subscription ID" value={stripe.subscription.id} mono />
+                            <div className="flex justify-between gap-3 items-center">
+                              <span className="text-muted-foreground text-xs shrink-0">Subscription ID</span>
+                              <MaskedId value={stripe.subscription.id} />
+                            </div>
                           )}
                           {stripe.subscription?.cancel_at_period_end && (
                             <p className="text-xs text-warning pt-1">

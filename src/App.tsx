@@ -124,6 +124,12 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OwnerDashboardRedirect({ children }: { children: React.ReactNode }) {
+  const { session } = useAuth();
+  if (isOwnerEmail(session?.user?.email)) return <Navigate to="/admin-setup" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

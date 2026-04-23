@@ -2,6 +2,7 @@ import { ArrowUpRight, ArrowDownRight, Minus, Users, Target, Eye, TrendingUp } f
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { Sparkline } from "./Sparkline";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type KpiVariant = "primary" | "success" | "warning" | "info";
 

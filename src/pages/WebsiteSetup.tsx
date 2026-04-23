@@ -17,8 +17,19 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
+  PlugZap,
+  Sparkles,
 } from "lucide-react";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface StepProps {
   number: number;
@@ -62,6 +73,9 @@ export default function WebsiteSetup() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [keyVisible, setKeyVisible] = useState(true);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testFailed, setTestFailed] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const { data: latestVersion } = useQuery({
     queryKey: ["latest_plugin_version", "plugin_info"],
@@ -172,6 +186,37 @@ export default function WebsiteSetup() {
     setCopied(false);
   };
 
+  const handleTestConnection = async () => {
+    if (!orgId) return;
+    setTesting(true);
+    setTestFailed(false);
+    try {
+      // Force-refresh the sites query so we read live state, not cached.
+      await queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
+      const { data, error } = await supabase
+        .from("sites")
+        .select("id, last_heartbeat_at, plugin_version")
+        .eq("org_id", orgId);
+      if (error) throw error;
+      const connected = (data ?? []).some(
+        (s) => s.last_heartbeat_at || s.plugin_version,
+      );
+      if (connected) {
+        setShowSuccessModal(true);
+      } else {
+        setTestFailed(true);
+        toast.error(
+          "No signal yet. Make sure the plugin is activated and the license key is saved in WordPress.",
+        );
+      }
+    } catch (e: any) {
+      setTestFailed(true);
+      toast.error(e.message || "Could not test connection");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
@@ -180,7 +225,7 @@ export default function WebsiteSetup() {
           Set Up Your Website
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
-          Connect your WordPress site in 3 simple steps. Everything you need is on this page.
+          Connect your WordPress site in 4 simple steps. Everything you need is on this page.
         </p>
         {websiteConnected && (
           <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success border border-success/20 text-xs font-medium">
@@ -348,7 +393,35 @@ export default function WebsiteSetup() {
           number={3}
           icon={Link2}
           title="Paste the Key in WordPress"
-          description="In WordPress, go to Settings → ACTV TRKR. Paste the license key from Step 1 into the License Key field, then click Save Changes. Your site will connect within seconds."
+          description="In WordPress, go to Settings → ACTV TRKR. Paste the license key from Step 1 into the License Key field, then click Save Changes."
+        />
+
+        <Step
+          number={4}
+          icon={PlugZap}
+          title="Test the Connection"
+          description="Click below to confirm your site is talking to ACTV TRKR. If it's connected, you're all set."
+          action={
+            <div className="space-y-2">
+              <button
+                onClick={handleTestConnection}
+                disabled={testing}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {testing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PlugZap className="h-4 w-4" />
+                )}
+                {testing ? "Testing…" : "Test Connection"}
+              </button>
+              {testFailed && !testing && (
+                <p className="text-xs text-warning leading-relaxed">
+                  We didn't hear from your site yet. Double-check that the plugin is activated and your license key is saved in WordPress, then try again.
+                </p>
+              )}
+            </div>
+          }
         />
       </div>
 
@@ -363,6 +436,29 @@ export default function WebsiteSetup() {
         </button>
         .
       </p>
+
+      {/* Success modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-success/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-success" />
+            </div>
+            <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Connection established
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm leading-relaxed pt-2">
+              Your site just connected — forms, traffic, SEO and monitoring sync in the background and can take 5–15 minutes to fully populate. If something looks empty, give it a few minutes and refresh. You can safely keep working while we catch up.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center pt-2">
+            <Button onClick={() => setShowSuccessModal(false)} className="w-full sm:w-auto">
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

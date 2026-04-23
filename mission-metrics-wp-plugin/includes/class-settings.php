@@ -237,13 +237,6 @@ class MM_Settings {
 							</script>
 						</td>
 					</tr>
-					<tr>
-						<th scope="row">Verify</th>
-						<td>
-							<button type="button" id="mm-test-btn" class="button button-secondary">Test Connection</button>
-							<span id="mm-test-result" class="mm-tool-result" style="margin-left:10px"></span>
-						</td>
-					</tr>
 				</table>
 			</div>
 
@@ -286,6 +279,16 @@ class MM_Settings {
 
 			<?php submit_button(); ?>
 		</form>
+
+		<!-- Verify connection — placed AFTER the Save button so users save first, then test. -->
+		<div class="mm-card">
+			<h2>Verify Connection</h2>
+			<p class="mm-card-desc">After saving above, click below to confirm this site can reach ACTV TRKR.</p>
+			<p>
+				<button type="button" id="mm-test-btn" class="button button-secondary">Test Connection</button>
+				<span id="mm-test-result" class="mm-tool-result" style="margin-left:10px"></span>
+			</p>
+		</div>
 		<?php
 	}
 

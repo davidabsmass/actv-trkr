@@ -1,6 +1,12 @@
 import { appCorsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import {
+  logSecurityEvent,
+  hashIp,
+  extractClientIp,
+  newRequestId,
+} from "../_shared/security-audit.ts";
 
 // Aggregates everything support needs about a customer in ONE response.
 // Stripe data here is READ-ONLY context. All billing edits remain in the
@@ -10,6 +16,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: appCorsHeaders(req) });
   }
+
+  const requestId = newRequestId();
+  const userAgent = req.headers.get("user-agent");
+  const clientIp = extractClientIp(req);
+  const ipHash = clientIp ? await hashIp(clientIp) : null;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -35,7 +46,19 @@ Deno.serve(async (req) => {
       .eq("user_id", caller.id)
       .eq("role", "admin")
       .maybeSingle();
-    if (!roleRow) return json({ error: "Admin access required" }, 403, req);
+    if (!roleRow) {
+      await logSecurityEvent({
+        event_type: "admin_customer_detail_denied",
+        severity: "warn",
+        actor_type: "user",
+        user_id: caller.id,
+        ip_hash: ipHash,
+        user_agent: userAgent,
+        request_id: requestId,
+        message: "Non-admin attempted admin-customer-detail",
+      });
+      return json({ error: "Admin access required" }, 403, req);
+    }
 
     const body = await req.json().catch(() => ({}));
     const email = String(body.email || "").trim().toLowerCase();
@@ -152,7 +175,19 @@ Deno.serve(async (req) => {
     } else {
       notesQuery = notesQuery.eq("subscriber_email", resolvedEmail);
     }
-    const { data: notes } = await notesQuery;
+    const { data: notesRaw } = await notesQuery;
+    // Decrypt body_encrypted (when present) so the admin UI sees plaintext.
+    const notes = await Promise.all(
+      (notesRaw || []).map(async (n: any) => {
+        if (n.body_encrypted) {
+          const { data: dec } = await adminClient.rpc("decrypt_admin_note", {
+            p_ciphertext: n.body_encrypted,
+          });
+          return { ...n, body: dec || n.body, body_encrypted: undefined };
+        }
+        return n;
+      }),
+    );
 
     // ── Stripe (read-only summary + deep links) ─────────────────────────
     let stripeSummary: any = null;
@@ -212,6 +247,20 @@ Deno.serve(async (req) => {
         stripeSummary = { error: (e as Error).message };
       }
     }
+
+    // Audit: every successful read of a customer record is logged.
+    await logSecurityEvent({
+      event_type: "admin_customer_detail_read",
+      severity: "info",
+      actor_type: "admin",
+      user_id: caller.id,
+      org_id: orgIds[0] ?? null,
+      ip_hash: ipHash,
+      user_agent: userAgent,
+      request_id: requestId,
+      message: `Admin read customer detail for ${resolvedEmail}`,
+      metadata: { email: resolvedEmail, subscriber_id: subscriber?.id ?? null },
+    });
 
     return json(
       {

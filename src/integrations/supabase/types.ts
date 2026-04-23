@@ -382,6 +382,7 @@ export type Database = {
           author_email: string | null
           author_id: string | null
           body: string
+          body_encrypted: string | null
           category: string
           created_at: string
           id: string
@@ -393,6 +394,7 @@ export type Database = {
           author_email?: string | null
           author_id?: string | null
           body: string
+          body_encrypted?: string | null
           category?: string
           created_at?: string
           id?: string
@@ -404,6 +406,7 @@ export type Database = {
           author_email?: string | null
           author_id?: string | null
           body?: string
+          body_encrypted?: string | null
           category?: string
           created_at?: string
           id?: string
@@ -427,6 +430,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      admin_step_up_tokens: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          ip_hash: string | null
+          token_hash: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_hash?: string | null
+          token_hash: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_hash?: string | null
+          token_hash?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       ai_usage_log: {
         Row: {
@@ -7601,6 +7637,7 @@ export type Database = {
             }
             Returns: string
           }
+      decrypt_admin_note: { Args: { p_ciphertext: string }; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -7620,6 +7657,7 @@ export type Database = {
         }
         Returns: string
       }
+      encrypt_admin_note: { Args: { p_plaintext: string }; Returns: string }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number

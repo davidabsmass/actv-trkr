@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.1";
+const CURRENT_PLUGIN_VERSION = "1.20.2";
 const CURRENT_PLUGIN_SHA256 = "26846c63cea018c1c52209807a210a3c422efa024c853c4d20f4c8a8ebd1f82a";
 
 const CHANGELOG = `
+## 1.20.2
+- FIX: "Switch to Recommended Mode" button in the WP admin compliance nudge now actually saves the setting (one-click apply via AJAX, then auto-reload) instead of just changing the dropdown without persisting.
+
 ## 1.20.1
 - IMPROVED: Settings → General now shows the **Save Changes** button above **Test Connection** so users save their license key first, then verify the connection (more intuitive ordering).
 

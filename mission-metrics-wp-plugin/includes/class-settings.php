@@ -143,7 +143,7 @@ class MM_Settings {
 	public static function render_page() {
 		$tabs = array(
 			'general'  => 'General',
-			'privacy'  => 'Privacy',
+			'privacy'  => 'Privacy / Consent',
 			'tools'    => 'Tools',
 			'advanced' => 'Advanced',
 		);

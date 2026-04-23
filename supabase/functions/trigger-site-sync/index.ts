@@ -659,8 +659,8 @@ Deno.serve(async (req) => {
       ? await buildKnownAvadaFormMappings(supabase, site.org_id, site.id, avadaFormRows)
       : [];
 
-    // Skip org membership check for cron calls
-    if (!isCronCall) {
+    // Skip org membership check for internal (cron / service-role) calls
+    if (!isInternalCall) {
       const { data: membership } = await supabase
         .from("org_users").select("role")
         .eq("org_id", site.org_id).eq("user_id", authenticatedUserId).maybeSingle();

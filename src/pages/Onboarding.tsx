@@ -52,7 +52,6 @@ const Onboarding = () => {
   const { data: orgs, status, refetch } = useOrgs();
   const { subscribed, billingExempt, isLoading: subLoading } = useSubscription(user?.id);
 
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [createdOrg, setCreatedOrg] = useState<any>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -61,6 +60,7 @@ const Onboarding = () => {
   const [savingSite, setSavingSite] = useState(false);
   const [siteSaved, setSiteSaved] = useState(false);
   const [complianceMode, setComplianceMode] = useState("eu_us");
+  const provisioningRef = useRef(false);
 
   const alreadyPaid = subscribed || billingExempt;
 

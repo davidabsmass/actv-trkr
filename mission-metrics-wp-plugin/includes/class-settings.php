@@ -396,6 +396,7 @@ class MM_Settings {
 		?>
 		<form method="post" action="options.php">
 			<?php settings_fields( self::OPTION_GROUP ); ?>
+			<input type="hidden" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[_mm_privacy_section]" value="1" />
 
 			<!-- External CMP detection card -->
 			<?php if ( ! empty( $external_cmps ) ) : ?>

@@ -1016,9 +1016,15 @@
         bootTracker();
       } else if (stored === 'denied') {
         consentState = 'analytics_consent_denied';
+        // v1.20.9+: respect explicit denial. No limited mode after deny.
       } else {
         consentState = 'no_consent';
-        // Stay completely inert — wait for mmConsent.grant().
+        // v1.20.9+: if admin opted into Limited Pre-Consent Tracking,
+        // boot the reduced pipeline. Otherwise stay completely inert
+        // (unchanged legacy behavior — wait for mmConsent.grant()).
+        if (limitedPreConsent) {
+          bootLimitedTracker();
+        }
       }
     } else {
       // Relaxed mode: boot immediately (backward compatible).

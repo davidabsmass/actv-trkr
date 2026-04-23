@@ -593,12 +593,14 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     let authenticatedUserId: string | null = null;
 
-    // --- Cron-secret bypass: allow automated daily-site-sync calls ---
+    // --- Cron-secret OR service-role bypass: allow automated/internal calls ---
     const incomingCronSecret = req.headers.get("x-cron-secret");
     const expectedCronSecret = Deno.env.get("CRON_SECRET");
     const isCronCall = !!(incomingCronSecret && expectedCronSecret && incomingCronSecret === expectedCronSecret);
+    const isServiceRoleCall = !!serviceKey && authHeader === `Bearer ${serviceKey}`;
+    const isInternalCall = isCronCall || isServiceRoleCall;
 
-    if (!isCronCall) {
+    if (!isInternalCall) {
       // Standard user-auth path
       const userClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
@@ -657,8 +659,8 @@ Deno.serve(async (req) => {
       ? await buildKnownAvadaFormMappings(supabase, site.org_id, site.id, avadaFormRows)
       : [];
 
-    // Skip org membership check for cron calls
-    if (!isCronCall) {
+    // Skip org membership check for internal (cron / service-role) calls
+    if (!isInternalCall) {
       const { data: membership } = await supabase
         .from("org_users").select("role")
         .eq("org_id", site.org_id).eq("user_id", authenticatedUserId).maybeSingle();

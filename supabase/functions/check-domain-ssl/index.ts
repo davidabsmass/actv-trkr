@@ -66,39 +66,71 @@ async function checkDomainExpiry(domain: string): Promise<{ expiry: string | nul
 }
 
 async function checkSSLExpiry(domain: string): Promise<{ expiry: string | null; issuer: string | null; daysLeft: number | null }> {
-  try {
-    const resp = await fetchWithRetry(`https://crt.sh/?q=${encodeURIComponent(domain)}&output=json&exclude=expired`);
-    if (!resp.ok) {
-      console.log(`crt.sh returned ${resp.status} for ${domain}`);
-      return { expiry: null, issuer: null, daysLeft: null };
+  // Try multiple sources because crt.sh is frequently slow / 404 / 502.
+  const sources = [
+    `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json&exclude=expired`,
+    `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json`,
+    `https://crt.sh/?q=${encodeURIComponent("%25." + domain.replace(/^www\./, ""))}&output=json`,
+  ];
+
+  for (const url of sources) {
+    try {
+      const resp = await fetchWithRetry(url);
+      if (!resp.ok) {
+        console.log(`crt.sh source returned ${resp.status} for ${domain} (${url})`);
+        continue;
+      }
+      const certs: any[] = await resp.json();
+      if (!certs || certs.length === 0) {
+        console.log(`crt.sh: no certs found for ${domain} (${url})`);
+        continue;
+      }
+
+      const now = new Date();
+      const validCerts = certs
+        .filter((c: any) => c.not_after && new Date(c.not_after) > now && (!c.not_before || new Date(c.not_before) <= now))
+        .sort((a: any, b: any) => new Date(b.not_after).getTime() - new Date(a.not_after).getTime());
+
+      if (validCerts.length === 0) {
+        console.log(`crt.sh: no currently valid certs for ${domain} (${url})`);
+        continue;
+      }
+
+      const latest = validCerts[0];
+      const expiryDate = new Date(latest.not_after);
+      const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000);
+      const expiryStr = expiryDate.toISOString().split("T")[0];
+      const issuer = latest.issuer_name || null;
+      return { expiry: expiryStr, issuer, daysLeft };
+    } catch (err) {
+      console.error(`SSL check error for ${domain} (${url}):`, err);
     }
-    const certs: any[] = await resp.json();
-    if (!certs || certs.length === 0) {
-      console.log(`crt.sh: no certs found for ${domain}`);
-      return { expiry: null, issuer: null, daysLeft: null };
-    }
-
-    const now = new Date();
-    const validCerts = certs
-      .filter((c: any) => new Date(c.not_after) > now && new Date(c.not_before) <= now)
-      .sort((a: any, b: any) => new Date(b.not_after).getTime() - new Date(a.not_after).getTime());
-
-    if (validCerts.length === 0) {
-      console.log(`crt.sh: no currently valid certs for ${domain}`);
-      return { expiry: null, issuer: null, daysLeft: null };
-    }
-
-    const latest = validCerts[0];
-    const expiryDate = new Date(latest.not_after);
-    const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000);
-    const expiryStr = expiryDate.toISOString().split("T")[0];
-    const issuer = latest.issuer_name || null;
-
-    return { expiry: expiryStr, issuer, daysLeft };
-  } catch (err) {
-    console.error(`SSL check error for ${domain}:`, err);
-    return { expiry: null, issuer: null, daysLeft: null };
   }
+
+  // Fallback: direct TLS handshake via Deno.connectTls
+  try {
+    const baseDomain = domain.replace(/^www\./, "");
+    const conn = await Deno.connectTls({ hostname: baseDomain, port: 443 });
+    const certs = (conn as any).peerCertificates?.() ?? [];
+    try { conn.close(); } catch { /* noop */ }
+    if (certs && certs.length > 0) {
+      const cert = certs[0];
+      if (cert?.notAfter) {
+        const expiryDate = new Date(cert.notAfter);
+        const now = new Date();
+        const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000);
+        return {
+          expiry: expiryDate.toISOString().split("T")[0],
+          issuer: cert.issuer || null,
+          daysLeft,
+        };
+      }
+    }
+  } catch (err) {
+    console.error(`TLS handshake fallback failed for ${domain}:`, err);
+  }
+
+  return { expiry: null, issuer: null, daysLeft: null };
 }
 
 Deno.serve(async (req) => {

@@ -7,12 +7,17 @@ export function useOrgs() {
   return useQuery({
     queryKey: ["orgs", user?.id ?? "anon"],
     queryFn: async () => {
+      if (!user?.id) return [];
+
       const { data, error } = await supabase
-        .from("orgs")
-        .select("*")
+        .from("org_users")
+        .select("created_at, orgs!inner(*)")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
+
       if (error) throw error;
-      return data;
+
+      return (data ?? []).map((membership: any) => membership.orgs).filter(Boolean);
     },
     enabled: !!user,
   });

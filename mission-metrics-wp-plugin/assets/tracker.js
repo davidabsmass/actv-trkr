@@ -105,8 +105,13 @@
 
     // ── Consent Mode ──────────────────────────────────────────────
     var consentMode = (CFG.consentMode || 'relaxed').toLowerCase();
+    // v1.20.9+: Limited Pre-Consent opt-in. When true AND strict AND no consent,
+    // the tracker boots a reduced pipeline (anonymous pageview only — no IDs,
+    // no cookies, no journeys). Off by default; existing sites unaffected.
+    var limitedPreConsent = CFG.limitedPreConsent === true;
     var consentState = 'no_consent';
     var trackerInitialized = false;
+    var limitedModeActive = false;
 
     function getStoredConsent() {
       try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; }

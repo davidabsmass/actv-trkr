@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +8,23 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { toast } from "@/hooks/use-toast";
+
+/**
+ * Derive a sensible default org name from the authenticated user.
+ * Prefer full name from auth metadata, else the email local-part, else "My Workspace".
+ */
+function deriveDefaultOrgName(user: { email?: string | null; user_metadata?: any } | null): string {
+  if (!user) return "My Workspace";
+  const meta = user.user_metadata || {};
+  const fullName = (meta.full_name || meta.name || "").toString().trim();
+  if (fullName) return fullName;
+  const email = (user.email || "").toString();
+  if (email.includes("@")) {
+    const local = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+    if (local) return local.charAt(0).toUpperCase() + local.slice(1);
+  }
+  return "My Workspace";
+}
 
 const COMPLIANCE_MODES = [
   {

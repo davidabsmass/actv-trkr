@@ -17,8 +17,19 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
+  PlugZap,
+  Sparkles,
 } from "lucide-react";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface StepProps {
   number: number;

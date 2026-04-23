@@ -90,6 +90,11 @@ class MM_Tracker {
 			'domain'        => wp_parse_url( home_url(), PHP_URL_HOST ),
 			'pluginVersion' => MM_PLUGIN_VERSION,
 			'consentMode'   => $opts['consent_mode'] ?? 'strict',
+			// v1.20.9+: Limited Pre-Consent Tracking (additive, off by default).
+			// When true AND consentMode is strict AND consent isn't granted yet,
+			// the tracker boots a reduced pipeline that sends ONLY anonymous
+			// pageview metadata (no IDs, no cookies, no journeys).
+			'limitedPreConsent' => ( ( $opts['limited_pre_consent'] ?? '0' ) === '1' ),
 			// QA debug mode: only available to logged-in admins. Reveals
 			// window.mmDiag and surfaces internal errors in the console.
 			// End users (and unauthenticated visitors) never see this flag.

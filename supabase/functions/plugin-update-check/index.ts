@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.7";
-const CURRENT_PLUGIN_SHA256 = "2629183786dabf9d29accc9848a041c4e538dcc807f0da41687af8fcd7a63f8a";
+const CURRENT_PLUGIN_VERSION = "1.20.8";
+const CURRENT_PLUGIN_SHA256 = "bf87f2f7f328014db58697a7121bdd35444a735f51ba0f03e823f3b47aadcad8";
 
 const CHANGELOG = `
+## 1.20.8
+- FIX: Built-in consent banner state now persists correctly in WordPress admin. Saving now respects the selected consent source server-side, preserves existing banner fields on partial saves, and no longer appears to revert when the built-in banner is already enabled.
+
 ## 1.20.7
 - FIX (CRITICAL): Pageviews were silently rejected with 401 because the tracker's pageview send was missing the ingest token in the request body (sendBeacon can't carry custom headers, so credentials must ride in the body). Affected ALL sites running v1.20.x — no real pageviews/sessions were being recorded. Heartbeats, click events, and form submissions were unaffected.
 

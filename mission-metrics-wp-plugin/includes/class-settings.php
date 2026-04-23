@@ -379,8 +379,8 @@ class MM_Settings {
 		}
 
 		// Determine consent source for the radio (display-only, derived from current state).
-		$consent_source = ! empty( $external_cmps ) ? 'external'
-			: ( $banner['enabled'] === '1' ? 'builtin' : 'disabled' );
+		$consent_source = ( $banner['enabled'] === '1' ) ? 'builtin'
+			: ( ! empty( $external_cmps ) ? 'external' : 'disabled' );
 		?>
 		<form method="post" action="options.php">
 			<?php settings_fields( self::OPTION_GROUP ); ?>

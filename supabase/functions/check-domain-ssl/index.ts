@@ -65,51 +65,75 @@ async function checkDomainExpiry(domain: string): Promise<{ expiry: string | nul
   }
 }
 
-async function checkSSLExpiry(domain: string): Promise<{ expiry: string | null; issuer: string | null; daysLeft: number | null }> {
-  // Try multiple sources because crt.sh is frequently slow / 404 / 502.
-  const sources = [
-    `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json&exclude=expired`,
-    `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json`,
-    `https://crt.sh/?q=${encodeURIComponent("%25." + domain.replace(/^www\./, ""))}&output=json`,
+async function checkSSLExpiry(domain: string): Promise<{ expiry: string | null; issuer: string | null; daysLeft: number | null; source: string | null }> {
+  const baseDomain = domain.replace(/^www\./, "");
+  const now = new Date();
+
+  // ── Source 1: certspotter (most reliable, returns clean JSON, free, no auth) ──
+  try {
+    const url = `https://api.certspotter.com/v1/issuances?domain=${encodeURIComponent(baseDomain)}&include_subdomains=false&expand=cert`;
+    const resp = await fetchWithRetry(url, {
+      headers: { "User-Agent": "actv-trkr-ssl-check/1.0" },
+    });
+    if (resp.ok) {
+      const certs: any[] = await resp.json();
+      const validCerts = (certs || [])
+        .filter((c) => c.not_after && new Date(c.not_after) > now && (!c.not_before || new Date(c.not_before) <= now))
+        .sort((a, b) => new Date(b.not_after).getTime() - new Date(a.not_after).getTime());
+      if (validCerts.length > 0) {
+        const latest = validCerts[0];
+        const expiryDate = new Date(latest.not_after);
+        const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000);
+        const issuer = latest.issuer?.name || latest.cert?.issuer || null;
+        return { expiry: expiryDate.toISOString().split("T")[0], issuer, daysLeft, source: "certspotter" };
+      }
+      console.log(`certspotter: no currently-valid certs for ${baseDomain}`);
+    } else {
+      console.log(`certspotter returned ${resp.status} for ${baseDomain}`);
+    }
+  } catch (err) {
+    console.error(`certspotter lookup failed for ${baseDomain}:`, err);
+  }
+
+  // ── Source 2: crt.sh (fallback, frequently slow / 404 / 502) ──
+  const crtSources = [
+    `https://crt.sh/?q=${encodeURIComponent(baseDomain)}&output=json&exclude=expired`,
+    `https://crt.sh/?q=${encodeURIComponent(baseDomain)}&output=json`,
+    `https://crt.sh/?q=${encodeURIComponent("%25." + baseDomain)}&output=json`,
   ];
 
-  for (const url of sources) {
+  for (const url of crtSources) {
     try {
       const resp = await fetchWithRetry(url);
       if (!resp.ok) {
-        console.log(`crt.sh source returned ${resp.status} for ${domain} (${url})`);
+        console.log(`crt.sh returned ${resp.status} for ${baseDomain} (${url})`);
         continue;
       }
       const certs: any[] = await resp.json();
-      if (!certs || certs.length === 0) {
-        console.log(`crt.sh: no certs found for ${domain} (${url})`);
-        continue;
-      }
+      if (!certs || certs.length === 0) continue;
 
-      const now = new Date();
       const validCerts = certs
-        .filter((c: any) => c.not_after && new Date(c.not_after) > now && (!c.not_before || new Date(c.not_before) <= now))
-        .sort((a: any, b: any) => new Date(b.not_after).getTime() - new Date(a.not_after).getTime());
+        .filter((c) => c.not_after && new Date(c.not_after) > now && (!c.not_before || new Date(c.not_before) <= now))
+        .sort((a, b) => new Date(b.not_after).getTime() - new Date(a.not_after).getTime());
 
-      if (validCerts.length === 0) {
-        console.log(`crt.sh: no currently valid certs for ${domain} (${url})`);
-        continue;
-      }
+      if (validCerts.length === 0) continue;
 
       const latest = validCerts[0];
       const expiryDate = new Date(latest.not_after);
       const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000);
-      const expiryStr = expiryDate.toISOString().split("T")[0];
-      const issuer = latest.issuer_name || null;
-      return { expiry: expiryStr, issuer, daysLeft };
+      return {
+        expiry: expiryDate.toISOString().split("T")[0],
+        issuer: latest.issuer_name || null,
+        daysLeft,
+        source: "crt_sh",
+      };
     } catch (err) {
-      console.error(`SSL check error for ${domain} (${url}):`, err);
+      console.error(`crt.sh error for ${baseDomain} (${url}):`, err);
     }
   }
 
-  // Fallback: direct TLS handshake via Deno.connectTls
+  // ── Source 3: direct TLS handshake (last resort; Deno API is limited) ──
   try {
-    const baseDomain = domain.replace(/^www\./, "");
     const conn = await Deno.connectTls({ hostname: baseDomain, port: 443 });
     const certs = (conn as any).peerCertificates?.() ?? [];
     try { conn.close(); } catch { /* noop */ }
@@ -117,20 +141,20 @@ async function checkSSLExpiry(domain: string): Promise<{ expiry: string | null; 
       const cert = certs[0];
       if (cert?.notAfter) {
         const expiryDate = new Date(cert.notAfter);
-        const now = new Date();
         const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / 86400000);
         return {
           expiry: expiryDate.toISOString().split("T")[0],
           issuer: cert.issuer || null,
           daysLeft,
+          source: "tls_handshake",
         };
       }
     }
   } catch (err) {
-    console.error(`TLS handshake fallback failed for ${domain}:`, err);
+    console.error(`TLS handshake fallback failed for ${baseDomain}:`, err);
   }
 
-  return { expiry: null, issuer: null, daysLeft: null };
+  return { expiry: null, issuer: null, daysLeft: null, source: null };
 }
 
 Deno.serve(async (req) => {

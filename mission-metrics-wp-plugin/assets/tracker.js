@@ -105,8 +105,13 @@
 
     // ── Consent Mode ──────────────────────────────────────────────
     var consentMode = (CFG.consentMode || 'relaxed').toLowerCase();
+    // v1.20.9+: Limited Pre-Consent opt-in. When true AND strict AND no consent,
+    // the tracker boots a reduced pipeline (anonymous pageview only — no IDs,
+    // no cookies, no journeys). Off by default; existing sites unaffected.
+    var limitedPreConsent = CFG.limitedPreConsent === true;
     var consentState = 'no_consent';
     var trackerInitialized = false;
+    var limitedModeActive = false;
 
     function getStoredConsent() {
       try { return localStorage.getItem(CONSENT_KEY); } catch (e) { return null; }
@@ -878,6 +883,65 @@
       dbg('tracker booted', { region: CFG.consentMode, version: CFG.pluginVersion });
     }
 
+    // v1.20.9+: Limited Pre-Consent boot path.
+    // ──────────────────────────────────────────────────────────────
+    // Sends a SINGLE anonymous pageview when consent has not been granted
+    // and the admin has explicitly opted in via Settings → Privacy.
+    // Hard guarantees:
+    //   - no visitor_id, no session_id, no wp_user_*
+    //   - no cookies are read or written
+    //   - no localStorage queue, no journey stitching, no listeners
+    //   - no form/lead tracking, no clicks, no time-on-page signals
+    //   - flagged with tracking_mode='limited' so the backend strips
+    //     anything the client did manage to include
+    //
+    // If consent is later granted, the full tracker boots normally via
+    // mmConsent.grant() — this function does NOT mark tracker initialized,
+    // so the upgrade path is clean.
+    function bootLimitedTracker() {
+      if (limitedModeActive) return;
+      limitedModeActive = true;
+
+      function sendLimitedPageview() {
+        try {
+          var refDomain = null;
+          try {
+            if (document.referrer) refDomain = new URL(document.referrer).hostname;
+          } catch (e) {}
+
+          // Generate a one-shot event_id (required by backend) but DO NOT
+          // persist anywhere. New event_id each call = no stitching possible.
+          var eventId = 'lim_' + uuid();
+
+          var payload = withAuthBody({
+            source: {
+              domain: CFG.domain,
+              type: 'wordpress',
+              plugin_version: CFG.pluginVersion,
+            },
+            event: {
+              event_id: eventId,
+              page_url: window.location.href,
+              page_path: window.location.pathname,
+              referrer: document.referrer || null,
+              device: deviceType(),
+              occurred_at: new Date().toISOString(),
+              tracking_mode: 'limited',
+            },
+          });
+
+          send(CFG.endpoint, payload);
+          dbg('limited pre-consent pageview sent');
+        } catch (e) { dbgErr('limited pageview', e); }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', safe(sendLimitedPageview, 'limited pv'));
+      } else {
+        safe(sendLimitedPageview, 'limited pv')();
+      }
+    }
+
     // ── Public Consent + Diagnostics API ──────────────────────────
 
     window.mmConsent = {
@@ -952,9 +1016,15 @@
         bootTracker();
       } else if (stored === 'denied') {
         consentState = 'analytics_consent_denied';
+        // v1.20.9+: respect explicit denial. No limited mode after deny.
       } else {
         consentState = 'no_consent';
-        // Stay completely inert — wait for mmConsent.grant().
+        // v1.20.9+: if admin opted into Limited Pre-Consent Tracking,
+        // boot the reduced pipeline. Otherwise stay completely inert
+        // (unchanged legacy behavior — wait for mmConsent.grant()).
+        if (limitedPreConsent) {
+          bootLimitedTracker();
+        }
       }
     } else {
       // Relaxed mode: boot immediately (backward compatible).

@@ -879,6 +879,7 @@ export type Database = {
           consent_mode: string
           created_at: string
           id: string
+          limited_pre_consent_enabled: boolean
           org_id: string
           require_consent_before_tracking: boolean
           retention_months: number
@@ -888,6 +889,7 @@ export type Database = {
           consent_mode?: string
           created_at?: string
           id?: string
+          limited_pre_consent_enabled?: boolean
           org_id: string
           require_consent_before_tracking?: boolean
           retention_months?: number
@@ -897,6 +899,7 @@ export type Database = {
           consent_mode?: string
           created_at?: string
           id?: string
+          limited_pre_consent_enabled?: boolean
           org_id?: string
           require_consent_before_tracking?: boolean
           retention_months?: number

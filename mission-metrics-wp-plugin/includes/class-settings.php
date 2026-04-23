@@ -31,6 +31,11 @@ class MM_Settings {
 			'enable_gravity'   => '1',
 			'enable_heartbeat' => '1',
 			'consent_mode'     => 'strict',
+			// v1.20.9+: Limited Pre-Consent Tracking (additive, OFF by default).
+			// When '1', tracker sends an anonymous pageview-only payload before
+			// consent in strict mode (no IDs, no cookies, no journey stitching).
+			// Existing sites are completely unaffected unless an admin opts in.
+			'limited_pre_consent' => '0',
 		);
 	}
 
@@ -108,6 +113,13 @@ class MM_Settings {
 		if ( array_key_exists( 'consent_mode', (array) $input )
 			&& in_array( $input['consent_mode'], array( 'strict', 'relaxed' ), true ) ) {
 			$clean['consent_mode'] = $input['consent_mode'];
+		}
+
+		// v1.20.9+: Limited Pre-Consent Tracking toggle. Only update when the
+		// Privacy tab marker is present, so saves from other tabs leave the
+		// existing value alone (same pattern as enable_tracking checkboxes).
+		if ( ! empty( $input['_mm_privacy_section'] ) ) {
+			$clean['limited_pre_consent'] = ! empty( $input['limited_pre_consent'] ) ? '1' : '0';
 		}
 
 		return $clean;
@@ -384,6 +396,7 @@ class MM_Settings {
 		?>
 		<form method="post" action="options.php">
 			<?php settings_fields( self::OPTION_GROUP ); ?>
+			<input type="hidden" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[_mm_privacy_section]" value="1" />
 
 			<!-- External CMP detection card -->
 			<?php if ( ! empty( $external_cmps ) ) : ?>
@@ -567,6 +580,35 @@ class MM_Settings {
 							<br>
 							<input type="text" name="<?php echo esc_attr( $name ); ?>[reopener_label]" value="<?php echo esc_attr( $banner['reopener_label'] ); ?>" class="regular-text" style="margin-top:6px" placeholder="Cookie Settings" />
 						</td></tr>
+				</table>
+			</div>
+
+			<!-- v1.20.9+: Limited Pre-Consent Tracking (additive opt-in) -->
+			<div class="mm-card">
+				<h2>Limited Pre-Consent Tracking <span style="font-weight:400;color:#6b7280;font-size:13px">(Optional)</span></h2>
+				<p class="mm-card-desc">
+					Allow basic, non-identifying pageview data before consent. Full tracking still requires visitor consent.
+				</p>
+				<table class="form-table">
+					<tr>
+						<th scope="row">Pre-consent mode</th>
+						<td>
+							<label>
+								<input type="checkbox"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[limited_pre_consent]"
+									value="1"
+									<?php checked( $main['limited_pre_consent'] ?? '0', '1' ); ?> />
+								Send anonymous pageview-only data before the visitor accepts cookies
+							</label>
+							<p class="description" style="margin-top:8px">
+								<strong>What's sent:</strong> page path, timestamp, referrer domain, coarse device type.<br>
+								<strong>What's NOT sent:</strong> visitor ID, session ID, cookies, journey stitching, form/lead tracking.
+							</p>
+							<p class="description" style="color:#b45309;margin-top:8px">
+								⚠️ Check local regulations before enabling. This is off by default.
+							</p>
+						</td>
+					</tr>
 				</table>
 			</div>
 

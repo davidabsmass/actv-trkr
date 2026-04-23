@@ -241,9 +241,18 @@ Deno.serve(async (req) => {
     let pagePath = sanitizeStr(event?.page_path, 2048) || "";
     try { pagePath = new URL(pageUrl).pathname; } catch {}
 
-    const sessionId = sanitizeStr(event?.session_id, 128);
-    const visitorId = sanitizeStr(visitor?.visitor_id, 128);
-    const title = sanitizeStr(event?.title, 512);
+    // v1.20.9+: Limited Pre-Consent Tracking enforcement.
+    // The plugin flags pre-consent pageviews with event.tracking_mode='limited'.
+    // We strip every persistent identifier server-side as a defense-in-depth
+    // measure — even if a buggy/old client included them, they MUST NOT land
+    // in the database. This is also forward-compatible: legacy clients never
+    // send the flag, so existing behavior is unchanged.
+    const trackingMode = sanitizeStr(event?.tracking_mode, 16) === "limited" ? "limited" : "full";
+    const isLimited = trackingMode === "limited";
+
+    const sessionId = isLimited ? "" : sanitizeStr(event?.session_id, 128);
+    const visitorId = isLimited ? "" : sanitizeStr(visitor?.visitor_id, 128);
+    const title = isLimited ? "" : sanitizeStr(event?.title, 512);
     const device = sanitizeStr(event?.device, 32);
     const pluginVersion = sanitizeStr(source?.plugin_version, 32);
     const siteType = sanitizeStr(source?.type, 32) || "wordpress";
@@ -265,19 +274,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // WP user identity — hash email, never store plain text
-    const wpUserId = sanitizeStr(visitor?.wp_user_id, 64);
-    const wpUserName = sanitizeStr(visitor?.wp_user_name, 256);
-    const wpUserRole = sanitizeStr(visitor?.wp_user_role, 128);
-    // Hash wp_user_email instead of storing plain text
-    const rawWpEmail = sanitizeStr(visitor?.wp_user_email, 256);
+    // WP user identity — hash email, never store plain text.
+    // v1.20.9+: in limited mode, ignore all WP user identity fields.
+    const wpUserId = isLimited ? "" : sanitizeStr(visitor?.wp_user_id, 64);
+    const wpUserName = isLimited ? "" : sanitizeStr(visitor?.wp_user_name, 256);
+    const wpUserRole = isLimited ? "" : sanitizeStr(visitor?.wp_user_role, 128);
+    const rawWpEmail = isLimited ? "" : sanitizeStr(visitor?.wp_user_email, 256);
     const wpUserEmailHash = rawWpEmail ? await hashIp(rawWpEmail) : null;
 
-    const utmSource = sanitizeStr(attribution?.utm_source, 256);
-    const utmMedium = sanitizeStr(attribution?.utm_medium, 256);
-    const utmCampaign = sanitizeStr(attribution?.utm_campaign, 256);
-    const utmTerm = sanitizeStr(attribution?.utm_term, 256);
-    const utmContent = sanitizeStr(attribution?.utm_content, 256);
+    // v1.20.9+: limited mode strips UTM/attribution (consent-gated identifiers).
+    const utmSource = isLimited ? "" : sanitizeStr(attribution?.utm_source, 256);
+    const utmMedium = isLimited ? "" : sanitizeStr(attribution?.utm_medium, 256);
+    const utmCampaign = isLimited ? "" : sanitizeStr(attribution?.utm_campaign, 256);
+    const utmTerm = isLimited ? "" : sanitizeStr(attribution?.utm_term, 256);
+    const utmContent = isLimited ? "" : sanitizeStr(attribution?.utm_content, 256);
 
     // ── Resolve site with domain validation ──
     let siteId: string | null = null;
@@ -317,8 +327,8 @@ Deno.serve(async (req) => {
       if (geoCountry) countryCode = geoCountry.toUpperCase();
     }
 
-    // Hash IP for storage instead of raw IP
-    const ipHash = clientIp ? await hashIp(clientIp) : (sanitizeStr(visitor?.ip_hash, 128) || null);
+    // Hash IP for storage instead of raw IP. v1.20.9+: limited mode skips IP hash too.
+    const ipHash = isLimited ? null : (clientIp ? await hashIp(clientIp) : (sanitizeStr(visitor?.ip_hash, 128) || null));
 
     const { error: insertError } = await supabase.from("pageviews").upsert({
       org_id: orgId, site_id: siteId, occurred_at: occurredAt.toISOString(),

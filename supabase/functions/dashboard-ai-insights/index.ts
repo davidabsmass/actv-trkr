@@ -169,7 +169,7 @@ SITE HEALTH: ${healthStr}
 
 Return a JSON object with this exact structure (no markdown, no code fences):
 {
-  "summary": "Your 2-3 sentence performance overview mentioning the client by name",
+  "summary": "Your 2-3 sentence performance overview written in first-person plural (we/our)",
   "suggestions": [
     { "title": "Short title", "description": "One sentence action item referencing specific pages or sources", "priority": "high|medium|low" },
     { "title": "Short title", "description": "One sentence action item", "priority": "high|medium|low" },
@@ -178,7 +178,8 @@ Return a JSON object with this exact structure (no markdown, no code fences):
 }
 
 Rules:
-- Be specific about numbers, not vague. Reference the client name, specific pages, and sources.
+- Be specific about numbers, not vague. Reference specific pages and sources.
+- CRITICAL: Write the summary in first-person plural ("We are…", "Our traffic…", "Our leads…"). Do NOT refer to the client by name (e.g. never say "${orgName} is…" or "My Organization is…"). The reader IS the client.
 - Suggestions should feel like they come from a strategist, not a chatbot.
 - If data is sparse, acknowledge the early stage and focus on setup/launch actions.
 - IMPORTANT: Use calm, professional, encouraging language. Never use dramatic or alarming words.

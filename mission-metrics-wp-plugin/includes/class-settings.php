@@ -216,6 +216,7 @@ class MM_Settings {
 		?>
 		<form method="post" action="options.php">
 			<?php settings_fields( self::OPTION_GROUP ); ?>
+			<input type="hidden" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[_mm_general_section]" value="1" />
 
 			<div class="mm-card">
 				<h2>Connection</h2>

@@ -107,11 +107,25 @@
   });
 
   // ── Conditional visibility ──────────────────────────────
+  function getBannerEnabledField() {
+    return document.querySelector('input[type="checkbox"][name="mm_consent_banner[enabled]"]');
+  }
+
+  function getConsentSource() {
+    var checked = document.querySelector('input[name="mm_consent_source"]:checked');
+    return checked ? checked.value : 'builtin';
+  }
+
+  function syncConsentSourceToBannerToggle() {
+    var bannerEnabledEl = getBannerEnabledField();
+    if (!bannerEnabledEl) return;
+    bannerEnabledEl.checked = (getConsentSource() === 'builtin');
+  }
+
   function toggleConditionals() {
     // Compliance mode → Other Regions Fallback + US controls
     var modeEl = document.querySelector('[name="mm_consent_banner[compliance_mode]"]');
-    var bannerEnabledEl = document.querySelector('[name="mm_consent_banner[enabled]"]');
-    var consentModeEl = document.querySelector('[name="mm_consent_banner_mode]"]') || document.getElementById('mm-consent-source');
+    var bannerEnabledEl = getBannerEnabledField();
     var bannerSection = document.querySelector('[data-mm-section="banner-content"]');
     var bannerDisplay = document.querySelector('[data-mm-section="banner-display"]');
     var fallbackRow = document.querySelector('[data-mm-row="other-fallback"]');
@@ -119,7 +133,7 @@
 
     var mode = modeEl ? modeEl.value : 'global_strict';
     var bannerOn = bannerEnabledEl ? bannerEnabledEl.checked : false;
-    var consentSrc = (document.getElementById('mm-consent-source') || {}).value || 'builtin';
+    var consentSrc = getConsentSource();
 
     if (fallbackRow) fallbackRow.hidden = (mode === 'global_strict');
     if (usSection)   usSection.hidden   = (mode === 'global_strict');
@@ -130,24 +144,16 @@
     if (bannerDisplay) bannerDisplay.hidden = !showBanner;
   }
 
-  $$('[name="mm_consent_banner[compliance_mode]"], [name="mm_consent_banner[enabled]"], #mm-consent-source')
+  $$('[name="mm_consent_banner[compliance_mode]"], input[name="mm_consent_source"], input[type="checkbox"][name="mm_consent_banner[enabled]"]')
     .forEach(function (el) { el.addEventListener('change', toggleConditionals); });
 
-  // Consent source radio: when "disabled" or "external", uncheck the
-  // built-in banner and keep it that way.
-  var sourceEl = document.getElementById('mm-consent-source');
-  if (sourceEl) {
+  $$('input[name="mm_consent_source"]').forEach(function (sourceEl) {
     sourceEl.addEventListener('change', function () {
-      var bannerEnabledEl = document.querySelector('[name="mm_consent_banner[enabled]"]');
-      if (!bannerEnabledEl) return;
-      if (sourceEl.value === 'builtin') {
-        bannerEnabledEl.checked = true;
-      } else {
-        bannerEnabledEl.checked = false;
-      }
+      syncConsentSourceToBannerToggle();
       toggleConditionals();
     });
-  }
+  });
 
+  syncConsentSourceToBannerToggle();
   toggleConditionals();
 })();

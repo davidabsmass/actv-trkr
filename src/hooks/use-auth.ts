@@ -29,8 +29,34 @@ export function useAuth() {
       }
     };
 
+    const RECOVERY_FLAG = "pw_recovery_in_progress";
+    const RECOVERY_TS_KEY = "pw_recovery_started_at";
+    const RECOVERY_TTL_MS = 30 * 60 * 1000;
+    const isResetPasswordRoute = () => typeof window !== "undefined" && window.location.pathname.startsWith("/reset-password");
     const isRecoveryFlow = () => {
-      try { return sessionStorage.getItem("pw_recovery_in_progress") === "1"; } catch { return false; }
+      try {
+        const sessionFlag = sessionStorage.getItem(RECOVERY_FLAG) === "1";
+        const localFlag = localStorage.getItem(RECOVERY_FLAG) === "1";
+        const startedAt = Number(localStorage.getItem(RECOVERY_TS_KEY) || "0");
+        const isFresh = startedAt > 0 && Date.now() - startedAt < RECOVERY_TTL_MS;
+        if (localFlag && !isFresh) {
+          localStorage.removeItem(RECOVERY_FLAG);
+          localStorage.removeItem(RECOVERY_TS_KEY);
+          return sessionFlag;
+        }
+        return sessionFlag || (localFlag && isFresh);
+      } catch {
+        return false;
+      }
+    };
+    const discardRecoverySession = async () => {
+      try { await supabase.auth.signOut({ scope: "local" }); } catch {}
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("sb-") || k === "supabase.auth.token")
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {}
+      queryClient.clear();
     };
 
     const {
@@ -53,6 +79,10 @@ export function useAuth() {
       // if we accept it, every tab/window on this browser is silently logged
       // in. ResetPassword.tsx sets the flag for the duration of the flow.
       if (event === "PASSWORD_RECOVERY" || (isRecoveryFlow() && event === "SIGNED_IN")) {
+        if (!isResetPasswordRoute()) {
+          void discardRecoverySession();
+          setSession(null);
+        }
         setLoading(false);
         return;
       }
@@ -79,6 +109,9 @@ export function useAuth() {
       // the app. ResetPassword owns the lifecycle and will sign out at the
       // end (or on unmount).
       if (initialSession && isRecoveryFlow()) {
+        if (!isResetPasswordRoute()) {
+          await discardRecoverySession();
+        }
         setSession(null);
         setLoading(false);
         return;

@@ -28,6 +28,7 @@ import spaceBg from "@/assets/space-bgd-new.jpg";
  *      to request a fresh reset link to try again.
  */
 const RECOVERY_FLAG = "pw_recovery_in_progress";
+const RECOVERY_TS_KEY = "pw_recovery_started_at";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -46,12 +47,20 @@ const ResetPassword = () => {
 
     // Mark this browser tab as being mid-recovery so other parts of the
     // app stop treating the recovery session as a normal login.
-    try { sessionStorage.setItem(RECOVERY_FLAG, "1"); } catch {}
+    try {
+      sessionStorage.setItem(RECOVERY_FLAG, "1");
+      localStorage.setItem(RECOVERY_FLAG, "1");
+      localStorage.setItem(RECOVERY_TS_KEY, String(Date.now()));
+    } catch {}
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        try { sessionStorage.setItem(RECOVERY_FLAG, "1"); } catch {}
+        try {
+          sessionStorage.setItem(RECOVERY_FLAG, "1");
+          localStorage.setItem(RECOVERY_FLAG, "1");
+          localStorage.setItem(RECOVERY_TS_KEY, String(Date.now()));
+        } catch {}
         setReady(true);
       }
     });
@@ -68,7 +77,11 @@ const ResetPassword = () => {
       // a silent login in another tab.
       if (!completedRef.current) {
         supabase.auth.signOut({ scope: "global" }).catch(() => {});
-        try { sessionStorage.removeItem(RECOVERY_FLAG); } catch {}
+        try {
+          sessionStorage.removeItem(RECOVERY_FLAG);
+          localStorage.removeItem(RECOVERY_FLAG);
+          localStorage.removeItem(RECOVERY_TS_KEY);
+        } catch {}
         queryClient.clear();
       }
     };
@@ -99,10 +112,14 @@ const ResetPassword = () => {
       // become a silent login in another tab. The user must now sign in
       // with their new password.
       try { await supabase.auth.signOut({ scope: "global" }); } catch {}
-      try { sessionStorage.removeItem(RECOVERY_FLAG); } catch {}
+      try {
+        sessionStorage.removeItem(RECOVERY_FLAG);
+        localStorage.removeItem(RECOVERY_FLAG);
+        localStorage.removeItem(RECOVERY_TS_KEY);
+      } catch {}
       queryClient.clear();
 
-      setMessage("Password updated. Please sign in with your new password.");
+      setMessage("Password set. Please sign in with your new password.");
       setTimeout(() => navigate("/auth?reason=password_updated", { replace: true }), 1200);
     } catch (err: any) {
       setError(err.message);
@@ -132,7 +149,7 @@ const ResetPassword = () => {
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
-          <h2 className="text-lg font-semibold text-white mb-1">Set up your password</h2>
+          <h2 className="text-lg font-semibold text-white mb-1">Set your password</h2>
           <p className="text-sm text-white/60 mb-5">Create a password to activate your account</p>
 
           {!ready ? (
@@ -178,12 +195,12 @@ const ResetPassword = () => {
                 <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
               )}
 
-              <button
+                <button
                 type="submit"
                 disabled={loading}
                 className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {loading ? "Updating…" : "Update password"}
+                  {loading ? "Setting…" : "Set password"}
               </button>
             </form>
           )}

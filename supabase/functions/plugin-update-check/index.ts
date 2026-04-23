@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.4";
+const CURRENT_PLUGIN_VERSION = "1.20.5";
 const CURRENT_PLUGIN_SHA256 = "cbd1e41fd8eb88b5f04245f6ee310ec9a9160eb2a6076a342a82a8d8ef5fef45";
 
 const CHANGELOG = `
+## 1.20.5
+- COSMETIC: Settings tab "Privacy" renamed to "Privacy / Consent" for clarity.
+
 ## 1.20.4
 - FIX: Tracking, Gravity Forms, and Uptime Signal checkboxes now default to ON for both new and upgraded installs. Legacy installs with missing or empty values will be self-healed to enabled on next page load.
 

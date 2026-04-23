@@ -7783,6 +7783,10 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      replace_org_api_key: {
+        Args: { _label?: string; _new_key_hash: string; _org_id: string }
+        Returns: string
+      }
       set_org_lifecycle_status: {
         Args: {
           p_org_id: string

@@ -96,24 +96,51 @@ function canCallGeoApi(): boolean {
   return geoApiCallCount < GEO_API_LIMIT;
 }
 
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    return resp;
+  } catch { return null; }
+}
+
 async function lookupCountryByIp(ip: string): Promise<string | null> {
   if (!ip || ip === "127.0.0.1" || ip === "::1") return null;
   const cached = geoCache.get(ip);
   if (cached && Date.now() < cached.expiresAt) return cached.country;
   if (!canCallGeoApi()) return null;
 
+  geoApiCallCount++;
+  let country: string | null = null;
+
+  // Primary: ip-api.com (45 req/min unauthenticated, very reliable)
   try {
-    geoApiCallCount++;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const resp = await fetch(`https://ipapi.co/${ip}/json/`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const country = data.country_code ? data.country_code : null;
-    geoCache.set(ip, { country, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
-    return country;
-  } catch { return null; }
+    const resp = await fetchWithTimeout(`http://ip-api.com/json/${ip}?fields=status,countryCode`, 1500);
+    if (resp && resp.ok) {
+      const data = await resp.json();
+      if (data?.status === "success" && typeof data.countryCode === "string" && data.countryCode.length === 2) {
+        country = data.countryCode.toUpperCase();
+      }
+    }
+  } catch { /* fall through */ }
+
+  // Fallback: ipapi.co (rate-limited but useful as secondary)
+  if (!country) {
+    try {
+      const resp = await fetchWithTimeout(`https://ipapi.co/${ip}/json/`, 1500);
+      if (resp && resp.ok) {
+        const data = await resp.json();
+        if (typeof data?.country_code === "string" && data.country_code.length === 2) {
+          country = data.country_code.toUpperCase();
+        }
+      }
+    } catch { /* give up */ }
+  }
+
+  geoCache.set(ip, { country, expiresAt: Date.now() + GEO_CACHE_TTL_MS });
+  return country;
 }
 
 setInterval(() => {

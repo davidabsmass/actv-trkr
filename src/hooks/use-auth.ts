@@ -29,6 +29,10 @@ export function useAuth() {
       }
     };
 
+    const isRecoveryFlow = () => {
+      try { return sessionStorage.getItem("pw_recovery_in_progress") === "1"; } catch { return false; }
+    };
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
@@ -41,6 +45,15 @@ export function useAuth() {
       }
       if (event === "USER_DELETED" as any) {
         forceHardLogout("account_removed");
+        return;
+      }
+
+      // Password recovery sessions must NEVER be treated as a normal login.
+      // Supabase fires SIGNED_IN the moment the recovery token is consumed;
+      // if we accept it, every tab/window on this browser is silently logged
+      // in. ResetPassword.tsx sets the flag for the duration of the flow.
+      if (event === "PASSWORD_RECOVERY" || (isRecoveryFlow() && event === "SIGNED_IN")) {
+        setLoading(false);
         return;
       }
 
@@ -61,6 +74,15 @@ export function useAuth() {
 
     supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       if (!isMounted) return;
+
+      // Recovery flow: do not surface the recovery session to the rest of
+      // the app. ResetPassword owns the lifecycle and will sign out at the
+      // end (or on unmount).
+      if (initialSession && isRecoveryFlow()) {
+        setSession(null);
+        setLoading(false);
+        return;
+      }
 
       // If we have a session token, verify the user still exists. If the row
       // was deleted, getUser() returns a user_not_found / 403 error and we

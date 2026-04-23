@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,28 @@ import { Lock, Eye, EyeOff } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
+
+/**
+ * Password recovery flow.
+ *
+ * SECURITY:
+ * Supabase recovery links create a real session in localStorage so that
+ * `updateUser({ password })` can authenticate the change. Without extra
+ * guards, that session leaks: the user (or anyone on the same browser
+ * profile) is silently logged in across other tabs / windows the moment
+ * the link is opened.
+ *
+ * To prevent that we:
+ *   1. Set a sessionStorage flag the moment we land here so the rest of
+ *      the app (useAuth, Index auto-redirect) treats the session as a
+ *      recovery-only session and refuses to auto-route into the dashboard.
+ *   2. After `updateUser({ password })` succeeds we explicitly sign out,
+ *      clear the flag, and send the user to /auth so they sign in fresh.
+ *   3. If the user navigates away without completing, the flag stays set
+ *      and we sign out the recovery session on unmount. They will need
+ *      to request a fresh reset link to try again.
+ */
+const RECOVERY_FLAG = "pw_recovery_in_progress";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -15,15 +37,21 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const completedRef = useRef(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     let mounted = true;
 
+    // Mark this browser tab as being mid-recovery so other parts of the
+    // app stop treating the recovery session as a normal login.
+    try { sessionStorage.setItem(RECOVERY_FLAG, "1"); } catch {}
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        try { sessionStorage.setItem(RECOVERY_FLAG, "1"); } catch {}
         setReady(true);
       }
     });
@@ -35,8 +63,16 @@ const ResetPassword = () => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      // Safety net: if the user navigated away without finishing the
+      // password reset, kill the recovery session so it cannot become
+      // a silent login in another tab.
+      if (!completedRef.current) {
+        supabase.auth.signOut({ scope: "global" }).catch(() => {});
+        try { sessionStorage.removeItem(RECOVERY_FLAG); } catch {}
+        queryClient.clear();
+      }
     };
-  }, []);
+  }, [queryClient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,11 +92,18 @@ const ResetPassword = () => {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Invalidate subscription cache so the dashboard guard sees the fresh paid status.
-      await queryClient.invalidateQueries({ queryKey: ["subscription_status"] });
-      await queryClient.invalidateQueries({ queryKey: ["billing_exempt"] });
-      setMessage("Password updated successfully! Taking you to your dashboard…");
-      setTimeout(() => navigate("/dashboard"), 1500);
+
+      completedRef.current = true;
+
+      // Force a clean sign-out everywhere so the recovery session cannot
+      // become a silent login in another tab. The user must now sign in
+      // with their new password.
+      try { await supabase.auth.signOut({ scope: "global" }); } catch {}
+      try { sessionStorage.removeItem(RECOVERY_FLAG); } catch {}
+      queryClient.clear();
+
+      setMessage("Password updated. Please sign in with your new password.");
+      setTimeout(() => navigate("/auth?reason=password_updated", { replace: true }), 1200);
     } catch (err: any) {
       setError(err.message);
     } finally {

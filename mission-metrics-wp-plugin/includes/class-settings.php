@@ -583,6 +583,35 @@ class MM_Settings {
 				</table>
 			</div>
 
+			<!-- v1.20.9+: Limited Pre-Consent Tracking (additive opt-in) -->
+			<div class="mm-card">
+				<h2>Limited Pre-Consent Tracking <span style="font-weight:400;color:#6b7280;font-size:13px">(Optional)</span></h2>
+				<p class="mm-card-desc">
+					Allow basic, non-identifying pageview data before consent. Full tracking still requires visitor consent.
+				</p>
+				<table class="form-table">
+					<tr>
+						<th scope="row">Pre-consent mode</th>
+						<td>
+							<label>
+								<input type="checkbox"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[limited_pre_consent]"
+									value="1"
+									<?php checked( $main['limited_pre_consent'] ?? '0', '1' ); ?> />
+								Send anonymous pageview-only data before the visitor accepts cookies
+							</label>
+							<p class="description" style="margin-top:8px">
+								<strong>What's sent:</strong> page path, timestamp, referrer domain, coarse device type.<br>
+								<strong>What's NOT sent:</strong> visitor ID, session ID, cookies, journey stitching, form/lead tracking.
+							</p>
+							<p class="description" style="color:#b45309;margin-top:8px">
+								⚠️ Check local regulations before enabling. This is off by default.
+							</p>
+						</td>
+					</tr>
+				</table>
+			</div>
+
 			<?php submit_button(); ?>
 		</form>
 		<?php

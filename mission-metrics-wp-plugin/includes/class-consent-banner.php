@@ -1125,19 +1125,9 @@ class MM_Consent_Banner {
 	/* ── Admin nudge for compliance mode ──────────────────────── */
 
 	public static function maybe_show_compliance_nudge() {
-		// Only show on ACTV TRKR settings page
-		$screen = get_current_screen();
-		if ( ! $screen || $screen->id !== 'settings_page_actv-trkr' ) return;
-
-		// Only for admins
-		if ( ! current_user_can( 'manage_options' ) ) return;
-
-		// Don't show if already dismissed
-		if ( get_option( 'mm_compliance_nudge_dismissed', false ) ) return;
-
-		// Only show if currently on global_strict (the old default)
-		$opts = self::get();
-		if ( $opts['compliance_mode'] !== 'global_strict' ) return;
+		// Nudge permanently disabled — Global Strict is a deliberate, valid choice.
+		// Do not badger admins to switch modes after they've explicitly selected one.
+		return;
 
 		$apply_nonce = wp_create_nonce( 'mm_apply_recommended_mode' );
 		$dismiss_nonce = wp_create_nonce( 'mm_dismiss_nudge' );

@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.5";
-const CURRENT_PLUGIN_SHA256 = "1a266e1b453850d1b317899a97572a3fb9afa6b16ec613252e1f2044ea6ad01a";
+const CURRENT_PLUGIN_VERSION = "1.20.6";
+const CURRENT_PLUGIN_SHA256 = "24baa71fb182b91cfa64ea20209759b13a3858db705e533bfe760a5cce01f2d8";
 
 const CHANGELOG = `
+## 1.20.6
+- FIX: Removed the persistent "Switch to Recommended Mode" admin nudge. Global Strict is a deliberate, valid choice — admins who selected it will no longer see a banner asking them to switch to EU/UK + US Opt-Out.
+
 ## 1.20.5
 - COSMETIC: Settings tab "Privacy" renamed to "Privacy / Consent" for clarity.
 

@@ -124,6 +124,12 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OwnerDashboardRedirect({ children }: { children: React.ReactNode }) {
+  const { session } = useAuth();
+  if (isOwnerEmail(session?.user?.email)) return <Navigate to="/admin-setup" replace />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -141,7 +147,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="dashboard" element={<OwnerDashboardRedirect><Dashboard /></OwnerDashboardRedirect>} />
               <Route path="performance" element={<Performance />} />
               <Route path="visitor-journeys" element={<VisitorJourneys />} />
               <Route path="forms" element={<Forms />} />

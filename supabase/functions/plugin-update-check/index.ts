@@ -15,6 +15,9 @@ const CURRENT_PLUGIN_VERSION = "1.20.0";
 const CURRENT_PLUGIN_SHA256 = "c1aba9d87b46ccc42aa80c7097c051563e9f875cb0b753ad0317eac0c2e923d4";
 
 const CHANGELOG = `
+## 1.20.1
+- IMPROVED: Settings → General now shows the **Save Changes** button above **Test Connection** so users save their license key first, then verify the connection (more intuitive ordering).
+
 ## 1.18.1
 - SECURITY (C-2): HMAC-signed backend↔plugin requests. New \`MM_Hmac\` class verifies X-Actv-Timestamp/Nonce/Signature headers; legacy hash credential still accepted during this rollout window so existing sites keep working. v1.19.0 will enforce signed-only.
 - New REST route \`/bootstrap-signing-secret\` accepts the per-org signing key from the dashboard (one-time, idempotent).

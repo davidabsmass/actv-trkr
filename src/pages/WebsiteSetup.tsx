@@ -225,7 +225,7 @@ export default function WebsiteSetup() {
           Set Up Your Website
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
-          Connect your WordPress site in 3 simple steps. Everything you need is on this page.
+          Connect your WordPress site in 4 simple steps. Everything you need is on this page.
         </p>
         {websiteConnected && (
           <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success border border-success/20 text-xs font-medium">

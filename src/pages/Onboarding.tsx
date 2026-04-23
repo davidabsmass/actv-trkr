@@ -60,6 +60,7 @@ const Onboarding = () => {
   const [savingSite, setSavingSite] = useState(false);
   const [siteSaved, setSiteSaved] = useState(false);
   const [complianceMode, setComplianceMode] = useState("eu_us");
+  const [provisionError, setProvisionError] = useState<string | null>(null);
   const provisioningRef = useRef(false);
 
   const alreadyPaid = subscribed || billingExempt;
@@ -89,6 +90,7 @@ const Onboarding = () => {
 
   const handleCreate = async (orgName: string) => {
     setLoading(true);
+    setProvisionError(null);
     try {
       const { data: { user: authedUser } } = await supabase.auth.getUser();
       if (!authedUser) throw new Error("Not authenticated");

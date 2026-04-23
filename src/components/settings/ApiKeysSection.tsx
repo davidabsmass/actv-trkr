@@ -41,14 +41,17 @@ export default function ApiKeysSection() {
     if (!orgId) return;
     setGenerating(true);
     try {
-      for (const k of activeKeys) {
-        await supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", k.id);
-      }
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map((b) => b.toString(16).padStart(2, "0")).join("");
       const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
       const keyHash = Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-      const { error } = await supabase.from("api_keys").insert({ org_id: orgId, key_hash: keyHash, label: t("settings.defaultKeyLabel") });
+      // Atomic: revokes ALL existing active keys for this org and inserts the new one
+      // in a single transaction. Guarantees the old key stops working immediately.
+      const { error } = await supabase.rpc("replace_org_api_key", {
+        _org_id: orgId,
+        _new_key_hash: keyHash,
+        _label: t("settings.defaultKeyLabel"),
+      });
       if (error) throw error;
       setNewKey(rawKey);
       queryClient.invalidateQueries({ queryKey: ["api_keys", orgId] });

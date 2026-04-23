@@ -40,6 +40,16 @@ class MM_Settings {
 		if ( empty( $opts['endpoint_url'] ) ) {
 			$opts['endpoint_url'] = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
 		}
+		// Self-heal: tracking checkboxes default to ON. Treat anything that
+		// isn't an explicit string "0" as enabled, so legacy rows with missing
+		// or empty values render checked instead of silently disabling tracking.
+		foreach ( array( 'enable_tracking', 'enable_gravity', 'enable_heartbeat' ) as $flag ) {
+			if ( ! isset( $opts[ $flag ] ) || $opts[ $flag ] === '' || $opts[ $flag ] === null ) {
+				$opts[ $flag ] = '1';
+			} elseif ( $opts[ $flag ] !== '0' && $opts[ $flag ] !== '1' ) {
+				$opts[ $flag ] = $opts[ $flag ] ? '1' : '0';
+			}
+		}
 		return $key ? ( $opts[ $key ] ?? null ) : $opts;
 	}
 

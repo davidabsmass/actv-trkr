@@ -26,6 +26,7 @@ class MM_Consent_Banner {
 		add_action( 'wp_ajax_mm_consent_diag', array( __CLASS__, 'ajax_diagnostics' ) );
 		add_action( 'admin_notices',      array( __CLASS__, 'maybe_show_compliance_nudge' ) );
 		add_action( 'wp_ajax_mm_dismiss_compliance_nudge', array( __CLASS__, 'ajax_dismiss_nudge' ) );
+		add_action( 'wp_ajax_mm_apply_recommended_compliance_mode', array( __CLASS__, 'ajax_apply_recommended_mode' ) );
 	}
 
 	/* ── Defaults ──────────────────────────────────────────────── */

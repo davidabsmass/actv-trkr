@@ -11,8 +11,8 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.7";
-const CURRENT_PLUGIN_SHA256 = "ccc5c8f074786bd9ac28391794715a9788d4f81e79d9483f2bac3a0f2df70cc9";
+const CURRENT_PLUGIN_VERSION = "1.20.8";
+const CURRENT_PLUGIN_SHA256 = "bf87f2f7f328014db58697a7121bdd35444a735f51ba0f03e823f3b47aadcad8";
 
 const CHANGELOG = `
 ## 1.20.8

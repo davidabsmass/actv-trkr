@@ -1139,6 +1139,8 @@ class MM_Consent_Banner {
 		$opts = self::get();
 		if ( $opts['compliance_mode'] !== 'global_strict' ) return;
 
+		$apply_nonce = wp_create_nonce( 'mm_apply_recommended_mode' );
+		$dismiss_nonce = wp_create_nonce( 'mm_dismiss_nudge' );
 		?>
 		<div class="notice notice-info is-dismissible" id="mm-compliance-nudge" style="border-left-color:#3b82f6">
 			<p>
@@ -1147,14 +1149,59 @@ class MM_Consent_Banner {
 				EU/UK visitors will still see the consent banner.
 			</p>
 			<p style="margin-top:4px">
-				<a href="#mm_compliance_mode" class="button button-primary button-small" onclick="document.getElementById('mm_compliance_mode').value='eu_us';document.getElementById('mm_compliance_mode').dispatchEvent(new Event('change'));this.closest('.notice').style.display='none';return false;">
+				<button type="button" id="mm-apply-recommended-mode" class="button button-primary button-small">
 					Switch to Recommended Mode
-				</a>
-				<button type="button" class="button button-small" style="margin-left:8px" onclick="jQuery.post(ajaxurl,{action:'mm_dismiss_compliance_nudge',_wpnonce:'<?php echo wp_create_nonce('mm_dismiss_nudge'); ?>'});jQuery(this).closest('.notice').fadeOut();">
+				</button>
+				<button type="button" id="mm-dismiss-compliance-nudge" class="button button-small" style="margin-left:8px">
 					Don't show again
 				</button>
+				<span id="mm-apply-recommended-status" style="margin-left:10px;color:#666;font-style:italic"></span>
 			</p>
 		</div>
+		<script>
+		(function(){
+			var applyBtn = document.getElementById('mm-apply-recommended-mode');
+			var dismissBtn = document.getElementById('mm-dismiss-compliance-nudge');
+			var statusEl = document.getElementById('mm-apply-recommended-status');
+			var notice = document.getElementById('mm-compliance-nudge');
+			if ( applyBtn ) {
+				applyBtn.addEventListener('click', function(){
+					applyBtn.disabled = true;
+					statusEl.textContent = 'Saving…';
+					var fd = new FormData();
+					fd.append('action', 'mm_apply_recommended_compliance_mode');
+					fd.append('_wpnonce', '<?php echo esc_js( $apply_nonce ); ?>');
+					fetch(ajaxurl, { method: 'POST', credentials: 'same-origin', body: fd })
+						.then(function(r){ return r.json(); })
+						.then(function(res){
+							if ( res && res.success ) {
+								statusEl.style.color = '#16a34a';
+								statusEl.textContent = 'Saved — reloading…';
+								setTimeout(function(){ window.location.reload(); }, 600);
+							} else {
+								applyBtn.disabled = false;
+								statusEl.style.color = '#b91c1c';
+								statusEl.textContent = 'Could not save. ' + ((res && res.data) || 'Try again.');
+							}
+						})
+						.catch(function(err){
+							applyBtn.disabled = false;
+							statusEl.style.color = '#b91c1c';
+							statusEl.textContent = 'Network error: ' + err.message;
+						});
+				});
+			}
+			if ( dismissBtn ) {
+				dismissBtn.addEventListener('click', function(){
+					var fd = new FormData();
+					fd.append('action', 'mm_dismiss_compliance_nudge');
+					fd.append('_wpnonce', '<?php echo esc_js( $dismiss_nonce ); ?>');
+					fetch(ajaxurl, { method: 'POST', credentials: 'same-origin', body: fd })
+						.then(function(){ if ( notice ) notice.style.display = 'none'; });
+				});
+			}
+		})();
+		</script>
 		<?php
 	}
 
@@ -1165,6 +1212,23 @@ class MM_Consent_Banner {
 		}
 		update_option( 'mm_compliance_nudge_dismissed', true );
 		wp_send_json_success();
+	}
+
+	/**
+	 * Apply the recommended "EU/UK Strict + US Opt-Out" compliance mode in one click.
+	 * Persists the option immediately so the user doesn't have to scroll to "Save".
+	 */
+	public static function ajax_apply_recommended_mode() {
+		check_ajax_referer( 'mm_apply_recommended_mode', '_wpnonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+		$opts = self::get();
+		$opts['compliance_mode'] = 'eu_us';
+		update_option( self::OPTION_NAME, $opts );
+		// Auto-dismiss the nudge — they took the action.
+		update_option( 'mm_compliance_nudge_dismissed', true );
+		wp_send_json_success( array( 'compliance_mode' => 'eu_us' ) );
 	}
 }
 

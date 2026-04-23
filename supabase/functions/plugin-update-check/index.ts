@@ -15,6 +15,9 @@ const CURRENT_PLUGIN_VERSION = "1.20.6";
 const CURRENT_PLUGIN_SHA256 = "fe301f698a298b5f112d6127d188bd6e8e19ceac2a74a555909ff304ef6baad5";
 
 const CHANGELOG = `
+## 1.20.6
+- FIX: Removed the persistent "Switch to Recommended Mode" admin nudge. Global Strict is a deliberate, valid choice — admins who selected it will no longer see a banner asking them to switch to EU/UK + US Opt-Out.
+
 ## 1.20.5
 - COSMETIC: Settings tab "Privacy" renamed to "Privacy / Consent" for clarity.
 

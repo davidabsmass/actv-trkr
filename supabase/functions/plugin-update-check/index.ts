@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.11";
-const CURRENT_PLUGIN_SHA256 = "0f344576d5c5c1410da20526f5a4a81209508e45e11d263142f4a6df51b60e98";
+const CURRENT_PLUGIN_VERSION = "1.20.12";
+const CURRENT_PLUGIN_SHA256 = "85c4e2576c0670dfe127083fc40bea41db1ee925bac973d9f3e373d9505d545e";
 
 const CHANGELOG = `
+## 1.20.12
+- FIX (CRITICAL): Restored real-time pageviews, sessions, and click tracking for sites using ingest tokens. The tracker no longer sends the token in a custom fetch header that browsers block during CORS preflight; credentials now stay in the request body so Overview data can flow again.
+
 ## 1.20.11
 - FIX: Normal pageviews and click events now use fetch as the primary transport instead of relying on sendBeacon, so interactive tracking no longer fails silently when the browser accepts a beacon but the ingestion request never lands.
 

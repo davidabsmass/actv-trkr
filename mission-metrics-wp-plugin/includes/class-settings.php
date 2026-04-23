@@ -31,6 +31,11 @@ class MM_Settings {
 			'enable_gravity'   => '1',
 			'enable_heartbeat' => '1',
 			'consent_mode'     => 'strict',
+			// v1.20.9+: Limited Pre-Consent Tracking (additive, OFF by default).
+			// When '1', tracker sends an anonymous pageview-only payload before
+			// consent in strict mode (no IDs, no cookies, no journey stitching).
+			// Existing sites are completely unaffected unless an admin opts in.
+			'limited_pre_consent' => '0',
 		);
 	}
 
@@ -108,6 +113,13 @@ class MM_Settings {
 		if ( array_key_exists( 'consent_mode', (array) $input )
 			&& in_array( $input['consent_mode'], array( 'strict', 'relaxed' ), true ) ) {
 			$clean['consent_mode'] = $input['consent_mode'];
+		}
+
+		// v1.20.9+: Limited Pre-Consent Tracking toggle. Only update when the
+		// Privacy tab marker is present, so saves from other tabs leave the
+		// existing value alone (same pattern as enable_tracking checkboxes).
+		if ( ! empty( $input['_mm_privacy_section'] ) ) {
+			$clean['limited_pre_consent'] = ! empty( $input['limited_pre_consent'] ) ? '1' : '0';
 		}
 
 		return $clean;

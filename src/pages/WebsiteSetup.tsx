@@ -186,6 +186,37 @@ export default function WebsiteSetup() {
     setCopied(false);
   };
 
+  const handleTestConnection = async () => {
+    if (!orgId) return;
+    setTesting(true);
+    setTestFailed(false);
+    try {
+      // Force-refresh the sites query so we read live state, not cached.
+      await queryClient.invalidateQueries({ queryKey: ["sites", orgId] });
+      const { data, error } = await supabase
+        .from("sites")
+        .select("id, last_heartbeat_at, plugin_version")
+        .eq("org_id", orgId);
+      if (error) throw error;
+      const connected = (data ?? []).some(
+        (s) => s.last_heartbeat_at || s.plugin_version,
+      );
+      if (connected) {
+        setShowSuccessModal(true);
+      } else {
+        setTestFailed(true);
+        toast.error(
+          "No signal yet. Make sure the plugin is activated and the license key is saved in WordPress.",
+        );
+      }
+    } catch (e: any) {
+      setTestFailed(true);
+      toast.error(e.message || "Could not test connection");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}

@@ -141,7 +141,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="dashboard" element={<OwnerDashboardRedirect><Dashboard /></OwnerDashboardRedirect>} />
               <Route path="performance" element={<Performance />} />
               <Route path="visitor-journeys" element={<VisitorJourneys />} />
               <Route path="forms" element={<Forms />} />

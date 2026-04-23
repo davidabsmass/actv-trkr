@@ -134,9 +134,9 @@ export function ComplianceWarnings() {
           <span className="mt-0.5 shrink-0">{w.icon}</span>
           <div className="flex-1">
             <span className="text-foreground text-sm">{w.message}</span>
-            {w.severity === "warning" && (
+            {(w.severity === "warning" || w.severity === "success") && (
               <Link to="/compliance-setup" className="ml-2 text-xs text-primary hover:underline">
-                View setup guide →
+                {w.severity === "success" ? "Update setting →" : "View setup guide →"}
               </Link>
             )}
           </div>

@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.20.3
+ * Version:     1.20.4
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr

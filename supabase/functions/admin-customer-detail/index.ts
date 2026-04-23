@@ -175,7 +175,19 @@ Deno.serve(async (req) => {
     } else {
       notesQuery = notesQuery.eq("subscriber_email", resolvedEmail);
     }
-    const { data: notes } = await notesQuery;
+    const { data: notesRaw } = await notesQuery;
+    // Decrypt body_encrypted (when present) so the admin UI sees plaintext.
+    const notes = await Promise.all(
+      (notesRaw || []).map(async (n: any) => {
+        if (n.body_encrypted) {
+          const { data: dec } = await adminClient.rpc("decrypt_admin_note", {
+            p_ciphertext: n.body_encrypted,
+          });
+          return { ...n, body: dec || n.body, body_encrypted: undefined };
+        }
+        return n;
+      }),
+    );
 
     // ── Stripe (read-only summary + deep links) ─────────────────────────
     let stripeSummary: any = null;

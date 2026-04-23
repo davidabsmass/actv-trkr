@@ -241,9 +241,18 @@ Deno.serve(async (req) => {
     let pagePath = sanitizeStr(event?.page_path, 2048) || "";
     try { pagePath = new URL(pageUrl).pathname; } catch {}
 
-    const sessionId = sanitizeStr(event?.session_id, 128);
-    const visitorId = sanitizeStr(visitor?.visitor_id, 128);
-    const title = sanitizeStr(event?.title, 512);
+    // v1.20.9+: Limited Pre-Consent Tracking enforcement.
+    // The plugin flags pre-consent pageviews with event.tracking_mode='limited'.
+    // We strip every persistent identifier server-side as a defense-in-depth
+    // measure — even if a buggy/old client included them, they MUST NOT land
+    // in the database. This is also forward-compatible: legacy clients never
+    // send the flag, so existing behavior is unchanged.
+    const trackingMode = sanitizeStr(event?.tracking_mode, 16) === "limited" ? "limited" : "full";
+    const isLimited = trackingMode === "limited";
+
+    const sessionId = isLimited ? "" : sanitizeStr(event?.session_id, 128);
+    const visitorId = isLimited ? "" : sanitizeStr(visitor?.visitor_id, 128);
+    const title = isLimited ? "" : sanitizeStr(event?.title, 512);
     const device = sanitizeStr(event?.device, 32);
     const pluginVersion = sanitizeStr(source?.plugin_version, 32);
     const siteType = sanitizeStr(source?.type, 32) || "wordpress";

@@ -236,6 +236,23 @@ Deno.serve(async (req) => {
     const pluginVersion = sanitizeStr(source?.plugin_version, 32);
     const siteType = sanitizeStr(source?.type, 32) || "wordpress";
 
+    // ── Drop synthetic "Connection Test" pings from the WP plugin admin ──
+    // The plugin's "Test Connection" button posts a pageview with test_-prefixed
+    // event_id/session_id/visitor_id and title "Connection Test". Acknowledge
+    // with 200 so the admin's UI still reports success, but never persist —
+    // these would otherwise pollute Visitor Journeys, session counts, and pageviews.
+    const isSyntheticTest =
+      (eventId && eventId.startsWith("test_")) ||
+      (sessionId && sessionId.startsWith("test_")) ||
+      (visitorId && visitorId.startsWith("test_")) ||
+      title === "Connection Test";
+    if (isSyntheticTest) {
+      return new Response(
+        JSON.stringify({ status: "ok", filtered: "synthetic_test" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // WP user identity — hash email, never store plain text
     const wpUserId = sanitizeStr(visitor?.wp_user_id, 64);
     const wpUserName = sanitizeStr(visitor?.wp_user_name, 256);

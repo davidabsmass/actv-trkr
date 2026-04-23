@@ -15,6 +15,9 @@ const CURRENT_PLUGIN_VERSION = "1.20.7";
 const CURRENT_PLUGIN_SHA256 = "2629183786dabf9d29accc9848a041c4e538dcc807f0da41687af8fcd7a63f8a";
 
 const CHANGELOG = `
+## 1.20.7
+- FIX (CRITICAL): Pageviews were silently rejected with 401 because the tracker's pageview send was missing the ingest token in the request body (sendBeacon can't carry custom headers, so credentials must ride in the body). Affected ALL sites running v1.20.x — no real pageviews/sessions were being recorded. Heartbeats, click events, and form submissions were unaffected.
+
 ## 1.20.6
 - FIX: Removed the persistent "Switch to Recommended Mode" admin nudge. Global Strict is a deliberate, valid choice — admins who selected it will no longer see a banner asking them to switch to EU/UK + US Opt-Out.
 

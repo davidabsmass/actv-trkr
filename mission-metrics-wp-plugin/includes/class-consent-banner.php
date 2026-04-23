@@ -69,41 +69,49 @@ class MM_Consent_Banner {
 	/* ── Sanitize ──────────────────────────────────────────────── */
 
 	public static function sanitize( $input ) {
-		$clean = array();
-		$d = self::defaults();
+		$existing = wp_parse_args( get_option( self::OPTION_NAME, array() ), self::defaults() );
+		$clean    = $existing;
+		$d        = self::defaults();
 
-		$clean['enabled']        = ! empty( $input['enabled'] ) ? '1' : '0';
-		$clean['title']          = sanitize_text_field( $input['title'] ?? $d['title'] );
-		$clean['description']    = wp_kses_post( $input['description'] ?? $d['description'] );
-		$clean['accept_label']   = sanitize_text_field( $input['accept_label'] ?? $d['accept_label'] );
-		$clean['reject_label']   = sanitize_text_field( $input['reject_label'] ?? $d['reject_label'] );
-		$clean['prefs_label']    = sanitize_text_field( $input['prefs_label'] ?? $d['prefs_label'] );
-		$clean['prefs_title']    = sanitize_text_field( $input['prefs_title'] ?? $d['prefs_title'] );
-		$clean['privacy_url']    = esc_url_raw( $input['privacy_url'] ?? '' );
-		$clean['privacy_label']  = sanitize_text_field( $input['privacy_label'] ?? $d['privacy_label'] );
-		$clean['cookie_url']     = esc_url_raw( $input['cookie_url'] ?? '' );
-		$clean['cookie_label']   = sanitize_text_field( $input['cookie_label'] ?? $d['cookie_label'] );
-		$clean['position']       = in_array( ( $input['position'] ?? '' ), array( 'bottom', 'top' ), true ) ? $input['position'] : 'bottom';
-		$clean['expiry_days']    = max( 1, min( 730, intval( $input['expiry_days'] ?? 365 ) ) );
-		$clean['show_reopener']  = ! empty( $input['show_reopener'] ) ? '1' : '0';
-		$clean['reopener_label'] = sanitize_text_field( $input['reopener_label'] ?? $d['reopener_label'] );
-		$clean['show_footer_cookie_link'] = ! empty( $input['show_footer_cookie_link'] ) ? '1' : '0';
-		$clean['debug_mode']     = ! empty( $input['debug_mode'] ) ? '1' : '0';
+		$consent_source = isset( $_POST['mm_consent_source'] )
+			? sanitize_text_field( wp_unslash( $_POST['mm_consent_source'] ) )
+			: null;
+		if ( in_array( $consent_source, array( 'builtin', 'external', 'disabled' ), true ) ) {
+			$clean['enabled'] = ( 'builtin' === $consent_source ) ? '1' : '0';
+		} elseif ( array_key_exists( 'enabled', (array) $input ) ) {
+			$clean['enabled'] = ! empty( $input['enabled'] ) ? '1' : '0';
+		}
 
-		// Region settings
+		$clean['title']          = sanitize_text_field( $input['title'] ?? $existing['title'] ?? $d['title'] );
+		$clean['description']    = wp_kses_post( $input['description'] ?? $existing['description'] ?? $d['description'] );
+		$clean['accept_label']   = sanitize_text_field( $input['accept_label'] ?? $existing['accept_label'] ?? $d['accept_label'] );
+		$clean['reject_label']   = sanitize_text_field( $input['reject_label'] ?? $existing['reject_label'] ?? $d['reject_label'] );
+		$clean['prefs_label']    = sanitize_text_field( $input['prefs_label'] ?? $existing['prefs_label'] ?? $d['prefs_label'] );
+		$clean['prefs_title']    = sanitize_text_field( $input['prefs_title'] ?? $existing['prefs_title'] ?? $d['prefs_title'] );
+		$clean['privacy_url']    = esc_url_raw( $input['privacy_url'] ?? $existing['privacy_url'] ?? '' );
+		$clean['privacy_label']  = sanitize_text_field( $input['privacy_label'] ?? $existing['privacy_label'] ?? $d['privacy_label'] );
+		$clean['cookie_url']     = esc_url_raw( $input['cookie_url'] ?? $existing['cookie_url'] ?? '' );
+		$clean['cookie_label']   = sanitize_text_field( $input['cookie_label'] ?? $existing['cookie_label'] ?? $d['cookie_label'] );
+		$clean['position']       = in_array( ( $input['position'] ?? $existing['position'] ?? '' ), array( 'bottom', 'top' ), true ) ? ( $input['position'] ?? $existing['position'] ) : 'bottom';
+		$clean['expiry_days']    = max( 1, min( 730, intval( $input['expiry_days'] ?? $existing['expiry_days'] ?? 365 ) ) );
+		$clean['show_reopener']  = array_key_exists( 'show_reopener', (array) $input ) ? ( ! empty( $input['show_reopener'] ) ? '1' : '0' ) : ( $existing['show_reopener'] ?? $d['show_reopener'] );
+		$clean['reopener_label'] = sanitize_text_field( $input['reopener_label'] ?? $existing['reopener_label'] ?? $d['reopener_label'] );
+		$clean['show_footer_cookie_link'] = array_key_exists( 'show_footer_cookie_link', (array) $input ) ? ( ! empty( $input['show_footer_cookie_link'] ) ? '1' : '0' ) : ( $existing['show_footer_cookie_link'] ?? $d['show_footer_cookie_link'] );
+		$clean['debug_mode']     = array_key_exists( 'debug_mode', (array) $input ) ? ( ! empty( $input['debug_mode'] ) ? '1' : '0' ) : ( $existing['debug_mode'] ?? $d['debug_mode'] );
+
 		$valid_modes = array( 'global_strict', 'eu_us', 'custom' );
-		$clean['compliance_mode'] = in_array( ( $input['compliance_mode'] ?? '' ), $valid_modes, true )
-			? $input['compliance_mode'] : 'global_strict';
-		$clean['other_region_fallback'] = in_array( ( $input['other_region_fallback'] ?? '' ), array( 'strict', 'relaxed' ), true )
-			? $input['other_region_fallback'] : 'strict';
-		$clean['us_privacy_link']  = ! empty( $input['us_privacy_link'] ) ? '1' : '0';
-		$clean['us_privacy_label'] = sanitize_text_field( $input['us_privacy_label'] ?? $d['us_privacy_label'] );
-		$clean['us_show_notice']   = ! empty( $input['us_show_notice'] ) ? '1' : '0';
-		$clean['us_notice_text']   = sanitize_text_field( $input['us_notice_text'] ?? $d['us_notice_text'] );
+		$clean['compliance_mode'] = in_array( ( $input['compliance_mode'] ?? $existing['compliance_mode'] ?? '' ), $valid_modes, true )
+			? ( $input['compliance_mode'] ?? $existing['compliance_mode'] ) : 'global_strict';
+		$clean['other_region_fallback'] = in_array( ( $input['other_region_fallback'] ?? $existing['other_region_fallback'] ?? '' ), array( 'strict', 'relaxed' ), true )
+			? ( $input['other_region_fallback'] ?? $existing['other_region_fallback'] ) : 'strict';
+		$clean['us_privacy_link']  = array_key_exists( 'us_privacy_link', (array) $input ) ? ( ! empty( $input['us_privacy_link'] ) ? '1' : '0' ) : ( $existing['us_privacy_link'] ?? $d['us_privacy_link'] );
+		$clean['us_privacy_label'] = sanitize_text_field( $input['us_privacy_label'] ?? $existing['us_privacy_label'] ?? $d['us_privacy_label'] );
+		$clean['us_show_notice']   = array_key_exists( 'us_show_notice', (array) $input ) ? ( ! empty( $input['us_show_notice'] ) ? '1' : '0' ) : ( $existing['us_show_notice'] ?? $d['us_show_notice'] );
+		$clean['us_notice_text']   = sanitize_text_field( $input['us_notice_text'] ?? $existing['us_notice_text'] ?? $d['us_notice_text'] );
 
 		$valid_overrides = array( '', 'eu', 'us', 'other' );
-		$clean['region_debug_override'] = in_array( ( $input['region_debug_override'] ?? '' ), $valid_overrides, true )
-			? $input['region_debug_override'] : '';
+		$clean['region_debug_override'] = in_array( ( $input['region_debug_override'] ?? $existing['region_debug_override'] ?? '' ), $valid_overrides, true )
+			? ( $input['region_debug_override'] ?? $existing['region_debug_override'] ) : '';
 
 		return $clean;
 	}

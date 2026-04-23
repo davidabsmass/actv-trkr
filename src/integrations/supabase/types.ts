@@ -7675,6 +7675,15 @@ export type Database = {
           week_offset: number
         }[]
       }
+      get_session_journey_stats: {
+        Args: {
+          p_end: string
+          p_org_id: string
+          p_site_id?: string
+          p_start: string
+        }
+        Returns: Json
+      }
       get_session_journeys: {
         Args: {
           p_end: string

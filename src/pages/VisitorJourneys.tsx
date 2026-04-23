@@ -3,6 +3,7 @@ import { format, subDays, startOfDay } from "date-fns";
 import { useOrg } from "@/hooks/use-org";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
+import { VisitorJourneyStats } from "@/components/journeys/VisitorJourneyStats";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_VISITOR_JOURNEYS } from "@/components/howto/page-content";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,8 @@ export default function VisitorJourneys() {
           onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
         />
       </div>
+
+      <VisitorJourneyStats orgId={orgId} startDate={startDate} endDate={endDate} />
 
       <VisitorJourneysList orgId={orgId} startDate={startDate} endDate={endDate} />
     </div>

@@ -2,6 +2,7 @@ import { ArrowUpRight, ArrowDownRight, Minus, Users, Target, Eye, TrendingUp } f
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { Sparkline } from "./Sparkline";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type KpiVariant = "primary" | "success" | "warning" | "info";
 
@@ -18,13 +19,18 @@ interface KPICardProps {
   sparkColor?: string;
 }
 
-function humanizeDelta(delta: number | null, t: (key: string) => string): { text: string; className: string } {
+function humanizeDelta(delta: number | null, t: (key: string) => string): { text: string; className: string; explain?: string } {
   if (delta === null) return { text: "—", className: "text-muted-foreground" };
   const pct = Math.abs(delta * 100);
   if (pct < 1) return { text: t("dashboard.noChange"), className: "kpi-neutral" };
   if (delta > 0.15) return { text: t("dashboard.strongGrowth"), className: "kpi-up" };
   if (delta > 0) return { text: `+${(delta * 100).toFixed(1)}%`, className: "kpi-up" };
-  if (delta < -0.15) return { text: t("dashboard.attentionNeeded"), className: "kpi-down" };
+  if (delta < -0.15)
+    return {
+      text: t("dashboard.attentionNeeded"),
+      className: "kpi-down",
+      explain: `Down ${pct.toFixed(1)}% vs. the previous period — a drop of more than 15% is worth a quick look.`,
+    };
   return { text: `${(delta * 100).toFixed(1)}%`, className: "kpi-down" };
 }
 
@@ -49,7 +55,7 @@ export function KPICard({
   const { t } = useTranslation();
   const isUp = delta !== null && delta > 0;
   const isDown = delta !== null && delta < 0;
-  const { text: deltaText, className: deltaClass } = humanizeDelta(delta, t);
+  const { text: deltaText, className: deltaClass, explain: deltaExplain } = humanizeDelta(delta, t);
 
   return (
     <div className="kpi-card p-5 flex flex-col gap-1.5 animate-slide-up min-h-[148px]">
@@ -76,7 +82,22 @@ export function KPICard({
           {isUp && <ArrowUpRight className="h-3.5 w-3.5 kpi-up" />}
           {isDown && <ArrowDownRight className="h-3.5 w-3.5 kpi-down" />}
           {!isUp && !isDown && <Minus className="h-3.5 w-3.5 kpi-neutral" />}
-          <span className={`text-xs font-medium ${deltaClass}`}>{deltaText}</span>
+          {deltaExplain ? (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={`text-xs font-medium cursor-help underline decoration-dotted underline-offset-2 ${deltaClass}`}>
+                    {deltaText}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                  {deltaExplain}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <span className={`text-xs font-medium ${deltaClass}`}>{deltaText}</span>
+          )}
           {subtext && <span className="text-xs text-muted-foreground ml-1.5 truncate">{subtext}</span>}
         </div>
       )}

@@ -331,31 +331,16 @@ const Onboarding = () => {
     );
   }
 
+  // Auto-provisioning in progress — never show a form. The user shouldn't
+  // need to "set up an organization"; their workspace is created silently.
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
-            <Zap className="h-5 w-5 text-primary" />
-          </div>
-          <span className="text-xl font-bold text-foreground tracking-tight">ACTV TRKR</span>
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
+          <Zap className="h-5 w-5 text-primary" />
         </div>
-        <div className="glass-card p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Set up your organization</h2>
-          <p className="text-sm text-muted-foreground mb-5">Create an org to start tracking analytics.</p>
-          <form onSubmit={handleCreate} className="space-y-3">
-            <input
-              type="text" placeholder="Organization name (e.g., Example Ortho)" value={name}
-              onChange={(e) => setName(e.target.value)} required
-              className="w-full px-3 py-2.5 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            <button type="submit" disabled={loading || !name}
-              className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-              <Plus className="h-4 w-4" />
-              {loading ? "Creating..." : "Create Organization"}
-            </button>
-          </form>
-        </div>
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-muted-foreground">Setting up your workspace…</p>
       </div>
     </div>
   );

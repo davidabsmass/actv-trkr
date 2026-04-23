@@ -1,39 +1,77 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrg } from "@/hooks/use-org";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Friendly heads-up shown to newly-connected orgs (first 24 hours).
+ * Friendly heads-up shown to newly-connected orgs during the first ~15 minute
+ * sync window.
  *
- * Lets users know that the first full sync — forms, traffic, SEO, monitoring —
- * happens in the background and may take a few minutes to populate. Dismissible
- * per-org via localStorage so it never nags returning users.
+ * Visibility rules (any one hides it):
+ *   - No org yet, or user dismissed it.
+ *   - We're on the Settings page (it has its own connecting notice).
+ *   - More than 15 minutes have passed since the site first heart-beated
+ *     (falls back to org creation time if no site exists yet). The copy
+ *     itself promises "5–15 minutes", so the banner must not linger past
+ *     that window.
+ *   - Real data has already arrived (any session or pageview), at which
+ *     point the message is just noise.
  */
 export function FirstSyncBanner() {
   const { orgId, orgCreatedAt } = useOrg();
   const { pathname } = useLocation();
   const [dismissed, setDismissed] = useState(false);
 
-  // The Settings page renders its own, more specific connecting notice
-  // (`SettingsConnectingNotice`). Suppress this generic banner there to
-  // avoid duplicating the same message in two stacked cards.
   const isSettings = pathname.startsWith("/settings");
-
   const storageKey = orgId ? `firstSyncBanner:dismissed:${orgId}` : null;
 
-  // Hydrate dismissed state from localStorage when the org changes.
   useEffect(() => {
     if (!storageKey) return;
     setDismissed(localStorage.getItem(storageKey) === "1");
   }, [storageKey]);
 
+  // Pull the earliest site heartbeat + a quick "do we have any data yet?" probe.
+  // Cheap query — limited to 1 row each. Refetches every 30s so the banner
+  // disappears on its own as soon as data starts flowing.
+  const { data: syncState } = useQuery({
+    queryKey: ["first-sync-banner-state", orgId],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const [siteRes, sessRes, pvRes] = await Promise.all([
+        supabase
+          .from("sites")
+          .select("last_heartbeat_at, created_at")
+          .eq("org_id", orgId)
+          .order("last_heartbeat_at", { ascending: true, nullsFirst: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase.from("sessions").select("id", { head: true, count: "exact" }).eq("org_id", orgId).limit(1),
+        supabase.from("pageviews").select("id", { head: true, count: "exact" }).eq("org_id", orgId).limit(1),
+      ]);
+      return {
+        firstHeartbeatAt: siteRes.data?.last_heartbeat_at ?? siteRes.data?.created_at ?? null,
+        hasData: (sessRes.count ?? 0) > 0 || (pvRes.count ?? 0) > 0,
+      };
+    },
+    enabled: !!orgId && !dismissed && !isSettings,
+    refetchInterval: 30_000,
+  });
+
   if (!orgId || !orgCreatedAt || dismissed || isSettings) return null;
 
-  // Only show during the first 24 hours after the org was created.
-  const ageMs = Date.now() - new Date(orgCreatedAt).getTime();
-  if (Number.isNaN(ageMs) || ageMs < 0 || ageMs > 24 * 60 * 60 * 1000) return null;
+  // Anchor the 15-minute window to the site's first heartbeat when available,
+  // otherwise to org creation. This matches the "5–15 minutes after your site
+  // connected" promise in the copy.
+  const anchorIso = syncState?.firstHeartbeatAt || orgCreatedAt;
+  const ageMs = Date.now() - new Date(anchorIso).getTime();
+  const FIFTEEN_MIN = 15 * 60 * 1000;
+  if (Number.isNaN(ageMs) || ageMs < 0 || ageMs > FIFTEEN_MIN) return null;
+
+  // Once data is flowing the banner has done its job.
+  if (syncState?.hasData) return null;
 
   const handleDismiss = () => {
     if (storageKey) localStorage.setItem(storageKey, "1");

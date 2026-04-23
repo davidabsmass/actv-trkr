@@ -883,6 +883,65 @@
       dbg('tracker booted', { region: CFG.consentMode, version: CFG.pluginVersion });
     }
 
+    // v1.20.9+: Limited Pre-Consent boot path.
+    // ──────────────────────────────────────────────────────────────
+    // Sends a SINGLE anonymous pageview when consent has not been granted
+    // and the admin has explicitly opted in via Settings → Privacy.
+    // Hard guarantees:
+    //   - no visitor_id, no session_id, no wp_user_*
+    //   - no cookies are read or written
+    //   - no localStorage queue, no journey stitching, no listeners
+    //   - no form/lead tracking, no clicks, no time-on-page signals
+    //   - flagged with tracking_mode='limited' so the backend strips
+    //     anything the client did manage to include
+    //
+    // If consent is later granted, the full tracker boots normally via
+    // mmConsent.grant() — this function does NOT mark tracker initialized,
+    // so the upgrade path is clean.
+    function bootLimitedTracker() {
+      if (limitedModeActive) return;
+      limitedModeActive = true;
+
+      function sendLimitedPageview() {
+        try {
+          var refDomain = null;
+          try {
+            if (document.referrer) refDomain = new URL(document.referrer).hostname;
+          } catch (e) {}
+
+          // Generate a one-shot event_id (required by backend) but DO NOT
+          // persist anywhere. New event_id each call = no stitching possible.
+          var eventId = 'lim_' + uuid();
+
+          var payload = withAuthBody({
+            source: {
+              domain: CFG.domain,
+              type: 'wordpress',
+              plugin_version: CFG.pluginVersion,
+            },
+            event: {
+              event_id: eventId,
+              page_url: window.location.href,
+              page_path: window.location.pathname,
+              referrer: document.referrer || null,
+              device: deviceType(),
+              occurred_at: new Date().toISOString(),
+              tracking_mode: 'limited',
+            },
+          });
+
+          send(CFG.endpoint, payload);
+          dbg('limited pre-consent pageview sent');
+        } catch (e) { dbgErr('limited pageview', e); }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', safe(sendLimitedPageview, 'limited pv'));
+      } else {
+        safe(sendLimitedPageview, 'limited pv')();
+      }
+    }
+
     // ── Public Consent + Diagnostics API ──────────────────────────
 
     window.mmConsent = {

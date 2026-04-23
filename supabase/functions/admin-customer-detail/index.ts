@@ -248,6 +248,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Audit: every successful read of a customer record is logged.
+    await logSecurityEvent({
+      event_type: "admin_customer_detail_read",
+      severity: "info",
+      actor_type: "admin",
+      user_id: caller.id,
+      org_id: orgIds[0] ?? null,
+      ip_hash: ipHash,
+      user_agent: userAgent,
+      request_id: requestId,
+      message: `Admin read customer detail for ${resolvedEmail}`,
+      metadata: { email: resolvedEmail, subscriber_id: subscriber?.id ?? null },
+    });
+
     return json(
       {
         subscriber,

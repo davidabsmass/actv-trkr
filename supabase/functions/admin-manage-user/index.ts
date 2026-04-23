@@ -144,53 +144,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── RESET PASSWORD ──
+    // ── RESET PASSWORD (email link only — caller-supplied passwords removed for security) ──
     if (action === "reset_password") {
-      const { email, new_password, org_id } = body;
+      const { email } = body;
       const normalizedEmail = String(email || "").trim().toLowerCase();
-      if (!normalizedEmail || !org_id) {
-        return new Response(JSON.stringify({ error: "email and org_id are required" }), {
+      if (!normalizedEmail) {
+        return new Response(JSON.stringify({ error: "email is required" }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
-
-      // System admins bypass org-membership check; otherwise require org admin
-      if (!isSystemAdmin) {
-        const { data: callerOrgAccess } = await adminClient
-          .from("org_users").select("role").eq("org_id", org_id).eq("user_id", caller.id).maybeSingle();
-        if (!callerOrgAccess || callerOrgAccess.role !== "admin") {
-          return new Response(JSON.stringify({ error: "Org admin access required" }), {
-            status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-          });
-        }
-      }
-
-      const { data: targetProfileRow } = await adminClient
-        .from("profiles").select("user_id").ilike("email", normalizedEmail).maybeSingle();
-      const targetUser = targetProfileRow ? { id: targetProfileRow.user_id } : null;
-      if (!targetUser) {
-        return new Response(JSON.stringify({ error: "User not found" }), {
-          status: 404, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
-
-      const { data: targetMembership } = await adminClient
-        .from("org_users").select("id").eq("org_id", org_id).eq("user_id", targetUser.id).maybeSingle();
-      if (!targetMembership) {
-        return new Response(JSON.stringify({ error: "User does not belong to this client account" }), {
-          status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
-
-      if (new_password) {
-        const { error: updateError } = await adminClient.auth.admin.updateUserById(targetUser.id, { password: new_password });
-        if (updateError) {
-          return new Response(JSON.stringify({ error: updateError.message }), {
-            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-          });
-        }
-        return new Response(JSON.stringify({ success: true, method: "password_set" }), {
-          headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 

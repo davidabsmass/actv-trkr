@@ -55,7 +55,7 @@ export function KPICard({
   const { t } = useTranslation();
   const isUp = delta !== null && delta > 0;
   const isDown = delta !== null && delta < 0;
-  const { text: deltaText, className: deltaClass } = humanizeDelta(delta, t);
+  const { text: deltaText, className: deltaClass, explain: deltaExplain } = humanizeDelta(delta, t);
 
   return (
     <div className="kpi-card p-5 flex flex-col gap-1.5 animate-slide-up min-h-[148px]">
@@ -82,7 +82,22 @@ export function KPICard({
           {isUp && <ArrowUpRight className="h-3.5 w-3.5 kpi-up" />}
           {isDown && <ArrowDownRight className="h-3.5 w-3.5 kpi-down" />}
           {!isUp && !isDown && <Minus className="h-3.5 w-3.5 kpi-neutral" />}
-          <span className={`text-xs font-medium ${deltaClass}`}>{deltaText}</span>
+          {deltaExplain ? (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={`text-xs font-medium cursor-help underline decoration-dotted underline-offset-2 ${deltaClass}`}>
+                    {deltaText}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                  {deltaExplain}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <span className={`text-xs font-medium ${deltaClass}`}>{deltaText}</span>
+          )}
           {subtext && <span className="text-xs text-muted-foreground ml-1.5 truncate">{subtext}</span>}
         </div>
       )}

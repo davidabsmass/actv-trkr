@@ -369,15 +369,11 @@
       }
     }
 
-    // Beacon-first send with optional retry callbacks.
-    // Beacons return true/false synchronously, so we treat success as "browser
-    // accepted the request". On false, fall through to fetch.
+    // Fetch-first send with optional retry callbacks.
+    // For normal pageviews/event batches we want an actual HTTP response so
+    // blocked or rejected requests do not look like successful sends.
+    // Beacon remains reserved for unload/final flush paths only.
     function sendWithRetry(endpoint, payload, onSuccess, onFailure) {
-      // Prefer beacon for unauthenticated-by-header payloads (credential is in body)
-      if (tryBeacon(endpoint, payload)) {
-        if (onSuccess) onSuccess();
-        return;
-      }
       tryFetch(endpoint, payload, function () {
         if (onSuccess) onSuccess();
       }, function () {
@@ -405,17 +401,21 @@
     }
 
     // Standard send (pageviews, time_updates).
+    // Use fetch first so regular tracking is acknowledged by the backend
+    // instead of silently relying on the browser accepting a beacon.
     function send(endpoint, payload) {
-      if (tryBeacon(endpoint, payload)) {
-        lastSuccessfulSend = Date.now();
-        setTrackerState('active');
-        return;
-      }
       tryFetch(endpoint, payload, function () {
         lastSuccessfulSend = Date.now();
         setTrackerState('active');
       }, function () {
-        // Beacon and fetch both failed — drop silently. Host page is unaffected.
+        // Last-resort fallback for browsers/environments where fetch+keepalive
+        // is unavailable or unreliable, but never treat a beacon as the normal
+        // success path for interactive tracking.
+        if (tryBeacon(endpoint, payload)) {
+          lastSuccessfulSend = Date.now();
+          setTrackerState('active');
+          return;
+        }
         dbg('send failed, dropping payload');
       });
     }

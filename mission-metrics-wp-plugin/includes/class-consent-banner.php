@@ -21,12 +21,52 @@ class MM_Consent_Banner {
 	public static function init() {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_front' ), 5 );
 		add_action( 'wp_head',            array( __CLASS__, 'inline_bootstrap' ), 1 );
+		add_action( 'wp_head',            array( __CLASS__, 'maybe_inline_reset_consent' ), 0 );
 		add_action( 'wp_footer',          array( __CLASS__, 'render_reopener' ) );
 		add_action( 'admin_init',         array( __CLASS__, 'register_settings' ) );
 		add_action( 'wp_ajax_mm_consent_diag', array( __CLASS__, 'ajax_diagnostics' ) );
 		add_action( 'admin_notices',      array( __CLASS__, 'maybe_show_compliance_nudge' ) );
 		add_action( 'wp_ajax_mm_dismiss_compliance_nudge', array( __CLASS__, 'ajax_dismiss_nudge' ) );
 		add_action( 'wp_ajax_mm_apply_recommended_compliance_mode', array( __CLASS__, 'ajax_apply_recommended_mode' ) );
+	}
+
+	/**
+	 * v1.20.10+ debug helper: when an admin visits ?mm_reset_consent=1,
+	 * clear the consent cookie + related localStorage in their browser and reload
+	 * once so the banner reappears. Admin-only; no effect for regular visitors.
+	 */
+	public static function maybe_inline_reset_consent() {
+		if ( is_admin() ) return;
+		if ( empty( $_GET['mm_reset_consent'] ) ) return;
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return;
+		?>
+		<script>(function(){
+			try {
+				var names = ['mm_consent_decision','mm_optout','mm_consent_state'];
+				var host = location.hostname;
+				var domains = [host, '.' + host];
+				if (host.indexOf('www.') === 0) domains.push('.' + host.slice(4));
+				for (var i=0;i<names.length;i++){
+					document.cookie = names[i]+'=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+					for (var j=0;j<domains.length;j++){
+						document.cookie = names[i]+'=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain='+domains[j];
+					}
+				}
+				try {
+					Object.keys(localStorage).forEach(function(k){
+						if (k.indexOf('mm_consent') === 0 || k === 'mm_optout') localStorage.removeItem(k);
+					});
+				} catch(e){}
+				if (!sessionStorage.getItem('mm_reset_done')) {
+					sessionStorage.setItem('mm_reset_done','1');
+					var clean = location.pathname + location.search.replace(/([?&])mm_reset_consent=1&?/,'$1').replace(/[?&]$/,'') + location.hash;
+					location.replace(clean || location.pathname);
+				} else {
+					sessionStorage.removeItem('mm_reset_done');
+				}
+			} catch(e) { console.warn('[mm] reset consent failed', e); }
+		})();</script>
+		<?php
 	}
 
 	/* ── Defaults ──────────────────────────────────────────────── */

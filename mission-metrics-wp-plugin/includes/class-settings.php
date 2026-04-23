@@ -604,12 +604,31 @@ class MM_Settings {
 								<strong>What's sent:</strong> page path, timestamp, referrer domain, coarse device type.<br>
 								<strong>What's NOT sent:</strong> visitor ID, session ID, cookies, journey stitching, form/lead tracking.
 							</p>
-							<p class="description" style="color:#b45309;margin-top:8px">
+						<p class="description" style="color:#b45309;margin-top:8px">
 								⚠️ Check local regulations before enabling. This is off by default.
 							</p>
 						</td>
 					</tr>
 				</table>
+			</div>
+
+			<!-- v1.20.10+: Reset Consent (Debug helper) -->
+			<div class="mm-card">
+				<h2>Reset Consent <span style="font-weight:400;color:#6b7280;font-size:13px">(Debug)</span></h2>
+				<p class="mm-card-desc">
+					Clears the stored consent decision for <strong>your current browser only</strong> so you can re-test the consent banner without manually clearing cookies. Does not affect site visitors.
+				</p>
+				<p>
+					<a href="<?php echo esc_url( home_url( '/?mm_reset_consent=1' ) ); ?>"
+					   target="_blank"
+					   rel="noopener"
+					   class="button button-secondary">
+						Open site &amp; reset my consent
+					</a>
+					<span class="description" style="margin-left:10px">
+						Opens your homepage and clears <code>mm_consent_decision</code> + <code>mm_optout</code> in this browser, then reloads so the banner reappears.
+					</span>
+				</p>
 			</div>
 
 			<?php submit_button(); ?>

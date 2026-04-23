@@ -73,6 +73,9 @@ export default function WebsiteSetup() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [keyVisible, setKeyVisible] = useState(true);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testFailed, setTestFailed] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const { data: latestVersion } = useQuery({
     queryKey: ["latest_plugin_version", "plugin_info"],

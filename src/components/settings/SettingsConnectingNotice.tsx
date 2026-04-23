@@ -48,42 +48,28 @@ export function SettingsConnectingNotice() {
   if (connectionState?.hasHeartbeat) return null;
 
   const hasSite = connectionState?.hasSite ?? false;
+  // Don't show anything until the user has actually connected their website
+  // (i.e., at least one site exists for this org). Before that point this
+  // notice is just noise on the Settings page.
+  if (!hasSite) return null;
 
   return (
     <div className="mb-5 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:p-5 flex items-start gap-3 animate-slide-up">
       <div className="mt-0.5 flex-shrink-0 h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-        {hasSite ? (
-          <Loader2 className="h-4 w-4 text-primary animate-spin" />
-        ) : (
-          <Clock className="h-4 w-4 text-primary" />
-        )}
+        <Loader2 className="h-4 w-4 text-primary animate-spin" />
       </div>
       <div className="flex-1 min-w-0 space-y-1.5">
         <p className="text-sm font-semibold text-foreground">
-          {hasSite
-            ? "We're connecting your website — give us a few minutes"
-            : "Almost there — finish setup, then give us a few minutes"}
+          We're connecting your website — give us a few minutes
         </p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          {hasSite ? (
-            <>
-              Your WordPress plugin is talking to us. The first full sync —
-              forms, traffic, SEO and monitoring — usually takes{" "}
-              <strong className="text-foreground">1–3 minutes</strong> and can occasionally
-              run up to <strong className="text-foreground">15 minutes</strong> on slower
-              hosts. The <strong className="text-foreground">Dashboard</strong> tab will
-              unlock automatically as soon as your first signal arrives — you don't need
-              to refresh.
-            </>
-          ) : (
-            <>
-              Once you've installed the plugin and pasted your license key, it usually
-              takes <strong className="text-foreground">1–3 minutes</strong> for the first
-              signal to arrive (sometimes up to 15 on slower hosts). The{" "}
-              <strong className="text-foreground">Dashboard</strong> tab will unlock
-              automatically — you don't need to refresh or click anything else.
-            </>
-          )}
+          Your WordPress plugin is talking to us. The first full sync —
+          forms, traffic, SEO and monitoring — usually takes{" "}
+          <strong className="text-foreground">1–3 minutes</strong> and can occasionally
+          run up to <strong className="text-foreground">15 minutes</strong> on slower
+          hosts. The <strong className="text-foreground">Dashboard</strong> tab will
+          unlock automatically as soon as your first signal arrives — you don't need
+          to refresh.
         </p>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
           <CheckCircle2 className="h-3.5 w-3.5 text-success" />

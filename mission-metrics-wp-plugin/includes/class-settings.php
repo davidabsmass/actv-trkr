@@ -225,9 +225,37 @@ class MM_Settings {
 					<tr>
 						<th scope="row"><label for="mm_api_key">API Key</label></th>
 						<td>
-							<input type="password" id="mm_api_key" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[api_key]"
-								value="<?php echo esc_attr( $opts['api_key'] ); ?>" class="regular-text" autocomplete="off" />
-							<p class="description">From your ACTV TRKR dashboard.</p>
+							<?php $has_key = ! empty( $opts['api_key'] ); ?>
+							<?php if ( $has_key ) : ?>
+								<div id="mm-api-key-locked" style="display:flex;align-items:center;gap:10px">
+									<code style="font-family:Menlo,Consolas,monospace;background:#f6f7f7;padding:6px 10px;border-radius:4px;border:1px solid #dcdcde">
+										<?php echo esc_html( str_repeat( '•', 8 ) . substr( $opts['api_key'], -4 ) ); ?>
+									</code>
+									<span style="color:#16a34a;font-weight:600">✓ Saved</span>
+									<a href="#" id="mm-replace-api-key" class="button button-small">Replace key</a>
+								</div>
+								<div id="mm-api-key-edit" style="display:none">
+									<input type="password" id="mm_api_key" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[api_key]"
+										value="" class="regular-text" autocomplete="off" placeholder="Paste new API key" />
+									<a href="#" id="mm-cancel-replace-api-key" style="margin-left:8px">Cancel</a>
+									<p class="description" style="color:#b91c1c">Saving will replace your current key. Leaving this blank keeps the existing key.</p>
+								</div>
+								<script>
+								(function(){
+									var lock = document.getElementById('mm-api-key-locked');
+									var edit = document.getElementById('mm-api-key-edit');
+									var rep  = document.getElementById('mm-replace-api-key');
+									var cancel = document.getElementById('mm-cancel-replace-api-key');
+									var input = document.getElementById('mm_api_key');
+									if ( rep ) rep.addEventListener('click', function(e){ e.preventDefault(); lock.style.display='none'; edit.style.display='block'; if(input) input.focus(); });
+									if ( cancel ) cancel.addEventListener('click', function(e){ e.preventDefault(); edit.style.display='none'; lock.style.display='flex'; if(input) input.value=''; });
+								})();
+								</script>
+							<?php else : ?>
+								<input type="password" id="mm_api_key" name="<?php echo esc_attr( self::OPTION_NAME ); ?>[api_key]"
+									value="" class="regular-text" autocomplete="off" />
+								<p class="description">From your ACTV TRKR dashboard.</p>
+							<?php endif; ?>
 						</td>
 					</tr>
 					<tr>

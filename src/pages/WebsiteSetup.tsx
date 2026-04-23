@@ -393,7 +393,35 @@ export default function WebsiteSetup() {
           number={3}
           icon={Link2}
           title="Paste the Key in WordPress"
-          description="In WordPress, go to Settings → ACTV TRKR. Paste the license key from Step 1 into the License Key field, then click Save Changes. Your site will connect within seconds."
+          description="In WordPress, go to Settings → ACTV TRKR. Paste the license key from Step 1 into the License Key field, then click Save Changes."
+        />
+
+        <Step
+          number={4}
+          icon={PlugZap}
+          title="Test the Connection"
+          description="Click below to confirm your site is talking to ACTV TRKR. If it's connected, you're all set."
+          action={
+            <div className="space-y-2">
+              <button
+                onClick={handleTestConnection}
+                disabled={testing}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {testing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PlugZap className="h-4 w-4" />
+                )}
+                {testing ? "Testing…" : "Test Connection"}
+              </button>
+              {testFailed && !testing && (
+                <p className="text-xs text-warning leading-relaxed">
+                  We didn't hear from your site yet. Double-check that the plugin is activated and your license key is saved in WordPress, then try again.
+                </p>
+              )}
+            </div>
+          }
         />
       </div>
 
@@ -408,6 +436,29 @@ export default function WebsiteSetup() {
         </button>
         .
       </p>
+
+      {/* Success modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-success/10 flex items-center justify-center">
+              <CheckCircle2 className="h-7 w-7 text-success" />
+            </div>
+            <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Connection established
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm leading-relaxed pt-2">
+              Your site just connected — forms, traffic, SEO and monitoring sync in the background and can take 5–15 minutes to fully populate. If something looks empty, give it a few minutes and refresh. You can safely keep working while we catch up.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center pt-2">
+            <Button onClick={() => setShowSuccessModal(false)} className="w-full sm:w-auto">
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -87,12 +87,11 @@ const Onboarding = () => {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async (orgName: string) => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { user: authedUser } } = await supabase.auth.getUser();
+      if (!authedUser) throw new Error("Not authenticated");
 
       const requestedOrgId = crypto.randomUUID();
 
@@ -101,11 +100,11 @@ const Onboarding = () => {
       // returns that existing org_id instead of creating a duplicate.
       const { data: rpcOrgId, error: orgErr } = await supabase.rpc("create_org_with_admin", {
         p_org_id: requestedOrgId,
-        p_name: name,
+        p_name: orgName,
       });
       if (orgErr) throw orgErr;
 
-      const orgId = (rpcOrgId as string) || requestedOrgId;
+      const orgId = (rpcOrgId as unknown as string) || requestedOrgId;
 
       // Generate API key and store hash
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
@@ -132,7 +131,7 @@ const Onboarding = () => {
           { onConflict: "org_id" }
         );
 
-      // Save compliance mode to consent_config
+      // Save compliance mode to consent_config (default region/EU+US)
       await supabase
         .from("consent_config")
         .upsert(
@@ -143,16 +142,31 @@ const Onboarding = () => {
           { onConflict: "org_id" }
         );
 
-      setCreatedOrg({ id: orgId, name });
+      setCreatedOrg({ id: orgId, name: orgName });
       setApiKey(rawKey);
       refetch();
     } catch (err: any) {
       console.error(err);
-      toast({ variant: "destructive", title: "Error creating organization", description: err?.message || "Something went wrong" });
+      toast({ variant: "destructive", title: "Error setting up workspace", description: err?.message || "Something went wrong" });
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-provision an org silently as soon as we know the user has none.
+  // The org name is derived from the user's profile/email — users do NOT
+  // need to fill out a form. This makes the onboarding step invisible.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (status !== "success") return;
+    if (orgs && orgs.length > 0) return;
+    if (createdOrg) return;
+    if (provisioningRef.current) return;
+    provisioningRef.current = true;
+    handleCreate(deriveDefaultOrgName(user));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, status, orgs, createdOrg]);
+
 
   const copyApiKey = () => {
     if (apiKey) {

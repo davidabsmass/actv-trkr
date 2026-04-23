@@ -151,7 +151,10 @@ const Onboarding = () => {
       refetch();
     } catch (err: any) {
       console.error(err);
-      toast({ variant: "destructive", title: "Error setting up workspace", description: err?.message || "Something went wrong" });
+      provisioningRef.current = false;
+      const message = err?.message || "Something went wrong";
+      setProvisionError(message);
+      toast({ variant: "destructive", title: "Error setting up workspace", description: message });
     } finally {
       setLoading(false);
     }
@@ -339,12 +342,37 @@ const Onboarding = () => {
   // need to "set up an organization"; their workspace is created silently.
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="flex flex-col items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
+      <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 text-center space-y-4">
+        <div className="mx-auto flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 glow-primary">
           <Zap className="h-5 w-5 text-primary" />
         </div>
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-muted-foreground">Setting up your workspace…</p>
+        {loading ? (
+          <>
+            <div className="mx-auto w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Setting up your workspace…</p>
+          </>
+        ) : provisionError ? (
+          <>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">We couldn’t finish setting up your workspace.</p>
+              <p className="text-xs text-muted-foreground break-words">{provisionError}</p>
+            </div>
+            <button
+              onClick={() => {
+                provisioningRef.current = false;
+                handleCreate(deriveDefaultOrgName(user));
+              }}
+              className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Try again
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="mx-auto w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Setting up your workspace…</p>
+          </>
+        )}
       </div>
     </div>
   );

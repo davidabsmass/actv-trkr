@@ -33,7 +33,7 @@ export default function VisitorJourneys() {
             <HowToButton {...HOWTO_VISITOR_JOURNEYS} />
           </div>
           <p className="text-sm text-muted-foreground">
-            {orgName} · See where every visitor arrived, what they viewed, and where they left.
+            {orgName} · See where every visitor arrived from, what they viewed, and where they left.
           </p>
         </div>
         <DateRangeSelector

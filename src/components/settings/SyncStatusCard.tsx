@@ -32,7 +32,7 @@ const AREA_DESC: Record<AreaKey, string> = {
 const FRESHNESS_BUDGET: Record<AreaKey, number> = {
   forms: 24 * 60 * 60 * 1000, // 24 h — form definitions rarely change
   seo: 14 * 24 * 60 * 60 * 1000, // 14 d
-  monitoring: 5 * 60 * 1000, // 5 min
+  monitoring: 2 * 60 * 60 * 1000, // 2 h — background checks run frequently; only flag a real lag
 };
 
 function formatAge(iso: string | null): string {

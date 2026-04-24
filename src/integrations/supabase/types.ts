@@ -541,6 +541,7 @@ export type Database = {
           org_id: string
           revoked_at: string | null
           signing_secret: string
+          site_id: string | null
         }
         Insert: {
           created_at?: string
@@ -550,6 +551,7 @@ export type Database = {
           org_id: string
           revoked_at?: string | null
           signing_secret?: string
+          site_id?: string | null
         }
         Update: {
           created_at?: string
@@ -559,6 +561,7 @@ export type Database = {
           org_id?: string
           revoked_at?: string | null
           signing_secret?: string
+          site_id?: string | null
         }
         Relationships: [
           {
@@ -566,6 +569,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
@@ -6328,6 +6338,7 @@ export type Database = {
         Row: {
           allowed_domains: string[]
           created_at: string
+          display_name: string | null
           domain: string
           down_after_minutes: number
           fail_count: number
@@ -6346,6 +6357,7 @@ export type Database = {
         Insert: {
           allowed_domains?: string[]
           created_at?: string
+          display_name?: string | null
           domain: string
           down_after_minutes?: number
           fail_count?: number
@@ -6364,6 +6376,7 @@ export type Database = {
         Update: {
           allowed_domains?: string[]
           created_at?: string
+          display_name?: string | null
           domain?: string
           down_after_minutes?: number
           fail_count?: number

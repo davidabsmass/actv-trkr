@@ -29,7 +29,9 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
 
   const handleContinue = () => {
     onOpenChange(false);
-    navigate("/settings?tab=setup");
+    // First site → full first-time setup. Additional sites → streamlined
+    // flow that reuses the existing org API key (no rotation).
+    navigate(isFirstSite ? "/settings?tab=setup" : "/settings?tab=add-site");
   };
 
   return (
@@ -56,9 +58,10 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
 
         {!isFirstSite && (
           <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            You'll install the WordPress plugin on the new site and connect it with your existing
-            license key. Billing for the additional site will be set up separately — we won't
-            charge you until that's confirmed.
+            You'll use your <span className="font-semibold text-foreground">existing license key</span> — no
+            new key needed. Just install the plugin on the new site and paste the same key you used before.
+            Billing for the additional site will be set up separately — we won't charge you until
+            that's confirmed.
           </div>
         )}
 

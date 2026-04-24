@@ -469,6 +469,16 @@ export default function AdminSetup() {
     enabled: isAdminUser,
   });
 
+  const { data: errorLogs = [] } = useQuery({
+    queryKey: ["owner_errors"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("error_logs").select("*").order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: isAdminUser,
+  });
+
   // A sub only counts toward MRR if status is active AND mrr > 0.
   // The mrr > 0 check excludes free-code / 100%-discount subscribers whose
   // recalculated effective MRR is zero.

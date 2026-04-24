@@ -72,6 +72,8 @@ const ResetPassword = () => {
     const bootstrap = async () => {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
+      const tokenHash = url.searchParams.get("token_hash");
+      const type = url.searchParams.get("type");
       const errDesc = url.searchParams.get("error_description") || url.searchParams.get("error");
 
       if (errDesc) {
@@ -79,33 +81,55 @@ const ResetPassword = () => {
         return;
       }
 
+      // (a) PKCE code flow
       if (code) {
         try {
           const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeErr) throw exchangeErr;
           if (mounted) setReady(true);
-          // Clean the code out of the URL so refresh doesn't re-exchange.
           window.history.replaceState({}, "", url.pathname);
           return;
         } catch (e: any) {
+          console.warn("[reset] exchangeCodeForSession failed", e?.message);
           if (mounted) setError(e?.message || "This reset link is invalid or has expired. Please request a new one.");
           return;
         }
       }
 
+      // (b) verifyOtp token_hash flow (newer Supabase format)
+      if (tokenHash && type) {
+        try {
+          const { error: vErr } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any,
+          });
+          if (vErr) throw vErr;
+          if (mounted) setReady(true);
+          window.history.replaceState({}, "", url.pathname);
+          return;
+        } catch (e: any) {
+          console.warn("[reset] verifyOtp failed", e?.message);
+          if (mounted) setError(e?.message || "This reset link is invalid or has expired. Please request a new one.");
+          return;
+        }
+      }
+
+      // (c) hash fragment or already-established session
       const { data: { session } } = await supabase.auth.getSession();
       if (mounted && session) {
         setReady(true);
         return;
       }
 
-      // Give the SDK a moment to process a hash-based token, then fail gracefully.
       setTimeout(async () => {
         if (!mounted || ready) return;
         const { data: { session: s2 } } = await supabase.auth.getSession();
         if (mounted) {
           if (s2) setReady(true);
-          else setError("This reset link is invalid or has expired. Please request a new one.");
+          else {
+            console.warn("[reset] no session after wait", { search: url.search, hash: url.hash });
+            setError("This reset link is invalid or has expired. Please request a new one.");
+          }
         }
       }, 2000);
     };

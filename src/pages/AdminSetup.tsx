@@ -17,6 +17,7 @@ import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
 import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
 import ReleaseQAPanel from "@/components/admin/ReleaseQAPanel";
 import DataWipePanel from "@/components/admin/DataWipePanel";
+import SupportAccessPanel from "@/components/admin/SupportAccessPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 

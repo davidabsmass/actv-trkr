@@ -84,7 +84,10 @@ export function SiteSwitcher() {
               const status = deriveStatus(site);
               const label = site.display_name || site.name || site.domain;
               return (
-                <DropdownMenuItem key={site.id} className="flex items-start gap-2 py-2">
+                <DropdownMenuItem
+                  key={site.id}
+                  className="flex items-start gap-2 py-2 focus:text-accent-foreground [&:focus_*]:!text-accent-foreground data-[highlighted]:text-accent-foreground [&[data-highlighted]_*]:!text-accent-foreground"
+                >
                   <StatusDot kind={status.kind} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{label}</div>
@@ -101,7 +104,7 @@ export function SiteSwitcher() {
               e.preventDefault();
               setAddOpen(true);
             }}
-            className="text-primary focus:text-primary gap-2"
+            className="text-primary gap-2 focus:text-accent-foreground data-[highlighted]:text-accent-foreground"
           >
             <Plus className="h-4 w-4" />
             Add another site

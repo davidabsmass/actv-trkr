@@ -324,7 +324,7 @@ const Auth = () => {
                 <h2 className="text-lg font-semibold text-white mb-1">
                   {isLogin ? "Sign in" : "Create account"}
                 </h2>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   {isLogin ? "Enter your credentials to continue" : "Get started with your analytics dashboard"}
                 </p>
 
@@ -351,7 +351,7 @@ const Auth = () => {
                       className="w-full pl-10 pr-10 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(210,100%,15%)] hover:text-[hsl(210,100%,8%)] transition-colors">
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="lucide lucide-eye h-4 w-4 bg-muted-foreground text-primary-foreground" />}
                     </button>
                   </div>
                   {!isLogin && (
@@ -399,7 +399,7 @@ const Auth = () => {
                   <ShieldCheck className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-white">Verify your email</h2>
                 </div>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   We sent a 6-digit code to <span className="font-medium text-white">{pendingEmail}</span>. Enter it below to confirm your account.
                 </p>
 
@@ -462,7 +462,7 @@ const Auth = () => {
                   <KeyRound className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-white">Reset password</h2>
                 </div>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   Enter your email and we'll send a reset link
                 </p>
 
@@ -502,7 +502,7 @@ const Auth = () => {
                   <ShieldCheck className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-white">Two-factor verification</h2>
                 </div>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   We sent a 6-digit code to{" "}
                   <span className="font-medium text-white">{mfaEmail || pendingEmail}</span>. Enter it below to finish signing in.
                 </p>

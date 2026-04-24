@@ -324,7 +324,7 @@ const Auth = () => {
                 <h2 className="text-lg font-semibold text-white mb-1">
                   {isLogin ? "Sign in" : "Create account"}
                 </h2>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   {isLogin ? "Enter your credentials to continue" : "Get started with your analytics dashboard"}
                 </p>
 

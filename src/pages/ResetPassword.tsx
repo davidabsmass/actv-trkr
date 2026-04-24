@@ -203,11 +203,13 @@ const ResetPassword = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder="New password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
+                  autoComplete="new-password"
+                  name="new-password"
                   className={inputClass}
                 />
                 <button
@@ -222,11 +224,13 @@ const ResetPassword = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Confirm password"
+                  placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={6}
+                  autoComplete="new-password"
+                  name="confirm-new-password"
                   className={inputClass}
                 />
               </div>

@@ -270,6 +270,9 @@ export default function AdminSetup() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
+  // Admins (e.g. Annie) can view the same admin panels as the owner.
+  // Destructive actions (Data Wipe, Remove client) stay owner-only.
+  const isAdminUser = isAdmin || isOwner;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -463,17 +466,7 @@ export default function AdminSetup() {
         _profile: profileMap.get(s.email) || null,
       }));
     },
-    enabled: isOwner,
-  });
-
-  const { data: errorLogs = [] } = useQuery({
-    queryKey: ["owner_errors"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("error_logs").select("*").order("created_at", { ascending: false }).limit(100);
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: isOwner,
+    enabled: isAdminUser,
   });
 
   // A sub only counts toward MRR if status is active AND mrr > 0.

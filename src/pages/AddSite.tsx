@@ -251,7 +251,7 @@ export default function AddSite() {
                   New site connected!
                 </p>
                 <p className="text-xs text-muted-foreground mb-3">
-                  {newSiteDetected.domain || newSiteDetected.site_url || "Your new site"}{" "}
+                  {newSiteDetected.display_name || newSiteDetected.domain || newSiteDetected.url || "Your new site"}{" "}
                   is now reporting to your dashboard.
                 </p>
                 <div className="flex gap-2 flex-wrap">

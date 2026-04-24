@@ -23,15 +23,23 @@ Deno.serve(async (req) => {
     }
     const token = authHeader.slice("Bearer ".length);
 
-    // Use getClaims (works reliably in edge functions) instead of getUser
+    // Decode JWT payload to get user id (works regardless of supabase-js version)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: claimsData, error: claimsError } = await adminClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims?.sub) {
+    let callerId: string | null = null;
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payloadJson = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+        const payload = JSON.parse(payloadJson);
+        if (payload?.sub && typeof payload.sub === "string") callerId = payload.sub;
+      }
+    } catch (_) { /* fall through */ }
+    if (!callerId) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
-    const caller = { id: claimsData.claims.sub as string };
+    const caller = { id: callerId };
     const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")

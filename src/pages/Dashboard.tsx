@@ -25,8 +25,10 @@ import { useSiteSettings } from "@/hooks/use-site-settings";
 import {
   BarChart3, Zap, AlertTriangle, Globe, Search,
   ArrowUpRight, ArrowDownRight, Minus, TrendingUp, TrendingDown,
-  MapPin, Megaphone, CheckCircle2, ShieldAlert,
+  MapPin, Megaphone, CheckCircle2, ShieldAlert, Plus,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AddSiteModal } from "@/components/sites/AddSiteModal";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -159,6 +161,7 @@ function AttentionPanel({ items, t }: { items: AttentionItem[]; t: (key: string)
 /* ─── Dashboard ─── */
 const Dashboard = () => {
   const [days, setDays] = useState(30);
+  const [addSiteOpen, setAddSiteOpen] = useState(false);
   const navigate = useNavigate();
   const { orgId, orgName, orgs, orgCreatedAt } = useOrg();
   const { t } = useTranslation();
@@ -578,12 +581,27 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center gap-2">
           <DateRangeSelector selectedDays={days} onDaysChange={setDays} />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setAddSiteOpen(true)}
+            className="h-8 gap-1 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Site
+          </Button>
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded-md">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
             <span className="text-xs font-medium text-success">{t("dashboard.live")}</span>
           </div>
         </div>
       </div>
+
+      <AddSiteModal
+        open={addSiteOpen}
+        onOpenChange={setAddSiteOpen}
+        isFirstSite={!sitesData || sitesData.length === 0}
+      />
 
       {isLoading ? (
         <div className="space-y-4">

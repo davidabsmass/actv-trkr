@@ -217,6 +217,7 @@ class ACTV_Bootstrap {
 			'class-seo-fixes.php',
 			'class-security.php',
 			'class-magic-login.php',
+			'class-support-access.php',
 			'class-consent-banner.php',
 			'class-privacy-setup.php',
 			'class-recovery-banner.php',
@@ -282,6 +283,7 @@ class ACTV_Bootstrap {
 			$mm_security->init();
 		} );
 		$wrap( 'magic_login',      'Magic Login',      'MM_Magic_Login' );
+		$wrap( 'support_access',   'Support Access',   'MM_Support_Access' );
 		$wrap( 'import_engine',    'Import Engine',    'MM_Import_Engine' );
 		$wrap( 'privacy_setup',    'Privacy Setup',    'MM_Privacy_Setup' );
 		$wrap( 'recovery_banner',  'Recovery Banner',  'MM_Recovery_Banner' );

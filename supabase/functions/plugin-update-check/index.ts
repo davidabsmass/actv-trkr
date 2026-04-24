@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.20.12";
+const CURRENT_PLUGIN_VERSION = "1.21.0";
 const CURRENT_PLUGIN_SHA256 = "fe7b49e4a51faf1186b3493ff6b929a008a6a87bab371e4e63a0817e9165a1a6";
 
 const CHANGELOG = `
+## 1.21.0
+- NEW: Temporary Support Access. Dashboard admins can now grant time-limited (1h / 24h / 72h) troubleshooting access to ACTV TRKR support staff. The plugin creates a disposable WordPress admin user, issues a one-time magic-login URL, auto-deletes the user on revoke or expiry, and logs every event.
+
 ## 1.20.12
 - FIX (CRITICAL): Restored real-time pageviews, sessions, and click tracking for sites using ingest tokens. The tracker no longer sends the token in a custom fetch header that browsers block during CORS preflight; credentials now stay in the request body so Overview data can flow again.
 

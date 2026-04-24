@@ -1,12 +1,21 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, ExternalLink, RefreshCw, Clock, AlertTriangle } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Shield, ExternalLink, RefreshCw, Clock, Plus, Copy } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 type SupportGrant = {
   id: string;
@@ -25,22 +34,147 @@ type SupportGrant = {
   orgs?: { name: string } | null;
 };
 
+type SiteOption = {
+  id: string;
+  domain: string;
+  display_name: string | null;
+  org_id: string;
+  orgs?: { name: string } | null;
+};
+
 function statusBadge(status: string, expiresAt: string) {
   const isExpired = new Date(expiresAt).getTime() < Date.now();
   const effective = status === "active" && isExpired ? "expired" : status;
-
   const map: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
     active: { variant: "default", label: "Active" },
     pending: { variant: "outline", label: "Pending" },
     expired: { variant: "secondary", label: "Expired" },
     revoked: { variant: "secondary", label: "Revoked" },
   };
-  const config = map[effective] || { variant: "outline" as const, label: effective };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
+  const cfg = map[effective] || { variant: "outline" as const, label: effective };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+}
+
+function GrantDialog({ onGranted }: { onGranted: (url: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [siteId, setSiteId] = useState("");
+  const [duration, setDuration] = useState("24");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data: sites } = useQuery<SiteOption[]>({
+    enabled: open,
+    queryKey: ["support_access_sites"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sites")
+        .select("id, domain, display_name, org_id, orgs:org_id(name)")
+        .order("domain", { ascending: true })
+        .limit(500);
+      if (error) throw error;
+      return (data || []) as unknown as SiteOption[];
+    },
+  });
+
+  const submit = async () => {
+    if (!siteId) {
+      toast.error("Pick a site first");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("grant-support-access", {
+        body: {
+          site_id: siteId,
+          duration_hours: Number(duration),
+          reason: reason.trim(),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Grant issued — valid for ${duration}h`);
+      onGranted(data.login_url);
+      setOpen(false);
+      setReason("");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to issue support access");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Grant access
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Grant temporary support access</DialogTitle>
+          <DialogDescription>
+            Creates a disposable WordPress admin user on the selected site and returns a one-time
+            magic-login URL. The user is deleted automatically on revoke or expiry.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 py-2">
+          <div className="space-y-1.5">
+            <Label>Site</Label>
+            <Select value={siteId} onValueChange={setSiteId}>
+              <SelectTrigger><SelectValue placeholder="Select a site…" /></SelectTrigger>
+              <SelectContent>
+                {(sites || []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.display_name || s.domain} {s.orgs?.name ? `— ${s.orgs.name}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Duration</Label>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 hour</SelectItem>
+                <SelectItem value="24">24 hours</SelectItem>
+                <SelectItem value="72">72 hours</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Reason (optional)</Label>
+            <Textarea
+              placeholder="e.g. Debugging form submission failures reported in ticket #4821"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={submitting || !siteId}>
+            {submitting ? "Provisioning…" : "Issue grant"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function SupportAccessPanel() {
   const [showAll, setShowAll] = useState(false);
+  const [lastLoginUrl, setLastLoginUrl] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const { data: grants, isLoading, refetch, isFetching } = useQuery<SupportGrant[]>({
     queryKey: ["support_access_grants", showAll],
@@ -56,23 +190,64 @@ export default function SupportAccessPanel() {
         `)
         .order("granted_at", { ascending: false })
         .limit(showAll ? 200 : 50);
-
-      if (!showAll) {
-        query = query.in("status", ["active", "pending"]);
-      }
-
+      if (!showAll) query = query.in("status", ["active", "pending"]);
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as SupportGrant[];
     },
   });
 
+  const revokeMut = useMutation({
+    mutationFn: async (grantId: string) => {
+      const { data, error } = await supabase.functions.invoke("revoke-support-access", {
+        body: { grant_id: grantId, reason: "revoked_by_dashboard" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.wp_deleted ? "Access revoked, WP user deleted" : "Grant revoked");
+      qc.invalidateQueries({ queryKey: ["support_access_grants"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Revoke failed"),
+  });
+
   const activeCount = (grants || []).filter(
     (g) => g.status === "active" && new Date(g.expires_at).getTime() > Date.now()
   ).length;
 
+  const copyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Login URL copied");
+    } catch {
+      toast.error("Copy failed — select the URL manually");
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {lastLoginUrl && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardContent className="py-3 flex items-center gap-3">
+            <Shield className="h-4 w-4 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium">One-time login URL ready</p>
+              <p className="text-xs font-mono text-muted-foreground truncate">{lastLoginUrl}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => copyUrl(lastLoginUrl)}>
+              <Copy className="h-3.5 w-3.5 mr-1" />
+              Copy
+            </Button>
+            <Button size="sm" onClick={() => window.open(lastLoginUrl, "_blank")}>
+              <ExternalLink className="h-3.5 w-3.5 mr-1" />
+              Open
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
@@ -82,40 +257,29 @@ export default function SupportAccessPanel() {
                 Temporary Support Access
               </CardTitle>
               <CardDescription className="mt-1">
-                Time-limited troubleshooting grants issued by customers from inside their WordPress plugin.
-                Access is logged, expires automatically, and can be revoked at any time.
+                Issue a time-limited login for ACTV TRKR staff to troubleshoot a customer site. The plugin
+                creates a disposable WP admin user, returns a one-time magic-login URL, and deletes the user
+                on revoke or expiry.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={activeCount > 0 ? "default" : "secondary"}>
                 {activeCount} active
               </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => refetch()}
-                disabled={isFetching}
-              >
+              <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
                 <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isFetching ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
+              <GrantDialog onGranted={(url) => setLastLoginUrl(url)} />
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 mb-3">
-            <Button
-              size="sm"
-              variant={!showAll ? "default" : "outline"}
-              onClick={() => setShowAll(false)}
-            >
+            <Button size="sm" variant={!showAll ? "default" : "outline"} onClick={() => setShowAll(false)}>
               Active grants
             </Button>
-            <Button
-              size="sm"
-              variant={showAll ? "default" : "outline"}
-              onClick={() => setShowAll(true)}
-            >
+            <Button size="sm" variant={showAll ? "default" : "outline"} onClick={() => setShowAll(true)}>
               All history
             </Button>
           </div>
@@ -127,7 +291,7 @@ export default function SupportAccessPanel() {
               <Shield className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm font-medium">No {showAll ? "" : "active"} support access grants</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Customers grant access from their WordPress plugin's Settings → Advanced → Support Access.
+                Click "Grant access" to issue a time-limited WP admin login for a customer site.
               </p>
             </div>
           ) : (
@@ -140,7 +304,6 @@ export default function SupportAccessPanel() {
                   <TableHead>Expires</TableHead>
                   <TableHead>Granted by</TableHead>
                   <TableHead>WP user</TableHead>
-                  <TableHead>Activity</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -174,21 +337,15 @@ export default function SupportAccessPanel() {
                       <TableCell className="text-xs font-mono text-muted-foreground">
                         {g.wp_temp_username || "—"}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {g.staff_access_count > 0
-                          ? `${g.staff_access_count} access${g.staff_access_count === 1 ? "" : "es"}`
-                          : "Not used"}
-                      </TableCell>
                       <TableCell className="text-right">
                         {canAccess ? (
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled
-                            title="Plugin support endpoint not yet shipped"
+                            onClick={() => revokeMut.mutate(g.id)}
+                            disabled={revokeMut.isPending}
                           >
-                            <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                            Open
+                            Revoke
                           </Button>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
@@ -200,18 +357,6 @@ export default function SupportAccessPanel() {
               </TableBody>
             </Table>
           )}
-
-          <div className="mt-4 rounded-md border border-warning/20 bg-warning/5 p-3 flex gap-2 text-xs">
-            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-medium text-foreground">Plugin-side support access UI is pending.</p>
-              <p className="text-muted-foreground">
-                The database, RLS, and admin viewer are live. The WordPress plugin still needs the
-                Settings → Advanced → Support Access screen, the temporary user lifecycle, and the
-                magic-link consumption endpoint. Until then, no grants can be created from the customer side.
-              </p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

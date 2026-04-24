@@ -176,38 +176,52 @@ class MM_Magic_Login {
 			);
 		}
 
+		// SUPPORT ACCESS PATH: if this token was issued for a temp support
+		// user (grant flow), the plugin stored that user_id in the transient
+		// at grant time. Use it directly — do NOT resolve by requestor email,
+		// because the backend requestor is a dashboard admin and there is no
+		// matching WP admin account for them by design.
+		$target_user = null;
+		if ( ! empty( $data['support_user_id'] ) ) {
+			$candidate = get_user_by( 'id', (int) $data['support_user_id'] );
+			if ( $candidate && user_can( $candidate->ID, 'manage_options' ) ) {
+				$target_user = $candidate;
+			}
+		}
+
 		// SECURITY (C-1): Bind the login to the dashboard user who issued
 		// the token, not the first administrator on the site. The backend
 		// returns `requested_by_email`; we map that to a WP user with
 		// administrator OR equivalent management capability. If no match
 		// exists, the login is REFUSED and the event is logged — we do
 		// NOT silently fall back to the first admin.
-		$requestor_email = isset( $verify['requested_by_email'] ) && is_string( $verify['requested_by_email'] )
-			? sanitize_email( $verify['requested_by_email'] )
-			: '';
-
-		$target_user = null;
-		if ( ! empty( $requestor_email ) ) {
-			$candidate = get_user_by( 'email', $requestor_email );
-			if ( $candidate && user_can( $candidate->ID, 'manage_options' ) ) {
-				$target_user = $candidate;
-			}
-		}
-
 		if ( ! $target_user ) {
-			// Audit the refusal so admins can see why the login failed.
-			if ( function_exists( 'do_action' ) ) {
-				do_action( 'mm_magic_login_no_match', $requestor_email );
+			$requestor_email = isset( $verify['requested_by_email'] ) && is_string( $verify['requested_by_email'] )
+				? sanitize_email( $verify['requested_by_email'] )
+				: '';
+
+			if ( ! empty( $requestor_email ) ) {
+				$candidate = get_user_by( 'email', $requestor_email );
+				if ( $candidate && user_can( $candidate->ID, 'manage_options' ) ) {
+					$target_user = $candidate;
+				}
 			}
-			error_log( sprintf(
-				'[mm-magic-login] No matching admin for requestor email "%s" — refusing login.',
-				$requestor_email
-			) );
-			wp_die(
-				'<h2>Login refused</h2><p>The dashboard user who initiated this login does not have a matching administrator account on this WordPress site. Please ensure your dashboard email matches a WP admin email and try again.</p>',
-				'Login Failed',
-				array( 'response' => 403 )
-			);
+
+			if ( ! $target_user ) {
+				// Audit the refusal so admins can see why the login failed.
+				if ( function_exists( 'do_action' ) ) {
+					do_action( 'mm_magic_login_no_match', $requestor_email );
+				}
+				error_log( sprintf(
+					'[mm-magic-login] No matching admin for requestor email "%s" — refusing login.',
+					$requestor_email
+				) );
+				wp_die(
+					'<h2>Login refused</h2><p>The dashboard user who initiated this login does not have a matching administrator account on this WordPress site. Please ensure your dashboard email matches a WP admin email and try again.</p>',
+					'Login Failed',
+					array( 'response' => 403 )
+				);
+			}
 		}
 
 		wp_set_current_user( $target_user->ID );

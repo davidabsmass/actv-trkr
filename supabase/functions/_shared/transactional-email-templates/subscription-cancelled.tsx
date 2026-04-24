@@ -28,7 +28,7 @@ const SubscriptionCancelledEmail = ({ name }: SubscriptionCancelledProps) => (
       <Container style={container}>
         {/* Logo header */}
         <Section style={logoSection}>
-          <Img src={LOGO_URL} alt={SITE_NAME} width="140" height="auto" />
+          <Img src={LOGO_URL} alt={SITE_NAME} width="140" />
         </Section>
 
         <Section style={contentSection}>

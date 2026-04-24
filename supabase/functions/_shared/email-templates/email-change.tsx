@@ -35,7 +35,7 @@ export const EmailChangeEmail = ({
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
-          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.png" alt="ACTV TRKR" width="180" height="auto" style={logoImg} />
+          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.png" alt="ACTV TRKR" width="180" style={logoImg} />
         </Section>
         <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>

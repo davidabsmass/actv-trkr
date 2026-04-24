@@ -14,7 +14,7 @@ import {
 import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'ACTV TRKR'
-const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header.jpg'
+const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header-v5.jpg?v=20260421d'
 
 interface Login2faCodeProps {
   code?: string
@@ -30,7 +30,9 @@ const Login2faCodeEmail = ({ code, expiresInMinutes = 10, ipHint, userAgentHint 
     <Body style={main}>
       <Container style={container}>
         <Section style={headerSection}>
-          <Img src={HEADER_URL} alt={SITE_NAME} width="600" height="auto" style={headerImg} />
+          <a href="https://actvtrkr.com" style={{ textDecoration: 'none', display: 'block' }}>
+            <Img src={HEADER_URL} alt={SITE_NAME} width="600" style={headerImg} />
+          </a>
         </Section>
 
         <Section style={contentSection}>

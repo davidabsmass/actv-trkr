@@ -21,7 +21,7 @@ const Email = ({ name, archiveDate }: Props) => (
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
-          <Img src={LOGO_URL} alt={SITE_NAME} width="140" height="auto" />
+          <Img src={LOGO_URL} alt={SITE_NAME} width="140" />
         </Section>
         <Section style={contentSection}>
           <Heading style={h1}>{name ? `Hi ${name},` : 'Hi there,'}</Heading>

@@ -502,7 +502,7 @@ const Auth = () => {
                   <ShieldCheck className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-white">Two-factor verification</h2>
                 </div>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   We sent a 6-digit code to{" "}
                   <span className="font-medium text-white">{mfaEmail || pendingEmail}</span>. Enter it below to finish signing in.
                 </p>

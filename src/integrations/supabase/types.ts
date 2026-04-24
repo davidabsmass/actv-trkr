@@ -6548,6 +6548,146 @@ export type Database = {
           },
         ]
       }
+      support_access_grants: {
+        Row: {
+          created_at: string
+          duration_hours: number
+          expires_at: string
+          granted_at: string
+          granted_by_email: string | null
+          granted_by_user_id: string | null
+          id: string
+          last_staff_access_at: string | null
+          metadata: Json
+          org_id: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by_user_id: string | null
+          site_id: string
+          staff_access_count: number
+          status: string
+          updated_at: string
+          wp_temp_username: string | null
+          wp_user_created: boolean
+          wp_user_deleted: boolean
+        }
+        Insert: {
+          created_at?: string
+          duration_hours?: number
+          expires_at: string
+          granted_at?: string
+          granted_by_email?: string | null
+          granted_by_user_id?: string | null
+          id?: string
+          last_staff_access_at?: string | null
+          metadata?: Json
+          org_id: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          site_id: string
+          staff_access_count?: number
+          status?: string
+          updated_at?: string
+          wp_temp_username?: string | null
+          wp_user_created?: boolean
+          wp_user_deleted?: boolean
+        }
+        Update: {
+          created_at?: string
+          duration_hours?: number
+          expires_at?: string
+          granted_at?: string
+          granted_by_email?: string | null
+          granted_by_user_id?: string | null
+          id?: string
+          last_staff_access_at?: string | null
+          metadata?: Json
+          org_id?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          site_id?: string
+          staff_access_count?: number
+          status?: string
+          updated_at?: string
+          wp_temp_username?: string | null
+          wp_user_created?: boolean
+          wp_user_deleted?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_access_grants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_access_grants_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_access_log: {
+        Row: {
+          actor_email: string | null
+          actor_type: string
+          actor_user_id: string | null
+          event_type: string
+          grant_id: string | null
+          id: string
+          ip_hash: string | null
+          message: string | null
+          metadata: Json
+          occurred_at: string
+          org_id: string | null
+          site_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_type?: string
+          actor_user_id?: string | null
+          event_type: string
+          grant_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          message?: string | null
+          metadata?: Json
+          occurred_at?: string
+          org_id?: string | null
+          site_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_type?: string
+          actor_user_id?: string | null
+          event_type?: string
+          grant_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          message?: string | null
+          metadata?: Json
+          occurred_at?: string
+          org_id?: string | null
+          site_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_access_log_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "support_access_grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_ticket_attachments: {
         Row: {
           created_at: string
@@ -7678,6 +7818,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expire_old_support_grants: { Args: never; Returns: number }
       get_retention_cohorts: {
         Args: { p_weeks?: number }
         Returns: {

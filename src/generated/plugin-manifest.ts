@@ -1,5 +1,5 @@
 export const pluginManifest = {
   version: "1.21.0",
   downloadFileName: "actv-trkr-latest.zip",
-  sha256: "fe7b49e4a51faf1186b3493ff6b929a008a6a87bab371e4e63a0817e9165a1a6",
+  sha256: "1f01be9be21c5410235887b102bbbf0c61554500b1d3da1e47b4f19eab4aff85",
 } as const;

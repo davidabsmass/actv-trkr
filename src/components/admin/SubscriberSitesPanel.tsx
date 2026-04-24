@@ -699,22 +699,6 @@ export default function SubscriberSitesPanel() {
                                                 {m.email && (
                                                   <Button
                                                     size="sm"
-                                                    variant="outline"
-                                                    className="h-7 text-xs"
-                                                    onClick={() => handleSetPassword(r.org.id, m.email!)}
-                                                    disabled={actionLoading === `setpw-${m.email}`}
-                                                  >
-                                                    {actionLoading === `setpw-${m.email}` ? (
-                                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                                    ) : (
-                                                      <KeyRound className="h-3 w-3 mr-1" />
-                                                    )}
-                                                    Set Password
-                                                  </Button>
-                                                )}
-                                                {m.email && (
-                                                  <Button
-                                                    size="sm"
                                                     variant="ghost"
                                                     className="h-7 text-xs"
                                                     onClick={() => handleSendReset(m.email!)}

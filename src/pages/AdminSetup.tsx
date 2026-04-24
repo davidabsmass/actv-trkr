@@ -266,7 +266,7 @@ function AcquisitionWidget({ subscribers }: { subscribers: any[] }) {
 
 export default function AdminSetup() {
   const { t } = useTranslation();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { user } = useAuth();
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
@@ -685,6 +685,14 @@ export default function AdminSetup() {
   };
 
   const [activeTab, setActiveTab] = useState<"answers" | "log" | "exports">("answers");
+
+  if (roleLoading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     navigate("/dashboard");

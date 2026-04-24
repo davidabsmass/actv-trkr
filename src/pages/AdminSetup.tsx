@@ -271,11 +271,11 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa" || tab === "data-wipe") {
+    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access") {
       setActiveMainTab(tab);
     } else if (tab === "app-bible") {
       // Legacy redirect: Launch Checklist removed, send users to Release QA
@@ -283,7 +283,7 @@ export default function AdminSetup() {
       setSearchParams({ tab: "release-qa" }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe") => {
+  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access") => {
     setActiveMainTab(tab);
     setSearchParams({ tab }, { replace: true });
   };

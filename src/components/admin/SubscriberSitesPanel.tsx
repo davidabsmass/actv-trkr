@@ -173,7 +173,15 @@ export default function SubscriberSitesPanel() {
       return (data?.members || []) as Member[];
     },
     enabled: !!expandedOrg,
+    retry: (failureCount, err: any) => {
+      // Retry transient 404 / NOT_FOUND from edge function cold-boot routing
+      const msg = String(err?.message || err?.context?.body || "");
+      if (failureCount < 2 && /404|NOT_FOUND|not found/i.test(msg)) return true;
+      return false;
+    },
+    retryDelay: 500,
   });
+
 
   const refreshMembers = () => {
     if (expandedOrg) {

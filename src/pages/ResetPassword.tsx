@@ -195,8 +195,19 @@ const ResetPassword = () => {
           <h2 className="text-lg font-semibold text-white mb-1">Set your password</h2>
           <p className="text-sm text-white/60 mb-5">Create a password to activate your account</p>
 
-          {!ready ? (
+          {!ready && !error ? (
             <p className="text-sm text-white/60 text-center py-4">Verifying reset link…</p>
+          ) : !ready && error ? (
+            <div className="space-y-3">
+              <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
+              <button
+                type="button"
+                onClick={() => navigate("/auth?reset=1", { replace: true })}
+                className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Request a new reset link
+              </button>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="relative">

@@ -4,10 +4,12 @@ import { useOrg } from "@/hooks/use-org";
 import { useSites } from "@/hooks/use-dashboard-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Globe, CheckCircle, AlertTriangle, Settings, Trash2 } from "lucide-react";
+import { Globe, CheckCircle, AlertTriangle, Settings, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { AddSiteModal } from "@/components/sites/AddSiteModal";
+import { Button } from "@/components/ui/button";
 
 export default function SitesSection() {
   const { t } = useTranslation();
@@ -16,6 +18,7 @@ export default function SitesSection() {
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [refreshingSiteIds, setRefreshingSiteIds] = useState<string[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
   const siteIds = sites?.map((site) => site.id) ?? [];
 
   const { data: domainHealth } = useQuery({

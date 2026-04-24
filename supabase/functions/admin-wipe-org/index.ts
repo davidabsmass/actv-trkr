@@ -128,13 +128,19 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Verify caller via JWT claims (getUser() is flaky in edge runtime).
-    const { data: claimsData, error: claimsError } =
-      await admin.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims?.sub) {
+    // Decode JWT payload manually (works regardless of supabase-js version).
+    let callerEmail: string | undefined;
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payloadJson = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+        const payload = JSON.parse(payloadJson);
+        if (typeof payload?.email === "string") callerEmail = payload.email.toLowerCase();
+      }
+    } catch (_) { /* fall through */ }
+    if (!callerEmail) {
       return json({ error: "Not authenticated" }, 401);
     }
-    const callerEmail = (claimsData.claims.email as string | undefined)?.toLowerCase();
     if (callerEmail !== OWNER_EMAIL) {
       return json({ error: "Forbidden — owner only" }, 403);
     }

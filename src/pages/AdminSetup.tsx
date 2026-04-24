@@ -17,6 +17,7 @@ import ImportHealthPanel from "@/components/admin/ImportHealthPanel";
 import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
 import ReleaseQAPanel from "@/components/admin/ReleaseQAPanel";
 import DataWipePanel from "@/components/admin/DataWipePanel";
+import SupportAccessPanel from "@/components/admin/SupportAccessPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
 
@@ -270,11 +271,11 @@ export default function AdminSetup() {
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa" || tab === "data-wipe") {
+    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access") {
       setActiveMainTab(tab);
     } else if (tab === "app-bible") {
       // Legacy redirect: Launch Checklist removed, send users to Release QA
@@ -282,7 +283,7 @@ export default function AdminSetup() {
       setSearchParams({ tab: "release-qa" }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe") => {
+  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access") => {
     setActiveMainTab(tab);
     setSearchParams({ tab }, { replace: true });
   };
@@ -877,6 +878,12 @@ export default function AdminSetup() {
           >
             Data Wipe
           </button>
+          <button
+            onClick={() => switchMainTab("support-access")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "support-access" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Support Access
+          </button>
         </div>
       )}
 
@@ -886,6 +893,10 @@ export default function AdminSetup() {
 
       {activeMainTab === "data-wipe" && isOwner && (
         <DataWipePanel />
+      )}
+
+      {activeMainTab === "support-access" && isOwner && (
+        <SupportAccessPanel />
       )}
 
       {activeMainTab === "subscriber-sites" && isOwner && (

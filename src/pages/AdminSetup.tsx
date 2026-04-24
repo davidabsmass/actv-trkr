@@ -270,6 +270,9 @@ export default function AdminSetup() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isOwner = user?.email?.toLowerCase() === OWNER_EMAIL;
+  // Admins (e.g. Annie) can view the same admin panels as the owner.
+  // Destructive actions (Data Wipe, Remove client) stay owner-only.
+  const isAdminUser = isAdmin || isOwner;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access">("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -463,7 +466,7 @@ export default function AdminSetup() {
         _profile: profileMap.get(s.email) || null,
       }));
     },
-    enabled: isOwner,
+    enabled: isAdminUser,
   });
 
   const { data: errorLogs = [] } = useQuery({
@@ -473,7 +476,7 @@ export default function AdminSetup() {
       if (error) throw error;
       return data as any[];
     },
-    enabled: isOwner,
+    enabled: isAdminUser,
   });
 
   // A sub only counts toward MRR if status is active AND mrr > 0.
@@ -854,7 +857,7 @@ export default function AdminSetup() {
       <p className="text-sm text-muted-foreground mb-6">{t("admin.setupInputsDesc")}</p>
 
       {/* Owner-only tab switcher */}
-      {isOwner && (
+      {isAdminUser && (
         <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
           <button
             onClick={() => switchMainTab("metrics")}
@@ -895,7 +898,7 @@ export default function AdminSetup() {
         </div>
       )}
 
-      {activeMainTab === "release-qa" && isOwner && (
+      {activeMainTab === "release-qa" && isAdminUser && (
         <ReleaseQAPanel />
       )}
 
@@ -903,15 +906,15 @@ export default function AdminSetup() {
         <DataWipePanel />
       )}
 
-      {activeMainTab === "support-access" && isOwner && (
+      {activeMainTab === "support-access" && isAdminUser && (
         <SupportAccessPanel />
       )}
 
-      {activeMainTab === "subscriber-sites" && isOwner && (
+      {activeMainTab === "subscriber-sites" && isAdminUser && (
         <SubscriberSitesPanel />
       )}
 
-      {(activeMainTab === "metrics" || activeMainTab === "clients") && isOwner && (
+      {(activeMainTab === "metrics" || activeMainTab === "clients") && isAdminUser && (
         <div className="mb-6">
           <ImportHealthPanel />
         </div>
@@ -1016,7 +1019,7 @@ export default function AdminSetup() {
         </>
       )}
 
-      {activeMainTab === "metrics" && isOwner && (
+      {activeMainTab === "metrics" && isAdminUser && (
         <div className="space-y-6">
           {/* KPIs — Top-line */}
           {(() => {

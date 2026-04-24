@@ -16,25 +16,22 @@ Deno.serve(async (req) => {
 
     // Verify the caller is an admin
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
         status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
+    const token = authHeader.slice("Bearer ".length);
 
-    const anonClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user: caller }, error: authError } = await anonClient.auth.getUser();
-    if (authError || !caller) {
+    // Use getClaims (works reliably in edge functions) instead of getUser
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: claimsData, error: claimsError } = await adminClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
-
-    // Check caller is admin via user_roles (use service role for defense-in-depth)
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const caller = { id: claimsData.claims.sub as string };
     const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")

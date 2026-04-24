@@ -239,6 +239,29 @@ export default function WebsiteSetup() {
       <div className="space-y-3 mb-8">
         <Step
           number={1}
+          icon={Download}
+          title="Download & Install the Plugin"
+          description="Download the ACTV TRKR plugin, then in WordPress go to Plugins → Add Plugin → Upload Plugin. Upload the zip, install it, and activate it."
+          action={
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {downloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {downloading
+                ? "Downloading…"
+                : `Download Plugin${latestVersion ? ` v${latestVersion}` : ""}`}
+            </button>
+          }
+        />
+
+        <Step
+          number={2}
           icon={KeyRound}
           title="Get Your License Key"
           description="This key links your WordPress site to your account. We generate it for you here."
@@ -367,33 +390,10 @@ export default function WebsiteSetup() {
         />
 
         <Step
-          number={2}
-          icon={Download}
-          title="Download & Install the Plugin"
-          description="Download the ACTV TRKR plugin, then in WordPress go to Plugins → Add Plugin → Upload Plugin. Upload the zip, install it, and activate it."
-          action={
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {downloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {downloading
-                ? "Downloading…"
-                : `Download Plugin${latestVersion ? ` v${latestVersion}` : ""}`}
-            </button>
-          }
-        />
-
-        <Step
           number={3}
           icon={Link2}
           title="Paste the Key in WordPress"
-          description="In WordPress, go to Settings → ACTV TRKR. Paste the license key from Step 1 into the License Key field, then click Save Changes."
+          description="In WordPress, go to Settings → ACTV TRKR. Paste the license key from Step 2 into the License Key field, then click Save Changes."
         />
 
         <Step

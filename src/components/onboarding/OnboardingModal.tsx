@@ -148,10 +148,10 @@ export function OnboardingModal() {
               <div className="rounded-lg bg-warning/5 border border-warning/20 p-3 mb-4">
                 <p className="text-sm text-foreground font-medium flex items-center gap-2">
                   <Shield className="h-4 w-4 text-warning" />
-                  You must install a cookie consent banner
+                  Consider adding a cookie consent banner
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  GDPR requires visitor consent before analytics tracking. Without a consent banner, tracking may be unlawful in many regions.
+                  In many regions, GDPR and similar privacy laws ask for visitor consent before analytics tracking. A consent banner is a simple way to stay on the right side of those rules — it's your call whether and how to add one.
                 </p>
               </div>
 

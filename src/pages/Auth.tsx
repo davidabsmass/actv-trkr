@@ -399,7 +399,7 @@ const Auth = () => {
                   <ShieldCheck className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-white">Verify your email</h2>
                 </div>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   We sent a 6-digit code to <span className="font-medium text-white">{pendingEmail}</span>. Enter it below to confirm your account.
                 </p>
 

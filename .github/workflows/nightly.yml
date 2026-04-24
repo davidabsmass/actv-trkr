@@ -30,7 +30,7 @@ jobs:
           cat audit.txt
       - name: Open issue if regression
         if: steps.audit.outputs.exit != '0'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

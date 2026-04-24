@@ -180,28 +180,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-        type: "recovery", email: normalizedEmail,
-        options: { redirectTo: "https://actvtrkr.com/reset-password" },
+      const { error: resetError } = await adminClient.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: "https://actvtrkr.com/reset-password",
       });
-      if (linkError) {
-        return new Response(JSON.stringify({ error: linkError.message }), {
+      if (resetError) {
+        return new Response(JSON.stringify({ error: resetError.message }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
-
-      // Send the recovery email via transactional email system
-      const recoveryUrl = linkData?.properties?.action_link || "https://actvtrkr.com/reset-password";
-      try {
-        await adminClient.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "welcome",
-            recipientEmail: normalizedEmail,
-            idempotencyKey: `admin-reset-${Date.now()}`,
-            templateData: { setPasswordUrl: recoveryUrl },
-          },
-        });
-      } catch { /* non-fatal */ }
 
       return new Response(JSON.stringify({ success: true, sent: true }), {
         headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },

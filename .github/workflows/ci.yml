@@ -27,7 +27,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Install deps (resilient to lockfile drift)
+        run: |
+          set +e
+          npm ci --no-audit --no-fund
+          if [ $? -ne 0 ]; then
+            echo "::warning::npm ci failed (lockfile drift) — falling back to npm install"
+            npm install --no-audit --no-fund
+          fi
       # Lint is advisory: warnings allowed, even errors only annotated (Phase 1).
       - name: ESLint (advisory)
         run: |
@@ -123,7 +130,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Install deps (resilient to lockfile drift)
+        run: |
+          set +e
+          npm ci --no-audit --no-fund
+          if [ $? -ne 0 ]; then
+            echo "::warning::npm ci failed (lockfile drift) — falling back to npm install"
+            npm install --no-audit --no-fund
+          fi
       # audit-ci is advisory; the PR-only dependency-review-action below is the actual gate.
       - name: audit-ci (advisory)
         run: |

@@ -158,7 +158,6 @@ export default function TwoFactorSection() {
               <div className="flex flex-col sm:flex-row items-start gap-4">
                 <div
                   className="bg-white p-2 rounded-md shrink-0"
-                  // eslint-disable-next-line react/no-danger
                   dangerouslySetInnerHTML={{ __html: enroll.qr }}
                 />
                 <div className="space-y-1.5">

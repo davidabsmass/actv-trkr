@@ -135,18 +135,35 @@ export default function SitesSection() {
           <Globe className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">{t("settings.connectedSites")}</h3>
         </div>
-        <Link
-          to="/settings?tab=setup"
-          className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-        >
-          <Settings className="h-3.5 w-3.5" />
-          Set Up Website
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setAddOpen(true)}
+            className="h-7 gap-1 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Site
+          </Button>
+          <Link
+            to="/settings?tab=setup"
+            className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Set Up Website
+          </Link>
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground mb-4">
-        Sites appear here automatically once the WordPress plugin is installed and connected with your license key.
+        Sites appear here automatically once the WordPress plugin is installed and connected with your license key. Additional sites are billed at $35/month.
       </p>
+
+      <AddSiteModal
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        isFirstSite={!sites || sites.length === 0}
+      />
 
       {isLoading ? (
         <p className="text-xs text-muted-foreground">{t("settings.loadingKeys")}</p>

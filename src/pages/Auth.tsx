@@ -432,7 +432,7 @@ const Auth = () => {
                   <button
                     onClick={handleResendCode}
                     disabled={loading || resendCooldown > 0}
-                    className="text-xs text-primary hover:underline font-medium disabled:opacity-50 disabled:no-underline"
+                    className="text-xs text-white hover:underline font-medium disabled:opacity-50 disabled:no-underline"
                   >
                     {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
                   </button>

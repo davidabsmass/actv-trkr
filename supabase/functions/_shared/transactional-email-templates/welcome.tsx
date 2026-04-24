@@ -116,6 +116,7 @@ const headerImg = {
   border: '0',
   outline: 'none',
   textDecoration: 'none',
+  objectFit: 'contain' as const,
   msInterpolationMode: 'bicubic' as const,
 }
 

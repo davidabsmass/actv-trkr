@@ -80,9 +80,9 @@ const main = {
   fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
 }
 
-const container = { maxWidth: '600px', margin: '0 auto' }
-const headerSection = { marginBottom: '0' }
-const headerImg = { width: '100%', display: 'block' as const, borderRadius: '12px 12px 0 0' }
+const container = { maxWidth: '600px', margin: '0 auto', width: '100%' }
+const headerSection = { marginBottom: '0', lineHeight: '0' as const, fontSize: '0' }
+const headerImg = { width: '100%', maxWidth: '600px', height: 'auto' as const, display: 'block' as const, border: '0', outline: 'none', textDecoration: 'none' }
 const contentSection = { padding: '32px 32px 40px' }
 
 const h1 = {

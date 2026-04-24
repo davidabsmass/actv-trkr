@@ -878,6 +878,12 @@ export default function AdminSetup() {
           >
             Data Wipe
           </button>
+          <button
+            onClick={() => switchMainTab("support-access")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "support-access" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Support Access
+          </button>
         </div>
       )}
 
@@ -887,6 +893,10 @@ export default function AdminSetup() {
 
       {activeMainTab === "data-wipe" && isOwner && (
         <DataWipePanel />
+      )}
+
+      {activeMainTab === "support-access" && isOwner && (
+        <SupportAccessPanel />
       )}
 
       {activeMainTab === "subscriber-sites" && isOwner && (

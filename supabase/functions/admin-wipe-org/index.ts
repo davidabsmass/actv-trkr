@@ -118,27 +118,29 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Missing authorization" }, 401);
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return json({ error: "Missing authorization" }, 401);
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const token = authHeader.slice("Bearer ".length);
 
-    // Verify caller is the owner.
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) return json({ error: "Invalid session" }, 401);
+    const admin = createClient(supabaseUrl, serviceKey);
 
-    const callerEmail = userData.user.email?.toLowerCase();
+    // Verify caller via JWT claims (getUser() is flaky in edge runtime).
+    const { data: claimsData, error: claimsError } =
+      await admin.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return json({ error: "Not authenticated" }, 401);
+    }
+    const callerEmail = (claimsData.claims.email as string | undefined)?.toLowerCase();
     if (callerEmail !== OWNER_EMAIL) {
       return json({ error: "Forbidden — owner only" }, 403);
     }
 
     const body = await req.json().catch(() => ({}));
     const action: string = body?.action || "wipe";
-    const admin = createClient(supabaseUrl, serviceKey);
 
     // ---- LIST MODE: return every org with member + site counts (owner-only) ----
     if (action === "list") {

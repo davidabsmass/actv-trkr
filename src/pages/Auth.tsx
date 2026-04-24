@@ -366,7 +366,7 @@ const Auth = () => {
                       <button
                         type="button"
                         onClick={() => { setForgotEmail(email); goToPanel("forgot"); }}
-                        className="text-xs text-primary-foreground hover:underline font-medium"
+                        className="text-xs text-white hover:underline font-medium"
                       >
                         Lost your password?
                       </button>

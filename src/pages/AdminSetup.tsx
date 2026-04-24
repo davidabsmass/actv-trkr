@@ -697,7 +697,18 @@ export default function AdminSetup() {
     );
   }
 
-  if (!isAdmin) {
+  if (!user) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center px-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-xl font-semibold text-foreground">Admin access requires sign in</h1>
+          <p className="text-sm text-muted-foreground">This screen only loads live subscriber data for authenticated admins.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdminUser) {
     navigate("/dashboard");
     return null;
   }

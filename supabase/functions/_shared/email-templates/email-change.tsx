@@ -34,22 +34,32 @@ export const EmailChangeEmail = ({
     <Preview>Confirm your email change for ACTV TRKR</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={logoSection}>
-          <Img src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-logo-dark.png" alt="ACTV TRKR" width="180" style={logoImg} />
+        <Section style={headerSection}>
+          <a href="https://actvtrkr.com" style={{ textDecoration: 'none', display: 'block' }}>
+            <Img
+              src="https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header-others-v1.jpg"
+              alt="ACTV TRKR"
+              width="600"
+              height="208"
+              style={headerImg}
+            />
+          </a>
         </Section>
-        <Heading style={h1}>Confirm your email change</Heading>
-        <Text style={text}>
-          You requested to change your email from{' '}
-          <Link href={`mailto:${email}`} style={link}>{email}</Link>{' '}
-          to{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link>.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Confirm Email Change
-        </Button>
-        <Text style={footer}>
-          If you didn't request this change, please secure your account immediately.
-        </Text>
+        <Section style={bodySection}>
+          <Heading style={h1}>Confirm your email change</Heading>
+          <Text style={text}>
+            You requested to change your email from{' '}
+            <Link href={`mailto:${email}`} style={link}>{email}</Link>{' '}
+            to{' '}
+            <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link>.
+          </Text>
+          <Button style={button} href={confirmationUrl}>
+            Confirm Email Change
+          </Button>
+          <Text style={footer}>
+            If you didn't request this change, please secure your account immediately.
+          </Text>
+        </Section>
       </Container>
     </Body>
   </Html>
@@ -58,9 +68,10 @@ export const EmailChangeEmail = ({
 export default EmailChangeEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }
-const container = { padding: '40px 25px' }
-const logoSection = { marginBottom: '24px' }
-const logoImg = { margin: '0' }
+const container = { padding: '0', maxWidth: '600px', width: '100%', margin: '0 auto' }
+const headerSection = { marginBottom: '0', width: '100%', maxWidth: '600px' }
+const headerImg = { width: '100%', maxWidth: '600px', height: 'auto' as const, display: 'block' as const, border: '0', outline: 'none', textDecoration: 'none', objectFit: 'cover' as const }
+const bodySection = { padding: '40px 25px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 16px' }
 const text = { fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: '0 0 24px' }
 const link = { color: '#6C5CE7', textDecoration: 'underline' }

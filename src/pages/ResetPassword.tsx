@@ -65,9 +65,52 @@ const ResetPassword = () => {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted && session) setReady(true);
-    });
+    // Handle recovery link arrival. Supabase may deliver the token in one of
+    // three ways: (a) PKCE `?code=...` query param needing exchange,
+    // (b) hash fragment `#access_token=...&type=recovery` that the SDK
+    // auto-parses, or (c) a fully established session already in storage.
+    const bootstrap = async () => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      const errDesc = url.searchParams.get("error_description") || url.searchParams.get("error");
+
+      if (errDesc) {
+        if (mounted) setError(decodeURIComponent(errDesc));
+        return;
+      }
+
+      if (code) {
+        try {
+          const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeErr) throw exchangeErr;
+          if (mounted) setReady(true);
+          // Clean the code out of the URL so refresh doesn't re-exchange.
+          window.history.replaceState({}, "", url.pathname);
+          return;
+        } catch (e: any) {
+          if (mounted) setError(e?.message || "This reset link is invalid or has expired. Please request a new one.");
+          return;
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (mounted && session) {
+        setReady(true);
+        return;
+      }
+
+      // Give the SDK a moment to process a hash-based token, then fail gracefully.
+      setTimeout(async () => {
+        if (!mounted || ready) return;
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (mounted) {
+          if (s2) setReady(true);
+          else setError("This reset link is invalid or has expired. Please request a new one.");
+        }
+      }, 2000);
+    };
+
+    bootstrap();
 
     return () => {
       mounted = false;

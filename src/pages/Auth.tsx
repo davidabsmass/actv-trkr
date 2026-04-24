@@ -462,7 +462,7 @@ const Auth = () => {
                   <KeyRound className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-white">Reset password</h2>
                 </div>
-                <p className="text-sm text-white/60 mb-5">
+                <p className="text-sm mb-5 text-primary-foreground">
                   Enter your email and we'll send a reset link
                 </p>
 

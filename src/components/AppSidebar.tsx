@@ -12,6 +12,7 @@ import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { NotificationBell } from "@/components/NotificationBell";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { SiteSwitcher } from "@/components/sites/SiteSwitcher";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-white.svg";
 import { useTranslation } from "react-i18next";
 
@@ -88,6 +89,9 @@ export function AppSidebar() {
             {orgName ?? "—"}
           </div>
         )}
+
+        {/* Site switcher: lists connected sites and offers "Add another site". */}
+        {orgId && <SiteSwitcher />}
       </SidebarHeader>
 
       <SidebarContent>

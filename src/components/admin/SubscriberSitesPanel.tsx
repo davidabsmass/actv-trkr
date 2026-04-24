@@ -720,20 +720,17 @@ export default function SubscriberSitesPanel() {
                                                     Email Reset
                                                   </Button>
                                                 )}
-                                                <Button
-                                                  size="sm"
-                                                  variant="destructive"
-                                                  className="h-7 text-xs"
+                                                <button
+                                                  type="button"
+                                                  className="text-xs text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
                                                   onClick={() => handleRemove(r.org.id, m.user_id, m.email)}
                                                   disabled={actionLoading === `remove-${m.user_id}`}
                                                 >
-                                                  {actionLoading === `remove-${m.user_id}` ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                                  ) : (
-                                                    <UserMinus className="h-3 w-3 mr-1" />
+                                                  {actionLoading === `remove-${m.user_id}` && (
+                                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
                                                   )}
                                                   Remove
-                                                </Button>
+                                                </button>
                                               </>
                                             )}
                                           </div>

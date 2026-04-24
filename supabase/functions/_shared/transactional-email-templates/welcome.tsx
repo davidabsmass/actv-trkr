@@ -35,6 +35,7 @@ const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
               src={HEADER_URL}
               alt={SITE_NAME}
               width="600"
+              height="208"
               style={headerImg}
             />
           </a>

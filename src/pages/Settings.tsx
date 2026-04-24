@@ -9,6 +9,7 @@ import SyncStatusCard from "@/components/settings/SyncStatusCard";
 import SeoVisibilitySection from "@/components/settings/SeoVisibilitySection";
 import NotificationsHub from "@/components/settings/NotificationsHub";
 import WebsiteSetup from "@/pages/WebsiteSetup";
+import AddSite from "@/pages/AddSite";
 import FormImportPanel from "@/components/settings/FormImportPanel";
 import FormsSection from "@/components/settings/FormsSection";
 import GoalsSection from "@/components/settings/GoalsSection";
@@ -52,6 +53,9 @@ export default function SettingsPage() {
           <TabsTrigger value="notifications" className="flex-shrink-0 text-xs sm:text-sm">Notifications</TabsTrigger>
           <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.whiteLabel")}</TabsTrigger>
           <TabsTrigger value="setup" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.websiteSetup")}</TabsTrigger>
+          {activeTab === "add-site" && (
+            <TabsTrigger value="add-site" className="flex-shrink-0 text-xs sm:text-sm">Add Site</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="general">
@@ -82,6 +86,10 @@ export default function SettingsPage() {
 
         <TabsContent value="setup">
           <WebsiteSetup />
+        </TabsContent>
+
+        <TabsContent value="add-site">
+          <AddSite />
         </TabsContent>
 
       </Tabs>

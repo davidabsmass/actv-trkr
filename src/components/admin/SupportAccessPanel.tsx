@@ -66,13 +66,26 @@ function GrantDialog({ onGranted }: { onGranted: (url: string) => void }) {
     enabled: open,
     queryKey: ["support_access_sites"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sites")
-        .select("id, domain, display_name, org_id, orgs:org_id(name)")
-        .order("domain", { ascending: true })
-        .limit(500);
+      // Admins are not members of every org, so direct `sites` SELECT is
+      // gated by RLS (is_org_member). Use the admin edge function which
+      // bypasses RLS with the service role and returns every subscriber site.
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
+        body: { action: "list_subscriber_sites" },
+      });
       if (error) throw error;
-      return (data || []) as unknown as SiteOption[];
+      const orgs: { id: string; name: string }[] = data?.orgs || [];
+      const rawSites: { id: string; domain: string; display_name: string | null; org_id: string }[] =
+        data?.sites || [];
+      const orgMap = new Map(orgs.map((o) => [o.id, o.name]));
+      return rawSites
+        .map((s) => ({
+          id: s.id,
+          domain: s.domain,
+          display_name: s.display_name,
+          org_id: s.org_id,
+          orgs: { name: orgMap.get(s.org_id) || "" },
+        }))
+        .sort((a, b) => (a.domain || "").localeCompare(b.domain || ""));
     },
   });
 

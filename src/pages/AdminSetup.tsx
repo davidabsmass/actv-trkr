@@ -857,7 +857,7 @@ export default function AdminSetup() {
       <p className="text-sm text-muted-foreground mb-6">{t("admin.setupInputsDesc")}</p>
 
       {/* Owner-only tab switcher */}
-      {isOwner && (
+      {isAdminUser && (
         <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
           <button
             onClick={() => switchMainTab("metrics")}
@@ -898,7 +898,7 @@ export default function AdminSetup() {
         </div>
       )}
 
-      {activeMainTab === "release-qa" && isOwner && (
+      {activeMainTab === "release-qa" && isAdminUser && (
         <ReleaseQAPanel />
       )}
 
@@ -906,15 +906,15 @@ export default function AdminSetup() {
         <DataWipePanel />
       )}
 
-      {activeMainTab === "support-access" && isOwner && (
+      {activeMainTab === "support-access" && isAdminUser && (
         <SupportAccessPanel />
       )}
 
-      {activeMainTab === "subscriber-sites" && isOwner && (
+      {activeMainTab === "subscriber-sites" && isAdminUser && (
         <SubscriberSitesPanel />
       )}
 
-      {(activeMainTab === "metrics" || activeMainTab === "clients") && isOwner && (
+      {(activeMainTab === "metrics" || activeMainTab === "clients") && isAdminUser && (
         <div className="mb-6">
           <ImportHealthPanel />
         </div>
@@ -1019,7 +1019,7 @@ export default function AdminSetup() {
         </>
       )}
 
-      {activeMainTab === "metrics" && isOwner && (
+      {activeMainTab === "metrics" && isAdminUser && (
         <div className="space-y-6">
           {/* KPIs — Top-line */}
           {(() => {

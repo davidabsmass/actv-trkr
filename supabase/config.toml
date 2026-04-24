@@ -117,3 +117,5 @@ project_id = "qnnxlvoybbmmqoxuqyvf"
     verify_jwt = false
   [functions.mfa-verify-code]
     verify_jwt = false
+  [functions.pipeline-status]
+    verify_jwt = false

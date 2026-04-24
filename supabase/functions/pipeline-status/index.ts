@@ -29,13 +29,16 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const userId = claimsData.claims.sub as string;
 
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userData.user.id);
+      .eq("user_id", userId);
     const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === "admin");
     if (!isAdmin) return json({ error: "Forbidden" }, 403);
 

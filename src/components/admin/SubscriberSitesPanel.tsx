@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,7 @@ type Member = { user_id: string; role: string; joined_at: string; email: string 
 
 export default function SubscriberSitesPanel() {
   const queryClient = useQueryClient();
+  const { user, loading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"active_key" | "all">("active_key");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
@@ -92,12 +94,14 @@ export default function SubscriberSitesPanel() {
   const { data: subscriberData, isLoading: dataLoading } = useQuery({
     queryKey: ["admin_subscriber_sites_all"],
     queryFn: async () => {
+      if (!user) return { orgs: [], sites: [], api_keys: [] };
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: { action: "list_subscriber_sites" },
       });
       if (error) throw error;
       return data as { orgs: Org[]; sites: Site[]; api_keys: ApiKey[] };
     },
+    enabled: !!user,
   });
 
   const orgs = subscriberData?.orgs;
@@ -165,14 +169,14 @@ export default function SubscriberSitesPanel() {
   const { data: members, isLoading: membersLoading } = useQuery({
     queryKey: ["admin_org_members", expandedOrg],
     queryFn: async () => {
-      if (!expandedOrg) return [];
+      if (!expandedOrg || !user) return [];
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: { action: "list_org_members", org_id: expandedOrg },
       });
       if (error) throw error;
       return (data?.members || []) as Member[];
     },
-    enabled: !!expandedOrg,
+    enabled: !!expandedOrg && !!user,
     retry: (failureCount, err: any) => {
       // Retry transient 404 / NOT_FOUND from edge function cold-boot routing
       const msg = String(err?.message || err?.context?.body || "");
@@ -181,6 +185,26 @@ export default function SubscriberSitesPanel() {
     },
     retryDelay: 500,
   });
+
+  if (authLoading) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-sm text-muted-foreground">
+          Loading admin access…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-sm text-muted-foreground">
+          Sign in to load subscriber sites.
+        </CardContent>
+      </Card>
+    );
+  }
 
 
   const refreshMembers = () => {

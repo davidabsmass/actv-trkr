@@ -30,7 +30,7 @@ const AREA_DESC: Record<AreaKey, string> = {
 
 // Freshness budgets (ms). Per App Bible §19.
 const FRESHNESS_BUDGET: Record<AreaKey, number> = {
-  forms: 10 * 60 * 1000, // 10 min
+  forms: 24 * 60 * 60 * 1000, // 24 h — form definitions rarely change
   seo: 14 * 24 * 60 * 60 * 1000, // 14 d
   monitoring: 5 * 60 * 1000, // 5 min
 };

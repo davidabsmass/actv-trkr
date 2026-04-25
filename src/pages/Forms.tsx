@@ -7,7 +7,7 @@ import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { format, subDays, startOfDay } from "date-fns";
-import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore, AlertCircle, RefreshCw, Upload, ArrowUpCircle, Trash2, PowerOff } from "lucide-react";
+import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore, AlertCircle, RefreshCw, Upload, ArrowUpCircle, Trash2, PowerOff, Loader2, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -619,31 +619,89 @@ export default function Forms() {
   const archivedForms = forms?.filter((f) => f.archived) || [];
   const displayedForms = listTab === "active" ? activeForms : listTab === "disabled" ? inactiveForms : archivedForms;
 
-  const { data: leadCounts } = useQuery({
+  // Single-call grouped count via RPC. Replaces the previous per-form
+  // exact-COUNT loop, which was the main source of slow Forms page loads on
+  // accounts with many forms.
+  const { data: leadCounts, isLoading: leadCountsLoading } = useQuery({
     queryKey: ["lead_counts_by_form_entries", orgId],
     queryFn: async () => {
-      if (!orgId || !forms) return {};
+      if (!orgId) return {};
+      const { data, error } = await (supabase as any).rpc("get_lead_counts_by_form", {
+        p_org_id: orgId,
+      });
+      if (error) throw error;
       const counts: Record<string, number> = {};
-
-      // Use exact COUNT per form — matches the parity check in sync-entries
-      await Promise.all(
-        forms.map(async (form) => {
-          const { count, error } = await supabase
-            .from("leads")
-            .select("id", { count: "exact", head: true })
-            .eq("org_id", orgId)
-            .eq("form_id", form.id)
-            .neq("status", "trashed");
-          if (!error) {
-            counts[form.id] = count || 0;
-          }
-        })
-      );
-
+      (data || []).forEach((row: { form_id: string; lead_count: number }) => {
+        counts[row.form_id] = Number(row.lead_count) || 0;
+      });
       return counts;
     },
-    enabled: !!orgId && !!forms && forms.length > 0,
+    enabled: !!orgId,
+    staleTime: 30_000,
   });
+
+  // Active import jobs — used to surface per-form progress and the global
+  // "backfill running" banner so users know historical sync is still working
+  // and didn't silently fail.
+  const { data: activeJobs } = useQuery({
+    queryKey: ["active_form_import_jobs", orgId],
+    queryFn: async () => {
+      if (!orgId) return [] as any[];
+      const { data, error } = await (supabase as any)
+        .from("form_import_jobs")
+        .select("form_integration_id, status, total_processed, total_expected, last_batch_at, site_id")
+        .eq("org_id", orgId)
+        .in("status", ["pending", "running", "importing"]);
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!orgId,
+    refetchInterval: 5000, // poll while jobs are visible
+  });
+
+  // Map form_integration_id -> form.id via provider/external_form_id/site_id
+  // so we can show progress badges next to each form row.
+  const { data: integrationsForJobs } = useQuery({
+    queryKey: ["form_integrations_for_jobs", orgId],
+    queryFn: async () => {
+      if (!orgId) return [] as any[];
+      const { data, error } = await (supabase as any)
+        .from("form_integrations")
+        .select("id, site_id, builder_type, external_form_id");
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!orgId && (activeJobs?.length || 0) > 0,
+    staleTime: 60_000,
+  });
+
+  // Build a lookup: form.id -> active job progress (if any)
+  const jobProgressByFormId = useMemo(() => {
+    const out: Record<string, { processed: number; expected: number; status: string }> = {};
+    if (!activeJobs?.length || !forms?.length) return out;
+    const integrationLookup = new Map<string, any>();
+    (integrationsForJobs || []).forEach((i: any) => integrationLookup.set(i.id, i));
+    activeJobs.forEach((job: any) => {
+      const integ = integrationLookup.get(job.form_integration_id);
+      if (!integ) return;
+      const matchingForm = forms.find(
+        (f: any) =>
+          f.site_id === integ.site_id &&
+          f.provider === integ.builder_type &&
+          String(f.external_form_id) === String(integ.external_form_id),
+      );
+      if (matchingForm) {
+        out[matchingForm.id] = {
+          processed: Number(job.total_processed) || 0,
+          expected: Number(job.total_expected) || 0,
+          status: job.status,
+        };
+      }
+    });
+    return out;
+  }, [activeJobs, integrationsForJobs, forms]);
+
+  const backfillInProgress = (activeJobs?.length || 0) > 0;
 
   if (selectedForm) {
     return (
@@ -686,6 +744,22 @@ export default function Forms() {
       {/* Avada Reset Banner */}
       <AvadaResetBanner orgId={orgId} forms={forms || []} queryClient={queryClient} syncBlocked={avadaSyncBlocked} />
 
+      {/* Persistent backfill banner — keep users informed that historical
+          import is still working and didn't silently fail. */}
+      {backfillInProgress && (
+        <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3">
+          <Loader2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">
+              Importing historical entries — {activeJobs?.length} form{(activeJobs?.length || 0) === 1 ? "" : "s"} still syncing
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              This can take several minutes for large forms. Counts below will update automatically as entries arrive — you can leave this page and come back. Smaller forms will appear first.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Summary Row */}
       <FormsSummary orgId={orgId} days={days} />
 
@@ -715,7 +789,18 @@ export default function Forms() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {displayedForms.map((form) => (
+            {/* While a backfill is running, show smallest forms first so users
+                see progress immediately instead of staring at a single form
+                that's still loading. */}
+            {[...displayedForms].sort((a, b) => {
+              if (!backfillInProgress) return 0;
+              const ca = leadCounts?.[a.id] ?? 0;
+              const cb = leadCounts?.[b.id] ?? 0;
+              return ca - cb;
+            }).map((form) => {
+              const job = jobProgressByFormId[form.id];
+              const count = leadCounts?.[form.id];
+              return (
               <button
                 key={form.id}
                 onClick={() => setSelectedFormId(form.id)}
@@ -739,18 +824,33 @@ export default function Forms() {
                       {!form.archived && form.is_active === false && (
                         <Badge variant="outline" className="text-xs uppercase text-warning border-warning/40">Disabled in WP</Badge>
                       )}
+                      {job && (
+                        <Badge variant="outline" className="text-xs uppercase text-primary border-primary/40 gap-1">
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          Importing{job.expected > 0 ? ` ${job.processed.toLocaleString()} / ${job.expected.toLocaleString()}` : `… ${job.processed.toLocaleString()}`}
+                        </Badge>
+                      )}
                       {form.lead_weight < 1 && (
                         <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {form.provider} · {leadCounts?.[form.id] ?? "—"} leads
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span>{form.provider}</span>
+                      <span>·</span>
+                      {leadCountsLoading && count === undefined ? (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" /> loading leads…
+                        </span>
+                      ) : (
+                        <span>{(count ?? 0).toLocaleString()} leads</span>
+                      )}
                     </p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

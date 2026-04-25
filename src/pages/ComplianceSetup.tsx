@@ -644,13 +644,16 @@ export default function ComplianceSetup() {
       {/* 3. Consent Mode */}
       <ConsentModeSection />
 
-      {/* 4. Custom Cookie Settings Link */}
+      {/* 4. Banner wording (deep links to WP plugin) */}
+      <BannerWording />
+
+      {/* 5. Custom Cookie Settings Link */}
       <CustomCookieSettingsLink />
 
-      {/* 5. Other Tracking Tools */}
+      {/* 6. Other Tracking Tools */}
       <ExternalTrackingWarning />
 
-      {/* 6. Data Retention (collapsed) */}
+      {/* 7. Data Retention (collapsed) */}
       <DataRetention />
 
       {/* 7. Legal Pages (collapsed) */}

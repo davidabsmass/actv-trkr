@@ -57,7 +57,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     question: "Where do I edit the consent banner text (title, buttons, links)?",
     answer:
       "Banner copy lives in the WordPress plugin so updates go live instantly. Open Compliance Setup → 'Customize banner wording' for a one-click link to your site's WP admin → ACTV TRKR → Consent Banner. From there you can edit title, body, Accept/Reject/Manage Preferences labels, the Privacy Policy URL, the US 'Privacy Settings' label, position, and expiry. Monitoring → Consent Status also has a quick link.",
-    tags: ["setup", "compliance", "banner", "question"],
+    tags: ["setup", "question"],
   },
   {
     id: "conversion-rate-high",

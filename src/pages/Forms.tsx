@@ -584,7 +584,7 @@ export default function Forms() {
       }
 
       if (anyBackfillInProgress) {
-        toast.info("Importing historical entries in the background — this may take a few minutes for large forms. Refresh the page shortly to see new entries.");
+        toast.info("Import started in the background. Small forms finish in minutes; forms with thousands of entries can take an hour or more. You can leave this page — counts will update automatically.");
       }
 
       if (warnings.length > 0 && worstStatus !== "blocked") {
@@ -754,7 +754,7 @@ export default function Forms() {
               Importing historical entries — {activeJobs?.length} form{(activeJobs?.length || 0) === 1 ? "" : "s"} still syncing
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              This can take several minutes for large forms. Counts below will update automatically as entries arrive — you can leave this page and come back. Smaller forms will appear first.
+              Smaller forms (under ~500 entries) usually finish within a few minutes. Larger forms can take <strong>30 minutes to several hours</strong> — we throttle the import so it doesn't overload your WordPress site. Counts below update automatically as entries arrive; you can safely leave this page and come back. Smaller forms appear first.
             </p>
           </div>
         </div>
@@ -825,7 +825,11 @@ export default function Forms() {
                         <Badge variant="outline" className="text-xs uppercase text-warning border-warning/40">Disabled in WP</Badge>
                       )}
                       {job && (
-                        <Badge variant="outline" className="text-xs uppercase text-primary border-primary/40 gap-1">
+                        <Badge
+                          variant="outline"
+                          className="text-xs uppercase text-primary border-primary/40 gap-1"
+                          title="Importing historical entries from WordPress. Large forms (1,000+ entries) can take 30 minutes to several hours. Progress updates automatically — safe to leave this page."
+                        >
                           <Loader2 className="h-2.5 w-2.5 animate-spin" />
                           Importing{job.expected > 0 ? ` ${job.processed.toLocaleString()} / ${job.expected.toLocaleString()}` : `… ${job.processed.toLocaleString()}`}
                         </Badge>

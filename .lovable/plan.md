@@ -1,48 +1,50 @@
-## What's already there
+## Goal
 
-The consent banner copy IS editable today — just not in this dashboard. Every string (title, body, Accept/Reject/Manage Preferences labels, Privacy Settings link, Privacy Policy URL, US opt-out notice, position, expiry) is configured in **WordPress Admin → ACTV TRKR → Consent Banner**, shipped by `class-consent-banner.php`.
+Set honest expectations about how long large form backfills take. Today the copy says "several minutes for large forms" — that misleads anyone with 4,000+ entries (which can legitimately take an hour or more).
 
-The dashboard only stores the *mode* (Strict / Relaxed) in `consent_config`. No copy fields.
+## What changes
 
-## What this plan does
+### 1. Persistent banner on Forms page (`src/pages/Forms.tsx` ~line 749-760)
 
-Surface the existing WP editor from inside the dashboard so users don't go hunting. No DB changes, no plugin changes.
+Update the "Importing historical entries — N forms still syncing" banner so the second line gives a realistic range based on size:
 
-### 1. Settings → Compliance → "Banner text & links" card
+> *Smaller forms (under ~500 entries) usually finish within a few minutes. Larger forms can take **30 minutes to several hours** — we throttle the import so it doesn't overload your WordPress site. Counts below update automatically as entries arrive; you can safely leave this page and come back.*
 
-Add a card on the existing Compliance Setup page (`/compliance-setup`) titled **"Customize banner wording"**. It shows:
+### 2. Toast shown right after clicking "Sync Entries" (`src/pages/Forms.tsx` line 587)
 
-- A short list of what's editable (title, body, button labels, Privacy Policy URL, US Privacy Settings label)
-- Per-site list (one row per connected site) with an **"Edit on WordPress →"** button that opens that site's plugin settings in a new tab:
-  `https://{site_url}/wp-admin/options-general.php?page=actvtrkr-consent`
-- Inline note: "Changes take effect immediately on the live site."
+Replace:
+> "Importing historical entries in the background — this may take a few minutes for large forms..."
 
-If only one site is connected, render it as a single primary button instead of a list.
+With:
+> *"Import started in the background. Small forms finish in minutes; forms with thousands of entries can take an hour or more. You can leave this page — counts will update automatically."*
 
-### 2. Monitoring page — small pointer
+### 3. Per-form "IMPORTING X / Y" pill — add tooltip
 
-On the Monitoring page, add a one-line helper near the compliance / consent status area:
+The pill in the screenshot (`IMPORTING 673 / 4,994`) has no explanation. Add a `title` tooltip on hover:
 
-> Banner wording (title, buttons, links) is set per site in WordPress. **Customize banner →** *(links to /compliance-setup#banner-wording)*
+> *"Importing historical entries from WordPress. Large forms (1,000+ entries) can take 30 minutes to several hours. Progress updates automatically."*
 
-No new monitoring widget — just a contextual link so people stop wondering where it lives.
+Locate the pill component (likely in `src/pages/Forms.tsx` form list rendering near the activeJobsByForm map ~line 680-702) and wrap with a tooltip.
 
-### 3. App Bible + help content
+### 4. Help content (`src/components/support/helpContent.ts`)
 
-- Add a Q&A entry to `helpContent.ts`: *"Where do I edit the consent banner text?"* → explains the WP path and that future versions may move it into the dashboard.
-- Update `mem://compliance/built-in-banner-spec` to note the dashboard now points users to the WP editor.
+Add a short FAQ entry under the Forms section:
 
-## Out of scope (ask separately if you want it)
+> **Why is my form import taking so long?**
+> We pull entries from WordPress in small, throttled batches to avoid overloading your site. A form with a few hundred entries usually finishes in 2–5 minutes. A form with several thousand entries can take 30 minutes to several hours. The import resumes automatically and is safe to leave running — you don't need to keep the page open.
 
-- Editing banner copy *from* the dashboard (would need: new `consent_banner_copy` table, edit UI, plugin v1.10+ to fetch copy via API on page load, cache strategy, multi-language support).
-- Per-language translations.
-- A live preview of the banner inside the dashboard.
+## Why these numbers
+
+The current importer (per recent fix) uses `MAX_BATCH_SIZE=100` with adaptive shrinking on errors, polled by the queue processor. At ~100 entries per batch and conservative pacing between batches to be polite to the WP site, **~4,994 entries genuinely takes 1–3 hours** depending on WP response times. So "30 minutes to several hours" is accurate, not a hedge.
+
+## Out of scope (not changing)
+
+- Importer throughput itself — that's a separate perf project; the current pacing is intentional to protect customer WordPress sites
+- The "Sync Entries" button behavior — already correct (won't restart in-progress jobs, as confirmed last turn)
 
 ## Files touched
 
-- `src/pages/ComplianceSetup.tsx` — add "Customize banner wording" card with per-site deep links
-- `src/pages/Monitoring.tsx` (or its consent/compliance widget) — add the one-line pointer
-- `src/components/support/helpContent.ts` — new Q&A entry
-- `mem://compliance/built-in-banner-spec` — note the new dashboard pointer
+- `src/pages/Forms.tsx` — banner copy, toast copy, tooltip on importing pill
+- `src/components/support/helpContent.ts` — new FAQ entry
 
-No migrations. No edge function changes. No plugin update required.
+No backend or schema changes. Pure copy + one tooltip wrapper.

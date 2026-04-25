@@ -14,7 +14,7 @@ import {
 import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'ACTV TRKR'
-const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header-v5.jpg?v=20260421d'
+const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/public/email-assets/actv-trkr-email-header-others-v1.jpg'
 
 interface Login2faCodeProps {
   code?: string

@@ -319,7 +319,7 @@ export default function FormImportPanel() {
         </div>
         <div className="flex gap-2 text-xs flex-wrap">
           {summary.active > 0 && <Badge variant="secondary" className="bg-primary/10 text-primary">{summary.active} active</Badge>}
-          {summary.stalled > 0 && <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">{summary.stalled} stalled</Badge>}
+          {summary.stalled > 0 && <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">{summary.stalled} retrying</Badge>}
           {summary.synced > 0 && <Badge variant="secondary" className="bg-green-500/10 text-green-600">{summary.synced} synced</Badge>}
           {summary.error > 0 && <Badge variant="destructive">{summary.error} errors</Badge>}
           {summary.detected > 0 && <Badge variant="outline">{summary.detected} detected</Badge>}

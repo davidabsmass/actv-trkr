@@ -53,7 +53,7 @@ export default function CheckoutSuccess() {
 
           <div className="rounded-lg bg-white/5 border border-white/10 p-4 text-left space-y-3">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <ArrowRight className="h-4 w-4 text-primary" />
+              <ArrowRight className="h-4 w-4 text-white" />
               What happens next
             </h3>
             <ol className="text-sm text-white/90 space-y-2 list-decimal list-inside">

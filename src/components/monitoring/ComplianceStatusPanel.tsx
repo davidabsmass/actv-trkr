@@ -71,6 +71,12 @@ export function ConsentStatusIndicator() {
       <Link to="/compliance-setup" className="flex items-center gap-1 text-xs text-primary hover:underline mt-3">
         Learn how to fix <ExternalLink className="h-3 w-3" />
       </Link>
+      <Link
+        to="/compliance-setup#banner-wording"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline mt-1"
+      >
+        Customize banner wording <ExternalLink className="h-3 w-3" />
+      </Link>
     </div>
   );
 }

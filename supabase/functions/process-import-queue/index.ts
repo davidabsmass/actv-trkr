@@ -97,48 +97,42 @@ async function detectStalledJobs(supabase: any) {
 
   for (const job of stalledJobs) {
     const newRetry = (job.retry_count || 0) + 1;
+    // Always auto-resume — no terminal failure path here. Use a backoff
+    // that grows but never exceeds MAX_BACKOFF_MS so the job keeps trying.
+    const backoffMs = Math.min(MAX_BACKOFF_MS, 30_000 * Math.pow(2, Math.min(newRetry, 8)));
+    await supabase.from("form_import_jobs").update({
+      status: "pending",
+      lock_token: null,
+      locked_at: null,
+      last_error: "Import paused after a missed signal — automatically retrying.",
+      retry_count: newRetry,
+      next_run_at: new Date(Date.now() + backoffMs).toISOString(),
+      auto_resume_enabled: true,
+    }).eq("id", job.id);
 
-    if (job.auto_resume_enabled && newRetry < MAX_RETRIES) {
-      // Mark stalled but auto-resumable
-      await supabase.from("form_import_jobs").update({
-        status: "stalled",
-        lock_token: null,
-        locked_at: null,
-        last_error: "Job stalled — no signal detected. Auto-resuming.",
-        retry_count: newRetry,
-        next_run_at: new Date(Date.now() + 30_000).toISOString(), // retry in 30s
-      }).eq("id", job.id);
+    // Keep the integration in `importing` so the UI doesn't flip to error.
+    await supabase.from("form_integrations")
+      .update({ status: "importing" })
+      .eq("id", job.form_integration_id);
 
-      console.log(`Job ${job.id} stalled, will auto-resume (retry ${newRetry})`);
-    } else {
-      // Mark failed
-      await supabase.from("form_import_jobs").update({
-        status: "failed",
-        lock_token: null,
-        locked_at: null,
-        last_error: `Job stalled repeatedly (${newRetry} retries). Marked failed.`,
-        retry_count: newRetry,
-      }).eq("id", job.id);
-
-      await supabase.from("form_integrations")
-        .update({ status: "error", last_error: "Import job failed after repeated stalls" })
-        .eq("id", job.form_integration_id);
-
-      console.log(`Job ${job.id} permanently failed after ${newRetry} stalls`);
-    }
+    console.log(`Job ${job.id} missed heartbeat, auto-retry in ${Math.round(backoffMs / 1000)}s (retry ${newRetry})`);
   }
 }
 
 async function pickEligibleJobs(supabase: any): Promise<any[]> {
   const now = new Date().toISOString();
 
-  // Pick jobs that are pending, stalled (auto-resume), or running with stale lock
+  // Pick jobs that are pending, stalled (auto-resume), or running with stale lock.
+  // Order: smallest expected total first so quick wins finish before huge
+  // backfills hog the next-run slots. Within the same size bucket, fall back
+  // to scheduled order.
   const { data: jobs } = await supabase
     .from("form_import_jobs")
-    .select("id, status, lock_token, locked_at, next_run_at, adaptive_batch_size, retry_count, cursor, form_integration_id, site_id, org_id")
+    .select("id, status, lock_token, locked_at, next_run_at, adaptive_batch_size, retry_count, cursor, form_integration_id, site_id, org_id, total_expected")
     .in("status", ["pending", "stalled"])
     .lte("next_run_at", now)
     .is("lock_token", null)
+    .order("total_expected", { ascending: true, nullsFirst: true })
     .order("next_run_at", { ascending: true })
     .limit(MAX_JOBS_PER_RUN);
 

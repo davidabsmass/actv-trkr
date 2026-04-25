@@ -1,63 +1,48 @@
-## Goal
+## What's already there
 
-When a user wants to connect a second (or third, etc.) WordPress site, they should reuse the **same org-level API key** — no new key generated, no existing sites disconnected. Today the "Add Site" modal dumps them into the first-time setup page, which encourages them to regenerate the key (breaking existing connections) and is confusing.
+The consent banner copy IS editable today — just not in this dashboard. Every string (title, body, Accept/Reject/Manage Preferences labels, Privacy Settings link, Privacy Policy URL, US opt-out notice, position, expiry) is configured in **WordPress Admin → ACTV TRKR → Consent Banner**, shipped by `class-consent-banner.php`.
 
-## Background (confirmed in code)
+The dashboard only stores the *mode* (Strict / Relaxed) in `consent_config`. No copy fields.
 
-- `api_keys` is org-scoped — one active key per organization. All sites under the org authenticate with the same key.
-- `ingest-heartbeat` already auto-registers a new `sites` row when a previously-unseen `site_url` sends its first heartbeat with a valid key. No manual site creation needed.
-- Raw keys are only shown once at generation time (hashed in DB). We will **not** change that — no "re-show the key" behavior.
+## What this plan does
 
-## What changes
+Surface the existing WP editor from inside the dashboard so users don't go hunting. No DB changes, no plugin changes.
 
-### 1. New dedicated Add Site flow page: `/settings?tab=add-site`
+### 1. Settings → Compliance → "Banner text & links" card
 
-A new screen purpose-built for adding a second+ site to an existing account. It never offers to generate a key.
+Add a card on the existing Compliance Setup page (`/compliance-setup`) titled **"Customize banner wording"**. It shows:
 
-Structure (3 steps):
+- A short list of what's editable (title, body, button labels, Privacy Policy URL, US Privacy Settings label)
+- Per-site list (one row per connected site) with an **"Edit on WordPress →"** button that opens that site's plugin settings in a new tab:
+  `https://{site_url}/wp-admin/options-general.php?page=actvtrkr-consent`
+- Inline note: "Changes take effect immediately on the live site."
 
-1. **Use your existing license key**
-   - Explains the key is already active and works across all sites.
-   - Shows the plugin download button (same ZIP, latest version).
-   - Shows a "Can't find your key?" disclosure that explains: because keys are stored hashed for security, we can't re-display it. Options: (a) look it up where you saved it, or (b) regenerate — **with a clear warning that this disconnects all currently-connected sites** and requires re-pasting the new key on each.
+If only one site is connected, render it as a single primary button instead of a list.
 
-2. **Install the plugin on the new WordPress site**
-   - Short inline instructions (Plugins → Add New → Upload → Activate).
+### 2. Monitoring page — small pointer
 
-3. **Paste your existing key into WordPress → Settings → ACTV TRKR → Save**
-   - Polling indicator: watches for a new `sites` row to appear under this org. When it does, shows success and links to Dashboard.
+On the Monitoring page, add a one-line helper near the compliance / consent status area:
 
-### 2. `AddSiteModal` routes here instead of `/settings?tab=setup`
+> Banner wording (title, buttons, links) is set per site in WordPress. **Customize banner →** *(links to /compliance-setup#banner-wording)*
 
-- Change `navigate("/settings?tab=setup")` → `navigate("/settings?tab=add-site")`.
-- Tighten the modal copy so it says explicitly: "You'll use your existing license key — no new key needed."
+No new monitoring widget — just a contextual link so people stop wondering where it lives.
 
-### 3. Settings tab plumbing
+### 3. App Bible + help content
 
-Add `add-site` as a recognized tab value in `Settings.tsx` so the new flow renders when `?tab=add-site` is in the URL. The existing `setup` tab (first-time setup / WebsiteSetup.tsx) stays exactly as-is for brand-new organizations.
+- Add a Q&A entry to `helpContent.ts`: *"Where do I edit the consent banner text?"* → explains the WP path and that future versions may move it into the dashboard.
+- Update `mem://compliance/built-in-banner-spec` to note the dashboard now points users to the WP editor.
 
-### 4. Retain existing backend behavior — nothing changes
+## Out of scope (ask separately if you want it)
 
-- `replace_org_api_key` RPC: untouched.
-- `ingest-heartbeat` auto-registration of new sites: untouched.
-- Existing sites: unaffected. The only way to rotate the key remains the explicit "Replace key" button in `ApiKeysSection`, which already warns appropriately.
+- Editing banner copy *from* the dashboard (would need: new `consent_banner_copy` table, edit UI, plugin v1.10+ to fetch copy via API on page load, cache strategy, multi-language support).
+- Per-language translations.
+- A live preview of the banner inside the dashboard.
 
-## Files to edit / create
+## Files touched
 
-| File | Change |
-|------|--------|
-| `src/pages/AddSite.tsx` | **New.** The 3-step flow described above. |
-| `src/pages/Settings.tsx` | Register `add-site` tab → render `<AddSite />`. |
-| `src/components/sites/AddSiteModal.tsx` | Route to `?tab=add-site`; tighten copy. |
-| `src/locales/en/common.json` | Add strings for the new flow. |
+- `src/pages/ComplianceSetup.tsx` — add "Customize banner wording" card with per-site deep links
+- `src/pages/Monitoring.tsx` (or its consent/compliance widget) — add the one-line pointer
+- `src/components/support/helpContent.ts` — new Q&A entry
+- `mem://compliance/built-in-banner-spec` — note the new dashboard pointer
 
-## Out of scope (deliberately)
-
-- Changing how the key is stored (staying hashed).
-- Any billing/Stripe changes for the $35/mo additional-site charge — modal already clarifies billing is handled separately.
-- Changing `WebsiteSetup.tsx` (first-time setup) or the `Replace key` UX in `ApiKeysSection`.
-
-## Technical notes
-
-- Plugin download in the new flow uses `downloadPlugin()` from `@/lib/plugin-download` — same helper used elsewhere. It requires the key to embed in the ZIP. Since we don't have the raw key on this page, the download button will fetch the unkeyed plugin ZIP (plain install — user pastes their existing key manually in WP admin). Confirm `downloadPlugin()` supports a no-key path, or use a plain `<a href>` to the public plugin ZIP endpoint (`serve-plugin-zip` without a key param). I'll verify during implementation.
-- "Watch for new site" polling: reuse the existing `useSites(orgId)` hook with a short `refetchInterval` while on the final step. When `sites.length` increases, show success.
+No migrations. No edge function changes. No plugin update required.

@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, ShieldCheck, ShieldAlert, ShieldOff,
   CheckCircle2, XCircle, Info,
   Copy, Check, Code, ChevronDown, BookOpen,
-  Globe, Lock, Unlock, Eye, Link2,
+  Globe, Lock, Unlock, Eye, Link2, MessageSquareText, ExternalLink,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useComplianceStatus } from "@/hooks/use-compliance-status";
+import { useOrg } from "@/hooks/use-org";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /* ══════════════════════════════════════════════════
@@ -481,6 +484,140 @@ function LegalPages() {
 
 
 /* ══════════════════════════════════════════════════
+   BANNER WORDING — deep links to WP plugin editor
+   ══════════════════════════════════════════════════ */
+
+function normalizeSiteUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let s = raw.trim();
+  if (!s) return null;
+  if (!/^https?:\/\//i.test(s)) s = `https://${s}`;
+  try {
+    const u = new URL(s);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return null;
+  }
+}
+
+function BannerWording() {
+  const { orgId } = useOrg();
+
+  const { data: sites, isLoading } = useQuery({
+    queryKey: ["compliance_banner_sites", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("sites")
+        .select("id, domain, url, display_name, name")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+  });
+
+  // Anchor support so Monitoring's deep-link (#banner-wording) scrolls here
+  useEffect(() => {
+    if (window.location.hash === "#banner-wording") {
+      const el = document.getElementById("banner-wording");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.classList.add("ring-2", "ring-primary/40");
+        setTimeout(() => el.classList.remove("ring-2", "ring-primary/40"), 2500);
+      }
+    }
+  }, [isLoading]);
+
+  const validSites = (sites || [])
+    .map((s) => ({
+      ...s,
+      origin: normalizeSiteUrl(s.url || s.domain),
+      label: s.display_name || s.name || s.domain || s.url || "Site",
+    }))
+    .filter((s) => !!s.origin);
+
+  return (
+    <Card id="banner-wording" className="glass-card scroll-mt-20 transition-shadow">
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="rounded-md bg-primary/10 p-2 text-primary shrink-0">
+            <MessageSquareText className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold text-foreground">
+              Customize banner wording
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Banner copy lives in the WordPress plugin so changes go live instantly without redeploying anything here. Open the plugin's Consent Banner settings on each site to edit:
+            </p>
+            <ul className="text-xs text-muted-foreground mt-2 grid gap-1 sm:grid-cols-2">
+              <li>• Title &amp; body text</li>
+              <li>• Accept / Reject / Manage Preferences labels</li>
+              <li>• Privacy Policy &amp; Cookie Policy URLs</li>
+              <li>• "Privacy Settings" link label (US opt-out)</li>
+              <li>• Position (top / bottom) &amp; expiry days</li>
+              <li>• Re-opener "Cookie Settings" label</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-3 space-y-2">
+          {isLoading ? (
+            <p className="text-xs text-muted-foreground">Loading your sites…</p>
+          ) : validSites.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Connect a site first — once the plugin reports in, you'll get a one-click link here to its banner editor.
+            </p>
+          ) : validSites.length === 1 ? (
+            <Button asChild size="sm" className="gap-1.5">
+              <a
+                href={`${validSites[0].origin}/wp-admin/options-general.php?page=actvtrkr-consent`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Edit banner on {validSites[0].label}
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </Button>
+          ) : (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Edit on WordPress (per site):</p>
+              <div className="grid gap-1.5">
+                {validSites.map((s) => (
+                  <a
+                    key={s.id}
+                    href={`${s.origin}/wp-admin/options-general.php?page=actvtrkr-consent`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted/40 transition-colors group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-sm text-foreground truncate">{s.label}</span>
+                      <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                        {s.origin?.replace(/^https?:\/\//, "")}
+                      </span>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs text-primary group-hover:underline shrink-0">
+                      Edit on WordPress <ExternalLink className="h-3 w-3" />
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Changes save in WordPress and take effect immediately on the live site — no plugin update or redeploy needed.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════
    MAIN PAGE
    ══════════════════════════════════════════════════ */
 
@@ -507,13 +644,16 @@ export default function ComplianceSetup() {
       {/* 3. Consent Mode */}
       <ConsentModeSection />
 
-      {/* 4. Custom Cookie Settings Link */}
+      {/* 4. Banner wording (deep links to WP plugin) */}
+      <BannerWording />
+
+      {/* 5. Custom Cookie Settings Link */}
       <CustomCookieSettingsLink />
 
-      {/* 5. Other Tracking Tools */}
+      {/* 6. Other Tracking Tools */}
       <ExternalTrackingWarning />
 
-      {/* 6. Data Retention (collapsed) */}
+      {/* 7. Data Retention (collapsed) */}
       <DataRetention />
 
       {/* 7. Legal Pages (collapsed) */}

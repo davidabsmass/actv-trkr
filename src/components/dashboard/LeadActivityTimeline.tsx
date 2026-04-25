@@ -211,9 +211,21 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
                     {format(new Date(item.time), "h:mm a")}
                   </span>
                 </div>
-                <p className="text-sm font-medium text-foreground">{item.label}</p>
+                <p className="text-sm font-medium text-foreground break-words">{item.label}</p>
                 {item.detail && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.detail}</p>
+                )}
+                {item.href && (
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1 max-w-full"
+                    title={item.href}
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    <span className="truncate">→ {shortHref(item.href)}</span>
+                  </a>
                 )}
               </div>
             </div>

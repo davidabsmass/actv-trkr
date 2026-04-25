@@ -47,7 +47,7 @@ export interface SecurityEvent {
  */
 export async function logSecurityEvent(evt: SecurityEvent): Promise<string | null> {
   try {
-    const sb = adminClient();
+    const sb = adminClient() as any;
     const { data, error } = await sb.rpc("log_security_event", {
       p_event_type: evt.event_type,
       p_severity: evt.severity ?? "info",
@@ -84,7 +84,7 @@ export async function logWebhookVerification(input: {
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   try {
-    const sb = adminClient();
+    const sb = adminClient() as any;
     await sb.from("webhook_verification_log").insert({
       provider: input.provider,
       event_id: input.event_id ?? null,

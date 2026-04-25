@@ -105,13 +105,17 @@ const STATUS_CONFIG: Record<string, { color: string; icon: any; label: string }>
 
 function getJobHealth(job: ImportJob): { label: string; color: string; icon: any } {
   if (job.status === "completed") return { label: "Completed", color: "text-green-600", icon: CheckCircle2 };
-  if (job.status === "failed" || job.status === "cancelled") return { label: "Failed", color: "text-destructive", icon: XCircle };
-  if (job.status === "stalled") return { label: "Stalled", color: "text-orange-500", icon: AlertTriangle };
+  // Cancelled is the only true terminal state shown to users.
+  if (job.status === "cancelled") return { label: "Cancelled", color: "text-muted-foreground", icon: XCircle };
   if (job.status === "paused") return { label: "Paused", color: "text-muted-foreground", icon: Pause };
   if (job.status === "cancel_requested") return { label: "Cancelling", color: "text-orange-500", icon: XCircle };
-  if ((job.retry_count || 0) > 0) return { label: "Retrying", color: "text-amber-500", icon: RefreshCw };
-  if (job.status === "running" || job.status === "pending") return { label: "Healthy", color: "text-green-600", icon: Activity };
-  return { label: "Unknown", color: "text-muted-foreground", icon: FileText };
+  // Anything else (pending, running, stalled, failed-but-auto-recovered)
+  // is presented as actively progressing — the backend will not let it die.
+  if (job.status === "stalled" || job.status === "failed" || (job.retry_count || 0) > 0) {
+    return { label: "Waiting — retrying automatically", color: "text-amber-500", icon: RefreshCw };
+  }
+  if (job.status === "running" || job.status === "pending") return { label: "Importing", color: "text-green-600", icon: Activity };
+  return { label: "Importing", color: "text-green-600", icon: Activity };
 }
 
 export default function FormImportPanel() {

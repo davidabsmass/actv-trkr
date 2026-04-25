@@ -744,6 +744,22 @@ export default function Forms() {
       {/* Avada Reset Banner */}
       <AvadaResetBanner orgId={orgId} forms={forms || []} queryClient={queryClient} syncBlocked={avadaSyncBlocked} />
 
+      {/* Persistent backfill banner — keep users informed that historical
+          import is still working and didn't silently fail. */}
+      {backfillInProgress && (
+        <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3">
+          <Loader2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">
+              Importing historical entries — {activeJobs?.length} form{(activeJobs?.length || 0) === 1 ? "" : "s"} still syncing
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              This can take several minutes for large forms. Counts below will update automatically as entries arrive — you can leave this page and come back. Smaller forms will appear first.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Summary Row */}
       <FormsSummary orgId={orgId} days={days} />
 
@@ -773,7 +789,18 @@ export default function Forms() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {displayedForms.map((form) => (
+            {/* While a backfill is running, show smallest forms first so users
+                see progress immediately instead of staring at a single form
+                that's still loading. */}
+            {[...displayedForms].sort((a, b) => {
+              if (!backfillInProgress) return 0;
+              const ca = leadCounts?.[a.id] ?? 0;
+              const cb = leadCounts?.[b.id] ?? 0;
+              return ca - cb;
+            }).map((form) => {
+              const job = jobProgressByFormId[form.id];
+              const count = leadCounts?.[form.id];
+              return (
               <button
                 key={form.id}
                 onClick={() => setSelectedFormId(form.id)}
@@ -797,18 +824,33 @@ export default function Forms() {
                       {!form.archived && form.is_active === false && (
                         <Badge variant="outline" className="text-xs uppercase text-warning border-warning/40">Disabled in WP</Badge>
                       )}
+                      {job && (
+                        <Badge variant="outline" className="text-xs uppercase text-primary border-primary/40 gap-1">
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          Importing{job.expected > 0 ? ` ${job.processed.toLocaleString()} / ${job.expected.toLocaleString()}` : `… ${job.processed.toLocaleString()}`}
+                        </Badge>
+                      )}
                       {form.lead_weight < 1 && (
                         <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {form.provider} · {leadCounts?.[form.id] ?? "—"} leads
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span>{form.provider}</span>
+                      <span>·</span>
+                      {leadCountsLoading && count === undefined ? (
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" /> loading leads…
+                        </span>
+                      ) : (
+                        <span>{(count ?? 0).toLocaleString()} leads</span>
+                      )}
                     </p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

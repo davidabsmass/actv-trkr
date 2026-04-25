@@ -102,11 +102,18 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
       });
 
       (eventsRes.data || []).forEach((evt) => {
+        const meta = (evt.meta || {}) as { target_href?: string | null };
+        const rawHref = meta.target_href || null;
+        const href = isMeaningfulHref(rawHref) ? rawHref! : undefined;
+        const label = evt.target_text
+          ? `${eventLabels[evt.event_type] || evt.event_type}: "${evt.target_text}"`
+          : (eventLabels[evt.event_type] || evt.event_type);
         items.push({
           time: evt.occurred_at,
           type: evt.event_type,
-          label: eventLabels[evt.event_type] || evt.event_type,
-          detail: evt.target_text || evt.page_path || undefined,
+          label,
+          detail: evt.page_path || undefined,
+          href,
           icon: eventIcons[evt.event_type] || eventIcons.cta_click,
         });
       });

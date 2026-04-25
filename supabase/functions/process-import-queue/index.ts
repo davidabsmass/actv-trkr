@@ -261,29 +261,24 @@ async function processJob(supabase: any, job: any) {
           return { job_id: job.id, error: "rate_limited", batches: batchesProcessed };
         }
 
-        // Adaptive: reduce batch size on non-429 failure
+        // Adaptive: reduce batch size on non-429 failure. Always reschedule —
+        // we never let a transient WP error mark the job permanently failed.
         const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.floor(currentBatchSize * 0.5));
         const newRetry = (job.retry_count || 0) + 1;
+        const backoffMs = Math.min(MAX_BACKOFF_MS, 2000 * Math.pow(2, Math.min(newRetry, 10)));
 
-        if (newRetry >= MAX_RETRIES) {
-          await releaseLock(supabase, job.id, lockToken, "failed", lastError, {
-            adaptive_batch_size: newBatchSize,
-            retry_count: newRetry,
-          });
-          await supabase.from("form_integrations")
-            .update({ status: "error", last_error: lastError })
-            .eq("id", job.form_integration_id);
-          return { job_id: job.id, error: lastError, batches: batchesProcessed };
-        }
-
-        // Schedule retry with smaller batch
         await releaseLock(supabase, job.id, lockToken, "pending", lastError, {
           adaptive_batch_size: newBatchSize,
           retry_count: newRetry,
-          next_run_at: new Date(Date.now() + Math.min(2000 * Math.pow(2, newRetry), 300_000)).toISOString(),
+          next_run_at: new Date(Date.now() + backoffMs).toISOString(),
         });
 
-        console.log(`Job ${job.id} batch failed, reducing batch ${currentBatchSize} → ${newBatchSize}, retry ${newRetry}`);
+        // Keep integration in importing — recovery is automatic.
+        await supabase.from("form_integrations")
+          .update({ status: "importing" })
+          .eq("id", job.form_integration_id);
+
+        console.log(`Job ${job.id} batch failed, reducing batch ${currentBatchSize} → ${newBatchSize}, retry ${newRetry} in ${Math.round(backoffMs / 1000)}s`);
         return { job_id: job.id, error: lastError, batches: batchesProcessed, newBatchSize };
       }
 
@@ -296,18 +291,17 @@ async function processJob(supabase: any, job: any) {
         lastError = `Import batch only stored ${processed}/${batchCount || requestBatchSize} entries${errorCount ? ` (${errorCount} errors)` : ""}; retrying same cursor with smaller batches`;
         const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.min(MAX_BATCH_SIZE, Math.floor(currentBatchSize * 0.5)));
         const newRetry = (job.retry_count || 0) + 1;
+        const backoffMs = Math.min(MAX_BACKOFF_MS, 2000 * Math.pow(2, Math.min(newRetry, 10)));
 
-        await releaseLock(supabase, job.id, lockToken, newRetry >= MAX_RETRIES ? "failed" : "pending", lastError, {
+        await releaseLock(supabase, job.id, lockToken, "pending", lastError, {
           adaptive_batch_size: newBatchSize,
           retry_count: newRetry,
-          next_run_at: newRetry >= MAX_RETRIES ? null : new Date(Date.now() + Math.min(2000 * Math.pow(2, newRetry), 300_000)).toISOString(),
+          next_run_at: new Date(Date.now() + backoffMs).toISOString(),
         });
 
-        if (newRetry >= MAX_RETRIES) {
-          await supabase.from("form_integrations")
-            .update({ status: "error", last_error: lastError })
-            .eq("id", job.form_integration_id);
-        }
+        await supabase.from("form_integrations")
+          .update({ status: "importing" })
+          .eq("id", job.form_integration_id);
 
         return { job_id: job.id, error: lastError, batches: batchesProcessed, newBatchSize };
       }

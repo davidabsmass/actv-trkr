@@ -128,7 +128,8 @@ Deno.serve(async (req) => {
       }
 
       // Additional data for monthly performance: incidents, form submission logs, broken links
-      const extraPromises: Promise<any>[] = [];
+      // deno-lint-ignore no-explicit-any
+      const extraPromises: any[] = [];
       if (templateSlug === "monthly_performance") {
         extraPromises.push(
           supabase.from("incidents").select("*").eq("org_id", orgId).gte("started_at", periodStart).lte("started_at", periodEnd).order("started_at", { ascending: false }).limit(50),

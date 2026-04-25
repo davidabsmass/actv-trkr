@@ -12,7 +12,27 @@ interface TimelineItem {
   type: string;
   label: string;
   detail?: string;
+  href?: string;
   icon: React.ReactNode;
+}
+
+function isMeaningfulHref(href: string | null | undefined): href is string {
+  if (!href) return false;
+  const trimmed = href.trim();
+  if (!trimmed) return false;
+  if (trimmed === "#" || trimmed.endsWith("/#")) return false;
+  if (trimmed.startsWith("javascript:")) return false;
+  return true;
+}
+
+function shortHref(href: string): string {
+  try {
+    const u = new URL(href);
+    const path = u.pathname === "/" ? "" : u.pathname;
+    return `${u.hostname}${path}${u.search}`;
+  } catch {
+    return href;
+  }
 }
 
 const eventIcons: Record<string, React.ReactNode> = {
@@ -60,7 +80,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
           .eq("org_id", orgId).eq("session_id", sessionId)
           .order("occurred_at", { ascending: true }),
         supabase.from("events")
-          .select("occurred_at, event_type, target_text, page_path")
+          .select("occurred_at, event_type, target_text, page_path, page_url, meta")
           .eq("org_id", orgId).eq("session_id", sessionId)
           // Hide internal diagnostic events from the visible timeline
           .not("event_type", "in", "(session_gap_detected,session_resume,session_heartbeat,tracker_error,tracker_init)")
@@ -81,11 +101,18 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
       });
 
       (eventsRes.data || []).forEach((evt) => {
+        const meta = (evt.meta || {}) as { target_href?: string | null };
+        const rawHref = meta.target_href || null;
+        const href = isMeaningfulHref(rawHref) ? rawHref! : undefined;
+        const label = evt.target_text
+          ? `${eventLabels[evt.event_type] || evt.event_type}: "${evt.target_text}"`
+          : (eventLabels[evt.event_type] || evt.event_type);
         items.push({
           time: evt.occurred_at,
           type: evt.event_type,
-          label: eventLabels[evt.event_type] || evt.event_type,
-          detail: evt.target_text || evt.page_path || undefined,
+          label,
+          detail: evt.page_path || undefined,
+          href,
           icon: eventIcons[evt.event_type] || eventIcons.cta_click,
         });
       });
@@ -183,9 +210,21 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
                     {format(new Date(item.time), "h:mm a")}
                   </span>
                 </div>
-                <p className="text-sm font-medium text-foreground">{item.label}</p>
+                <p className="text-sm font-medium text-foreground break-words">{item.label}</p>
                 {item.detail && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.detail}</p>
+                )}
+                {item.href && (
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1 max-w-full"
+                    title={item.href}
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    <span className="truncate">→ {shortHref(item.href)}</span>
+                  </a>
                 )}
               </div>
             </div>

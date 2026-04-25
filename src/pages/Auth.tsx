@@ -292,9 +292,9 @@ const Auth = () => {
       ? "0"
       : activePanel === "otp"
       ? "calc(-100% - 1.5rem)"
-      : activePanel === "forgot"
+      : activePanel === "mfa"
       ? "calc(-200% - 3rem)"
-      : "calc(-300% - 4.5rem)";
+      : "calc(-200% - 3rem)";
 
   return (
     <div

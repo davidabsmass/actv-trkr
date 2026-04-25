@@ -32,6 +32,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tags: ["bug", "forms", "setup"],
   },
   {
+    id: "forms-import-slow",
+    question: "Why is my form import taking so long?",
+    answer:
+      "We pull entries from WordPress in small, throttled batches to avoid overloading your site. A form with a few hundred entries usually finishes in 2–5 minutes. A form with several thousand entries can take 30 minutes to several hours. The import resumes automatically and is safe to leave running — you don't need to keep the page open. Counts on the Forms page update as entries arrive.",
+    tags: ["forms", "question"],
+  },
+  {
     id: "billing-portal",
     question: "How do I update my payment method or download invoices?",
     answer:

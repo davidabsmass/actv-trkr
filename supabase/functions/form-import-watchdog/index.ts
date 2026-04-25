@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Phase 3: Always kick the queue ──
-    if (summary.jobs_created > 0 || summary.stuck_jobs_released > 0) {
+    if (summary.jobs_created > 0 || summary.stuck_jobs_released > 0 || summary.failed_jobs_recovered > 0) {
       await kickQueue();
     }
 

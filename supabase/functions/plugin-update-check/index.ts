@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.21.0";
-const CURRENT_PLUGIN_SHA256 = "e0b30fb4491646d284adc5e3a17052e269cea063a6b797d7dfc8748640a1a2f5";
+const CURRENT_PLUGIN_VERSION = "1.21.1";
+const CURRENT_PLUGIN_SHA256 = "9d23536acfc0607ef7a4aec27ff02e6b16ac3d4801be8d4b0730324d7650754b";
 
 const CHANGELOG = `
+## 1.21.1
+- COSMETIC: "Test Connection" button on Settings → General is now labelled "Confirm Connection". After a successful connection check the page now points users back to their ACTV TRKR dashboard to finish setup.
+
 ## 1.21.0
 - NEW: Temporary Support Access. Dashboard admins can now grant time-limited (1h / 24h / 72h) troubleshooting access to ACTV TRKR support staff. The plugin creates a disposable WordPress admin user, issues a one-time magic-login URL, auto-deletes the user on revoke or expiry, and logs every event.
 

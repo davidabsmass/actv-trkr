@@ -327,6 +327,14 @@ async function processJob(supabase: any, job: any) {
         adaptive_batch_size: currentBatchSize,
       }).eq("id", job.id).eq("lock_token", lockToken);
 
+      // Mirror progress onto the integration so admin/settings views see live
+      // counts instead of 0 imported while the job is mid-run.
+      await supabase.from("form_integrations").update({
+        total_entries_imported: totalProcessed,
+        status: "importing",
+        last_error: null,
+      }).eq("id", job.form_integration_id);
+
       // Stop if we've hit the cap
       if (isCapped && totalProcessed >= effectiveCap) {
         hasMore = false;

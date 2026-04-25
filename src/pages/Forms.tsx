@@ -825,7 +825,11 @@ export default function Forms() {
                         <Badge variant="outline" className="text-xs uppercase text-warning border-warning/40">Disabled in WP</Badge>
                       )}
                       {job && (
-                        <Badge variant="outline" className="text-xs uppercase text-primary border-primary/40 gap-1">
+                        <Badge
+                          variant="outline"
+                          className="text-xs uppercase text-primary border-primary/40 gap-1"
+                          title="Importing historical entries from WordPress. Large forms (1,000+ entries) can take 30 minutes to several hours. Progress updates automatically — safe to leave this page."
+                        >
                           <Loader2 className="h-2.5 w-2.5 animate-spin" />
                           Importing{job.expected > 0 ? ` ${job.processed.toLocaleString()} / ${job.expected.toLocaleString()}` : `… ${job.processed.toLocaleString()}`}
                         </Badge>

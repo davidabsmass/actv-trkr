@@ -397,25 +397,25 @@ async function handleProcess(supabase: any, user: any, req: Request) {
   if (!wpResult.ok) {
     const retryCount = (job.retry_count || 0) + 1;
     const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.floor(batchSize * 0.5));
-    const newStatus = retryCount >= MAX_RETRIES ? "failed" : "pending";
+    const backoffMs = Math.min(MAX_BACKOFF_MS, 2000 * Math.pow(2, Math.min(retryCount, 10)));
 
     await supabase.from("form_import_jobs").update({
       retry_count: retryCount,
       last_error: wpResult.error || "WP plugin error",
-      status: newStatus,
+      status: "pending", // never go terminal here — auto-retry
       adaptive_batch_size: newBatchSize,
-      next_run_at: new Date(Date.now() + Math.min(2000 * Math.pow(2, retryCount), 300_000)).toISOString(),
+      next_run_at: new Date(Date.now() + backoffMs).toISOString(),
       lock_token: null,
       locked_at: null,
+      auto_resume_enabled: true,
     }).eq("id", jobId);
 
-    if (newStatus === "failed") {
-      await supabase.from("form_integrations")
-        .update({ status: "error", last_error: wpResult.error })
-        .eq("id", integration.id);
-    }
+    // Keep integration in importing — recovery is automatic.
+    await supabase.from("form_integrations")
+      .update({ status: "importing" })
+      .eq("id", integration.id);
 
-    return json({ error: wpResult.error, retry_count: retryCount, status: newStatus, adaptive_batch_size: newBatchSize }, 502);
+    return json({ error: wpResult.error, retry_count: retryCount, status: "pending", adaptive_batch_size: newBatchSize, next_run_in_ms: backoffMs }, 502);
   }
 
   const processed = wpResult.processed || 0;

@@ -683,8 +683,9 @@ const Dashboard = () => {
             <KPICard
               variant="success"
               label={`${t("dashboard.formFills")} (${days}d)`}
-              value={periodData.leads.current}
-              trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
+              value={(freshLeadsCurrent ?? 0).toLocaleString()}
+              valueTitle="Counted from your install date forward — historical imports excluded on the Overview."
+              trend={orgTooNewForComparison ? null : pctChange(freshLeadsCurrent ?? 0, freshLeadsPrevious ?? 0)}
               icon={<TrendingUp className="h-4 w-4" />}
               series={kpiSeries.leads}
             />

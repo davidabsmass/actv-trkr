@@ -404,19 +404,57 @@ const Auth = () => {
                 </p>
 
                 <form onSubmit={handleVerifyOtp} className="space-y-3">
-...
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="Enter 6-digit code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    required
+                    maxLength={6}
+                    className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/40 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+
+                  {error && activePanel === "otp" && (
+                    <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
+                  )}
+                  {message && activePanel === "otp" && (
+                    <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
+                  )}
+
                   <button
                     type="submit"
-                    disabled={verifying || otpValue.length !== 6}
+                    disabled={loading || otpCode.length !== 6}
                     className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                   >
-                    {verifying ? (
+                    {loading ? (
                       <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                     ) : (
                       "Confirm Code"
                     )}
                   </button>
                 </form>
+
+                <div className="flex items-center justify-between mt-4">
+                  <button
+                    onClick={handleResendCode}
+                    disabled={loading || resendCooldown > 0}
+                    className="text-xs text-white hover:underline font-medium disabled:cursor-not-allowed disabled:no-underline"
+                  >
+                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setOtpCode("");
+                      setIsLogin(true);
+                      goToPanel("main");
+                    }}
+                    className="text-xs text-white/50 hover:underline"
+                  >
+                    Back
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -23,7 +23,7 @@ interface FormLeaderboardProps {
   leadCounts?: Record<string, number>;
 }
 
-type SortKey = "submissions" | "cvr" | "desktop" | "mobile";
+type SortKey = "submissions" | "desktop" | "mobile";
 type SortDir = "asc" | "desc";
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -98,7 +98,6 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData, leadCounts
       let av: number, bv: number;
       switch (sortKey) {
         case "submissions": av = a.submissions; bv = b.submissions; break;
-        case "cvr": av = a.cvr; bv = b.cvr; break;
         case "desktop": av = a.deviceSplit?.desktop ?? -1; bv = b.deviceSplit?.desktop ?? -1; break;
         case "mobile": av = a.deviceSplit?.mobile ?? -1; bv = b.deviceSplit?.mobile ?? -1; break;
       }
@@ -128,16 +127,6 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData, leadCounts
               <th className="text-right py-2 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("submissions")}>
                 <span className="inline-flex items-center gap-1 justify-end">{t("dashboard.submissions")} <SortIcon active={sortKey === "submissions"} dir={sortDir} /></span>
               </th>
-              <th className="text-right py-2 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("cvr")}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 cursor-help justify-end">
-                      {t("dashboard.siteCvr")} <Info className="h-3 w-3" /> <SortIcon active={sortKey === "cvr"} dir={sortDir} />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px] text-xs">{t("dashboard.siteCvrTooltip")}</TooltipContent>
-                </Tooltip>
-              </th>
               <th className="text-right py-2 text-xs font-medium text-muted-foreground hidden sm:table-cell cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("desktop")}>
                 <span className="inline-flex items-center gap-1 justify-end">{t("dashboard.desktop")} <SortIcon active={sortKey === "desktop"} dir={sortDir} /></span>
               </th>
@@ -151,7 +140,6 @@ export function FormLeaderboard({ forms, leads, sessions, deviceData, leadCounts
               <tr key={s.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                 <td className="py-2.5 font-medium text-foreground">{s.name}</td>
                 <td className="py-2.5 text-right font-mono-data">{s.submissions}</td>
-                <td className="py-2.5 text-right font-mono-data">{s.cvr < 0.1 && s.cvr > 0 ? s.cvr.toFixed(2) : s.cvr.toFixed(1)}%</td>
                 <td className="py-2.5 text-right font-mono-data text-muted-foreground hidden sm:table-cell">
                   {s.deviceSplit ? `${s.deviceSplit.desktop}%` : "—"}
                 </td>

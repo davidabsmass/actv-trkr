@@ -24,7 +24,7 @@ interface AdminDigestProps {
 const AdminTrackingDigestEmail = ({ date, stalledCount = 0, stalledSites = [] }: AdminDigestProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{stalledCount} site(s) stalled >1 hour — {SITE_NAME} admin digest</Preview>
+    <Preview>{`${stalledCount} site(s) stalled >1 hour — ${SITE_NAME} admin digest`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>{SITE_NAME} — Admin Tracking Digest</Heading>

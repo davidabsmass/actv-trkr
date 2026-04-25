@@ -1,3 +1,10 @@
 {
-  "nodeModulesDir": "manual"
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "skipLibCheck": true
+  }
 }

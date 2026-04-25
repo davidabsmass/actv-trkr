@@ -577,7 +577,7 @@ Deno.serve(async (req) => {
           subscriber_id: subscriberId,
           subscriber_email: subscriberEmail,
           author_id: caller.id,
-          author_email: caller.email,
+          author_email: null,
           category,
           // Keep `body` only if encryption is unavailable; otherwise store empty
           // string so plaintext is not duplicated alongside the ciphertext.
@@ -680,7 +680,7 @@ Deno.serve(async (req) => {
       const { error: rpcErr } = await adminClient.rpc("set_org_lifecycle_status", {
         p_org_id: orgId,
         p_status: status,
-        p_reason: `admin_manual_override:${user.email}`,
+        p_reason: `admin_manual_override:${caller.id}`,
       });
       if (rpcErr) {
         return new Response(JSON.stringify({ error: rpcErr.message }), {

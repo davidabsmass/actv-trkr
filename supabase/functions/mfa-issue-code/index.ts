@@ -48,7 +48,8 @@ function generateUnsubscribeToken(): string {
 }
 
 async function getOrCreateUnsubscribeToken(
-  admin: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  admin: any,
   email: string,
 ): Promise<string> {
   const normalizedEmail = email.trim().toLowerCase()
@@ -60,7 +61,7 @@ async function getOrCreateUnsubscribeToken(
     .maybeSingle()
 
   if (lookupError) throw lookupError
-  if (existingToken && !existingToken.used_at) return existingToken.token
+  if (existingToken && !existingToken.used_at) return String(existingToken.token)
 
   const unsubscribeToken = generateUnsubscribeToken()
   const { error: upsertError } = await admin
@@ -78,7 +79,7 @@ async function getOrCreateUnsubscribeToken(
     throw storedTokenError ?? new Error('Failed to confirm unsubscribe token')
   }
 
-  return storedToken.token
+  return String(storedToken.token)
 }
 
 Deno.serve(async (req) => {

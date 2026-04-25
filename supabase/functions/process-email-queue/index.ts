@@ -77,7 +77,8 @@ function htmlToText(html?: string): string | undefined {
 
 // Move a message to the dead letter queue and log the reason.
 async function moveToDlq(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
   queue: string,
   msg: { msg_id: number; message: Record<string, unknown> },
   reason: string
@@ -178,10 +179,10 @@ Deno.serve(async (req) => {
     // messages not attempted when a 429 stops processing early.
     const messageIds = Array.from(
       new Set(
-        messages
+        (messages as Array<{ message?: { message_id?: unknown } }>)
           .map((msg) =>
             msg?.message?.message_id && typeof msg.message.message_id === 'string'
-              ? msg.message.message_id
+              ? (msg.message.message_id as string)
               : null
           )
           .filter((id): id is string => Boolean(id))

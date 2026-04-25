@@ -465,7 +465,7 @@ const Auth = () => {
             <div className="w-full flex-shrink-0">
               <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
                 <div className="flex items-center gap-2 mb-1">
-                  <ShieldCheck className="h-5 w-5 text-primary-foreground" />
+                  <ShieldCheck className="h-5 w-5 text-white" />
                   <h2 className="text-lg font-semibold text-white">Two-factor verification</h2>
                 </div>
                 <p className="text-sm mb-5 text-primary-foreground">

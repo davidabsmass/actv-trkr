@@ -2,6 +2,9 @@
   "nodeModulesDir": "auto",
   "compilerOptions": {
     "noImplicitAny": false,
-    "strict": false
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "skipLibCheck": true
   }
 }

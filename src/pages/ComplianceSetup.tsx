@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, ShieldCheck, ShieldAlert, ShieldOff,
   CheckCircle2, XCircle, Info,
   Copy, Check, Code, ChevronDown, BookOpen,
-  Globe, Lock, Unlock, Eye, Link2,
+  Globe, Lock, Unlock, Eye, Link2, MessageSquareText, ExternalLink,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useComplianceStatus } from "@/hooks/use-compliance-status";
+import { useOrg } from "@/hooks/use-org";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 /* ══════════════════════════════════════════════════

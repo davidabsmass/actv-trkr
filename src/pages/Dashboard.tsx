@@ -583,7 +583,7 @@ const Dashboard = () => {
     }
     // Unhealthy forms
     if (unhealthyForms && unhealthyForms.length > 0) {
-      items.push({ severity: "warning", label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }), detail: t("dashboard.formsBrokenMissing"), link: "/settings?tab=forms", linkLabel: t("dashboard.check") });
+      items.push({ severity: "warning", label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }), detail: t("dashboard.formsBrokenMissing"), link: "/forms", linkLabel: t("dashboard.check") });
     }
     // SEO score issues (only if SEO is visible)
     if (seoVisible && lowSeoScore) {

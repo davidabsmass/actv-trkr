@@ -1,0 +1,13 @@
+{
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any", "no-unused-vars"]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "nodeModulesDir": "manual",
+  "imports": {
+    "npm:@supabase/supabase-js@2.39.7": "npm:@supabase/supabase-js@2.74.0",
+    "npm:@supabase/supabase-js@2.45.0": "npm:@supabase/supabase-js@2.74.0",
+    "npm:@supabase/supabase-js@2.49.1": "npm:@supabase/supabase-js@2.74.0",
+    "npm:@supabase/supabase-js@2.57.2": "npm:@supabase/supabase-js@2.74.0",
+    "npm:@supabase/supabase-js@2.57.4": "npm:@supabase/supabase-js@2.74.0"
+  }
+}

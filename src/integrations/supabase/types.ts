@@ -7819,6 +7819,13 @@ export type Database = {
         Returns: number
       }
       expire_old_support_grants: { Args: never; Returns: number }
+      get_lead_counts_by_form: {
+        Args: { p_org_id: string }
+        Returns: {
+          form_id: string
+          lead_count: number
+        }[]
+      }
       get_retention_cohorts: {
         Args: { p_weeks?: number }
         Returns: {

@@ -60,7 +60,7 @@ export function LeadActivityTimeline({ sessionId, orgId }: { sessionId: string |
           .eq("org_id", orgId).eq("session_id", sessionId)
           .order("occurred_at", { ascending: true }),
         supabase.from("events")
-          .select("occurred_at, event_type, target_text, page_path")
+          .select("occurred_at, event_type, target_text, page_path, page_url, meta")
           .eq("org_id", orgId).eq("session_id", sessionId)
           // Hide internal diagnostic events from the visible timeline
           .not("event_type", "in", "(session_gap_detected,session_resume,session_heartbeat,tracker_error,tracker_init)")

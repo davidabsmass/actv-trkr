@@ -619,31 +619,89 @@ export default function Forms() {
   const archivedForms = forms?.filter((f) => f.archived) || [];
   const displayedForms = listTab === "active" ? activeForms : listTab === "disabled" ? inactiveForms : archivedForms;
 
-  const { data: leadCounts } = useQuery({
+  // Single-call grouped count via RPC. Replaces the previous per-form
+  // exact-COUNT loop, which was the main source of slow Forms page loads on
+  // accounts with many forms.
+  const { data: leadCounts, isLoading: leadCountsLoading } = useQuery({
     queryKey: ["lead_counts_by_form_entries", orgId],
     queryFn: async () => {
-      if (!orgId || !forms) return {};
+      if (!orgId) return {};
+      const { data, error } = await (supabase as any).rpc("get_lead_counts_by_form", {
+        p_org_id: orgId,
+      });
+      if (error) throw error;
       const counts: Record<string, number> = {};
-
-      // Use exact COUNT per form — matches the parity check in sync-entries
-      await Promise.all(
-        forms.map(async (form) => {
-          const { count, error } = await supabase
-            .from("leads")
-            .select("id", { count: "exact", head: true })
-            .eq("org_id", orgId)
-            .eq("form_id", form.id)
-            .neq("status", "trashed");
-          if (!error) {
-            counts[form.id] = count || 0;
-          }
-        })
-      );
-
+      (data || []).forEach((row: { form_id: string; lead_count: number }) => {
+        counts[row.form_id] = Number(row.lead_count) || 0;
+      });
       return counts;
     },
-    enabled: !!orgId && !!forms && forms.length > 0,
+    enabled: !!orgId,
+    staleTime: 30_000,
   });
+
+  // Active import jobs — used to surface per-form progress and the global
+  // "backfill running" banner so users know historical sync is still working
+  // and didn't silently fail.
+  const { data: activeJobs } = useQuery({
+    queryKey: ["active_form_import_jobs", orgId],
+    queryFn: async () => {
+      if (!orgId) return [] as any[];
+      const { data, error } = await (supabase as any)
+        .from("form_import_jobs")
+        .select("form_integration_id, status, total_processed, total_expected, last_batch_at, site_id")
+        .eq("org_id", orgId)
+        .in("status", ["pending", "running", "importing"]);
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!orgId,
+    refetchInterval: 5000, // poll while jobs are visible
+  });
+
+  // Map form_integration_id -> form.id via provider/external_form_id/site_id
+  // so we can show progress badges next to each form row.
+  const { data: integrationsForJobs } = useQuery({
+    queryKey: ["form_integrations_for_jobs", orgId],
+    queryFn: async () => {
+      if (!orgId) return [] as any[];
+      const { data, error } = await (supabase as any)
+        .from("form_integrations")
+        .select("id, site_id, builder_type, external_form_id");
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!orgId && (activeJobs?.length || 0) > 0,
+    staleTime: 60_000,
+  });
+
+  // Build a lookup: form.id -> active job progress (if any)
+  const jobProgressByFormId = useMemo(() => {
+    const out: Record<string, { processed: number; expected: number; status: string }> = {};
+    if (!activeJobs?.length || !forms?.length) return out;
+    const integrationLookup = new Map<string, any>();
+    (integrationsForJobs || []).forEach((i: any) => integrationLookup.set(i.id, i));
+    activeJobs.forEach((job: any) => {
+      const integ = integrationLookup.get(job.form_integration_id);
+      if (!integ) return;
+      const matchingForm = forms.find(
+        (f: any) =>
+          f.site_id === integ.site_id &&
+          f.provider === integ.builder_type &&
+          String(f.external_form_id) === String(integ.external_form_id),
+      );
+      if (matchingForm) {
+        out[matchingForm.id] = {
+          processed: Number(job.total_processed) || 0,
+          expected: Number(job.total_expected) || 0,
+          status: job.status,
+        };
+      }
+    });
+    return out;
+  }, [activeJobs, integrationsForJobs, forms]);
+
+  const backfillInProgress = (activeJobs?.length || 0) > 0;
 
   if (selectedForm) {
     return (

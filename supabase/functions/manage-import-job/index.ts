@@ -14,7 +14,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MAX_RETRIES = 10;
+const MAX_RETRIES = Number.POSITIVE_INFINITY; // never give up — watchdog handles unrecoverable cases
+const MAX_BACKOFF_MS = 10 * 60 * 1000;
 const MIN_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 250;
 const DEFAULT_BATCH_SIZE = 100;

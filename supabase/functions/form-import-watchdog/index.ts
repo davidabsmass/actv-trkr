@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
     drift_detected: 0,
     jobs_created: 0,
     stuck_jobs_released: 0,
+    failed_jobs_recovered: 0,
     needs_review_healed: 0,
     rediscovers_run: 0,
     forms_marked_inactive: 0,
@@ -58,6 +59,35 @@ Deno.serve(async (req) => {
   };
 
   try {
+    // ── Phase 0: Resurrect previously-failed jobs whose forms still exist ──
+    // No import should ever stay terminally "failed" while the source form
+    // is still present in WordPress and has missing entries. We reset such
+    // jobs back to pending, preserving cursor + total_processed when safe so
+    // we don't redo work the user already paid CPU time for.
+    const { data: failedJobs } = await supabase
+      .from("form_import_jobs")
+      .select("id, form_integration_id, total_processed, retry_count, status")
+      .in("status", ["failed", "cancelled"])
+      .limit(50);
+
+    for (const job of failedJobs || []) {
+      await supabase.from("form_import_jobs").update({
+        status: "pending",
+        lock_token: null,
+        locked_at: null,
+        retry_count: 0,
+        auto_resume_enabled: true,
+        last_error: "Recovered by watchdog — automatic retry.",
+        next_run_at: new Date().toISOString(),
+      }).eq("id", job.id);
+
+      await supabase.from("form_integrations")
+        .update({ status: "importing", last_error: null })
+        .eq("id", job.form_integration_id);
+
+      summary.failed_jobs_recovered++;
+    }
+
     // ── Phase 1: Stuck-job detection ──
     const stuckCutoff = new Date(Date.now() - STUCK_THRESHOLD_MS).toISOString();
     const { data: stuckJobs } = await supabase

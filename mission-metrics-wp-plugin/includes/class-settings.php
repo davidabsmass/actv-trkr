@@ -365,8 +365,11 @@ class MM_Settings {
 			<h2>Verify Connection</h2>
 			<p class="mm-card-desc">After saving above, click below to confirm this site can reach ACTV TRKR.</p>
 			<p>
-				<button type="button" id="mm-test-btn" class="button button-secondary">Test Connection</button>
+				<button type="button" id="mm-test-btn" class="button button-secondary">Confirm Connection</button>
 				<span id="mm-test-result" class="mm-tool-result" style="margin-left:10px"></span>
+			</p>
+			<p class="mm-card-desc" style="margin-top:12px">
+				Once you see <strong>✅ Connected</strong>, head back to your <a href="https://actvtrkr.com/dashboard" target="_blank" rel="noopener noreferrer">ACTV TRKR dashboard</a> to finish setup.
 			</p>
 		</div>
 		<?php

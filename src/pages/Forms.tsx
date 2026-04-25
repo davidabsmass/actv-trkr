@@ -651,7 +651,10 @@ export default function Forms() {
         .from("form_import_jobs")
         .select("form_integration_id, status, total_processed, total_expected, last_batch_at, site_id")
         .eq("org_id", orgId)
-        .in("status", ["pending", "running", "importing"]);
+        // Include `stalled` and `failed` because the backend watchdog
+        // automatically resurrects them — there is no terminal "stuck" state
+        // for normal historical imports anymore.
+        .in("status", ["pending", "running", "importing", "stalled", "failed"]);
       if (error) return [];
       return data || [];
     },

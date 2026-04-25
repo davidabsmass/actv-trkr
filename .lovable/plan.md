@@ -1,50 +1,62 @@
-## Goal
+I agree: the large forms are still processing, not stuck. The current live state shows two active `livesinthebalance.org` jobs still advancing, with host rate-limit backoffs. The real problem is that the system can leave older jobs in a terminal `failed`/`error` state after repeated transient failures or plugin-route issues. That is what must be eliminated.
 
-Set honest expectations about how long large form backfills take. Today the copy says "several minutes for large forms" — that misleads anyone with 4,000+ entries (which can legitimately take an hour or more).
+Plan to fix this:
 
-## What changes
+1. Treat imports as recoverable until the source form is actually unavailable
+   - Stop leaving a normal historical import permanently “stuck” or “failed” after transient problems.
+   - Convert repeated timeout/rate-limit/partial-batch failures into scheduled retries with longer backoff, not terminal failure.
+   - Only mark an import as blocked when the WordPress plugin route/form is genuinely unavailable after a fresh discover/count check.
 
-### 1. Persistent banner on Forms page (`src/pages/Forms.tsx` ~line 749-760)
+2. Add a self-healing retry path for old failed jobs
+   - Update the watchdog so it also reviews failed/error import jobs.
+   - If the form still exists and has missing entries, automatically create/resume a pending import job.
+   - Preserve the cursor/progress where safe; reset the cursor only when the previous cursor is stale or the plugin says pagination ended too early.
 
-Update the "Importing historical entries — N forms still syncing" banner so the second line gives a realistic range based on size:
+3. Fix progress accounting for imports that are clearly moving
+   - The Forms page already reads job progress (`total_processed / total_expected`), which is why the large forms show movement.
+   - Update backend integration totals more frequently during active jobs so admin/settings health views don’t show misleading `0 imported` while the job is actually at `865 / 4,994` or `1,126 / 1,313`.
 
-> *Smaller forms (under ~500 entries) usually finish within a few minutes. Larger forms can take **30 minutes to several hours** — we throttle the import so it doesn't overload your WordPress site. Counts below update automatically as entries arrive; you can safely leave this page and come back.*
+4. Replace “stalled” user-facing language with “waiting / retrying / still importing”
+   - In normal UI, show:
+     - “Importing” when batches are running.
+     - “Waiting, retrying automatically” when rate-limited or backed off.
+     - “Needs attention” only when the source plugin/form is truly unavailable.
+   - Remove alarming “stalled” labels from customer-facing areas unless it is an admin/debug-only health state.
 
-### 2. Toast shown right after clicking "Sync Entries" (`src/pages/Forms.tsx` line 587)
+5. Improve queue fairness without interrupting active imports
+   - Make the queue pick smaller pending jobs first when multiple jobs are ready.
+   - Keep active large jobs resumable and chunked; clicking Sync Entries again should not restart them.
 
-Replace:
-> "Importing historical entries in the background — this may take a few minutes for large forms..."
+6. Add a manual safety action for administrators
+   - Add/adjust an admin repair action to trigger the watchdog/queue and clear recoverable failed jobs.
+   - This gives us a controlled “repair imports now” path without asking customers to restart from scratch.
 
-With:
-> *"Import started in the background. Small forms finish in minutes; forms with thousands of entries can take an hour or more. You can leave this page — counts will update automatically."*
+Technical details:
 
-### 3. Per-form "IMPORTING X / Y" pill — add tooltip
+```text
+Current issue
+- Large active jobs: pending/running with recent heartbeat and increasing total_processed.
+- Older jobs: failed after max retries, even when the correct behavior should be auto-retry or re-discover.
 
-The pill in the screenshot (`IMPORTING 673 / 4,994`) has no explanation. Add a `title` tooltip on hover:
+Target behavior
+- transient error -> pending retry with backoff
+- repeated transient error -> longer backoff, still auto-resume
+- plugin route/form unavailable -> blocked/needs attention with clear explanation
+- missing entries + no active job -> watchdog creates/resumes a job
+- progress checkpoint -> job totals and integration totals stay aligned
+```
 
-> *"Importing historical entries from WordPress. Large forms (1,000+ entries) can take 30 minutes to several hours. Progress updates automatically."*
+Files/functions to update after approval:
+- `supabase/functions/process-import-queue/index.ts`
+- `supabase/functions/form-import-watchdog/index.ts`
+- `supabase/functions/manage-import-job/index.ts`
+- `src/pages/Forms.tsx`
+- `src/components/settings/FormImportPanel.tsx`
+- `src/components/admin/ImportHealthPanel.tsx`
+- a database migration if a new non-terminal status such as `blocked` or repair metadata is needed
 
-Locate the pill component (likely in `src/pages/Forms.tsx` form list rendering near the activeJobsByForm map ~line 680-702) and wrap with a tooltip.
-
-### 4. Help content (`src/components/support/helpContent.ts`)
-
-Add a short FAQ entry under the Forms section:
-
-> **Why is my form import taking so long?**
-> We pull entries from WordPress in small, throttled batches to avoid overloading your site. A form with a few hundred entries usually finishes in 2–5 minutes. A form with several thousand entries can take 30 minutes to several hours. The import resumes automatically and is safe to leave running — you don't need to keep the page open.
-
-## Why these numbers
-
-The current importer (per recent fix) uses `MAX_BATCH_SIZE=100` with adaptive shrinking on errors, polled by the queue processor. At ~100 entries per batch and conservative pacing between batches to be polite to the WP site, **~4,994 entries genuinely takes 1–3 hours** depending on WP response times. So "30 minutes to several hours" is accurate, not a hedge.
-
-## Out of scope (not changing)
-
-- Importer throughput itself — that's a separate perf project; the current pacing is intentional to protect customer WordPress sites
-- The "Sync Entries" button behavior — already correct (won't restart in-progress jobs, as confirmed last turn)
-
-## Files touched
-
-- `src/pages/Forms.tsx` — banner copy, toast copy, tooltip on importing pill
-- `src/components/support/helpContent.ts` — new FAQ entry
-
-No backend or schema changes. Pure copy + one tooltip wrapper.
+Validation after implementation:
+- Confirm current large jobs still show as active and do not restart.
+- Confirm failed recoverable jobs are picked back up by the watchdog or converted to clear “needs attention” only if the plugin/form is unavailable.
+- Confirm customer UI no longer says “stuck” for jobs that are retrying/backing off.
+- Confirm Sync Entries remains idempotent: it should not restart an already-running import.

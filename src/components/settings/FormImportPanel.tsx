@@ -105,13 +105,17 @@ const STATUS_CONFIG: Record<string, { color: string; icon: any; label: string }>
 
 function getJobHealth(job: ImportJob): { label: string; color: string; icon: any } {
   if (job.status === "completed") return { label: "Completed", color: "text-green-600", icon: CheckCircle2 };
-  if (job.status === "failed" || job.status === "cancelled") return { label: "Failed", color: "text-destructive", icon: XCircle };
-  if (job.status === "stalled") return { label: "Stalled", color: "text-orange-500", icon: AlertTriangle };
+  // Cancelled is the only true terminal state shown to users.
+  if (job.status === "cancelled") return { label: "Cancelled", color: "text-muted-foreground", icon: XCircle };
   if (job.status === "paused") return { label: "Paused", color: "text-muted-foreground", icon: Pause };
   if (job.status === "cancel_requested") return { label: "Cancelling", color: "text-orange-500", icon: XCircle };
-  if ((job.retry_count || 0) > 0) return { label: "Retrying", color: "text-amber-500", icon: RefreshCw };
-  if (job.status === "running" || job.status === "pending") return { label: "Healthy", color: "text-green-600", icon: Activity };
-  return { label: "Unknown", color: "text-muted-foreground", icon: FileText };
+  // Anything else (pending, running, stalled, failed-but-auto-recovered)
+  // is presented as actively progressing — the backend will not let it die.
+  if (job.status === "stalled" || job.status === "failed" || (job.retry_count || 0) > 0) {
+    return { label: "Waiting — retrying automatically", color: "text-amber-500", icon: RefreshCw };
+  }
+  if (job.status === "running" || job.status === "pending") return { label: "Importing", color: "text-green-600", icon: Activity };
+  return { label: "Importing", color: "text-green-600", icon: Activity };
 }
 
 export default function FormImportPanel() {
@@ -315,7 +319,7 @@ export default function FormImportPanel() {
         </div>
         <div className="flex gap-2 text-xs flex-wrap">
           {summary.active > 0 && <Badge variant="secondary" className="bg-primary/10 text-primary">{summary.active} active</Badge>}
-          {summary.stalled > 0 && <Badge variant="secondary" className="bg-orange-500/10 text-orange-600">{summary.stalled} stalled</Badge>}
+          {summary.stalled > 0 && <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">{summary.stalled} retrying</Badge>}
           {summary.synced > 0 && <Badge variant="secondary" className="bg-green-500/10 text-green-600">{summary.synced} synced</Badge>}
           {summary.error > 0 && <Badge variant="destructive">{summary.error} errors</Badge>}
           {summary.detected > 0 && <Badge variant="outline">{summary.detected} detected</Badge>}

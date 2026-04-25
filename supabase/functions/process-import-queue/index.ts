@@ -23,7 +23,14 @@ const MIN_BATCH_SIZE = 10;
 // Keep importer batches conservative so one oversized/partial response cannot
 // advance the cursor and silently skip entries.
 const MAX_BATCH_SIZE = 100;
-const MAX_RETRIES = 10;
+// We never let the queue itself mark a job permanently `failed`. Transient
+// errors always reschedule with backoff so the import keeps trying. The
+// watchdog is the only place that can decide a job is truly unrecoverable
+// (form gone from WP, plugin removed, etc.). This is what guarantees there
+// is no "it's stuck" state for normal historical imports.
+const MAX_RETRIES = Number.POSITIVE_INFINITY;
+// Cap exponential backoff so we always retry at least every 10 minutes.
+const MAX_BACKOFF_MS = 10 * 60 * 1000;
 
 // Oversized-form safety: forms above JUNK_THRESHOLD are imported newest-first
 // and capped at IMPORT_CAP entries to keep the dataset useful and the
@@ -90,48 +97,42 @@ async function detectStalledJobs(supabase: any) {
 
   for (const job of stalledJobs) {
     const newRetry = (job.retry_count || 0) + 1;
+    // Always auto-resume — no terminal failure path here. Use a backoff
+    // that grows but never exceeds MAX_BACKOFF_MS so the job keeps trying.
+    const backoffMs = Math.min(MAX_BACKOFF_MS, 30_000 * Math.pow(2, Math.min(newRetry, 8)));
+    await supabase.from("form_import_jobs").update({
+      status: "pending",
+      lock_token: null,
+      locked_at: null,
+      last_error: "Import paused after a missed signal — automatically retrying.",
+      retry_count: newRetry,
+      next_run_at: new Date(Date.now() + backoffMs).toISOString(),
+      auto_resume_enabled: true,
+    }).eq("id", job.id);
 
-    if (job.auto_resume_enabled && newRetry < MAX_RETRIES) {
-      // Mark stalled but auto-resumable
-      await supabase.from("form_import_jobs").update({
-        status: "stalled",
-        lock_token: null,
-        locked_at: null,
-        last_error: "Job stalled — no signal detected. Auto-resuming.",
-        retry_count: newRetry,
-        next_run_at: new Date(Date.now() + 30_000).toISOString(), // retry in 30s
-      }).eq("id", job.id);
+    // Keep the integration in `importing` so the UI doesn't flip to error.
+    await supabase.from("form_integrations")
+      .update({ status: "importing" })
+      .eq("id", job.form_integration_id);
 
-      console.log(`Job ${job.id} stalled, will auto-resume (retry ${newRetry})`);
-    } else {
-      // Mark failed
-      await supabase.from("form_import_jobs").update({
-        status: "failed",
-        lock_token: null,
-        locked_at: null,
-        last_error: `Job stalled repeatedly (${newRetry} retries). Marked failed.`,
-        retry_count: newRetry,
-      }).eq("id", job.id);
-
-      await supabase.from("form_integrations")
-        .update({ status: "error", last_error: "Import job failed after repeated stalls" })
-        .eq("id", job.form_integration_id);
-
-      console.log(`Job ${job.id} permanently failed after ${newRetry} stalls`);
-    }
+    console.log(`Job ${job.id} missed heartbeat, auto-retry in ${Math.round(backoffMs / 1000)}s (retry ${newRetry})`);
   }
 }
 
 async function pickEligibleJobs(supabase: any): Promise<any[]> {
   const now = new Date().toISOString();
 
-  // Pick jobs that are pending, stalled (auto-resume), or running with stale lock
+  // Pick jobs that are pending, stalled (auto-resume), or running with stale lock.
+  // Order: smallest expected total first so quick wins finish before huge
+  // backfills hog the next-run slots. Within the same size bucket, fall back
+  // to scheduled order.
   const { data: jobs } = await supabase
     .from("form_import_jobs")
-    .select("id, status, lock_token, locked_at, next_run_at, adaptive_batch_size, retry_count, cursor, form_integration_id, site_id, org_id")
+    .select("id, status, lock_token, locked_at, next_run_at, adaptive_batch_size, retry_count, cursor, form_integration_id, site_id, org_id, total_expected")
     .in("status", ["pending", "stalled"])
     .lte("next_run_at", now)
     .is("lock_token", null)
+    .order("total_expected", { ascending: true, nullsFirst: true })
     .order("next_run_at", { ascending: true })
     .limit(MAX_JOBS_PER_RUN);
 
@@ -260,29 +261,24 @@ async function processJob(supabase: any, job: any) {
           return { job_id: job.id, error: "rate_limited", batches: batchesProcessed };
         }
 
-        // Adaptive: reduce batch size on non-429 failure
+        // Adaptive: reduce batch size on non-429 failure. Always reschedule —
+        // we never let a transient WP error mark the job permanently failed.
         const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.floor(currentBatchSize * 0.5));
         const newRetry = (job.retry_count || 0) + 1;
+        const backoffMs = Math.min(MAX_BACKOFF_MS, 2000 * Math.pow(2, Math.min(newRetry, 10)));
 
-        if (newRetry >= MAX_RETRIES) {
-          await releaseLock(supabase, job.id, lockToken, "failed", lastError, {
-            adaptive_batch_size: newBatchSize,
-            retry_count: newRetry,
-          });
-          await supabase.from("form_integrations")
-            .update({ status: "error", last_error: lastError })
-            .eq("id", job.form_integration_id);
-          return { job_id: job.id, error: lastError, batches: batchesProcessed };
-        }
-
-        // Schedule retry with smaller batch
         await releaseLock(supabase, job.id, lockToken, "pending", lastError, {
           adaptive_batch_size: newBatchSize,
           retry_count: newRetry,
-          next_run_at: new Date(Date.now() + Math.min(2000 * Math.pow(2, newRetry), 300_000)).toISOString(),
+          next_run_at: new Date(Date.now() + backoffMs).toISOString(),
         });
 
-        console.log(`Job ${job.id} batch failed, reducing batch ${currentBatchSize} → ${newBatchSize}, retry ${newRetry}`);
+        // Keep integration in importing — recovery is automatic.
+        await supabase.from("form_integrations")
+          .update({ status: "importing" })
+          .eq("id", job.form_integration_id);
+
+        console.log(`Job ${job.id} batch failed, reducing batch ${currentBatchSize} → ${newBatchSize}, retry ${newRetry} in ${Math.round(backoffMs / 1000)}s`);
         return { job_id: job.id, error: lastError, batches: batchesProcessed, newBatchSize };
       }
 
@@ -295,18 +291,17 @@ async function processJob(supabase: any, job: any) {
         lastError = `Import batch only stored ${processed}/${batchCount || requestBatchSize} entries${errorCount ? ` (${errorCount} errors)` : ""}; retrying same cursor with smaller batches`;
         const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.min(MAX_BATCH_SIZE, Math.floor(currentBatchSize * 0.5)));
         const newRetry = (job.retry_count || 0) + 1;
+        const backoffMs = Math.min(MAX_BACKOFF_MS, 2000 * Math.pow(2, Math.min(newRetry, 10)));
 
-        await releaseLock(supabase, job.id, lockToken, newRetry >= MAX_RETRIES ? "failed" : "pending", lastError, {
+        await releaseLock(supabase, job.id, lockToken, "pending", lastError, {
           adaptive_batch_size: newBatchSize,
           retry_count: newRetry,
-          next_run_at: newRetry >= MAX_RETRIES ? null : new Date(Date.now() + Math.min(2000 * Math.pow(2, newRetry), 300_000)).toISOString(),
+          next_run_at: new Date(Date.now() + backoffMs).toISOString(),
         });
 
-        if (newRetry >= MAX_RETRIES) {
-          await supabase.from("form_integrations")
-            .update({ status: "error", last_error: lastError })
-            .eq("id", job.form_integration_id);
-        }
+        await supabase.from("form_integrations")
+          .update({ status: "importing" })
+          .eq("id", job.form_integration_id);
 
         return { job_id: job.id, error: lastError, batches: batchesProcessed, newBatchSize };
       }
@@ -331,6 +326,14 @@ async function processJob(supabase: any, job: any) {
         last_error: null,
         adaptive_batch_size: currentBatchSize,
       }).eq("id", job.id).eq("lock_token", lockToken);
+
+      // Mirror progress onto the integration so admin/settings views see live
+      // counts instead of 0 imported while the job is mid-run.
+      await supabase.from("form_integrations").update({
+        total_entries_imported: totalProcessed,
+        status: "importing",
+        last_error: null,
+      }).eq("id", job.form_integration_id);
 
       // Stop if we've hit the cap
       if (isCapped && totalProcessed >= effectiveCap) {

@@ -584,7 +584,7 @@ export default function Forms() {
       }
 
       if (anyBackfillInProgress) {
-        toast.info("Importing historical entries in the background — this may take a few minutes for large forms. Refresh the page shortly to see new entries.");
+        toast.info("Import started in the background. Small forms finish in minutes; forms with thousands of entries can take an hour or more. You can leave this page — counts will update automatically.");
       }
 
       if (warnings.length > 0 && worstStatus !== "blocked") {

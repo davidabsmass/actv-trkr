@@ -15,7 +15,8 @@ function generateToken(): string {
   return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function getOrCreateUnsubscribeToken(supabase: ReturnType<typeof createClient>, email: string): Promise<string> {
+// deno-lint-ignore no-explicit-any
+async function getOrCreateUnsubscribeToken(supabase: any, email: string): Promise<string> {
   const normalizedEmail = email.toLowerCase().trim();
 
   const { data: existing } = await supabase

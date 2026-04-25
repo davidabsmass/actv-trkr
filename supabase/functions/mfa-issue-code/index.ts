@@ -48,7 +48,8 @@ function generateUnsubscribeToken(): string {
 }
 
 async function getOrCreateUnsubscribeToken(
-  admin: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  admin: any,
   email: string,
 ): Promise<string> {
   const normalizedEmail = email.trim().toLowerCase()

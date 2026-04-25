@@ -19,7 +19,10 @@ const STALL_THRESHOLD_MS = 10 * 60 * 1000; // 10 min no signal
 const MAX_BATCHES_PER_RUN = 5; // limit per function invocation
 const MAX_JOBS_PER_RUN = 3;
 const MIN_BATCH_SIZE = 10;
-const MAX_BATCH_SIZE = 250;
+// ingest-form-batch is payload-capped, and WP hosts can be memory constrained.
+// Keep importer batches conservative so one oversized/partial response cannot
+// advance the cursor and silently skip entries.
+const MAX_BATCH_SIZE = 100;
 const MAX_RETRIES = 10;
 
 // Oversized-form safety: forms above JUNK_THRESHOLD are imported newest-first
@@ -167,7 +170,7 @@ async function processJob(supabase: any, job: any) {
   let totalNewProcessed = 0;
   let lastError: string | null = null;
   let hasMore = true;
-  let currentBatchSize = job.adaptive_batch_size || 100;
+  let currentBatchSize = Math.min(job.adaptive_batch_size || 100, MAX_BATCH_SIZE);
 
   // Get site info for WP plugin calls
   const { data: site } = await supabase
@@ -284,7 +287,30 @@ async function processJob(supabase: any, job: any) {
       }
 
       // Success
-      const processed = wpResult.processed || 0;
+      const processed = Number(wpResult.processed || 0);
+      const batchCount = Number(wpResult.batch_count || processed || 0);
+      const errorCount = Number(wpResult.errors || 0);
+
+      if (errorCount > 0 || (batchCount > 0 && processed < batchCount)) {
+        lastError = `Import batch only stored ${processed}/${batchCount || requestBatchSize} entries${errorCount ? ` (${errorCount} errors)` : ""}; retrying same cursor with smaller batches`;
+        const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.min(MAX_BATCH_SIZE, Math.floor(currentBatchSize * 0.5)));
+        const newRetry = (job.retry_count || 0) + 1;
+
+        await releaseLock(supabase, job.id, lockToken, newRetry >= MAX_RETRIES ? "failed" : "pending", lastError, {
+          adaptive_batch_size: newBatchSize,
+          retry_count: newRetry,
+          next_run_at: newRetry >= MAX_RETRIES ? null : new Date(Date.now() + Math.min(2000 * Math.pow(2, newRetry), 300_000)).toISOString(),
+        });
+
+        if (newRetry >= MAX_RETRIES) {
+          await supabase.from("form_integrations")
+            .update({ status: "error", last_error: lastError })
+            .eq("id", job.form_integration_id);
+        }
+
+        return { job_id: job.id, error: lastError, batches: batchesProcessed, newBatchSize };
+      }
+
       totalProcessed += processed;
       hasMore = wpResult.has_more === true;
       cursor = wpResult.next_cursor || null;

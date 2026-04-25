@@ -139,7 +139,8 @@ function extractRawEventUrlCandidates(row: Pick<AvadaRawEventRow, "payload" | "c
 }
 
 async function buildKnownAvadaFormMappings(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
   orgId: string,
   siteId: string,
   avadaForms: Array<Pick<FormRow, "id" | "name" | "external_form_id" | "page_url">>,
@@ -208,7 +209,8 @@ async function buildKnownAvadaFormMappings(
 }
 
 async function hydrateMissingPageUrls(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
   orgId: string,
   siteId: string,
   forms: FormRow[],
@@ -251,7 +253,8 @@ async function hydrateMissingPageUrls(
 }
 
 async function runDirectFormChecks(
-  supabase: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
   orgId: string,
   siteId: string,
 ) {

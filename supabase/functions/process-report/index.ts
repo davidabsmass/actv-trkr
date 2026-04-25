@@ -98,7 +98,8 @@ Deno.serve(async (req) => {
       };
 
       // ── Parallel data fetches ──
-      const fetchPromises: Promise<any>[] = [
+      // deno-lint-ignore no-explicit-any
+      const fetchPromises: any[] = [
         applyFilters(supabase.from("leads").select("*").eq("org_id", orgId).gte("submitted_at", periodStart).lte("submitted_at", periodEnd), "utm_source", "utm_campaign"),
         prevStart ? applyFilters(supabase.from("leads").select("*").eq("org_id", orgId).gte("submitted_at", prevStart).lte("submitted_at", prevEnd!), "utm_source", "utm_campaign") : Promise.resolve({ data: [] }),
         applyFilters(supabase.from("sessions").select("*").eq("org_id", orgId).gte("started_at", periodStart).lte("started_at", periodEnd).limit(5000), "utm_source", "utm_campaign"),

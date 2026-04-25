@@ -23,7 +23,14 @@ const MIN_BATCH_SIZE = 10;
 // Keep importer batches conservative so one oversized/partial response cannot
 // advance the cursor and silently skip entries.
 const MAX_BATCH_SIZE = 100;
-const MAX_RETRIES = 10;
+// We never let the queue itself mark a job permanently `failed`. Transient
+// errors always reschedule with backoff so the import keeps trying. The
+// watchdog is the only place that can decide a job is truly unrecoverable
+// (form gone from WP, plugin removed, etc.). This is what guarantees there
+// is no "it's stuck" state for normal historical imports.
+const MAX_RETRIES = Number.POSITIVE_INFINITY;
+// Cap exponential backoff so we always retry at least every 10 minutes.
+const MAX_BACKOFF_MS = 10 * 60 * 1000;
 
 // Oversized-form safety: forms above JUNK_THRESHOLD are imported newest-first
 // and capped at IMPORT_CAP entries to keep the dataset useful and the

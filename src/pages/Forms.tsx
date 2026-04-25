@@ -754,7 +754,7 @@ export default function Forms() {
               Importing historical entries — {activeJobs?.length} form{(activeJobs?.length || 0) === 1 ? "" : "s"} still syncing
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              This can take several minutes for large forms. Counts below will update automatically as entries arrive — you can leave this page and come back. Smaller forms will appear first.
+              Smaller forms (under ~500 entries) usually finish within a few minutes. Larger forms can take <strong>30 minutes to several hours</strong> — we throttle the import so it doesn't overload your WordPress site. Counts below update automatically as entries arrive; you can safely leave this page and come back. Smaller forms appear first.
             </p>
           </div>
         </div>

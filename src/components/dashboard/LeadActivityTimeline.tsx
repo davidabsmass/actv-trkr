@@ -12,7 +12,6 @@ interface TimelineItem {
   type: string;
   label: string;
   detail?: string;
-  context?: string;
   href?: string;
   icon: React.ReactNode;
 }

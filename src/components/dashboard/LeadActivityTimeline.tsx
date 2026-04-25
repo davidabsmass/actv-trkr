@@ -12,7 +12,28 @@ interface TimelineItem {
   type: string;
   label: string;
   detail?: string;
+  context?: string;
+  href?: string;
   icon: React.ReactNode;
+}
+
+function isMeaningfulHref(href: string | null | undefined): href is string {
+  if (!href) return false;
+  const trimmed = href.trim();
+  if (!trimmed) return false;
+  if (trimmed === "#" || trimmed.endsWith("/#")) return false;
+  if (trimmed.startsWith("javascript:")) return false;
+  return true;
+}
+
+function shortHref(href: string): string {
+  try {
+    const u = new URL(href);
+    const path = u.pathname === "/" ? "" : u.pathname;
+    return `${u.hostname}${path}${u.search}`;
+  } catch {
+    return href;
+  }
 }
 
 const eventIcons: Record<string, React.ReactNode> = {

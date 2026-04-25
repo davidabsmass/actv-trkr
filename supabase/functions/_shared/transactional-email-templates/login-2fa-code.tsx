@@ -26,7 +26,7 @@ interface Login2faCodeProps {
 const Login2faCodeEmail = ({ code, expiresInMinutes = 10, ipHint, userAgentHint }: Login2faCodeProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your {SITE_NAME} sign-in code: {code}</Preview>
+    <Preview>{`Your ${SITE_NAME} sign-in code: ${code ?? ''}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={headerSection}>

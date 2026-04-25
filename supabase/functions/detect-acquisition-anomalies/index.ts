@@ -46,7 +46,8 @@ function compare(value: number, threshold: number, op: string): boolean {
   }
 }
 
-async function evaluateRule(supabase: ReturnType<typeof createClient>, rule: Rule): Promise<AnomalyDraft[]> {
+// deno-lint-ignore no-explicit-any
+async function evaluateRule(supabase: any, rule: Rule): Promise<AnomalyDraft[]> {
   const drafts: AnomalyDraft[] = [];
   const threshold = Number(rule.threshold_value ?? 0);
 

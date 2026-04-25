@@ -22,7 +22,7 @@ const AdminUserExportEmail = ({
 }: AdminUserExportProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{SITE_NAME} daily user export — {userCount} users</Preview>
+    <Preview>{`${SITE_NAME} daily user export — ${userCount} users`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>{SITE_NAME} — Daily User Export</Heading>

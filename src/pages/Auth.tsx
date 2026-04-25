@@ -396,7 +396,7 @@ const Auth = () => {
             <div className="w-full flex-shrink-0">
               <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
                 <div className="flex items-center gap-2 mb-1">
-                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <ShieldCheck className="h-5 w-5 text-primary-foreground" />
                   <h2 className="text-lg font-semibold text-white">Verify your email</h2>
                 </div>
                 <p className="text-sm mb-5 text-primary-foreground">
@@ -404,91 +404,19 @@ const Auth = () => {
                 </p>
 
                 <form onSubmit={handleVerifyOtp} className="space-y-3">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="Enter 6-digit code"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    required
-                    maxLength={6}
-                    className="w-full text-center text-2xl tracking-[0.5em] font-mono py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/40 placeholder:text-sm placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-
-                  {error && activePanel === "otp" && (
-                    <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
-                  )}
-                  {message && activePanel === "otp" && (
-                    <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
-                  )}
-
-                  <button type="submit" disabled={loading || otpCode.length < 6} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50">
-                    {loading ? "Verifying..." : "Verify & Continue"}
+...
+                  <button
+                    type="submit"
+                    disabled={verifying || otpValue.length !== 6}
+                    className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                  >
+                    {verifying ? (
+                      <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    ) : (
+                      "Confirm Code"
+                    )}
                   </button>
                 </form>
-
-                <div className="flex items-center justify-between mt-4">
-                  <button
-                    onClick={handleResendCode}
-                    disabled={loading || resendCooldown > 0}
-                    className="text-xs text-white hover:underline font-medium disabled:cursor-not-allowed disabled:no-underline"
-                  >
-                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      sessionStorage.removeItem(PENDING_OTP_KEY);
-                      setOtpCode("");
-                      setPendingEmail("");
-                      setPendingPassword("");
-                      goToPanel("main");
-                    }}
-                    className="text-xs text-white/50 hover:underline"
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Spacer */}
-            <div className="w-6 flex-shrink-0" />
-
-            {/* Panel 3: Forgot Password */}
-            <div className="w-full flex-shrink-0">
-              <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
-                <div className="flex items-center gap-2 mb-1">
-                  <KeyRound className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-white">Reset password</h2>
-                </div>
-                <p className="text-sm mb-5 text-primary-foreground">
-                  Enter your email and we'll send a reset link
-                </p>
-
-                <form onSubmit={handleForgotSubmit} className="space-y-3">
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                    <input type="email" placeholder="Email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required className={inputClass} />
-                  </div>
-
-                  {error && activePanel === "forgot" && (
-                    <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
-                  )}
-                  {message && activePanel === "forgot" && (
-                    <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
-                  )}
-
-                  <button type="submit" disabled={loading} className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50">
-                    {loading ? "Sending..." : "Send reset link"}
-                  </button>
-                </form>
-
-                <div className="flex items-center justify-end mt-4">
-                  <button onClick={() => goToPanel("main")} className="text-xs text-white/50 hover:underline">
-                    Back to sign in
-                  </button>
-                </div>
               </div>
             </div>
 
@@ -499,7 +427,7 @@ const Auth = () => {
             <div className="w-full flex-shrink-0">
               <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
                 <div className="flex items-center gap-2 mb-1">
-                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <ShieldCheck className="h-5 w-5 text-primary-foreground" />
                   <h2 className="text-lg font-semibold text-white">Two-factor verification</h2>
                 </div>
                 <p className="text-sm mb-5 text-primary-foreground">

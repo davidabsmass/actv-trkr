@@ -12,6 +12,7 @@ import { appCorsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { issueStepUpToken } from "../_shared/step-up.ts";
 import { logSecurityEvent, hashIp, extractClientIp, newRequestId } from "../_shared/security-audit.ts";
+import { notifyAuthEvent } from "../_shared/notify-auth-event.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: appCorsHeaders(req) });

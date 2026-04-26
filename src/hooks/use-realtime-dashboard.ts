@@ -232,8 +232,8 @@ export function useRealtimeDashboard(
                   ? Promise.resolve({ count: 0 } as any)
                   : supabase.from("leads").select("*", { count: "exact", head: true })
                       .eq("org_id", orgId).neq("status", "trashed")
-                      .gte("created_at", ds < leadsLowerBound ? leadsLowerBound : ds)
-                      .lte("created_at", de),
+                      .gte("submitted_at", ds < leadsLowerBound ? leadsLowerBound : ds)
+                      .lte("submitted_at", de),
                 supabase.from("pageviews").select("*", { count: "exact", head: true })
                   .eq("org_id", orgId).gte("occurred_at", ds).lte("occurred_at", de),
               ];

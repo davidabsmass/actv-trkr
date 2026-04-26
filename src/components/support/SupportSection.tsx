@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrg } from "@/hooks/use-org";
 import { supabase } from "@/integrations/supabase/client";
@@ -466,8 +466,11 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const latestAdminReplyRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledRef = useRef(false);
 
   // Mark this ticket's admin replies as read for the current user as soon as
   // it opens — clears the dashboard "Support replied" banner and bell dot.
@@ -502,6 +505,32 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
       return data;
     },
   });
+
+  // ID of the most recent admin reply — used to scroll/highlight when the
+  // user arrives from the dashboard "Support replied" banner (focus=reply).
+  const latestAdminMessageId = useMemo(() => {
+    if (!messages || messages.length === 0) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].author_type === "admin") return messages[i].id as string;
+    }
+    return null;
+  }, [messages]);
+
+  const focusReply = searchParams.get("focus") === "reply";
+
+  useEffect(() => {
+    if (!focusReply || hasScrolledRef.current) return;
+    if (!latestAdminReplyRef.current) return;
+    hasScrolledRef.current = true;
+    // Defer to next frame so layout has settled.
+    requestAnimationFrame(() => {
+      latestAdminReplyRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    // Clean the URL flag so a refresh doesn't keep re-scrolling.
+    const next = new URLSearchParams(searchParams);
+    next.delete("focus");
+    setSearchParams(next, { replace: true });
+  }, [focusReply, latestAdminMessageId, searchParams, setSearchParams]);
 
   const { data: attachments } = useQuery({
     queryKey: ["support_ticket_attachments", ticketId],
@@ -639,17 +668,24 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
         {/* Thread (non-internal only thanks to RLS) */}
         {messages && messages.length > 0 && (
           <div className="space-y-3">
-            {messages.map((m) => (
-              <div key={m.id} className={`rounded-lg p-3 ${m.author_type === "admin" ? "bg-primary/5 border border-primary/20" : "bg-muted/30 border border-border"}`}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs font-medium text-foreground">
-                    {m.author_type === "admin" ? "Support team" : (m.author_name || "You")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{format(new Date(m.created_at), "MMM d, h:mm a")}</p>
+            {messages.map((m) => {
+              const isLatestAdmin = m.id === latestAdminMessageId;
+              return (
+                <div
+                  key={m.id}
+                  ref={isLatestAdmin ? latestAdminReplyRef : undefined}
+                  className={`rounded-lg p-3 transition-shadow ${m.author_type === "admin" ? "bg-primary/5 border border-primary/20" : "bg-muted/30 border border-border"} ${isLatestAdmin && focusReply ? "ring-2 ring-primary/40 shadow-md scroll-mt-24" : "scroll-mt-24"}`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-medium text-foreground">
+                      {m.author_type === "admin" ? "Support team" : (m.author_name || "You")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(m.created_at), "MMM d, h:mm a")}</p>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap text-foreground">{m.message}</p>
                 </div>
-                <p className="text-sm whitespace-pre-wrap text-foreground">{m.message}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

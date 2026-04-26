@@ -18,7 +18,9 @@ export function SupportReplyBanner() {
 
   const handleClick = () => {
     if (single) {
-      navigate(`/account?tab=support&ticket=${single.ticket_id}`);
+      // `focus=reply` tells SupportSection to scroll the latest support reply
+      // into view once the ticket detail mounts.
+      navigate(`/account?tab=support&ticket=${single.ticket_id}&focus=reply`);
     } else {
       navigate("/account?tab=support");
     }

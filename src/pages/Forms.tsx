@@ -109,8 +109,11 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
     <div className="grid grid-cols-2 gap-3 mb-4">
       <div className="glass-card p-4">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">{t("forms.totalSubmissions")}</p>
-        <p className="text-2xl font-bold font-mono-data text-foreground">{totalSubmissions ?? "—"}</p>
-        <p className="text-xs text-muted-foreground">{t("forms.lastDays", { days })}</p>
+        <p className="text-2xl font-bold font-mono-data text-foreground">{submissionCounts?.allTime ?? "—"}</p>
+        <p className="text-xs text-muted-foreground">
+          {submissionCounts ? `${submissionCounts.recent.toLocaleString()} ` : "— "}
+          {t("forms.lastDays", { days })}
+        </p>
       </div>
       <div className="glass-card p-4">
         <div className="flex items-center gap-1.5 mb-1">

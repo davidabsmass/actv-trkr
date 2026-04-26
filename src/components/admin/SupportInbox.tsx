@@ -291,6 +291,11 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
       if (error) throw error;
 
       if (!internal) {
+        logAccessAction("ticket_replied", {
+          resourceType: "support_ticket",
+          resourceId: ticketId,
+          metadata: { preview: reply.trim().slice(0, 200) },
+        });
         supabase.functions.invoke("notify-support-event", {
           body: { ticket_id: ticketId, event_kind: "admin_replied", message_preview: reply.trim().slice(0, 200) },
         }).catch(() => {});

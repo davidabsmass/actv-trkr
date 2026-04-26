@@ -9,7 +9,7 @@
 //     actions become available.
 
 import { appCorsHeaders } from "../_shared/cors.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { issueStepUpToken } from "../_shared/step-up.ts";
 import { logSecurityEvent, hashIp, extractClientIp, newRequestId } from "../_shared/security-audit.ts";
 import { notifyAuthEvent } from "../_shared/notify-auth-event.ts";

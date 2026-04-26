@@ -243,43 +243,9 @@ export function SupportAccessCard() {
           </div>
         )}
 
-        <div className="pt-2 border-t border-border">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={() => setShowAudit((v) => !v)}
-          >
-            <History className="h-3.5 w-3.5" />
-            {showAudit ? "Hide" : "View"} access history
-          </Button>
-          {showAudit && (
-            <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border">
-              {!auditEntries || auditEntries.length === 0 ? (
-                <p className="p-3 text-xs text-muted-foreground text-center">
-                  No support access recorded yet.
-                </p>
-              ) : (
-                <ul className="divide-y divide-border text-xs">
-                  {auditEntries.map((e) => (
-                    <li key={e.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                      <span className="text-foreground">
-                        <span className="font-medium">Support</span>{" "}
-                        <span className="text-muted-foreground">
-                          {humanizeAction(e.action)}
-                          {e.resource_type ? ` (${e.resource_type})` : ""}
-                        </span>
-                      </span>
-                      <span className="text-muted-foreground shrink-0">
-                        {format(new Date(e.occurred_at), "MMM d, h:mm a")}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
+        <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+          Every action support takes is recorded below in the activity log.
+        </p>
       </CardContent>
     </Card>
   );

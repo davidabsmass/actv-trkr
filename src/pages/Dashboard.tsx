@@ -176,8 +176,8 @@ const Dashboard = () => {
   const prevEndDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
   const prevStartDate = format(subDays(startOfDay(new Date()), days * 2), "yyyy-MM-dd");
 
-  const { data: realtimeData } = useDashboardOverview(orgId, startDate, endDate);
-  const { data: prevPeriodData } = useDashboardOverview(orgId, prevStartDate, prevEndDate);
+  const { data: realtimeData } = useDashboardOverview(orgId, startDate, endDate, orgCreatedAt);
+  const { data: prevPeriodData } = useDashboardOverview(orgId, prevStartDate, prevEndDate, orgCreatedAt);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 
@@ -349,53 +349,10 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
-  // Overview Form Fills KPI: count only leads captured live since install
-  // (created_at >= org install date), excluding historical backfilled entries.
-  // This keeps the Dashboard's headline number a "fresh start" while other
-  // pages (Performance, Reports) continue to include imported history.
-  const { data: freshLeadsCurrent } = useQuery({
-    queryKey: ["dashboard_fresh_leads", orgId, startDate, endDate, orgCreatedAt],
-    queryFn: async () => {
-      if (!orgId) return 0;
-      const dayStart = `${startDate}T00:00:00Z`;
-      const dayEnd = `${endDate}T23:59:59.999Z`;
-      const installCutoff = orgCreatedAt || dayStart;
-      const cutoff = new Date(installCutoff) > new Date(dayStart) ? installCutoff : dayStart;
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .neq("status", "trashed")
-        .gte("created_at", cutoff)
-        .lte("created_at", dayEnd);
-      return count || 0;
-    },
-    enabled: !!orgId,
-  });
-
-  const { data: freshLeadsPrevious } = useQuery({
-    queryKey: ["dashboard_fresh_leads_prev", orgId, prevStartDate, prevEndDate, orgCreatedAt],
-    queryFn: async () => {
-      if (!orgId) return 0;
-      const dayStart = `${prevStartDate}T00:00:00Z`;
-      const dayEnd = `${prevEndDate}T23:59:59.999Z`;
-      const installCutoff = orgCreatedAt || dayStart;
-      const cutoff = new Date(installCutoff) > new Date(dayStart) ? installCutoff : dayStart;
-      // If the entire previous window is before install, return 0
-      if (new Date(cutoff) > new Date(dayEnd)) return 0;
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .neq("status", "trashed")
-        .gte("created_at", cutoff)
-        .lte("created_at", dayEnd);
-      return count || 0;
-    },
-    enabled: !!orgId,
-  });
-
-  // Goal conversions for funnel widget
+  // Form Fills + CVR are now derived directly from realtimeData / prevPeriodData
+  // because useDashboardOverview already filters leads by install date when an
+  // orgCreatedAt cutoff is supplied. The dedicated freshLeads* queries that
+  // used to live here are no longer needed.
   const { data: goalFunnelData } = useQuery<GoalFunnelEntry[]>({
     queryKey: ["funnel_goal_conversions", orgId, startDate, endDate],
     queryFn: async () => {
@@ -683,9 +640,9 @@ const Dashboard = () => {
             <KPICard
               variant="success"
               label={`${t("dashboard.formFills")} (${days}d)`}
-              value={(freshLeadsCurrent ?? 0).toLocaleString()}
-              valueTitle="Counted from your install date forward — historical imports excluded on the Overview."
-              trend={orgTooNewForComparison ? null : pctChange(freshLeadsCurrent ?? 0, freshLeadsPrevious ?? 0)}
+              value={periodData.leads.current.toLocaleString()}
+              valueTitle="Counted from your install date forward — historical imports excluded so this matches what the plugin actually captured."
+              trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
               series={kpiSeries.leads}
             />

@@ -104,6 +104,7 @@ serve(async (req) => {
       .limit(1);
 
     let metricsContext: string;
+    let orgName = "your organization";
 
     if (cachedCtx && cachedCtx.length > 0 && cachedCtx[0].response_cache) {
       metricsContext = cachedCtx[0].response_cache as string;
@@ -120,7 +121,7 @@ serve(async (req) => {
 
       // Fetch org name
       const { data: orgData } = await adminClient.from("orgs").select("name").eq("id", orgId).single();
-      const orgName = orgData?.name || "Unknown";
+      orgName = orgData?.name || "your organization";
 
       const [
         sessThis, sessPrev, leadsThis, leadsPrev,

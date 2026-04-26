@@ -178,7 +178,7 @@ const text = { fontSize: '15px', color: '#4B5563', lineHeight: '1.7', margin: '0
 const smallText = { fontSize: '12px', color: '#6B7280', lineHeight: '1.6', margin: '8px 0 0', wordBreak: 'break-all' as const }
 const metaWrap = { margin: '20px 0 24px', padding: '14px 16px', backgroundColor: '#F9FAFB', borderRadius: '8px' }
 const metaText = { fontSize: '13px', color: '#374151', margin: '3px 0', lineHeight: '1.5' }
-const ctaWrap = { textAlign: 'center' as const, margin: '24px 0 12px' }
+const ctaWrap = { textAlign: 'left' as const, margin: '24px 0 12px' }
 const ctaButton = {
   backgroundColor: '#DC2626',
   color: '#ffffff',

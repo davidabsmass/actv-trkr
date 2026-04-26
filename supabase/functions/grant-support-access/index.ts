@@ -335,6 +335,62 @@ Deno.serve(async (req) => {
       },
     });
 
+    // 5. Notify org admins by email that support access just started.
+    // Non-blocking: failures here must NOT break the grant flow.
+    try {
+      const { data: orgAdmins } = await admin
+        .from("org_users")
+        .select("user_id")
+        .eq("org_id", site.org_id)
+        .eq("role", "admin");
+
+      const adminUserIds = (orgAdmins ?? []).map((r) => r.user_id);
+      if (adminUserIds.length > 0) {
+        const { data: profiles } = await admin
+          .from("profiles")
+          .select("user_id, email, full_name")
+          .in("user_id", adminUserIds);
+
+        const staffName = (user.user_metadata?.full_name as string | undefined)
+          || (user.email ? user.email.split("@")[0] : null)
+          || "ACTV TRKR Support";
+
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+        for (const p of profiles ?? []) {
+          if (!p.email) continue;
+          const idempotencyKey = `support-access-started-${grant.id}-${p.user_id}`;
+          const { error: sendErr } = await admin.functions.invoke(
+            "send-transactional-email",
+            {
+              body: {
+                templateName: "support-access-started",
+                recipientEmail: p.email,
+                idempotencyKey,
+                templateData: {
+                  recipientName: p.full_name?.split(" ")[0] || undefined,
+                  siteDomain: site.domain,
+                  durationHours,
+                  expiresAt: expiresAt.toISOString(),
+                  reason: reason || undefined,
+                  staffName,
+                },
+              },
+              headers: { Authorization: `Bearer ${serviceRoleKey}`, apikey: anonKey },
+            },
+          );
+          if (sendErr) {
+            log("start_email_send_error", {
+              recipient: p.email,
+              error: String(sendErr),
+            });
+          }
+        }
+      }
+    } catch (notifyErr) {
+      log("start_email_dispatch_failed", { error: String(notifyErr) });
+    }
+
+
     return new Response(
       JSON.stringify({
         grant_id: grant.id,

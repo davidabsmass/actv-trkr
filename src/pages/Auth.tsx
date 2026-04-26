@@ -9,6 +9,27 @@ import spaceBg from "@/assets/space-bgd-new.jpg";
 type ActivePanel = "main" | "otp" | "forgot" | "mfa";
 
 const PENDING_OTP_KEY = "actvtrkr_pending_otp";
+const TRUSTED_DEVICE_KEY = "actvtrkr_trusted_device"; // map<emailLower, deviceTokenHex>
+
+type TrustedDeviceMap = Record<string, string>;
+
+const readTrustedDevice = (email: string): string | null => {
+  try {
+    const raw = localStorage.getItem(TRUSTED_DEVICE_KEY);
+    if (!raw) return null;
+    const map: TrustedDeviceMap = JSON.parse(raw);
+    return map[email.trim().toLowerCase()] ?? null;
+  } catch { return null; }
+};
+
+const writeTrustedDevice = (email: string, token: string) => {
+  try {
+    const raw = localStorage.getItem(TRUSTED_DEVICE_KEY);
+    const map: TrustedDeviceMap = raw ? JSON.parse(raw) : {};
+    map[email.trim().toLowerCase()] = token;
+    localStorage.setItem(TRUSTED_DEVICE_KEY, JSON.stringify(map));
+  } catch { /* ignore */ }
+};
 
 type PendingOtpState = {
   email: string;

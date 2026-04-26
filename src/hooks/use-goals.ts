@@ -156,6 +156,9 @@ export function useConversionMetrics(
 
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
+      // Anchor on submitted_at (real submission time). Backfilled WP leads
+      // share an import-time created_at, so created_at filtering would let
+      // pre-install historical submissions inflate Form Fills + CVR.
       const leadsLowerBound =
         installCutoff && new Date(installCutoff) > new Date(dayStart)
           ? installCutoff

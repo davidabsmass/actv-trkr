@@ -219,7 +219,7 @@ function TrackingRuleFields({
 }
 
 /* ─── Create Goal Dialog ─── */
-export function CreateGoalDialog({ orgId, forms }: { orgId: string; forms: any[] }) {
+export function CreateGoalDialog({ orgId, forms, triggerLabel, triggerVariant, triggerClassName }: { orgId: string; forms: any[]; triggerLabel?: string; triggerVariant?: "default" | "outline" | "ghost" | "secondary"; triggerClassName?: string }) {
   const { t } = useTranslation();
   const createGoal = useCreateGoal(orgId);
   const [open, setOpen] = useState(false);
@@ -257,7 +257,9 @@ export function CreateGoalDialog({ orgId, forms }: { orgId: string; forms: any[]
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1" /> {t("goals.createGoal")}</Button>
+        <Button size="sm" variant={triggerVariant ?? "default"} className={triggerClassName}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> {triggerLabel ?? t("goals.createGoal")}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>

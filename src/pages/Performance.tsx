@@ -24,6 +24,8 @@ import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
+import { CreateGoalDialog } from "@/components/settings/GoalsSection";
+import { useForms } from "@/hooks/use-dashboard-data";
 
 
 const Reports = lazy(() => import("./Reports"));
@@ -41,6 +43,7 @@ const Performance = () => {
   const [days, setDays] = useState<number | null>(30);
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const { orgId, orgName } = useOrg();
+  const { data: forms = [] } = useForms(orgId);
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";
@@ -167,6 +170,15 @@ const Performance = () => {
             customRange={customRange}
             onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
           />
+          {orgId && (
+            <CreateGoalDialog
+              orgId={orgId}
+              forms={forms}
+              triggerLabel="Add Goal"
+              triggerVariant="outline"
+              triggerClassName="h-8 gap-1 text-xs"
+            />
+          )}
           <AddSiteHeaderButton />
         </div>
       </div>

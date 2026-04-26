@@ -257,7 +257,9 @@ export function CreateGoalDialog({ orgId, forms, triggerLabel, triggerVariant, t
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1" /> {t("goals.createGoal")}</Button>
+        <Button size="sm" variant={triggerVariant ?? "default"} className={triggerClassName}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> {triggerLabel ?? t("goals.createGoal")}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>

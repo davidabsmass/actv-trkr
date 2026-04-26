@@ -61,7 +61,11 @@ export function ConversionBreakdown({ orgId, startDate, endDate }: Props) {
         <div className="rounded-lg border border-border p-3">
           <span className="text-xs text-muted-foreground uppercase tracking-wider">{t("goals.formCvrLabel")}</span>
           <p className="text-xl font-bold font-mono-data text-foreground mt-1">{fmtPct(metrics.formCvr)}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{metrics.formConversions} {t("goals.formSubmissions")}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {metrics.totalLeads > metrics.formConversions
+              ? `${metrics.formConversions} of ${metrics.totalLeads} ${t("goals.formSubmissions")}`
+              : `${metrics.formConversions} ${t("goals.formSubmissions")}`}
+          </p>
         </div>
         <div className="rounded-lg border border-border p-3">
           <span className="text-xs text-muted-foreground uppercase tracking-wider">{t("goals.goalCvrLabel")}</span>

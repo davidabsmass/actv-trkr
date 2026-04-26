@@ -1,102 +1,121 @@
-# Anti-Hacker Hardening Plan (Email 2FA Edition)
+# Accessibility Compliance Rollout
 
-Five layers to stop account takeover and data theft. **2FA delivery changed from TOTP/authenticator apps to email codes** per your preference. Everything else unchanged from the prior plan.
-
----
-
-## What's already in place
-
-- Step-up password re-verification (`admin-step-up`) for sensitive admin actions.
-- Support-access grants are HMAC-signed and audited.
-- API keys hashed at rest, one-active-key per org.
-- Ingestion endpoints have JWT/HMAC verification.
-- RLS on across the database.
-- Branded email infrastructure with a queue + retry safety, and a `login-2fa-code` email template **already exists** — we will reuse it.
+Goal: reach **WCAG 2.1 AA conformance**, document the effort, and dramatically reduce ADA / EAA / state-law lawsuit exposure. We'll do this in 4 phases. Phase 1 ships this loop; the rest can ship in follow-up loops once you're ready.
 
 ---
 
-## Layer 1 — Block leaked & weak passwords
+## Phase 1 — Quick-Win Pass (this loop)
 
-Enable **HaveIBeenPwned password check** at the auth layer. Any password that has appeared in a known breach is rejected at signup AND password change. Also raise the **minimum length to 12** characters.
+The single highest-leverage block of work. Knocks out 90% of demand-letter triggers.
 
-## Layer 2 — Mandatory **email 2FA** for admin/owner accounts
+### 1A. Public Accessibility Statement
 
-Replaces the previous TOTP plan. After password is verified, the user is **not signed in yet** — instead:
+- New page at `/accessibility` with sections:
+  - Our commitment
+  - Conformance target (WCAG 2.1 Level AA)
+  - Measures we take (semantic HTML, keyboard nav, contrast, automated + manual testing, third-party libs that are accessible by default)
+  - Known limitations (honest list — chart tooltips, complex data tables, third-party embeds)
+  - Compatibility (browsers + assistive tech we test against)
+  - How to report an issue (email link to support, link to support form)
+  - Last reviewed date
+- Add `/accessibility` link to the marketing footer in `src/pages/Index.tsx` (alongside Privacy / Terms / Contact)
+- Add it to the in-app footer/legal area where Privacy + Terms already live
 
-1. A 6-digit code is generated server-side, hashed, and stored with a 10-minute expiry.
-2. The existing `login-2fa-code` branded email template is sent to the user's verified email.
-3. The user enters the code; on success, the session is finalized.
-4. Wrong code: 3 attempts, then the challenge is invalidated and a new email is required.
-5. **"Trust this device for 30 days"** checkbox issues a long-lived, per-device cookie so you don't get a code on every login from your normal laptop.
-6. Code emails are rate-limited: max 5 per email per hour to prevent inbox flooding.
+### 1B. Audit + automated scan pass
 
-**Why email 2FA is safe enough here:**
-- Your email itself is protected by Google's 2FA (you have it enabled).
-- The code is single-use, time-bound, and hash-stored.
-- The "this wasn't me" alert in Layer 3 fires the moment someone tries.
-- No app to install, no recovery codes to lose.
+Run **axe-core** against the running app (auth, signup, checkout, dashboard core, settings, account, marketing landing) and fix the top findings. Typical wins:
 
-**Scope:** Required for any account with the `admin` role. Regular team members get an opt-in toggle (off by default — they can enable later from `/account`).
+- Missing/incorrect `alt` attributes (decorative images should be `alt=""`)
+- Icon-only buttons missing `aria-label` or visually-hidden text
+- Form fields without associated `<label>` or `aria-label`
+- Color-only state indicators (add icon or text)
+- Insufficient color contrast (verify warning/destructive tokens against the surface tokens)
+- Missing `lang` attribute updates when language switches
+- Skip-to-content link on the app shell + marketing pages
+- Focus-visible styles confirmed on all interactive elements
+- Heading hierarchy regressions (h1 → h2 → h3)
+- `<main>` landmark on each routed page
 
-## Layer 3 — Email alert on every "risky" auth event
+### 1C. Keyboard + screen-reader sanity sweep
 
-A new `notify-auth-event` edge function emails you the moment any of these happen:
+- Tab through Auth → Signup → Checkout → Dashboard → Account
+- Verify every interactive element is reachable, has visible focus, no keyboard traps, ESC closes dialogs
+- Confirm Radix-based components (shadcn/ui Dialog, Sheet, Dropdown, Popover, Select, Tabs) keep their default ARIA wiring intact in our customizations
+- Spot-check with VoiceOver on the public landing + sign-in flow
 
-| Event | Why it matters |
-|---|---|
-| New device / new IP login | First sign of a session hijack |
-| Password changed | First thing an attacker does |
-| Email address changed | Locks you out of recovery |
-| 2FA code requested from a new device | Probe in progress |
-| Password reset requested | Inbox probe |
-| 5 failed login attempts in 10 min | Brute-force in progress |
-| Step-up password verification failed | Someone has your session but not your password |
+### 1D. Marketing copy + meta
 
-Each email includes time, IP (geo-located), browser, and a **one-click "this wasn't me — kill all sessions and lock my account"** link that revokes every refresh token, forces password reset, and emails a recovery code.
-
-## Layer 4 — Session hardening
-
-- **Reduce admin refresh-token lifetime** from 1 week → 24 hours. Stolen tokens expire fast.
-- **Bind sessions to a user-agent fingerprint hash.** If the JWT is replayed from a wildly different browser, force re-auth.
-- New **"Recent sign-ins"** panel on `/account` showing the last 20 sessions (time, IP, device, current/revoked) with **"Revoke this session"** per row plus a **"Sign out everywhere"** button.
-
-## Layer 5 — Password reset & email-change lockdown
-
-1. **Password reset cooldown:** max 3 reset requests per email per hour. Stops attackers from spamming your inbox to bury a real "this wasn't me" warning.
-2. **Email-change confirmation on BOTH addresses:** Supabase only confirms the new address by default. We send a "your email is being changed to X — click here to cancel" notice to the **old** address too, with a 1-hour delay before the change takes effect. Even with your session, an attacker can't silently steal the account.
+- Add `lang` attribute sync to `<html>` when i18n switches language
+- Confirm page titles update per route (helps screen readers announce navigation)
 
 ---
 
-## Bonus
+## Phase 2 — CI Accessibility Gate (next loop)
 
-- **Admin IP allowlist (optional):** Settings → Security toggle to restrict admin login to specific IPs / CIDR ranges. Off by default.
-- **Audit log viewer:** existing `security_audit_log` rows surfaced under `/security`.
+Lock in the gains so we don't regress on every release.
 
----
-
-## What this does NOT change
-
-- Customer (subscriber) WP login flows are untouched.
-- API keys, ingest tokens, Stripe webhook flow, HMAC plugin signing — unchanged.
-- No breaking changes for normal logins beyond the email-code step on new devices.
+- Add `vitest-axe` (component-level) for any new UI primitive added to `src/components/ui`
+- Add `@axe-core/playwright` smoke test that crawls Auth, Dashboard, Performance, Settings, Account, Index and fails the build on new "serious" or "critical" findings
+- Wire into `.github/workflows/ci.yml`
+- Document the a11y baseline — known existing issues recorded as "expected" so the gate only catches new regressions (mirrors how `phpcs-baseline.mjs` works for the WP plugin)
 
 ---
 
-## Technical sketch
+## Phase 3 — Formal Documentation (next loop)
 
-- **Migration:** enable `password_hibp_enabled=true`, raise min length, add tables: `auth_email_2fa_challenges` (id, user_id, code_hash, expires_at, attempts, consumed_at, ip_hash, ua), `trusted_devices` (user_id, device_hash, expires_at), `auth_recent_sessions`, `auth_event_alerts`, `email_change_pending`. Add `revoked_at` to refresh-token tracking.
-- **Edge functions:** `request-login-2fa`, `verify-login-2fa`, `notify-auth-event`, `kill-my-sessions`, `confirm-email-change`, `password-reset-rate-limit` guard. All log to `security_audit_log`.
-- **Email:** reuse existing `login-2fa-code` transactional template. New transactional templates for the 6 alert types in Layer 3 and the dual email-change confirmation. All routed through the existing branded email queue.
-- **Frontend:** post-password 2FA code entry screen at `/auth/verify`, "Trust this device 30 days" checkbox, `/account` "Recent sign-ins" panel, mandatory enrollment redirect for admins (just verifies their email is reachable — no app install), email-change confirmation UX, optional IP allowlist UI.
-- All new tables get RLS.
+Defensible paper trail for enterprise prospects and lawsuit defense.
+
+- **VPAT 2.5 / ACR** in `/docs/accessibility/VPAT.md` covering WCAG 2.1 AA + Section 508 criteria, marked Supports / Partially Supports / Does Not Support / Not Applicable per criterion
+- Link the VPAT from the public `/accessibility` page
+- Internal **a11y runbook** in `/docs/accessibility/runbook.md`:
+  - Per-release manual checklist
+  - Screen-reader test scripts for critical flows
+  - How to add accessible variants of new components
+- Add **App Bible** section so a11y becomes part of the release sign-off process
 
 ---
 
-## Rollout order
+## Phase 4 — Third-Party Audit Prep (when ready)
 
-1. **Day 1, no UX impact:** Layer 1 (HIBP + min length), Layer 3 (alert emails), Layer 5 (rate-limit + dual-confirm email change).
-2. **Day 2, one-time prompt:** Layer 2 (mandatory admin email 2FA + trusted devices). You'll get a code on your next login from a new device — your current browser will be marked trusted on first verification.
-3. **Day 3:** Layer 4 (shorter sessions, fingerprint binding, sessions panel).
-4. **Optional:** IP allowlist toggle.
+Optional but worth the spend before going hard on enterprise/EU sales.
 
-Approve and I'll execute in that order, pausing after Day 1 so you can confirm alert emails are landing before we tighten anything that could lock you out.
+- Pre-audit internal pass against the WCAG 2.1 AA checklist
+- Engage Deque, TPGi, or Level Access for a formal audit + report
+- Track remediation in a public roadmap on the `/accessibility` page
+- Re-audit annually + after any major UI overhaul
+
+---
+
+## What we explicitly will NOT do
+
+- **No accessibility overlay widgets** (AccessiBe, UserWay, EqualWeb). They've been named in more lawsuits than they've defended against and the disability community widely opposes them. Real fixes only.
+- **No claims of conformance we haven't verified.** The statement will say "we target WCAG 2.1 AA" and list known gaps honestly.
+
+---
+
+## Technical Details
+
+**New files**
+- `src/pages/Accessibility.tsx` — public statement, styled to match Privacy/Terms
+- Route added in `src/App.tsx`
+- (Phase 3) `docs/accessibility/VPAT.md`, `docs/accessibility/runbook.md`
+
+**Edited files (Phase 1)**
+- `src/pages/Index.tsx` — add `/accessibility` link to marketing footer
+- `src/components/AppLayout.tsx` (or wherever the in-app footer/legal links live) — same link
+- `src/components/i18n/AutoTranslateDom.tsx` (or `src/i18n.ts`) — sync `<html lang>` on language change
+- Component-level fixes flagged by the axe scan — likely small touches across `src/components/AppSidebar.tsx`, header/nav, KPI cards, dialogs, icon buttons in Dashboard / Account / Settings
+- `src/locales/en/common.json` + other locales — copy for the statement page
+- Add `index.html` skip-link target if missing
+
+**Phase 2 deps to add later**
+- `vitest-axe`, `@axe-core/playwright`, `playwright`
+
+**Phase 1 acceptance criteria**
+- `/accessibility` renders in light + dark mode, linked from public footer + in-app legal area
+- axe-core run against the 7 main flows shows zero "critical" and zero "serious" findings (or remaining ones documented in the statement under "Known Limitations")
+- Tab-traversal of Auth + Checkout + Dashboard works end-to-end with visible focus rings
+- `<html lang>` updates when language is switched
+- Skip-to-content link present on app shell + marketing pages
+
+Approve this and I'll switch to build mode and ship Phase 1. Phases 2–4 each get their own loop when you're ready.

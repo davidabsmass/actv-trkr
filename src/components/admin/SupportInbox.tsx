@@ -256,9 +256,21 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
     queryClient.invalidateQueries({ queryKey: ["admin_support_tickets"] });
     queryClient.invalidateQueries({ queryKey: ["admin_support_ticket_events", ticketId] });
     if (patch.status) {
+      logAccessAction("ticket_status_changed", {
+        resourceType: "support_ticket",
+        resourceId: ticketId,
+        metadata: { new_status: patch.status },
+      });
       supabase.functions.invoke("notify-support-event", {
         body: { ticket_id: ticketId, event_kind: "status_changed" },
       }).catch(() => {});
+    }
+    if (patch.priority) {
+      logAccessAction("ticket_priority_changed", {
+        resourceType: "support_ticket",
+        resourceId: ticketId,
+        metadata: { new_priority: patch.priority },
+      });
     }
   };
 

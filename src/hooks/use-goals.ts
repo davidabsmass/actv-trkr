@@ -146,15 +146,20 @@ function defaultMetrics(): ConversionMetrics {
 export function useConversionMetrics(
   orgId: string | null,
   startDate: string,
-  endDate: string
+  endDate: string,
+  installCutoff?: string | null
 ) {
   return useQuery({
-    queryKey: ["conversion_metrics", orgId, startDate, endDate],
+    queryKey: ["conversion_metrics", orgId, startDate, endDate, installCutoff || null],
     queryFn: async (): Promise<ConversionMetrics> => {
       if (!orgId) return defaultMetrics();
 
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
+      const leadsLowerBound =
+        installCutoff && new Date(installCutoff) > new Date(dayStart)
+          ? installCutoff
+          : dayStart;
 
       // Parallel base queries.
       // CVR ONLY counts leads attached to a tracked session (session_id IS NOT NULL).

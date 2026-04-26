@@ -280,8 +280,10 @@ const Dashboard = () => {
     queryFn: async () => {
       if (!orgId) return [];
       const { data } = await supabase
-        .from("form_health_checks").select("form_id, is_rendered, last_checked_at, page_url")
-        .eq("org_id", orgId).eq("is_rendered", false);
+        .from("form_health_checks")
+        .select("form_id, is_rendered, last_checked_at, page_url, last_http_status, last_failure_reason, forms(name)")
+        .eq("org_id", orgId)
+        .eq("is_rendered", false);
       return data || [];
     },
     enabled: !!orgId,

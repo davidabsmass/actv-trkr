@@ -53,6 +53,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'auth-security-alert': authSecurityAlert,
   'email-change-cancel': emailChangeCancel,
   'support-access-summary': supportAccessSummary,
+  'support-access-started': supportAccessStarted,
   // Retention
   'retention-welcome': retentionWelcome,
   'retention-connection-success': retentionConnectionSuccess,

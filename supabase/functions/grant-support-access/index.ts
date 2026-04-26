@@ -253,11 +253,12 @@ Deno.serve(async (req) => {
         .eq("id", grant.id);
       return new Response(
         JSON.stringify({
-          error: "Could not reach the WordPress site",
+          error: `Could not reach ${site.domain}. Check that the site is online.`,
+          code: "wp_unreachable",
           details: String(e).slice(0, 200),
         }),
         {
-          status: 502,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );

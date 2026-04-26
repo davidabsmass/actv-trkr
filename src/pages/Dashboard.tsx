@@ -640,9 +640,9 @@ const Dashboard = () => {
             <KPICard
               variant="success"
               label={`${t("dashboard.formFills")} (${days}d)`}
-              value={(freshLeadsCurrent ?? 0).toLocaleString()}
-              valueTitle="Counted from your install date forward — historical imports excluded on the Overview."
-              trend={orgTooNewForComparison ? null : pctChange(freshLeadsCurrent ?? 0, freshLeadsPrevious ?? 0)}
+              value={periodData.leads.current.toLocaleString()}
+              valueTitle="Counted from your install date forward — historical imports excluded so this matches what the plugin actually captured."
+              trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
               series={kpiSeries.leads}
             />

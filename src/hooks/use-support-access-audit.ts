@@ -69,7 +69,7 @@ export function useSupportAccessAudit(orgId: string | null | undefined) {
           action,
           resource_type: opts?.resourceType ?? null,
           resource_id: opts?.resourceId ?? null,
-          metadata: opts?.metadata ?? {},
+          metadata: (opts?.metadata ?? {}) as never,
         });
       } catch {
         // Audit logging is best-effort — never block the admin's action.

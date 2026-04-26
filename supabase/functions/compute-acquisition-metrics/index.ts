@@ -3,7 +3,7 @@
 // - Auto-upserts risk flags when thresholds breach (auto_generated = true)
 // - Updates reconciliation_status rows for ARR/MRR with computed values
 
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -4,7 +4,7 @@
 // session, and returns the access/refresh token pair to the client which calls
 // supabase.auth.setSession() with them.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

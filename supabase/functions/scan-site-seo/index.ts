@@ -1,7 +1,7 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
 import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.74.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 // CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 

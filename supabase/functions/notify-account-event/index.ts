@@ -7,7 +7,7 @@
 // Allowed event types are restricted to those a logged-in user can
 // legitimately trigger from the browser (e.g. confirming a password change).
 
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { notifyAuthEvent, type AuthAlertEventType } from "../_shared/notify-auth-event.ts";
 
 const corsHeaders = {

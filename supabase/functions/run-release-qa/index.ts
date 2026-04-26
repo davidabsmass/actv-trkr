@@ -5,7 +5,7 @@
 // Body:
 //   { app_version: string, scope?: "full" | "category:<key>" | "check:<key>" }
 
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

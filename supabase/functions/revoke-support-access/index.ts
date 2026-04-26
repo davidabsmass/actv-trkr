@@ -1,7 +1,7 @@
 // Revoke Support Access — calls the plugin to delete the temp WP admin
 // user and marks the grant row as revoked. Safe to call multiple times.
 
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildSignedHeaders } from "../_shared/hmac-sign.ts";
 
 const corsHeaders = {

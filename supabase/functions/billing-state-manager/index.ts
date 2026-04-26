@@ -12,7 +12,7 @@
 // billing_exempt orgs are skipped entirely — they should never be in
 // grace_period or archived in production, but we double-guard here.
 
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 function logStep(step: string, details?: any) {
   console.log(`[BILLING-STATE-MANAGER] ${step}${details ? ` ${JSON.stringify(details)}` : ""}`);

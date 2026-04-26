@@ -51,11 +51,15 @@ Deno.serve(async (req) => {
     const customerTicketUrl = `${APP_URL}/account?tab=support&ticket=${ticket.id}`;
     const adminTicketUrl = `${APP_URL}/owner-admin?tab=support&ticket=${ticket.id}`;
 
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const sendOne = async (to: string, templateName: string, templateData: Record<string, any>, idemSuffix: string) => {
       const idempotencyKey = `support-${ticket.id}-${body.event_kind}-${idemSuffix}-${Date.now()}`;
+      // Forward the caller's JWT so send-transactional-email accepts the request.
+      // Falls back to anon key for service-role/internal invocations.
+      const forwardAuth = authHeader || `Bearer ${anonKey}`;
       const { error } = await supabase.functions.invoke("send-transactional-email", {
         body: { templateName, recipientEmail: to, idempotencyKey, templateData },
-        headers: { Authorization: `Bearer ${serviceKey}` },
+        headers: { Authorization: forwardAuth, apikey: anonKey },
       });
       if (error) console.error(`notify-support-event send error to ${to}:`, error);
     };

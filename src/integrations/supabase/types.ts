@@ -2233,6 +2233,13 @@ export type Database = {
             referencedRelation: "support_tickets"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "feature_requests_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "v_my_unread_support_replies"
+            referencedColumns: ["ticket_id"]
+          },
         ]
       }
       feedback: {
@@ -6932,6 +6939,13 @@ export type Database = {
             referencedRelation: "support_tickets"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "support_ticket_attachments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_unread_support_replies"
+            referencedColumns: ["ticket_id"]
+          },
         ]
       }
       support_ticket_events: {
@@ -6969,6 +6983,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "support_tickets"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_unread_support_replies"
+            referencedColumns: ["ticket_id"]
           },
         ]
       }
@@ -7014,6 +7035,46 @@ export type Database = {
             referencedRelation: "support_tickets"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "support_ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_unread_support_replies"
+            referencedColumns: ["ticket_id"]
+          },
+        ]
+      }
+      support_ticket_reads: {
+        Row: {
+          last_read_at: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          last_read_at?: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          last_read_at?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_reads_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_reads_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_unread_support_replies"
+            referencedColumns: ["ticket_id"]
+          },
         ]
       }
       support_ticket_satisfaction: {
@@ -7045,6 +7106,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "support_tickets"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_satisfaction_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "v_my_unread_support_replies"
+            referencedColumns: ["ticket_id"]
           },
         ]
       }
@@ -7949,6 +8017,25 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_my_unread_support_replies: {
+        Row: {
+          latest_admin_reply_at: string | null
+          org_id: string | null
+          subject: string | null
+          ticket_id: string | null
+          ticket_number: number | null
+          unread_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]

@@ -33,11 +33,11 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
       // Get form health checks (liveness probes)
       const { data: healthChecks } = await supabase
         .from("form_health_checks")
-        .select("form_id, is_rendered, last_checked_at, page_url")
+        .select("form_id, is_rendered, last_checked_at, page_url, last_http_status, last_failure_reason")
         .eq("org_id", orgId);
 
-      const healthCheckMap: Record<string, { is_rendered: boolean; last_checked_at: string; page_url: string | null }> = {};
-      (healthChecks || []).forEach(h => {
+      const healthCheckMap: Record<string, { is_rendered: boolean; last_checked_at: string; page_url: string | null; last_http_status: number | null; last_failure_reason: string | null }> = {};
+      (healthChecks || []).forEach((h: any) => {
         healthCheckMap[h.form_id] = h;
       });
 

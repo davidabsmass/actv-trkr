@@ -286,27 +286,37 @@ async function runDirectFormChecks(
 
   let checked = 0;
   let alertsCreated = 0;
+  let relearnedPageUrls = 0;
 
   for (const form of hydratedForms) {
     if (!form.page_url) continue;
 
     const now = new Date().toISOString();
-    let rendered = false;
 
-    try {
-      const response = await fetchWithTimeout(form.page_url, {
-        method: "GET",
-        headers: {
-          "User-Agent": "ACTV-TRKR-FormCheck/1.3.2",
-        },
-      }, 6000);
+    // Probe the recorded URL first; if it 404s or 410s, try alternate URLs
+    // sourced from recent leads / raw events for this form before declaring it dead.
+    const probeResult = await probeFormPage(form.page_url, form.provider, form.external_form_id);
+    let { status, rendered, error } = probeResult;
+    let effectiveUrl = form.page_url;
+    let failureReason: string | null = computeFailureReason(status, rendered, error);
 
-      if (response.ok) {
-        const html = await response.text();
-        rendered = detectFormInHtml(html, form.provider, form.external_form_id);
+    if (!rendered && (status === 404 || status === 410)) {
+      const alternates = await collectAlternateFormUrls(supabase, orgId, siteId, form);
+      for (const candidate of alternates) {
+        if (candidate === form.page_url) continue;
+        const altProbe = await probeFormPage(candidate, form.provider, form.external_form_id);
+        if (altProbe.rendered) {
+          // Found the form at a different URL — relearn it.
+          await supabase.from("forms").update({ page_url: candidate }).eq("id", form.id);
+          status = altProbe.status;
+          rendered = true;
+          error = null;
+          effectiveUrl = candidate;
+          failureReason = null;
+          relearnedPageUrls += 1;
+          break;
+        }
       }
-    } catch {
-      rendered = false;
     }
 
     const { data: existing } = await supabase
@@ -322,8 +332,10 @@ async function runDirectFormChecks(
       site_id: siteId,
       form_id: form.id,
       is_rendered: rendered,
-      page_url: form.page_url,
+      page_url: effectiveUrl,
       last_checked_at: now,
+      last_http_status: status,
+      last_failure_reason: rendered ? null : failureReason,
     };
 
     if (rendered) {
@@ -341,7 +353,7 @@ async function runDirectFormChecks(
         alert_type: "FORM_NOT_RENDERED",
         severity: "critical",
         subject: "Form not found on page",
-        message: `The form (${form.name}) was not detected on ${form.page_url}.`,
+        message: `${form.name}: ${failureReason || "form markup not detected"} at ${effectiveUrl}.`,
         status: "queued",
       });
       alertsCreated += 1;
@@ -350,7 +362,89 @@ async function runDirectFormChecks(
     checked += 1;
   }
 
-  return { checked, updatedPageUrls, alertsCreated };
+  return { checked, updatedPageUrls: updatedPageUrls + relearnedPageUrls, alertsCreated };
+}
+
+function computeFailureReason(status: number | null, rendered: boolean, error: string | null): string | null {
+  if (rendered) return null;
+  if (error) return `Could not reach page (${error})`;
+  if (status === null) return "Could not reach page";
+  if (status === 404 || status === 410) return `Page not found (HTTP ${status})`;
+  if (status >= 500) return `Server error (HTTP ${status})`;
+  if (status >= 400) return `Page blocked or unavailable (HTTP ${status})`;
+  if (status >= 300) return `Page redirected (HTTP ${status})`;
+  return `Page returned ${status} but form markup not detected`;
+}
+
+async function probeFormPage(
+  pageUrl: string,
+  provider: string,
+  externalFormId: string,
+): Promise<{ status: number | null; rendered: boolean; error: string | null }> {
+  try {
+    const response = await fetchWithTimeout(pageUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "ACTV-TRKR-FormCheck/1.4.0",
+      },
+    }, 6000);
+
+    if (!response.ok) {
+      return { status: response.status, rendered: false, error: null };
+    }
+    const html = await response.text();
+    const rendered = detectFormInHtml(html, provider, externalFormId);
+    return { status: response.status, rendered, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "fetch failed";
+    return { status: null, rendered: false, error: message.slice(0, 80) };
+  }
+}
+
+async function collectAlternateFormUrls(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  orgId: string,
+  siteId: string,
+  form: FormRow,
+): Promise<string[]> {
+  const candidates = new Map<string, number>();
+
+  const [leadsResult, rawEventsResult] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("page_url, submitted_at")
+      .eq("org_id", orgId)
+      .eq("site_id", siteId)
+      .eq("form_id", form.id)
+      .not("page_url", "is", null)
+      .order("submitted_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("lead_events_raw")
+      .select("payload, context, received_at")
+      .eq("org_id", orgId)
+      .eq("site_id", siteId)
+      .eq("form_id", form.id)
+      .order("received_at", { ascending: false })
+      .limit(25),
+  ]);
+
+  for (const row of (leadsResult.data || []) as Array<{ page_url: string | null }>) {
+    const norm = normalizePageUrl(row.page_url);
+    if (norm) candidates.set(norm, (candidates.get(norm) || 0) + 5);
+  }
+
+  for (const row of (rawEventsResult.data || []) as Array<{ payload: unknown; context: unknown }>) {
+    for (const url of extractRawEventUrlCandidates(row as AvadaRawEventRow)) {
+      candidates.set(url, (candidates.get(url) || 0) + 3);
+    }
+  }
+
+  return [...candidates.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([url]) => url)
+    .slice(0, 5);
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 8000): Promise<Response> {

@@ -159,12 +159,15 @@ const Performance = () => {
           </div>
           <p className="text-sm text-muted-foreground">{orgName} · {t("performance.subtitle")}</p>
         </div>
-        <DateRangeSelector
-          selectedDays={days}
-          onDaysChange={(d) => { setDays(d); setCustomRange(null); }}
-          customRange={customRange}
-          onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
-        />
+        <div className="flex items-center gap-2">
+          <DateRangeSelector
+            selectedDays={days}
+            onDaysChange={(d) => { setDays(d); setCustomRange(null); }}
+            customRange={customRange}
+            onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
+          />
+          <AddSiteHeaderButton />
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="space-y-4">

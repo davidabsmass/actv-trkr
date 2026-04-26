@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,13 +25,27 @@ const tone = (s: string) =>
   : "default";
 
 export default function SupportInbox() {
-  const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTicketId, setActiveTicketId] = useState<string | null>(searchParams.get("ticket"));
   const [filterStatus, setFilterStatus] = useState<string>("open");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  if (activeTicketId) return <AdminTicketDetail ticketId={activeTicketId} onBack={() => setActiveTicketId(null)} />;
+  // Sync URL → state when navigating via emailed deep links
+  useEffect(() => {
+    const t = searchParams.get("ticket");
+    if (t && t !== activeTicketId) setActiveTicketId(t);
+  }, [searchParams]);
+
+  const openTicket = (id: string | null) => {
+    setActiveTicketId(id);
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("ticket", id); else next.delete("ticket");
+    setSearchParams(next, { replace: true });
+  };
+
+  if (activeTicketId) return <AdminTicketDetail ticketId={activeTicketId} onBack={() => openTicket(null)} />;
 
   return (
     <div className="space-y-4">
@@ -68,7 +83,7 @@ export default function SupportInbox() {
           </div>
           <AdminTicketTable
             filterStatus={filterStatus} filterType={filterType} filterPriority={filterPriority} search={search}
-            onOpen={setActiveTicketId}
+            onOpen={openTicket}
           />
         </CardContent>
       </Card>

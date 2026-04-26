@@ -1,5 +1,5 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
-import * as React from 'npm:react@18.3.1'
+import * as React from 'npm:react@^18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'

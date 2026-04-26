@@ -8,7 +8,7 @@
 // OR a matching INTERNAL_NOTIFY_SECRET. Never call this directly from the
 // browser — always invoke from another edge function.
 
-import * as React from 'npm:react@18.3.1'
+import * as React from 'npm:react@^18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { template as authSecurityAlertTemplate } from '../_shared/transactional-email-templates/auth-security-alert.tsx'

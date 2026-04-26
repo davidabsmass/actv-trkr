@@ -2287,6 +2287,8 @@ export type Database = {
           id: string
           is_rendered: boolean
           last_checked_at: string
+          last_failure_reason: string | null
+          last_http_status: number | null
           last_rendered_at: string | null
           org_id: string
           page_url: string | null
@@ -2297,6 +2299,8 @@ export type Database = {
           id?: string
           is_rendered?: boolean
           last_checked_at?: string
+          last_failure_reason?: string | null
+          last_http_status?: number | null
           last_rendered_at?: string | null
           org_id: string
           page_url?: string | null
@@ -2307,6 +2311,8 @@ export type Database = {
           id?: string
           is_rendered?: boolean
           last_checked_at?: string
+          last_failure_reason?: string | null
+          last_http_status?: number | null
           last_rendered_at?: string | null
           org_id?: string
           page_url?: string | null

@@ -682,11 +682,14 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
             const check = checksMap.get(form.id);
             const isRendered = check ? check.is_rendered : null;
             const lastChecked = check?.last_checked_at;
+            const lastRendered = (check as any)?.last_rendered_at as string | undefined;
+            const httpStatus = (check as any)?.last_http_status as number | null | undefined;
+            const failureReason = (check as any)?.last_failure_reason as string | null | undefined;
 
             return (
-              <div key={form.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`p-1.5 rounded-md ${isRendered === false ? "bg-destructive/10" : isRendered === true ? "bg-success/10" : "bg-muted"}`}>
+              <div key={form.id} className="flex items-start justify-between py-3 border-b border-border last:border-0 gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className={`p-1.5 rounded-md mt-0.5 ${isRendered === false ? "bg-destructive/10" : isRendered === true ? "bg-success/10" : "bg-muted"}`}>
                     {isRendered === false ? (
                       <EyeOff className="h-3.5 w-3.5 text-destructive" />
                     ) : isRendered === true ? (
@@ -695,21 +698,40 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
                       <FileSearch className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">{form.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {form.page_url || "No page URL detected"}
                     </p>
+                    {isRendered === false && (
+                      <p className="text-xs text-destructive mt-1">
+                        {failureReason || (httpStatus ? `Page returned HTTP ${httpStatus}` : "Form markup not detected on page")}
+                        {lastRendered && (
+                          <span className="text-muted-foreground"> · last seen {format(new Date(lastRendered), "MMM d, yyyy")}</span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <div className="text-right ml-3">
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <Badge variant={isRendered === false ? "destructive" : isRendered === true ? "default" : "outline"}>
                     {isRendered === false ? "Not Found" : isRendered === true ? "Detected" : "Pending"}
                   </Badge>
                   {lastChecked && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground">
                       {format(new Date(lastChecked), "MMM d, HH:mm")}
                     </p>
+                  )}
+                  {isRendered === false && (
+                    <FixFormUrlButton
+                      formId={form.id}
+                      currentUrl={form.page_url || null}
+                      siteId={siteId}
+                      onUpdated={() => {
+                        queryClient.invalidateQueries({ queryKey: ["form_health_checks", siteId] });
+                        queryClient.invalidateQueries({ queryKey: ["site_forms_for_checks", siteId] });
+                      }}
+                    />
                   )}
                 </div>
               </div>
@@ -719,9 +741,82 @@ function FormChecksTab({ siteId, orgId }: { siteId: string; orgId: string }) {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        The plugin checks each form's page hourly to verify the form HTML is still present. Forms behind logins or modals may not be detected.
+        The plugin checks each form's page hourly to verify the form HTML is still present. Forms behind logins or modals may not be detected. If a form is marked Not Found but you know it's live, use Fix URL to point us at the correct page.
       </p>
     </div>
+  );
+}
+
+// ─── Fix Form URL Button ────────────────────────────────────────
+
+function FixFormUrlButton({
+  formId,
+  currentUrl,
+  siteId,
+  onUpdated,
+}: {
+  formId: string;
+  currentUrl: string | null;
+  siteId: string;
+  onUpdated: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(currentUrl || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const trimmed = value.trim();
+    if (!trimmed || !/^https?:\/\//i.test(trimmed)) {
+      toast({ title: "Invalid URL", description: "Enter a full URL starting with https://", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from("forms")
+        .update({ page_url: trimmed })
+        .eq("id", formId);
+      if (updateError) throw updateError;
+
+      // Re-probe immediately so the user sees a fresh result.
+      await supabase.functions.invoke("trigger-site-sync", { body: { site_id: siteId } });
+
+      toast({ title: "URL updated", description: "We'll re-check the form shortly." });
+      setOpen(false);
+      onUpdated();
+    } catch (err: any) {
+      toast({ title: "Update failed", description: err?.message || "Could not update the form URL.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 text-xs">Fix URL</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Update form page URL</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Paste the page where this form is currently embedded. We'll re-check it right away.
+          </p>
+          <Input
+            type="url"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="https://example.com/contact"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save & re-check"}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

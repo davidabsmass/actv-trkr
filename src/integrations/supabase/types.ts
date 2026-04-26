@@ -4150,6 +4150,7 @@ export type Database = {
           created_at: string
           currency: string
           customer_email: string | null
+          customer_email_hash: string | null
           customer_name: string | null
           external_order_id: string
           id: string
@@ -4171,6 +4172,7 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_email?: string | null
+          customer_email_hash?: string | null
           customer_name?: string | null
           external_order_id: string
           id?: string
@@ -4192,6 +4194,7 @@ export type Database = {
           created_at?: string
           currency?: string
           customer_email?: string | null
+          customer_email_hash?: string | null
           customer_name?: string | null
           external_order_id?: string
           id?: string

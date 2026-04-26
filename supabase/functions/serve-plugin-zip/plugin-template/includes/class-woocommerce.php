@@ -53,6 +53,12 @@ class MM_WooCommerce {
 			);
 		}
 
+		// H-5 fix: never send raw customer email or name to the backend.
+		// Send a salted SHA-256 hash of the lowercased email so analytics can
+		// still de-duplicate repeat customers without storing PII server-side.
+		$raw_email   = strtolower( trim( (string) $order->get_billing_email() ) );
+		$email_hash  = $raw_email === '' ? null : hash( 'sha256', $raw_email . '|' . home_url() );
+
 		$payload = array(
 			'api_key'  => $settings['api_key'],
 			'domain'   => home_url(),
@@ -62,8 +68,8 @@ class MM_WooCommerce {
 				'total'          => (float) $order->get_total(),
 				'currency'       => $order->get_currency(),
 				'payment_method' => $order->get_payment_method_title(),
-				'customer_email' => $order->get_billing_email(),
-				'customer_name'  => trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ),
+				// PII intentionally stripped — see H-5 in SECURITY_AUDIT.md.
+				'customer_email_hash' => $email_hash,
 				'visitor_id'     => $visitor_id,
 				'session_id'     => $session_id,
 				'ordered_at'     => $order->get_date_created()

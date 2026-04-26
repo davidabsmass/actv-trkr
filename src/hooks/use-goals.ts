@@ -43,6 +43,10 @@ export interface ConversionMetrics {
   goalCvr: number;
   totalConversions: number;
   formConversions: number;
+  /** Total leads in the period including imports and sessionless POSTs (display only). */
+  totalLeads: number;
+  /** Leads excluded from CVR because they had no tracked session (imports, untracked pages, adblocked, server-side). */
+  untrackedLeads: number;
   goalConversions: number;
   sessions: number;
   hasCustomGoals: boolean;
@@ -133,7 +137,8 @@ export function useDeleteGoal(orgId: string | null) {
 function defaultMetrics(): ConversionMetrics {
   return {
     conversionRate: 0, formCvr: 0, goalCvr: 0,
-    totalConversions: 0, formConversions: 0, goalConversions: 0,
+    totalConversions: 0, formConversions: 0, totalLeads: 0, untrackedLeads: 0,
+    goalConversions: 0,
     sessions: 0, hasCustomGoals: false, goalBreakdown: [], typeBreakdown: [],
   };
 }

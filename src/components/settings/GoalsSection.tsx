@@ -219,7 +219,7 @@ function TrackingRuleFields({
 }
 
 /* ─── Create Goal Dialog ─── */
-export function CreateGoalDialog({ orgId, forms }: { orgId: string; forms: any[] }) {
+export function CreateGoalDialog({ orgId, forms, triggerLabel, triggerVariant, triggerClassName }: { orgId: string; forms: any[]; triggerLabel?: string; triggerVariant?: "default" | "outline" | "ghost" | "secondary"; triggerClassName?: string }) {
   const { t } = useTranslation();
   const createGoal = useCreateGoal(orgId);
   const [open, setOpen] = useState(false);

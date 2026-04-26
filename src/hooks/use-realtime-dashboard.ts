@@ -76,10 +76,10 @@ export function useRealtimeDashboard(
               .select("*", { count: "exact", head: true })
               .eq("org_id", orgId)
               .neq("status", "trashed")
-              // Use created_at to anchor on plugin-capture time, not the
-              // historical submitted_at (which can predate the install).
-              .gte("created_at", leadsLowerBound)
-              .lte("created_at", dayEnd),
+              // Anchor on submitted_at so backfilled WP leads (with old
+              // submission times but recent created_at) are correctly excluded.
+              .gte("submitted_at", leadsLowerBound)
+              .lte("submitted_at", dayEnd),
 
         // Daily aggregates for trend chart
         supabase

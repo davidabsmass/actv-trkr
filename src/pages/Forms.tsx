@@ -738,6 +738,7 @@ export default function Forms() {
             customRange={customRange}
             onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
           />
+          <AddSiteHeaderButton />
         </div>
       </div>
 

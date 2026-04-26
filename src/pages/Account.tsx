@@ -93,6 +93,15 @@ export default function Account() {
       toast({ title: "Password updated successfully" });
       setNewPassword("");
       setConfirmPassword("");
+      // Fire-and-forget security alert to confirm the change.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          supabase.functions.invoke("notify-account-event", {
+            body: { eventType: "password_changed" },
+          }).catch(() => { /* ignore */ });
+        }
+      } catch { /* ignore */ }
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {

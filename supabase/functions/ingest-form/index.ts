@@ -706,7 +706,17 @@ Deno.serve(async (req) => {
     }
 
     // ── Send real-time lead notification email + in-app ──
+    // Skip notifications for historical/backfilled entries (submitted >10 min ago).
+    // This prevents notification floods when WP plugin backfills imported entries.
+    const submittedAtMs = entry.submitted_at ? new Date(entry.submitted_at).getTime() : Date.now();
+    const ageMinutes = (Date.now() - submittedAtMs) / 60000;
+    const isLiveSubmission = Number.isFinite(ageMinutes) && ageMinutes <= 10;
+
     try {
+      if (!isLiveSubmission) {
+        console.log(`Skipping lead notification — historical entry (age=${Math.round(ageMinutes)}min)`);
+        throw new Error("__skip_notification__");
+      }
       const escapeHtml = (s: string): string =>
         s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 

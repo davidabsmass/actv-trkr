@@ -48,6 +48,8 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'acquisition-weekly-digest': acquisitionWeeklyDigest,
   'contact-message': contactMessage,
   'login-2fa-code': login2faCode,
+  'auth-security-alert': authSecurityAlert,
+  'email-change-cancel': emailChangeCancel,
   // Retention
   'retention-welcome': retentionWelcome,
   'retention-connection-success': retentionConnectionSuccess,

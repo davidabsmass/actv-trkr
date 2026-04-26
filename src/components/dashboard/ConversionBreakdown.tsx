@@ -42,7 +42,7 @@ export function ConversionBreakdown({ orgId, startDate, endDate }: Props) {
           <Target className="h-4 w-4 text-primary" />
           {t("goals.conversionBreakdown")}
         </h3>
-        <IconTooltip label="Overall conversion rate, form submission rate, and goal completion rate — broken down by goal type.">
+        <IconTooltip label={t("goals.cvrTooltip")}>
           <Info className="h-3.5 w-3.5 text-muted-foreground" />
         </IconTooltip>
       </div>
@@ -72,6 +72,18 @@ export function ConversionBreakdown({ orgId, startDate, endDate }: Props) {
           <p className="text-[10px] text-muted-foreground mt-0.5">{metrics.sessions.toLocaleString()} {t("common.sessions")}</p>
         </div>
       </div>
+
+      {/* Excluded-leads gap note — surfaces when imports / sessionless POSTs
+          are skewing the picture so the user understands why CVR is lower
+          than naive "leads ÷ sessions" math would suggest. */}
+      {metrics.untrackedLeads > 0 && (
+        <div className="mb-4 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 flex items-start gap-2">
+          <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {t("goals.untrackedLeadsExcluded", { count: metrics.untrackedLeads })}
+          </p>
+        </div>
+      )}
 
       {/* Goal breakdown */}
       {metrics.goalBreakdown.length > 0 && (

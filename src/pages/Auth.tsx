@@ -256,8 +256,10 @@ const Auth = () => {
 
       if (isLogin) {
         // Step 1: verify password + issue email 2FA code (server-side).
+        // Pass any saved trusted-device token; the server may bypass MFA if it matches.
+        const savedDeviceToken = readTrustedDevice(normalizedEmail);
         const { data: issued, error: issueErr } = await supabase.functions.invoke("mfa-issue-code", {
-          body: { email: normalizedEmail, password },
+          body: { email: normalizedEmail, password, deviceToken: savedDeviceToken ?? undefined },
         });
         if (issueErr) {
           const ctx: any = (issueErr as any).context;
@@ -269,6 +271,16 @@ const Auth = () => {
           } catch { /* ignore */ }
           throw new Error(msg);
         }
+        // Trusted-device bypass: server returned a session directly.
+        if (issued?.trusted && issued?.access_token && issued?.refresh_token) {
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: issued.access_token,
+            refresh_token: issued.refresh_token,
+          });
+          if (setErr) throw setErr;
+          navigate("/dashboard");
+          return;
+        }
         if (!issued?.challengeToken) throw new Error("Could not start verification.");
         setMfaChallengeToken(issued.challengeToken);
         setMfaEmail(issued.email || normalizedEmail);
@@ -276,6 +288,7 @@ const Auth = () => {
         setPendingEmail(normalizedEmail);
         setMfaCode("");
         setMfaResendCooldown(30);
+        setTrustDevice(false);
         goToPanel("mfa");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({

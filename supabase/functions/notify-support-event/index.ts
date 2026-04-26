@@ -8,7 +8,7 @@ const corsHeaders = {
 const APP_URL = "https://actvtrkr.com";
 const ADMIN_RECIPIENTS = ["david@absmass.com"]; // Annie added later if desired
 
-type EventKind = "created" | "admin_replied" | "customer_replied" | "status_changed" | "shipped";
+type EventKind = "created" | "admin_replied" | "customer_replied" | "status_changed" | "shipped" | "customer_resolved";
 
 interface RequestBody {
   ticket_id: string;

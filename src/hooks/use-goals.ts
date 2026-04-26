@@ -156,8 +156,13 @@ export function useConversionMetrics(
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
-      // Parallel base queries
-      const [goalsRes, sessRes, leadsRes, completionsRes] = await Promise.all([
+      // Parallel base queries.
+      // CVR ONLY counts leads attached to a tracked session (session_id IS NOT NULL).
+      // This excludes WordPress imports/backfills, untracked-page submissions,
+      // adblocked visitors, and server-to-server POSTs — which would otherwise
+      // produce nonsensical >100% rates because they have no matching session.
+      // `totalLeadsRes` keeps the unfiltered count for display ("X leads excluded").
+      const [goalsRes, sessRes, leadsRes, totalLeadsRes, completionsRes] = await Promise.all([
         supabase
           .from("conversion_goals" as any)
           .select("*")
@@ -170,6 +175,14 @@ export function useConversionMetrics(
           .eq("org_id", orgId)
           .gte("started_at", dayStart)
           .lte("started_at", dayEnd),
+        supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .neq("status", "trashed")
+          .not("session_id", "is", null)
+          .gte("submitted_at", dayStart)
+          .lte("submitted_at", dayEnd),
         supabase
           .from("leads")
           .select("*", { count: "exact", head: true })
@@ -188,6 +201,8 @@ export function useConversionMetrics(
       const goals = (goalsRes.data || []) as unknown as ConversionGoal[];
       const sessions = sessRes.count || 0;
       const formLeads = leadsRes.count || 0;
+      const totalLeads = totalLeadsRes.count || 0;
+      const untrackedLeads = Math.max(0, totalLeads - formLeads);
       const completions = (completionsRes.data || []) as unknown as { goal_id: string }[];
 
       const hasCustomGoals = goals.length > 0;

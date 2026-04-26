@@ -97,8 +97,8 @@ export const RESOURCE_LINKS = [
   },
   {
     title: "Forms troubleshooting",
-    description: "Re-scan, mapping, and import status",
-    href: "/forms",
+    description: "Step-by-step guide to fix missing forms or entries",
+    href: "/forms/troubleshooting",
     internal: true,
   },
   {

@@ -32,7 +32,13 @@ export default function TwoFactorSection() {
   const verifiedTotp = factors.find((f) => f.factor_type === "totp" && f.status === "verified");
   const enrolled = !!verifiedTotp;
 
-  const refresh = async () => {
+  const isSessionMissing = (e: any) => {
+    const msg = String(e?.message || e || "");
+    const name = String(e?.name || "");
+    return name === "AuthSessionMissingError" || /auth session missing/i.test(msg);
+  };
+
+  const refresh = async (opts?: { silent?: boolean }) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.mfa.listFactors();
@@ -46,15 +52,44 @@ export default function TwoFactorSection() {
         factor_type: f.factor_type,
         status: f.status,
       })));
+      setLoading(false);
     } catch (e: any) {
+      if (isSessionMissing(e)) {
+        // Session not hydrated yet — stay in loading state and let the
+        // auth listener / retry pick it up. Never toast for this.
+        if (!opts?.silent) {
+          setTimeout(() => { void refresh({ silent: true }); }, 600);
+        }
+        return;
+      }
       toast({ title: "Could not load 2FA status", description: e.message, variant: "destructive" });
-    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    refresh();
+    let cancelled = false;
+
+    // Set up listener BEFORE checking the current session, so we don't miss
+    // the INITIAL_SESSION / TOKEN_REFRESHED event during hydration.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session) void refresh();
+    });
+
+    // Then check the current session.
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      if (data.session) {
+        void refresh();
+      }
+      // If no session yet, the listener above will fire when it arrives.
+    });
+
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const startEnroll = async () => {

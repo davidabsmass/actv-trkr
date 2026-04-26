@@ -73,20 +73,32 @@ function detectFormInHtml(html: string, provider: string, externalFormId: string
   const fid = escapeRegex(externalFormId);
 
   switch (provider) {
-    case "gravity_forms":
-      // Match specific form ID patterns OR generic GF AJAX placeholders (gform_wrapper_FORMID + gfield)
-      return new RegExp(`gform_wrapper[^"']*_${fid}|id=["']gform_${fid}["']|gform_submit_button_${fid}`, "i").test(html)
-        || (/gform_wrapper/i.test(html) && /gfield/i.test(html));
+    case "gravity_forms": {
+      // Strict: require the specific form ID in markup (not just generic GF scaffolding,
+      // which many themes include site-wide).
+      const strict = new RegExp(
+        `gform_wrapper[^"']*_${fid}\\b|id=["']gform_${fid}["']|gform_fields_${fid}\\b|gform_submit_button_${fid}\\b|data-formid=["']${fid}["']`,
+        "i",
+      );
+      if (strict.test(html)) return true;
+      // Loose fallback: only count if there's an actual <form> with a gform id pattern,
+      // not just leftover wrapper/gfield CSS classes from a placeholder.
+      return /<form[^>]+id=["']gform_\d+["']/i.test(html);
+    }
     case "cf7":
-      return new RegExp(`wpcf7|contact-form-7|id=["']wpcf7-f${fid}`, "i").test(html);
+      return new RegExp(`id=["']wpcf7-f${fid}|wpcf7-form[^>]*data-id=["']${fid}["']`, "i").test(html)
+        || /<form[^>]+class=["'][^"']*wpcf7-form/i.test(html);
     case "wpforms":
-      return new RegExp(`wpforms-form|wpforms-container|data-formid=["']${fid}["']`, "i").test(html);
+      return new RegExp(`data-formid=["']${fid}["']|wpforms-form-${fid}\\b`, "i").test(html)
+        || /<form[^>]+class=["'][^"']*wpforms-form/i.test(html);
     case "ninja_forms":
-      return /nf-form-cont|ninja-forms-/i.test(html);
+      return new RegExp(`nf-form-${fid}-cont|nf-form-cont[^>]+data-form-id=["']${fid}["']`, "i").test(html)
+        || /<form[^>]+id=["']nf-form-/i.test(html);
     case "fluent_forms":
-      return /fluentform|ff-el-group/i.test(html);
+      return new RegExp(`data-form_id=["']${fid}["']|ff_form_instance_${fid}\\b`, "i").test(html)
+        || /<form[^>]+class=["'][^"']*frm-fluent-form/i.test(html);
     case "avada":
-      return /fusion-form|fusion-form-form-wrapper/i.test(html);
+      return /<form[^>]+class=["'][^"']*fusion-form|fusion-form-form-wrapper/i.test(html);
     default:
       return /<form[^>]*>/i.test(html);
   }

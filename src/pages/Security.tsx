@@ -7,6 +7,7 @@ import { SecurityOverviewTab } from "@/components/security/SecurityOverviewTab";
 import { SecurityFindingsTab } from "@/components/security/SecurityFindingsTab";
 import { SecurityEventsTab } from "@/components/security/SecurityEventsTab";
 import { SecurityApiKeysTab } from "@/components/security/SecurityApiKeysTab";
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 
 export default function Security() {
   const { isAdmin, loading } = useUserRole();

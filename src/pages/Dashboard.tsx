@@ -280,8 +280,10 @@ const Dashboard = () => {
     queryFn: async () => {
       if (!orgId) return [];
       const { data } = await supabase
-        .from("form_health_checks").select("form_id, is_rendered, last_checked_at, page_url")
-        .eq("org_id", orgId).eq("is_rendered", false);
+        .from("form_health_checks")
+        .select("form_id, is_rendered, last_checked_at, page_url, last_http_status, last_failure_reason, forms(name)")
+        .eq("org_id", orgId)
+        .eq("is_rendered", false);
       return data || [];
     },
     enabled: !!orgId,
@@ -541,7 +543,33 @@ const Dashboard = () => {
     }
     // Unhealthy forms
     if (unhealthyForms && unhealthyForms.length > 0) {
-      items.push({ severity: "warning", label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }), detail: t("dashboard.formsBrokenMissing"), link: "/forms", linkLabel: t("dashboard.check") });
+      const describe = (f: any) => {
+        const name = f.forms?.name || "A form";
+        const status = f.last_http_status as number | null;
+        let reason: string;
+        if (f.last_failure_reason) {
+          reason = f.last_failure_reason;
+        } else if (status === 404 || status === 410) {
+          reason = `the page was not found (HTTP ${status})`;
+        } else if (status && status >= 500) {
+          reason = `the page returned a server error (HTTP ${status})`;
+        } else if (status && status >= 400) {
+          reason = `the page returned HTTP ${status}`;
+        } else {
+          reason = "we couldn't find the form's markup on the page";
+        }
+        const where = f.page_url ? ` on ${f.page_url}` : "";
+        return `${name}: ${reason}${where}`;
+      };
+      const shown = unhealthyForms.slice(0, 2).map(describe).join(" • ");
+      const extra = unhealthyForms.length > 2 ? ` • +${unhealthyForms.length - 2} more` : "";
+      items.push({
+        severity: "warning",
+        label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }),
+        detail: shown + extra,
+        link: "/forms",
+        linkLabel: t("dashboard.check"),
+      });
     }
     // SEO score issues (only if SEO is visible)
     if (seoVisible && lowSeoScore) {

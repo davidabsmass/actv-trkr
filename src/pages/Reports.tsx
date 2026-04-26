@@ -629,6 +629,7 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
           <HowToButton {...HOWTO_REPORTS} />
         </div>
+        <AddSiteHeaderButton />
       </div>
       <p className="text-sm text-muted-foreground mb-6">{t("reports.insightsFor", { orgName })}</p>
 

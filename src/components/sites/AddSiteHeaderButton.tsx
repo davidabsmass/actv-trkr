@@ -2,9 +2,8 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddSiteModal } from "./AddSiteModal";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrgId } from "@/hooks/use-org-id";
+import { useOrg } from "@/hooks/use-org";
+import { useSites } from "@/hooks/use-dashboard-data";
 
 /**
  * Compact "Add Site" button for use in page headers.
@@ -13,22 +12,8 @@ import { useOrgId } from "@/hooks/use-org-id";
  */
 export function AddSiteHeaderButton() {
   const [open, setOpen] = useState(false);
-  const { orgId } = useOrgId();
-
-  const { data: sitesData } = useQuery({
-    queryKey: ["sites-count-header", orgId],
-    queryFn: async () => {
-      if (!orgId) return [] as { id: string }[];
-      const { data, error } = await supabase
-        .from("sites")
-        .select("id")
-        .eq("organization_id", orgId);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!orgId,
-    staleTime: 60_000,
-  });
+  const { orgId } = useOrg();
+  const { data: sitesData } = useSites(orgId);
 
   return (
     <>

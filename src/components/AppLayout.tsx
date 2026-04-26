@@ -59,9 +59,15 @@ function LayoutInner() {
 
   return (
     <SidebarProvider>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-3 focus:py-2 focus:rounded-md focus:bg-primary focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
-        <main className="flex-1 flex flex-col min-w-0">
+        <main id="main-content" className="flex-1 flex flex-col min-w-0" tabIndex={-1}>
           <header className="h-12 flex items-center justify-between border-b border-border px-4 shrink-0">
             <div className="flex items-center gap-3">
               <IconTooltip label="Toggle sidebar">

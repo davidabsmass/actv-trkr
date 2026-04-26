@@ -140,7 +140,7 @@ export default function GetStartedGuide({ compact = false }: GetStartedGuideProp
                   <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-md font-mono text-foreground break-all select-all">
                     {apiKey}
                   </code>
-                  <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleCopy}>
+                  <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" aria-label={copied ? "API key copied" : "Copy API key"} onClick={handleCopy}>
                     {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                   </Button>
                 </div>

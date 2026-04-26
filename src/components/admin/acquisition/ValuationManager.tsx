@@ -338,7 +338,7 @@ export default function ValuationManager() {
                         <TableCell>{c.ev_arr_multiple ? `${c.ev_arr_multiple.toFixed(1)}x` : "—"}</TableCell>
                         <TableCell>{c.ev_revenue_multiple ? `${c.ev_revenue_multiple.toFixed(1)}x` : "—"}</TableCell>
                         <TableCell>{c.ev_ebitda_multiple ? `${c.ev_ebitda_multiple.toFixed(1)}x` : "—"}</TableCell>
-                        <TableCell><Button size="icon" variant="ghost" onClick={() => deleteComp(c.id)}><Trash2 className="h-3 w-3" /></Button></TableCell>
+                        <TableCell><Button size="icon" variant="ghost" aria-label="Delete comparable" onClick={() => deleteComp(c.id)}><Trash2 className="h-3 w-3" /></Button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -385,8 +385,8 @@ export default function ValuationManager() {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="sm" variant="outline" onClick={() => loadScenario(s)}>Edit</Button>
-                            {!s.is_primary && <Button size="sm" variant="ghost" onClick={() => setPrimary(s.id)}><Star className="h-3 w-3" /></Button>}
-                            <Button size="icon" variant="ghost" onClick={() => deleteScenario(s.id)}><Trash2 className="h-3 w-3" /></Button>
+                            {!s.is_primary && <Button size="sm" variant="ghost" aria-label="Mark as primary scenario" onClick={() => setPrimary(s.id)}><Star className="h-3 w-3" /></Button>}
+                            <Button size="icon" variant="ghost" aria-label="Delete scenario" onClick={() => deleteScenario(s.id)}><Trash2 className="h-3 w-3" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>

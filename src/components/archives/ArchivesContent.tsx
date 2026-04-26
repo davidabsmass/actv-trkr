@@ -269,7 +269,7 @@ export default function ArchivesContent() {
                     {job.status}
                   </Badge>
                   {(job.status === "complete" || job.status === "succeeded") && job.file_path && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(job.file_path!)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download archive" onClick={() => handleDownload(job.file_path!)}>
                       <Download className="h-4 w-4" />
                     </Button>
                   )}

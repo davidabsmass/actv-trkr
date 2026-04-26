@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     const challengeToken = String(body?.challengeToken ?? '').trim()
     const code = String(body?.code ?? '').trim()
+    const trustDevice = body?.trustDevice === true
 
     if (!challengeToken || !/^[0-9]{6}$/.test(code)) {
       return new Response(JSON.stringify({ error: 'invalid_input' }), {
@@ -51,6 +52,10 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    const ipRaw = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? ''
+    const ipHash = ipRaw ? await sha256Hex(ipRaw) : null
+    const userAgent = req.headers.get('user-agent') ?? null
 
     const challengeTokenHash = await sha256Hex(challengeToken)
     const codeHash = await sha256Hex(code)
@@ -138,10 +143,45 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Record this sign-in in auth_recent_sessions for the management UI.
+    try {
+      await admin.from('auth_recent_sessions').insert({
+        user_id: row.user_id,
+        ip_hash: ipHash,
+        user_agent: userAgent,
+        device_fingerprint: userAgent ? await sha256Hex(userAgent) : null,
+      })
+    } catch (e) {
+      console.error('auth_recent_sessions insert failed:', (e as Error).message)
+    }
+
+    // If the user opted to trust this device, mint a 30-day device token.
+    let deviceToken: string | null = null
+    if (trustDevice) {
+      try {
+        const bytes = crypto.getRandomValues(new Uint8Array(32))
+        deviceToken = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+        const deviceTokenHash = await sha256Hex(deviceToken)
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        await admin.from('auth_trusted_devices').insert({
+          user_id: row.user_id,
+          device_token_hash: deviceTokenHash,
+          label: userAgent ? userAgent.slice(0, 60) : 'Browser',
+          ip_hash: ipHash,
+          user_agent: userAgent,
+          expires_at: expiresAt,
+        })
+      } catch (e) {
+        console.error('auth_trusted_devices insert failed:', (e as Error).message)
+        deviceToken = null
+      }
+    }
+
     return new Response(
       JSON.stringify({
         access_token: verifyData.session.access_token,
         refresh_token: verifyData.session.refresh_token,
+        deviceToken,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

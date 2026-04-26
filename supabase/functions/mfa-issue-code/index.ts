@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     const email = String(body?.email ?? '').trim().toLowerCase()
     const password = String(body?.password ?? '')
+    const deviceToken = String(body?.deviceToken ?? '').trim()
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: 'missing_credentials' }), {
@@ -120,6 +121,53 @@ Deno.serve(async (req) => {
 
     const userId = pwData.user.id
     const userEmail = pwData.user.email ?? email
+
+    // Step 1.5: If a trusted device token was supplied AND it matches an active
+    // unrevoked entry for this user, skip 2FA entirely and mint a session.
+    if (deviceToken && /^[a-f0-9]{64}$/.test(deviceToken)) {
+      const adminEarly = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+      const deviceTokenHash = await sha256Hex(deviceToken)
+      const { data: trustedRow } = await adminEarly
+        .from('auth_trusted_devices')
+        .select('id, expires_at, revoked_at')
+        .eq('user_id', userId)
+        .eq('device_token_hash', deviceTokenHash)
+        .is('revoked_at', null)
+        .maybeSingle()
+
+      if (trustedRow && new Date(trustedRow.expires_at).getTime() > Date.now()) {
+        // Mint a session via magic-link generate + verify.
+        const { data: linkData } = await adminEarly.auth.admin.generateLink({
+          type: 'magiclink',
+          email: userEmail,
+        })
+        const tokenHash = (linkData as any)?.properties?.hashed_token
+        if (tokenHash) {
+          const { data: verifyData } = await anon.auth.verifyOtp({
+            type: 'magiclink',
+            token_hash: tokenHash,
+          })
+          if (verifyData?.session) {
+            await adminEarly
+              .from('auth_trusted_devices')
+              .update({ last_used_at: new Date().toISOString() })
+              .eq('id', trustedRow.id)
+            return new Response(
+              JSON.stringify({
+                trusted: true,
+                access_token: verifyData.session.access_token,
+                refresh_token: verifyData.session.refresh_token,
+                email: userEmail,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            )
+          }
+        }
+        // Fall through to normal MFA flow if minting failed.
+      }
+    }
 
     // Step 2: Generate code + challenge token.
     const code = generateCode()

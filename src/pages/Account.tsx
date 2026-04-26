@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, MapPin } from "lucide-react";
 import TeamSection from "@/components/account/TeamSection";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
+import SecuritySessionsSection from "@/components/account/SecuritySessionsSection";
 import SupportSection from "@/components/support/SupportSection";
 import { QuickHelpPanel } from "@/components/support/QuickHelpPanel";
 import { CancellationSaveDialog } from "@/components/account/CancellationSaveDialog";
@@ -119,8 +120,13 @@ export default function Account() {
       <Tabs value={tab} onValueChange={setTab} className="max-w-4xl">
         <TabsList className="mb-4">
           <TabsTrigger value="profile" className="text-xs sm:text-sm">Profile & Billing</TabsTrigger>
+          <TabsTrigger value="security" className="text-xs sm:text-sm">Security</TabsTrigger>
           <TabsTrigger value="support" className="text-xs sm:text-sm">Support</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="security">
+          <SecuritySessionsSection />
+        </TabsContent>
 
         <TabsContent value="support">
           <div className="space-y-4">

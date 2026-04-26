@@ -9,6 +9,27 @@ import spaceBg from "@/assets/space-bgd-new.jpg";
 type ActivePanel = "main" | "otp" | "forgot" | "mfa";
 
 const PENDING_OTP_KEY = "actvtrkr_pending_otp";
+const TRUSTED_DEVICE_KEY = "actvtrkr_trusted_device"; // map<emailLower, deviceTokenHex>
+
+type TrustedDeviceMap = Record<string, string>;
+
+const readTrustedDevice = (email: string): string | null => {
+  try {
+    const raw = localStorage.getItem(TRUSTED_DEVICE_KEY);
+    if (!raw) return null;
+    const map: TrustedDeviceMap = JSON.parse(raw);
+    return map[email.trim().toLowerCase()] ?? null;
+  } catch { return null; }
+};
+
+const writeTrustedDevice = (email: string, token: string) => {
+  try {
+    const raw = localStorage.getItem(TRUSTED_DEVICE_KEY);
+    const map: TrustedDeviceMap = raw ? JSON.parse(raw) : {};
+    map[email.trim().toLowerCase()] = token;
+    localStorage.setItem(TRUSTED_DEVICE_KEY, JSON.stringify(map));
+  } catch { /* ignore */ }
+};
 
 type PendingOtpState = {
   email: string;
@@ -38,6 +59,7 @@ const Auth = () => {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaEmail, setMfaEmail] = useState("");
   const [mfaResendCooldown, setMfaResendCooldown] = useState(0);
+  const [trustDevice, setTrustDevice] = useState(false);
   const navigate = useNavigate();
 
   // Restore pending OTP state on mount so refresh / tab switch doesn't lose it.
@@ -140,7 +162,7 @@ const Auth = () => {
     try {
       if (!mfaChallengeToken) throw new Error("Session expired. Sign in again.");
       const { data, error: verifyErr } = await supabase.functions.invoke("mfa-verify-code", {
-        body: { challengeToken: mfaChallengeToken, code: mfaCode.trim() },
+        body: { challengeToken: mfaChallengeToken, code: mfaCode.trim(), trustDevice },
       });
       if (verifyErr) {
         const ctx: any = (verifyErr as any).context;
@@ -159,6 +181,11 @@ const Auth = () => {
       });
       if (setErr) throw setErr;
 
+      // Persist trusted-device token if the server issued one.
+      if (trustDevice && data?.deviceToken && pendingEmail) {
+        writeTrustedDevice(pendingEmail, String(data.deviceToken));
+      }
+
       const pendingCode = localStorage.getItem("pending_invite_code");
       if (pendingCode) {
         localStorage.removeItem("pending_invite_code");
@@ -168,6 +195,7 @@ const Auth = () => {
       setMfaChallengeToken(null);
       setMfaCode("");
       setPendingPassword("");
+      setTrustDevice(false);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message);
@@ -228,8 +256,10 @@ const Auth = () => {
 
       if (isLogin) {
         // Step 1: verify password + issue email 2FA code (server-side).
+        // Pass any saved trusted-device token; the server may bypass MFA if it matches.
+        const savedDeviceToken = readTrustedDevice(normalizedEmail);
         const { data: issued, error: issueErr } = await supabase.functions.invoke("mfa-issue-code", {
-          body: { email: normalizedEmail, password },
+          body: { email: normalizedEmail, password, deviceToken: savedDeviceToken ?? undefined },
         });
         if (issueErr) {
           const ctx: any = (issueErr as any).context;
@@ -241,6 +271,16 @@ const Auth = () => {
           } catch { /* ignore */ }
           throw new Error(msg);
         }
+        // Trusted-device bypass: server returned a session directly.
+        if (issued?.trusted && issued?.access_token && issued?.refresh_token) {
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: issued.access_token,
+            refresh_token: issued.refresh_token,
+          });
+          if (setErr) throw setErr;
+          navigate("/dashboard");
+          return;
+        }
         if (!issued?.challengeToken) throw new Error("Could not start verification.");
         setMfaChallengeToken(issued.challengeToken);
         setMfaEmail(issued.email || normalizedEmail);
@@ -248,6 +288,7 @@ const Auth = () => {
         setPendingEmail(normalizedEmail);
         setMfaCode("");
         setMfaResendCooldown(30);
+        setTrustDevice(false);
         goToPanel("mfa");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
@@ -496,6 +537,16 @@ const Auth = () => {
                   {message && activePanel === "mfa" && (
                     <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
                   )}
+
+                  <label className="flex items-center gap-2 text-xs text-white/80 select-none cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={trustDevice}
+                      onChange={(e) => setTrustDevice(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-white/40 bg-white/10 accent-primary"
+                    />
+                    Trust this device for 30 days (skip the code next time)
+                  </label>
 
                   <button
                     type="submit"

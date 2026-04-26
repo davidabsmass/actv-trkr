@@ -161,7 +161,8 @@ export function useRealtimeDashboard(
         cursor = addDays(cursor, 1);
       }
 
-      // Fill from aggregated kpi_daily rows
+      // Fill from aggregated kpi_daily rows. Leads from days BEFORE install
+      // are dropped so the trend chart matches the headline KPIs.
       const kpiRows = kpiRes.data || [];
       const kpiDatesSet = new Set<string>();
       kpiRows.forEach((row: any) => {
@@ -170,7 +171,13 @@ export function useRealtimeDashboard(
         if (!dailyMap[d])
           dailyMap[d] = { sessions: 0, leads: 0, pageviews: 0 };
         if (row.metric === "sessions") dailyMap[d].sessions += Number(row.value);
-        if (row.metric === "leads") dailyMap[d].leads += Number(row.value);
+        if (row.metric === "leads") {
+          if (installCutoffDate && d < installCutoffDate) {
+            // pre-install day: never count historical leads
+          } else {
+            dailyMap[d].leads += Number(row.value);
+          }
+        }
         if (row.metric === "pageviews")
           dailyMap[d].pageviews += Number(row.value);
       });
@@ -187,7 +194,8 @@ export function useRealtimeDashboard(
             .eq("org_id", orgId).gte("started_at", todayStart).lte("started_at", todayEnd),
           supabase.from("leads").select("*", { count: "exact", head: true })
             .eq("org_id", orgId).neq("status", "trashed")
-            .gte("submitted_at", todayStart).lte("submitted_at", todayEnd),
+            .gte("created_at", installCutoffDate && todayStart < leadsLowerBound ? leadsLowerBound : todayStart)
+            .lte("created_at", todayEnd),
         ]);
         dailyMap[todayStr] = {
           pageviews: todayPv.count || 0,
@@ -212,12 +220,17 @@ export function useRealtimeDashboard(
             chunk.flatMap((day) => {
               const ds = `${day}T00:00:00Z`;
               const de = `${day}T23:59:59.999Z`;
+              const dayBeforeInstall =
+                installCutoffDate && day < installCutoffDate;
               return [
                 supabase.from("sessions").select("*", { count: "exact", head: true })
                   .eq("org_id", orgId).gte("started_at", ds).lte("started_at", de),
-                supabase.from("leads").select("*", { count: "exact", head: true })
-                  .eq("org_id", orgId).neq("status", "trashed")
-                  .gte("submitted_at", ds).lte("submitted_at", de),
+                dayBeforeInstall
+                  ? Promise.resolve({ count: 0 } as any)
+                  : supabase.from("leads").select("*", { count: "exact", head: true })
+                      .eq("org_id", orgId).neq("status", "trashed")
+                      .gte("created_at", ds < leadsLowerBound ? leadsLowerBound : ds)
+                      .lte("created_at", de),
                 supabase.from("pageviews").select("*", { count: "exact", head: true })
                   .eq("org_id", orgId).gte("occurred_at", ds).lte("occurred_at", de),
               ];

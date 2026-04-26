@@ -706,65 +706,75 @@ Deno.serve(async (req) => {
     }
 
     // ── Send real-time lead notification email + in-app ──
-    try {
-      const escapeHtml = (s: string): string =>
-        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    // Skip notifications for historical/backfilled entries (submitted >10 min ago).
+    // This prevents notification floods when WP plugin backfills imported entries.
+    const submittedAtMs = entry.submitted_at ? new Date(entry.submitted_at).getTime() : Date.now();
+    const ageMinutes = (Date.now() - submittedAtMs) / 60000;
+    const isLiveSubmission = Number.isFinite(ageMinutes) && ageMinutes <= 10;
 
-      const safeFormName = escapeHtml(formName || "Form");
-      const leadSource = escapeHtml(source || "direct");
-      const leadPage = escapeHtml(pagePath || pageUrl || "Unknown page");
-      const submittedAt = new Date(entry.submitted_at || Date.now()).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+    if (!isLiveSubmission) {
+      console.log(`Skipping lead notification — historical entry (age=${Math.round(ageMinutes)}min)`);
+    } else {
+      try {
+        const escapeHtml = (s: string): string =>
+          s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
-      // In-app notifications for all org members
-      const { data: orgMembers } = await supabase.from("org_users").select("user_id").eq("org_id", orgId);
-      if (orgMembers && orgMembers.length > 0) {
-        const inboxRows = orgMembers.map((m: any) => ({
-          user_id: m.user_id,
-          site_id: siteId,
+        const safeFormName = escapeHtml(formName || "Form");
+        const leadSource = escapeHtml(source || "direct");
+        const leadPage = escapeHtml(pagePath || pageUrl || "Unknown page");
+        const submittedAt = new Date(entry.submitted_at || Date.now()).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+
+        // In-app notifications for all org members
+        const { data: orgMembers } = await supabase.from("org_users").select("user_id").eq("org_id", orgId);
+        if (orgMembers && orgMembers.length > 0) {
+          const inboxRows = orgMembers.map((m: any) => ({
+            user_id: m.user_id,
+            site_id: siteId,
             title: `New lead from ${safeFormName}`,
-          body: `Source: ${leadSource} · Page: ${leadPage}`,
-        }));
-        await supabase.from("notification_inbox").insert(inboxRows);
+            body: `Source: ${leadSource} · Page: ${leadPage}`,
+          }));
+          await supabase.from("notification_inbox").insert(inboxRows);
+        }
+
+        // Real-time email notification
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0a1628; color: #e2e8f0; padding: 32px; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h1 style="color: #ffffff; font-size: 20px; margin: 0;">🎯 New Lead Received</h1>
+              <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0;">${submittedAt}</p>
+            </div>
+            <div style="background: #1e293b; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 12px; width: 100px;">Form</td><td style="padding: 8px 0; color: #ffffff; font-size: 14px; font-weight: 600;">${formName}</td></tr>
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 12px;">Source</td><td style="padding: 8px 0; color: #e2e8f0; font-size: 14px;">${leadSource}</td></tr>
+                <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 12px;">Page</td><td style="padding: 8px 0; color: #e2e8f0; font-size: 14px;">${leadPage}</td></tr>
+              </table>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+              <a href="https://actvtrkr.com/entries" style="display: inline-block; background: #6C5CE7; color: #ffffff; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">View Lead</a>
+            </div>
+            <p style="color: #64748b; font-size: 11px; text-align: center; margin-top: 24px;">Sent by ACTV TRKR · Manage preferences in Settings</p>
+          </div>`;
+
+        // Fire and forget — don't block the response
+        fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
+            "x-cron-secret": Deno.env.get("CRON_SECRET") || "",
+          },
+          body: JSON.stringify({
+            type: "lead_realtime",
+            org_id: orgId,
+            subject: `🎯 New Lead — ${formName} (${leadSource})`,
+            html_body: emailHtml,
+            text_body: `New Lead Received\n\nForm: ${formName}\nSource: ${leadSource}\nPage: ${leadPage}\nTime: ${submittedAt}\n\nView lead: https://actvtrkr.com/entries`,
+          }),
+        }).catch(e => console.error("Lead notification email fire-and-forget error:", e));
+      } catch (notifErr) {
+        console.error("Notification error (non-fatal):", notifErr);
       }
-
-      // Real-time email notification
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0a1628; color: #e2e8f0; padding: 32px; border-radius: 12px;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: #ffffff; font-size: 20px; margin: 0;">🎯 New Lead Received</h1>
-            <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0;">${submittedAt}</p>
-          </div>
-          <div style="background: #1e293b; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 12px; width: 100px;">Form</td><td style="padding: 8px 0; color: #ffffff; font-size: 14px; font-weight: 600;">${formName}</td></tr>
-              <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 12px;">Source</td><td style="padding: 8px 0; color: #e2e8f0; font-size: 14px;">${leadSource}</td></tr>
-              <tr><td style="padding: 8px 0; color: #94a3b8; font-size: 12px;">Page</td><td style="padding: 8px 0; color: #e2e8f0; font-size: 14px;">${leadPage}</td></tr>
-            </table>
-          </div>
-          <div style="text-align: center; margin-top: 20px;">
-            <a href="https://actvtrkr.com/entries" style="display: inline-block; background: #6C5CE7; color: #ffffff; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;">View Lead</a>
-          </div>
-          <p style="color: #64748b; font-size: 11px; text-align: center; margin-top: 24px;">Sent by ACTV TRKR · Manage preferences in Settings</p>
-        </div>`;
-
-      // Fire and forget — don't block the response
-      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`,
-          "x-cron-secret": Deno.env.get("CRON_SECRET") || "",
-        },
-        body: JSON.stringify({
-          type: "lead_realtime",
-          org_id: orgId,
-          subject: `🎯 New Lead — ${formName} (${leadSource})`,
-          html_body: emailHtml,
-          text_body: `New Lead Received\n\nForm: ${formName}\nSource: ${leadSource}\nPage: ${leadPage}\nTime: ${submittedAt}\n\nView lead: https://actvtrkr.com/entries`,
-        }),
-      }).catch(e => console.error("Lead notification email fire-and-forget error:", e));
-    } catch (notifErr) {
-      console.error("Notification error (non-fatal):", notifErr);
     }
 
     return new Response(JSON.stringify({ status: "ok", lead_id: lead.id, provider: providerName, deduplicated_js: jsAlreadyCaptured }), {

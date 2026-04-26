@@ -1,0 +1,1 @@
+DELETE FROM public.notification_inbox WHERE created_at > now() - interval '24 hours' AND title LIKE 'New lead from%';

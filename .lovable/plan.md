@@ -1,44 +1,57 @@
-# Fix "Could not load 2FA status — Auth session missing!" toast
+## Why you're running out of space
 
-## What's actually happening
+Your Lovable Cloud database is **3.1 GB**, but your actual app data is only **~400 MB**. The other **~2.7 GB (87%)** is log bloat from background plumbing — not your real data:
 
-You ARE logged in. Auth logs show your `/user` calls returning 200 right around the time of the screenshot. The toast is misleading.
+| Source | Size | What it is |
+|---|---|---|
+| `cron.job_run_details` | **2.44 GB** | Every run of every scheduled job (heartbeats, syncs, summaries, cleanups) keeps a row forever. Many of your jobs run every minute, so this grows fast. |
+| `net._http_response` | **251 MB** | Stored response body of every HTTP call your DB triggers/cron jobs make to Edge Functions via `pg_net`. |
+| Public app data (pageviews, leads, sessions, etc.) | ~400 MB | Your actual product data — fine. |
+| Auth, storage, system | <2 MB | Negligible. |
 
-The bug is in `src/components/account/TwoFactorSection.tsx`:
+This is also the source of the **disk I/O warnings** and the recent **503s on edge functions** — the underlying instance is spending I/O on these log tables.
 
-1. The component mounts and immediately calls `supabase.auth.mfa.listFactors()` inside a `useEffect`.
-2. There's no guard that waits for the Supabase client to finish restoring the session from local storage (or finish a background token refresh).
-3. When `listFactors()` runs in that brief window with no in-memory session, the SDK throws `AuthSessionMissingError: Auth session missing!`.
-4. The `catch` block surfaces it as a red toast, even though the next render — once the session hydrates — would have worked fine.
+## What I'll do
 
-This typically fires right after: a hard refresh on `/account`, returning to the tab after the access token expired, or navigating to Account immediately on app boot.
+### 1. One-time cleanup (immediate ~2.7 GB freed)
+- Truncate `cron.job_run_details` keeping only the last 7 days (for debugging recent failures).
+- Truncate `net._http_response` keeping only the last 24 hours.
+- Run `VACUUM FULL` on both tables so the OS actually reclaims the disk space (not just marks it reusable).
 
-## The fix
+### 2. Automatic retention going forward
+Add two scheduled cron jobs that run nightly:
+- **Purge cron history** older than 7 days from `cron.job_run_details`.
+- **Purge net responses** older than 24 hours from `net._http_response`.
 
-Update `TwoFactorSection.tsx` so it:
+This keeps the bloat from ever returning.
 
-1. **Waits for a session before the first `listFactors()` call.**
-   - On mount, call `supabase.auth.getSession()` first.
-   - If there's no session yet, subscribe to `supabase.auth.onAuthStateChange` and run `refresh()` only after a `SIGNED_IN` / `TOKEN_REFRESHED` / `INITIAL_SESSION` event with a non-null session.
-   - Clean up the subscription on unmount.
+### 3. Audit cron job frequency (optional, recommended)
+Many jobs are scheduled at `* * * * *` (every minute). I'll list them and flag any that could safely run every 5–15 minutes instead, which would cut log growth 5–15×. You'll get a list to approve before any frequency changes are made.
 
-2. **Treats "Auth session missing" as a non-error retry, not a toast.**
-   - In the `catch`, detect `AuthSessionMissingError` (or message includes "Auth session missing") and:
-     - Don't show a destructive toast.
-     - Schedule one silent retry after ~500ms.
-     - If still missing after retry, just leave the panel in its loading/idle state silently — the auth listener above will pick it up when the session arrives.
-   - Real errors (network, server) still show the toast as today.
+### 4. Verify
+After cleanup, re-check `pg_database_size` — should drop from 3.1 GB to roughly 400–500 MB.
 
-3. **Stops setting `loading=false` prematurely** when we're actually waiting on the session — keep the spinner instead of flashing the "Enable 2FA" CTA based on stale empty state.
+## Technical details
 
-## Technical notes
+```sql
+-- Cleanup
+DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days';
+DELETE FROM net._http_response   WHERE created   < now() - interval '24 hours';
+VACUUM FULL cron.job_run_details;
+VACUUM FULL net._http_response;
 
-- File touched: `src/components/account/TwoFactorSection.tsx` only. No DB, no edge function, no auth config changes.
-- Pattern matches the project's existing rule (per `mem://adding-login-logout` guidance): set up `onAuthStateChange` BEFORE relying on session presence.
-- No impact on the actual 2FA enroll/verify/disable flows — those are user-initiated and run after the session is known good.
+-- Retention jobs
+SELECT cron.schedule('purge-cron-history', '0 3 * * *',
+  $$DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days'$$);
+SELECT cron.schedule('purge-net-responses', '15 3 * * *',
+  $$DELETE FROM net._http_response WHERE created < now() - interval '24 hours'$$);
+```
 
-## What you'll see after the fix
+`VACUUM FULL` briefly locks those two system tables (seconds, not minutes, at this size) — no impact on your app tables.
 
-- No more "Could not load 2FA status / Auth session missing!" toast on the Account page.
-- The 2FA card will show its loading spinner for a beat longer on cold loads, then render the correct enrolled / not-enrolled state.
-- Genuine failures (e.g. network down, Supabase unreachable) will still surface a toast, so you don't lose visibility on real problems.
+## What this does NOT touch
+- Your `pageviews`, `leads`, `sessions`, `events`, etc. — untouched.
+- Your existing scheduled jobs — they keep running, just without keeping forever-logs.
+- No app/UI changes.
+
+After this, if you'd still like more headroom (or to stop seeing 503s under load entirely), the next lever is upgrading the Cloud instance size in **Backend → Advanced settings**, but you likely won't need to once 87% of the disk is freed.

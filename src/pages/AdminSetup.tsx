@@ -18,8 +18,10 @@ import SubscriberSitesPanel from "@/components/admin/SubscriberSitesPanel";
 import ReleaseQAPanel from "@/components/admin/ReleaseQAPanel";
 import DataWipePanel from "@/components/admin/DataWipePanel";
 import SupportAccessPanel from "@/components/admin/SupportAccessPanel";
+import SupportInbox from "@/components/admin/SupportInbox";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
+type AdminMainTab = "clients" | "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access";
 
 function FeatureUsageWidget() {
   const { data: featureUsage } = useQuery({
@@ -274,11 +276,11 @@ export default function AdminSetup() {
   // Destructive actions (Data Wipe, Remove client) stay owner-only.
   const isAdminUser = isAdmin || isOwner;
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access">("metrics");
+  const [activeMainTab, setActiveMainTab] = useState<AdminMainTab>("metrics");
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access") {
+    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "support-inbox" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access") {
       setActiveMainTab(tab);
     } else if (tab === "app-bible") {
       // Legacy redirect: Launch Checklist removed, send users to Release QA
@@ -286,7 +288,7 @@ export default function AdminSetup() {
       setSearchParams({ tab: "release-qa" }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-  const switchMainTab = (tab: "clients" | "metrics" | "subscriber-sites" | "release-qa" | "data-wipe" | "support-access") => {
+  const switchMainTab = (tab: AdminMainTab) => {
     setActiveMainTab(tab);
     setSearchParams({ tab }, { replace: true });
   };

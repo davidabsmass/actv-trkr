@@ -276,7 +276,7 @@ export default function SupportAccessPanel() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={activeCount > 0 ? "default" : "secondary"}>
+              <Badge variant={activeCount > 0 ? "default" : "secondary"} className="whitespace-nowrap">
                 {activeCount} active
               </Badge>
               <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>

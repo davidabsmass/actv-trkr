@@ -120,8 +120,13 @@ export default function Account() {
       <Tabs value={tab} onValueChange={setTab} className="max-w-4xl">
         <TabsList className="mb-4">
           <TabsTrigger value="profile" className="text-xs sm:text-sm">Profile & Billing</TabsTrigger>
+          <TabsTrigger value="security" className="text-xs sm:text-sm">Security</TabsTrigger>
           <TabsTrigger value="support" className="text-xs sm:text-sm">Support</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="security">
+          <SecuritySessionsSection />
+        </TabsContent>
 
         <TabsContent value="support">
           <div className="space-y-4">

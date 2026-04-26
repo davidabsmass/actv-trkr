@@ -83,7 +83,7 @@ export default function SupportInbox() {
           </div>
           <AdminTicketTable
             filterStatus={filterStatus} filterType={filterType} filterPriority={filterPriority} search={search}
-            onOpen={setActiveTicketId}
+            onOpen={openTicket}
           />
         </CardContent>
       </Card>

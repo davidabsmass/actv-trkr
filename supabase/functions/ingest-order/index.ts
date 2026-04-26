@@ -104,6 +104,9 @@ Deno.serve(async (req) => {
     }
 
     // Upsert order
+    // H-5 fix: never persist raw customer_email or customer_name. Older plugin
+    // versions may still send them; we drop them server-side and only keep the
+    // salted hash for de-duplication.
     const { data: orderRow, error: orderErr } = await supabase
       .from("orders")
       .upsert(
@@ -115,8 +118,9 @@ Deno.serve(async (req) => {
           total: Number(order.total) || 0,
           currency: order.currency || "USD",
           payment_method: order.payment_method || null,
-          customer_email: order.customer_email || null,
-          customer_name: order.customer_name || null,
+          customer_email: null,
+          customer_name: null,
+          customer_email_hash: order.customer_email_hash || null,
           visitor_id: order.visitor_id || null,
           session_id: order.session_id || null,
           utm_source: attribution.utm_source,

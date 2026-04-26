@@ -67,18 +67,25 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
   const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
   const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
 
-  const { data: totalSubmissions } = useQuery({
+  const { data: submissionCounts } = useQuery({
     queryKey: ["total_submissions", orgId, startDate, endDate],
     queryFn: async () => {
-      if (!orgId) return 0;
-      const { count, error } = await supabase
-        .from("leads").select("*", { count: "exact", head: true })
-        .eq("org_id", orgId)
-        .neq("status", "trashed")
-        .gte("submitted_at", `${startDate}T00:00:00Z`)
-        .lte("submitted_at", `${endDate}T23:59:59.999Z`);
-      if (error) throw error;
-      return count || 0;
+      if (!orgId) return { allTime: 0, recent: 0 };
+      const [allRes, recentRes] = await Promise.all([
+        supabase
+          .from("leads").select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .neq("status", "trashed"),
+        supabase
+          .from("leads").select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .neq("status", "trashed")
+          .gte("submitted_at", `${startDate}T00:00:00Z`)
+          .lte("submitted_at", `${endDate}T23:59:59.999Z`),
+      ]);
+      if (allRes.error) throw allRes.error;
+      if (recentRes.error) throw recentRes.error;
+      return { allTime: allRes.count || 0, recent: recentRes.count || 0 };
     },
     enabled: !!orgId,
   });

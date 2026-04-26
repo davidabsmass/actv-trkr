@@ -189,17 +189,17 @@ export function useConversionMetrics(
           .eq("org_id", orgId)
           .neq("status", "trashed")
           .not("session_id", "is", null)
-          // Use created_at + install cutoff so historical imports don't
-          // inflate the numerator above the tracked-sessions denominator.
-          .gte("created_at", leadsLowerBound)
-          .lte("created_at", dayEnd),
+          // Anchor on submitted_at so historical imports don't inflate the
+          // numerator above the tracked-sessions denominator.
+          .gte("submitted_at", leadsLowerBound)
+          .lte("submitted_at", dayEnd),
         supabase
           .from("leads")
           .select("*", { count: "exact", head: true })
           .eq("org_id", orgId)
           .neq("status", "trashed")
-          .gte("created_at", leadsLowerBound)
-          .lte("created_at", dayEnd),
+          .gte("submitted_at", leadsLowerBound)
+          .lte("submitted_at", dayEnd),
         supabase
           .from("goal_completions" as any)
           .select("goal_id")

@@ -202,8 +202,17 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
   const { data: ticket } = useQuery({
     queryKey: ["admin_support_ticket", ticketId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("support_tickets").select("*").eq("id", ticketId).maybeSingle();
+      const { data, error } = await supabase
+        .from("support_tickets")
+        .select("*, sites:site_id(url, domain, name, display_name)")
+        .eq("id", ticketId)
+        .maybeSingle();
       if (error) throw error;
+      if (data && !data.website_url) {
+        const s: any = (data as any).sites;
+        const fallback = s?.url || (s?.domain ? `https://${s.domain}` : null);
+        if (fallback) (data as any).website_url = fallback;
+      }
       return data;
     },
   });

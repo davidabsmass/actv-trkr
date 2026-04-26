@@ -1,121 +1,45 @@
-# Accessibility Compliance Rollout
+# Surface Unread Support Replies on the Dashboard
 
-Goal: reach **WCAG 2.1 AA conformance**, document the effort, and dramatically reduce ADA / EAA / state-law lawsuit exposure. We'll do this in 4 phases. Phase 1 ships this loop; the rest can ship in follow-up loops once you're ready.
+When ACTV TRKR support replies to a customer ticket, call it out on their dashboard until they click through to read it.
 
----
+## What the user will see
 
-## Phase 1 — Quick-Win Pass (this loop)
+1. **Dashboard banner** (top of `/dashboard`, above KPIs): an attention-grabbing banner appears whenever there are 1+ unread admin replies on the org's tickets.
+   - Single ticket: "Support replied to your ticket #1234 — *<subject>*" with a "View reply" button.
+   - Multiple tickets: "You have N new replies from support" with a "View tickets" button.
+   - Banner uses the existing `warning`/accent styling (matches `GetStartedBanner`/`FirstSyncBanner` look).
+2. **Header bell dot**: the existing `NotificationBell` red dot also lights up when unread support replies exist (so the indicator is consistent app-wide).
+3. **Auto-dismiss**: opening the ticket detail (`/account?tab=support&ticket=<id>`) marks that ticket's admin messages as read. The banner disappears once all are read. No manual "dismiss" — clicking through is the only way to clear it (per the request).
 
-The single highest-leverage block of work. Knocks out 90% of demand-letter triggers.
+## How "unread" is tracked
 
-### 1A. Public Accessibility Statement
+Add a lightweight per-user read marker on tickets:
 
-- New page at `/accessibility` with sections:
-  - Our commitment
-  - Conformance target (WCAG 2.1 Level AA)
-  - Measures we take (semantic HTML, keyboard nav, contrast, automated + manual testing, third-party libs that are accessible by default)
-  - Known limitations (honest list — chart tooltips, complex data tables, third-party embeds)
-  - Compatibility (browsers + assistive tech we test against)
-  - How to report an issue (email link to support, link to support form)
-  - Last reviewed date
-- Add `/accessibility` link to the marketing footer in `src/pages/Index.tsx` (alongside Privacy / Terms / Contact)
-- Add it to the in-app footer/legal area where Privacy + Terms already live
+- New table `support_ticket_reads (user_id uuid, ticket_id uuid, last_read_at timestamptz, PRIMARY KEY (user_id, ticket_id))` with RLS so a user can only read/write their own rows.
+- A ticket has unread admin messages for the current user when:
+  `EXISTS (admin message in support_ticket_messages where created_at > coalesce(last_read_at, ticket.created_at) AND is_internal = false AND author_type = 'admin')`
+  AND the user is the ticket submitter (or an org admin who can see it).
+- Helper SQL view `v_my_unread_support_replies` returns `{ ticket_id, ticket_number, subject, latest_admin_reply_at, unread_count }` for `auth.uid()`, scoped to tickets the caller can see (uses existing RLS on `support_tickets` + `support_ticket_messages`).
 
-### 1B. Audit + automated scan pass
+Marking-as-read happens client-side when `TicketDetail` mounts: upsert `support_ticket_reads` with `last_read_at = now()` for `(auth.uid(), ticket_id)`. Then invalidate the dashboard query so the banner clears immediately.
 
-Run **axe-core** against the running app (auth, signup, checkout, dashboard core, settings, account, marketing landing) and fix the top findings. Typical wins:
+## Files
 
-- Missing/incorrect `alt` attributes (decorative images should be `alt=""`)
-- Icon-only buttons missing `aria-label` or visually-hidden text
-- Form fields without associated `<label>` or `aria-label`
-- Color-only state indicators (add icon or text)
-- Insufficient color contrast (verify warning/destructive tokens against the surface tokens)
-- Missing `lang` attribute updates when language switches
-- Skip-to-content link on the app shell + marketing pages
-- Focus-visible styles confirmed on all interactive elements
-- Heading hierarchy regressions (h1 → h2 → h3)
-- `<main>` landmark on each routed page
+**Migration (new)**
+- `support_ticket_reads` table + RLS (`select/insert/update` only where `user_id = auth.uid()`).
+- View `v_my_unread_support_replies` (security_invoker, leverages existing ticket RLS).
 
-### 1C. Keyboard + screen-reader sanity sweep
+**Frontend (new)**
+- `src/components/dashboard/SupportReplyBanner.tsx` — fetches the view, renders banner if rows > 0, links to `/account?tab=support` (multi) or `/account?tab=support&ticket=<id>` (single). Uses `useQuery` with 30s refetch + `notification_inbox`-style realtime subscription on `support_ticket_messages`.
+- `src/hooks/use-unread-support-replies.ts` — shared hook returning `{ count, tickets }` so both the banner and the bell can consume it.
 
-- Tab through Auth → Signup → Checkout → Dashboard → Account
-- Verify every interactive element is reachable, has visible focus, no keyboard traps, ESC closes dialogs
-- Confirm Radix-based components (shadcn/ui Dialog, Sheet, Dropdown, Popover, Select, Tabs) keep their default ARIA wiring intact in our customizations
-- Spot-check with VoiceOver on the public landing + sign-in flow
+**Frontend (edited)**
+- `src/pages/Dashboard.tsx` — render `<SupportReplyBanner />` directly under the existing `<GetStartedBanner />`.
+- `src/components/support/SupportSection.tsx` — inside `TicketDetail`, on mount call the upsert to `support_ticket_reads` and invalidate `["unread_support_replies"]`.
+- `src/components/NotificationBell.tsx` — combine existing `notification_inbox` unread count with `useUnreadSupportReplies` so the red dot also reflects unread support replies.
 
-### 1D. Marketing copy + meta
+## Out of scope
 
-- Add `lang` attribute sync to `<html>` when i18n switches language
-- Confirm page titles update per route (helps screen readers announce navigation)
-
----
-
-## Phase 2 — CI Accessibility Gate (next loop)
-
-Lock in the gains so we don't regress on every release.
-
-- Add `vitest-axe` (component-level) for any new UI primitive added to `src/components/ui`
-- Add `@axe-core/playwright` smoke test that crawls Auth, Dashboard, Performance, Settings, Account, Index and fails the build on new "serious" or "critical" findings
-- Wire into `.github/workflows/ci.yml`
-- Document the a11y baseline — known existing issues recorded as "expected" so the gate only catches new regressions (mirrors how `phpcs-baseline.mjs` works for the WP plugin)
-
----
-
-## Phase 3 — Formal Documentation (next loop)
-
-Defensible paper trail for enterprise prospects and lawsuit defense.
-
-- **VPAT 2.5 / ACR** in `/docs/accessibility/VPAT.md` covering WCAG 2.1 AA + Section 508 criteria, marked Supports / Partially Supports / Does Not Support / Not Applicable per criterion
-- Link the VPAT from the public `/accessibility` page
-- Internal **a11y runbook** in `/docs/accessibility/runbook.md`:
-  - Per-release manual checklist
-  - Screen-reader test scripts for critical flows
-  - How to add accessible variants of new components
-- Add **App Bible** section so a11y becomes part of the release sign-off process
-
----
-
-## Phase 4 — Third-Party Audit Prep (when ready)
-
-Optional but worth the spend before going hard on enterprise/EU sales.
-
-- Pre-audit internal pass against the WCAG 2.1 AA checklist
-- Engage Deque, TPGi, or Level Access for a formal audit + report
-- Track remediation in a public roadmap on the `/accessibility` page
-- Re-audit annually + after any major UI overhaul
-
----
-
-## What we explicitly will NOT do
-
-- **No accessibility overlay widgets** (AccessiBe, UserWay, EqualWeb). They've been named in more lawsuits than they've defended against and the disability community widely opposes them. Real fixes only.
-- **No claims of conformance we haven't verified.** The statement will say "we target WCAG 2.1 AA" and list known gaps honestly.
-
----
-
-## Technical Details
-
-**New files**
-- `src/pages/Accessibility.tsx` — public statement, styled to match Privacy/Terms
-- Route added in `src/App.tsx`
-- (Phase 3) `docs/accessibility/VPAT.md`, `docs/accessibility/runbook.md`
-
-**Edited files (Phase 1)**
-- `src/pages/Index.tsx` — add `/accessibility` link to marketing footer
-- `src/components/AppLayout.tsx` (or wherever the in-app footer/legal links live) — same link
-- `src/components/i18n/AutoTranslateDom.tsx` (or `src/i18n.ts`) — sync `<html lang>` on language change
-- Component-level fixes flagged by the axe scan — likely small touches across `src/components/AppSidebar.tsx`, header/nav, KPI cards, dialogs, icon buttons in Dashboard / Account / Settings
-- `src/locales/en/common.json` + other locales — copy for the statement page
-- Add `index.html` skip-link target if missing
-
-**Phase 2 deps to add later**
-- `vitest-axe`, `@axe-core/playwright`, `playwright`
-
-**Phase 1 acceptance criteria**
-- `/accessibility` renders in light + dark mode, linked from public footer + in-app legal area
-- axe-core run against the 7 main flows shows zero "critical" and zero "serious" findings (or remaining ones documented in the statement under "Known Limitations")
-- Tab-traversal of Auth + Checkout + Dashboard works end-to-end with visible focus rings
-- `<html lang>` updates when language is switched
-- Skip-to-content link present on app shell + marketing pages
-
-Approve this and I'll switch to build mode and ship Phase 1. Phases 2–4 each get their own loop when you're ready.
+- No email-style "mark as unread" toggle.
+- Admin-side UI is unchanged (admins continue using `SupportInbox`).
+- No banner on pages other than `/dashboard` (the bell already covers app-wide visibility).

@@ -4,6 +4,7 @@ import { IconTooltip } from "@/components/ui/icon-tooltip";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_DASHBOARD } from "@/components/howto/page-content";
 import { GetStartedBanner } from "@/components/dashboard/GetStartedBanner";
+import { SupportReplyBanner } from "@/components/dashboard/SupportReplyBanner";
 
 import { useNavigate, Link } from "react-router-dom";
 import { format, subDays, startOfDay } from "date-fns";
@@ -573,6 +574,9 @@ const Dashboard = () => {
   return (
     <div>
       {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
+
+      <SupportReplyBanner />
+
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrg } from "@/hooks/use-org";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LifeBuoy, Plus, MessageSquare, Paperclip, ArrowLeft, Send, CheckCircle2, ThumbsUp, ThumbsDown, X, Lightbulb } from "lucide-react";
 import { format } from "date-fns";
 import { articlesForType } from "./helpContent";
+import { markSupportTicketRead } from "@/hooks/use-unread-support-replies";
 
 const TYPE_LABELS: Record<string, string> = {
   bug: "Bug Report",
@@ -467,6 +468,14 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
   const queryClient = useQueryClient();
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Mark this ticket's admin replies as read for the current user as soon as
+  // it opens — clears the dashboard "Support replied" banner and bell dot.
+  useEffect(() => {
+    if (user?.id && ticketId) {
+      markSupportTicketRead(user.id, ticketId, queryClient);
+    }
+  }, [user?.id, ticketId, queryClient]);
 
   const { data: ticket, isLoading } = useQuery({
     queryKey: ["support_ticket", ticketId],

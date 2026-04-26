@@ -266,21 +266,37 @@ Deno.serve(async (req) => {
     if (!wpRes.ok) {
       const errText = await wpRes.text();
       log("wp_error", { status: wpRes.status, body: errText.slice(0, 300) });
+
+      // Detect missing plugin route (older plugin version w/o support-access module)
+      const isMissingRoute =
+        wpRes.status === 404 && errText.includes("rest_no_route");
+
+      const friendlyError = isMissingRoute
+        ? `This site's ACTV TRKR plugin is too old to support remote access. Ask the site owner to update the plugin to v1.10+ on ${site.domain}.`
+        : `WordPress returned ${wpRes.status}. The site's plugin may be misconfigured or unreachable.`;
+
       await admin
         .from("support_access_grants")
         .update({
           status: "revoked",
           revoked_at: new Date().toISOString(),
-          revoke_reason: `wp_http_${wpRes.status}`,
+          revoke_reason: isMissingRoute
+            ? "wp_plugin_outdated"
+            : `wp_http_${wpRes.status}`,
         })
         .eq("id", grant.id);
+
+      // Return 200 with an `error` field so the client doesn't trip the
+      // runtime-error banner on non-2xx responses; the UI surfaces it as a toast.
       return new Response(
         JSON.stringify({
-          error: `WordPress returned ${wpRes.status}`,
+          error: friendlyError,
+          code: isMissingRoute ? "plugin_outdated" : "wp_error",
+          wp_status: wpRes.status,
           details: errText.slice(0, 400),
         }),
         {
-          status: 502,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );

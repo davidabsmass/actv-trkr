@@ -77,7 +77,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "feature-request",
     question: "Where do feature requests go?",
     answer:
-      "Submit them under 'Feature Request' in the ticket form below. Every request is reviewed and added to our roadmap. You'll get notified if we ship something you asked for.",
+      "Submit them under 'Feature Request' in the ticket form below. Every request is reviewed and added to our roadmap.",
     tags: ["feature"],
   },
 ];

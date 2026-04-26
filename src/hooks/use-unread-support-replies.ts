@@ -27,7 +27,6 @@ export function useUnreadSupportReplies() {
     queryFn: async (): Promise<UnreadSupportReply[]> => {
       if (!user?.id) return [];
       const { data, error } = await supabase
-        // @ts-expect-error -- view not in generated types yet
         .from("v_my_unread_support_replies")
         .select("ticket_id, ticket_number, subject, org_id, latest_admin_reply_at, unread_count")
         .order("latest_admin_reply_at", { ascending: false });

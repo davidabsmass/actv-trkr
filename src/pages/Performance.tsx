@@ -24,6 +24,8 @@ import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
+import { CreateGoalDialog } from "@/components/settings/GoalsSection";
+import { useForms } from "@/hooks/use-dashboard-data";
 
 
 const Reports = lazy(() => import("./Reports"));

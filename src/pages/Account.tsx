@@ -14,6 +14,7 @@ import SecuritySessionsSection from "@/components/account/SecuritySessionsSectio
 import SupportSection from "@/components/support/SupportSection";
 import { QuickHelpPanel } from "@/components/support/QuickHelpPanel";
 import { SupportAccessCard } from "@/components/support/SupportAccessCard";
+import { SupportActivityPanel } from "@/components/support/SupportActivityPanel";
 import { CancellationSaveDialog } from "@/components/account/CancellationSaveDialog";
 import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -136,6 +137,7 @@ export default function Account() {
               <SupportSection />
             </div>
             <SupportAccessCard />
+            <SupportActivityPanel />
           </div>
         </TabsContent>
 

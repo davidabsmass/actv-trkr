@@ -30,6 +30,9 @@ export function useRealtimeDashboard(
 
       // Effective lower bound for "fresh" leads — the later of window start
       // and install date. Used so Form Fills + CVR exclude historical imports.
+      // Anchored on `submitted_at` (real submission time), NOT `created_at`
+      // (which is the import timestamp for backfilled WP leads and would let
+      // thousands of pre-install submissions count as "fresh").
       const leadsLowerBound =
         installCutoff && new Date(installCutoff) > new Date(dayStart)
           ? installCutoff

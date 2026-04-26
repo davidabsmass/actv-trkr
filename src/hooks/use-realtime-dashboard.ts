@@ -17,15 +17,27 @@ import { addDays, format as fnsFormat, parseISO } from "date-fns";
 export function useRealtimeDashboard(
   orgId: string | null,
   startDate: string,
-  endDate: string
+  endDate: string,
+  installCutoff?: string | null
 ) {
   return useQuery({
-    queryKey: ["realtime_dashboard", orgId, startDate, endDate],
+    queryKey: ["realtime_dashboard", orgId, startDate, endDate, installCutoff || null],
     queryFn: async () => {
       if (!orgId) return null;
 
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
+
+      // Effective lower bound for "fresh" leads — the later of window start
+      // and install date. Used so Form Fills + CVR exclude historical imports.
+      const leadsLowerBound =
+        installCutoff && new Date(installCutoff) > new Date(dayStart)
+          ? installCutoff
+          : dayStart;
+      const windowEntirelyBeforeInstall = !!(
+        installCutoff && new Date(installCutoff) > new Date(dayEnd)
+      );
+      const installCutoffDate = installCutoff ? installCutoff.slice(0, 10) : null;
 
       // ── 1. Parallel lightweight queries ──────────────────────────────
       const [

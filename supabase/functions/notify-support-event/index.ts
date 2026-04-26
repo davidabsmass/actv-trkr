@@ -80,15 +80,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Notify ADMINS for: created, customer_replied
-    if (["created", "customer_replied"].includes(body.event_kind)) {
+    // Notify ADMINS for: created, customer_replied, customer_resolved
+    if (["created", "customer_replied", "customer_resolved"].includes(body.event_kind)) {
       for (const adminEmail of ADMIN_RECIPIENTS) {
         await sendOne(adminEmail, "admin-new-support-ticket", {
           ticketNumber: ticket.ticket_number,
           type: ticket.type,
           priority: ticket.priority,
           subject: ticket.subject,
-          message: body.event_kind === "customer_replied" ? body.message_preview : ticket.message,
+          message: body.event_kind === "customer_replied" || body.event_kind === "customer_resolved"
+            ? body.message_preview
+            : ticket.message,
           customerName: ticket.submitted_by_name,
           customerEmail: ticket.submitted_by_email,
           orgName: org?.name,

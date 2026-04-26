@@ -63,6 +63,14 @@ Deno.serve(async (req) => {
         user_id: caller.id, ip_hash: ipHash, user_agent: userAgent, request_id: requestId,
         message: "Step-up password verification failed",
       });
+      // Fire-and-forget alert to the account owner: someone with this session
+      // tried to re-verify the admin password and got it wrong.
+      notifyAuthEvent({
+        userId: caller.id,
+        eventType: "step_up_failed",
+        ip,
+        userAgent,
+      }).catch(() => { /* swallowed inside helper */ });
       return json({ error: "Invalid password" }, 401, req);
     }
 

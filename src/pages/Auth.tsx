@@ -162,7 +162,7 @@ const Auth = () => {
     try {
       if (!mfaChallengeToken) throw new Error("Session expired. Sign in again.");
       const { data, error: verifyErr } = await supabase.functions.invoke("mfa-verify-code", {
-        body: { challengeToken: mfaChallengeToken, code: mfaCode.trim() },
+        body: { challengeToken: mfaChallengeToken, code: mfaCode.trim(), trustDevice },
       });
       if (verifyErr) {
         const ctx: any = (verifyErr as any).context;
@@ -181,6 +181,11 @@ const Auth = () => {
       });
       if (setErr) throw setErr;
 
+      // Persist trusted-device token if the server issued one.
+      if (trustDevice && data?.deviceToken && pendingEmail) {
+        writeTrustedDevice(pendingEmail, String(data.deviceToken));
+      }
+
       const pendingCode = localStorage.getItem("pending_invite_code");
       if (pendingCode) {
         localStorage.removeItem("pending_invite_code");
@@ -190,6 +195,7 @@ const Auth = () => {
       setMfaChallengeToken(null);
       setMfaCode("");
       setPendingPassword("");
+      setTrustDevice(false);
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message);

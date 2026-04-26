@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Inbox, MessageSquare, Send, Lock, Paperclip, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { AdminTicketAccessWidget } from "@/components/admin/AdminTicketAccessWidget";
+import { useSupportAccessAudit } from "@/hooks/use-support-access-audit";
 
 const STATUSES = ["new","in_review","waiting_on_us","waiting_on_customer","planned","in_progress","resolved","closed"] as const;
 const PRIORITIES = ["low","normal","high","urgent"] as const;
@@ -217,6 +218,9 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
       return data;
     },
   });
+
+  // Audit any admin actions on this ticket if the customer has granted access.
+  const { logAction: logAccessAction } = useSupportAccessAudit(ticket?.org_id ?? null);
 
   const { data: messages } = useQuery({
     queryKey: ["admin_support_ticket_messages", ticketId],

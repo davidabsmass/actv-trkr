@@ -66,13 +66,17 @@ export function useRealtimeDashboard(
           .gte("started_at", dayStart)
           .lte("started_at", dayEnd),
 
-        supabase
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .eq("org_id", orgId)
-          .neq("status", "trashed")
-          .gte("submitted_at", dayStart)
-          .lte("submitted_at", dayEnd),
+        windowEntirelyBeforeInstall
+          ? Promise.resolve({ count: 0 } as any)
+          : supabase
+              .from("leads")
+              .select("*", { count: "exact", head: true })
+              .eq("org_id", orgId)
+              .neq("status", "trashed")
+              // Use created_at to anchor on plugin-capture time, not the
+              // historical submitted_at (which can predate the install).
+              .gte("created_at", leadsLowerBound)
+              .lte("created_at", dayEnd),
 
         // Daily aggregates for trend chart
         supabase
@@ -109,18 +113,20 @@ export function useRealtimeDashboard(
           .order("started_at", { ascending: false })
           .limit(500),
 
-        // Capped leads for attribution
-        supabase
-          .from("leads")
-          .select(
-            "submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id"
-          )
-          .eq("org_id", orgId)
-          .neq("status", "trashed")
-          .gte("submitted_at", dayStart)
-          .lte("submitted_at", dayEnd)
-          .order("submitted_at", { ascending: false })
-          .limit(500),
+        // Capped leads for attribution — only fresh leads (since install)
+        windowEntirelyBeforeInstall
+          ? Promise.resolve({ data: [] } as any)
+          : supabase
+              .from("leads")
+              .select(
+                "submitted_at, source, utm_source, utm_campaign, page_path, referrer_domain, session_id"
+              )
+              .eq("org_id", orgId)
+              .neq("status", "trashed")
+              .gte("created_at", leadsLowerBound)
+              .lte("created_at", dayEnd)
+              .order("created_at", { ascending: false })
+              .limit(500),
 
         // Capped pageviews for avg active seconds per page
         supabase

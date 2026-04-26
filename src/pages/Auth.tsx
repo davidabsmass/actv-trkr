@@ -59,6 +59,7 @@ const Auth = () => {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaEmail, setMfaEmail] = useState("");
   const [mfaResendCooldown, setMfaResendCooldown] = useState(0);
+  const [trustDevice, setTrustDevice] = useState(false);
   const navigate = useNavigate();
 
   // Restore pending OTP state on mount so refresh / tab switch doesn't lose it.

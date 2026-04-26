@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useOrg } from "@/hooks/use-org";
 import { supabase } from "@/integrations/supabase/client";
@@ -466,8 +466,11 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const latestAdminReplyRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledRef = useRef(false);
 
   // Mark this ticket's admin replies as read for the current user as soon as
   // it opens — clears the dashboard "Support replied" banner and bell dot.

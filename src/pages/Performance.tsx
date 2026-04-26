@@ -170,6 +170,15 @@ const Performance = () => {
             customRange={customRange}
             onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
           />
+          {orgId && (
+            <CreateGoalDialog
+              orgId={orgId}
+              forms={forms}
+              triggerLabel="Add Goal"
+              triggerVariant="outline"
+              triggerClassName="h-8 gap-1 text-xs"
+            />
+          )}
           <AddSiteHeaderButton />
         </div>
       </div>

@@ -126,9 +126,9 @@ export function useRealtimeDashboard(
               )
               .eq("org_id", orgId)
               .neq("status", "trashed")
-              .gte("created_at", leadsLowerBound)
-              .lte("created_at", dayEnd)
-              .order("created_at", { ascending: false })
+              .gte("submitted_at", leadsLowerBound)
+              .lte("submitted_at", dayEnd)
+              .order("submitted_at", { ascending: false })
               .limit(500),
 
         // Capped pageviews for avg active seconds per page

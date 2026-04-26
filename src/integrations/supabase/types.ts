@@ -675,6 +675,195 @@ export type Database = {
           },
         ]
       }
+      auth_email_change_pending: {
+        Row: {
+          applied_at: string | null
+          cancel_token_hash: string
+          cancelled_at: string | null
+          created_at: string
+          effective_at: string
+          id: string
+          ip_hash: string | null
+          new_email: string
+          old_email: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          cancel_token_hash: string
+          cancelled_at?: string | null
+          created_at?: string
+          effective_at: string
+          id?: string
+          ip_hash?: string | null
+          new_email: string
+          old_email: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          cancel_token_hash?: string
+          cancelled_at?: string | null
+          created_at?: string
+          effective_at?: string
+          id?: string
+          ip_hash?: string | null
+          new_email?: string
+          old_email?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      auth_event_alerts: {
+        Row: {
+          created_at: string
+          email_sent_at: string
+          event_type: string
+          geo_hint: string | null
+          id: string
+          ip_hash: string | null
+          kill_token_consumed_at: string | null
+          kill_token_expires_at: string | null
+          kill_token_hash: string | null
+          metadata: Json
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_sent_at?: string
+          event_type: string
+          geo_hint?: string | null
+          id?: string
+          ip_hash?: string | null
+          kill_token_consumed_at?: string | null
+          kill_token_expires_at?: string | null
+          kill_token_hash?: string | null
+          metadata?: Json
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_sent_at?: string
+          event_type?: string
+          geo_hint?: string | null
+          id?: string
+          ip_hash?: string | null
+          kill_token_consumed_at?: string | null
+          kill_token_expires_at?: string | null
+          kill_token_hash?: string | null
+          metadata?: Json
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      auth_password_reset_log: {
+        Row: {
+          email: string
+          id: string
+          ip_hash: string | null
+          requested_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          email: string
+          id?: string
+          ip_hash?: string | null
+          requested_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          email?: string
+          id?: string
+          ip_hash?: string | null
+          requested_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      auth_recent_sessions: {
+        Row: {
+          device_fingerprint: string | null
+          geo_hint: string | null
+          id: string
+          ip_hash: string | null
+          last_seen_at: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          signed_in_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          device_fingerprint?: string | null
+          geo_hint?: string | null
+          id?: string
+          ip_hash?: string | null
+          last_seen_at?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          signed_in_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          device_fingerprint?: string | null
+          geo_hint?: string | null
+          id?: string
+          ip_hash?: string | null
+          last_seen_at?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          signed_in_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      auth_trusted_devices: {
+        Row: {
+          created_at: string
+          device_token_hash: string
+          expires_at: string
+          id: string
+          ip_hash: string | null
+          label: string | null
+          last_used_at: string
+          revoked_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_token_hash: string
+          expires_at: string
+          id?: string
+          ip_hash?: string | null
+          label?: string | null
+          last_used_at?: string
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_token_hash?: string
+          expires_at?: string
+          id?: string
+          ip_hash?: string | null
+          label?: string | null
+          last_used_at?: string
+          revoked_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       backup_health: {
         Row: {
           id: string
@@ -7780,6 +7969,10 @@ export type Database = {
         Args: { body?: Json; function_name: string }
         Returns: undefined
       }
+      check_password_reset_rate_limit: {
+        Args: { p_email: string }
+        Returns: boolean
+      }
       compute_account_lifecycle_stage: {
         Args: { p_org_id: string }
         Returns: string
@@ -7943,6 +8136,7 @@ export type Database = {
         }
         Returns: number
       }
+      purge_auth_hardening_stale: { Args: never; Returns: undefined }
       purge_expired_mfa_codes: { Args: never; Returns: undefined }
       qa_check_has_role_definer: {
         Args: never

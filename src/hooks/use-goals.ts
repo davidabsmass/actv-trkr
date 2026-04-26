@@ -450,11 +450,10 @@ export function useConversionMetrics(
         totalConversions = formLeads;
       }
 
-      // Conversion rate is capped at 100%. A rate >100% means we received more
-      // leads/conversions than tracked sessions — usually because forms submit
-      // without an associated session (tracker not installed on the form page,
-      // or lead arrived before the visitor was tracked). Capping prevents
-      // nonsensical "1250%" displays while preserving the underlying counts.
+      // CVR uses tracked leads (session_id IS NOT NULL) ÷ tracked sessions so
+      // numerator and denominator come from the same observed universe. The
+      // Math.min cap is kept as a defensive safety net for edge cases (e.g.
+      // a session that started just outside the date window).
       const conversionRate = sessions > 0 ? Math.min(1, totalConversions / sessions) : 0;
       const formCvr = sessions > 0 ? Math.min(1, formLeads / sessions) : 0;
       const goalCvr = sessions > 0 ? Math.min(1, nonFormGoalCompletions / sessions) : 0;
@@ -465,6 +464,8 @@ export function useConversionMetrics(
         goalCvr,
         totalConversions,
         formConversions: formLeads,
+        totalLeads,
+        untrackedLeads,
         goalConversions: nonFormGoalCompletions,
         sessions,
         hasCustomGoals,

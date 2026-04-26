@@ -14,6 +14,7 @@ import AutoTranslateDom from "@/components/i18n/AutoTranslateDom";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Performance = lazy(() => import("./pages/Performance"));
 const Forms = lazy(() => import("./pages/Forms"));
+const FormsTroubleshooting = lazy(() => import("./pages/FormsTroubleshooting"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Exports = lazy(() => import("./pages/Exports"));
 const Seo = lazy(() => import("./pages/Seo"));
@@ -168,6 +169,7 @@ const App = () => (
               <Route path="performance" element={<Performance />} />
               <Route path="visitor-journeys" element={<VisitorJourneys />} />
               <Route path="forms" element={<Forms />} />
+              <Route path="forms/troubleshooting" element={<FormsTroubleshooting />} />
               <Route path="entries" element={<Navigate to="/forms" replace />} />
               <Route path="reports" element={<Reports />} />
               <Route path="exports" element={<Exports />} />

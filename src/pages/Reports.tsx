@@ -36,6 +36,7 @@ import ArchivesContent from "@/components/archives/ArchivesContent";
 import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_REPORTS } from "@/components/howto/page-content";
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 
 // ── Shared sub-components ──
 const TrendBadge = ({ change }: { change: number | null }) => {

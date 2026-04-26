@@ -34,6 +34,7 @@ import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { downloadPlugin, getLatestPluginVersion } from "@/lib/plugin-download";
 import { callManageImportJob } from "@/lib/manage-import-job";
 import { HowToButton } from "@/components/HowToButton";
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 import { HOWTO_FORMS } from "@/components/howto/page-content";
 
 
@@ -738,6 +739,7 @@ export default function Forms() {
             customRange={customRange}
             onCustomRangeChange={(r) => { setCustomRange(r); setDays(null); }}
           />
+          <AddSiteHeaderButton />
         </div>
       </div>
 

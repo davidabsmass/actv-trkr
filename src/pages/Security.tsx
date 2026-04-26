@@ -7,6 +7,7 @@ import { SecurityOverviewTab } from "@/components/security/SecurityOverviewTab";
 import { SecurityFindingsTab } from "@/components/security/SecurityFindingsTab";
 import { SecurityEventsTab } from "@/components/security/SecurityEventsTab";
 import { SecurityApiKeysTab } from "@/components/security/SecurityApiKeysTab";
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 
 export default function Security() {
   const { isAdmin, loading } = useUserRole();
@@ -43,6 +44,7 @@ export default function Security() {
             Risk visibility, audit trail, and release readiness for your account.
           </p>
         </div>
+        <AddSiteHeaderButton />
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">

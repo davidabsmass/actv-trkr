@@ -36,6 +36,7 @@ import ArchivesContent from "@/components/archives/ArchivesContent";
 import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_REPORTS } from "@/components/howto/page-content";
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 
 // ── Shared sub-components ──
 const TrendBadge = ({ change }: { change: number | null }) => {
@@ -629,6 +630,7 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-foreground">{t("reports.title")}</h1>
           <HowToButton {...HOWTO_REPORTS} />
         </div>
+        <AddSiteHeaderButton />
       </div>
       <p className="text-sm text-muted-foreground mb-6">{t("reports.insightsFor", { orgName })}</p>
 

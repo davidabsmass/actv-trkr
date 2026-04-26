@@ -24,6 +24,7 @@ import { ConsentStatusIndicator, DataIntegrityNotice, ComplianceWarnings } from 
 import { FleetHealthWidget } from "@/components/monitoring/FleetHealthWidget";
 import { callManageImportJob } from "@/lib/manage-import-job";
 import { HowToButton } from "@/components/HowToButton";
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 import { HOWTO_MONITORING } from "@/components/howto/page-content";
 
 export default function MonitoringPage() {
@@ -138,11 +139,17 @@ export default function MonitoringPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-1.5 mb-1">
-        <h1 className="text-2xl font-bold text-foreground">{t("monitoring.title")}</h1>
-        <HowToButton {...HOWTO_MONITORING} />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-1">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold text-foreground">{t("monitoring.title")}</h1>
+            <HowToButton {...HOWTO_MONITORING} />
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">{t("monitoring.subtitle")}</p>
+        </div>
+        <AddSiteHeaderButton />
       </div>
-      <p className="text-sm text-muted-foreground mb-6">{t("monitoring.subtitle")}</p>
+      <div className="mb-6" />
 
       {/* Sites overview grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

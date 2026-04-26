@@ -891,6 +891,12 @@ export default function AdminSetup() {
             Clients
           </button>
           <button
+            onClick={() => switchMainTab("support-inbox")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "support-inbox" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Support Inbox
+          </button>
+          <button
             onClick={() => switchMainTab("release-qa")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "release-qa" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
@@ -921,6 +927,10 @@ export default function AdminSetup() {
 
       {activeMainTab === "support-access" && isAdminUser && (
         <SupportAccessPanel />
+      )}
+
+      {activeMainTab === "support-inbox" && isAdminUser && (
+        <SupportInbox />
       )}
 
       {activeMainTab === "subscriber-sites" && isAdminUser && (

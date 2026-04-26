@@ -19,6 +19,8 @@ import { template as adminNewSupportTicket } from './admin-new-support-ticket.ts
 import { template as acquisitionWeeklyDigest } from './acquisition-weekly-digest.tsx'
 import { template as contactMessage } from './contact-message.tsx'
 import { template as login2faCode } from './login-2fa-code.tsx'
+import { template as authSecurityAlert } from './auth-security-alert.tsx'
+import { template as emailChangeCancel } from './email-change-cancel.tsx'
 
 // Retention add-on templates
 import { template as retentionWelcome } from './retention-welcome.tsx'

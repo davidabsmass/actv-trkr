@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, formatDistanceToNow } from "date-fns";
+import { useSupportAccessAudit } from "@/hooks/use-support-access-audit";
+import { Shield } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -69,6 +71,25 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
   const profile = data?.profile;
   const auth = data?.auth;
   const orgs: any[] = data?.orgs ?? [];
+  const primaryOrgId: string | null = orgs[0]?.org_id ?? null;
+
+  // Consent-aware audit logging — every meaningful admin action below calls
+  // logAction() so the customer can see what was done during their grant.
+  const { hasActiveGrant, activeGrant, logAction } = useSupportAccessAudit(primaryOrgId);
+
+  // Log that an admin opened this customer's profile while a grant is active.
+  useEffect(() => {
+    if (open && hasActiveGrant && primaryOrgId) {
+      logAction("customer_detail_viewed", {
+        resourceType: "customer",
+        resourceId: primaryOrgId,
+        metadata: { email },
+      });
+    }
+    // We intentionally key only on open + grant + org so we don't double-log
+    // on unrelated re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hasActiveGrant, primaryOrgId]);
   const sites: any[] = data?.sites ?? [];
   const importJobs: any[] = data?.import_jobs ?? [];
   const recentAlerts: any[] = data?.recent_alerts ?? [];

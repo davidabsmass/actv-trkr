@@ -206,6 +206,18 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
           <>
             {/* ── STICKY HEADER ───────────────────────────────────── */}
             <SheetHeader className="sticky top-0 z-10 bg-background border-b px-6 py-4 space-y-3">
+              {hasActiveGrant && activeGrant && (
+                <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+                  <Shield className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                    Customer has granted support access
+                  </span>
+                  <span className="text-muted-foreground">
+                    · Your actions are being logged · Expires{" "}
+                    {format(new Date(activeGrant.expires_at), "MMM d 'at' h:mm a")}
+                  </span>
+                </div>
+              )}
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="space-y-1 min-w-0">
                   <SheetTitle className="text-xl truncate">

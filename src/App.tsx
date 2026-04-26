@@ -38,6 +38,7 @@ const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const OwnerAdmin = lazy(() => import("./pages/OwnerAdmin"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Accessibility = lazy(() => import("./pages/Accessibility"));
 const Dpa = lazy(() => import("./pages/Dpa"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const ComplianceSetup = lazy(() => import("./pages/ComplianceSetup"));
@@ -200,6 +201,7 @@ const App = () => (
             <Route path="/owner-admin" element={<OwnerAdmin />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/accessibility" element={<Accessibility />} />
             <Route path="/dpa" element={<Dpa />} />
             <Route path="/cookie-policy" element={<CookiePolicy />} />
             <Route path="/data-rights" element={<DataRights />} />

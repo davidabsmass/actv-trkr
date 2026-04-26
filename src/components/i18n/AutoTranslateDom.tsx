@@ -55,6 +55,13 @@ export default function AutoTranslateDom() {
     const root = document.body;
     if (!root) return;
 
+    // Keep <html lang> in sync with the active UI language so screen readers
+    // pronounce content correctly. Required for WCAG 3.1.1 (Language of Page)
+    // and 3.1.2 (Language of Parts).
+    if (typeof document !== "undefined" && document.documentElement) {
+      document.documentElement.setAttribute("lang", targetLanguage || "en");
+    }
+
     // For non-English, ensure body starts hidden (covers both lang switch and page load)
     if (targetLanguage !== "en") {
       root.style.visibility = "hidden";

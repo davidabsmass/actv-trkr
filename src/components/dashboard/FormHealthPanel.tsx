@@ -33,11 +33,11 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
       // Get form health checks (liveness probes)
       const { data: healthChecks } = await supabase
         .from("form_health_checks")
-        .select("form_id, is_rendered, last_checked_at, page_url")
+        .select("form_id, is_rendered, last_checked_at, page_url, last_http_status, last_failure_reason")
         .eq("org_id", orgId);
 
-      const healthCheckMap: Record<string, { is_rendered: boolean; last_checked_at: string; page_url: string | null }> = {};
-      (healthChecks || []).forEach(h => {
+      const healthCheckMap: Record<string, { is_rendered: boolean; last_checked_at: string; page_url: string | null; last_http_status: number | null; last_failure_reason: string | null }> = {};
+      (healthChecks || []).forEach((h: any) => {
         healthCheckMap[h.form_id] = h;
       });
 
@@ -76,7 +76,13 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
 
         // Liveness probe failure takes highest priority
         if (probe && !probe.is_rendered) {
-          return { id: form.id, name: form.name, status: "not_rendered", detail: t("formHealth.notDetected", { date: format(new Date(probe.last_checked_at), "MMM d, HH:mm") }) };
+          const reason = probe.last_failure_reason
+            || (probe.last_http_status === 404 || probe.last_http_status === 410
+              ? `Page not found (HTTP ${probe.last_http_status})`
+              : probe.last_http_status && probe.last_http_status >= 500
+                ? `Server error (HTTP ${probe.last_http_status})`
+                : t("formHealth.notDetected", { date: format(new Date(probe.last_checked_at), "MMM d, HH:mm") }));
+          return { id: form.id, name: form.name, status: "not_rendered", detail: reason };
         }
         if (errCount > 0) {
           return { id: form.id, name: form.name, status: "errors", detail: t("formHealth.errorsThisWeek", { count: errCount }) };

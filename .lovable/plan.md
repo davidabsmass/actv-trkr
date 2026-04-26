@@ -1,62 +1,54 @@
-I agree: the large forms are still processing, not stuck. The current live state shows two active `livesinthebalance.org` jobs still advancing, with host rate-limit backoffs. The real problem is that the system can leave older jobs in a terminal `failed`/`error` state after repeated transient failures or plugin-route issues. That is what must be eliminated.
+## What I found when I tested it
 
-Plan to fix this:
+I just fetched the URL the system has on file for the form:
 
-1. Treat imports as recoverable until the source form is actually unavailable
-   - Stop leaving a normal historical import permanently “stuck” or “failed” after transient problems.
-   - Convert repeated timeout/rate-limit/partial-batch failures into scheduled retries with longer backoff, not terminal failure.
-   - Only mark an import as blocked when the WordPress plugin route/form is genuinely unavailable after a fresh discover/count check.
-
-2. Add a self-healing retry path for old failed jobs
-   - Update the watchdog so it also reviews failed/error import jobs.
-   - If the form still exists and has missing entries, automatically create/resume a pending import job.
-   - Preserve the cursor/progress where safe; reset the cursor only when the previous cursor is stale or the plugin says pagination ended too early.
-
-3. Fix progress accounting for imports that are clearly moving
-   - The Forms page already reads job progress (`total_processed / total_expected`), which is why the large forms show movement.
-   - Update backend integration totals more frequently during active jobs so admin/settings health views don’t show misleading `0 imported` while the job is actually at `865 / 4,994` or `1,126 / 1,313`.
-
-4. Replace “stalled” user-facing language with “waiting / retrying / still importing”
-   - In normal UI, show:
-     - “Importing” when batches are running.
-     - “Waiting, retrying automatically” when rate-limited or backed off.
-     - “Needs attention” only when the source plugin/form is truly unavailable.
-   - Remove alarming “stalled” labels from customer-facing areas unless it is an admin/debug-only health state.
-
-5. Improve queue fairness without interrupting active imports
-   - Make the queue pick smaller pending jobs first when multiple jobs are ready.
-   - Keep active large jobs resumable and chunked; clicking Sync Entries again should not restart them.
-
-6. Add a manual safety action for administrators
-   - Add/adjust an admin repair action to trigger the watchdog/queue and clear recoverable failed jobs.
-   - This gives us a controlled “repair imports now” path without asking customers to restart from scratch.
-
-Technical details:
-
-```text
-Current issue
-- Large active jobs: pending/running with recent heartbeat and increasing total_processed.
-- Older jobs: failed after max retries, even when the correct behavior should be auto-retry or re-discover.
-
-Target behavior
-- transient error -> pending retry with backoff
-- repeated transient error -> longer backoff, still auto-resume
-- plugin route/form unavailable -> blocked/needs attention with clear explanation
-- missing entries + no active job -> watchdog creates/resumes a job
-- progress checkpoint -> job totals and integration totals stay aligned
+```
+URL stored:  https://livesinthebalance.org/advocacy/bill-of-rights/
+HTTP result: 404
+Page title:  "Page not found - LIVES IN THE BALANCE"
 ```
 
-Files/functions to update after approval:
-- `supabase/functions/process-import-queue/index.ts`
-- `supabase/functions/form-import-watchdog/index.ts`
-- `supabase/functions/manage-import-job/index.ts`
-- `src/pages/Forms.tsx`
-- `src/components/settings/FormImportPanel.tsx`
-- `src/components/admin/ImportHealthPanel.tsx`
-- a database migration if a new non-terminal status such as `blocked` or repair metadata is needed
+I tested twice — once with the monitoring probe's user-agent, once with a normal Chrome user-agent. Both got the same 404. I also pulled the site's sitemap (`page-sitemap.xml`, 129 URLs) and `/advocacy/bill-of-rights/` is **not in it**. Neither is anything else with "bill" or "rights" in the slug.
 
-Validation after implementation:
-- Confirm current large jobs still show as active and do not restart.
-- Confirm failed recoverable jobs are picked back up by the watchdog or converted to clear “needs attention” only if the plugin/form is unavailable.
-- Confirm customer UI no longer says “stuck” for jobs that are retrying/backing off.
-- Confirm Sync Entries remains idempotent: it should not restart an already-running import.
+So from the server's perspective the page at the recorded URL really is gone. Monitoring isn't lying — it's just probing the wrong URL.
+
+The likely cause: the page was renamed, moved, or the form was embedded on a new page, and the system never updated the form's stored `page_url`. The 67 historical leads were collected back in 2021 when the old URL was live (most recent submission: Nov 17, 2021).
+
+## I need one piece of information from you
+
+**What is the actual current URL where this form lives?** Once I know that, I can either:
+
+- Update the form's stored page URL directly, or
+- Fix the discovery logic so the WordPress plugin reports the correct URL automatically.
+
+If you can paste the live URL (or just the page slug), I'll verify the form is detectable there and update the record.
+
+## While I'm in there, I'll also ship these fixes
+
+So this kind of confusion stops happening:
+
+### 1. Show the actual reason in Monitoring
+Today the row just says "Not Found" with an `EyeOff` icon. Change it to show the underlying signal — for example: "Page returned 404" or "Page returned 200 but form markup not detected" plus the timestamp. Same on the Dashboard "Form Health" panel. This single change would have made the cause obvious without needing this conversation.
+
+### 2. Auto-relearn the page URL when the stored one 404s
+When the liveness probe gets a 404 from the recorded `page_url`, automatically check the `forms` table's other known URL signals (recent leads' `page_url`, `lead_events_raw.payload.source_url`, recent `pageviews` referencing that form) before declaring the form not rendered. The Avada code path already does this kind of multi-source URL hydration (`buildKnownAvadaFormMappings` in `trigger-site-sync`); apply the same approach to Gravity Forms / WPForms / CF7 / Ninja / Fluent.
+
+### 3. "Fix URL" action in the Monitoring row
+When a form is flagged as not rendered, add an inline action that lets the user paste the correct URL and re-probe immediately, instead of having to dig into Settings.
+
+### 4. Tighten Gravity Forms detection
+The current fallback regex (`/gform_wrapper/i && /gfield/i`) is loose — many WP themes leave Gravity Forms scaffolding on pages where the form isn't actually present. Require the specific form ID in the match (`gform_wrapper_${id}`, `id="gform_${id}"`, or `gform_submit_button_${id}`) and only accept the loose match if a `<form>` element with a `gform_*` id is also present.
+
+### Files touched
+
+- `supabase/functions/trigger-site-sync/index.ts` — store HTTP status, add multi-source URL relearning for non-Avada providers, tighten `detectFormInHtml`.
+- `supabase/functions/ingest-form-health/index.ts` — accept and store HTTP status from the WP plugin probe.
+- Migration: add nullable `last_http_status int` to `form_health_checks`.
+- `src/pages/Monitoring.tsx` (`FormChecksTab`) — surface HTTP status, last-rendered timestamp, and "Fix URL" action.
+- `src/components/dashboard/FormHealthPanel.tsx` — explain the failure reason in the row.
+
+No changes to lead/import logic.
+
+---
+
+Just confirm the current page URL for "Bill of Rights" and I'll proceed.

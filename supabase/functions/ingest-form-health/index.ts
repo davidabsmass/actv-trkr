@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     let alertsCreated = 0;
 
     for (const check of checks) {
-      const { form_id, provider, rendered, page_url } = check;
+      const { form_id, provider, rendered, page_url, http_status, failure_reason } = check;
       if (!form_id || !provider) continue;
 
       // Resolve internal form_id from external_form_id + provider
@@ -105,6 +105,20 @@ Deno.serve(async (req) => {
       const wasRendered = existing?.is_rendered ?? true;
       const isRendered = !!rendered;
       const now = new Date().toISOString();
+      const statusValue = typeof http_status === "number" ? http_status : null;
+      const reasonValue = isRendered
+        ? null
+        : (typeof failure_reason === "string" && failure_reason.trim()
+          ? failure_reason.trim().slice(0, 200)
+          : (statusValue !== null
+            ? (statusValue === 404 || statusValue === 410
+              ? `Page not found (HTTP ${statusValue})`
+              : statusValue >= 500
+                ? `Server error (HTTP ${statusValue})`
+                : statusValue >= 400
+                  ? `Page blocked or unavailable (HTTP ${statusValue})`
+                  : `Page returned ${statusValue} but form markup not detected`)
+            : "Form markup not detected on page"));
 
       // Upsert the health check
       const upsertData: Record<string, unknown> = {
@@ -114,6 +128,8 @@ Deno.serve(async (req) => {
         is_rendered: isRendered,
         page_url: page_url || null,
         last_checked_at: now,
+        last_http_status: statusValue,
+        last_failure_reason: reasonValue,
       };
       if (isRendered) {
         upsertData.last_rendered_at = now;

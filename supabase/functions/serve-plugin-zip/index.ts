@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       compressionOptions: { level: 9 },
     });
 
-    return new Response(zipBuffer, {
+    return new Response(zipBuffer as BodyInit, {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/zip",

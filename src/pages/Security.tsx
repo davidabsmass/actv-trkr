@@ -44,6 +44,7 @@ export default function Security() {
             Risk visibility, audit trail, and release readiness for your account.
           </p>
         </div>
+        <AddSiteHeaderButton />
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">

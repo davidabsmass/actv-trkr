@@ -8,6 +8,7 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
 import { template as login2faCodeTemplate } from '../_shared/transactional-email-templates/login-2fa-code.tsx'
+import { notifyAuthEvent } from '../_shared/notify-auth-event.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -232,6 +233,29 @@ Deno.serve(async (req) => {
 
     // Opportunistic cleanup
     try { await admin.rpc('purge_expired_mfa_codes') } catch { /* ignore */ }
+
+    // If this UA has never been seen as trusted for this user, send a security
+    // alert that a sign-in code was requested from a new device. Fire-and-forget.
+    if (userAgent) {
+      try {
+        const { data: trusted } = await admin
+          .from('auth_trusted_devices')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('user_agent', userAgent)
+          .is('revoked_at', null)
+          .limit(1)
+          .maybeSingle()
+        if (!trusted) {
+          notifyAuthEvent({
+            userId,
+            eventType: 'mfa_code_new_device',
+            ip: ipRaw || null,
+            userAgent,
+          }).catch(() => { /* ignore */ })
+        }
+      } catch (_) { /* ignore */ }
+    }
 
     return new Response(
       JSON.stringify({

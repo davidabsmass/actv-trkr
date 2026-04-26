@@ -12,6 +12,7 @@ import { appCorsHeaders } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { issueStepUpToken } from "../_shared/step-up.ts";
 import { logSecurityEvent, hashIp, extractClientIp, newRequestId } from "../_shared/security-audit.ts";
+import { notifyAuthEvent } from "../_shared/notify-auth-event.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: appCorsHeaders(req) });
@@ -62,6 +63,14 @@ Deno.serve(async (req) => {
         user_id: caller.id, ip_hash: ipHash, user_agent: userAgent, request_id: requestId,
         message: "Step-up password verification failed",
       });
+      // Fire-and-forget alert to the account owner: someone with this session
+      // tried to re-verify the admin password and got it wrong.
+      notifyAuthEvent({
+        userId: caller.id,
+        eventType: "step_up_failed",
+        ip,
+        userAgent,
+      }).catch(() => { /* swallowed inside helper */ });
       return json({ error: "Invalid password" }, 401, req);
     }
 

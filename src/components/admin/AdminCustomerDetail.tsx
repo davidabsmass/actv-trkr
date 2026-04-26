@@ -118,14 +118,21 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
     }
   };
 
-  const handleResetPassword = () =>
-    email && callAction("reset", { action: "send_password_reset", email }, `Password reset sent to ${email}`);
+  const handleResetPassword = () => {
+    if (!email) return;
+    logAction("password_reset_sent", { resourceType: "auth", metadata: { email } });
+    callAction("reset", { action: "send_password_reset", email }, `Password reset sent to ${email}`);
+  };
 
-  const handleSendLoginLink = () =>
-    email && callAction("login", { action: "send_password_reset", email }, `Login link sent to ${email}`);
+  const handleSendLoginLink = () => {
+    if (!email) return;
+    logAction("login_link_sent", { resourceType: "auth", metadata: { email } });
+    callAction("login", { action: "send_password_reset", email }, `Login link sent to ${email}`);
+  };
 
   const handleForceLogout = () => {
     if (!email || !confirm(`Force logout ${email} from all sessions?`)) return;
+    logAction("force_logout", { resourceType: "auth", metadata: { email } });
     callAction("logout", { action: "force_logout", email }, "All sessions revoked");
   };
 

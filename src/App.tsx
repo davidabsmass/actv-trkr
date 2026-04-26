@@ -191,6 +191,8 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/account/lock" element={<AccountLock />} />
+            <Route path="/account/cancel-email-change" element={<CancelEmailChange />} />
             <Route path="/checkout" element={<Navigate to="/" replace />} />
             <Route path="/checkout-success" element={<CheckoutSuccess />} />
             <Route path="/owner-admin" element={<OwnerAdmin />} />

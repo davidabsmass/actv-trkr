@@ -1,43 +1,102 @@
-# Restore Pageview Tracking After Instance Upgrade
+# Anti-Hacker Hardening Plan (Email 2FA Edition)
 
-## Current State
+Five layers to stop account takeover and data theft. **2FA delivery changed from TOTP/authenticator apps to email codes** per your preference. Everything else unchanged from the prior plan.
 
-The Lovable Cloud instance upgrade restored most services. However, two issues remain:
+---
 
-1. **No pageviews recorded since 09:27 UTC** (~45 min gap). The `track-pageview` function is failing with a mix of `401 Invalid API key` and `504 timeout` responses.
-2. **`track-event` is rejecting ~44% of incoming events** with `401 Invalid API key`, and `ingest-heartbeat` is rejecting ~62%.
-3. Form ingestion (`ingest-form`) is fully healthy (100% success), proving the database itself has recovered.
+## What's already in place
 
-The 401s are an authentication issue, not a capacity issue. The 504s on `track-pageview` only suggest a slow database path specific to that function (likely an insert into the `pageviews` table while it processes a backlog).
+- Step-up password re-verification (`admin-step-up`) for sensitive admin actions.
+- Support-access grants are HMAC-signed and audited.
+- API keys hashed at rest, one-active-key per org.
+- Ingestion endpoints have JWT/HMAC verification.
+- RLS on across the database.
+- Branded email infrastructure with a queue + retry safety, and a `login-2fa-code` email template **already exists** — we will reuse it.
 
-## Investigation Steps
+---
 
-1. **Read the three failing edge functions** (`track-pageview`, `track-event`, `ingest-heartbeat`) to confirm they share the same API key validation code path (centralized via `mem://security/ingestion-hardening`).
-2. **Inspect recent function logs** for the exact 401 reason (key not found, hash mismatch, rate-limit, replay protection, expired key) — pull a sample from `edge_function_logs`.
-3. **Check the `api_keys` table** for any keys recently disabled/rotated, and confirm the WordPress sites that are 401-ing are still mapped to active keys.
-4. **Check `pageviews` table state** — recent insert latency, presence of any blocking triggers, index health, and whether the table is being held by long-running queries.
-5. **Check Postgres logs** for slow inserts on `pageviews` to confirm whether the 504 is database-side or function-side.
+## Layer 1 — Block leaked & weak passwords
 
-## Likely Fixes
+Enable **HaveIBeenPwned password check** at the auth layer. Any password that has appeared in a known breach is rejected at signup AND password change. Also raise the **minimum length to 12** characters.
 
-Depending on what the investigation finds, the fix will be one of:
+## Layer 2 — Mandatory **email 2FA** for admin/owner accounts
 
-- **Stale key cache**: clear the in-memory API key hash cache in the edge function (or restart the function) so newly-validated keys propagate.
-- **Replay protection backlog**: during saturation, the replay-nonce store may have rejected legitimate retries from buffered WP queue. Loosen the replay window briefly to drain the WP retry queues.
-- **`pageviews` insert path slow**: if a trigger or unindexed lookup is slowing inserts, add a missing index on `(site_id, occurred_at)` or batch-defer non-critical work (e.g., session updates) into an async path.
-- **Specific keys actually invalid**: identify the affected sites and re-issue API keys, then notify the user which sites need the WP plugin reconfigured.
+Replaces the previous TOTP plan. After password is verified, the user is **not signed in yet** — instead:
 
-## Validation
+1. A 6-digit code is generated server-side, hashed, and stored with a 10-minute expiry.
+2. The existing `login-2fa-code` branded email template is sent to the user's verified email.
+3. The user enters the code; on success, the session is finalized.
+4. Wrong code: 3 attempts, then the challenge is invalidated and a new email is required.
+5. **"Trust this device for 30 days"** checkbox issues a long-lived, per-device cookie so you don't get a code on every login from your normal laptop.
+6. Code emails are rate-limited: max 5 per email per hour to prevent inbox flooding.
 
-After applying the fix:
+**Why email 2FA is safe enough here:**
+- Your email itself is protected by Google's 2FA (you have it enabled).
+- The code is single-use, time-bound, and hash-stored.
+- The "this wasn't me" alert in Layer 3 fires the moment someone tries.
+- No app to install, no recovery codes to lose.
 
-1. Confirm `track-pageview` writes appear in `pageviews` within 60 seconds.
-2. Re-query the last 5 minutes of edge logs and confirm 401/504 rates drop below 1% across all three ingestion endpoints.
-3. Confirm livesinthebalance.org pageviews resume in the dashboard.
+**Scope:** Required for any account with the `admin` role. Regular team members get an opt-in toggle (off by default — they can enable later from `/account`).
 
-## Out of Scope (Suggested Follow-up)
+## Layer 3 — Email alert on every "risky" auth event
 
-After the immediate fix, consider these durability improvements as a separate task:
-- Partition the `pageviews` table by month so saturation on recent data doesn't slow historical reads.
-- Per-site ingestion rate limit so one busy site can't starve others.
-- Monitoring alert when ingestion 4xx/5xx rate exceeds 5% for 5+ minutes.
+A new `notify-auth-event` edge function emails you the moment any of these happen:
+
+| Event | Why it matters |
+|---|---|
+| New device / new IP login | First sign of a session hijack |
+| Password changed | First thing an attacker does |
+| Email address changed | Locks you out of recovery |
+| 2FA code requested from a new device | Probe in progress |
+| Password reset requested | Inbox probe |
+| 5 failed login attempts in 10 min | Brute-force in progress |
+| Step-up password verification failed | Someone has your session but not your password |
+
+Each email includes time, IP (geo-located), browser, and a **one-click "this wasn't me — kill all sessions and lock my account"** link that revokes every refresh token, forces password reset, and emails a recovery code.
+
+## Layer 4 — Session hardening
+
+- **Reduce admin refresh-token lifetime** from 1 week → 24 hours. Stolen tokens expire fast.
+- **Bind sessions to a user-agent fingerprint hash.** If the JWT is replayed from a wildly different browser, force re-auth.
+- New **"Recent sign-ins"** panel on `/account` showing the last 20 sessions (time, IP, device, current/revoked) with **"Revoke this session"** per row plus a **"Sign out everywhere"** button.
+
+## Layer 5 — Password reset & email-change lockdown
+
+1. **Password reset cooldown:** max 3 reset requests per email per hour. Stops attackers from spamming your inbox to bury a real "this wasn't me" warning.
+2. **Email-change confirmation on BOTH addresses:** Supabase only confirms the new address by default. We send a "your email is being changed to X — click here to cancel" notice to the **old** address too, with a 1-hour delay before the change takes effect. Even with your session, an attacker can't silently steal the account.
+
+---
+
+## Bonus
+
+- **Admin IP allowlist (optional):** Settings → Security toggle to restrict admin login to specific IPs / CIDR ranges. Off by default.
+- **Audit log viewer:** existing `security_audit_log` rows surfaced under `/security`.
+
+---
+
+## What this does NOT change
+
+- Customer (subscriber) WP login flows are untouched.
+- API keys, ingest tokens, Stripe webhook flow, HMAC plugin signing — unchanged.
+- No breaking changes for normal logins beyond the email-code step on new devices.
+
+---
+
+## Technical sketch
+
+- **Migration:** enable `password_hibp_enabled=true`, raise min length, add tables: `auth_email_2fa_challenges` (id, user_id, code_hash, expires_at, attempts, consumed_at, ip_hash, ua), `trusted_devices` (user_id, device_hash, expires_at), `auth_recent_sessions`, `auth_event_alerts`, `email_change_pending`. Add `revoked_at` to refresh-token tracking.
+- **Edge functions:** `request-login-2fa`, `verify-login-2fa`, `notify-auth-event`, `kill-my-sessions`, `confirm-email-change`, `password-reset-rate-limit` guard. All log to `security_audit_log`.
+- **Email:** reuse existing `login-2fa-code` transactional template. New transactional templates for the 6 alert types in Layer 3 and the dual email-change confirmation. All routed through the existing branded email queue.
+- **Frontend:** post-password 2FA code entry screen at `/auth/verify`, "Trust this device 30 days" checkbox, `/account` "Recent sign-ins" panel, mandatory enrollment redirect for admins (just verifies their email is reachable — no app install), email-change confirmation UX, optional IP allowlist UI.
+- All new tables get RLS.
+
+---
+
+## Rollout order
+
+1. **Day 1, no UX impact:** Layer 1 (HIBP + min length), Layer 3 (alert emails), Layer 5 (rate-limit + dual-confirm email change).
+2. **Day 2, one-time prompt:** Layer 2 (mandatory admin email 2FA + trusted devices). You'll get a code on your next login from a new device — your current browser will be marked trusted on first verification.
+3. **Day 3:** Layer 4 (shorter sessions, fingerprint binding, sessions panel).
+4. **Optional:** IP allowlist toggle.
+
+Approve and I'll execute in that order, pausing after Day 1 so you can confirm alert emails are landing before we tighten anything that could lock you out.

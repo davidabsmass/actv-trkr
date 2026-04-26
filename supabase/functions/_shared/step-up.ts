@@ -13,7 +13,7 @@
 //   3. Server hashes the header, looks it up, checks expiry, and
 //      either accepts or rejects.
 
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { appCorsHeaders } from "./cors.ts";
 
 const TOKEN_TTL_MINUTES = 15;

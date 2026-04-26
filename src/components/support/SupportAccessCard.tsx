@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Clock, X, History } from "lucide-react";
+import { Shield, Clock, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNowStrict } from "date-fns";
 
@@ -30,13 +30,6 @@ type Grant = {
   reason: string | null;
 };
 
-type AuditEntry = {
-  id: string;
-  admin_user_id: string;
-  action: string;
-  resource_type: string | null;
-  occurred_at: string;
-};
 
 const DURATION_OPTIONS = [
   { hours: 24, label: "24 hours" },
@@ -55,7 +48,6 @@ export function SupportAccessCard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [duration, setDuration] = useState<number>(24);
-  const [showAudit, setShowAudit] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   // Tick every 30s so the countdown stays fresh.
@@ -82,20 +74,6 @@ export function SupportAccessCard() {
     },
   });
 
-  const { data: auditEntries } = useQuery({
-    queryKey: ["dashboard_access_audit", orgId],
-    enabled: !!orgId && showAudit,
-    queryFn: async (): Promise<AuditEntry[]> => {
-      const { data, error } = await supabase
-        .from("dashboard_access_audit_log")
-        .select("id, admin_user_id, action, resource_type, occurred_at")
-        .eq("org_id", orgId!)
-        .order("occurred_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data || [];
-    },
-  });
 
   const grantMutation = useMutation({
     mutationFn: async () => {
@@ -243,48 +221,11 @@ export function SupportAccessCard() {
           </div>
         )}
 
-        <div className="pt-2 border-t border-border">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={() => setShowAudit((v) => !v)}
-          >
-            <History className="h-3.5 w-3.5" />
-            {showAudit ? "Hide" : "View"} access history
-          </Button>
-          {showAudit && (
-            <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border">
-              {!auditEntries || auditEntries.length === 0 ? (
-                <p className="p-3 text-xs text-muted-foreground text-center">
-                  No support access recorded yet.
-                </p>
-              ) : (
-                <ul className="divide-y divide-border text-xs">
-                  {auditEntries.map((e) => (
-                    <li key={e.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                      <span className="text-foreground">
-                        <span className="font-medium">Support</span>{" "}
-                        <span className="text-muted-foreground">
-                          {humanizeAction(e.action)}
-                          {e.resource_type ? ` (${e.resource_type})` : ""}
-                        </span>
-                      </span>
-                      <span className="text-muted-foreground shrink-0">
-                        {format(new Date(e.occurred_at), "MMM d, h:mm a")}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
+        <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+          Every action support takes is recorded below in the activity log.
+        </p>
       </CardContent>
     </Card>
   );
 }
 
-function humanizeAction(action: string): string {
-  return action.replace(/_/g, " ");
-}

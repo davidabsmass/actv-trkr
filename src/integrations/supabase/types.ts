@@ -8284,6 +8284,24 @@ export type Database = {
           visitor_id: string
         }[]
       }
+      get_support_activity_for_org: {
+        Args: { _limit?: number; _org_id: string }
+        Returns: {
+          action: string
+          admin_display_name: string
+          admin_user_id: string
+          entry_id: string
+          grant_expires_at: string
+          grant_granted_at: string
+          grant_id: string
+          grant_revoked_at: string
+          grant_source: string
+          metadata: Json
+          occurred_at: string
+          resource_id: string
+          resource_type: string
+        }[]
+      }
       get_top_exit_pages: {
         Args: {
           p_end_date: string

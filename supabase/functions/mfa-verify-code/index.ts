@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     const challengeToken = String(body?.challengeToken ?? '').trim()
     const code = String(body?.code ?? '').trim()
+    const trustDevice = body?.trustDevice === true
 
     if (!challengeToken || !/^[0-9]{6}$/.test(code)) {
       return new Response(JSON.stringify({ error: 'invalid_input' }), {
@@ -51,6 +52,10 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    const ipRaw = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? ''
+    const ipHash = ipRaw ? await sha256Hex(ipRaw) : null
+    const userAgent = req.headers.get('user-agent') ?? null
 
     const challengeTokenHash = await sha256Hex(challengeToken)
     const codeHash = await sha256Hex(code)

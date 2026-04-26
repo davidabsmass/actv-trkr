@@ -1451,6 +1451,117 @@ export type Database = {
           },
         ]
       }
+      dashboard_access_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          grant_id: string | null
+          id: string
+          metadata: Json
+          occurred_at: string
+          org_id: string
+          resource_id: string | null
+          resource_type: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          grant_id?: string | null
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          org_id: string
+          resource_id?: string | null
+          resource_type?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          grant_id?: string | null
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          org_id?: string
+          resource_id?: string | null
+          resource_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_access_audit_log_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_access_grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_access_grants: {
+        Row: {
+          created_at: string
+          expires_at: string
+          granted_at: string
+          granted_by_user_id: string
+          id: string
+          org_id: string
+          reason: string | null
+          revoked_at: string | null
+          revoked_by_user_id: string | null
+          source: string
+          ticket_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          granted_at?: string
+          granted_by_user_id: string
+          id?: string
+          org_id: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          source?: string
+          ticket_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          granted_at?: string
+          granted_by_user_id?: string
+          id?: string
+          org_id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by_user_id?: string | null
+          source?: string
+          ticket_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_access_grants_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_access_grants_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_access_grants_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "v_my_unread_support_replies"
+            referencedColumns: ["ticket_id"]
+          },
+        ]
+      }
       dashboard_snapshots: {
         Row: {
           created_at: string
@@ -8185,6 +8296,10 @@ export type Database = {
           total_exits: number
           total_pageviews_on_page: number
         }[]
+      }
+      has_active_dashboard_grant: {
+        Args: { _org_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {

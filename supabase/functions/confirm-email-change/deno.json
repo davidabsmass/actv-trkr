@@ -4,9 +4,5 @@
     "jsx": "react-jsx",
     "jsxImportSource": "npm:react@^18.3.1",
     "types": ["npm:@types/react@^18.3.12"]
-  },
-  "imports": {
-    "react": "npm:react@^18.3.1",
-    "@react-email/components": "npm:@react-email/components@0.0.22"
   }
 }

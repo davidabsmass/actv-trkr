@@ -13,6 +13,7 @@ import TwoFactorSection from "@/components/account/TwoFactorSection";
 import SecuritySessionsSection from "@/components/account/SecuritySessionsSection";
 import SupportSection from "@/components/support/SupportSection";
 import { QuickHelpPanel } from "@/components/support/QuickHelpPanel";
+import { SupportAccessCard } from "@/components/support/SupportAccessCard";
 import { CancellationSaveDialog } from "@/components/account/CancellationSaveDialog";
 import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -134,6 +135,7 @@ export default function Account() {
             <div className="grid gap-4 lg:grid-cols-2">
               <SupportSection />
             </div>
+            <SupportAccessCard />
           </div>
         </TabsContent>
 

@@ -575,6 +575,9 @@ const Dashboard = () => {
     <div>
       {needsOnboarding && orgs && orgs.length > 0 && <OnboardingModal />}
 
+      <SupportReplyBanner />
+
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
           <div className="flex items-center gap-1.5">

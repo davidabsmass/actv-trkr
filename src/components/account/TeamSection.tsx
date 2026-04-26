@@ -155,6 +155,7 @@ export default function TeamSection() {
                     className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                     onClick={() => removeMember.mutate(m.id)}
                     disabled={removeMember.isPending}
+                    aria-label={`Remove ${m.email || "team member"}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>

@@ -526,12 +526,12 @@ function ActivityReportsTab() {
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs uppercase">{s.frequency}</Badge>
                   <IconTooltip label={s.enabled ? t("reports.disableSchedule", "Disable schedule") : t("reports.enableSchedule", "Enable schedule")}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleSchedule.mutate({ id: s.id, enabled: !s.enabled })}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleSchedule.mutate({ id: s.id, enabled: !s.enabled })} aria-label={s.enabled ? t("reports.disableSchedule", "Disable schedule") : t("reports.enableSchedule", "Enable schedule")}>
                       {s.enabled ? <ToggleRight className="h-4 w-4 text-success" /> : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
                     </Button>
                   </IconTooltip>
                   <IconTooltip label={t("reports.deleteSchedule", "Delete schedule")}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteSchedule.mutate(s.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteSchedule.mutate(s.id)} aria-label={t("reports.deleteSchedule", "Delete schedule")}><Trash2 className="h-4 w-4" /></Button>
                   </IconTooltip>
                 </div>
               </div>
@@ -567,10 +567,10 @@ function ActivityReportsTab() {
                     {(run.status === "succeeded" || run.status === "completed") && run.file_path && (
                       <>
                         <IconTooltip label={t("reports.viewReport", "View report")}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)}><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewReport(run)} aria-label={t("reports.viewReport", "View report")}><Eye className="h-4 w-4" /></Button>
                         </IconTooltip>
                         <IconTooltip label={downloadingRunId === run.id ? t("reports.downloading", "Downloading…") : t("reports.downloadReport", "Download report")}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)} disabled={downloadingRunId === run.id}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => downloadReport(run)} disabled={downloadingRunId === run.id} aria-label={downloadingRunId === run.id ? t("reports.downloading", "Downloading…") : t("reports.downloadReport", "Download report")}>
                             {downloadingRunId === run.id ? <Download className="h-4 w-4 animate-pulse" /> : <Download className="h-4 w-4" />}
                           </Button>
                         </IconTooltip>

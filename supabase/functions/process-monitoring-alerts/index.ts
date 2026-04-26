@@ -117,12 +117,15 @@ Deno.serve(async (req) => {
             if (!ruleEnabled || !subEnabled || !prefEnabled) continue;
 
             if (channel === "in_app") {
-              await supabase.from("notification_inbox").insert({
+              await supabase.from("notification_inbox").upsert({
                 user_id: member.user_id,
                 site_id: alert.site_id,
                 alert_id: alert.id,
                 title: alert.subject,
                 body: alert.message,
+              }, {
+                onConflict: "user_id,alert_id",
+                ignoreDuplicates: true,
               });
             } else if (channel === "email") {
               const { data: profile } = await supabase

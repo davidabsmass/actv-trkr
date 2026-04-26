@@ -1507,6 +1507,7 @@ export type Database = {
           revoked_at: string | null
           revoked_by_user_id: string | null
           source: string
+          summary_email_sent_at: string | null
           ticket_id: string | null
           updated_at: string
         }
@@ -1521,6 +1522,7 @@ export type Database = {
           revoked_at?: string | null
           revoked_by_user_id?: string | null
           source?: string
+          summary_email_sent_at?: string | null
           ticket_id?: string | null
           updated_at?: string
         }
@@ -1535,6 +1537,7 @@ export type Database = {
           revoked_at?: string | null
           revoked_by_user_id?: string | null
           source?: string
+          summary_email_sent_at?: string | null
           ticket_id?: string | null
           updated_at?: string
         }

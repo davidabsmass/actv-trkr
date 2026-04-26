@@ -134,10 +134,22 @@ export function SupportAccessCard() {
         })
         .eq("id", activeGrant.id);
       if (error) throw error;
+
+      // Fire-and-forget: trigger the summary email immediately so the
+      // customer doesn't have to wait for the cron sweep. If this fails,
+      // the cron job will pick it up on its next run.
+      supabase.functions
+        .invoke("dispatch-support-access-summaries", {
+          body: { grant_id: activeGrant.id },
+        })
+        .catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard_access_grant_active", orgId] });
-      toast({ title: "Access revoked", description: "Support can no longer access your account." });
+      toast({
+        title: "Access revoked",
+        description: "Support can no longer access your account. We'll email you a summary shortly.",
+      });
     },
     onError: (e: Error) => {
       toast({ title: "Could not revoke", description: e.message, variant: "destructive" });

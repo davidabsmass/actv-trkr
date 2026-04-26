@@ -562,7 +562,7 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
       const { error } = await supabase.rpc("customer_resolve_ticket", { _ticket_id: ticketId });
       if (error) throw error;
       supabase.functions.invoke("notify-support-event", {
-        body: { ticket_id: ticketId, event_kind: "status_changed", message_preview: "Customer marked as resolved" },
+        body: { ticket_id: ticketId, event_kind: "customer_resolved", message_preview: "Customer marked as resolved" },
       }).catch(() => {});
       queryClient.invalidateQueries({ queryKey: ["support_ticket", ticketId] });
       queryClient.invalidateQueries({ queryKey: ["my_support_tickets"] });

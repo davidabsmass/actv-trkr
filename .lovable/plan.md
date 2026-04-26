@@ -1,54 +1,44 @@
-## What I found when I tested it
+# Fix "Could not load 2FA status — Auth session missing!" toast
 
-I just fetched the URL the system has on file for the form:
+## What's actually happening
 
-```
-URL stored:  https://livesinthebalance.org/advocacy/bill-of-rights/
-HTTP result: 404
-Page title:  "Page not found - LIVES IN THE BALANCE"
-```
+You ARE logged in. Auth logs show your `/user` calls returning 200 right around the time of the screenshot. The toast is misleading.
 
-I tested twice — once with the monitoring probe's user-agent, once with a normal Chrome user-agent. Both got the same 404. I also pulled the site's sitemap (`page-sitemap.xml`, 129 URLs) and `/advocacy/bill-of-rights/` is **not in it**. Neither is anything else with "bill" or "rights" in the slug.
+The bug is in `src/components/account/TwoFactorSection.tsx`:
 
-So from the server's perspective the page at the recorded URL really is gone. Monitoring isn't lying — it's just probing the wrong URL.
+1. The component mounts and immediately calls `supabase.auth.mfa.listFactors()` inside a `useEffect`.
+2. There's no guard that waits for the Supabase client to finish restoring the session from local storage (or finish a background token refresh).
+3. When `listFactors()` runs in that brief window with no in-memory session, the SDK throws `AuthSessionMissingError: Auth session missing!`.
+4. The `catch` block surfaces it as a red toast, even though the next render — once the session hydrates — would have worked fine.
 
-The likely cause: the page was renamed, moved, or the form was embedded on a new page, and the system never updated the form's stored `page_url`. The 67 historical leads were collected back in 2021 when the old URL was live (most recent submission: Nov 17, 2021).
+This typically fires right after: a hard refresh on `/account`, returning to the tab after the access token expired, or navigating to Account immediately on app boot.
 
-## I need one piece of information from you
+## The fix
 
-**What is the actual current URL where this form lives?** Once I know that, I can either:
+Update `TwoFactorSection.tsx` so it:
 
-- Update the form's stored page URL directly, or
-- Fix the discovery logic so the WordPress plugin reports the correct URL automatically.
+1. **Waits for a session before the first `listFactors()` call.**
+   - On mount, call `supabase.auth.getSession()` first.
+   - If there's no session yet, subscribe to `supabase.auth.onAuthStateChange` and run `refresh()` only after a `SIGNED_IN` / `TOKEN_REFRESHED` / `INITIAL_SESSION` event with a non-null session.
+   - Clean up the subscription on unmount.
 
-If you can paste the live URL (or just the page slug), I'll verify the form is detectable there and update the record.
+2. **Treats "Auth session missing" as a non-error retry, not a toast.**
+   - In the `catch`, detect `AuthSessionMissingError` (or message includes "Auth session missing") and:
+     - Don't show a destructive toast.
+     - Schedule one silent retry after ~500ms.
+     - If still missing after retry, just leave the panel in its loading/idle state silently — the auth listener above will pick it up when the session arrives.
+   - Real errors (network, server) still show the toast as today.
 
-## While I'm in there, I'll also ship these fixes
+3. **Stops setting `loading=false` prematurely** when we're actually waiting on the session — keep the spinner instead of flashing the "Enable 2FA" CTA based on stale empty state.
 
-So this kind of confusion stops happening:
+## Technical notes
 
-### 1. Show the actual reason in Monitoring
-Today the row just says "Not Found" with an `EyeOff` icon. Change it to show the underlying signal — for example: "Page returned 404" or "Page returned 200 but form markup not detected" plus the timestamp. Same on the Dashboard "Form Health" panel. This single change would have made the cause obvious without needing this conversation.
+- File touched: `src/components/account/TwoFactorSection.tsx` only. No DB, no edge function, no auth config changes.
+- Pattern matches the project's existing rule (per `mem://adding-login-logout` guidance): set up `onAuthStateChange` BEFORE relying on session presence.
+- No impact on the actual 2FA enroll/verify/disable flows — those are user-initiated and run after the session is known good.
 
-### 2. Auto-relearn the page URL when the stored one 404s
-When the liveness probe gets a 404 from the recorded `page_url`, automatically check the `forms` table's other known URL signals (recent leads' `page_url`, `lead_events_raw.payload.source_url`, recent `pageviews` referencing that form) before declaring the form not rendered. The Avada code path already does this kind of multi-source URL hydration (`buildKnownAvadaFormMappings` in `trigger-site-sync`); apply the same approach to Gravity Forms / WPForms / CF7 / Ninja / Fluent.
+## What you'll see after the fix
 
-### 3. "Fix URL" action in the Monitoring row
-When a form is flagged as not rendered, add an inline action that lets the user paste the correct URL and re-probe immediately, instead of having to dig into Settings.
-
-### 4. Tighten Gravity Forms detection
-The current fallback regex (`/gform_wrapper/i && /gfield/i`) is loose — many WP themes leave Gravity Forms scaffolding on pages where the form isn't actually present. Require the specific form ID in the match (`gform_wrapper_${id}`, `id="gform_${id}"`, or `gform_submit_button_${id}`) and only accept the loose match if a `<form>` element with a `gform_*` id is also present.
-
-### Files touched
-
-- `supabase/functions/trigger-site-sync/index.ts` — store HTTP status, add multi-source URL relearning for non-Avada providers, tighten `detectFormInHtml`.
-- `supabase/functions/ingest-form-health/index.ts` — accept and store HTTP status from the WP plugin probe.
-- Migration: add nullable `last_http_status int` to `form_health_checks`.
-- `src/pages/Monitoring.tsx` (`FormChecksTab`) — surface HTTP status, last-rendered timestamp, and "Fix URL" action.
-- `src/components/dashboard/FormHealthPanel.tsx` — explain the failure reason in the row.
-
-No changes to lead/import logic.
-
----
-
-Just confirm the current page URL for "Bill of Rights" and I'll proceed.
+- No more "Could not load 2FA status / Auth session missing!" toast on the Account page.
+- The 2FA card will show its loading spinner for a beat longer on cold loads, then render the correct enrolled / not-enrolled state.
+- Genuine failures (e.g. network down, Supabase unreachable) will still surface a toast, so you don't lose visibility on real problems.

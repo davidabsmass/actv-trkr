@@ -10,7 +10,7 @@
 //   5. On success: flip the grant row to `active` and return login_url.
 //   6. On failure: mark the grant as `revoked` with reason=provision_failed.
 
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildSignedHeaders } from "../_shared/hmac-sign.ts";
 
 const corsHeaders = {

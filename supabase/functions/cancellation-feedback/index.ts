@@ -4,7 +4,7 @@
 
 import { appCorsHeaders } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const log = (s: string, d?: unknown) => console.log(`[CANCEL-FEEDBACK] ${s}${d !== undefined ? ` ${JSON.stringify(d)}` : ""}`);
 

@@ -10,7 +10,7 @@
 // reads to display success or failure. We deliberately do NOT require the
 // user to be signed in — the email link IS the credential here.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

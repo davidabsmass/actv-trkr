@@ -3,7 +3,7 @@
 // auth_recent_sessions rows as revoked, OR revoke a trusted device.
 // Both are owner-scoped via JWT.
 
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

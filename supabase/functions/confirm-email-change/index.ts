@@ -21,7 +21,7 @@
 // The 1-hour delay gives the legitimate owner time to react if an attacker
 // initiates an email change from a stolen session.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { template as emailChangeCancelTemplate } from '../_shared/transactional-email-templates/email-change-cancel.tsx'

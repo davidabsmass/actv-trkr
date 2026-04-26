@@ -6,7 +6,7 @@
 //
 // Always returns 200 to avoid leaking which addresses exist (timing-safe).
 
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { notifyAuthEvent } from "../_shared/notify-auth-event.ts";
 
 const corsHeaders = {

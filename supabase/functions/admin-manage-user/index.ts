@@ -1,5 +1,5 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 
 // CORS headers are now dynamic — computed per-request via appCorsHeaders(req);

@@ -5,7 +5,7 @@
 // Invoked by pg_cron every 15 minutes.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const log = (step: string, details?: unknown) =>
   console.log(`[RETENTION-DISPATCHER] ${step}${details !== undefined ? ` ${JSON.stringify(details)}` : ""}`);

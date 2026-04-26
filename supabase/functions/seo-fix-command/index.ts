@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.74.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { checkUserRateLimit, rateLimitResponse } from '../_shared/rate-limiter.ts';
 import { safeFetch } from '../_shared/ssrf-guard.ts';
 import { logSecurityEvent } from '../_shared/security-audit.ts';

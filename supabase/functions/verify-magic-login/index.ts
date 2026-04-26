@@ -13,7 +13,7 @@
 // Atomic single-use is enforced by an UPDATE ... WHERE consumed_at IS NULL
 // guard so two concurrent requests can never both succeed.
 
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

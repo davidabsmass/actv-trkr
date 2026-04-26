@@ -1,6 +1,6 @@
 // Pipeline Status — admin-only proxy to GitHub Actions API.
 // Fetches latest workflow runs server-side so the GitHub token never reaches the browser.
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

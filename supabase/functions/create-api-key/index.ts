@@ -1,6 +1,6 @@
 // create-api-key: generates a secure API key, returns plaintext ONCE,
 // stores only sha-256 hash + label in api_keys. Admin-only.
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

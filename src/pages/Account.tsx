@@ -149,14 +149,15 @@ export default function Account() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Label htmlFor="account-email" className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Mail className="h-3 w-3" /> {t("account.email")}
               </Label>
-              <Input value={user?.email || ""} disabled className="bg-muted" />
+              <Input id="account-email" value={user?.email || ""} disabled className="bg-muted" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{t("account.fullName")}</Label>
+              <Label htmlFor="account-full-name" className="text-xs">{t("account.fullName")}</Label>
               <Input
+                id="account-full-name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder={t("account.yourName")}
@@ -183,31 +184,33 @@ export default function Account() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">{t("account.newPassword")}</Label>
+              <Label htmlFor="account-new-password" className="text-xs">{t("account.newPassword")}</Label>
               <div className="relative">
                 <Input
+                  id="account-new-password"
                   type={showNew ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder={t("account.minCharacters")}
                   className="pr-9"
                 />
-                <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                <button type="button" onClick={() => setShowNew(!showNew)} aria-label={showNew ? "Hide new password" : "Show new password"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                   {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{t("account.confirmPassword")}</Label>
+              <Label htmlFor="account-confirm-password" className="text-xs">{t("account.confirmPassword")}</Label>
               <div className="relative">
                 <Input
+                  id="account-confirm-password"
                   type={showConfirm ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   className="pr-9"
                 />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm ? "Hide password confirmation" : "Show password confirmation"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                   {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>

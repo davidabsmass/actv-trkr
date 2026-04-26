@@ -454,6 +454,7 @@ function MembersSection({ org }: { org: any }) {
                 <Button
                   variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
                   onClick={() => removeMember.mutate(m.id)}
+                  aria-label={t("clients.removeMember", "Remove member")}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

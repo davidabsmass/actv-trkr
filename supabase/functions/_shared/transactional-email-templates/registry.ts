@@ -22,6 +22,7 @@ import { template as login2faCode } from './login-2fa-code.tsx'
 import { template as authSecurityAlert } from './auth-security-alert.tsx'
 import { template as emailChangeCancel } from './email-change-cancel.tsx'
 import { template as supportAccessSummary } from './support-access-summary.tsx'
+import { template as supportAccessStarted } from './support-access-started.tsx'
 
 // Retention add-on templates
 import { template as retentionWelcome } from './retention-welcome.tsx'

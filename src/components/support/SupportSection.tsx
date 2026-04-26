@@ -554,6 +554,24 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
     }
   };
 
+  const handleMarkResolved = async () => {
+    if (!ticket) return;
+    const ok = window.confirm("Mark this ticket as resolved? You can reopen it later by replying.");
+    if (!ok) return;
+    try {
+      const { error } = await supabase.rpc("customer_resolve_ticket", { _ticket_id: ticketId });
+      if (error) throw error;
+      supabase.functions.invoke("notify-support-event", {
+        body: { ticket_id: ticketId, event_kind: "status_changed", message_preview: "Customer marked as resolved" },
+      }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ["support_ticket", ticketId] });
+      queryClient.invalidateQueries({ queryKey: ["my_support_tickets"] });
+      toast({ title: "Ticket resolved", description: "Thanks for letting us know!" });
+    } catch (e: any) {
+      toast({ title: "Could not update ticket", description: e.message, variant: "destructive" });
+    }
+  };
+
   const submitSatisfaction = async (rating: "helpful" | "not_helpful") => {
     const { error } = await supabase.from("support_ticket_satisfaction").insert({
       ticket_id: ticketId, rating,

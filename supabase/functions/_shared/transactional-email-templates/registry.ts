@@ -21,6 +21,7 @@ import { template as contactMessage } from './contact-message.tsx'
 import { template as login2faCode } from './login-2fa-code.tsx'
 import { template as authSecurityAlert } from './auth-security-alert.tsx'
 import { template as emailChangeCancel } from './email-change-cancel.tsx'
+import { template as supportAccessSummary } from './support-access-summary.tsx'
 
 // Retention add-on templates
 import { template as retentionWelcome } from './retention-welcome.tsx'
@@ -50,6 +51,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'login-2fa-code': login2faCode,
   'auth-security-alert': authSecurityAlert,
   'email-change-cancel': emailChangeCancel,
+  'support-access-summary': supportAccessSummary,
   // Retention
   'retention-welcome': retentionWelcome,
   'retention-connection-success': retentionConnectionSuccess,

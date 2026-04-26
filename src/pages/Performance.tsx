@@ -42,7 +42,7 @@ const Performance = () => {
   const activeTab = searchParams.get("tab") || "analytics";
   const [days, setDays] = useState<number | null>(30);
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
-  const { orgId, orgName } = useOrg();
+  const { orgId, orgName, orgCreatedAt } = useOrg();
   const { data: forms = [] } = useForms(orgId);
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
@@ -65,9 +65,9 @@ const Performance = () => {
     ? format(subDays(startOfDay(customRange.from), Math.ceil((customRange.to.getTime() - customRange.from.getTime()) / (1000 * 60 * 60 * 24))), "yyyy-MM-dd")
     : format(subDays(startOfDay(new Date()), rangeDays * 2), "yyyy-MM-dd");
 
-  const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate);
-  const { data: overviewData } = useDashboardOverview(orgId, startDate, endDate);
-  const { data: prevOverviewData } = useDashboardOverview(orgId, prevStartDate, prevEndDate);
+  const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate, orgCreatedAt);
+  const { data: overviewData } = useDashboardOverview(orgId, startDate, endDate, orgCreatedAt);
+  const { data: prevOverviewData } = useDashboardOverview(orgId, prevStartDate, prevEndDate, orgCreatedAt);
 
   const isLoading = !realtimeData;
 

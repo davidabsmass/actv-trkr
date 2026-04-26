@@ -547,28 +547,37 @@ const Dashboard = () => {
         const name = f.forms?.name || "A form";
         const status = f.last_http_status as number | null;
         let reason: string;
-        if (f.last_failure_reason) {
-          reason = f.last_failure_reason;
-        } else if (status === 404 || status === 410) {
-          reason = `the page was not found (HTTP ${status})`;
+        let fix: string;
+        if (status === 404 || status === 410) {
+          reason = `page not found (HTTP ${status})`;
+          fix = "republish the page or update the form's page URL";
         } else if (status && status >= 500) {
-          reason = `the page returned a server error (HTTP ${status})`;
+          reason = `server error (HTTP ${status})`;
+          fix = "check your hosting/uptime, then re-scan";
+        } else if (status === 401 || status === 403) {
+          reason = `page is protected (HTTP ${status})`;
+          fix = "make the page public or whitelist our checker";
         } else if (status && status >= 400) {
-          reason = `the page returned HTTP ${status}`;
+          reason = `page returned HTTP ${status}`;
+          fix = "verify the page URL is correct";
+        } else if (f.last_failure_reason) {
+          reason = f.last_failure_reason;
+          fix = "re-scan forms or check the page is published";
         } else {
-          reason = "we couldn't find the form's markup on the page";
+          reason = "form markup not detected on the page";
+          fix = "make sure the form is embedded on a public page, then re-scan";
         }
         const where = f.page_url ? ` on ${f.page_url}` : "";
-        return `${name}: ${reason}${where}`;
+        return `${name}: ${reason}${where} — ${fix}`;
       };
       const shown = unhealthyForms.slice(0, 2).map(describe).join(" • ");
       const extra = unhealthyForms.length > 2 ? ` • +${unhealthyForms.length - 2} more` : "";
       items.push({
         severity: "warning",
         label: t("dashboard.formsNotRendering", { count: unhealthyForms.length }),
-        detail: shown + extra,
-        link: "/forms",
-        linkLabel: t("dashboard.check"),
+        detail: `${shown}${extra}`,
+        link: "/forms/troubleshooting",
+        linkLabel: t("dashboard.howToFix", "How to fix"),
       });
     }
     // SEO score issues (only if SEO is visible)

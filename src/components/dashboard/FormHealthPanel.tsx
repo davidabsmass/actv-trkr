@@ -109,6 +109,8 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
     not_rendered: { icon: EyeOff, color: "text-destructive", bg: "bg-destructive/10", label: t("dashboard.formHealthNotFound") },
   };
 
+  const hasNotRendered = healthData.some((f) => f.status === "not_rendered");
+
   return (
     <div className="glass-card p-5 animate-slide-up">
       <h3 className="text-sm font-semibold text-foreground mb-3">{t("dashboard.formHealth")}</h3>
@@ -138,6 +140,16 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
           );
         })}
       </div>
+      {hasNotRendered && (
+        <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2 text-xs">
+          <span className="text-muted-foreground">
+            {t("dashboard.formNotRenderingHint", "Form not rendering? Check that the page is published and the form is embedded.")}
+          </span>
+          <Link to="/forms/troubleshooting" className="text-primary hover:underline whitespace-nowrap font-medium">
+            {t("dashboard.howToFix", "How to fix")} →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

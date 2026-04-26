@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, MapPin } from "lucide-react";
 import TeamSection from "@/components/account/TeamSection";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
+import SecuritySessionsSection from "@/components/account/SecuritySessionsSection";
 import SupportSection from "@/components/support/SupportSection";
 import { QuickHelpPanel } from "@/components/support/QuickHelpPanel";
 import { CancellationSaveDialog } from "@/components/account/CancellationSaveDialog";

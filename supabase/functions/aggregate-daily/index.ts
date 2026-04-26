@@ -66,10 +66,24 @@ Deno.serve(async (req) => {
           const { data: sbp } = await supabase.from("sessions").select("landing_page_path").eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
           if (sbp) { const m: Record<string, number> = {}; sbp.forEach((s: any) => { const d = s.landing_page_path || "(unknown)"; m[d] = (m[d] || 0) + 1; }); for (const [d, v] of Object.entries(m)) await upsert(supabase, "traffic_daily", orgId, dateStr, "sessions_by_page", d, v); }
 
-          // leads
+          // leads (totals — includes imports + sessionless POSTs; used for
+          // lead-count widgets and exports)
           const { count: leadsCount } = await supabase.from("leads").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
           await upsert(supabase, "kpi_daily", orgId, dateStr, "leads_total", null, leadsCount || 0);
           await upsert(supabase, "kpi_daily", orgId, dateStr, "leads", null, leadsCount || 0);
+
+          // tracked_leads — only leads attached to a tracked session
+          // (session_id IS NOT NULL). Used as the CVR numerator so the rate
+          // is apples-to-apples with the sessions denominator and stays
+          // sane for sites with WP form imports or untracked submission paths.
+          const { count: trackedLeadsCount } = await supabase
+            .from("leads")
+            .select("*", { count: "exact", head: true })
+            .eq("org_id", orgId)
+            .not("session_id", "is", null)
+            .gte("submitted_at", dayStart)
+            .lte("submitted_at", dayEnd);
+          await upsert(supabase, "kpi_daily", orgId, dateStr, "tracked_leads", null, trackedLeadsCount || 0);
 
           // leads_by_source
           const { data: lbs } = await supabase.from("leads").select("source").eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
@@ -122,10 +136,14 @@ Deno.serve(async (req) => {
           const { count: fslCount } = await supabase.from("form_submission_logs").select("*", { count: "exact", head: true }).eq("org_id", orgId).gte("occurred_at", dayStart).lte("occurred_at", dayEnd);
           await upsert(supabase, "kpi_daily", orgId, dateStr, "form_submissions_total", null, fslCount || 0);
 
-          // conversion_rate
-          const dayLeads = leadsCount || 0;
+          // conversion_rate — uses tracked_leads (session_id IS NOT NULL)
+          // ÷ sessions so the numerator and denominator share the same
+          // observed universe. Imported and sessionless leads still appear
+          // in `leads_total` for display, just not in this rate.
+          const dayLeads = trackedLeadsCount || 0;
           const daySessions = sessCount || 0;
-          const cvr = daySessions > 0 ? Number(((dayLeads / daySessions) * 100).toFixed(2)) : 0;
+          const cvrRaw = daySessions > 0 ? (dayLeads / daySessions) * 100 : 0;
+          const cvr = Number(Math.min(100, cvrRaw).toFixed(2));
           await upsert(supabase, "kpi_daily", orgId, dateStr, "conversion_rate", null, cvr);
 
           orgResults[dateStr] = { status: "ok" };

@@ -43,6 +43,10 @@ export interface ConversionMetrics {
   goalCvr: number;
   totalConversions: number;
   formConversions: number;
+  /** Total leads in the period including imports and sessionless POSTs (display only). */
+  totalLeads: number;
+  /** Leads excluded from CVR because they had no tracked session (imports, untracked pages, adblocked, server-side). */
+  untrackedLeads: number;
   goalConversions: number;
   sessions: number;
   hasCustomGoals: boolean;
@@ -133,7 +137,8 @@ export function useDeleteGoal(orgId: string | null) {
 function defaultMetrics(): ConversionMetrics {
   return {
     conversionRate: 0, formCvr: 0, goalCvr: 0,
-    totalConversions: 0, formConversions: 0, goalConversions: 0,
+    totalConversions: 0, formConversions: 0, totalLeads: 0, untrackedLeads: 0,
+    goalConversions: 0,
     sessions: 0, hasCustomGoals: false, goalBreakdown: [], typeBreakdown: [],
   };
 }
@@ -151,8 +156,13 @@ export function useConversionMetrics(
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
-      // Parallel base queries
-      const [goalsRes, sessRes, leadsRes, completionsRes] = await Promise.all([
+      // Parallel base queries.
+      // CVR ONLY counts leads attached to a tracked session (session_id IS NOT NULL).
+      // This excludes WordPress imports/backfills, untracked-page submissions,
+      // adblocked visitors, and server-to-server POSTs — which would otherwise
+      // produce nonsensical >100% rates because they have no matching session.
+      // `totalLeadsRes` keeps the unfiltered count for display ("X leads excluded").
+      const [goalsRes, sessRes, leadsRes, totalLeadsRes, completionsRes] = await Promise.all([
         supabase
           .from("conversion_goals" as any)
           .select("*")
@@ -165,6 +175,14 @@ export function useConversionMetrics(
           .eq("org_id", orgId)
           .gte("started_at", dayStart)
           .lte("started_at", dayEnd),
+        supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", orgId)
+          .neq("status", "trashed")
+          .not("session_id", "is", null)
+          .gte("submitted_at", dayStart)
+          .lte("submitted_at", dayEnd),
         supabase
           .from("leads")
           .select("*", { count: "exact", head: true })
@@ -183,6 +201,8 @@ export function useConversionMetrics(
       const goals = (goalsRes.data || []) as unknown as ConversionGoal[];
       const sessions = sessRes.count || 0;
       const formLeads = leadsRes.count || 0;
+      const totalLeads = totalLeadsRes.count || 0;
+      const untrackedLeads = Math.max(0, totalLeads - formLeads);
       const completions = (completionsRes.data || []) as unknown as { goal_id: string }[];
 
       const hasCustomGoals = goals.length > 0;
@@ -370,7 +390,9 @@ export function useConversionMetrics(
         goalCountMap[goal.id] = (goalCountMap[goal.id] || 0) + uniqueSessions;
       }
 
-      // Form submission goals — count from leads table
+      // Form submission goals — count from leads table.
+      // Match the global CVR rule: only count leads attached to a tracked
+      // session so the rate stays apples-to-apples with the sessions denominator.
       const formGoals = goals.filter((g) => g.goal_type === "form_submission");
       let formGoalConversions = 0;
       for (const goal of formGoals) {
@@ -380,6 +402,7 @@ export function useConversionMetrics(
           .select("*", { count: "exact", head: true })
           .eq("org_id", orgId)
           .neq("status", "trashed")
+          .not("session_id", "is", null)
           .gte("submitted_at", dayStart)
           .lte("submitted_at", dayEnd);
 
@@ -427,11 +450,10 @@ export function useConversionMetrics(
         totalConversions = formLeads;
       }
 
-      // Conversion rate is capped at 100%. A rate >100% means we received more
-      // leads/conversions than tracked sessions — usually because forms submit
-      // without an associated session (tracker not installed on the form page,
-      // or lead arrived before the visitor was tracked). Capping prevents
-      // nonsensical "1250%" displays while preserving the underlying counts.
+      // CVR uses tracked leads (session_id IS NOT NULL) ÷ tracked sessions so
+      // numerator and denominator come from the same observed universe. The
+      // Math.min cap is kept as a defensive safety net for edge cases (e.g.
+      // a session that started just outside the date window).
       const conversionRate = sessions > 0 ? Math.min(1, totalConversions / sessions) : 0;
       const formCvr = sessions > 0 ? Math.min(1, formLeads / sessions) : 0;
       const goalCvr = sessions > 0 ? Math.min(1, nonFormGoalCompletions / sessions) : 0;
@@ -442,6 +464,8 @@ export function useConversionMetrics(
         goalCvr,
         totalConversions,
         formConversions: formLeads,
+        totalLeads,
+        untrackedLeads,
         goalConversions: nonFormGoalCompletions,
         sessions,
         hasCustomGoals,

@@ -1,57 +1,62 @@
-## Why you're running out of space
+## The problem (confirmed in your data)
 
-Your Lovable Cloud database is **3.1 GB**, but your actual app data is only **~400 MB**. The other **~2.7 GB (87%)** is log bloat from background plumbing — not your real data:
+You have **4,843 total leads** but only **82 of them are attached to a tracked session**. The other 4,761 came in via:
 
-| Source | Size | What it is |
-|---|---|---|
-| `cron.job_run_details` | **2.44 GB** | Every run of every scheduled job (heartbeats, syncs, summaries, cleanups) keeps a row forever. Many of your jobs run every minute, so this grows fast. |
-| `net._http_response` | **251 MB** | Stored response body of every HTTP call your DB triggers/cron jobs make to Edge Functions via `pg_net`. |
-| Public app data (pageviews, leads, sessions, etc.) | ~400 MB | Your actual product data — fine. |
-| Auth, storage, system | <2 MB | Negligible. |
+- WordPress form imports during install/backfill (before tracking was active)
+- Form submissions on pages where the tracker isn't loaded
+- Adblocked / consent-declined visitors
+- Server-to-server submissions (API, Zapier)
 
-This is also the source of the **disk I/O warnings** and the recent **503s on edge functions** — the underlying instance is spending I/O on these log tables.
+CVR currently divides **all** of these by sessions, so any site with import history will always be at 100%+ (capped). The number is meaningless.
 
-## What I'll do
+## The fix
 
-### 1. One-time cleanup (immediate ~2.7 GB freed)
-- Truncate `cron.job_run_details` keeping only the last 7 days (for debugging recent failures).
-- Truncate `net._http_response` keeping only the last 24 hours.
-- Run `VACUUM FULL` on both tables so the OS actually reclaims the disk space (not just marks it reusable).
+Change every conversion rate calculation to use the **same denominator and numerator universe** — only leads that were observed by our tracker.
 
-### 2. Automatic retention going forward
-Add two scheduled cron jobs that run nightly:
-- **Purge cron history** older than 7 days from `cron.job_run_details`.
-- **Purge net responses** older than 24 hours from `net._http_response`.
+**New rule:** A lead counts toward CVR only if `leads.session_id IS NOT NULL`. These are the leads where we actually witnessed the visitor's journey, so dividing by `sessions` is apples-to-apples.
 
-This keeps the bloat from ever returning.
-
-### 3. Audit cron job frequency (optional, recommended)
-Many jobs are scheduled at `* * * * *` (every minute). I'll list them and flag any that could safely run every 5–15 minutes instead, which would cut log growth 5–15×. You'll get a list to approve before any frequency changes are made.
-
-### 4. Verify
-After cleanup, re-check `pg_database_size` — should drop from 3.1 GB to roughly 400–500 MB.
-
-## Technical details
-
-```sql
--- Cleanup
-DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days';
-DELETE FROM net._http_response   WHERE created   < now() - interval '24 hours';
-VACUUM FULL cron.job_run_details;
-VACUUM FULL net._http_response;
-
--- Retention jobs
-SELECT cron.schedule('purge-cron-history', '0 3 * * *',
-  $$DELETE FROM cron.job_run_details WHERE start_time < now() - interval '7 days'$$);
-SELECT cron.schedule('purge-net-responses', '15 3 * * *',
-  $$DELETE FROM net._http_response WHERE created < now() - interval '24 hours'$$);
+```
+       Tracked Leads (have session_id)
+CVR = ─────────────────────────────────
+            Tracked Sessions
 ```
 
-`VACUUM FULL` briefly locks those two system tables (seconds, not minutes, at this size) — no impact on your app tables.
+Everything else (imports, sessionless POSTs) stays visible in lead lists, exports, and totals — they're real leads — but they don't pollute the conversion rate.
 
-## What this does NOT touch
-- Your `pageviews`, `leads`, `sessions`, `events`, etc. — untouched.
-- Your existing scheduled jobs — they keep running, just without keeping forever-logs.
-- No app/UI changes.
+## What changes
 
-After this, if you'd still like more headroom (or to stop seeing 503s under load entirely), the next lever is upgrading the Cloud instance size in **Backend → Advanced settings**, but you likely won't need to once 87% of the disk is freed.
+### 1. Form CVR & Goal CVR (`src/hooks/use-goals.ts`)
+- `formLeads` query gains `.not("session_id", "is", null)` so only tracked leads count
+- Same filter applied to form-submission goal counts
+- Cap can be removed (or kept as a safety net) since the math now balances naturally
+
+### 2. Daily aggregation (`supabase/functions/aggregate-daily/index.ts`)
+- The nightly `conversion_rate` kpi_daily rollup gets the same `session_id IS NOT NULL` filter on its lead count
+- Backfills historical days with the corrected number so trends are consistent
+
+### 3. Dashboard widgets that show CVR
+- `ConversionBreakdown`, `WeekOverWeekStrip`, `TrendsChart`, `VisitorJourneyStats`, Performance page — all already read from `use-goals.ts` or `kpi_daily`, so they inherit the fix automatically
+
+### 4. Tooltip/help copy
+- Update the CVR tooltip on Dashboard + Performance to say:
+  > "Conversion Rate = tracked leads ÷ tracked sessions. Imported leads and submissions from untracked pages are excluded so the rate reflects only activity our tracker actually observed."
+- Add a small info note next to the Form CVR tile when there's a large gap between total leads and tracked leads (e.g. "4,761 leads not included — these came from imports or untracked pages")
+
+### 5. Lead totals stay unchanged
+- Total Leads, Leads by Source, Leads by Form, the Leads list, exports — all keep showing every lead. Only the **rate** metric is scoped.
+
+## Expected outcome for your data
+
+| Metric | Before | After |
+|---|---|---|
+| Total Leads (last 7d) | 25 | 25 (unchanged) |
+| Tracked Leads (last 7d) | — | ~3–5 |
+| Form CVR | 100.0% (capped from 550%) | ~5–8% (real number) |
+
+You'll finally see CVR move when you actually improve conversion, instead of being pinned at 100%.
+
+## Out of scope
+
+- No schema changes, no data deletion, no migration. Pure calculation change.
+- The historical 4,761 imported leads stay in the database and stay visible everywhere they're shown today.
+- AI insights and reports already pull from the same hooks/aggregations, so they update automatically.

@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Clock, X, History } from "lucide-react";
+import { Shield, Clock, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNowStrict } from "date-fns";
 
@@ -30,13 +30,6 @@ type Grant = {
   reason: string | null;
 };
 
-type AuditEntry = {
-  id: string;
-  admin_user_id: string;
-  action: string;
-  resource_type: string | null;
-  occurred_at: string;
-};
 
 const DURATION_OPTIONS = [
   { hours: 24, label: "24 hours" },
@@ -55,7 +48,6 @@ export function SupportAccessCard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [duration, setDuration] = useState<number>(24);
-  const [showAudit, setShowAudit] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   // Tick every 30s so the countdown stays fresh.
@@ -82,20 +74,6 @@ export function SupportAccessCard() {
     },
   });
 
-  const { data: auditEntries } = useQuery({
-    queryKey: ["dashboard_access_audit", orgId],
-    enabled: !!orgId && showAudit,
-    queryFn: async (): Promise<AuditEntry[]> => {
-      const { data, error } = await supabase
-        .from("dashboard_access_audit_log")
-        .select("id, admin_user_id, action, resource_type, occurred_at")
-        .eq("org_id", orgId!)
-        .order("occurred_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data || [];
-    },
-  });
 
   const grantMutation = useMutation({
     mutationFn: async () => {

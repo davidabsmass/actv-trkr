@@ -45,6 +45,8 @@ const DataRoomView = lazy(() => import("./pages/DataRoomView"));
 const PipelineStatus = lazy(() => import("./pages/PipelineStatus"));
 const VisitorJourneys = lazy(() => import("./pages/VisitorJourneys"));
 const DataRights = lazy(() => import("./pages/DataRights"));
+const AccountLock = lazy(() => import("./pages/AccountLock"));
+const CancelEmailChange = lazy(() => import("./pages/CancelEmailChange"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

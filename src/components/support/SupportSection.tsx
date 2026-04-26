@@ -649,9 +649,21 @@ function TicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () => vo
           <div className="space-y-2 pt-2 border-t border-border">
             <Label className="text-xs">Reply</Label>
             <Textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={3} placeholder="Add a reply…" maxLength={4000} />
-            <Button onClick={handleReply} disabled={sending || !reply.trim()} size="sm" className="gap-1.5">
-              <Send className="h-3.5 w-3.5" /> {sending ? "Sending…" : "Reply"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={handleReply} disabled={sending || !reply.trim()} size="sm" className="gap-1.5">
+                <Send className="h-3.5 w-3.5" /> {sending ? "Sending…" : "Reply"}
+              </Button>
+              {!closedOrResolved && (
+                <Button onClick={handleMarkResolved} variant="outline" size="sm" className="gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Mark as resolved
+                </Button>
+              )}
+            </div>
+            {!closedOrResolved && (
+              <p className="text-xs text-muted-foreground">
+                Figured it out on your own? Mark this resolved to let our team off the hook.
+              </p>
+            )}
           </div>
         )}
 

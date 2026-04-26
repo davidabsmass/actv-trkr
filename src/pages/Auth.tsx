@@ -202,8 +202,12 @@ const Auth = () => {
     setLoading(true);
     try {
       const normalizedForgotEmail = forgotEmail.trim().toLowerCase();
-      const { error } = await supabase.auth.resetPasswordForEmail(normalizedForgotEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Use server-side wrapper that enforces rate limit + sends security alert.
+      const { error } = await supabase.functions.invoke("request-password-reset", {
+        body: {
+          email: normalizedForgotEmail,
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
       });
       if (error) throw error;
       setMessage("Check your email for a password reset link.");

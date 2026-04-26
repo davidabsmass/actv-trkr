@@ -229,6 +229,3 @@ export function SupportAccessCard() {
   );
 }
 
-function humanizeAction(action: string): string {
-  return action.replace(/_/g, " ");
-}

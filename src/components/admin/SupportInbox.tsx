@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Inbox, MessageSquare, Send, Lock, Paperclip, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { AdminTicketAccessWidget } from "@/components/admin/AdminTicketAccessWidget";
+import { useSupportAccessAudit } from "@/hooks/use-support-access-audit";
 
 const STATUSES = ["new","in_review","waiting_on_us","waiting_on_customer","planned","in_progress","resolved","closed"] as const;
 const PRIORITIES = ["low","normal","high","urgent"] as const;
@@ -218,6 +219,9 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
     },
   });
 
+  // Audit any admin actions on this ticket if the customer has granted access.
+  const { logAction: logAccessAction } = useSupportAccessAudit(ticket?.org_id ?? null);
+
   const { data: messages } = useQuery({
     queryKey: ["admin_support_ticket_messages", ticketId],
     queryFn: async () => {
@@ -252,9 +256,21 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
     queryClient.invalidateQueries({ queryKey: ["admin_support_tickets"] });
     queryClient.invalidateQueries({ queryKey: ["admin_support_ticket_events", ticketId] });
     if (patch.status) {
+      logAccessAction("ticket_status_changed", {
+        resourceType: "support_ticket",
+        resourceId: ticketId,
+        metadata: { new_status: patch.status },
+      });
       supabase.functions.invoke("notify-support-event", {
         body: { ticket_id: ticketId, event_kind: "status_changed" },
       }).catch(() => {});
+    }
+    if (patch.priority) {
+      logAccessAction("ticket_priority_changed", {
+        resourceType: "support_ticket",
+        resourceId: ticketId,
+        metadata: { new_priority: patch.priority },
+      });
     }
   };
 
@@ -275,6 +291,11 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
       if (error) throw error;
 
       if (!internal) {
+        logAccessAction("ticket_replied", {
+          resourceType: "support_ticket",
+          resourceId: ticketId,
+          metadata: { preview: reply.trim().slice(0, 200) },
+        });
         supabase.functions.invoke("notify-support-event", {
           body: { ticket_id: ticketId, event_kind: "admin_replied", message_preview: reply.trim().slice(0, 200) },
         }).catch(() => {});

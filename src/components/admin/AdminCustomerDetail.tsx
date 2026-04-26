@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, formatDistanceToNow } from "date-fns";
+import { useSupportAccessAudit } from "@/hooks/use-support-access-audit";
+import { Shield } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -69,6 +71,25 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
   const profile = data?.profile;
   const auth = data?.auth;
   const orgs: any[] = data?.orgs ?? [];
+  const primaryOrgId: string | null = orgs[0]?.org_id ?? null;
+
+  // Consent-aware audit logging — every meaningful admin action below calls
+  // logAction() so the customer can see what was done during their grant.
+  const { hasActiveGrant, activeGrant, logAction } = useSupportAccessAudit(primaryOrgId);
+
+  // Log that an admin opened this customer's profile while a grant is active.
+  useEffect(() => {
+    if (open && hasActiveGrant && primaryOrgId) {
+      logAction("customer_detail_viewed", {
+        resourceType: "customer",
+        resourceId: primaryOrgId,
+        metadata: { email },
+      });
+    }
+    // We intentionally key only on open + grant + org so we don't double-log
+    // on unrelated re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, hasActiveGrant, primaryOrgId]);
   const sites: any[] = data?.sites ?? [];
   const importJobs: any[] = data?.import_jobs ?? [];
   const recentAlerts: any[] = data?.recent_alerts ?? [];
@@ -97,14 +118,21 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
     }
   };
 
-  const handleResetPassword = () =>
-    email && callAction("reset", { action: "send_password_reset", email }, `Password reset sent to ${email}`);
+  const handleResetPassword = () => {
+    if (!email) return;
+    logAction("password_reset_sent", { resourceType: "auth", metadata: { email } });
+    callAction("reset", { action: "send_password_reset", email }, `Password reset sent to ${email}`);
+  };
 
-  const handleSendLoginLink = () =>
-    email && callAction("login", { action: "send_password_reset", email }, `Login link sent to ${email}`);
+  const handleSendLoginLink = () => {
+    if (!email) return;
+    logAction("login_link_sent", { resourceType: "auth", metadata: { email } });
+    callAction("login", { action: "send_password_reset", email }, `Login link sent to ${email}`);
+  };
 
   const handleForceLogout = () => {
     if (!email || !confirm(`Force logout ${email} from all sessions?`)) return;
+    logAction("force_logout", { resourceType: "auth", metadata: { email } });
     callAction("logout", { action: "force_logout", email }, "All sessions revoked");
   };
 
@@ -178,6 +206,18 @@ export function AdminCustomerDetail({ open, onOpenChange, email, subscriberId }:
           <>
             {/* ── STICKY HEADER ───────────────────────────────────── */}
             <SheetHeader className="sticky top-0 z-10 bg-background border-b px-6 py-4 space-y-3">
+              {hasActiveGrant && activeGrant && (
+                <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+                  <Shield className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                    Customer has granted support access
+                  </span>
+                  <span className="text-muted-foreground">
+                    · Your actions are being logged · Expires{" "}
+                    {format(new Date(activeGrant.expires_at), "MMM d 'at' h:mm a")}
+                  </span>
+                </div>
+              )}
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="space-y-1 min-w-0">
                   <SheetTitle className="text-xl truncate">

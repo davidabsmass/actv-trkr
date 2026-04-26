@@ -197,8 +197,8 @@ export function useRealtimeDashboard(
             .eq("org_id", orgId).gte("started_at", todayStart).lte("started_at", todayEnd),
           supabase.from("leads").select("*", { count: "exact", head: true })
             .eq("org_id", orgId).neq("status", "trashed")
-            .gte("created_at", installCutoffDate && todayStart < leadsLowerBound ? leadsLowerBound : todayStart)
-            .lte("created_at", todayEnd),
+            .gte("submitted_at", installCutoffDate && todayStart < leadsLowerBound ? leadsLowerBound : todayStart)
+            .lte("submitted_at", todayEnd),
         ]);
         dailyMap[todayStr] = {
           pageviews: todayPv.count || 0,

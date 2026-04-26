@@ -396,7 +396,7 @@ const Auth = () => {
                       className="w-full pl-10 pr-10 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(210,100%,15%)] hover:text-[hsl(210,100%,8%)] transition-colors">
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="lucide lucide-eye h-4 w-4 text-secondary bg-muted" />}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="lucide lucide-eye lucide lucide-eye h-4 w-4 bg-transparent text-primary-foreground" />}
                     </button>
                   </div>
                   {!isLogin && (

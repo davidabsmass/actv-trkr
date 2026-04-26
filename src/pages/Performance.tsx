@@ -43,6 +43,7 @@ const Performance = () => {
   const [days, setDays] = useState<number | null>(30);
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const { orgId, orgName } = useOrg();
+  const { data: forms = [] } = useForms(orgId);
   const { hasFeature } = usePlanTier();
   const { settings } = useSiteSettings();
   const primaryFocus: PrimaryFocus = settings?.primary_focus || "lead_volume";

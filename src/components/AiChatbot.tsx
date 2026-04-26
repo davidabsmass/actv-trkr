@@ -170,7 +170,28 @@ export function AiChatbot() {
           setIsLoading(false);
           return;
         }
-        throw new Error("Stream failed");
+        if (resp.status === 402) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: "AI usage limit reached for this workspace. Please add credits in Settings → Workspace → Usage and try again." },
+          ]);
+          setIsLoading(false);
+          return;
+        }
+        if (resp.status === 503) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: "The AI service is temporarily overloaded. Please wait a few seconds and try again — your account is fine, this is a momentary hiccup." },
+          ]);
+          setIsLoading(false);
+          return;
+        }
+        let detail = "";
+        try {
+          const j = await resp.clone().json();
+          detail = j?.error ? ` (${j.error})` : "";
+        } catch { /* ignore */ }
+        throw new Error(`Stream failed: ${resp.status}${detail}`);
       }
 
       const reader = resp.body.getReader();

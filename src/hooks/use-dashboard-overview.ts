@@ -5,19 +5,36 @@ import { supabase } from "@/integrations/supabase/client";
  * Lightweight dashboard overview hook.
  * Uses head-only COUNT queries for KPIs (no row downloads)
  * and fetches only top-N source/campaign breakdowns.
+ *
+ * `installCutoff` (ISO string) is applied to the leads count so headline
+ * metrics like Form Fills and Conversion Rate only reflect data captured
+ * AFTER the plugin was installed. Without this, historical leads imported
+ * from WordPress would inflate Form Fills and produce nonsensical CVR
+ * (e.g. 4,377 form fills against 72 sessions).
  */
 export function useDashboardOverview(
   orgId: string | null,
   startDate: string,
-  endDate: string
+  endDate: string,
+  installCutoff?: string | null
 ) {
   return useQuery({
-    queryKey: ["dashboard_overview", orgId, startDate, endDate],
+    queryKey: ["dashboard_overview", orgId, startDate, endDate, installCutoff || null],
     queryFn: async () => {
       if (!orgId) return null;
 
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
+
+      // Determine the effective lower bound for "fresh" leads:
+      // the later of (window start) and (install date). This ensures Form Fills
+      // and CVR only count submissions captured live by the plugin.
+      const leadsLowerBound =
+        installCutoff && new Date(installCutoff) > new Date(dayStart)
+          ? installCutoff
+          : dayStart;
+      const windowEntirelyBeforeInstall =
+        installCutoff && new Date(installCutoff) > new Date(dayEnd);
 
       // All counts in parallel — head-only, zero rows transferred
       const [sessRes, leadRes, pvRes] = await Promise.all([
@@ -27,13 +44,17 @@ export function useDashboardOverview(
           .eq("org_id", orgId)
           .gte("started_at", dayStart)
           .lte("started_at", dayEnd),
-        supabase
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .eq("org_id", orgId)
-          .neq("status", "trashed")
-          .gte("submitted_at", dayStart)
-          .lte("submitted_at", dayEnd),
+        windowEntirelyBeforeInstall
+          ? Promise.resolve({ count: 0 } as any)
+          : supabase
+              .from("leads")
+              .select("*", { count: "exact", head: true })
+              .eq("org_id", orgId)
+              .neq("status", "trashed")
+              // Use created_at (plugin capture timestamp) so historical
+              // submitted_at values don't sneak past the install cutoff.
+              .gte("created_at", leadsLowerBound)
+              .lte("created_at", dayEnd),
         supabase
           .from("pageviews")
           .select("*", { count: "exact", head: true })

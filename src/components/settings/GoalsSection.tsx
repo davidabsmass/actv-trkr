@@ -387,7 +387,7 @@ function EditGoalDialog({ goal, orgId, forms, autoOpen, onAutoOpenConsumed }: { 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7" title={t("common.edit", "Edit")}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t("common.edit", "Edit")} title={t("common.edit", "Edit")}>
           <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </DialogTrigger>

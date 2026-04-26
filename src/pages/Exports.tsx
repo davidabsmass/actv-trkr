@@ -352,7 +352,7 @@ function ExportHistory({
                   {job.status}
                 </Badge>
                 {job.status === "succeeded" && job.file_path && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(job.file_path!)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download export" onClick={() => handleDownload(job.file_path!)}>
                     <Download className="h-4 w-4" />
                   </Button>
                 )}

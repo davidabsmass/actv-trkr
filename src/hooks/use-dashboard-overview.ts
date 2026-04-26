@@ -29,6 +29,14 @@ export function useDashboardOverview(
       // Determine the effective lower bound for "fresh" leads:
       // the later of (window start) and (install date). This ensures Form Fills
       // and CVR only count submissions captured live by the plugin.
+      //
+      // We anchor on `submitted_at` (the actual user submission time), NOT
+      // `created_at`. Historical leads imported during a plugin scan all carry
+      // a `created_at` of the import timestamp (which is AFTER the install
+      // cutoff), so filtering by created_at lets thousands of pre-install
+      // submissions slip through. `submitted_at` preserves the original form
+      // submission time, so it correctly excludes anything that happened
+      // before the plugin started capturing live.
       const leadsLowerBound =
         installCutoff && new Date(installCutoff) > new Date(dayStart)
           ? installCutoff
@@ -51,10 +59,8 @@ export function useDashboardOverview(
               .select("*", { count: "exact", head: true })
               .eq("org_id", orgId)
               .neq("status", "trashed")
-              // Use created_at (plugin capture timestamp) so historical
-              // submitted_at values don't sneak past the install cutoff.
-              .gte("created_at", leadsLowerBound)
-              .lte("created_at", dayEnd),
+              .gte("submitted_at", leadsLowerBound)
+              .lte("submitted_at", dayEnd),
         supabase
           .from("pageviews")
           .select("*", { count: "exact", head: true })

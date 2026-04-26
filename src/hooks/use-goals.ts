@@ -156,6 +156,9 @@ export function useConversionMetrics(
 
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
+      // Anchor on submitted_at (real submission time). Backfilled WP leads
+      // share an import-time created_at, so created_at filtering would let
+      // pre-install historical submissions inflate Form Fills + CVR.
       const leadsLowerBound =
         installCutoff && new Date(installCutoff) > new Date(dayStart)
           ? installCutoff
@@ -186,17 +189,17 @@ export function useConversionMetrics(
           .eq("org_id", orgId)
           .neq("status", "trashed")
           .not("session_id", "is", null)
-          // Use created_at + install cutoff so historical imports don't
-          // inflate the numerator above the tracked-sessions denominator.
-          .gte("created_at", leadsLowerBound)
-          .lte("created_at", dayEnd),
+          // Anchor on submitted_at so historical imports don't inflate the
+          // numerator above the tracked-sessions denominator.
+          .gte("submitted_at", leadsLowerBound)
+          .lte("submitted_at", dayEnd),
         supabase
           .from("leads")
           .select("*", { count: "exact", head: true })
           .eq("org_id", orgId)
           .neq("status", "trashed")
-          .gte("created_at", leadsLowerBound)
-          .lte("created_at", dayEnd),
+          .gte("submitted_at", leadsLowerBound)
+          .lte("submitted_at", dayEnd),
         supabase
           .from("goal_completions" as any)
           .select("goal_id")
@@ -410,8 +413,8 @@ export function useConversionMetrics(
           .eq("org_id", orgId)
           .neq("status", "trashed")
           .not("session_id", "is", null)
-          .gte("created_at", leadsLowerBound)
-          .lte("created_at", dayEnd);
+          .gte("submitted_at", leadsLowerBound)
+          .lte("submitted_at", dayEnd);
 
         if (rules.form_id && rules.form_id !== "all") {
           query = query.eq("form_id", rules.form_id);

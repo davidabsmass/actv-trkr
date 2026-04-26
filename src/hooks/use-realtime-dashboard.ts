@@ -30,6 +30,9 @@ export function useRealtimeDashboard(
 
       // Effective lower bound for "fresh" leads — the later of window start
       // and install date. Used so Form Fills + CVR exclude historical imports.
+      // Anchored on `submitted_at` (real submission time), NOT `created_at`
+      // (which is the import timestamp for backfilled WP leads and would let
+      // thousands of pre-install submissions count as "fresh").
       const leadsLowerBound =
         installCutoff && new Date(installCutoff) > new Date(dayStart)
           ? installCutoff
@@ -73,10 +76,10 @@ export function useRealtimeDashboard(
               .select("*", { count: "exact", head: true })
               .eq("org_id", orgId)
               .neq("status", "trashed")
-              // Use created_at to anchor on plugin-capture time, not the
-              // historical submitted_at (which can predate the install).
-              .gte("created_at", leadsLowerBound)
-              .lte("created_at", dayEnd),
+              // Anchor on submitted_at so backfilled WP leads (with old
+              // submission times but recent created_at) are correctly excluded.
+              .gte("submitted_at", leadsLowerBound)
+              .lte("submitted_at", dayEnd),
 
         // Daily aggregates for trend chart
         supabase
@@ -123,9 +126,9 @@ export function useRealtimeDashboard(
               )
               .eq("org_id", orgId)
               .neq("status", "trashed")
-              .gte("created_at", leadsLowerBound)
-              .lte("created_at", dayEnd)
-              .order("created_at", { ascending: false })
+              .gte("submitted_at", leadsLowerBound)
+              .lte("submitted_at", dayEnd)
+              .order("submitted_at", { ascending: false })
               .limit(500),
 
         // Capped pageviews for avg active seconds per page
@@ -194,8 +197,8 @@ export function useRealtimeDashboard(
             .eq("org_id", orgId).gte("started_at", todayStart).lte("started_at", todayEnd),
           supabase.from("leads").select("*", { count: "exact", head: true })
             .eq("org_id", orgId).neq("status", "trashed")
-            .gte("created_at", installCutoffDate && todayStart < leadsLowerBound ? leadsLowerBound : todayStart)
-            .lte("created_at", todayEnd),
+            .gte("submitted_at", installCutoffDate && todayStart < leadsLowerBound ? leadsLowerBound : todayStart)
+            .lte("submitted_at", todayEnd),
         ]);
         dailyMap[todayStr] = {
           pageviews: todayPv.count || 0,
@@ -229,8 +232,8 @@ export function useRealtimeDashboard(
                   ? Promise.resolve({ count: 0 } as any)
                   : supabase.from("leads").select("*", { count: "exact", head: true })
                       .eq("org_id", orgId).neq("status", "trashed")
-                      .gte("created_at", ds < leadsLowerBound ? leadsLowerBound : ds)
-                      .lte("created_at", de),
+                      .gte("submitted_at", ds < leadsLowerBound ? leadsLowerBound : ds)
+                      .lte("submitted_at", de),
                 supabase.from("pageviews").select("*", { count: "exact", head: true })
                   .eq("org_id", orgId).gte("occurred_at", ds).lte("occurred_at", de),
               ];

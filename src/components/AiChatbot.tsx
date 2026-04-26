@@ -235,7 +235,8 @@ export function AiChatbot() {
           }
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("[AiChatbot] request failed:", err);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: t("chatbot.error") },

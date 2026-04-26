@@ -410,8 +410,8 @@ export function useConversionMetrics(
           .eq("org_id", orgId)
           .neq("status", "trashed")
           .not("session_id", "is", null)
-          .gte("submitted_at", dayStart)
-          .lte("submitted_at", dayEnd);
+          .gte("created_at", leadsLowerBound)
+          .lte("created_at", dayEnd);
 
         if (rules.form_id && rules.form_id !== "all") {
           query = query.eq("form_id", rules.form_id);

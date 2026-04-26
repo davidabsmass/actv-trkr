@@ -701,6 +701,7 @@ const Index = () => {
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <a href="/privacy" className="cursor-pointer hover:text-foreground transition-colors">Privacy</a>
                 <a href="/terms" className="cursor-pointer hover:text-foreground transition-colors">Terms</a>
+                <a href="/accessibility" className="cursor-pointer hover:text-foreground transition-colors">Accessibility</a>
                 <button
                   type="button"
                   onClick={() => setContactOpen(true)}

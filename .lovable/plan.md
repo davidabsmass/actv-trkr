@@ -1,62 +1,43 @@
-## The problem (confirmed in your data)
+# Restore Pageview Tracking After Instance Upgrade
 
-You have **4,843 total leads** but only **82 of them are attached to a tracked session**. The other 4,761 came in via:
+## Current State
 
-- WordPress form imports during install/backfill (before tracking was active)
-- Form submissions on pages where the tracker isn't loaded
-- Adblocked / consent-declined visitors
-- Server-to-server submissions (API, Zapier)
+The Lovable Cloud instance upgrade restored most services. However, two issues remain:
 
-CVR currently divides **all** of these by sessions, so any site with import history will always be at 100%+ (capped). The number is meaningless.
+1. **No pageviews recorded since 09:27 UTC** (~45 min gap). The `track-pageview` function is failing with a mix of `401 Invalid API key` and `504 timeout` responses.
+2. **`track-event` is rejecting ~44% of incoming events** with `401 Invalid API key`, and `ingest-heartbeat` is rejecting ~62%.
+3. Form ingestion (`ingest-form`) is fully healthy (100% success), proving the database itself has recovered.
 
-## The fix
+The 401s are an authentication issue, not a capacity issue. The 504s on `track-pageview` only suggest a slow database path specific to that function (likely an insert into the `pageviews` table while it processes a backlog).
 
-Change every conversion rate calculation to use the **same denominator and numerator universe** — only leads that were observed by our tracker.
+## Investigation Steps
 
-**New rule:** A lead counts toward CVR only if `leads.session_id IS NOT NULL`. These are the leads where we actually witnessed the visitor's journey, so dividing by `sessions` is apples-to-apples.
+1. **Read the three failing edge functions** (`track-pageview`, `track-event`, `ingest-heartbeat`) to confirm they share the same API key validation code path (centralized via `mem://security/ingestion-hardening`).
+2. **Inspect recent function logs** for the exact 401 reason (key not found, hash mismatch, rate-limit, replay protection, expired key) — pull a sample from `edge_function_logs`.
+3. **Check the `api_keys` table** for any keys recently disabled/rotated, and confirm the WordPress sites that are 401-ing are still mapped to active keys.
+4. **Check `pageviews` table state** — recent insert latency, presence of any blocking triggers, index health, and whether the table is being held by long-running queries.
+5. **Check Postgres logs** for slow inserts on `pageviews` to confirm whether the 504 is database-side or function-side.
 
-```
-       Tracked Leads (have session_id)
-CVR = ─────────────────────────────────
-            Tracked Sessions
-```
+## Likely Fixes
 
-Everything else (imports, sessionless POSTs) stays visible in lead lists, exports, and totals — they're real leads — but they don't pollute the conversion rate.
+Depending on what the investigation finds, the fix will be one of:
 
-## What changes
+- **Stale key cache**: clear the in-memory API key hash cache in the edge function (or restart the function) so newly-validated keys propagate.
+- **Replay protection backlog**: during saturation, the replay-nonce store may have rejected legitimate retries from buffered WP queue. Loosen the replay window briefly to drain the WP retry queues.
+- **`pageviews` insert path slow**: if a trigger or unindexed lookup is slowing inserts, add a missing index on `(site_id, occurred_at)` or batch-defer non-critical work (e.g., session updates) into an async path.
+- **Specific keys actually invalid**: identify the affected sites and re-issue API keys, then notify the user which sites need the WP plugin reconfigured.
 
-### 1. Form CVR & Goal CVR (`src/hooks/use-goals.ts`)
-- `formLeads` query gains `.not("session_id", "is", null)` so only tracked leads count
-- Same filter applied to form-submission goal counts
-- Cap can be removed (or kept as a safety net) since the math now balances naturally
+## Validation
 
-### 2. Daily aggregation (`supabase/functions/aggregate-daily/index.ts`)
-- The nightly `conversion_rate` kpi_daily rollup gets the same `session_id IS NOT NULL` filter on its lead count
-- Backfills historical days with the corrected number so trends are consistent
+After applying the fix:
 
-### 3. Dashboard widgets that show CVR
-- `ConversionBreakdown`, `WeekOverWeekStrip`, `TrendsChart`, `VisitorJourneyStats`, Performance page — all already read from `use-goals.ts` or `kpi_daily`, so they inherit the fix automatically
+1. Confirm `track-pageview` writes appear in `pageviews` within 60 seconds.
+2. Re-query the last 5 minutes of edge logs and confirm 401/504 rates drop below 1% across all three ingestion endpoints.
+3. Confirm livesinthebalance.org pageviews resume in the dashboard.
 
-### 4. Tooltip/help copy
-- Update the CVR tooltip on Dashboard + Performance to say:
-  > "Conversion Rate = tracked leads ÷ tracked sessions. Imported leads and submissions from untracked pages are excluded so the rate reflects only activity our tracker actually observed."
-- Add a small info note next to the Form CVR tile when there's a large gap between total leads and tracked leads (e.g. "4,761 leads not included — these came from imports or untracked pages")
+## Out of Scope (Suggested Follow-up)
 
-### 5. Lead totals stay unchanged
-- Total Leads, Leads by Source, Leads by Form, the Leads list, exports — all keep showing every lead. Only the **rate** metric is scoped.
-
-## Expected outcome for your data
-
-| Metric | Before | After |
-|---|---|---|
-| Total Leads (last 7d) | 25 | 25 (unchanged) |
-| Tracked Leads (last 7d) | — | ~3–5 |
-| Form CVR | 100.0% (capped from 550%) | ~5–8% (real number) |
-
-You'll finally see CVR move when you actually improve conversion, instead of being pinned at 100%.
-
-## Out of scope
-
-- No schema changes, no data deletion, no migration. Pure calculation change.
-- The historical 4,761 imported leads stay in the database and stay visible everywhere they're shown today.
-- AI insights and reports already pull from the same hooks/aggregations, so they update automatically.
+After the immediate fix, consider these durability improvements as a separate task:
+- Partition the `pageviews` table by month so saturation on recent data doesn't slow historical reads.
+- Per-site ingestion rate limit so one busy site can't starve others.
+- Monitoring alert when ingestion 4xx/5xx rate exceeds 5% for 5+ minutes.

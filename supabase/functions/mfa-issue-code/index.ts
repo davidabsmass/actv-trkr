@@ -8,6 +8,7 @@ import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
 import { template as login2faCodeTemplate } from '../_shared/transactional-email-templates/login-2fa-code.tsx'
+import { notifyAuthEvent } from '../_shared/notify-auth-event.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -7992,6 +7992,10 @@ export type Database = {
             }
             Returns: string
           }
+      customer_resolve_ticket: {
+        Args: { _ticket_id: string }
+        Returns: undefined
+      }
       decrypt_admin_note: { Args: { p_ciphertext: string }; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }

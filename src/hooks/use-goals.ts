@@ -390,7 +390,9 @@ export function useConversionMetrics(
         goalCountMap[goal.id] = (goalCountMap[goal.id] || 0) + uniqueSessions;
       }
 
-      // Form submission goals — count from leads table
+      // Form submission goals — count from leads table.
+      // Match the global CVR rule: only count leads attached to a tracked
+      // session so the rate stays apples-to-apples with the sessions denominator.
       const formGoals = goals.filter((g) => g.goal_type === "form_submission");
       let formGoalConversions = 0;
       for (const goal of formGoals) {
@@ -400,6 +402,7 @@ export function useConversionMetrics(
           .select("*", { count: "exact", head: true })
           .eq("org_id", orgId)
           .neq("status", "trashed")
+          .not("session_id", "is", null)
           .gte("submitted_at", dayStart)
           .lte("submitted_at", dayEnd);
 

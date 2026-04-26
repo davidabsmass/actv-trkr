@@ -1,4 +1,4 @@
 project_id = "qnnxlvoybbmmqoxuqyvf"
 
-[functions._a11y_creds]
+[functions.a11y-creds-temp]
 verify_jwt = false

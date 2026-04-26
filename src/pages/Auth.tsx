@@ -538,6 +538,16 @@ const Auth = () => {
                     <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
                   )}
 
+                  <label className="flex items-center gap-2 text-xs text-white/80 select-none cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={trustDevice}
+                      onChange={(e) => setTrustDevice(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-white/40 bg-white/10 accent-primary"
+                    />
+                    Trust this device for 30 days (skip the code next time)
+                  </label>
+
                   <button
                     type="submit"
                     disabled={loading || mfaCode.length < 6}

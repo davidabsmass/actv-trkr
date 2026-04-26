@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("log-login error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Return 200 with fallback flag so client login flow never breaks on logging failures
+    return new Response(JSON.stringify({ status: "error", fallback: true, message: (err as Error)?.message || "internal" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Inbox, MessageSquare, Send, Lock, Paperclip, Activity } from "lucide-react";
 import { format } from "date-fns";
+import { AdminTicketAccessWidget } from "@/components/admin/AdminTicketAccessWidget";
 
 const STATUSES = ["new","in_review","waiting_on_us","waiting_on_customer","planned","in_progress","resolved","closed"] as const;
 const PRIORITIES = ["low","normal","high","urgent"] as const;
@@ -372,6 +373,8 @@ function AdminTicketDetail({ ticketId, onBack }: { ticketId: string; onBack: () 
             <Row label="Browser" value={ticket.browser_info ? ticket.browser_info.slice(0, 80) + "…" : null} />
           </CardContent>
         </Card>
+
+        <AdminTicketAccessWidget ticketId={ticketId} orgId={ticket.org_id} />
 
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Manage</CardTitle></CardHeader>

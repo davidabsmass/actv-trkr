@@ -24,6 +24,7 @@ import { ConsentStatusIndicator, DataIntegrityNotice, ComplianceWarnings } from 
 import { FleetHealthWidget } from "@/components/monitoring/FleetHealthWidget";
 import { callManageImportJob } from "@/lib/manage-import-job";
 import { HowToButton } from "@/components/HowToButton";
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 import { HOWTO_MONITORING } from "@/components/howto/page-content";
 
 export default function MonitoringPage() {

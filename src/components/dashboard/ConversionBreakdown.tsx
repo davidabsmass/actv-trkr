@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useConversionMetrics, GOAL_TYPES } from "@/hooks/use-goals";
+import { useOrg } from "@/hooks/use-org";
 import { Target, TrendingUp, BarChart3, Info } from "lucide-react";
 import { IconTooltip } from "@/components/ui/icon-tooltip";
 
@@ -11,7 +12,8 @@ interface Props {
 
 export function ConversionBreakdown({ orgId, startDate, endDate }: Props) {
   const { t } = useTranslation();
-  const { data: metrics, isLoading } = useConversionMetrics(orgId, startDate, endDate);
+  const { orgCreatedAt } = useOrg();
+  const { data: metrics, isLoading } = useConversionMetrics(orgId, startDate, endDate, orgCreatedAt);
 
   if (isLoading) {
     return (

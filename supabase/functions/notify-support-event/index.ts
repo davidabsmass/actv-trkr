@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
       const idempotencyKey = `support-${ticket.id}-${body.event_kind}-${idemSuffix}-${Date.now()}`;
       const { error } = await supabase.functions.invoke("send-transactional-email", {
         body: { templateName, recipientEmail: to, idempotencyKey, templateData },
+        headers: { Authorization: `Bearer ${serviceKey}` },
       });
       if (error) console.error(`notify-support-event send error to ${to}:`, error);
     };

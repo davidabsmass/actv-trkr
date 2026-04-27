@@ -1,72 +1,51 @@
-## Goal
+# Reports Overview — Replace "Form Submissions (30d)" widget
 
-Surface what subscribers are actually doing inside the dashboard — at the user level, the page level, and over time — inside the existing **Owner Dashboard** (`/owner-admin?secret=…`).
+## Problem
 
-## What you'll see
+The Reports page currently shows a plain list:
 
-A new **"Subscriber Activity"** section added below the existing "Feature Usage / AI Usage / Acquisition" cards, with three views in tabs:
-
-### Tab 1 — Most Active Users (last 30 days)
-Table with one row per real subscriber:
-
-| Column | Example |
-|---|---|
-| User | regis.cain@apyxmedical.com |
-| Org | Apyx Medical |
-| Total events | 294 |
-| Sessions (distinct days active) | 18 |
-| Last seen | 2 hours ago |
-| Top page | Forms (112) |
-| 2nd page | Dashboard (84) |
-
-Sortable by Events, Sessions, Last seen.
-
-### Tab 2 — Page Popularity (last 30 days)
-Bar list of every dashboard page across all subscribers:
-
-| Page | Views | Unique users | % of users who visited |
-|---|---|---|---|
-| Dashboard | 330 | 10 | 100% |
-| Forms | 272 | 8 | 80% |
-| Performance | 171 | 8 | 80% |
-| … | | | |
-
-Toggle to filter out internal users (`@newuniformdesign.com`, `@absmass.com`, your gmail addresses) so you see what **paying customers** actually use.
-
-### Tab 3 — Recent Activity Stream (live feed, last 200 events)
-Chronological log:
-
-```
-10:42 AM   regis.cain@apyxmedical.com   →   Forms
-10:41 AM   regis.cain@apyxmedical.com   →   Dashboard
-10:38 AM   cassie.hankinson@apyxmedical.com   →   Reports
-…
+```text
+Form Submissions (30d)
+  Sign up for updates ........... 2 leads
+  School Discipline Survey ...... 1 lead
 ```
 
-With an "Internal users" toggle and an org filter dropdown.
+It just repeats raw lead counts already shown elsewhere (Dashboard, Forms page) and offers no insight per form.
 
-### Header KPIs (added to the existing top KPI strip)
-- **DAU** — distinct users active today
-- **WAU** — distinct users active last 7 days
-- **MAU** — distinct users active last 30 days
+## What I'll change
 
-## Date range
+In `src/components/reports/OverviewTab.tsx`:
 
-Defaults to last 30 days. Selector for **Today / 7d / 30d / 90d / All time** in the panel header.
+1. **Remove** the existing `Form Submissions ({periodLabel})` card (lines 252–267).
+2. **Replace** it with a **Form Performance ({periodLabel})** card that, for each form with activity in the selected period, shows:
+   - Form name
+   - **Leads** in period
+   - **Share of total leads** (% of all leads in period) — bar visualization
+   - **Conversion rate** (form leads ÷ sessions in period)
+   - **Trend vs prior period** (▲/▼ %; suppressed for new orgs per existing `hasPreviousData` rule)
+   - **Avg engagement score** of leads (0–100, from `leads.engagement_score`) — a quality signal, not just a volume one
+3. **Add a header summary row** above the table:
+   - Total submissions · Active forms (forms with ≥1 lead) · Top form · Period CVR
+4. Keep the empty state: if no forms received submissions in the period, show "No form submissions in {periodLabel}" instead of hiding the section silently — matches the no-fake-UI policy (data-driven only).
 
-## Technical details
+## Data fetching changes
 
-- **No schema changes.** `user_activity_log` already has everything: `user_id`, `org_id`, `activity_type`, `page_path`, `page_title`, `created_at`.
-- **No new edge function.** RLS on `user_activity_log` already grants `SELECT` to anyone with the `admin` role, and the OwnerAdmin page is already gated by the `admin-verify` secret + admin role.
-- **Query strategy** — one `supabase.from("user_activity_log").select(...)` over the chosen window, joined client-side with `profiles` (email, full_name) and `orgs` (name). Profiles+orgs are small; activity log is ~2k rows total today, fine to aggregate in the browser.
-- **Internal-user filter** — hard-coded list of email domains/addresses considered "internal" (newuniformdesign.com, absmass.com, smaccarroll11@gmail.com, mmccrrlldm@gmail.com). Toggle defaults to **on** (hide internal) so the dashboard reflects real customers.
-- **New component** — `src/components/admin/SubscriberActivityPanel.tsx`, mounted in `src/pages/OwnerAdmin.tsx` between the existing Subscribers table and the Retention dashboard.
-- **Page-title fallback** — some recent rows store `page_title` as the raw path (e.g. `/visitor-journeys`). The panel will map known paths to friendly names using the same lookup that lives in `use-activity-tracker.ts`, extended to cover `/visitor-journeys`, `/compliance-setup`, `/site-integrity`, etc.
+Extend the existing `reports_overview_live` query in `OverviewTab.tsx`:
 
-## Out of scope (can add later)
+- Add a parallel query against `kpi_daily` for `metric = 'leads_by_form'` over the **previous** period (we already fetch the current period) so we can compute per-form trend.
+- Add a query against `leads` filtered by `org_id`, `submitted_at` in current range, selecting `form_id, engagement_score`, to compute **avg engagement score per form**. Cap with `.limit(1000)` and aggregate client-side (consistent with existing dashboard query strategy).
+- Reuse already-fetched `currentSessions` to compute per-form CVR (`form.leads / currentSessions`).
 
-- Feature-click tracking (today only `page_view` events exist; the `trackFeature(...)` hook is unused). I'll note this in the panel header so you know page views are the only signal until we instrument feature clicks.
-- CSV export of the activity stream.
-- Per-user drill-down modal showing one person's full session history.
+No new tables, no migration, no edge function changes.
 
-Say the word and I'll build it.
+## Visual / UX
+
+- Same `rounded-lg border border-border bg-card p-5` card styling as today.
+- Top 8 forms by leads, with a "Show all" expander if more exist.
+- Tooltip (`IconTooltip`) next to the title explaining: "Per-form performance for the selected period. CVR uses total site sessions as the denominator."
+- Trend cell hidden when `hasPreviousData === false` (consistent with rest of the page / org-age-awareness rule).
+
+## Out of scope
+
+- No changes to Activity Reports tab, Monthly Performance Viewer, archives, or the WP plugin.
+- No new translations added in non-English locales in this pass; English strings only — existing i18n fallback handles it.

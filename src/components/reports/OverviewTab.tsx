@@ -40,6 +40,126 @@ function TrendBadge({ change }: { change: number | null }) {
 }
 
 // ────────────────────────────────────────
+// Form Performance card — replaces the old "Form Submissions" list
+// ────────────────────────────────────────
+type FormPerfRow = {
+  id: string;
+  name: string;
+  leads: number;
+  prevLeads: number;
+  trendPct: number | null;
+  sharePct: number;
+  cvr: number;
+  avgEngagement: number | null;
+};
+
+function FormPerformanceCard({
+  forms, periodLabel, currentLeads, currentCvr, hasPreviousData,
+}: {
+  forms: FormPerfRow[];
+  periodLabel: string;
+  currentLeads: number;
+  currentCvr: number;
+  hasPreviousData: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? forms : forms.slice(0, 8);
+  const activeForms = forms.length;
+  const topForm = forms[0];
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" /> Form Performance ({periodLabel})
+        </h3>
+      </div>
+
+      {/* Header summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Submissions</p>
+          <p className="text-lg font-bold text-foreground">{currentLeads.toLocaleString()}</p>
+        </div>
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Active forms</p>
+          <p className="text-lg font-bold text-foreground">{activeForms}</p>
+        </div>
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Top form</p>
+          <p className="text-sm font-semibold text-foreground truncate" title={topForm?.name || "—"}>{topForm?.name || "—"}</p>
+        </div>
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Site CVR</p>
+          <p className="text-lg font-bold text-foreground">{currentCvr}%</p>
+        </div>
+      </div>
+
+      {forms.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No form submissions in {periodLabel}.</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="py-2 pr-4 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Form</th>
+                  <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">Leads</th>
+                  <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Share</th>
+                  <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">CVR</th>
+                  {hasPreviousData && (
+                    <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">Trend</th>
+                  )}
+                  <th className="py-2 pl-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">Avg engagement</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((f) => (
+                  <tr key={f.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-2.5 pr-4 font-medium text-foreground truncate max-w-[220px]" title={f.name}>{f.name}</td>
+                    <td className="py-2.5 px-3 text-right text-foreground">{f.leads}</td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-2">
+                        <div className="relative h-2 w-24 rounded bg-muted/50 overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 bg-primary/60 rounded" style={{ width: `${f.sharePct}%` }} />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-9 text-right">{f.sharePct}%</span>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-muted-foreground">{f.cvr}%</td>
+                    {hasPreviousData && (
+                      <td className="py-2.5 px-3 text-right">
+                        <TrendBadge change={f.trendPct} />
+                      </td>
+                    )}
+                    <td className="py-2.5 pl-3 text-right">
+                      {f.avgEngagement === null ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <span className={`text-sm font-semibold ${f.avgEngagement >= 70 ? "text-success" : f.avgEngagement >= 40 ? "text-foreground" : "text-warning"}`}>
+                          {f.avgEngagement}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {forms.length > 8 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="mt-3 text-xs text-primary hover:text-primary/80 font-medium"
+            >
+              {expanded ? "Show top 8" : `Show all ${forms.length} forms`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // Unified data view — uses raw counts like dashboard
 // ────────────────────────────────────────
 function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel }: {
@@ -76,7 +196,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         return dates;
       };
 
-      const [sessAgg, prevSessAgg, leadsAgg, prevLeadsAgg, brokenRes, incidentsRes, formsRes, formLeadsRes] = await Promise.all([
+      const [sessAgg, prevSessAgg, leadsAgg, prevLeadsAgg, brokenRes, incidentsRes, formsRes, formLeadsRes, prevFormLeadsRes, leadsRawRes] = await Promise.all([
         supabase.from("traffic_daily" as any).select("date, value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
         supabase.from("traffic_daily" as any).select("date, value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
         supabase.from("kpi_daily").select("date, value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
@@ -85,6 +205,8 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         supabase.from("incidents").select("id", { count: "exact", head: true }).eq("org_id", orgId).is("resolved_at", null),
         supabase.from("forms").select("id, name, external_form_id").eq("org_id", orgId).eq("archived", false),
         supabase.from("kpi_daily").select("dimension, value").eq("org_id", orgId).eq("metric", "leads_by_form").gte("date", startDate).lte("date", endDate),
+        supabase.from("kpi_daily").select("dimension, value").eq("org_id", orgId).eq("metric", "leads_by_form").gte("date", prevStartDate).lte("date", prevEndDate),
+        supabase.from("leads").select("form_id, engagement_score").eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", `${startDate}T00:00:00Z`).lte("submitted_at", `${endDate}T23:59:59.999Z`).limit(1000),
       ]);
 
       // Gap-fill: find missing days and count from raw tables
@@ -141,16 +263,37 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       const brokenLinks = brokenRes.count || 0;
       const activeIncidents = incidentsRes.count || 0;
 
-      // Build form breakdown
-      const formMap: Record<string, { name: string; leads: number }> = {};
-      (formsRes.data || []).forEach((f: any) => { formMap[f.id] = { name: f.name, leads: 0 }; });
+      // Build form breakdown with prior-period leads + avg engagement score
+      const formMap: Record<string, { name: string; leads: number; prevLeads: number; engSum: number; engCount: number }> = {};
+      (formsRes.data || []).forEach((f: any) => { formMap[f.id] = { name: f.name, leads: 0, prevLeads: 0, engSum: 0, engCount: 0 }; });
       (formLeadsRes.data || []).forEach((r: any) => {
         if (r.dimension && formMap[r.dimension]) {
           formMap[r.dimension].leads += Number(r.value || 0);
         }
       });
+      (prevFormLeadsRes.data || []).forEach((r: any) => {
+        if (r.dimension && formMap[r.dimension]) {
+          formMap[r.dimension].prevLeads += Number(r.value || 0);
+        }
+      });
+      (leadsRawRes.data || []).forEach((l: any) => {
+        if (l.form_id && formMap[l.form_id] && typeof l.engagement_score === "number") {
+          formMap[l.form_id].engSum += Number(l.engagement_score);
+          formMap[l.form_id].engCount += 1;
+        }
+      });
+      const totalLeadsAcrossForms = Object.values(formMap).reduce((s, f) => s + f.leads, 0);
       const formBreakdown = Object.entries(formMap)
-        .map(([id, f]) => ({ id, name: f.name, leads: f.leads }))
+        .map(([id, f]) => ({
+          id,
+          name: f.name,
+          leads: f.leads,
+          prevLeads: f.prevLeads,
+          trendPct: f.prevLeads > 0 ? Math.round(((f.leads - f.prevLeads) / f.prevLeads) * 100) : null,
+          sharePct: totalLeadsAcrossForms > 0 ? Math.round((f.leads / totalLeadsAcrossForms) * 100) : 0,
+          cvr: currentSessions > 0 ? Math.round((f.leads / currentSessions) * 10000) / 100 : 0,
+          avgEngagement: f.engCount > 0 ? Math.round(f.engSum / f.engCount) : null,
+        }))
         .filter(f => f.leads > 0)
         .sort((a, b) => b.leads - a.leads);
 
@@ -249,22 +392,15 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         </div>
       </div>
 
-      {/* Form Breakdown */}
-      {formBreakdown && formBreakdown.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Form Submissions ({periodLabel})
-          </h3>
-          <div className="space-y-2">
-            {formBreakdown.slice(0, 8).map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
-                <span className="text-sm text-foreground truncate max-w-[70%]">{f.name}</span>
-                <span className="text-sm font-semibold text-foreground">{f.leads} {f.leads === 1 ? "lead" : "leads"}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Form Performance */}
+      <FormPerformanceCard
+        forms={formBreakdown}
+        periodLabel={periodLabel}
+        currentLeads={currentLeads}
+        currentCvr={currentCvr}
+        hasPreviousData={hasPreviousData}
+      />
+
 
       {(negativeFindings.length > 0 || positiveFindings.length > 0) && (
         <div className="space-y-6">

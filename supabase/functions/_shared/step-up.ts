@@ -13,13 +13,13 @@
 //   3. Server hashes the header, looks it up, checks expiry, and
 //      either accepts or rejects.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { appCorsHeaders } from "./cors.ts";
 
 const TOKEN_TTL_MINUTES = 15;
 
-let _admin: ReturnType<typeof createClient> | null = null;
-function admin() {
+let _admin: SupabaseClient | null = null;
+function admin(): SupabaseClient {
   if (_admin) return _admin;
   _admin = createClient(
     Deno.env.get("SUPABASE_URL")!,

@@ -381,8 +381,8 @@ Deno.serve(async (req) => {
         stripe.charges.list({ customer: customer.id, limit: 20 }),
       ]);
 
-      const activeIds = new Set(activeSubscriptions.data.map((s) => s.id));
-      const orderedSubs = [...activeSubscriptions.data, ...allSubscriptions.data.filter((s) => !activeIds.has(s.id))];
+      const activeIds = new Set(activeSubscriptions.data.map((s: any) => s.id));
+      const orderedSubs = [...activeSubscriptions.data, ...allSubscriptions.data.filter((s: any) => !activeIds.has(s.id))];
 
       const detailedSubscriptions = await Promise.all(
         orderedSubs.map(async (subscription) => {
@@ -429,7 +429,7 @@ Deno.serve(async (req) => {
           created: customer.created,
         },
         subscriptions: detailedSubscriptions,
-        invoices: invoices.data.map((i) => ({
+        invoices: invoices.data.map((i: any) => ({
           id: i.id,
           number: i.number,
           status: i.status,
@@ -440,7 +440,7 @@ Deno.serve(async (req) => {
           hosted_invoice_url: i.hosted_invoice_url,
           pdf: i.invoice_pdf,
         })),
-        charges: charges.data.map((c) => ({
+        charges: charges.data.map((c: any) => ({
           id: c.id,
           amount: (c.amount || 0) / 100,
           currency: c.currency,
@@ -1031,7 +1031,7 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
     });
   }

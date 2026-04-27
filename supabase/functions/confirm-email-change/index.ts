@@ -204,9 +204,10 @@ Deno.serve(async (req) => {
         status: 'pending',
       })
 
-      const subject = typeof emailChangeCancelTemplate.subject === 'function'
-        ? emailChangeCancelTemplate.subject(templateData)
-        : emailChangeCancelTemplate.subject
+      const subjectField = emailChangeCancelTemplate.subject as string | ((data: Record<string, any>) => string)
+      const subject = typeof subjectField === 'function'
+        ? subjectField(templateData)
+        : subjectField
 
       const { error: enqErr } = await admin.rpc('enqueue_email', {
         queue_name: 'auth_emails',

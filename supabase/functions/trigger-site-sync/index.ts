@@ -245,7 +245,7 @@ async function hydrateMissingPageUrls(
         .limit(25);
 
       const candidate = (leadUrls || [])
-        .map((row) => normalizePageUrl(row.page_url as string | null))
+        .map((row: any) => normalizePageUrl(row.page_url as string | null))
         .find(Boolean) || null;
 
       if (candidate) {

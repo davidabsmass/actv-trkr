@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${anonKey}`,
-            "x-cron-secret": cronSecret,
+            "x-cron-secret": cronSecret ?? "",
           },
           body: JSON.stringify({ site_id: site.id }),
         });

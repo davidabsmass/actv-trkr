@@ -3976,6 +3976,7 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean
+          lead_id: string | null
           site_id: string | null
           title: string
           user_id: string
@@ -3986,6 +3987,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          lead_id?: string | null
           site_id?: string | null
           title: string
           user_id: string
@@ -3996,6 +3998,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          lead_id?: string | null
           site_id?: string | null
           title?: string
           user_id?: string
@@ -4006,6 +4009,13 @@ export type Database = {
             columns: ["alert_id"]
             isOneToOne: false
             referencedRelation: "monitoring_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_inbox_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {

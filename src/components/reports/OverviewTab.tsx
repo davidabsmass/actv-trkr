@@ -272,22 +272,15 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         </div>
       </div>
 
-      {/* Form Breakdown */}
-      {formBreakdown && formBreakdown.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Form Submissions ({periodLabel})
-          </h3>
-          <div className="space-y-2">
-            {formBreakdown.slice(0, 8).map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
-                <span className="text-sm text-foreground truncate max-w-[70%]">{f.name}</span>
-                <span className="text-sm font-semibold text-foreground">{f.leads} {f.leads === 1 ? "lead" : "leads"}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Form Performance */}
+      <FormPerformanceCard
+        forms={formBreakdown}
+        periodLabel={periodLabel}
+        currentLeads={currentLeads}
+        currentCvr={currentCvr}
+        hasPreviousData={hasPreviousData}
+      />
+
 
       {(negativeFindings.length > 0 || positiveFindings.length > 0) && (
         <div className="space-y-6">

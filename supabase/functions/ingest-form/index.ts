@@ -730,10 +730,13 @@ Deno.serve(async (req) => {
           const inboxRows = orgMembers.map((m: any) => ({
             user_id: m.user_id,
             site_id: siteId,
+            lead_id: lead.id,
             title: `New lead from ${safeFormName}`,
             body: `Source: ${leadSource} · Page: ${leadPage}`,
           }));
-          await supabase.from("notification_inbox").insert(inboxRows);
+          await supabase
+            .from("notification_inbox")
+            .upsert(inboxRows, { onConflict: "user_id,lead_id", ignoreDuplicates: true });
         }
 
         // Real-time email notification

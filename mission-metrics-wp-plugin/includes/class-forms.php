@@ -125,11 +125,18 @@ class MM_Forms {
 			'permission_callback' => array( __CLASS__, 'verify_key_hash' ),
 		) );
 
-		register_rest_route( 'actv-trkr/v1', '/avada-debug', array(
-			'methods'             => 'POST',
-			'callback'            => array( __CLASS__, 'handle_rest_avada_debug' ),
-			'permission_callback' => array( __CLASS__, 'verify_key_hash' ),
-		) );
+		// H-3 (Phase 0): /avada-debug returns table contents and resolution
+		// diagnostics. Gated behind the `enable_diagnostics` setting (off by
+		// default) so it cannot be probed in production unless an operator
+		// explicitly enables it for a support session.
+		$diag_opts = MM_Settings::get();
+		if ( ! empty( $diag_opts['enable_diagnostics'] ) && '0' !== (string) $diag_opts['enable_diagnostics'] ) {
+			register_rest_route( 'actv-trkr/v1', '/avada-debug', array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'handle_rest_avada_debug' ),
+				'permission_callback' => array( __CLASS__, 'verify_key_hash' ),
+			) );
+		}
 	}
 
 	/**

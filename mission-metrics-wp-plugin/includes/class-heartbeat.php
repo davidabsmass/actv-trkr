@@ -108,7 +108,8 @@ class MM_Heartbeat {
 				'source'         => 'cron',
 				'plugin_version' => MM_PLUGIN_VERSION,
 				'wp_environment' => $env,
-				'meta'           => array( 'php_version' => PHP_VERSION, 'wp_version' => get_bloginfo( 'version' ) ),
+				// F-6 (Phase 0): php_version + wp_version are already inside
+				// $env (wp_environment); the duplicate `meta` block was removed.
 			) ),
 		) );
 	}

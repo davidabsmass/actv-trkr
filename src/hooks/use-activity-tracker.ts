@@ -43,14 +43,16 @@ export function useActivityTracker() {
   const { orgId } = useOrg();
   const lastLoggedPath = useRef<string>("");
 
-  // Log page view on route change
+  // Log page view on route change (path + ?tab= so sub-tabs are visible)
   useEffect(() => {
     if (!user?.id || !orgId) return;
-    const path = location.pathname;
+    const tab = new URLSearchParams(location.search).get("tab");
+    const path = tab ? `${location.pathname}?tab=${tab}` : location.pathname;
     if (path === lastLoggedPath.current) return;
     lastLoggedPath.current = path;
 
-    const title = PAGE_TITLES[path] || path;
+    const baseTitle = PAGE_TITLES[location.pathname] || location.pathname;
+    const title = tab ? `${baseTitle} · ${tab}` : baseTitle;
 
     supabase
       .from("user_activity_log" as any)
@@ -62,7 +64,7 @@ export function useActivityTracker() {
         page_title: title,
       })
       .then(() => {});
-  }, [location.pathname, user?.id, orgId]);
+  }, [location.pathname, location.search, user?.id, orgId]);
 
   // Expose a function to log feature interactions
   const trackFeature = useCallback(

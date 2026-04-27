@@ -49,8 +49,12 @@ class MM_SEO_Fixes {
 		// Mark that we polled so the shutdown fallback won't double-run.
 		set_transient( 'mm_seo_last_poll', time(), 5 * MINUTE_IN_SECONDS );
 
-		$api_key = get_option( 'mm_api_key', '' );
-		$api_url = get_option( 'mm_api_url', '' );
+		// F-4 (Phase 0): read from the canonical settings array. The legacy
+		// `mm_api_key` / `mm_api_url` standalone option keys never existed in
+		// production, so the cron silently no-op'd before this fix.
+		$opts    = MM_Settings::get();
+		$api_key = isset( $opts['api_key'] ) ? trim( (string) $opts['api_key'] ) : '';
+		$api_url = isset( $opts['endpoint_url'] ) ? trim( (string) $opts['endpoint_url'] ) : '';
 		if ( empty( $api_key ) || empty( $api_url ) ) {
 			return;
 		}

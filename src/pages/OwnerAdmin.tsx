@@ -213,6 +213,9 @@ export default function OwnerAdmin() {
         </CardContent>
       </Card>
 
+      {/* Subscriber Activity */}
+      <SubscriberActivityPanel />
+
       {/* Retention */}
       <RetentionDashboard />
 

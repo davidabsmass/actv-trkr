@@ -76,7 +76,7 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         return dates;
       };
 
-      const [sessAgg, prevSessAgg, leadsAgg, prevLeadsAgg, brokenRes, incidentsRes, formsRes, formLeadsRes] = await Promise.all([
+      const [sessAgg, prevSessAgg, leadsAgg, prevLeadsAgg, brokenRes, incidentsRes, formsRes, formLeadsRes, prevFormLeadsRes, leadsRawRes] = await Promise.all([
         supabase.from("traffic_daily" as any).select("date, value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
         supabase.from("traffic_daily" as any).select("date, value").eq("org_id", orgId).eq("metric", "sessions_total").is("dimension", null).gte("date", prevStartDate).lte("date", prevEndDate),
         supabase.from("kpi_daily").select("date, value").eq("org_id", orgId).eq("metric", "leads_total").is("dimension", null).gte("date", startDate).lte("date", endDate),
@@ -85,6 +85,8 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         supabase.from("incidents").select("id", { count: "exact", head: true }).eq("org_id", orgId).is("resolved_at", null),
         supabase.from("forms").select("id, name, external_form_id").eq("org_id", orgId).eq("archived", false),
         supabase.from("kpi_daily").select("dimension, value").eq("org_id", orgId).eq("metric", "leads_by_form").gte("date", startDate).lte("date", endDate),
+        supabase.from("kpi_daily").select("dimension, value").eq("org_id", orgId).eq("metric", "leads_by_form").gte("date", prevStartDate).lte("date", prevEndDate),
+        supabase.from("leads").select("form_id, engagement_score").eq("org_id", orgId).neq("status", "trashed").gte("submitted_at", `${startDate}T00:00:00Z`).lte("submitted_at", `${endDate}T23:59:59.999Z`).limit(1000),
       ]);
 
       // Gap-fill: find missing days and count from raw tables

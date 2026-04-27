@@ -5,22 +5,36 @@ import { useAuth } from "@/hooks/use-auth";
 import { useOrg } from "@/hooks/use-org";
 
 const PAGE_TITLES: Record<string, string> = {
+  "/": "Home",
   "/dashboard": "Dashboard",
   "/performance": "Performance",
+  "/visitor-journeys": "Visitor Journeys",
   "/reports": "Reports",
   "/forms": "Forms",
+  "/forms/troubleshooting": "Forms Troubleshooting",
   "/seo": "SEO",
   "/monitoring": "Site Monitoring",
+  "/site-integrity": "Site Integrity",
   "/security": "Security",
   "/clients": "Users",
   "/admin-setup": "Setup & Inputs",
+  "/pipeline-status": "Pipeline Status",
   "/settings": "Settings",
   "/exports": "Exports",
+  "/archives": "Archives",
   "/notifications": "Notifications",
   "/account": "Account",
   "/get-started": "Get Started",
   "/onboarding": "Onboarding",
+  "/compliance-setup": "Compliance Setup",
+  "/website-setup": "Website Setup",
+  "/owner-admin": "Owner Admin",
+  "/checkout-success": "Checkout Success",
+  "/auth": "Sign In",
+  "/signup": "Signup",
+  "/reset-password": "Reset Password",
 };
+
 
 /** Tracks user activity (page views & feature interactions) within the dashboard */
 export function useActivityTracker() {

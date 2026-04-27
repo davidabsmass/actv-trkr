@@ -56,10 +56,12 @@ class MM_Magic_Login {
 		if ( empty( $api_key ) ) {
 			return new WP_Error( 'forbidden', 'No API key configured', array( 'status' => 403 ) );
 		}
-		$stored_hash = hash( 'sha256', $api_key );
-		if ( hash_equals( $api_key, $auth ) || hash_equals( $stored_hash, $auth ) ) {
+		// F-2 (Phase 0): only the raw API key is accepted; the stored hash is no
+		// longer a usable credential. Removes the "hash-as-credential" attack path
+		// flagged in C-2 / F-2 of the security audit.
+		if ( hash_equals( $api_key, (string) $auth ) ) {
 			if ( class_exists( 'ACTV_Logger' ) ) {
-				ACTV_Logger::warn( 'core', 'legacy_hash_auth_used', array(
+				ACTV_Logger::warn( 'core', 'legacy_raw_key_auth_used', array(
 					'route' => $request->get_route(),
 				) );
 			}

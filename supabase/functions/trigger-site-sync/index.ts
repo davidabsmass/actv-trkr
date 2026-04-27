@@ -69,9 +69,28 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Detects third-party JS-embedded form builders. Many sites migrate from
+// Gravity/CF7 to embedded providers (HubSpot, Mailchimp, etc.) without
+// updating their dashboard registration. Our HTML probe can't execute JS,
+// so the embed slot looks empty even though the form renders fine for
+// real visitors. Treating these embed scripts as "form present" prevents
+// noisy false-positive Form Liveness alerts.
+function hasThirdPartyFormEmbed(html: string): boolean {
+  return /js\.hsforms\.net\/forms\/embed|hsforms\.com\/embed|hbspt\.forms\.create|hs-form-frame/i.test(html) // HubSpot
+    || /mc-embedded-subscribe|mc4wp-form|chimpstatic\.com|list-manage\.com\/subscribe/i.test(html) // Mailchimp
+    || /constantcontact\.com\/signup|ctct-form-embed|ctct_usercontent/i.test(html) // Constant Contact
+    || /form\.jotform\.com|jotfor\.ms|jotform-form/i.test(html) // Jotform
+    || /embed\.typeform\.com|tf-v1-widget|data-tf-widget/i.test(html) // Typeform
+    || /formstack\.com\/forms|fs-frm/i.test(html) // Formstack
+    || /forms\.gle\/|docs\.google\.com\/forms/i.test(html) // Google Forms
+    || /klaviyo\.com\/onsite|klaviyo_subscribe|kl_form/i.test(html) // Klaviyo
+    || /convertkit\.com\/forms|formkit-form|ck-form/i.test(html); // ConvertKit / Kit
+}
+
 function detectFormInHtml(html: string, provider: string, externalFormId: string): boolean {
   const fid = escapeRegex(externalFormId);
 
+  let strictMatch = false;
   switch (provider) {
     case "gravity_forms": {
       // Strict: require the specific form ID in markup (not just generic GF scaffolding,
@@ -80,28 +99,42 @@ function detectFormInHtml(html: string, provider: string, externalFormId: string
         `gform_wrapper[^"']*_${fid}\\b|id=["']gform_${fid}["']|gform_fields_${fid}\\b|gform_submit_button_${fid}\\b|data-formid=["']${fid}["']`,
         "i",
       );
-      if (strict.test(html)) return true;
+      if (strict.test(html)) strictMatch = true;
       // Loose fallback: only count if there's an actual <form> with a gform id pattern,
       // not just leftover wrapper/gfield CSS classes from a placeholder.
-      return /<form[^>]+id=["']gform_\d+["']/i.test(html);
+      else if (/<form[^>]+id=["']gform_\d+["']/i.test(html)) strictMatch = true;
+      break;
     }
     case "cf7":
-      return new RegExp(`id=["']wpcf7-f${fid}|wpcf7-form[^>]*data-id=["']${fid}["']`, "i").test(html)
+      strictMatch = new RegExp(`id=["']wpcf7-f${fid}|wpcf7-form[^>]*data-id=["']${fid}["']`, "i").test(html)
         || /<form[^>]+class=["'][^"']*wpcf7-form/i.test(html);
+      break;
     case "wpforms":
-      return new RegExp(`data-formid=["']${fid}["']|wpforms-form-${fid}\\b`, "i").test(html)
+      strictMatch = new RegExp(`data-formid=["']${fid}["']|wpforms-form-${fid}\\b`, "i").test(html)
         || /<form[^>]+class=["'][^"']*wpforms-form/i.test(html);
+      break;
     case "ninja_forms":
-      return new RegExp(`nf-form-${fid}-cont|nf-form-cont[^>]+data-form-id=["']${fid}["']`, "i").test(html)
+      strictMatch = new RegExp(`nf-form-${fid}-cont|nf-form-cont[^>]+data-form-id=["']${fid}["']`, "i").test(html)
         || /<form[^>]+id=["']nf-form-/i.test(html);
+      break;
     case "fluent_forms":
-      return new RegExp(`data-form_id=["']${fid}["']|ff_form_instance_${fid}\\b`, "i").test(html)
+      strictMatch = new RegExp(`data-form_id=["']${fid}["']|ff_form_instance_${fid}\\b`, "i").test(html)
         || /<form[^>]+class=["'][^"']*frm-fluent-form/i.test(html);
+      break;
     case "avada":
-      return /<form[^>]+class=["'][^"']*fusion-form|fusion-form-form-wrapper/i.test(html);
+      strictMatch = /<form[^>]+class=["'][^"']*fusion-form|fusion-form-form-wrapper/i.test(html);
+      break;
     default:
-      return /<form[^>]*>/i.test(html);
+      strictMatch = /<form[^>]*>/i.test(html);
   }
+
+  if (strictMatch) return true;
+
+  // Provider-specific markup not found. Before declaring the form dead,
+  // accept the page as "has a form" if it embeds a recognized third-party
+  // form builder via JS — the user likely migrated providers without
+  // updating their dashboard.
+  return hasThirdPartyFormEmbed(html);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

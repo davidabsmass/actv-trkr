@@ -364,6 +364,24 @@ I.e., **add new model alongside, hard-deprecate the old credential within a sing
 | **C-1** | ✅ Resolved (v1.18.0) | Magic-login binds to the requesting dashboard user via `requested_by_email`. Plugin maps to a WP admin with `manage_options`; refuses login if no match. All issuance + consumption + denials audited via `log_security_event`. |
 | **C-2** | 🟡 Phase 1 of 2 (v1.18.1) | New `api_keys.signing_secret` column + `signed_request_nonces` replay table. Backend (`generate-wp-login`) now sends HMAC-signed headers when secret present. Plugin's `MM_Hmac::verify` accepts signed requests; legacy hash still accepted with `legacy_hash_auth_used` telemetry. New `provision-signing-secret` edge function pushes the secret per-site (idempotent). **Phase 2 (v1.19.0)**: flip plugin to signed-only after observed adoption. |
 | **C-4** | ✅ Resolved (v1.18.1) | `plugin-update-check` already HMAC-signs the `(version, download_url, signed_at)` tuple via `PLUGIN_RELEASE_SIGNING_SECRET`. This pass adds **SHA-256 digest** of the canonical ZIP to `scripts/plugin-artifacts.mjs`, the manifest, and the update-check response. Plugin updater verifies digest after download (mismatch → install refused). Full Ed25519 signing remains a future follow-up. |
+| **H-1** | ✅ Resolved | All `<?php echo self::OPTION_NAME; ?>` and `<?php echo $name; ?>` occurrences in `class-settings.php` and `class-privacy-setup.php` are wrapped in `esc_attr()`. Verified by ripgrep — no unescaped echoes remain. |
+| **H-3** | ✅ Resolved (v1.21.2) | `/avada-debug` REST route is now gated behind the `enable_diagnostics` setting (default `0`). Route is only registered when an operator explicitly opts in for a support session. |
+| **H-8** | ✅ Resolved | `seo-fix-command` imports `safeFetch` from `_shared/ssrf-guard.ts` and validates that `page_url` matches one of the org's connected sites before fetch. Cloud-metadata IPs and private nets are blocked centrally. |
+| **F-1** | ✅ Resolved | Same fix as H-1 — every option-name attribute uses `esc_attr()`. |
+| **F-2** | ✅ Resolved (v1.21.2) | `class-magic-login.php::verify_api_key` no longer accepts the SHA-256 stored hash as a credential; only the raw API key is accepted. Logged as `legacy_raw_key_auth_used` telemetry. (Removes the hash-as-credential attack path on the magic-login route; full credential redesign for `/sync` etc. is tracked under C-2 Phase 2.) |
+| **F-3** | ✅ Resolved (v1.21.2) | `class-recovery-banner.php::ajax_reconnect` now passes `'_wpnonce'` explicitly to `check_ajax_referer()` for grep-ability and clarity. |
+| **F-4** | ✅ Resolved (v1.21.2) | `class-seo-fixes.php::poll_fixes` reads from `MM_Settings::get()` instead of the non-existent `mm_api_key` / `mm_api_url` standalone options. Also fixes a double `/functions/v1` URL bug in both `seo-fix-poll` and `seo-fix-confirm` calls — SEO fix application now actually runs. |
+| **F-5** | 🟡 Deferred to Phase 2 | `Cache-Control: no-store` audit across edge responses tracked separately; not a release blocker. |
+| **F-6** | ✅ Resolved (v1.21.2) | `class-heartbeat.php::send_cron_heartbeat` no longer duplicates `php_version` / `wp_version` in the `meta` block — those values already live in `wp_environment`. |
+| **F-7** | ✅ Resolved | `MM_Updater::CHECK_HOURS = 12` — plugins page no longer refetches on every load. |
+| **F-8** | ✅ Resolved | `class-consent-banner.php::ajax_dismiss_nudge` has explicit `check_ajax_referer( 'mm_dismiss_nudge', '_wpnonce' )` + `current_user_can( 'manage_options' )`. |
+| **F-9** | 🟡 Deferred to Phase 2 | CORS allowlist consolidation across `ingest-security`, `seo-fix-poll`, `track-pageview`, `actv-webhook` — out of scope for the WP-plugin Phase 0 close-out. |
+| **M-7** | ✅ Resolved (v1.21.2) | Same fix as F-4 — option-key bug removed. |
+| **M-10** | ✅ Resolved | Same as H-1 / F-1. |
+
+### Phase 0 status
+
+**All ship-blocker findings (C-1, C-3, C-4, H-7) are resolved.** C-2 is in its planned Phase 1 transition window (legacy + signed both accepted, telemetry running). All H and F items that are in scope for a WP-plugin Phase 0 close-out are resolved as of v1.21.2. F-5 and F-9 (edge-function cross-cutting hygiene) are deferred to Phase 2 and are not release blockers.
 
 ---
 
@@ -377,4 +395,5 @@ I.e., **add new model alongside, hard-deprecate the old credential within a sing
 - `docs/security/key-management.md` — publishable vs server-only secret split (C-3)
 - `docs/security/webhooks.md` — Stripe idempotency (H-7), backend → plugin signing
 - `docs/runbooks/release-rollback.md` — release sequence, C-2 phased rollout gate, rollback procedures
+
 

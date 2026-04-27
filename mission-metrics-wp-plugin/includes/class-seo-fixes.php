@@ -173,10 +173,11 @@ class MM_SEO_Fixes {
 			) ),
 			'timeout' => 10,
 		);
+		$confirm_url = rtrim( (string) $api_url, '/' ) . '/seo-fix-confirm';
 		if ( class_exists( 'ACTV_Safe_HTTP' ) ) {
-			ACTV_Safe_HTTP::post( 'cron_seo_fix', $api_url . '/functions/v1/seo-fix-confirm', $args );
+			ACTV_Safe_HTTP::post( 'cron_seo_fix', $confirm_url, $args );
 		} else {
-			wp_remote_post( $api_url . '/functions/v1/seo-fix-confirm', $args );
+			wp_remote_post( $confirm_url, $args );
 		}
 	}
 

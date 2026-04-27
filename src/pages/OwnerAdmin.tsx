@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import SupportInbox from "@/components/admin/SupportInbox";
 import RetentionDashboard from "@/components/admin/RetentionDashboard";
 import AcquisitionReadiness from "@/components/admin/acquisition/AcquisitionReadiness";
+import SubscriberActivityPanel from "@/components/admin/SubscriberActivityPanel";
 
 type Subscriber = {
   id: string;
@@ -211,6 +212,9 @@ export default function OwnerAdmin() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Subscriber Activity */}
+      <SubscriberActivityPanel />
 
       {/* Retention */}
       <RetentionDashboard />

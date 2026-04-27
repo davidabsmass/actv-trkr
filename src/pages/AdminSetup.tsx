@@ -24,54 +24,63 @@ const OWNER_EMAIL = "david@newuniformdesign.com";
 type AdminMainTab = "clients" | "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access";
 
 function FeatureUsageWidget() {
-  const { data: featureUsage } = useQuery({
-    queryKey: ["feature_usage"],
+  const { data } = useQuery({
+    queryKey: ["feature_usage_v2"],
     queryFn: async () => {
-      // Unique users who logged in (last 30 days)
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-      const { data: recentLogins } = await (supabase as any)
-        .from("login_events")
-        .select("email")
-        .gte("logged_in_at", thirtyDaysAgo);
-      const uniqueUsers30d = new Set((recentLogins || []).map((r: any) => r.email)).size;
+      const now = Date.now();
+      const d24h = new Date(now - 24 * 3600_000).toISOString();
+      const d7d = new Date(now - 7 * 86400_000).toISOString();
+      const d30d = new Date(now - 30 * 86400_000).toISOString();
 
-      // Total unique users ever
-      const { data: allLogins } = await (supabase as any)
-        .from("login_events")
-        .select("email");
-      const uniqueUsersTotal = new Set((allLogins || []).map((r: any) => r.email)).size;
+      // Pull last-30d activity rows. Cap to avoid huge payloads.
+      const { data: rows } = await (supabase as any)
+        .from("user_activity_log")
+        .select("user_id, page_path, page_title, activity_type, created_at")
+        .gte("created_at", d30d)
+        .order("created_at", { ascending: false })
+        .limit(20000);
 
-      // Feature adoption: count distinct orgs using each feature
-      const [pvRes, evRes, leadsRes, blRes, fhRes, gcRes, seoRes] = await Promise.all([
-        supabase.from("pageviews").select("org_id").limit(1000),
-        supabase.from("events").select("event_type, org_id").limit(1000),
-        supabase.from("leads").select("org_id").limit(1000),
-        supabase.from("broken_links").select("org_id").limit(1000),
-        supabase.from("form_health_checks").select("org_id").limit(1000),
-        supabase.from("goal_completions").select("org_id").limit(1000),
-        supabase.from("seo_fix_queue").select("org_id").limit(1000),
-      ]);
+      const all = rows || [];
+      const pageRows = all.filter((r: any) => r.activity_type === "page_view");
 
-      const countDistinctOrgs = (rows: any[] | null) => new Set((rows || []).map((r: any) => r.org_id)).size;
-      const eventsByType = (rows: any[] | null, type: string) => 
-        new Set((rows || []).filter((r: any) => r.event_type === type).map((r: any) => r.org_id)).size;
+      // Active dashboard users
+      const activeUsers30d = new Set(all.map((r: any) => r.user_id)).size;
+      const activeUsers7d = new Set(all.filter((r: any) => r.created_at >= d7d).map((r: any) => r.user_id)).size;
+      const activeUsers24h = new Set(all.filter((r: any) => r.created_at >= d24h).map((r: any) => r.user_id)).size;
 
-      const features = [
-        { name: "Pageview Tracking", count: countDistinctOrgs(pvRes.data) },
-        { name: "Lead Submissions", count: countDistinctOrgs(leadsRes.data) },
-        { name: "CTA Clicks", count: eventsByType(evRes.data, "cta_click") },
-        { name: "Form Starts", count: eventsByType(evRes.data, "form_start") },
-        { name: "Outbound Clicks", count: eventsByType(evRes.data, "outbound_click") },
-        { name: "Phone Clicks", count: eventsByType(evRes.data, "tel_click") },
-        { name: "Email Clicks", count: eventsByType(evRes.data, "mailto_click") },
-        { name: "Download Clicks", count: eventsByType(evRes.data, "download_click") },
-        { name: "Form Health Checks", count: countDistinctOrgs(fhRes.data) },
-        { name: "SEO Fixes", count: countDistinctOrgs(seoRes.data) },
-        { name: "Broken Links", count: countDistinctOrgs(blRes.data) },
-        { name: "Goal Completions", count: countDistinctOrgs(gcRes.data) },
-      ].sort((a, b) => b.count - a.count);
+      // Per-page aggregation. Strip query-string distinctions for the headline view,
+      // but keep ?tab= visible so settings/reports sub-tabs show separately.
+      const pageMap: Record<string, { title: string; views30d: number; views7d: number; views24h: number; users30d: Set<string> }> = {};
+      for (const r of pageRows) {
+        const key = r.page_path || "/";
+        if (!pageMap[key]) {
+          pageMap[key] = { title: r.page_title || key, views30d: 0, views7d: 0, views24h: 0, users30d: new Set() };
+        }
+        pageMap[key].views30d += 1;
+        if (r.created_at >= d7d) pageMap[key].views7d += 1;
+        if (r.created_at >= d24h) pageMap[key].views24h += 1;
+        if (r.user_id) pageMap[key].users30d.add(r.user_id);
+      }
+      const pages = Object.entries(pageMap)
+        .map(([path, v]) => ({ path, title: v.title, views30d: v.views30d, views7d: v.views7d, views24h: v.views24h, uniqueUsers30d: v.users30d.size }))
+        .sort((a, b) => b.views30d - a.views30d);
 
-      return { features, uniqueUsers30d, uniqueUsersTotal };
+      const totalViews30d = pages.reduce((s, p) => s + p.views30d, 0);
+
+      // Feature interactions (non-page events)
+      const featureRows = all.filter((r: any) => r.activity_type !== "page_view");
+      const featureMap: Record<string, { count: number; users: Set<string> }> = {};
+      for (const r of featureRows) {
+        const key = r.page_title || r.activity_type;
+        if (!featureMap[key]) featureMap[key] = { count: 0, users: new Set() };
+        featureMap[key].count += 1;
+        if (r.user_id) featureMap[key].users.add(r.user_id);
+      }
+      const features = Object.entries(featureMap)
+        .map(([name, v]) => ({ name, count: v.count, users: v.users.size }))
+        .sort((a, b) => b.count - a.count);
+
+      return { pages, features, totalViews30d, activeUsers30d, activeUsers7d, activeUsers24h };
     },
   });
 
@@ -80,47 +89,97 @@ function FeatureUsageWidget() {
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <Activity className="h-4 w-4" />
-          Feature Usage (All Orgs)
+          Where Subscribers Spend Their Time (last 30 days)
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {featureUsage ? (
-          <div className="space-y-4">
-            <div className="flex gap-4">
+        {data ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs text-muted-foreground">Active users (24h)</p>
+                <p className="text-lg font-bold">{data.activeUsers24h}</p>
+              </div>
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="text-xs text-muted-foreground">Active users (7d)</p>
+                <p className="text-lg font-bold">{data.activeUsers7d}</p>
+              </div>
               <div className="rounded-md bg-muted px-3 py-2">
                 <p className="text-xs text-muted-foreground">Active users (30d)</p>
-                <p className="text-lg font-bold">{featureUsage.uniqueUsers30d}</p>
+                <p className="text-lg font-bold">{data.activeUsers30d}</p>
               </div>
               <div className="rounded-md bg-muted px-3 py-2">
-                <p className="text-xs text-muted-foreground">Total unique users</p>
-                <p className="text-lg font-bold">{featureUsage.uniqueUsersTotal}</p>
+                <p className="text-xs text-muted-foreground">Total page views (30d)</p>
+                <p className="text-lg font-bold">{data.totalViews30d.toLocaleString()}</p>
               </div>
             </div>
-            {featureUsage?.features?.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">#</TableHead>
-                    <TableHead className="text-xs">Feature</TableHead>
-                    <TableHead className="text-xs text-right">Orgs Using</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {featureUsage.features.map((f, i) => (
-                    <TableRow key={f.name}>
-                      <TableCell className="text-xs text-muted-foreground font-mono w-8">{i + 1}</TableCell>
-                      <TableCell className="text-sm font-medium">{f.name}</TableCell>
-                      <TableCell className="text-sm font-mono text-right">{f.count.toLocaleString()}</TableCell>
+
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Most-visited pages</p>
+              {data.pages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No page views recorded yet.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">#</TableHead>
+                      <TableHead className="text-xs">Page</TableHead>
+                      <TableHead className="text-xs text-right">24h</TableHead>
+                      <TableHead className="text-xs text-right">7d</TableHead>
+                      <TableHead className="text-xs text-right">30d</TableHead>
+                      <TableHead className="text-xs text-right">Unique users</TableHead>
+                      <TableHead className="text-xs text-right">% of traffic</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-sm text-muted-foreground">No data yet</p>
+                  </TableHeader>
+                  <TableBody>
+                    {data.pages.slice(0, 30).map((p, i) => {
+                      const pct = data.totalViews30d > 0 ? Math.round((p.views30d / data.totalViews30d) * 100) : 0;
+                      return (
+                        <TableRow key={p.path}>
+                          <TableCell className="text-xs text-muted-foreground font-mono w-8">{i + 1}</TableCell>
+                          <TableCell className="text-sm font-medium">
+                            <div>{p.title}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono">{p.path}</div>
+                          </TableCell>
+                          <TableCell className="text-sm font-mono text-right">{p.views24h}</TableCell>
+                          <TableCell className="text-sm font-mono text-right">{p.views7d}</TableCell>
+                          <TableCell className="text-sm font-mono text-right">{p.views30d}</TableCell>
+                          <TableCell className="text-sm font-mono text-right">{p.uniqueUsers30d}</TableCell>
+                          <TableCell className="text-sm font-mono text-right text-muted-foreground">{pct}%</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            {data.features.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Feature interactions</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Feature</TableHead>
+                      <TableHead className="text-xs text-right">Events (30d)</TableHead>
+                      <TableHead className="text-xs text-right">Unique users</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.features.slice(0, 20).map((f) => (
+                      <TableRow key={f.name}>
+                        <TableCell className="text-sm font-medium">{f.name}</TableCell>
+                        <TableCell className="text-sm font-mono text-right">{f.count.toLocaleString()}</TableCell>
+                        <TableCell className="text-sm font-mono text-right">{f.users}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No data yet</p>
+          <p className="text-sm text-muted-foreground">Loading…</p>
         )}
       </CardContent>
     </Card>

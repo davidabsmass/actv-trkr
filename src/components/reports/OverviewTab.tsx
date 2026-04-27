@@ -40,6 +40,126 @@ function TrendBadge({ change }: { change: number | null }) {
 }
 
 // ────────────────────────────────────────
+// Form Performance card — replaces the old "Form Submissions" list
+// ────────────────────────────────────────
+type FormPerfRow = {
+  id: string;
+  name: string;
+  leads: number;
+  prevLeads: number;
+  trendPct: number | null;
+  sharePct: number;
+  cvr: number;
+  avgEngagement: number | null;
+};
+
+function FormPerformanceCard({
+  forms, periodLabel, currentLeads, currentCvr, hasPreviousData,
+}: {
+  forms: FormPerfRow[];
+  periodLabel: string;
+  currentLeads: number;
+  currentCvr: number;
+  hasPreviousData: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? forms : forms.slice(0, 8);
+  const activeForms = forms.length;
+  const topForm = forms[0];
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" /> Form Performance ({periodLabel})
+        </h3>
+      </div>
+
+      {/* Header summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Submissions</p>
+          <p className="text-lg font-bold text-foreground">{currentLeads.toLocaleString()}</p>
+        </div>
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Active forms</p>
+          <p className="text-lg font-bold text-foreground">{activeForms}</p>
+        </div>
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Top form</p>
+          <p className="text-sm font-semibold text-foreground truncate" title={topForm?.name || "—"}>{topForm?.name || "—"}</p>
+        </div>
+        <div className="p-3 rounded-md bg-muted/40">
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Site CVR</p>
+          <p className="text-lg font-bold text-foreground">{currentCvr}%</p>
+        </div>
+      </div>
+
+      {forms.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No form submissions in {periodLabel}.</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="py-2 pr-4 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Form</th>
+                  <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">Leads</th>
+                  <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Share</th>
+                  <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">CVR</th>
+                  {hasPreviousData && (
+                    <th className="py-2 px-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">Trend</th>
+                  )}
+                  <th className="py-2 pl-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider text-right">Avg engagement</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((f) => (
+                  <tr key={f.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-2.5 pr-4 font-medium text-foreground truncate max-w-[220px]" title={f.name}>{f.name}</td>
+                    <td className="py-2.5 px-3 text-right text-foreground">{f.leads}</td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-2">
+                        <div className="relative h-2 w-24 rounded bg-muted/50 overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 bg-primary/60 rounded" style={{ width: `${f.sharePct}%` }} />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-9 text-right">{f.sharePct}%</span>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-muted-foreground">{f.cvr}%</td>
+                    {hasPreviousData && (
+                      <td className="py-2.5 px-3 text-right">
+                        <TrendBadge change={f.trendPct} />
+                      </td>
+                    )}
+                    <td className="py-2.5 pl-3 text-right">
+                      {f.avgEngagement === null ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <span className={`text-sm font-semibold ${f.avgEngagement >= 70 ? "text-success" : f.avgEngagement >= 40 ? "text-foreground" : "text-warning"}`}>
+                          {f.avgEngagement}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {forms.length > 8 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="mt-3 text-xs text-primary hover:text-primary/80 font-medium"
+            >
+              {expanded ? "Show top 8" : `Show all ${forms.length} forms`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // Unified data view — uses raw counts like dashboard
 // ────────────────────────────────────────
 function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel }: {

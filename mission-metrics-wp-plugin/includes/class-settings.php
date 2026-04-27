@@ -125,6 +125,12 @@ class MM_Settings {
 			$clean['limited_pre_consent'] = ! empty( $input['limited_pre_consent'] ) ? '1' : '0';
 		}
 
+		// H-3 (Phase 0): preserve enable_diagnostics across saves; only
+		// overwrite if explicitly present in the submitted form.
+		if ( array_key_exists( 'enable_diagnostics', (array) $input ) ) {
+			$clean['enable_diagnostics'] = ! empty( $input['enable_diagnostics'] ) ? '1' : '0';
+		}
+
 		return $clean;
 	}
 

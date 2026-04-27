@@ -143,16 +143,37 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
       const brokenLinks = brokenRes.count || 0;
       const activeIncidents = incidentsRes.count || 0;
 
-      // Build form breakdown
-      const formMap: Record<string, { name: string; leads: number }> = {};
-      (formsRes.data || []).forEach((f: any) => { formMap[f.id] = { name: f.name, leads: 0 }; });
+      // Build form breakdown with prior-period leads + avg engagement score
+      const formMap: Record<string, { name: string; leads: number; prevLeads: number; engSum: number; engCount: number }> = {};
+      (formsRes.data || []).forEach((f: any) => { formMap[f.id] = { name: f.name, leads: 0, prevLeads: 0, engSum: 0, engCount: 0 }; });
       (formLeadsRes.data || []).forEach((r: any) => {
         if (r.dimension && formMap[r.dimension]) {
           formMap[r.dimension].leads += Number(r.value || 0);
         }
       });
+      (prevFormLeadsRes.data || []).forEach((r: any) => {
+        if (r.dimension && formMap[r.dimension]) {
+          formMap[r.dimension].prevLeads += Number(r.value || 0);
+        }
+      });
+      (leadsRawRes.data || []).forEach((l: any) => {
+        if (l.form_id && formMap[l.form_id] && typeof l.engagement_score === "number") {
+          formMap[l.form_id].engSum += Number(l.engagement_score);
+          formMap[l.form_id].engCount += 1;
+        }
+      });
+      const totalLeadsAcrossForms = Object.values(formMap).reduce((s, f) => s + f.leads, 0);
       const formBreakdown = Object.entries(formMap)
-        .map(([id, f]) => ({ id, name: f.name, leads: f.leads }))
+        .map(([id, f]) => ({
+          id,
+          name: f.name,
+          leads: f.leads,
+          prevLeads: f.prevLeads,
+          trendPct: f.prevLeads > 0 ? Math.round(((f.leads - f.prevLeads) / f.prevLeads) * 100) : null,
+          sharePct: totalLeadsAcrossForms > 0 ? Math.round((f.leads / totalLeadsAcrossForms) * 100) : 0,
+          cvr: currentSessions > 0 ? Math.round((f.leads / currentSessions) * 10000) / 100 : 0,
+          avgEngagement: f.engCount > 0 ? Math.round(f.engSum / f.engCount) : null,
+        }))
         .filter(f => f.leads > 0)
         .sort((a, b) => b.leads - a.leads);
 

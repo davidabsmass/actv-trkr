@@ -250,7 +250,7 @@ async function processJob(supabase: any, job: any) {
 
         // Detect WP host rate-limiting (HTTP 429). Treat as transient: don't
         // shrink batch, don't count toward MAX_RETRIES — just back off long.
-        const isRateLimited = /HTTP 429/i.test(lastError) || /rate.?limit/i.test(lastError);
+        const isRateLimited = /HTTP 429/i.test(lastError ?? "") || /rate.?limit/i.test(lastError ?? "");
 
         if (isRateLimited) {
           const backoffMs = 2 * 60 * 1000; // 2-minute fixed backoff for 429

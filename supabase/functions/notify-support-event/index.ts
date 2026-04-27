@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     // Notify CUSTOMER for: created, admin_replied, status_changed, shipped
     if (["created", "admin_replied", "status_changed", "shipped"].includes(body.event_kind)) {
       if (ticket.submitted_by_email) {
-        const statusLabel = ticket.status?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        const statusLabel = ticket.status?.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
         await sendOne(ticket.submitted_by_email, "support-ticket-update", {
           recipientName: ticket.submitted_by_name || undefined,
           ticketNumber: ticket.ticket_number,

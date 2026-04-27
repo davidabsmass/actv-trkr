@@ -312,7 +312,7 @@ Respond ONLY with valid JSON:
     });
   } catch (e) {
     console.error("weekly-summary error:", e);
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
             }),
             stripe.invoices.list({ customer: customer.id, limit: 1 }),
           ]);
-          const active = subs.data.find((s) => s.status === "active") || subs.data[0] || null;
+          const active = subs.data.find((s: any) => s.status === "active") || subs.data[0] || null;
           const item = active?.items?.data?.[0];
           const price = item?.price;
           const product = price && typeof price.product !== "string" ? price.product : null;

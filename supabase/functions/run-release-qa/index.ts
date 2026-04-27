@@ -1022,7 +1022,7 @@ Deno.serve(async (req) => {
     }));
 
     const results: CheckResult[] = settled.map((s, i) =>
-      s.status === "fulfilled" ? s.value : result(toRun[i], "error", "Promise rejected", { reason: String((s as any).reason) }, Date.now())
+      s.status === "fulfilled" ? (s.value as CheckResult) : result(toRun[i], "error", "Promise rejected", { reason: String((s as any).reason) }, Date.now())
     );
 
     // Persist results

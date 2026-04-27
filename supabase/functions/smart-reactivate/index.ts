@@ -61,7 +61,7 @@ serve(async (req) => {
         limit: 5,
       });
       const recoverable = subs.data.find(
-        (s) =>
+        (s: any) =>
           s.cancel_at_period_end === true ||
           s.status === "past_due" ||
           s.status === "paused" ||

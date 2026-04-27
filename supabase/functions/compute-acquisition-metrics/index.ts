@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
     const snapshots = [
       { metric_key: "arr", metric_name: "Annual Recurring Revenue", metric_value: latest?.arr ?? 0, source_system: "computed" },
       { metric_key: "mrr", metric_name: "Monthly Recurring Revenue", metric_value: latest?.mrr ?? 0, source_system: "computed" },
-      { metric_key: "active_customers", metric_name: "Active Customers", metric_value: latest?.active_customers ?? latest?.active ?? 0, source_system: "computed" },
+      { metric_key: "active_customers", metric_name: "Active Customers", metric_value: (latest as any)?.active_customers ?? latest?.active ?? 0, source_system: "computed" },
       { metric_key: "new_arr_month", metric_name: "New ARR (latest month)", metric_value: latest?.new_arr ?? 0, source_system: "computed" },
       { metric_key: "churned_arr_month", metric_name: "Churned ARR (latest month)", metric_value: latest?.churned_arr ?? 0, source_system: "computed" },
       { metric_key: "nrr", metric_name: "Net Revenue Retention %", metric_value: nrr, source_system: "computed" },

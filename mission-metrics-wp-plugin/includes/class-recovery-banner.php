@@ -145,7 +145,8 @@ class MM_Recovery_Banner {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => 'Insufficient permissions.' ) );
 		}
-		check_ajax_referer( 'mm_recovery_reconnect' );
+		// F-3 (Phase 0): pass explicit nonce field name for grep-ability.
+		check_ajax_referer( 'mm_recovery_reconnect', '_wpnonce' );
 
 		$opts     = MM_Settings::get();
 		$api_key  = isset( $opts['api_key'] ) ? trim( $opts['api_key'] ) : '';

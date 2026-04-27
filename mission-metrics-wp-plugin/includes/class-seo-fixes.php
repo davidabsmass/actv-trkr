@@ -62,10 +62,16 @@ class MM_SEO_Fixes {
 		$domain = wp_parse_url( home_url(), PHP_URL_HOST );
 		$domain = preg_replace( '/^www\./', '', $domain );
 
+		// F-4 (Phase 0): endpoint_url already contains the `/functions/v1` segment,
+		// so we only append the function name. Previously this code re-appended
+		// `/functions/v1/...` and produced a 404, silently disabling SEO fixes.
+		$base = rtrim( $api_url, '/' );
+		$poll_url = $base . '/seo-fix-poll';
+
 		// Guarded by cron_seo_fix breaker — repeated 5xx/timeouts trip the
 		// breaker so we stop hammering a failing endpoint each cron tick.
 		$response = class_exists( 'ACTV_Safe_HTTP' )
-			? ACTV_Safe_HTTP::post( 'cron_seo_fix', $api_url . '/functions/v1/seo-fix-poll', array(
+			? ACTV_Safe_HTTP::post( 'cron_seo_fix', $poll_url, array(
 				'headers' => array(
 					'Content-Type' => 'application/json',
 					'x-api-key'    => $api_key,
@@ -73,7 +79,7 @@ class MM_SEO_Fixes {
 				'body'    => wp_json_encode( array( 'domain' => $domain ) ),
 				'timeout' => 15,
 			) )
-			: wp_remote_post( $api_url . '/functions/v1/seo-fix-poll', array(
+			: wp_remote_post( $poll_url, array(
 				'headers' => array(
 					'Content-Type' => 'application/json',
 					'x-api-key'    => $api_key,

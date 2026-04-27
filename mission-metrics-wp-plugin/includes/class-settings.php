@@ -36,6 +36,9 @@ class MM_Settings {
 			// consent in strict mode (no IDs, no cookies, no journey stitching).
 			// Existing sites are completely unaffected unless an admin opts in.
 			'limited_pre_consent' => '0',
+			// H-3 (Phase 0): /avada-debug REST route is gated behind this flag,
+			// off by default. Operators can flip it on temporarily for support.
+			'enable_diagnostics' => '0',
 		);
 	}
 

@@ -66,6 +66,14 @@ function hashString(input: string): string {
   return (hash >>> 0).toString(16);
 }
 
+function normalizeUrlMatch(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/%20/g, "")
+    .replace(/\s+/g, "");
+}
+
 function buildDedupeKey(goalId: string, row: {
   event_type: string;
   session_id: string | null;
@@ -124,12 +132,16 @@ function matchEventToGoals(
       passes = false;
     }
     if (r.href_contains) {
-      const hrefNeedle = String(r.href_contains).toLowerCase();
+      const hrefNeedle = normalizeUrlMatch(r.href_contains);
+      const hrefValue = normalizeUrlMatch(href);
+      const urlValue = normalizeUrlMatch(url);
+      const textValue = normalizeUrlMatch(text);
+      const labelValue = normalizeUrlMatch(label);
       const hrefMatches =
-        href.includes(hrefNeedle) ||
-        url.includes(hrefNeedle) ||
-        text.includes(hrefNeedle) ||
-        label.includes(hrefNeedle);
+        hrefValue.includes(hrefNeedle) ||
+        urlValue.includes(hrefNeedle) ||
+        textValue.includes(hrefNeedle) ||
+        labelValue.includes(hrefNeedle);
       const allowLegacyNoHref = !href && !!r.text_contains;
       if (!hrefMatches && !allowLegacyNoHref) {
         passes = false;

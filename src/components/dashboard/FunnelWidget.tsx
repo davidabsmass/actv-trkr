@@ -15,12 +15,23 @@ export interface GoalFunnelEntry {
   count: number;
 }
 
+interface FunnelWindow {
+  start: string;
+  end: string;
+  days: number;
+  requestedDays: number;
+  sufficient: boolean;
+  sessions?: number;
+  leads?: number;
+}
+
 interface FunnelWidgetProps {
   totalSessions: number;
   totalPageviews: number;
   totalLeads: number;
   formStarts?: number;
   goalConversions?: GoalFunnelEntry[];
+  funnelWindow?: FunnelWindow;
 }
 
 export function FunnelWidget({
@@ -29,8 +40,14 @@ export function FunnelWidget({
   totalLeads,
   formStarts,
   goalConversions,
+  funnelWindow,
 }: FunnelWidgetProps) {
   const { t } = useTranslation();
+
+  // When a funnel window is provided, use its like-for-like counts so sessions
+  // and leads are always compared on the same time range.
+  const effSessions = funnelWindow?.sessions ?? totalSessions;
+  const effLeads = funnelWindow?.leads ?? totalLeads;
 
   const steps = useMemo<FunnelStep[]>(() => {
     const s: FunnelStep[] = [

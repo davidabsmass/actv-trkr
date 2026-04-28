@@ -23,6 +23,8 @@ import { useOrg } from "@/hooks/use-org";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
+import { useKeyActions } from "@/hooks/use-key-actions";
+import { KeyActionBreakdown } from "@/components/dashboard/KeyActionBreakdown";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import {
   BarChart3, Zap, AlertTriangle, Globe, Search,

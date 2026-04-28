@@ -676,7 +676,8 @@ export default function SubscriberSitesPanel() {
                                                 <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
-                                                <SelectItem value="member">member</SelectItem>
+                                                <SelectItem value="viewer">viewer</SelectItem>
+                                                <SelectItem value="manager">manager</SelectItem>
                                                 <SelectItem value="admin">admin</SelectItem>
                                               </SelectContent>
                                             </Select>
@@ -831,7 +832,8 @@ export default function SubscriberSitesPanel() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>

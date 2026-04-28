@@ -42,6 +42,85 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    const rawBody = (await req.json().catch(() => ({}))) as
+      | (Body & { email?: string; status?: string; token?: string })
+      | Record<string, unknown>;
+
+    // ---- PUBLIC UNSUBSCRIBE-BY-EMAIL BRANCH ----
+    // Triggered from the /unsubscribe landing page. No JWT required.
+    // Accepts { status: "unsubscribed", email, token? } and marks the
+    // marketing_contacts row for that email as unsubscribed. Always returns
+    // 200 (does not leak whether the email exists in our list).
+    if (
+      (rawBody as any)?.status === "unsubscribed" &&
+      typeof (rawBody as any)?.email === "string"
+    ) {
+      const email = ((rawBody as any).email as string).toLowerCase().trim();
+      const token = ((rawBody as any).token as string) || null;
+      const ip =
+        req.headers.get("cf-connecting-ip") ||
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        null;
+      const ipHash = ip ? await sha256Hex(ip) : null;
+
+      const admin = createClient(supabaseUrl, serviceKey, {
+        auth: { persistSession: false },
+      });
+
+      const now = new Date().toISOString();
+      const { data: existing } = await admin
+        .from("marketing_contacts")
+        .select("id")
+        .eq("email_lower", email)
+        .maybeSingle();
+
+      if (existing?.id) {
+        await admin
+          .from("marketing_contacts")
+          .update({
+            marketing_consent_status: "unsubscribed",
+            unsubscribed_at: now,
+          })
+          .eq("id", existing.id);
+        await admin.from("marketing_contact_events").insert({
+          contact_id: existing.id,
+          email_lower: email,
+          event_type: "unsubscribe",
+          actor_type: "self_link",
+          metadata: { source: "unsubscribe_link", token, ip_hash: ipHash },
+        });
+      } else {
+        // Record an event even if no contact exists, so we can audit attempts.
+        await admin.from("marketing_contact_events").insert({
+          contact_id: null,
+          email_lower: email,
+          event_type: "unsubscribe",
+          actor_type: "self_link",
+          metadata: { source: "unsubscribe_link", token, ip_hash: ipHash, no_contact: true },
+        });
+      }
+
+      // Also flip the profile flag if a matching ACTV TRKR account exists.
+      await admin
+        .from("profiles")
+        .update({
+          marketing_consent_status: "unsubscribed",
+          marketing_consent_timestamp: now,
+          unsubscribed_at: now,
+        })
+        .eq("email", email);
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- AUTHENTICATED BRANCH (default) ----
     const auth = req.headers.get("Authorization");
     if (!auth?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
@@ -49,10 +128,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     // 1) Verify the caller's identity using the user's JWT.
     const userClient = createClient(supabaseUrl, anonKey, {

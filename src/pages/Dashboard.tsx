@@ -780,6 +780,7 @@ const Dashboard = () => {
               totalLeads={realtimeData?.totalLeads || 0}
               formStarts={formStartsCount || undefined}
               goalConversions={goalFunnelData || undefined}
+              funnelWindow={(realtimeData as any)?.funnelWindow}
             />
           </div>
           <RevenueWidget orgId={orgId} startDate={startDate} endDate={endDate} />

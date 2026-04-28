@@ -4,6 +4,7 @@ import {
   checkPayloadSize, logAnomaly, sanitizeStr,
 } from "../_shared/ingestion-security.ts";
 import { authenticateIngestRequest } from "../_shared/ingest-auth.ts";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

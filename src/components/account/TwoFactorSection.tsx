@@ -201,6 +201,32 @@ export default function TwoFactorSection() {
     }
   };
 
+  // Enabling email turns off TOTP; enabling TOTP turns off email.
+  const handleEnableEmail = async () => {
+    if (totpEnrolled) {
+      if (!confirm("Switch from authenticator app to email codes? Your authenticator app will be removed.")) return;
+      setBusy(true);
+      try {
+        await supabase.auth.mfa.unenroll({ factorId: verifiedTotp!.id });
+      } catch (e: any) {
+        toast({ title: "Could not switch methods", description: e.message, variant: "destructive" });
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    }
+    await toggleEmailOtp(true);
+    if (totpEnrolled) await refresh();
+  };
+
+  const handleStartTotp = async () => {
+    if (emailEnabled) {
+      // Silently disable email; user is opting into the stronger method.
+      await toggleEmailOtp(false);
+    }
+    await startEnroll();
+  };
+
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
@@ -210,7 +236,7 @@ export default function TwoFactorSection() {
           {anyEnabled && <Badge variant="secondary" className="ml-1 text-xs">Enabled</Badge>}
         </CardTitle>
         <CardDescription>
-          Add a second sign-in step. Choose either a code emailed to you, or an authenticator app — or both.
+          Add a second sign-in step. Pick <strong>one</strong> method — emailed code or authenticator app.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -237,8 +263,8 @@ export default function TwoFactorSection() {
                 </div>
                 <Switch
                   checked={emailEnabled}
-                  onCheckedChange={toggleEmailOtp}
-                  disabled={emailToggling}
+                  onCheckedChange={(next) => (next ? handleEnableEmail() : toggleEmailOtp(false))}
+                  disabled={emailToggling || busy || !!enroll}
                   aria-label="Toggle email 2FA"
                 />
               </div>
@@ -304,7 +330,7 @@ export default function TwoFactorSection() {
                 </div>
               ) : (
                 <div className="pl-7">
-                  <Button size="sm" variant="outline" onClick={startEnroll} disabled={busy}>
+                  <Button size="sm" variant="outline" onClick={handleStartTotp} disabled={busy || emailToggling}>
                     {busy ? "Setting up…" : "Set up authenticator app"}
                   </Button>
                 </div>
@@ -313,7 +339,7 @@ export default function TwoFactorSection() {
 
             {!anyEnabled && (
               <p className="text-xs text-muted-foreground">
-                Two-factor authentication is currently <strong className="text-foreground">off</strong>. We strongly recommend enabling at least one method, especially for org admins.
+                Two-factor authentication is currently <strong className="text-foreground">off</strong>. We strongly recommend enabling one method, especially for org admins.
               </p>
             )}
           </>

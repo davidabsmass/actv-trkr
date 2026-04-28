@@ -784,6 +784,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok" });
     return new Response(JSON.stringify({ status: "ok", lead_id: lead.id, provider: providerName, deduplicated_js: jsAlreadyCaptured }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

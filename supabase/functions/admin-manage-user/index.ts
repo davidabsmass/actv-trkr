@@ -125,8 +125,9 @@ Deno.serve(async (req) => {
         userId = newUser.user.id;
       }
 
+      const safeRole = ["admin","manager","viewer"].includes(role) ? role : (role === "member" ? "manager" : "viewer");
       await adminClient.from("org_users")
-        .upsert({ org_id, user_id: userId, role: role || "member" }, { onConflict: "org_id,user_id", ignoreDuplicates: true });
+        .upsert({ org_id, user_id: userId, role: safeRole }, { onConflict: "org_id,user_id", ignoreDuplicates: true });
 
       // Welcome email (fire-and-forget)
       try {
@@ -738,7 +739,7 @@ Deno.serve(async (req) => {
     if (action === "add_existing_user_to_org") {
       const orgId = String(body.org_id || "").trim();
       const email = String(body.email || "").trim().toLowerCase();
-      const role = String(body.role || "member").trim();
+      const rawRole = String(body.role || "viewer").trim();
       const fullName = String(body.full_name || "").trim();
       const tempPassword = String(body.temp_password || "").trim();
       const sendInviteEmail = body.send_invite_email !== false;
@@ -752,8 +753,9 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
-      const validRoles = ["member", "admin"];
-      const assignRole = validRoles.includes(role) ? role : "member";
+      const validRoles = ["viewer", "manager", "admin"];
+      const role = rawRole === "member" ? "manager" : rawRole;
+      const assignRole = validRoles.includes(role) ? role : "viewer";
 
       // Find or create the user
       const { data: profileRow } = await adminClient

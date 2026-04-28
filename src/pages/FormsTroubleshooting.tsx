@@ -133,12 +133,7 @@ const STEPS = [
 export default function FormsTroubleshooting() {
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-4xl">
-      <Button variant="ghost" size="sm" asChild className="mb-4">
-        <Link to="/settings?tab=support">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Support
-        </Link>
-      </Button>
+
 
       <div className="mb-8">
         <Badge variant="secondary" className="mb-2">Troubleshooting Guide</Badge>

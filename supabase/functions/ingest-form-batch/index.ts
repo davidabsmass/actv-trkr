@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
 
     console.log(`Batch ingest: ${processed} processed, ${errors} errors out of ${batch.length} entries`);
 
+    observe(supabase, { orgId, endpoint: "ingest-form-batch", status: "ok", details: { processed, total: batch.length } });
     return new Response(JSON.stringify({
       ok: true,
       processed,

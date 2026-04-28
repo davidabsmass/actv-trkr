@@ -182,6 +182,8 @@ const Dashboard = () => {
 
   const { data: realtimeData } = useDashboardOverview(orgId, startDate, endDate, orgCreatedAt);
   const { data: prevPeriodData } = useDashboardOverview(orgId, prevStartDate, prevEndDate, orgCreatedAt);
+  const { data: keyActionsData } = useKeyActions(orgId, startDate, endDate, orgCreatedAt);
+  const { data: prevKeyActionsData } = useKeyActions(orgId, prevStartDate, prevEndDate, orgCreatedAt);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 

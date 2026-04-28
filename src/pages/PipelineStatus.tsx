@@ -557,8 +557,8 @@ function ObservabilityTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rate_limit_log")
-        .select("id, org_id, site_id, endpoint, ip_hash, count_in_window, threshold, would_block, observed_at")
-        .order("observed_at", { ascending: false })
+        .select("id, org_id, site_id, endpoint, bucket_type, bucket_key, observed_count, threshold, would_block, occurred_at")
+        .order("occurred_at", { ascending: false })
         .limit(50);
       if (error) throw error;
       return (data ?? []) as RateLimitRow[];

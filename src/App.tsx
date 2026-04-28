@@ -46,6 +46,7 @@ const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const DataRoomView = lazy(() => import("./pages/DataRoomView"));
 const PipelineStatus = lazy(() => import("./pages/PipelineStatus"));
 const VisitorJourneys = lazy(() => import("./pages/VisitorJourneys"));
+const SiteContacts = lazy(() => import("./pages/SiteContacts"));
 const DataRights = lazy(() => import("./pages/DataRights"));
 const AccountLock = lazy(() => import("./pages/AccountLock"));
 const CancelEmailChange = lazy(() => import("./pages/CancelEmailChange"));
@@ -169,6 +170,7 @@ const App = () => (
               <Route path="dashboard" element={<OwnerDashboardRedirect><Dashboard /></OwnerDashboardRedirect>} />
               <Route path="performance" element={<Performance />} />
               <Route path="visitor-journeys" element={<VisitorJourneys />} />
+              <Route path="site-contacts" element={<SiteContacts />} />
               <Route path="forms" element={<Forms />} />
               <Route path="forms/troubleshooting" element={<FormsTroubleshooting />} />
               <Route path="entries" element={<Navigate to="/forms" replace />} />

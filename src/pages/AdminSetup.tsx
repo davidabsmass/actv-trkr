@@ -19,9 +19,10 @@ import ReleaseQAPanel from "@/components/admin/ReleaseQAPanel";
 import DataWipePanel from "@/components/admin/DataWipePanel";
 import SupportAccessPanel from "@/components/admin/SupportAccessPanel";
 import SupportInbox from "@/components/admin/SupportInbox";
+import MarketingContactsPanel from "@/components/admin/MarketingContactsPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
-type AdminMainTab = "clients" | "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access";
+type AdminMainTab = "clients" | "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access" | "marketing-contacts";
 
 function FeatureUsageWidget() {
   const { data } = useQuery({
@@ -339,7 +340,7 @@ export default function AdminSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "support-inbox" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access") {
+    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "support-inbox" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access" || tab === "marketing-contacts") {
       setActiveMainTab(tab);
     } else if (tab === "app-bible") {
       // Legacy redirect: Launch Checklist removed, send users to Release QA
@@ -973,7 +974,17 @@ export default function AdminSetup() {
           >
             Support Access
           </button>
+          <button
+            onClick={() => switchMainTab("marketing-contacts")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "marketing-contacts" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            Marketing Contacts
+          </button>
         </div>
+      )}
+
+      {activeMainTab === "marketing-contacts" && isAdminUser && (
+        <MarketingContactsPanel />
       )}
 
       {activeMainTab === "release-qa" && isAdminUser && (

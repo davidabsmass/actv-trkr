@@ -70,7 +70,7 @@ const Onboarding = () => {
     setSavingMarketing(true);
     try {
       const { error } = await supabase.functions.invoke("record-marketing-consent", {
-        body: { status: marketingOptIn ? "opted_in" : "not_opted_in", source: "onboarding" },
+        body: { optIn: marketingOptIn, source: "onboarding" },
       });
       if (error) throw error;
       setMarketingSaved(true);

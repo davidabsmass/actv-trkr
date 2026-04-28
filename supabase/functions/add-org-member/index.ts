@@ -26,18 +26,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid auth" }), { status: 401, headers });
     }
 
-    const { email, orgId, role = "member" } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const email: string = String(body?.email || "").trim().toLowerCase();
+    const orgId: string = String(body?.orgId || "").trim();
+    const requestedRole: string = String(body?.role || "viewer").toLowerCase();
 
     if (!email || !orgId) {
       return new Response(JSON.stringify({ error: "Email and orgId are required" }), { status: 400, headers });
     }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: "Invalid email" }), { status: 400, headers });
+    }
 
-    const validRoles = ["member", "admin"];
-    const assignRole = validRoles.includes(role) ? role : "member";
+    // SECURITY: Default invited users to 'viewer'. Only admins can be promoted later.
+    const validRoles = ["viewer", "manager", "admin"];
+    const assignRole = validRoles.includes(requestedRole) ? requestedRole : "viewer";
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller is an admin of this org
+    // Verify caller is an admin of this org (or platform admin)
     const { data: callerRole } = await admin
       .from("org_users")
       .select("role")
@@ -45,28 +52,33 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!callerRole || callerRole.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Only org admins can add members" }), { status: 403, headers });
+    const { data: platformRole } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    const isPlatformAdmin = !!platformRole;
+    const isOrgAdmin = callerRole?.role === "admin";
+
+    if (!isOrgAdmin && !isPlatformAdmin) {
+      return new Response(JSON.stringify({ error: "Only org admins can invite members" }), { status: 403, headers });
     }
 
-    // Check if user exists in auth by email
-    const { data: existingUsers } = await admin.auth.admin.listUsers({ perPage: 1, page: 1 });
-    // listUsers doesn't filter by email, so use a different approach
+    // Look up existing user by email
     const { data: profileMatch } = await admin
       .from("profiles")
       .select("user_id, email, full_name")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", email)
       .maybeSingle();
 
     let targetUserId: string;
-    let targetName = "";
     let wasCreated = false;
 
     if (profileMatch) {
       targetUserId = profileMatch.user_id;
-      targetName = profileMatch.full_name || "";
 
-      // Check if already a member
       const { data: existing } = await admin
         .from("org_users")
         .select("id")
@@ -81,51 +93,56 @@ Deno.serve(async (req) => {
         );
       }
     } else {
-      // Create the user account with a random password (they'll use password reset)
       const tempPassword = crypto.randomUUID() + "Aa1!";
       const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
-        email: email.toLowerCase().trim(),
+        email,
         password: tempPassword,
         email_confirm: true,
         user_metadata: { full_name: "" },
       });
-
       if (createErr || !newUser?.user) {
-        console.error("Create user error:", createErr);
         return new Response(
           JSON.stringify({ error: createErr?.message || "Failed to create user account" }),
           { status: 500, headers }
         );
       }
-
       targetUserId = newUser.user.id;
       wasCreated = true;
     }
 
-    // Add to org
     const { error: joinErr } = await admin
       .from("org_users")
-      .insert({ org_id: orgId, user_id: targetUserId, role: assignRole });
+      .insert({
+        org_id: orgId,
+        user_id: targetUserId,
+        role: assignRole,
+        invited_by: user.id,
+        status: "active",
+      });
 
     if (joinErr) {
       console.error("Join error:", joinErr);
-      return new Response(JSON.stringify({ error: "Failed to add member" }), { status: 500, headers });
+      return new Response(JSON.stringify({ error: joinErr.message || "Failed to add member" }), { status: 500, headers });
     }
 
-    // Also create a subscriber record if one doesn't exist
-    const { data: existingSub } = await admin
-      .from("subscribers")
-      .select("id")
-      .eq("user_id", targetUserId)
-      .maybeSingle();
+    // Audit log
+    await admin.from("team_audit_log").insert({
+      org_id: orgId,
+      actor_user_id: user.id,
+      target_user_id: targetUserId,
+      action: assignRole === "admin" ? "admin_added" : "user_invited",
+      previous_role: null,
+      new_role: assignRole,
+      metadata: { email, was_created: wasCreated },
+    });
 
+    // Subscriber record (best effort)
+    const { data: existingSub } = await admin
+      .from("subscribers").select("id").eq("user_id", targetUserId).maybeSingle();
     if (!existingSub) {
       await admin.from("subscribers").insert({
-        user_id: targetUserId,
-        org_id: orgId,
-        email: email.toLowerCase().trim(),
-        status: "active",
-        plan: "team_member",
+        user_id: targetUserId, org_id: orgId, email,
+        status: "active", plan: "team_member",
       });
     }
 
@@ -133,10 +150,11 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         userId: targetUserId,
+        role: assignRole,
         wasCreated,
         message: wasCreated
-          ? `Account created for ${email}. They should use "Forgot Password" to set their password.`
-          : `${email} has been added to your organization.`,
+          ? `Account created for ${email} as ${assignRole}. They should use "Forgot Password" to set their password.`
+          : `${email} added to your organization as ${assignRole}.`,
       }),
       { status: 200, headers }
     );

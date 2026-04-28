@@ -129,7 +129,7 @@ export function useKeyActions(
         .eq("org_id", orgId)
         .eq("is_active", true);
 
-      const goals = (goalsRaw || []) as Array<{
+      const goals = ((goalsRaw as unknown) || []) as Array<{
         id: string;
         name: string;
         goal_type: string;

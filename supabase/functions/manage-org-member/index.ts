@@ -113,10 +113,10 @@ Deno.serve(async (req) => {
         target_user_id: targetUserId,
         action: logAction,
         previous_role: previousRole,
-        new_role: newRole,
+        new_role: normalizedNewRole,
       });
 
-      return new Response(JSON.stringify({ success: true, role: newRole }), { status: 200, headers });
+      return new Response(JSON.stringify({ success: true, role: normalizedNewRole }), { status: 200, headers });
     }
 
     if (action === "remove") {

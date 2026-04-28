@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     // Add user to org as member
     const { error: joinErr } = await admin
       .from("org_users")
-      .insert({ org_id: invite.org_id, user_id: user.id, role: "member" });
+      .insert({ org_id: invite.org_id, user_id: user.id, role: "viewer" });
 
     if (joinErr) {
       console.error("Join error:", joinErr);

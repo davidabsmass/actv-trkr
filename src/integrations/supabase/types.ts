@@ -4391,22 +4391,34 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          invited_by: string | null
+          is_owner: boolean
           org_id: string
           role: string
+          status: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          invited_by?: string | null
+          is_owner?: boolean
           org_id: string
           role?: string
+          status?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          invited_by?: string | null
+          is_owner?: boolean
           org_id?: string
           role?: string
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -7529,6 +7541,50 @@ export type Database = {
         }
         Relationships: []
       }
+      team_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          new_role: string | null
+          org_id: string
+          previous_role: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_role?: string | null
+          org_id: string
+          previous_role?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          new_role?: string | null
+          org_id?: string
+          previous_role?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_audit_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       technology_dependencies: {
         Row: {
           category: string
@@ -8536,7 +8592,20 @@ export type Database = {
         Args: { p_function_name: string; p_user_id: string }
         Returns: undefined
       }
+      is_last_org_admin: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_admin: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_org_member: { Args: { _org_id: string }; Returns: boolean }
+      is_org_owner: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       log_security_event: {
         Args: {
           p_actor_type?: string

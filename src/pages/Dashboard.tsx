@@ -460,21 +460,21 @@ const Dashboard = () => {
   const periodData = useMemo(() => {
     const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
     const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
-    // Include goal conversions in overall CVR.
-    // NOTE: A single session can fire multiple goal events (e.g. mailto + form),
-    // so we cap conversions at the session count to keep CVR ≤ 100% until we
-    // have proper session-level dedup of goal events.
-    const goalTotal = (goalFunnelData || []).reduce((s: number, g: any) => s + (g.count || 0), 0);
-    const rawConversions = curr.totalLeads + goalTotal;
-    const currConversions = Math.min(rawConversions, curr.totalSessions);
-    const currCvr = curr.totalSessions > 0 ? currConversions / curr.totalSessions : 0;
-    const prevCvr = prev.totalSessions > 0 ? Math.min(prev.totalLeads, prev.totalSessions) / prev.totalSessions : 0;
+    // CVR = Form Fills ÷ Sessions so the visible math on the Overview row
+    // is always self-consistent. Goal conversions (mailto/CTA clicks etc.)
+    // are surfaced in the Funnel/Goals widgets, not here.
+    const currCvr = curr.totalSessions > 0
+      ? Math.min(curr.totalLeads, curr.totalSessions) / curr.totalSessions
+      : 0;
+    const prevCvr = prev.totalSessions > 0
+      ? Math.min(prev.totalLeads, prev.totalSessions) / prev.totalSessions
+      : 0;
     return {
       sessions: { current: curr.totalSessions, previous: prev.totalSessions },
       leads: { current: curr.totalLeads, previous: prev.totalLeads },
       cvr: { current: currCvr, previous: prevCvr },
     };
-  }, [realtimeData, prevPeriodData, goalFunnelData]);
+  }, [realtimeData, prevPeriodData]);
 
   // Per-KPI sparkline series, derived from dailyMap if available
   const kpiSeries = useMemo(() => {

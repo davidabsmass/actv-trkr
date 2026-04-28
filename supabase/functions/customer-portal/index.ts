@@ -31,12 +31,20 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    if (customers.data.length === 0) throw new Error("No Stripe customer found");
+    if (customers.data.length === 0) {
+      return new Response(JSON.stringify({
+        error: "no_stripe_customer",
+        message: "No billing account found for this email yet. Start a subscription to manage billing.",
+      }), {
+        headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     const origin = req.headers.get("origin") || "https://actvtrkr.com";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customers.data[0].id,
-      return_url: `${origin}/settings`,
+      return_url: `${origin}/account`,
     });
 
     return new Response(JSON.stringify({ url: portalSession.url }), {

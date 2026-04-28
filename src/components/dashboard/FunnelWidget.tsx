@@ -91,8 +91,11 @@ export function FunnelWidget({
                   <span className={`w-2.5 h-2.5 rounded-full ${step.color}`} />
                   <span className="text-xs font-semibold text-foreground">{step.label}</span>
                   {dropoff !== null && dropoff > 0 && (
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      −{dropoff}%
+                    <span
+                      className="text-[10px] uppercase tracking-wider text-muted-foreground"
+                      title={`${dropoff}% of visitors who reached "${steps[i - 1].label}" did not reach "${step.label}"`}
+                    >
+                      {dropoff}% drop-off
                     </span>
                   )}
                 </div>

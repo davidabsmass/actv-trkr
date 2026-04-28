@@ -792,6 +792,14 @@ const Dashboard = () => {
           </div>
 
 
+          {/* Key Action Breakdown – per-category counts beneath headline KPIs */}
+          <KeyActionBreakdown
+            entries={keyActionsData?.breakdown || []}
+            hasConfigured={keyActionsData?.hasConfigured ?? false}
+            hasSessions={periodData.sessions.current > 0}
+            periodLabel={`last ${days} days`}
+          />
+
           {/* AI Insights – auto-generates on load */}
           <AiInsights
             orgId={orgId}

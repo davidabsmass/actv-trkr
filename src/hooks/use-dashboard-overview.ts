@@ -131,7 +131,21 @@ export function useDashboardOverview(
         .sort((a, b) => b.sessions - a.sessions)
         .slice(0, 10);
 
-      return { totalSessions, totalLeads, totalPageviews, sources };
+      return {
+        totalSessions,
+        totalLeads,
+        totalPageviews,
+        sources,
+        funnelWindow: {
+          start: funnelStartIso,
+          end: funnelEndIso,
+          days: effectiveDays,
+          requestedDays,
+          sufficient: funnelSufficient,
+          sessions: funnelSessions,
+          leads: funnelLeads,
+        },
+      };
     },
     enabled: !!orgId,
     staleTime: 30_000,

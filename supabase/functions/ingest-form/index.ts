@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { gateOrgLifecycle } from "../_shared/org-lifecycle-gate.ts";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -456,6 +457,7 @@ Deno.serve(async (req) => {
 
     // If JS capture arrives and a server-side hook already sent the same submission, skip
     if (providerName === "js_capture" && recentFingerprints.has(fingerprint)) {
+      observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { dedup: true } });
       return new Response(JSON.stringify({ status: "deduplicated", provider: providerName }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     // If server-side hook arrives and JS already captured, the server-side wins — we'll update below
@@ -648,12 +650,14 @@ Deno.serve(async (req) => {
             await supabase.from("lead_fields_flat").insert(flatRows);
             console.log(`Enriched lead ${canonicalLead.id} with ${flatRows.length} fields`);
           }
+          observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "enriched" } });
           return new Response(JSON.stringify({ status: "enriched", lead_id: canonicalLead.id, fields_added: flatRows.length, provider: providerName, duplicates_trashed: duplicateActiveLeadIds.length }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
       }
 
+      observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "deduplicated_lead" } });
       return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: canonicalLead.id, provider: providerName, duplicates_trashed: duplicateActiveLeadIds.length }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -780,6 +784,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok" });
     return new Response(JSON.stringify({ status: "ok", lead_id: lead.id, provider: providerName, deduplicated_js: jsAlreadyCaptured }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,6 +69,7 @@ Deno.serve(async (req) => {
       upserted++;
     }
 
+    observe(supabase, { orgId, siteId: site?.id ?? null, endpoint: "ingest-broken-links", status: "ok", details: { upserted } });
     return new Response(JSON.stringify({ status: "ok", upserted }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Broken links error:", err);

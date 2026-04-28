@@ -4,6 +4,7 @@ import {
   checkPayloadSize, logAnomaly, sanitizeStr,
 } from "../_shared/ingestion-security.ts";
 import { authenticateIngestRequest } from "../_shared/ingest-auth.ts";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -230,6 +231,7 @@ Deno.serve(async (req) => {
         console.error("Tracking status update error (non-fatal):", stsErr);
       }
 
+      observe(supabase, { orgId, siteId: site.id, endpoint: "track-pageview", status: "ok", details: { kind: "time_update" } });
       return new Response(JSON.stringify({ status: "ok", active_seconds: activeSeconds }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -407,6 +409,7 @@ Deno.serve(async (req) => {
       console.error("Tracking status update error (non-fatal):", stsErr);
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "track-pageview", status: "ok" });
     return new Response(JSON.stringify({ status: "ok", event_id: eventId }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Pageview tracking error:", err);

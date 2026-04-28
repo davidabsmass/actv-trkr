@@ -8,6 +8,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { checkRateLimit, extractClientIp, logAnomaly } from "../_shared/ingestion-security.ts";
 import { gateOrgLifecycle } from "../_shared/org-lifecycle-gate.ts";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,6 +124,7 @@ Deno.serve(async (req) => {
 
     console.log(`Batch ingest: ${processed} processed, ${errors} errors out of ${batch.length} entries`);
 
+    observe(supabase, { orgId, endpoint: "ingest-form-batch", status: "ok", details: { processed, total: batch.length } });
     return new Response(JSON.stringify({
       ok: true,
       processed,

@@ -4,6 +4,7 @@ import {
   checkPayloadSize, logAnomaly, sanitizeStr, VALID_EVENT_TYPES,
 } from "../_shared/ingestion-security.ts";
 import { authenticateIngestRequest } from "../_shared/ingest-auth.ts";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -343,6 +344,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "track-event", status: "ok", details: { stored: rows.length } });
     return new Response(JSON.stringify({ status: "ok", stored: rows.length, skipped: skipped.length }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Event tracking error:", err);

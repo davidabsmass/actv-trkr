@@ -10,6 +10,7 @@
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { wildcardCorsHeaders } from "../_shared/cors.ts";
+import { observe } from "../_shared/observability.ts";
 
 interface HealthPayload {
   domain?: string;
@@ -159,6 +160,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "plugin-health-report", status: "ok" });
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...wildcardCorsHeaders, "Content-Type": "application/json" },
     });

@@ -4,6 +4,7 @@ import {
   checkPayloadSize, logAnomaly, sanitizeStr,
 } from "../_shared/ingestion-security.ts";
 import { gateOrgLifecycle } from "../_shared/org-lifecycle-gate.ts";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -435,6 +436,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    observe(supabase, { orgId, siteId: site?.id ?? null, endpoint: "ingest-heartbeat", status: "ok" });
     return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Signal error:", err);

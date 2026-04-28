@@ -60,6 +60,7 @@ const Auth = () => {
   const [mfaEmail, setMfaEmail] = useState("");
   const [mfaResendCooldown, setMfaResendCooldown] = useState(0);
   const [trustDevice, setTrustDevice] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const navigate = useNavigate();
 
   // Restore pending OTP state on mount so refresh / tab switch doesn't lose it.
@@ -298,6 +299,20 @@ const Auth = () => {
         });
         if (error) throw error;
 
+        // Record marketing consent (best-effort; only fires if a session exists)
+        if (signUpData.session) {
+          try {
+            await supabase.functions.invoke("record-marketing-consent", {
+              body: {
+                optIn: marketingOptIn,
+                source: "signup",
+                fullName,
+                consentUrl: window.location.href,
+              },
+            });
+          } catch (e) { console.warn("marketing consent record failed", e); }
+        }
+
         if (inviteCode && signUpData.session) {
           try {
             await supabase.functions.invoke("redeem-invite", { body: { code: inviteCode } });
@@ -404,6 +419,18 @@ const Auth = () => {
                       <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                       <input type="text" placeholder="Invite code (optional)" value={inviteCode} onChange={(e) => setInviteCode(e.target.value.toUpperCase())} className={inputClass} />
                     </div>
+                  )}
+
+                  {!isLogin && (
+                    <label className="flex items-start gap-2 text-xs text-white/80 select-none cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={marketingOptIn}
+                        onChange={(e) => setMarketingOptIn(e.target.checked)}
+                        className="mt-0.5 h-3.5 w-3.5 rounded border-white/40 bg-white/10 accent-primary"
+                      />
+                      <span>Send me ACTV TRKR product updates, launch news, and website performance tips. I can unsubscribe at any time.</span>
+                    </label>
                   )}
 
                   {isLogin && (

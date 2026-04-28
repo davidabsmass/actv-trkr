@@ -11,6 +11,7 @@ import { User, Lock, Mail, Eye, EyeOff, ChevronDown, ChevronUp, ExternalLink, Ma
 import TeamSection from "@/components/account/TeamSection";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
 import SecuritySessionsSection from "@/components/account/SecuritySessionsSection";
+import EmailPreferencesSection from "@/components/account/EmailPreferencesSection";
 import SupportSection from "@/components/support/SupportSection";
 import { QuickHelpPanel } from "@/components/support/QuickHelpPanel";
 import { SupportAccessCard } from "@/components/support/SupportAccessCard";
@@ -256,6 +257,9 @@ export default function Account() {
             )}
           </CardContent>
         </Card>
+        {/* Email Preferences */}
+        <EmailPreferencesSection />
+
         {/* Two-Factor Authentication */}
         <TwoFactorSection />
 

@@ -2,7 +2,7 @@ import {
   TableProperties, Settings, LogOut, UserCircle,
   ChevronDown, Building2, Shield, ClipboardList, Activity, Bell,
   LayoutDashboard, TrendingUp, Users, Search, FileText, ShieldAlert,
-  ShieldCheck, Route as RouteIcon,
+  ShieldCheck, Route as RouteIcon, Contact,
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -36,6 +36,7 @@ const telemetryItems: NavItem[] = [
   { titleKey: "sidebar.dashboard", url: "/dashboard", icon: LayoutDashboard },
   { titleKey: "sidebar.performance", url: "/performance", icon: TrendingUp },
   { titleKey: "Visitor Journeys", url: "/visitor-journeys", icon: RouteIcon },
+  { titleKey: "Site Contacts", url: "/site-contacts", icon: Contact },
   { titleKey: "sidebar.reports", url: "/reports", icon: FileText },
   { titleKey: "sidebar.forms", url: "/forms", icon: TableProperties },
   { titleKey: "sidebar.monitoring", url: "/monitoring", icon: Activity },

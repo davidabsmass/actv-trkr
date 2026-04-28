@@ -636,16 +636,16 @@ function ObservabilityTab() {
                     )}
                     <span className="font-mono text-xs text-foreground">{r.endpoint}</span>
                     <span className="text-xs text-muted-foreground">
-                      {r.count_in_window}/{r.threshold} in window
+                      {r.observed_count}{r.threshold ? `/${r.threshold}` : ""} • {r.bucket_type}
                     </span>
-                    {r.ip_hash && (
+                    {r.bucket_key && (
                       <span className="text-xs font-mono text-muted-foreground">
-                        ip:{r.ip_hash.slice(0, 8)}…
+                        key:{r.bucket_key.slice(0, 12)}…
                       </span>
                     )}
                     <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {formatDistanceToNow(new Date(r.observed_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(r.occurred_at), { addSuffix: true })}
                     </span>
                   </div>
                 ))}

@@ -188,7 +188,9 @@ Rules:
 - CRITICAL: If "ACTIVE GOALS" shows configured goals, do NOT suggest setting up goals — they already exist. Instead, suggest ways to improve the metrics those goals track.
 - CRITICAL: Do NOT repeat information already visible in the dashboard (site health status, domain expiry). Focus on strategic marketing actions the user should take.
 - CRITICAL: If the previous period's value for any metric (sessions, leads, CVR) is zero, do NOT report a percentage drop or gain for that metric. Instead, note that tracking just started and there isn't enough history for a comparison yet. Only compare periods when both have real data.
-- Focus suggestions on content strategy, traffic growth, conversion optimization, and audience engagement — not on tool setup.`;
+- Focus suggestions on content strategy, traffic growth, conversion optimization, and audience engagement — not on tool setup.
+- CRITICAL — NO FABRICATION: Only reference facts that appear in the data above. Do NOT invent page elements, popups, modals, banners, layouts, or UI behavior that aren't in the data. If you reference a CTA label from "EXISTING CTAs CLICKED", treat it as a labeled click event only — you do NOT know whether it is a button, link, popup, close icon, or where it sits on the page. Never speculate about why a click happened (e.g. "popups appearing too early", "obstructing other links") unless that cause is explicitly in the data.
+- If a CTA label looks generic (e.g. "Close", "X", "Submit", "Click here", "Read more"), do NOT build a recommendation around it — these are ambiguous and we cannot infer intent from the label alone.`;
 
     const userPrompt = `Here are the current dashboard metrics for ${orgName}:
 

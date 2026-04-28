@@ -730,7 +730,7 @@ function ObservabilityTab() {
                   >
                     {h.last_status === "ok" ? (
                       <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                    ) : h.consecutive_failures > 0 ? (
+                    ) : h.last_status ? (
                       <XCircle className="h-3.5 w-3.5 text-destructive" />
                     ) : (
                       <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
@@ -740,11 +740,9 @@ function ObservabilityTab() {
                     {h.site_id && (
                       <span className="text-xs font-mono text-muted-foreground">site:{h.site_id.slice(0, 8)}…</span>
                     )}
-                    {h.consecutive_failures > 0 && (
-                      <Badge variant="destructive" className="text-[10px]">
-                        {h.consecutive_failures} fail{h.consecutive_failures === 1 ? "" : "s"}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-[10px]">
+                      {h.total_events.toLocaleString()} events
+                    </Badge>
                     <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {formatDistanceToNow(new Date(h.last_event_at), { addSuffix: true })}

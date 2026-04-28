@@ -457,6 +457,7 @@ Deno.serve(async (req) => {
 
     // If JS capture arrives and a server-side hook already sent the same submission, skip
     if (providerName === "js_capture" && recentFingerprints.has(fingerprint)) {
+      observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { dedup: true } });
       return new Response(JSON.stringify({ status: "deduplicated", provider: providerName }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     // If server-side hook arrives and JS already captured, the server-side wins — we'll update below

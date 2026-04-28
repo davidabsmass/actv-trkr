@@ -169,6 +169,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Step 1.6: Honor user's email-OTP preference.
+    // If the user has explicitly disabled email 2FA (user_two_factor.email_enabled = false),
+    // skip the code and mint a session directly.
+    {
+      const adminPref = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+      const { data: prefRow } = await adminPref
+        .from('user_two_factor')
+        .select('email_enabled')
+        .eq('user_id', userId)
+        .maybeSingle()
+      // Only skip if there's an explicit row with email_enabled = false.
+      // No row = legacy default = email OTP stays on.
+      if (prefRow && prefRow.email_enabled === false) {
+        const { data: linkData } = await adminPref.auth.admin.generateLink({
+          type: 'magiclink',
+          email: userEmail,
+        })
+        const tokenHash = (linkData as any)?.properties?.hashed_token
+        if (tokenHash) {
+          const { data: verifyData } = await anon.auth.verifyOtp({
+            type: 'magiclink',
+            token_hash: tokenHash,
+          })
+          if (verifyData?.session) {
+            return new Response(
+              JSON.stringify({
+                skipped: true,
+                access_token: verifyData.session.access_token,
+                refresh_token: verifyData.session.refresh_token,
+                email: userEmail,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            )
+          }
+        }
+        // If session minting failed for any reason, fall through to normal email-OTP flow.
+      }
+    }
+
     // Step 2: Generate code + challenge token.
     const code = generateCode()
     const challengeToken = generateChallengeToken()

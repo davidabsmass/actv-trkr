@@ -523,15 +523,16 @@ function CodeHealthTab() {
 
 // ── Observability tab (Phase 3, read-only) ─────────────────────
 type RateLimitRow = {
-  id: string;
-  org_id: string;
+  id: number;
+  org_id: string | null;
   site_id: string | null;
   endpoint: string;
-  ip_hash: string | null;
-  count_in_window: number;
-  threshold: number;
+  bucket_type: string;
+  bucket_key: string | null;
+  observed_count: number;
+  threshold: number | null;
   would_block: boolean;
-  observed_at: string;
+  occurred_at: string;
 };
 type AnomalyRow = {
   id: string;
@@ -547,7 +548,7 @@ type HealthRow = {
   endpoint: string;
   last_event_at: string;
   last_status: string | null;
-  consecutive_failures: number;
+  total_events: number;
 };
 
 function ObservabilityTab() {

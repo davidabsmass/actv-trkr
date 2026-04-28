@@ -669,20 +669,31 @@ const Dashboard = () => {
       ) : (
         <div className="space-y-4">
 
-          {/* Row 1 – 6 KPI Cards */}
+          {/* Site Status Hero */}
+          <SiteStatusHero
+            sessions={periodData.sessions.current}
+            formFills={periodData.leads.current}
+            formIssueCount={unhealthyForms?.length || 0}
+            hasActiveIncident={(activeIncidents?.length || 0) > 0}
+            periodLabel={`last ${days} days`}
+          />
+
+          {/* Row 1 – KPI Cards */}
           <div className={`grid grid-cols-2 md:grid-cols-3 ${seoAdvanced ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
             <KPICard
               variant="primary"
-              label={`${t("dashboard.sessions")} (${days}d)`}
+              label={t("dashboard.sessions")}
               value={periodData.sessions.current.toLocaleString()}
+              sub={`Last ${days} days`}
               trend={orgTooNewForComparison ? null : pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
               series={kpiSeries.sessions}
             />
             <KPICard
               variant="success"
-              label={`${t("dashboard.formFills")} (${days}d)`}
+              label={t("dashboard.formFills")}
               value={periodData.leads.current.toLocaleString()}
+              sub={(unhealthyForms?.length || 0) > 0 ? "Lead volume may be affected by form issues" : `Last ${days} days`}
               valueTitle="Counted from your install date forward — historical imports excluded so this matches what the plugin actually captured."
               trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
@@ -691,20 +702,34 @@ const Dashboard = () => {
             <KPICard
               variant="warning"
               label={t("dashboard.conversionRate")}
-              value={`${(periodData.cvr.current * 100).toFixed(1)}%`}
-              trend={orgTooNewForComparison ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
+              value={
+                periodData.sessions.current === 0
+                  ? "—"
+                  : (periodData.cvr.current * 100) >= 1
+                    ? `${(periodData.cvr.current * 100).toFixed(1)}%`
+                    : `${(periodData.cvr.current * 100).toFixed(2)}%`
+              }
+              sub={
+                periodData.sessions.current === 0
+                  ? "Not enough traffic data yet"
+                  : (unhealthyForms?.length || 0) > 0
+                    ? "May be impacted by form rendering issues"
+                    : "Form fills divided by sessions"
+              }
+              trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
               series={kpiSeries.cvr}
             />
             <KPICard
               variant="info"
               label={t("dashboard.topSource")}
-              value={topSource?.source || "—"}
+              value={topSource?.source || "No source data yet"}
               valueClassName="text-xs font-medium truncate"
               valueTitle={topSource?.source || undefined}
-              sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : undefined}
+              sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : "Traffic attribution will appear once available"}
               icon={<Megaphone className="h-4 w-4" />}
             />
+
             <div
               className="kpi-card p-4 animate-slide-up min-h-[132px] flex flex-col"
               data-variant={attentionItems.length === 0 ? "success" : attentionItems.some(i => i.severity === "critical") ? "warning" : "warning"}

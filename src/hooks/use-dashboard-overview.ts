@@ -26,17 +26,10 @@ export function useDashboardOverview(
       const dayStart = `${startDate}T00:00:00Z`;
       const dayEnd = `${endDate}T23:59:59.999Z`;
 
-      // Determine the effective lower bound for "fresh" leads:
-      // the later of (window start) and (install date). This ensures Form Fills
-      // and CVR only count submissions captured live by the plugin.
-      //
-      // We anchor on `submitted_at` (the actual user submission time), NOT
-      // `created_at`. Historical leads imported during a plugin scan all carry
-      // a `created_at` of the import timestamp (which is AFTER the install
-      // cutoff), so filtering by created_at lets thousands of pre-install
-      // submissions slip through. `submitted_at` preserves the original form
-      // submission time, so it correctly excludes anything that happened
-      // before the plugin started capturing live.
+      // Headline KPIs (sessions/leads/pageviews tiles) keep their existing
+      // install-cutoff behavior — they represent "what we captured live" since
+      // install. Anchored on `submitted_at` for leads to correctly exclude
+      // historical WP imports whose `created_at` post-dates install.
       const leadsLowerBound =
         installCutoff && new Date(installCutoff) > new Date(dayStart)
           ? installCutoff
@@ -44,8 +37,31 @@ export function useDashboardOverview(
       const windowEntirelyBeforeInstall =
         installCutoff && new Date(installCutoff) > new Date(dayEnd);
 
+      // ── Funnel window: the like-for-like comparison window ──────────────
+      // Both sessions AND leads in the funnel must use the same effective
+      // window so the conversion ratio is fair. We clamp the window start to
+      // the install date and only render the funnel if at least 50% of the
+      // requested range is post-install — otherwise the comparison is
+      // misleading (e.g. 30 days of sessions vs 3 days of leads).
+      const funnelStartIso =
+        installCutoff && new Date(installCutoff) > new Date(dayStart)
+          ? installCutoff
+          : dayStart;
+      const funnelEndIso = dayEnd;
+      const MS_PER_DAY = 86_400_000;
+      const requestedDays = Math.max(
+        1,
+        Math.round((new Date(dayEnd).getTime() - new Date(dayStart).getTime()) / MS_PER_DAY)
+      );
+      const effectiveDays = Math.max(
+        0,
+        Math.round((new Date(funnelEndIso).getTime() - new Date(funnelStartIso).getTime()) / MS_PER_DAY)
+      );
+      const funnelSufficient =
+        !windowEntirelyBeforeInstall && effectiveDays >= Math.max(1, Math.ceil(requestedDays * 0.5));
+
       // All counts in parallel — head-only, zero rows transferred
-      const [sessRes, leadRes, pvRes] = await Promise.all([
+      const [sessRes, leadRes, pvRes, funnelSessRes, funnelLeadRes] = await Promise.all([
         supabase
           .from("sessions")
           .select("*", { count: "exact", head: true })
@@ -67,11 +83,32 @@ export function useDashboardOverview(
           .eq("org_id", orgId)
           .gte("occurred_at", dayStart)
           .lte("occurred_at", dayEnd),
+        // Funnel-scoped sessions (same window as funnel leads)
+        !funnelSufficient
+          ? Promise.resolve({ count: 0 } as any)
+          : supabase
+              .from("sessions")
+              .select("*", { count: "exact", head: true })
+              .eq("org_id", orgId)
+              .gte("started_at", funnelStartIso)
+              .lte("started_at", funnelEndIso),
+        // Funnel-scoped leads (same window as funnel sessions)
+        !funnelSufficient
+          ? Promise.resolve({ count: 0 } as any)
+          : supabase
+              .from("leads")
+              .select("*", { count: "exact", head: true })
+              .eq("org_id", orgId)
+              .neq("status", "trashed")
+              .gte("submitted_at", funnelStartIso)
+              .lte("submitted_at", funnelEndIso),
       ]);
 
       const totalSessions = sessRes.count || 0;
       const totalLeads = leadRes.count || 0;
       const totalPageviews = pvRes.count || 0;
+      const funnelSessions = funnelSessRes.count || 0;
+      const funnelLeads = funnelLeadRes.count || 0;
 
       // Fetch only the top 10 sources (lightweight — max 10 rows)
       const { data: topSessions } = await supabase

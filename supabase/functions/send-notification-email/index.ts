@@ -125,6 +125,33 @@ Deno.serve(async (req) => {
       try {
         const unsubscribeToken = await getOrCreateUnsubscribeToken(supabase, profile.email);
 
+        // Check whether this recipient is currently opted-in to ACTV TRKR
+        // marketing emails so we can show a "Subscribe to product updates"
+        // link only to those who haven't already opted in. Operational
+        // report content is unaffected — only the footer line changes.
+        const { data: prof2 } = await supabase
+          .from("profiles")
+          .select("marketing_consent_status")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const optedIn = prof2?.marketing_consent_status === "opted_in";
+
+        const subscribeUrl = `https://actvtrkr.com/account?tab=email-preferences`;
+        const unsubscribeUrl = `https://actvtrkr.com/unsubscribe?email=${encodeURIComponent(profile.email)}&token=${unsubscribeToken}`;
+
+        const recipientFooter = `
+<table role="presentation" width="100%" style="margin-top:32px;border-top:1px solid #e5e7eb;padding-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#6b7280;line-height:1.5">
+  <tr><td>
+    <p style="margin:0 0 8px 0">You're receiving this <strong>operational report</strong> from ACTV TRKR because you're a member of this workspace. These emails are part of your account and are not marketing.</p>
+    ${optedIn
+      ? `<p style="margin:0">You're also subscribed to occasional ACTV TRKR product updates. <a href="${unsubscribeUrl}" style="color:#6C5CE7">Unsubscribe from product updates</a>.</p>`
+      : `<p style="margin:0">Want occasional product updates and tips? <a href="${subscribeUrl}" style="color:#6C5CE7">Subscribe to ACTV TRKR updates</a>.</p>`}
+  </td></tr>
+</table>`;
+
+        const htmlWithFooter = `${body.html_body}${recipientFooter}`;
+        const textWithFooter = `${body.text_body || ""}\n\n---\nYou're receiving this operational report from ACTV TRKR because you're a member of this workspace.\n${optedIn ? `Unsubscribe from product updates: ${unsubscribeUrl}` : `Subscribe to product updates: ${subscribeUrl}`}`;
+
         const { error: enqueueError } = await supabase.rpc("enqueue_email", {
           queue_name: "transactional_emails",
           payload: {
@@ -132,8 +159,8 @@ Deno.serve(async (req) => {
             from: `${SITE_NAME} <notifications@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
             subject: body.subject,
-            html: body.html_body,
-            text: body.text_body || "",
+            html: htmlWithFooter,
+            text: textWithFooter,
             purpose: "transactional",
             message_id: messageId,
             label: body.type,

@@ -231,6 +231,7 @@ Deno.serve(async (req) => {
         console.error("Tracking status update error (non-fatal):", stsErr);
       }
 
+      observe(supabase, { orgId, siteId: site.id, endpoint: "track-pageview", status: "ok", details: { kind: "time_update" } });
       return new Response(JSON.stringify({ status: "ok", active_seconds: activeSeconds }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

@@ -1986,6 +1986,54 @@ export type Database = {
         }
         Relationships: []
       }
+      domain_allowlist: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          domain: string
+          id: string
+          notes: string | null
+          org_id: string
+          site_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          domain: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          site_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          domain?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          site_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domain_allowlist_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "domain_allowlist_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domain_health: {
         Row: {
           days_to_domain_expiry: number | null
@@ -2281,6 +2329,60 @@ export type Database = {
             columns: ["saved_view_id"]
             isOneToOne: false
             referencedRelation: "saved_views"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_flags: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          flag_key: string
+          id: string
+          notes: string | null
+          org_id: string | null
+          scope: string
+          site_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          flag_key: string
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          scope: string
+          site_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          flag_key?: string
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          scope?: string
+          site_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flags_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_flags_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
@@ -4858,6 +4960,63 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      rate_limit_log: {
+        Row: {
+          bucket_key: string | null
+          bucket_type: string
+          details: Json
+          endpoint: string
+          id: number
+          observed_count: number
+          occurred_at: string
+          org_id: string | null
+          site_id: string | null
+          threshold: number | null
+          would_block: boolean
+        }
+        Insert: {
+          bucket_key?: string | null
+          bucket_type: string
+          details?: Json
+          endpoint: string
+          id?: number
+          observed_count?: number
+          occurred_at?: string
+          org_id?: string | null
+          site_id?: string | null
+          threshold?: number | null
+          would_block?: boolean
+        }
+        Update: {
+          bucket_key?: string | null
+          bucket_type?: string
+          details?: Json
+          endpoint?: string
+          id?: number
+          observed_count?: number
+          occurred_at?: string
+          org_id?: string | null
+          site_id?: string | null
+          threshold?: number | null
+          would_block?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_limit_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rate_limit_log_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limits: {
         Row: {
@@ -7541,6 +7700,57 @@ export type Database = {
         }
         Relationships: []
       }
+      system_events: {
+        Row: {
+          details: Json
+          event_type: string
+          id: number
+          message: string | null
+          occurred_at: string
+          org_id: string | null
+          severity: string
+          site_id: string | null
+          source: string | null
+        }
+        Insert: {
+          details?: Json
+          event_type: string
+          id?: number
+          message?: string | null
+          occurred_at?: string
+          org_id?: string | null
+          severity?: string
+          site_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          details?: Json
+          event_type?: string
+          id?: number
+          message?: string | null
+          occurred_at?: string
+          org_id?: string | null
+          severity?: string
+          site_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_events_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_audit_log: {
         Row: {
           action: string
@@ -7668,6 +7878,57 @@ export type Database = {
           },
           {
             foreignKeyName: "tracker_alerts_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracking_health: {
+        Row: {
+          details: Json
+          endpoint: string
+          id: string
+          last_event_at: string
+          last_status: string | null
+          org_id: string
+          site_id: string | null
+          total_events: number
+          updated_at: string
+        }
+        Insert: {
+          details?: Json
+          endpoint: string
+          id?: string
+          last_event_at?: string
+          last_status?: string | null
+          org_id: string
+          site_id?: string | null
+          total_events?: number
+          updated_at?: string
+        }
+        Update: {
+          details?: Json
+          endpoint?: string
+          id?: string
+          last_event_at?: string
+          last_status?: string | null
+          org_id?: string
+          site_id?: string | null
+          total_events?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_health_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracking_health_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
@@ -8473,6 +8734,10 @@ export type Database = {
         Returns: number
       }
       expire_old_support_grants: { Args: never; Returns: number }
+      feature_enabled: {
+        Args: { p_flag_key: string; p_org_id?: string; p_site_id?: string }
+        Returns: boolean
+      }
       get_lead_counts_by_form: {
         Args: { p_org_id: string }
         Returns: {
@@ -8627,6 +8892,20 @@ export type Database = {
         Returns: boolean
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      log_rate_limit_observation: {
+        Args: {
+          p_bucket_key: string
+          p_bucket_type: string
+          p_details?: Json
+          p_endpoint: string
+          p_observed_count: number
+          p_org_id: string
+          p_site_id: string
+          p_threshold: number
+          p_would_block: boolean
+        }
+        Returns: undefined
+      }
       log_security_event: {
         Args: {
           p_actor_type?: string
@@ -8719,6 +8998,15 @@ export type Database = {
           p_org_id: string
           p_reason?: string
           p_status: Database["public"]["Enums"]["org_lifecycle_status"]
+        }
+        Returns: undefined
+      }
+      touch_tracking_health: {
+        Args: {
+          p_endpoint: string
+          p_org_id: string
+          p_site_id: string
+          p_status?: string
         }
         Returns: undefined
       }

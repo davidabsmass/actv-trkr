@@ -10,6 +10,7 @@
  */
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { wildcardCorsHeaders } from "../_shared/cors.ts";
+import { observe } from "../_shared/observability.ts";
 
 interface HealthPayload {
   domain?: string;

@@ -465,21 +465,27 @@ const Dashboard = () => {
   const periodData = useMemo(() => {
     const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
     const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
-    // CVR = Form Fills ÷ Sessions so the visible math on the Overview row
-    // is always self-consistent. Goal conversions (mailto/CTA clicks etc.)
-    // are surfaced in the Funnel/Goals widgets, not here.
+
+    // Key Actions = primary success metric. When no Key Actions are
+    // configured we fall back to lead/form submissions so headline math
+    // still reflects something meaningful.
+    const currKeyActions = keyActionsData?.totalActionRate ?? curr.totalLeads;
+    const prevKeyActions = prevKeyActionsData?.totalActionRate ?? prev.totalLeads;
+
+    // Action Rate = Key Actions ÷ Sessions
     const currCvr = curr.totalSessions > 0
-      ? Math.min(curr.totalLeads, curr.totalSessions) / curr.totalSessions
+      ? Math.min(currKeyActions, curr.totalSessions) / curr.totalSessions
       : 0;
     const prevCvr = prev.totalSessions > 0
-      ? Math.min(prev.totalLeads, prev.totalSessions) / prev.totalSessions
+      ? Math.min(prevKeyActions, prev.totalSessions) / prev.totalSessions
       : 0;
     return {
       sessions: { current: curr.totalSessions, previous: prev.totalSessions },
       leads: { current: curr.totalLeads, previous: prev.totalLeads },
+      keyActions: { current: currKeyActions, previous: prevKeyActions },
       cvr: { current: currCvr, previous: prevCvr },
     };
-  }, [realtimeData, prevPeriodData]);
+  }, [realtimeData, prevPeriodData, keyActionsData, prevKeyActionsData]);
 
   // Per-KPI sparkline series, derived from dailyMap if available
   const kpiSeries = useMemo(() => {

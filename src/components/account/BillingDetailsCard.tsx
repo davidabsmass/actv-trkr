@@ -90,8 +90,10 @@ export default function BillingDetailsCard() {
 
   const handleUpdatePayment = async () => {
     const { data, error } = await supabase.functions.invoke("customer-portal");
-    if (error || !data?.url) return;
-    window.open(data.url, "_blank");
+    if (error) return;
+    if (data?.url) {
+      window.open(data.url, "_blank");
+    }
   };
 
   return (

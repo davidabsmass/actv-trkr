@@ -650,12 +650,14 @@ Deno.serve(async (req) => {
             await supabase.from("lead_fields_flat").insert(flatRows);
             console.log(`Enriched lead ${canonicalLead.id} with ${flatRows.length} fields`);
           }
+          observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "enriched" } });
           return new Response(JSON.stringify({ status: "enriched", lead_id: canonicalLead.id, fields_added: flatRows.length, provider: providerName, duplicates_trashed: duplicateActiveLeadIds.length }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
       }
 
+      observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "deduplicated_lead" } });
       return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: canonicalLead.id, provider: providerName, duplicates_trashed: duplicateActiveLeadIds.length }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

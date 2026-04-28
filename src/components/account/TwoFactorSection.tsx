@@ -60,14 +60,14 @@ export default function TwoFactorSection() {
         status: f.status,
       })));
 
-      // Load email-otp setting
+      // Load email-otp setting. No row = legacy default = enabled.
       if (user?.id) {
         const { data: row } = await supabase
           .from("user_two_factor")
           .select("email_enabled")
           .eq("user_id", user.id)
           .maybeSingle();
-        setEmailEnabled(!!row?.email_enabled);
+        setEmailEnabled(row ? !!row.email_enabled : true);
       }
       setLoading(false);
     } catch (e: any) {

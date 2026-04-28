@@ -274,6 +274,28 @@ const Onboarding = () => {
               </div>
             </div>
             <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+              <h3 className="text-sm font-medium text-foreground mb-1">Stay in the loop (optional)</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Occasional product updates, tips, and new features from ACTV TRKR. We'll never email your website's leads — that data belongs to you.
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={(e) => { setMarketingOptIn(e.target.checked); setMarketingSaved(false); }}
+                  className="mt-0.5 accent-primary"
+                />
+                <span className="text-xs text-foreground">Email me ACTV TRKR product updates and tips.</span>
+              </label>
+              <button
+                onClick={handleSaveMarketingPref}
+                disabled={savingMarketing || marketingSaved}
+                className="mt-3 px-3 py-1.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors disabled:opacity-50"
+              >
+                {marketingSaved ? "Saved ✓" : savingMarketing ? "Saving…" : "Save preference"}
+              </button>
+            </div>
+            <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-1">
                 <Shield className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-medium text-foreground">Privacy & Compliance Mode</h3>

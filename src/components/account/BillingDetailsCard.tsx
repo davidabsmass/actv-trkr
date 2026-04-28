@@ -28,9 +28,12 @@ type BillingData = {
     cancel_at: string | null;
     canceled_at: string | null;
     amount: number | null;
+    base_amount?: number | null;
     currency: string | null;
     interval: string | null;
     product_name: string | null;
+    discount_label?: string | null;
+    is_fully_discounted?: boolean;
   } | null;
   payment_method: {
     type: string;
@@ -157,11 +160,35 @@ export default function BillingDetailsCard() {
                   {data.subscription.product_name || "Subscription"}
                 </div>
                 {statusBadge(data.subscription.status)}
+                {data.subscription.is_fully_discounted && (
+                  <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                    Free
+                  </Badge>
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
-                {fmtMoney(data.subscription.amount, data.subscription.currency)}
-                {data.subscription.interval && ` / ${data.subscription.interval}`}
+                {data.subscription.is_fully_discounted ? (
+                  <>
+                    <span className="text-foreground font-medium">Free</span>
+                    {data.subscription.base_amount != null && (
+                      <span className="line-through ml-2 text-xs">
+                        {fmtMoney(data.subscription.base_amount, data.subscription.currency)}
+                        {data.subscription.interval && ` / ${data.subscription.interval}`}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {fmtMoney(data.subscription.amount, data.subscription.currency)}
+                    {data.subscription.interval && ` / ${data.subscription.interval}`}
+                  </>
+                )}
               </div>
+              {data.subscription.discount_label && (
+                <div className="text-xs text-emerald-500">
+                  {data.subscription.discount_label} applied
+                </div>
+              )}
               {data.subscription.cancel_at_period_end && data.subscription.cancel_at ? (
                 <div className="text-xs text-amber-500 flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
@@ -177,7 +204,11 @@ export default function BillingDetailsCard() {
 
             <div className="rounded-lg border bg-card/50 p-4 space-y-2">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Payment method</div>
-              {data.payment_method?.type === "card" ? (
+              {data.subscription.is_fully_discounted ? (
+                <div className="text-sm text-muted-foreground">
+                  No payment method needed — your plan is fully covered by a discount code.
+                </div>
+              ) : data.payment_method?.type === "card" ? (
                 <>
                   <div className="text-base font-semibold capitalize">
                     {data.payment_method.brand} •••• {data.payment_method.last4}
@@ -192,10 +223,12 @@ export default function BillingDetailsCard() {
               ) : (
                 <div className="text-sm text-muted-foreground">No payment method on file</div>
               )}
-              <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={handleUpdatePayment}>
-                Update payment method
-                <ExternalLink className="h-3 w-3" />
-              </Button>
+              {!data.subscription.is_fully_discounted && (
+                <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={handleUpdatePayment}>
+                  Update payment method
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           </div>
         )}

@@ -46,28 +46,6 @@ export default function TeamSection() {
   const [inviteRole, setInviteRole] = useState<Role>("viewer");
   const [showAudit, setShowAudit] = useState(false);
 
-  // Non-admins see a 403-style message and nothing else.
-  if (!roleLoading && !isOrgAdmin) {
-    return (
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldAlert className="h-4 w-4" /> Team Members
-          </CardTitle>
-          <CardDescription>
-            Team management is only available to organization admins.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            You don't have permission to view or manage team members. Contact your organization
-            admin if you need to invite or remove a teammate.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["org_members", orgId],
     enabled: !!orgId && isOrgAdmin,
@@ -187,6 +165,28 @@ export default function TeamSection() {
     if (!email.trim()) return;
     addMember.mutate();
   };
+
+  // Non-admins see a 403-style message and nothing else.
+  if (!roleLoading && !isOrgAdmin) {
+    return (
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldAlert className="h-4 w-4" /> Team Members
+          </CardTitle>
+          <CardDescription>
+            Team management is only available to organization admins.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            You don't have permission to view or manage team members. Contact your organization
+            admin if you need to invite or remove a teammate.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={300}>

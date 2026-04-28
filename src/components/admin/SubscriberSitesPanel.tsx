@@ -65,13 +65,13 @@ export default function SubscriberSitesPanel() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editRole, setEditRole] = useState<"manager" | "viewer" | "admin">("viewer");
+  const [editRole, setEditRole] = useState<"manager" | "admin">("manager");
 
   // Add user dialog state
   const [addUserOrg, setAddUserOrg] = useState<{ id: string; name: string } | null>(null);
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserName, setNewUserName] = useState("");
-  const [newUserRole, setNewUserRole] = useState<"manager" | "viewer" | "admin">("viewer");
+  const [newUserRole, setNewUserRole] = useState<"manager" | "admin">("manager");
   const [newUserTempPassword, setNewUserTempPassword] = useState("");
   const [showTempPassword, setShowTempPassword] = useState(false);
   const [addUserSubmitting, setAddUserSubmitting] = useState(false);
@@ -279,13 +279,13 @@ export default function SubscriberSitesPanel() {
   const startEditMember = (m: Member) => {
     setEditingMember(m.user_id);
     setEditName(m.full_name || "");
-    setEditRole((m.role === "admin" ? "admin" : (m.role === "manager" ? "manager" : "viewer")));
+    setEditRole((m.role === "admin" ? "admin" : "manager"));
   };
 
   const cancelEditMember = () => {
     setEditingMember(null);
     setEditName("");
-    setEditRole("viewer");
+    setEditRole("manager");
   };
 
   const handleSaveMember = async (orgId: string, userId: string) => {
@@ -399,7 +399,7 @@ export default function SubscriberSitesPanel() {
       setAddUserOrg(null);
       setNewUserEmail("");
       setNewUserName("");
-      setNewUserRole("viewer");
+      setNewUserRole("manager");
       setNewUserTempPassword("");
       setShowTempPassword(false);
       refreshMembers();
@@ -669,14 +669,13 @@ export default function SubscriberSitesPanel() {
                                           {isEditing ? (
                                             <Select
                                               value={editRole}
-                                              onValueChange={(v) => setEditRole(v as "manager" | "viewer" | "admin")}
+                                              onValueChange={(v) => setEditRole(v as "manager" | "admin")}
                                               disabled={saving}
                                             >
                                               <SelectTrigger className="h-7 w-[100px] text-xs">
                                                 <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
-                                                <SelectItem value="viewer">viewer</SelectItem>
                                                 <SelectItem value="manager">manager</SelectItem>
                                                 <SelectItem value="admin">admin</SelectItem>
                                               </SelectContent>
@@ -787,7 +786,7 @@ export default function SubscriberSitesPanel() {
             setAddUserOrg(null);
             setNewUserEmail("");
             setNewUserName("");
-            setNewUserRole("viewer");
+            setNewUserRole("manager");
             setNewUserTempPassword("");
             setShowTempPassword(false);
           }
@@ -827,12 +826,11 @@ export default function SubscriberSitesPanel() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="new-user-role">Role</Label>
-              <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as "manager" | "viewer" | "admin")}>
+              <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as "manager" | "admin")}>
                 <SelectTrigger id="new-user-role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="viewer">Viewer</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>

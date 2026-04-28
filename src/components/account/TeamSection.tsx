@@ -22,18 +22,16 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type Role = "admin" | "manager" | "viewer";
+type Role = "admin" | "manager";
 
 const ROLE_LABEL: Record<Role, string> = {
   admin: "Admin",
   manager: "Manager",
-  viewer: "Viewer",
 };
 
 const ROLE_HELP: Record<Role, string> = {
   admin: "Full access: manage team, billing, sites, and settings.",
   manager: "Operational access. Cannot manage team, billing, or destructive settings.",
-  viewer: "Read-only access to dashboard and assigned data.",
 };
 
 export default function TeamSection() {
@@ -43,7 +41,7 @@ export default function TeamSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<Role>("viewer");
+  const [inviteRole, setInviteRole] = useState<Role>("manager");
   const [showAudit, setShowAudit] = useState(false);
 
   const { data: members = [], isLoading } = useQuery({
@@ -107,7 +105,7 @@ export default function TeamSection() {
       queryClient.invalidateQueries({ queryKey: ["team_audit_log", orgId] });
       toast({ title: "Invite sent", description: data.message });
       setEmail("");
-      setInviteRole("viewer");
+      setInviteRole("manager");
     },
     onError: (e: any) => {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -198,7 +196,7 @@ export default function TeamSection() {
                 <Users className="h-4 w-4" /> Team Members
               </CardTitle>
               <CardDescription>
-                Invite teammates and manage their access. New invites default to <strong>Viewer</strong>.
+                Invite teammates and manage their access. New invites default to <strong>Manager</strong>.
               </CardDescription>
             </div>
             <Button
@@ -231,7 +229,6 @@ export default function TeamSection() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="viewer">Viewer</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
@@ -303,7 +300,6 @@ export default function TeamSection() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="viewer">Viewer</SelectItem>
                                   <SelectItem value="manager">Manager</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>

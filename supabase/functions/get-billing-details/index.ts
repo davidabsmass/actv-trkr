@@ -73,6 +73,35 @@ serve(async (req) => {
         (item as any)?.current_period_end ??
         (sub as any)?.current_period_end ??
         null;
+
+      // Compute the *effective* recurring amount (after coupons/discounts).
+      // The base price.unit_amount may be misleading (e.g. 100% off coupon).
+      let effectiveAmount: number | null = price?.unit_amount ?? null;
+      let discountLabel: string | null = null;
+      let isFullyDiscounted = false;
+
+      try {
+        const upcoming = await (stripe.invoices as any).retrieveUpcoming({
+          customer: customerId,
+          subscription: sub.id,
+        });
+        if (upcoming && typeof upcoming.amount_due === "number") {
+          effectiveAmount = upcoming.amount_due;
+          isFullyDiscounted = upcoming.amount_due === 0 && (price?.unit_amount ?? 0) > 0;
+        }
+        // Build a friendly discount label
+        const discounts = upcoming?.total_discount_amounts || [];
+        if (discounts.length > 0 && upcoming?.discount?.coupon) {
+          const c = upcoming.discount.coupon;
+          if (c.percent_off) discountLabel = `${c.percent_off}% off`;
+          else if (c.amount_off) discountLabel = `${(c.amount_off / 100).toFixed(2)} ${String(c.currency || "").toUpperCase()} off`;
+          if (c.name) discountLabel = `${c.name}${discountLabel ? ` (${discountLabel})` : ""}`;
+        }
+      } catch (e) {
+        // Upcoming invoice may not exist (e.g. canceled sub); fall back to base price.
+        console.warn("[get-billing-details] retrieveUpcoming failed", String(e));
+      }
+
       subscription = {
         id: sub.id,
         status: sub.status,
@@ -82,10 +111,13 @@ serve(async (req) => {
           : null,
         cancel_at: sub.cancel_at ? new Date(sub.cancel_at * 1000).toISOString() : null,
         canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
-        amount: price?.unit_amount ?? null,
+        amount: effectiveAmount,
+        base_amount: price?.unit_amount ?? null,
         currency: price?.currency ?? null,
         interval: price?.recurring?.interval ?? null,
         product_name: typeof product === "object" && product?.name ? product.name : null,
+        discount_label: discountLabel,
+        is_fully_discounted: isFullyDiscounted,
       };
     }
 

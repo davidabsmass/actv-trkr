@@ -203,7 +203,7 @@ export function FunnelWidget({
         </div>
       )}
 
-      {totalSessions > 0 && (
+      {effSessions > 0 && (
         <div className="mt-5 pt-4 border-t border-border/50 flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
             {t("dashboard.overallCvr")}

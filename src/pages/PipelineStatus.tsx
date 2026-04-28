@@ -523,15 +523,16 @@ function CodeHealthTab() {
 
 // ── Observability tab (Phase 3, read-only) ─────────────────────
 type RateLimitRow = {
-  id: string;
-  org_id: string;
+  id: number;
+  org_id: string | null;
   site_id: string | null;
   endpoint: string;
-  ip_hash: string | null;
-  count_in_window: number;
-  threshold: number;
+  bucket_type: string;
+  bucket_key: string | null;
+  observed_count: number;
+  threshold: number | null;
   would_block: boolean;
-  observed_at: string;
+  occurred_at: string;
 };
 type AnomalyRow = {
   id: string;
@@ -547,7 +548,7 @@ type HealthRow = {
   endpoint: string;
   last_event_at: string;
   last_status: string | null;
-  consecutive_failures: number;
+  total_events: number;
 };
 
 function ObservabilityTab() {
@@ -556,8 +557,8 @@ function ObservabilityTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rate_limit_log")
-        .select("id, org_id, site_id, endpoint, ip_hash, count_in_window, threshold, would_block, observed_at")
-        .order("observed_at", { ascending: false })
+        .select("id, org_id, site_id, endpoint, bucket_type, bucket_key, observed_count, threshold, would_block, occurred_at")
+        .order("occurred_at", { ascending: false })
         .limit(50);
       if (error) throw error;
       return (data ?? []) as RateLimitRow[];
@@ -586,7 +587,7 @@ function ObservabilityTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tracking_health")
-        .select("org_id, site_id, endpoint, last_event_at, last_status, consecutive_failures")
+        .select("org_id, site_id, endpoint, last_event_at, last_status, total_events")
         .order("last_event_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -635,16 +636,16 @@ function ObservabilityTab() {
                     )}
                     <span className="font-mono text-xs text-foreground">{r.endpoint}</span>
                     <span className="text-xs text-muted-foreground">
-                      {r.count_in_window}/{r.threshold} in window
+                      {r.observed_count}{r.threshold ? `/${r.threshold}` : ""} • {r.bucket_type}
                     </span>
-                    {r.ip_hash && (
+                    {r.bucket_key && (
                       <span className="text-xs font-mono text-muted-foreground">
-                        ip:{r.ip_hash.slice(0, 8)}…
+                        key:{r.bucket_key.slice(0, 12)}…
                       </span>
                     )}
                     <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {formatDistanceToNow(new Date(r.observed_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(r.occurred_at), { addSuffix: true })}
                     </span>
                   </div>
                 ))}
@@ -729,7 +730,7 @@ function ObservabilityTab() {
                   >
                     {h.last_status === "ok" ? (
                       <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                    ) : h.consecutive_failures > 0 ? (
+                    ) : h.last_status ? (
                       <XCircle className="h-3.5 w-3.5 text-destructive" />
                     ) : (
                       <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
@@ -739,11 +740,9 @@ function ObservabilityTab() {
                     {h.site_id && (
                       <span className="text-xs font-mono text-muted-foreground">site:{h.site_id.slice(0, 8)}…</span>
                     )}
-                    {h.consecutive_failures > 0 && (
-                      <Badge variant="destructive" className="text-[10px]">
-                        {h.consecutive_failures} fail{h.consecutive_failures === 1 ? "" : "s"}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-[10px]">
+                      {h.total_events.toLocaleString()} events
+                    </Badge>
                     <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {formatDistanceToNow(new Date(h.last_event_at), { addSuffix: true })}

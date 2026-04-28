@@ -267,7 +267,7 @@ function MembersSection({ org }: { org: any }) {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newFullName, setNewFullName] = useState("");
-  const [newRole, setNewRole] = useState("member");
+  const [newRole, setNewRole] = useState("viewer");
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["org_users", org.id],
@@ -312,7 +312,7 @@ function MembersSection({ org }: { org: any }) {
       setNewEmail("");
       setNewPassword("");
       setNewFullName("");
-      setNewRole("member");
+      setNewRole("viewer");
     },
     onError: (err: any) => toast.error(err.message || "Failed to create user"),
   });
@@ -385,7 +385,8 @@ function MembersSection({ org }: { org: any }) {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">{t("clients.adminRole")}</SelectItem>
-                    <SelectItem value="member">{t("clients.memberRole")}</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -448,7 +449,8 @@ function MembersSection({ org }: { org: any }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">{t("clients.adminRole")}</SelectItem>
-                    <SelectItem value="member">{t("clients.memberRole")}</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="viewer">Viewer</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button

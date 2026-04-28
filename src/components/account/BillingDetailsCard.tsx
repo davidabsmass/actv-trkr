@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CreditCard, FileText, Loader2, ExternalLink, Calendar, AlertTriangle } from "lucide-react";
+import { CreditCard, FileText, Loader2, ExternalLink, Calendar, AlertTriangle, Info } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type Invoice = {
   id: string;
@@ -78,6 +79,7 @@ const statusBadge = (status: string) => {
 };
 
 export default function BillingDetailsCard() {
+  const { toast } = useToast();
   const { data, isLoading, error } = useQuery({
     queryKey: ["billing_details"],
     queryFn: async () => {
@@ -90,7 +92,21 @@ export default function BillingDetailsCard() {
 
   const handleUpdatePayment = async () => {
     const { data, error } = await supabase.functions.invoke("customer-portal");
-    if (error) return;
+    if (error) {
+      toast({
+        title: "Unable to open billing portal",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (data?.error === "no_stripe_customer") {
+      toast({
+        title: "No billing account yet",
+        description: "You'll be able to manage billing here once you start a paid plan.",
+      });
+      return;
+    }
     if (data?.url) {
       window.open(data.url, "_blank");
     }
@@ -121,8 +137,14 @@ export default function BillingDetailsCard() {
         )}
 
         {!isLoading && data && !data.has_customer && (
-          <div className="text-sm text-muted-foreground">
-            No billing record found yet. Once you start a subscription, your plan and invoices will appear here.
+          <div className="rounded-lg border bg-muted/30 p-4 text-sm flex items-start gap-2">
+            <Info className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+            <div>
+              <div className="font-medium">You're on the free plan</div>
+              <div className="text-muted-foreground">
+                Once you start a paid subscription, your plan, payment method, and invoices will appear here.
+              </div>
+            </div>
           </div>
         )}
 

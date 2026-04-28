@@ -3470,6 +3470,10 @@ export type Database = {
         Row: {
           campaign: string | null
           created_at: string
+          customer_marketing_consent_field_name: string | null
+          customer_marketing_consent_status: string
+          customer_marketing_consent_text: string | null
+          customer_marketing_consent_timestamp: string | null
           data: Json | null
           engagement_score: number | null
           external_entry_id: string | null
@@ -3479,6 +3483,7 @@ export type Database = {
           lead_type: string | null
           location: string | null
           medium: string | null
+          notes: string | null
           org_id: string
           page_path: string | null
           page_url: string | null
@@ -3491,6 +3496,7 @@ export type Database = {
           source: string | null
           status: string
           submitted_at: string
+          tags: string[]
           utm_campaign: string | null
           utm_content: string | null
           utm_medium: string | null
@@ -3501,6 +3507,10 @@ export type Database = {
         Insert: {
           campaign?: string | null
           created_at?: string
+          customer_marketing_consent_field_name?: string | null
+          customer_marketing_consent_status?: string
+          customer_marketing_consent_text?: string | null
+          customer_marketing_consent_timestamp?: string | null
           data?: Json | null
           engagement_score?: number | null
           external_entry_id?: string | null
@@ -3510,6 +3520,7 @@ export type Database = {
           lead_type?: string | null
           location?: string | null
           medium?: string | null
+          notes?: string | null
           org_id: string
           page_path?: string | null
           page_url?: string | null
@@ -3522,6 +3533,7 @@ export type Database = {
           source?: string | null
           status?: string
           submitted_at?: string
+          tags?: string[]
           utm_campaign?: string | null
           utm_content?: string | null
           utm_medium?: string | null
@@ -3532,6 +3544,10 @@ export type Database = {
         Update: {
           campaign?: string | null
           created_at?: string
+          customer_marketing_consent_field_name?: string | null
+          customer_marketing_consent_status?: string
+          customer_marketing_consent_text?: string | null
+          customer_marketing_consent_timestamp?: string | null
           data?: Json | null
           engagement_score?: number | null
           external_entry_id?: string | null
@@ -3541,6 +3557,7 @@ export type Database = {
           lead_type?: string | null
           location?: string | null
           medium?: string | null
+          notes?: string | null
           org_id?: string
           page_path?: string | null
           page_url?: string | null
@@ -3553,6 +3570,7 @@ export type Database = {
           source?: string | null
           status?: string
           submitted_at?: string
+          tags?: string[]
           utm_campaign?: string | null
           utm_content?: string | null
           utm_medium?: string | null
@@ -3682,6 +3700,136 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_contact_events: {
+        Row: {
+          actor_type: string
+          actor_user_id: string | null
+          contact_id: string | null
+          email_lower: string | null
+          event_type: Database["public"]["Enums"]["mc_event_type"]
+          id: string
+          metadata: Json
+          occurred_at: string
+        }
+        Insert: {
+          actor_type?: string
+          actor_user_id?: string | null
+          contact_id?: string | null
+          email_lower?: string | null
+          event_type: Database["public"]["Enums"]["mc_event_type"]
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+        }
+        Update: {
+          actor_type?: string
+          actor_user_id?: string | null
+          contact_id?: string | null
+          email_lower?: string | null
+          event_type?: Database["public"]["Enums"]["mc_event_type"]
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_contact_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_contacts: {
+        Row: {
+          bounced_at: string | null
+          company_name: string | null
+          complained_at: string | null
+          consent_ip_hash: string | null
+          created_at: string
+          email: string
+          email_lower: string | null
+          email_provider: Database["public"]["Enums"]["mc_email_provider"]
+          email_provider_contact_id: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          lifecycle_stage: Database["public"]["Enums"]["mc_lifecycle_stage"]
+          marketing_consent_source: string | null
+          marketing_consent_status: Database["public"]["Enums"]["mc_consent_status"]
+          marketing_consent_text: string | null
+          marketing_consent_timestamp: string | null
+          marketing_consent_url: string | null
+          org_id: string | null
+          role: string | null
+          source: Database["public"]["Enums"]["mc_source"]
+          unsubscribed_at: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          bounced_at?: string | null
+          company_name?: string | null
+          complained_at?: string | null
+          consent_ip_hash?: string | null
+          created_at?: string
+          email: string
+          email_lower?: string | null
+          email_provider?: Database["public"]["Enums"]["mc_email_provider"]
+          email_provider_contact_id?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          lifecycle_stage?: Database["public"]["Enums"]["mc_lifecycle_stage"]
+          marketing_consent_source?: string | null
+          marketing_consent_status?: Database["public"]["Enums"]["mc_consent_status"]
+          marketing_consent_text?: string | null
+          marketing_consent_timestamp?: string | null
+          marketing_consent_url?: string | null
+          org_id?: string | null
+          role?: string | null
+          source?: Database["public"]["Enums"]["mc_source"]
+          unsubscribed_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          bounced_at?: string | null
+          company_name?: string | null
+          complained_at?: string | null
+          consent_ip_hash?: string | null
+          created_at?: string
+          email?: string
+          email_lower?: string | null
+          email_provider?: Database["public"]["Enums"]["mc_email_provider"]
+          email_provider_contact_id?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          lifecycle_stage?: Database["public"]["Enums"]["mc_lifecycle_stage"]
+          marketing_consent_source?: string | null
+          marketing_consent_status?: Database["public"]["Enums"]["mc_consent_status"]
+          marketing_consent_text?: string | null
+          marketing_consent_timestamp?: string | null
+          marketing_consent_url?: string | null
+          org_id?: string | null
+          role?: string | null
+          source?: Database["public"]["Enums"]["mc_source"]
+          unsubscribed_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_contacts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
             referencedColumns: ["id"]
           },
         ]
@@ -4649,9 +4797,13 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          marketing_consent_source: string | null
+          marketing_consent_status: string
+          marketing_consent_timestamp: string | null
           phone: string | null
           postal_code: string | null
           state: string | null
+          unsubscribed_at: string | null
           updated_at: string
           user_id: string
         }
@@ -4664,9 +4816,13 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          marketing_consent_source?: string | null
+          marketing_consent_status?: string
+          marketing_consent_timestamp?: string | null
           phone?: string | null
           postal_code?: string | null
           state?: string | null
+          unsubscribed_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -4679,9 +4835,13 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          marketing_consent_source?: string | null
+          marketing_consent_status?: string
+          marketing_consent_timestamp?: string | null
           phone?: string | null
           postal_code?: string | null
           state?: string | null
+          unsubscribed_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -8297,6 +8457,32 @@ export type Database = {
           visitor_id: string
         }[]
       }
+      get_site_contacts: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_org_id: string
+          p_search?: string
+        }
+        Returns: {
+          customer_consent_status: string
+          display_name: string
+          email: string
+          first_seen_at: string
+          last_seen_at: string
+          lead_count: number
+          source_forms: string[]
+          source_pages: string[]
+          source_sites: string[]
+          tags: string[]
+          total_count: number
+          utm_campaign: string
+          utm_content: string
+          utm_medium: string
+          utm_source: string
+          utm_term: string
+        }[]
+      }
       get_support_activity_for_org: {
         Args: { _limit?: number; _org_id: string }
         Returns: {
@@ -8465,6 +8651,47 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      mc_consent_status:
+        | "unknown"
+        | "not_opted_in"
+        | "opted_in"
+        | "unsubscribed"
+        | "bounced"
+        | "complained"
+        | "suppressed"
+      mc_email_provider:
+        | "none"
+        | "mailchimp"
+        | "brevo"
+        | "loops"
+        | "customer_io"
+        | "other"
+      mc_event_type:
+        | "opt_in"
+        | "unsubscribe"
+        | "export"
+        | "sync_attempt"
+        | "suppress"
+        | "status_change"
+        | "recipient_added"
+        | "bounce"
+        | "complaint"
+      mc_lifecycle_stage:
+        | "prospect"
+        | "trial_user"
+        | "subscriber"
+        | "team_user"
+        | "churned"
+        | "suppressed"
+      mc_source:
+        | "signup"
+        | "trial"
+        | "early_access"
+        | "demo_request"
+        | "manual_import"
+        | "team_invite"
+        | "report_subscribe_link"
+        | "other"
       org_lifecycle_status: "active" | "grace_period" | "archived"
       release_qa_check_status:
         | "pass"
@@ -8607,6 +8834,52 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      mc_consent_status: [
+        "unknown",
+        "not_opted_in",
+        "opted_in",
+        "unsubscribed",
+        "bounced",
+        "complained",
+        "suppressed",
+      ],
+      mc_email_provider: [
+        "none",
+        "mailchimp",
+        "brevo",
+        "loops",
+        "customer_io",
+        "other",
+      ],
+      mc_event_type: [
+        "opt_in",
+        "unsubscribe",
+        "export",
+        "sync_attempt",
+        "suppress",
+        "status_change",
+        "recipient_added",
+        "bounce",
+        "complaint",
+      ],
+      mc_lifecycle_stage: [
+        "prospect",
+        "trial_user",
+        "subscriber",
+        "team_user",
+        "churned",
+        "suppressed",
+      ],
+      mc_source: [
+        "signup",
+        "trial",
+        "early_access",
+        "demo_request",
+        "manual_import",
+        "team_invite",
+        "report_subscribe_link",
+        "other",
+      ],
       org_lifecycle_status: ["active", "grace_period", "archived"],
       release_qa_check_status: [
         "pass",

@@ -17,7 +17,7 @@ interface Props {
 const Email = ({ name, graceEndsAt }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your tracking is paused — data is safe for 90 days</Preview>
+    <Preview>Your tracking is paused — data is safe for 30 days</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
@@ -29,7 +29,7 @@ const Email = ({ name, graceEndsAt }: Props) => (
             Your {SITE_NAME} subscription has been cancelled, so tracking is now paused on all your sites.
           </Text>
           <Text style={textBold}>
-            Good news: your data is safe. We'll keep everything intact for the next 90 days{graceEndsAt ? ` (through ${graceEndsAt})` : ''}.
+            Good news: your data is safe. We'll keep everything intact for the next 30 days{graceEndsAt ? ` (through ${graceEndsAt})` : ''}.
           </Text>
           <Text style={text}>
             Reactivate any time before then and your dashboards, reports, sites, and history will pick up exactly where you left off.
@@ -47,7 +47,7 @@ const Email = ({ name, graceEndsAt }: Props) => (
 
 export const template = {
   component: Email,
-  subject: `Your ${SITE_NAME} tracking is paused — data is safe for 90 days`,
+  subject: `Your ${SITE_NAME} tracking is paused — data is safe for 30 days`,
   displayName: 'Lifecycle: cancellation',
   previewData: { name: 'Jane', graceEndsAt: 'May 20, 2026' },
 } satisfies TemplateEntry

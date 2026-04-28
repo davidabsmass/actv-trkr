@@ -344,6 +344,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "track-event", status: "ok", details: { stored: rows.length } });
     return new Response(JSON.stringify({ status: "ok", stored: rows.length, skipped: skipped.length }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Event tracking error:", err);

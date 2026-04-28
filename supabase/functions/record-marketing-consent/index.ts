@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = (await req.json().catch(() => ({}))) as Body;
+    const body = rawBody as Body;
     const optIn = !!body.optIn;
     const source = body.source ?? "signup";
     const consentText =

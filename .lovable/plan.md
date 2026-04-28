@@ -1,62 +1,37 @@
-## The real problem
+## Goal
 
-The funnel today silently re-anchors the **leads** lower bound to the install date when the selected window starts before install, while **sessions** stay anchored to the window. That mixes two different time spans on the same chart and produces unfair ratios like `2,175 sessions vs 3 leads`.
+Make 2FA truly one-or-the-other in the Account page. Today both methods can appear enabled simultaneously (legacy accounts, or if a user enrolled TOTP before the email toggle was added), and the authenticator path uses a button rather than a symmetrical toggle. We'll convert both to matching toggles with hard mutual exclusion enforced in UI + on save.
 
-You're right: a funnel must compare like-for-like. If we don't have enough tracked history to fill the selected window, the funnel shouldn't pretend.
+## Changes — `src/components/account/TwoFactorSection.tsx`
 
-## Fix — make the funnel honest about its window
+1. **Symmetrical toggles**
+   - Email row: keep the `Switch` (already there).
+   - Authenticator row: replace the "Set up authenticator app" / "Disable authenticator app" buttons with a `Switch`.
+     - Toggling **on** opens the inline QR + 6-digit verify panel below the row (same UI as today, just gated by the toggle instead of a button).
+     - Toggling **off** unenrolls the verified TOTP factor (same as `disableTotp` today, with the existing confirm).
+     - If the user toggles on, sees the QR, then toggles off without verifying → call `cancelEnroll` (unenrolls the pending factor) and snap the switch back to off.
 
-### Rule 1 — Always compare like-for-like
-Sessions, form starts, and leads must all be counted using the **same effective window**. Define:
+2. **Hard mutual exclusion**
+   - Define a single `setMethod(next: 'none' | 'email' | 'totp')` helper that:
+     - If switching to `email`: unenroll any verified TOTP factor first, then upsert `user_two_factor.email_enabled = true`.
+     - If switching to `totp`: set `user_two_factor.email_enabled = false` first, then start enrollment. Only flip the persisted state after verify succeeds.
+     - If switching to `none`: disable whichever is currently on.
+   - Replace the current `handleEnableEmail` / `handleStartTotp` with this helper so both paths go through the same guard.
+   - Disable the *other* method's switch while one is mid-action (`busy || emailToggling || !!enroll`).
 
-```
-effectiveStart = max(selectedStart, installCutoff)
-effectiveEnd   = selectedEnd
-```
+3. **Reconcile legacy "both on" state on load**
+   - In `refresh()`, after we know `totpEnrolled` and `emailEnabled`, if **both** are true treat TOTP as the winner (stronger method) and silently set `email_enabled = false` in `user_two_factor`. Toast: "Email 2FA was turned off because your authenticator app is active." This guarantees nobody lands on the page with two "On" badges again.
 
-Both the sessions count and the leads count get clamped to `[effectiveStart, effectiveEnd]`. No more leads-only re-anchoring.
+4. **Copy tweaks**
+   - Card description stays: "Pick one method — emailed code or authenticator app."
+   - When TOTP is on, dim the email row's helper text to "Disabled while authenticator app is active" (and vice versa) so it's obvious why one switch is locked.
 
-### Rule 2 — Hide the funnel when history is too short
-If `effectiveEnd − effectiveStart < selectedRangeLength × 0.5` (i.e. install ate more than half the requested window), render a placeholder instead of the funnel:
+## Out of scope
 
-> **Funnel unavailable**
-> Your tracking has been live for 3 days. The conversion funnel will appear once we have a full {7/30/90}-day window of post-install data.
-> *Showing partial data here would be misleading.*
+- No DB schema changes (`user_two_factor` already has what we need).
+- No changes to the sign-in challenge flow — only the Account page UI/state.
+- No plugin changes (2FA is dashboard-only, as confirmed earlier).
 
-Threshold: 50% of the requested window must be post-install. Always allow the funnel when the user picks a window entirely after install.
+## Files touched
 
-### Rule 3 — When shown, always label the actual window
-The widget header always shows the real window it's plotting, e.g.:
-
-> `Conversion Funnel · Apr 25 → Apr 28 (4 days)`
-
-So the user knows exactly what's being compared. No hidden re-anchoring.
-
-### Rule 4 — Comparison row uses the matching previous period
-The "vs previous period" delta on overall CVR uses a previous window of the **same length as the effective window**, not the selected one. If that previous window also predates install, the delta is suppressed (shown as `—`).
-
-### Out of scope (intentionally unchanged)
-- The headline KPI tiles (Sessions / Form Fills / CVR) keep their current install-cutoff behavior — they already represent "what we captured live" and aren't a ratio between two metrics, so they're not misleading the same way.
-- The Entries/Leads page keeps showing all 7,275 imported leads — that's correct for that view.
-- DB schema, edge functions, security: untouched.
-
-## Technical details
-
-**Files to edit:**
-
-1. `src/hooks/use-dashboard-overview.ts`
-   - Compute `effectiveStart = max(dayStart, installCutoff)`.
-   - Apply `effectiveStart` to **both** the sessions count and the leads count (currently only leads get the cutoff).
-   - Return a new field `funnelWindow: { start, end, days, requestedDays, sufficient: boolean }` so the UI can decide whether to render the funnel.
-   - `sufficient = days >= requestedDays * 0.5`.
-
-2. `src/components/dashboard/FunnelWidget.tsx`
-   - New optional prop `funnelWindow?: { start, end, days, requestedDays, sufficient }`.
-   - If `funnelWindow && !funnelWindow.sufficient`: render the "Funnel unavailable" placeholder card (same glass-card chrome, neutral copy, no numbers).
-   - If sufficient: render existing funnel + add a small subtitle under the title showing the date range and day count.
-
-3. `src/pages/Dashboard.tsx` (line ~777) and `src/pages/Performance.tsx` (line ~68 area)
-   - Pass `funnelWindow` from the hook into `FunnelWidget`.
-   - Pass `orgCreatedAt` so the hook can compute it.
-
-**No DB migration. No new edge function. No security changes. No new memory entry needed — this strengthens the existing [Conversion Rate Calculation](mem://logic/conversion-rate-calculation) and [Org Age Awareness](mem://logic/org-age-awareness) rules already in place.**
+- `src/components/account/TwoFactorSection.tsx` (only)

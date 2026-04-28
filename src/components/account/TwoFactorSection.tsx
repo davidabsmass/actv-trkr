@@ -32,18 +32,28 @@ export default function TwoFactorSection() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Email-OTP toggle state
   const [emailEnabled, setEmailEnabled] = useState(false);
-  const [emailToggling, setEmailToggling] = useState(false);
 
   const verifiedTotp = factors.find((f) => f.factor_type === "totp" && f.status === "verified");
   const totpEnrolled = !!verifiedTotp;
   const anyEnabled = totpEnrolled || emailEnabled;
+  const locked = busy || !!enroll;
 
   const isSessionMissing = (e: any) => {
     const msg = String(e?.message || e || "");
     const name = String(e?.name || "");
     return name === "AuthSessionMissingError" || /auth session missing/i.test(msg);
+  };
+
+  const persistEmail = async (uid: string, next: boolean) => {
+    const { error } = await supabase
+      .from("user_two_factor")
+      .upsert({
+        user_id: uid,
+        email_enabled: next,
+        enabled_at: next ? new Date().toISOString() : null,
+      }, { onConflict: "user_id" });
+    if (error) throw error;
   };
 
   const refresh = async (opts?: { silent?: boolean }) => {
@@ -53,22 +63,40 @@ export default function TwoFactorSection() {
       if (error) throw error;
       const all = [...(data?.totp || []), ...(data?.all || [])];
       const list = data?.all ?? all;
-      setFactors((list as any[]).map((f) => ({
+      const mapped = (list as any[]).map((f) => ({
         id: f.id,
         friendly_name: f.friendly_name,
         factor_type: f.factor_type,
         status: f.status,
-      })));
+      }));
+      setFactors(mapped);
 
-      // Load email-otp setting. No row = legacy default = enabled.
+      const totpOn = mapped.some((f) => f.factor_type === "totp" && f.status === "verified");
+
+      let emailOn = false;
       if (user?.id) {
         const { data: row } = await supabase
           .from("user_two_factor")
           .select("email_enabled")
           .eq("user_id", user.id)
           .maybeSingle();
-        setEmailEnabled(row ? !!row.email_enabled : true);
+        emailOn = row ? !!row.email_enabled : true;
+
+        // Reconcile legacy "both on" — TOTP wins, silently disable email.
+        if (totpOn && emailOn) {
+          try {
+            await persistEmail(user.id, false);
+            emailOn = false;
+            toast({
+              title: "Email 2FA was turned off",
+              description: "Your authenticator app is the active method. Only one can be enabled at a time.",
+            });
+          } catch {
+            // Non-fatal — UI will still display email as on; user can toggle off manually.
+          }
+        }
       }
+      setEmailEnabled(emailOn);
       setLoading(false);
     } catch (e: any) {
       if (isSessionMissing(e)) {
@@ -99,18 +127,19 @@ export default function TwoFactorSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const toggleEmailOtp = async (next: boolean) => {
+  // ---- Email toggle ----
+  const handleEmailToggle = async (next: boolean) => {
     if (!user?.id) return;
-    setEmailToggling(true);
+    if (next && totpEnrolled) {
+      if (!confirm("Switch from authenticator app to email codes? Your authenticator app will be removed.")) return;
+    }
+    setBusy(true);
     try {
-      const { error } = await supabase
-        .from("user_two_factor")
-        .upsert({
-          user_id: user.id,
-          email_enabled: next,
-          enabled_at: next ? new Date().toISOString() : null,
-        }, { onConflict: "user_id" });
-      if (error) throw error;
+      if (next && verifiedTotp) {
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: verifiedTotp.id });
+        if (error) throw error;
+      }
+      await persistEmail(user.id, next);
       setEmailEnabled(next);
       toast({
         title: next ? "Email 2FA enabled" : "Email 2FA disabled",
@@ -118,16 +147,23 @@ export default function TwoFactorSection() {
           ? "We'll email you a 6-digit code each time you sign in."
           : "You'll no longer be asked for an emailed code at sign-in.",
       });
+      if (next && verifiedTotp) await refresh();
     } catch (e: any) {
       toast({ title: "Couldn't update setting", description: e.message, variant: "destructive" });
     } finally {
-      setEmailToggling(false);
+      setBusy(false);
     }
   };
 
+  // ---- TOTP toggle ----
   const startEnroll = async () => {
     setBusy(true);
     try {
+      // Disable email first if it's on — mutual exclusion.
+      if (emailEnabled && user?.id) {
+        await persistEmail(user.id, false);
+        setEmailEnabled(false);
+      }
       const unverified = factors.filter((f) => f.factor_type === "totp" && f.status !== "verified");
       for (const f of unverified) {
         await supabase.auth.mfa.unenroll({ factorId: f.id });
@@ -201,31 +237,17 @@ export default function TwoFactorSection() {
     }
   };
 
-  // Enabling email turns off TOTP; enabling TOTP turns off email.
-  const handleEnableEmail = async () => {
-    if (totpEnrolled) {
-      if (!confirm("Switch from authenticator app to email codes? Your authenticator app will be removed.")) return;
-      setBusy(true);
-      try {
-        await supabase.auth.mfa.unenroll({ factorId: verifiedTotp!.id });
-      } catch (e: any) {
-        toast({ title: "Could not switch methods", description: e.message, variant: "destructive" });
-        setBusy(false);
-        return;
-      }
-      setBusy(false);
+  const handleTotpToggle = async (next: boolean) => {
+    if (next) {
+      await startEnroll();
+    } else if (enroll) {
+      await cancelEnroll();
+    } else if (totpEnrolled) {
+      await disableTotp();
     }
-    await toggleEmailOtp(true);
-    if (totpEnrolled) await refresh();
   };
 
-  const handleStartTotp = async () => {
-    if (emailEnabled) {
-      // Silently disable email; user is opting into the stronger method.
-      await toggleEmailOtp(false);
-    }
-    await startEnroll();
-  };
+  const totpSwitchOn = totpEnrolled || !!enroll;
 
   return (
     <Card className="lg:col-span-2">
@@ -257,14 +279,16 @@ export default function TwoFactorSection() {
                       {emailEnabled && <Badge variant="secondary" className="text-xs">On</Badge>}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Get a 6-digit code emailed to {user?.email || "your email"} at sign-in.
+                      {totpSwitchOn
+                        ? "Disabled while authenticator app is active."
+                        : `Get a 6-digit code emailed to ${user?.email || "your email"} at sign-in.`}
                     </div>
                   </div>
                 </div>
                 <Switch
                   checked={emailEnabled}
-                  onCheckedChange={(next) => (next ? handleEnableEmail() : toggleEmailOtp(false))}
-                  disabled={emailToggling || busy || !!enroll}
+                  onCheckedChange={handleEmailToggle}
+                  disabled={locked || totpSwitchOn}
                   aria-label="Toggle email 2FA"
                 />
               </div>
@@ -272,20 +296,30 @@ export default function TwoFactorSection() {
 
             {/* Authenticator app option */}
             <div className="rounded-lg border bg-card/50 p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <Smartphone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium flex items-center gap-2">
-                    Authenticator app
-                    {totpEnrolled && <Badge variant="secondary" className="text-xs">On</Badge>}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Use Google Authenticator, 1Password, Authy, etc. Most secure option.
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Smartphone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium flex items-center gap-2">
+                      Authenticator app
+                      {totpEnrolled && <Badge variant="secondary" className="text-xs">On</Badge>}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {emailEnabled && !totpSwitchOn
+                        ? "Disabled while email 2FA is active."
+                        : "Use Google Authenticator, 1Password, Authy, etc. Most secure option."}
+                    </div>
                   </div>
                 </div>
+                <Switch
+                  checked={totpSwitchOn}
+                  onCheckedChange={handleTotpToggle}
+                  disabled={busy || (emailEnabled && !totpSwitchOn)}
+                  aria-label="Toggle authenticator app 2FA"
+                />
               </div>
 
-              {enroll ? (
+              {enroll && (
                 <div className="space-y-3 pl-7">
                   <div className="rounded-md border border-border bg-muted/30 p-3">
                     <p className="text-xs font-medium mb-2">1. Scan this QR code with your authenticator app</p>
@@ -321,18 +355,6 @@ export default function TwoFactorSection() {
                       Cancel
                     </Button>
                   </div>
-                </div>
-              ) : totpEnrolled ? (
-                <div className="pl-7">
-                  <Button size="sm" variant="outline" onClick={disableTotp} disabled={busy}>
-                    {busy ? "Disabling…" : "Disable authenticator app"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="pl-7">
-                  <Button size="sm" variant="outline" onClick={handleStartTotp} disabled={busy || emailToggling}>
-                    {busy ? "Setting up…" : "Set up authenticator app"}
-                  </Button>
                 </div>
               )}
             </div>

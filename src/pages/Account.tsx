@@ -275,6 +275,9 @@ export default function Account() {
         {/* Team Members */}
         <TeamSection />
 
+        {/* Billing Details */}
+        <BillingDetailsCard />
+
         {/* Subscription Management */}
         <Card className="lg:col-span-2">
           <Collapsible>

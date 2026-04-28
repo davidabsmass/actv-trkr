@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Target, Filter } from "lucide-react";
+import { Target, Filter, Clock } from "lucide-react";
+import { format as fnsFormat, parseISO } from "date-fns";
 
 interface FunnelStep {
   label: string;

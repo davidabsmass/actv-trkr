@@ -131,7 +131,13 @@ export default function Account() {
         </TabsList>
 
         <TabsContent value="security">
-          <SecuritySessionsSection />
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ChangeEmailCard />
+              <ConnectedLoginsCard />
+            </div>
+            <SecuritySessionsSection />
+          </div>
         </TabsContent>
 
         <TabsContent value="support">

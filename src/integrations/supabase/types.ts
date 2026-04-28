@@ -7964,6 +7964,27 @@ export type Database = {
           },
         ]
       }
+      user_two_factor: {
+        Row: {
+          email_enabled: boolean
+          enabled_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          email_enabled?: boolean
+          enabled_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          email_enabled?: boolean
+          enabled_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       valuation_comparables: {
         Row: {
           arr: number | null

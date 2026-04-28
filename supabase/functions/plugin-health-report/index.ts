@@ -160,6 +160,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "plugin-health-report", status: "ok" });
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...wildcardCorsHeaders, "Content-Type": "application/json" },
     });

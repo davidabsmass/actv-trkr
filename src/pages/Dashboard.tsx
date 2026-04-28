@@ -711,7 +711,9 @@ const Dashboard = () => {
               valueTitle="Total Key Actions counted toward Action Rate (form submissions, phone clicks, email clicks, donation clicks, downloads, and other enabled actions)."
               trend={orgTooNewForComparison ? null : pctChange(periodData.keyActions.current, periodData.keyActions.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
-              series={kpiSeries.leads}
+              /* Sparkline intentionally omitted: kpiSeries.leads tracks raw form
+                 fills and would mislead when Key Actions include click-type
+                 actions. Restore once a daily Key Actions series is available. */
             />
             <KPICard
               variant="warning"
@@ -732,7 +734,9 @@ const Dashboard = () => {
               }
               trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
-              series={kpiSeries.cvr}
+              /* Sparkline intentionally omitted: kpiSeries.cvr is leads/sessions
+                 (legacy CVR) and disagrees with the Action Rate headline.
+                 Restore once a daily Action Rate series is available. */
             />
             <KPICard
               variant="info"

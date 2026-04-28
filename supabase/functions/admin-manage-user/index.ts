@@ -977,15 +977,16 @@ Deno.serve(async (req) => {
       const orgId = String(body.org_id || "").trim();
       const userId = String(body.user_id || "").trim();
       const fullName = body.full_name !== undefined ? String(body.full_name).trim() : undefined;
-      const role = body.role !== undefined ? String(body.role).trim() : undefined;
+      let role = body.role !== undefined ? String(body.role).trim() : undefined;
 
       if (!orgId || !userId) {
         return new Response(JSON.stringify({ error: "org_id and user_id are required" }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
-      if (role !== undefined && !["member", "admin"].includes(role)) {
-        return new Response(JSON.stringify({ error: "Invalid role. Must be 'member' or 'admin'." }), {
+      if (role === "member") role = "manager"; // legacy alias
+      if (role !== undefined && !["viewer", "manager", "admin"].includes(role)) {
+        return new Response(JSON.stringify({ error: "Invalid role. Must be 'viewer', 'manager', or 'admin'." }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }

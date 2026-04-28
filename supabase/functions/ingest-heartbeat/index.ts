@@ -436,6 +436,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    observe(supabase, { orgId, siteId: (typeof site !== "undefined" ? site?.id : null) ?? null, endpoint: "ingest-heartbeat", status: "ok" });
     return new Response(JSON.stringify({ status: "ok" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Signal error:", err);

@@ -113,6 +113,7 @@ Deno.serve(async (req) => {
       if (flatRows.length > 0) await supabase.from("lead_fields_flat").insert(flatRows);
     }
 
+    observe(supabase, { orgId: akRow.org_id, siteId, endpoint: "ingest-gravity", status: "ok" });
     return new Response(JSON.stringify({ status: "ok", lead_id: lead.id }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("Gravity ingestion error:", err);

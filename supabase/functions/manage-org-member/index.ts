@@ -97,15 +97,15 @@ Deno.serve(async (req) => {
       const previousRole = target.role;
       const { error: updErr } = await admin
         .from("org_users")
-        .update({ role: newRole })
+        .update({ role: normalizedNewRole })
         .eq("id", target.id);
       if (updErr) {
         return new Response(JSON.stringify({ error: updErr.message }), { status: 400, headers });
       }
 
       let logAction = "user_role_changed";
-      if (previousRole !== "admin" && newRole === "admin") logAction = "admin_added";
-      else if (previousRole === "admin" && newRole !== "admin") logAction = "admin_removed";
+      if (previousRole !== "admin" && normalizedNewRole === "admin") logAction = "admin_added";
+      else if (previousRole === "admin" && normalizedNewRole !== "admin") logAction = "admin_removed";
 
       await admin.from("team_audit_log").insert({
         org_id: orgId,

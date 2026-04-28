@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
+    observe(supabase, { orgId, siteId: site?.id ?? null, endpoint: "ingest-security", status: "ok", details: { inserted: aggregated.length } });
     return new Response(JSON.stringify({ ok: true, inserted: aggregated.length, aggregated_updates: buckets.size - aggregated.filter(a => loginTypes.has(a.event_type)).length }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

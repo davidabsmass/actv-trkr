@@ -587,7 +587,7 @@ function ObservabilityTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tracking_health")
-        .select("org_id, site_id, endpoint, last_event_at, last_status, consecutive_failures")
+        .select("org_id, site_id, endpoint, last_event_at, last_status, total_events")
         .order("last_event_at", { ascending: false })
         .limit(100);
       if (error) throw error;

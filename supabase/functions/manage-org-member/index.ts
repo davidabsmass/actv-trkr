@@ -85,9 +85,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === "change_role") {
-      const validRoles = ["viewer", "manager", "admin"];
-      if (!validRoles.includes(newRole)) {
-        return new Response(JSON.stringify({ error: "Invalid role" }), { status: 400, headers });
+      const validRoles = ["manager", "admin"];
+      const normalizedNewRole = newRole === "viewer" ? "manager" : newRole;
+      if (!validRoles.includes(normalizedNewRole)) {
+        return new Response(JSON.stringify({ error: "Invalid role. Must be 'manager' or 'admin'." }), { status: 400, headers });
       }
       if (target.is_owner) {
         return new Response(JSON.stringify({ error: "Cannot change the role of the organization owner" }), { status: 403, headers });

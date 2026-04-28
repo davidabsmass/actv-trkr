@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const email: string = String(body?.email || "").trim().toLowerCase();
     const orgId: string = String(body?.orgId || "").trim();
-    const requestedRole: string = String(body?.role || "viewer").toLowerCase();
+    const requestedRole: string = String(body?.role || "manager").toLowerCase();
 
     if (!email || !orgId) {
       return new Response(JSON.stringify({ error: "Email and orgId are required" }), { status: 400, headers });
@@ -38,9 +38,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid email" }), { status: 400, headers });
     }
 
-    // SECURITY: Default invited users to 'viewer'. Only admins can be promoted later.
-    const validRoles = ["viewer", "manager", "admin"];
-    const assignRole = validRoles.includes(requestedRole) ? requestedRole : "viewer";
+    // SECURITY: Default invited users to 'manager'. Only admins can be promoted later.
+    // Legacy 'viewer' role is mapped to 'manager' for backward compatibility.
+    const normalizedRole = requestedRole === "viewer" ? "manager" : requestedRole;
+    const validRoles = ["manager", "admin"];
+    const assignRole = validRoles.includes(normalizedRole) ? normalizedRole : "manager";
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
 

@@ -272,8 +272,8 @@ const Auth = () => {
           } catch { /* ignore */ }
           throw new Error(msg);
         }
-        // Trusted-device bypass: server returned a session directly.
-        if (issued?.trusted && issued?.access_token && issued?.refresh_token) {
+        // Trusted-device bypass OR user has email 2FA disabled: server returned a session directly.
+        if ((issued?.trusted || issued?.skipped) && issued?.access_token && issued?.refresh_token) {
           const { error: setErr } = await supabase.auth.setSession({
             access_token: issued.access_token,
             refresh_token: issued.refresh_token,

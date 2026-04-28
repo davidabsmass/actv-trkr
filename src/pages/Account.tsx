@@ -12,6 +12,9 @@ import TeamSection from "@/components/account/TeamSection";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
 import SecuritySessionsSection from "@/components/account/SecuritySessionsSection";
 import EmailPreferencesSection from "@/components/account/EmailPreferencesSection";
+import BillingDetailsCard from "@/components/account/BillingDetailsCard";
+import ConnectedLoginsCard from "@/components/account/ConnectedLoginsCard";
+import ChangeEmailCard from "@/components/account/ChangeEmailCard";
 import SupportSection from "@/components/support/SupportSection";
 import { QuickHelpPanel } from "@/components/support/QuickHelpPanel";
 import { SupportAccessCard } from "@/components/support/SupportAccessCard";
@@ -128,7 +131,13 @@ export default function Account() {
         </TabsList>
 
         <TabsContent value="security">
-          <SecuritySessionsSection />
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <ChangeEmailCard />
+              <ConnectedLoginsCard />
+            </div>
+            <SecuritySessionsSection />
+          </div>
         </TabsContent>
 
         <TabsContent value="support">
@@ -265,6 +274,9 @@ export default function Account() {
 
         {/* Team Members */}
         <TeamSection />
+
+        {/* Billing Details */}
+        <BillingDetailsCard />
 
         {/* Subscription Management */}
         <Card className="lg:col-span-2">

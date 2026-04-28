@@ -8,6 +8,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { checkRateLimit, extractClientIp, logAnomaly } from "../_shared/ingestion-security.ts";
 import { gateOrgLifecycle } from "../_shared/org-lifecycle-gate.ts";
+import { observe } from "../_shared/observability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

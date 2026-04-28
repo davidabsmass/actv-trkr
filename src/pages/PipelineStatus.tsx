@@ -520,3 +520,241 @@ function CodeHealthTab() {
     </div>
   );
 }
+
+// ── Observability tab (Phase 3, read-only) ─────────────────────
+type RateLimitRow = {
+  id: string;
+  org_id: string;
+  site_id: string | null;
+  endpoint: string;
+  ip_hash: string | null;
+  count_in_window: number;
+  threshold: number;
+  would_block: boolean;
+  observed_at: string;
+};
+type AnomalyRow = {
+  id: string;
+  org_id: string;
+  site_id: string | null;
+  anomaly_type: string;
+  details: Record<string, unknown>;
+  detected_at: string;
+};
+type HealthRow = {
+  org_id: string;
+  site_id: string | null;
+  endpoint: string;
+  last_event_at: string;
+  last_status: string | null;
+  consecutive_failures: number;
+};
+
+function ObservabilityTab() {
+  const { data: limits, isLoading: l1 } = useQuery({
+    queryKey: ["obs-rate-limits"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("rate_limit_log")
+        .select("id, org_id, site_id, endpoint, ip_hash, count_in_window, threshold, would_block, observed_at")
+        .order("observed_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as RateLimitRow[];
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  const { data: anomalies, isLoading: l2 } = useQuery({
+    queryKey: ["obs-anomalies"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ingestion_anomalies")
+        .select("id, org_id, site_id, anomaly_type, details, detected_at")
+        .order("detected_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as AnomalyRow[];
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  const { data: health, isLoading: l3 } = useQuery({
+    queryKey: ["obs-tracking-health"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tracking_health")
+        .select("org_id, site_id, endpoint, last_event_at, last_status, consecutive_failures")
+        .order("last_event_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as HealthRow[];
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-warning/40 bg-warning/5">
+        <CardContent className="p-3 text-xs text-muted-foreground">
+          Observability is in <span className="font-medium text-foreground">log-only mode</span>.
+          Nothing here blocks or alters live tracking. Enforcement remains disabled until feature flags are turned on.
+        </CardContent>
+      </Card>
+
+      {/* Rate-limit observations */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">
+            Rate-limit observations ({limits?.length ?? 0})
+          </h2>
+          <span className="text-xs text-muted-foreground">Most recent 50 — would-block events shown for visibility only</span>
+        </div>
+        {l1 ? (
+          <SkeletonRows />
+        ) : (limits ?? []).length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" /> No rate-limit hits observed.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {(limits ?? []).map((r) => (
+                  <div key={r.id} className="p-3 text-sm flex flex-wrap items-center gap-2">
+                    {r.would_block ? (
+                      <Badge variant="destructive">would-block</Badge>
+                    ) : (
+                      <Badge variant="secondary">observed</Badge>
+                    )}
+                    <span className="font-mono text-xs text-foreground">{r.endpoint}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {r.count_in_window}/{r.threshold} in window
+                    </span>
+                    {r.ip_hash && (
+                      <span className="text-xs font-mono text-muted-foreground">
+                        ip:{r.ip_hash.slice(0, 8)}…
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDistanceToNow(new Date(r.observed_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* Recent anomalies */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <h2 className="text-sm font-semibold text-foreground">
+            Recent anomalies ({anomalies?.length ?? 0})
+          </h2>
+          <span className="text-xs text-muted-foreground">Most recent 50</span>
+        </div>
+        {l2 ? (
+          <SkeletonRows />
+        ) : (anomalies ?? []).length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" /> No anomalies recorded.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {(anomalies ?? []).map((a) => (
+                  <div key={a.id} className="p-3 text-sm space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline">{a.anomaly_type}</Badge>
+                      <span className="text-xs font-mono text-muted-foreground">org:{a.org_id.slice(0, 8)}…</span>
+                      {a.site_id && (
+                        <span className="text-xs font-mono text-muted-foreground">site:{a.site_id.slice(0, 8)}…</span>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(a.detected_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                    {a.details && Object.keys(a.details).length > 0 && (
+                      <pre className="text-[10px] font-mono text-muted-foreground bg-muted/40 rounded p-2 overflow-x-auto">
+                        {JSON.stringify(a.details, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* Signal freshness per site/endpoint */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold text-foreground">
+            Signal freshness ({health?.length ?? 0})
+          </h2>
+          <span className="text-xs text-muted-foreground">Last event per site & endpoint (top 100)</span>
+        </div>
+        {l3 ? (
+          <SkeletonRows />
+        ) : (health ?? []).length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              No tracking signals recorded yet.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {(health ?? []).map((h) => (
+                  <div
+                    key={`${h.org_id}-${h.site_id ?? "none"}-${h.endpoint}`}
+                    className="p-3 text-sm flex flex-wrap items-center gap-2"
+                  >
+                    {h.last_status === "ok" ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                    ) : h.consecutive_failures > 0 ? (
+                      <XCircle className="h-3.5 w-3.5 text-destructive" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    <span className="font-mono text-xs text-foreground">{h.endpoint}</span>
+                    <span className="text-xs font-mono text-muted-foreground">org:{h.org_id.slice(0, 8)}…</span>
+                    {h.site_id && (
+                      <span className="text-xs font-mono text-muted-foreground">site:{h.site_id.slice(0, 8)}…</span>
+                    )}
+                    {h.consecutive_failures > 0 && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        {h.consecutive_failures} fail{h.consecutive_failures === 1 ? "" : "s"}
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatDistanceToNow(new Date(h.last_event_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}

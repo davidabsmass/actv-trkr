@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
       if (itemErr) console.error("Item insert error:", itemErr);
     }
 
+    observe(supabase, { orgId, siteId, endpoint: "ingest-order", status: "ok" });
     return new Response(JSON.stringify({ ok: true, order_id: orderRow?.id }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

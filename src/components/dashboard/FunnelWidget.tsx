@@ -51,14 +51,14 @@ export function FunnelWidget({
 
   const steps = useMemo<FunnelStep[]>(() => {
     const s: FunnelStep[] = [
-      { label: t("dashboard.sessions"), value: totalSessions, color: "bg-primary", fill: "var(--gradient-primary)" },
+      { label: t("dashboard.sessions"), value: effSessions, color: "bg-primary", fill: "var(--gradient-primary)" },
     ];
     if (formStarts !== undefined && formStarts > 0) {
       s.push({ label: t("dashboard.formStarts"), value: formStarts, color: "bg-warning", fill: "var(--gradient-warning)" });
     }
-    s.push({ label: t("dashboard.leads"), value: totalLeads, color: "bg-success", fill: "var(--gradient-success)" });
+    s.push({ label: t("dashboard.leads"), value: effLeads, color: "bg-success", fill: "var(--gradient-success)" });
     return s;
-  }, [totalSessions, totalLeads, formStarts, t]);
+  }, [effSessions, effLeads, formStarts, t]);
 
   const goalSteps = useMemo<FunnelStep[]>(() => {
     if (!goalConversions || goalConversions.length === 0) return [];
@@ -78,7 +78,41 @@ export function FunnelWidget({
   }, [goalConversions]);
 
   const maxValue = Math.max(...steps.map((s) => s.value), 1);
-  const overallCvr = totalSessions > 0 ? Math.min(100, (totalLeads / totalSessions) * 100) : 0;
+  const overallCvr = effSessions > 0 ? Math.min(100, (effLeads / effSessions) * 100) : 0;
+
+  // ── Insufficient post-install history → don't render a misleading funnel ──
+  if (funnelWindow && !funnelWindow.sufficient) {
+    const daysLive = funnelWindow.days;
+    const need = funnelWindow.requestedDays;
+    return (
+      <div className="glass-card-elevated p-5 animate-slide-up h-full">
+        <div className="panel-heading">
+          <span className="icon-chip"><Filter className="h-4 w-4" /></span>
+          <h3>{t("dashboard.conversionFunnel")}</h3>
+        </div>
+        <div className="flex flex-col items-center justify-center text-center py-8 px-4">
+          <div className="rounded-full bg-muted/40 p-3 mb-3">
+            <Clock className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-semibold text-foreground mb-1">
+            Funnel unavailable yet
+          </p>
+          <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+            Tracking has been live for {daysLive} {daysLive === 1 ? "day" : "days"}. The
+            conversion funnel will appear once we have a full {need}-day window of
+            post-install data so the comparison is fair.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const windowLabel = funnelWindow
+    ? `${fnsFormat(parseISO(funnelWindow.start.slice(0, 10)), "MMM d")} – ${fnsFormat(
+        parseISO(funnelWindow.end.slice(0, 10)),
+        "MMM d"
+      )} · ${funnelWindow.days} ${funnelWindow.days === 1 ? "day" : "days"}`
+    : null;
 
   return (
     <div className="glass-card-elevated p-5 animate-slide-up h-full">
@@ -86,6 +120,9 @@ export function FunnelWidget({
         <span className="icon-chip"><Filter className="h-4 w-4" /></span>
         <h3>{t("dashboard.conversionFunnel")}</h3>
       </div>
+      {windowLabel && (
+        <p className="text-[11px] text-muted-foreground -mt-2 mb-3">{windowLabel}</p>
+      )}
 
       <div className="space-y-3.5">
         {steps.map((step, i) => {

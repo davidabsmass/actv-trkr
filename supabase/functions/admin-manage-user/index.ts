@@ -21,25 +21,18 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
-    const token = authHeader.slice("Bearer ".length);
-
-    // Decode JWT payload to get user id (works regardless of supabase-js version)
+    // Verify JWT signature server-side (never trust an unverified payload).
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    let callerId: string | null = null;
-    try {
-      const parts = token.split(".");
-      if (parts.length === 3) {
-        const payloadJson = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
-        const payload = JSON.parse(payloadJson);
-        if (payload?.sub && typeof payload.sub === "string") callerId = payload.sub;
-      }
-    } catch (_) { /* fall through */ }
-    if (!callerId) {
+    const anonClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: verifiedUser }, error: verifyErr } = await anonClient.auth.getUser();
+    if (verifyErr || !verifiedUser) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
         status: 401, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
-    const caller = { id: callerId };
+    const caller = { id: verifiedUser.id };
     const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")

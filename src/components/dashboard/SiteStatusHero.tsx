@@ -12,7 +12,8 @@ export type HeroSeverity = "critical" | "high" | "medium" | "healthy";
 
 interface SiteStatusHeroProps {
   sessions: number;
-  formFills: number;
+  /** Key Actions counted toward Action Rate (was: form fills). */
+  keyActions: number;
   formIssueCount: number;
   hasActiveIncident: boolean;
   periodLabel: string; // e.g. "last 30 days"
@@ -29,25 +30,23 @@ interface HeroSpec {
   secondary?: { label: string; to: string };
 }
 
-function pluralForm(n: number) {
-  return n === 1 ? "1 form may not be rendering correctly" : `${n} forms may not be rendering correctly`;
-}
-
-function formatCvr(sessions: number, fills: number): string {
+function formatActionRate(sessions: number, actions: number): string {
   if (!sessions) return "—";
-  const pct = (fills / sessions) * 100;
+  const pct = (actions / sessions) * 100;
   if (pct >= 1) return `${pct.toFixed(1)}%`;
   return `${pct.toFixed(2)}%`;
 }
 
 function buildSpec({
   sessions,
-  formFills,
+  keyActions,
   formIssueCount,
   hasActiveIncident,
   periodLabel,
 }: SiteStatusHeroProps): HeroSpec {
-  const cvr = sessions > 0 ? (formFills / sessions) * 100 : 0;
+  const actionRate = sessions > 0 ? (keyActions / sessions) * 100 : 0;
+  const sessionsText = sessions.toLocaleString();
+  const actionsText = keyActions.toLocaleString();
 
   // Priority 1: Site down
   if (hasActiveIncident) {
@@ -56,8 +55,8 @@ function buildSpec({
       badge: "Site Down",
       badgeTone: "destructive",
       Icon: ShieldAlert,
-      title: "ACTV TRKR detected an active uptime incident on your site.",
-      body: "Your visitors may be unable to reach the site right now. Resolve the incident to restore traffic and lead capture.",
+      title: "Your site appears to be unavailable.",
+      body: "ACTV TRKR detected an uptime issue. Resolve the incident to restore traffic and Key Actions.",
       primary: { label: "Review Uptime Issue", to: "/monitoring" },
       secondary: { label: "View Traffic Sources", to: "/performance" },
     };
@@ -65,29 +64,30 @@ function buildSpec({
 
   // Priority 2: Form rendering issues
   if (formIssueCount > 0) {
+    const formWord = formIssueCount === 1 ? "form" : "forms";
     return {
       severity: "high",
       badge: "Needs Attention",
       badgeTone: "warning",
       Icon: AlertTriangle,
-      title: `Your site received ${sessions.toLocaleString()} sessions in the ${periodLabel}, but only generated ${formFills.toLocaleString()} form ${formFills === 1 ? "fill" : "fills"}.`,
-      body: `ACTV TRKR found ${pluralForm(formIssueCount)}. This could be affecting lead capture and lowering your conversion rate.`,
+      title: `ACTV TRKR found ${formIssueCount} ${formWord} that may not be rendering correctly.`,
+      body: `This could be suppressing form submissions. Your site received ${sessionsText} sessions and generated ${actionsText} Key Actions in the ${periodLabel}.`,
       primary: { label: "Review Form Issues", to: "/forms/troubleshooting" },
-      secondary: { label: "View Traffic Sources", to: "/performance" },
+      secondary: { label: "View Key Actions", to: "/settings?tab=goals" },
     };
   }
 
-  // Priority 3: Low conversion w/ enough traffic
-  if (cvr < 0.5 && sessions >= 500) {
+  // Priority 3: Low Action Activity
+  if (actionRate < 0.5 && sessions >= 500) {
     return {
       severity: "medium",
-      badge: "Low Conversion Activity",
+      badge: "Low Action Activity",
       badgeTone: "info",
       Icon: TrendingDown,
-      title: "Your site is getting traffic, but lead capture is low.",
-      body: `${sessions.toLocaleString()} sessions produced only ${formFills.toLocaleString()} form ${formFills === 1 ? "fill" : "fills"} (${formatCvr(sessions, formFills)}). Review your key actions to identify drop-off points.`,
-      primary: { label: "Review Key Actions", to: "/performance" },
-      secondary: { label: "View Insights", to: "/reports" },
+      title: "Your site is getting traffic, but visitors are not completing many Key Actions.",
+      body: `${sessionsText} sessions produced ${actionsText} Key Actions (${formatActionRate(sessions, keyActions)}) in the ${periodLabel}. Review your Key Actions to identify drop-off points.`,
+      primary: { label: "Review Key Actions", to: "/settings?tab=goals" },
+      secondary: { label: "View Traffic Sources", to: "/performance" },
     };
   }
 
@@ -97,8 +97,8 @@ function buildSpec({
     badge: "Live",
     badgeTone: "success",
     Icon: Activity,
-    title: "Your site is live and being monitored.",
-    body: "ACTV TRKR is watching for form issues, downtime, lead activity, SEO issues, and traffic changes.",
+    title: "Your site is live, being monitored, and tracking visitor activity.",
+    body: "ACTV TRKR is watching traffic, Key Actions, forms, uptime, SEO issues, and site health.",
     primary: { label: "View Insights", to: "/reports" },
     secondary: { label: "View Traffic Sources", to: "/performance" },
   };

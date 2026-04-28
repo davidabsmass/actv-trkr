@@ -23,6 +23,8 @@ import { useOrg } from "@/hooks/use-org";
 import { useSeoVisibility } from "@/hooks/use-seo-visibility";
 import { useAlerts, useSites, useForms } from "@/hooks/use-dashboard-data";
 import { useDashboardOverview } from "@/hooks/use-dashboard-overview";
+import { useKeyActions } from "@/hooks/use-key-actions";
+import { KeyActionBreakdown } from "@/components/dashboard/KeyActionBreakdown";
 import { useSiteSettings } from "@/hooks/use-site-settings";
 import {
   BarChart3, Zap, AlertTriangle, Globe, Search,
@@ -180,6 +182,8 @@ const Dashboard = () => {
 
   const { data: realtimeData } = useDashboardOverview(orgId, startDate, endDate, orgCreatedAt);
   const { data: prevPeriodData } = useDashboardOverview(orgId, prevStartDate, prevEndDate, orgCreatedAt);
+  const { data: keyActionsData } = useKeyActions(orgId, startDate, endDate, orgCreatedAt);
+  const { data: prevKeyActionsData } = useKeyActions(orgId, prevStartDate, prevEndDate, orgCreatedAt);
   const { data: alertsData } = useAlerts(orgId);
   const { data: sitesData } = useSites(orgId);
 
@@ -461,21 +465,27 @@ const Dashboard = () => {
   const periodData = useMemo(() => {
     const curr = realtimeData || { totalSessions: 0, totalLeads: 0 };
     const prev = prevPeriodData || { totalSessions: 0, totalLeads: 0 };
-    // CVR = Form Fills ÷ Sessions so the visible math on the Overview row
-    // is always self-consistent. Goal conversions (mailto/CTA clicks etc.)
-    // are surfaced in the Funnel/Goals widgets, not here.
+
+    // Key Actions = primary success metric. When no Key Actions are
+    // configured we fall back to lead/form submissions so headline math
+    // still reflects something meaningful.
+    const currKeyActions = keyActionsData?.totalActionRate ?? curr.totalLeads;
+    const prevKeyActions = prevKeyActionsData?.totalActionRate ?? prev.totalLeads;
+
+    // Action Rate = Key Actions ÷ Sessions
     const currCvr = curr.totalSessions > 0
-      ? Math.min(curr.totalLeads, curr.totalSessions) / curr.totalSessions
+      ? Math.min(currKeyActions, curr.totalSessions) / curr.totalSessions
       : 0;
     const prevCvr = prev.totalSessions > 0
-      ? Math.min(prev.totalLeads, prev.totalSessions) / prev.totalSessions
+      ? Math.min(prevKeyActions, prev.totalSessions) / prev.totalSessions
       : 0;
     return {
       sessions: { current: curr.totalSessions, previous: prev.totalSessions },
       leads: { current: curr.totalLeads, previous: prev.totalLeads },
+      keyActions: { current: currKeyActions, previous: prevKeyActions },
       cvr: { current: currCvr, previous: prevCvr },
     };
-  }, [realtimeData, prevPeriodData]);
+  }, [realtimeData, prevPeriodData, keyActionsData, prevKeyActionsData]);
 
   // Per-KPI sparkline series, derived from dailyMap if available
   const kpiSeries = useMemo(() => {
@@ -672,7 +682,7 @@ const Dashboard = () => {
           {/* Site Status Hero */}
           <SiteStatusHero
             sessions={periodData.sessions.current}
-            formFills={periodData.leads.current}
+            keyActions={periodData.keyActions.current}
             formIssueCount={unhealthyForms?.length || 0}
             hasActiveIncident={(activeIncidents?.length || 0) > 0}
             periodLabel={`last ${days} days`}
@@ -682,26 +692,30 @@ const Dashboard = () => {
           <div className={`grid grid-cols-2 md:grid-cols-3 ${seoAdvanced ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
             <KPICard
               variant="primary"
-              label={t("dashboard.sessions")}
+              label="Sessions"
               value={periodData.sessions.current.toLocaleString()}
-              sub={`Last ${days} days`}
+              sub={`People reached the site · Last ${days} days`}
               trend={orgTooNewForComparison ? null : pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
               series={kpiSeries.sessions}
             />
             <KPICard
               variant="success"
-              label={t("dashboard.formFills")}
-              value={periodData.leads.current.toLocaleString()}
-              sub={(unhealthyForms?.length || 0) > 0 ? "Lead volume may be affected by form issues" : `Last ${days} days`}
-              valueTitle="Counted from your install date forward — historical imports excluded so this matches what the plugin actually captured."
-              trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
+              label="Key Actions"
+              value={periodData.keyActions.current.toLocaleString()}
+              sub={
+                (unhealthyForms?.length || 0) > 0
+                  ? "Form issues may be suppressing submissions"
+                  : `Meaningful actions tracked · Last ${days} days`
+              }
+              valueTitle="Total Key Actions counted toward Action Rate (form submissions, phone clicks, email clicks, donation clicks, downloads, and other enabled actions)."
+              trend={orgTooNewForComparison ? null : pctChange(periodData.keyActions.current, periodData.keyActions.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
               series={kpiSeries.leads}
             />
             <KPICard
               variant="warning"
-              label={t("dashboard.conversionRate")}
+              label="Action Rate"
               value={
                 periodData.sessions.current === 0
                   ? "—"
@@ -714,7 +728,7 @@ const Dashboard = () => {
                   ? "Not enough traffic data yet"
                   : (unhealthyForms?.length || 0) > 0
                     ? "May be impacted by form rendering issues"
-                    : "Form fills divided by sessions"
+                    : "Key Actions divided by sessions"
               }
               trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
@@ -777,6 +791,14 @@ const Dashboard = () => {
             )}
           </div>
 
+
+          {/* Key Action Breakdown – per-category counts beneath headline KPIs */}
+          <KeyActionBreakdown
+            entries={keyActionsData?.breakdown || []}
+            hasConfigured={keyActionsData?.hasConfigured ?? false}
+            hasSessions={periodData.sessions.current > 0}
+            periodLabel={`last ${days} days`}
+          />
 
           {/* AI Insights – auto-generates on load */}
           <AiInsights

@@ -279,6 +279,9 @@ export default function PipelineStatus() {
         <TabsContent value="code-health" className="mt-4">
           <CodeHealthTab />
         </TabsContent>
+        <TabsContent value="observability" className="mt-4">
+          <ObservabilityTab />
+        </TabsContent>
       </Tabs>
     </div>
   );

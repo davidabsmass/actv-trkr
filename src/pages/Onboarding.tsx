@@ -61,7 +61,26 @@ const Onboarding = () => {
   const [siteSaved, setSiteSaved] = useState(false);
   const [complianceMode, setComplianceMode] = useState("eu_us");
   const [provisionError, setProvisionError] = useState<string | null>(null);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [savingMarketing, setSavingMarketing] = useState(false);
+  const [marketingSaved, setMarketingSaved] = useState(false);
   const provisioningRef = useRef(false);
+
+  const handleSaveMarketingPref = async () => {
+    setSavingMarketing(true);
+    try {
+      const { error } = await supabase.functions.invoke("record-marketing-consent", {
+        body: { status: marketingOptIn ? "opted_in" : "not_opted_in", source: "onboarding" },
+      });
+      if (error) throw error;
+      setMarketingSaved(true);
+      toast({ title: "Saved", description: marketingOptIn ? "You're subscribed to ACTV TRKR updates." : "Preference saved." });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err?.message || "Could not save preference" });
+    } finally {
+      setSavingMarketing(false);
+    }
+  };
 
   const alreadyPaid = subscribed || billingExempt;
 

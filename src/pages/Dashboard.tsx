@@ -682,7 +682,7 @@ const Dashboard = () => {
           {/* Site Status Hero */}
           <SiteStatusHero
             sessions={periodData.sessions.current}
-            formFills={periodData.leads.current}
+            keyActions={periodData.keyActions.current}
             formIssueCount={unhealthyForms?.length || 0}
             hasActiveIncident={(activeIncidents?.length || 0) > 0}
             periodLabel={`last ${days} days`}
@@ -692,26 +692,30 @@ const Dashboard = () => {
           <div className={`grid grid-cols-2 md:grid-cols-3 ${seoAdvanced ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-3`}>
             <KPICard
               variant="primary"
-              label={t("dashboard.sessions")}
+              label="Sessions"
               value={periodData.sessions.current.toLocaleString()}
-              sub={`Last ${days} days`}
+              sub={`People reached the site · Last ${days} days`}
               trend={orgTooNewForComparison ? null : pctChange(periodData.sessions.current, periodData.sessions.previous)}
               icon={<Globe className="h-4 w-4" />}
               series={kpiSeries.sessions}
             />
             <KPICard
               variant="success"
-              label={t("dashboard.formFills")}
-              value={periodData.leads.current.toLocaleString()}
-              sub={(unhealthyForms?.length || 0) > 0 ? "Lead volume may be affected by form issues" : `Last ${days} days`}
-              valueTitle="Counted from your install date forward — historical imports excluded so this matches what the plugin actually captured."
-              trend={orgTooNewForComparison ? null : pctChange(periodData.leads.current, periodData.leads.previous)}
+              label="Key Actions"
+              value={periodData.keyActions.current.toLocaleString()}
+              sub={
+                (unhealthyForms?.length || 0) > 0
+                  ? "Form issues may be suppressing submissions"
+                  : `Meaningful actions tracked · Last ${days} days`
+              }
+              valueTitle="Total Key Actions counted toward Action Rate (form submissions, phone clicks, email clicks, donation clicks, downloads, and other enabled actions)."
+              trend={orgTooNewForComparison ? null : pctChange(periodData.keyActions.current, periodData.keyActions.previous)}
               icon={<TrendingUp className="h-4 w-4" />}
               series={kpiSeries.leads}
             />
             <KPICard
               variant="warning"
-              label={t("dashboard.conversionRate")}
+              label="Action Rate"
               value={
                 periodData.sessions.current === 0
                   ? "—"
@@ -724,7 +728,7 @@ const Dashboard = () => {
                   ? "Not enough traffic data yet"
                   : (unhealthyForms?.length || 0) > 0
                     ? "May be impacted by form rendering issues"
-                    : "Form fills divided by sessions"
+                    : "Key Actions divided by sessions"
               }
               trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}

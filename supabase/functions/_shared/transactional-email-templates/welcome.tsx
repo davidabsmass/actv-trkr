@@ -20,10 +20,9 @@ const HEADER_URL = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/storage/v1/object/p
 interface WelcomeEmailProps {
   name?: string
   setPasswordUrl?: string
-  resetCode?: string
 }
 
-const WelcomeEmail = ({ name, setPasswordUrl, resetCode }: WelcomeEmailProps) => (
+const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>Welcome to {SITE_NAME} — set your password to get started</Preview>
@@ -54,9 +53,8 @@ const WelcomeEmail = ({ name, setPasswordUrl, resetCode }: WelcomeEmailProps) =>
           </Text>
 
           <Text style={text}>
-            Click below, then enter this reset code to create your password and activate your account:
+            Click below to create your password and activate your account:
           </Text>
-          {resetCode && <Text style={code}>{resetCode}</Text>}
 
           <Section style={buttonWrap}>
             <Button style={button} href={setPasswordUrl || 'https://actvtrkr.com/reset-password'}>
@@ -88,7 +86,7 @@ export const template = {
   component: WelcomeEmail,
   subject: `Welcome to ${SITE_NAME} — Set your password to get started`,
   displayName: 'Welcome / account activation',
-  previewData: { name: 'David', resetCode: '123456', setPasswordUrl: 'https://actvtrkr.com/reset-password?email=user%40example.com' },
+  previewData: { name: 'David', setPasswordUrl: 'https://actvtrkr.com/reset-password?token=sample-reset-token' },
 } satisfies TemplateEntry
 
 /* ── Styles ─────────────────────────────────────────── */
@@ -139,14 +137,6 @@ const text = {
   color: '#4B5563',
   lineHeight: '1.7',
   margin: '0 0 16px',
-}
-
-const code = {
-  fontSize: '30px',
-  letterSpacing: '6px',
-  fontWeight: '700' as const,
-  color: '#00264D',
-  margin: '4px 0 24px',
 }
 
 const buttonWrap = {

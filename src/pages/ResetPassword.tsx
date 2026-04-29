@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, Eye, EyeOff, Mail, KeyRound } from "lucide-react";
+import { Lock, Eye, EyeOff, Mail } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
@@ -40,7 +40,7 @@ const ResetPassword = () => {
   const [ready, setReady] = useState(false);
   const [accountEmail, setAccountEmail] = useState<string>("");
   const [resetEmail, setResetEmail] = useState<string>("");
-  const [resetCode, setResetCode] = useState("");
+  const [resetToken, setResetToken] = useState("");
   const completedRef = useRef(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -76,6 +76,7 @@ const ResetPassword = () => {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
       const tokenHash = url.searchParams.get("token_hash");
+      const resetTokenParam = url.searchParams.get("token")?.trim() || "";
       const type = url.searchParams.get("type");
       const emailParam = url.searchParams.get("email")?.trim().toLowerCase() || "";
       const errDesc = url.searchParams.get("error_description") || url.searchParams.get("error");
@@ -87,10 +88,24 @@ const ResetPassword = () => {
         return;
       }
 
-      // Managed email-code flow: avoid consuming a one-time link before
-      // the user submits the reset code and new password.
-      if (emailParam && !code && !tokenHash) {
-        if (mounted) setReady(true);
+      // Managed reset-link flow: validate the private token without consuming it,
+      // then consume it only when the user submits their new password.
+      if (resetTokenParam) {
+        try {
+          const { data, error: tokenErr } = await supabase.functions.invoke("complete-password-reset", {
+            body: { token: resetTokenParam },
+          });
+          if (tokenErr) throw tokenErr;
+          if (!data?.email) throw new Error("This reset link is invalid or has expired. Please request a new one.");
+          if (mounted) {
+            setResetToken(resetTokenParam);
+            setResetEmail(String(data.email).trim().toLowerCase());
+            setReady(true);
+          }
+        } catch (e: any) {
+          console.warn("[reset] token validation failed", e?.message);
+          if (mounted) setError("This reset link is invalid or has expired. Please request a new one.");
+        }
         return;
       }
 
@@ -210,19 +225,14 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      if (!resetEmail) {
+      if (resetToken) {
+        const { error: resetErr } = await supabase.functions.invoke("complete-password-reset", {
+          body: { token: resetToken, password },
+        });
+        if (resetErr) throw new Error("This reset link is invalid or has expired. Please request a new one.");
+      } else {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
-      } else {
-        const { data, error: verifyErr } = await supabase.auth.verifyOtp({
-          email: resetEmail,
-          token: resetCode.trim(),
-          type: "recovery",
-        });
-        if (verifyErr) throw verifyErr;
-        if (!data?.session) throw new Error("This reset code is invalid or has expired. Please request a new one.");
-        const { error: updateErr } = await supabase.auth.updateUser({ password });
-        if (updateErr) throw updateErr;
       }
 
       try {
@@ -307,22 +317,6 @@ const ResetPassword = () => {
                     />
                   </div>
                   <p className="mt-1 text-[11px] text-white/50">Setting password for this account.</p>
-                </div>
-              )}
-              {resetEmail && (
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Reset code"
-                    value={resetCode}
-                    onChange={(e) => setResetCode(e.target.value.replace(/\s/g, ""))}
-                    required
-                    autoComplete="one-time-code"
-                    name="reset-code"
-                    className={inputClass}
-                  />
                 </div>
               )}
               <div className="relative">

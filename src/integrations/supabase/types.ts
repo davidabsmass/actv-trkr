@@ -4704,6 +4704,39 @@ export type Database = {
           },
         ]
       }
+      password_reset_links: {
+        Row: {
+          consumed_at: string | null
+          consumed_ip_hash: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          consumed_ip_hash?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          consumed_ip_hash?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plugin_download_failures: {
         Row: {
           created_at: string

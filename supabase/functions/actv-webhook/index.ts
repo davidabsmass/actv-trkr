@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import * as React from "npm:react@^18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { TEMPLATES } from "../_shared/transactional-email-templates/registry.ts";
+import { createPasswordResetUrl } from "../_shared/password-reset-links.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[ACTV-WEBHOOK] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
@@ -304,12 +305,7 @@ serve(async (req) => {
 
           // 4. Generate password-set link & send welcome email directly via queue
           try {
-            const { data: resetData } = await supabase.auth.admin.generateLink({
-              type: "recovery",
-              email,
-              options: { redirectTo: "https://actvtrkr.com/reset-password" },
-            });
-            const setPasswordUrl = resetData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+            const setPasswordUrl = await createPasswordResetUrl(supabase, email, "https://actvtrkr.com/reset-password", userId) || "https://actvtrkr.com/auth";
 
             // Render the welcome template directly instead of invoking another edge function
             const welcomeTemplate = TEMPLATES["welcome"];

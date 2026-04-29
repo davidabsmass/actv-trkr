@@ -1,5 +1,6 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createPasswordResetUrl } from "../_shared/password-reset-links.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -157,19 +158,10 @@ Deno.serve(async (req) => {
     // Build the "set password" / accept link the invitee will click
     const APP_URL = Deno.env.get("APP_URL") || "https://actvtrkr.com";
     let setPasswordUrl = `${APP_URL}/auth`;
-    let resetCode = "";
     try {
-      const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email,
-        options: { redirectTo: `${APP_URL}/reset-password` },
-      });
-      if (!linkErr && linkData?.properties?.email_otp) {
-        resetCode = linkData.properties.email_otp;
-        setPasswordUrl = `${APP_URL}/reset-password?email=${encodeURIComponent(email)}`;
-      }
+      setPasswordUrl = await createPasswordResetUrl(admin, email, `${APP_URL}/reset-password`, targetUserId) || setPasswordUrl;
     } catch (e) {
-      console.warn("generateLink failed, using fallback:", (e as Error)?.message);
+      console.warn("reset link creation failed, using fallback:", (e as Error)?.message);
     }
 
     // Inviter + org names for the email
@@ -202,7 +194,6 @@ Deno.serve(async (req) => {
             orgName,
             role: assignRole,
             setPasswordUrl,
-            resetCode,
           },
         },
       });

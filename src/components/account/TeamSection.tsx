@@ -481,7 +481,7 @@ export default function TeamSection() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            New users will receive an account. They should use "Forgot Password" on the login screen to set their password.
+            New invitees receive a one-time link to set their password. You can resend or cancel a pending invite at any time.
           </p>
 
           {/* Audit log */}

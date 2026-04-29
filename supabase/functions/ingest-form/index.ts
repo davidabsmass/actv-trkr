@@ -503,6 +503,19 @@ Deno.serve(async (req) => {
 
     // Insert raw event
     const extEntryId = entry.entry_id?.toString() || `${providerName}_${fingerprint.slice(0, 16)}`;
+
+    // Canonical dedup key — collapses Avada's three legacy ID formats (N, avada_db_N, avada_<ts>_<rand>)
+    // into a single identifier, and namespaces other providers by name. Backed by a UNIQUE
+    // index on leads(form_id, external_entry_key).
+    const externalEntryKey = (() => {
+      if (providerName === "avada") {
+        if (/^[0-9]+$/.test(extEntryId)) return `avada:${extEntryId}`;
+        if (/^avada_db_[0-9]+$/.test(extEntryId)) return `avada:${extEntryId.replace(/^avada_db_/, "")}`;
+        if (/^avada_[0-9]+_[0-9]+$/.test(extEntryId)) return `avada_legacy:${extEntryId}`;
+      }
+      return `${providerName}:${extEntryId}`;
+    })();
+
     await supabase.from("lead_events_raw").upsert({
       org_id: orgId, site_id: siteId, form_id: formId,
       external_entry_id: extEntryId,
@@ -533,14 +546,14 @@ Deno.serve(async (req) => {
     let existingLeadRows: any[] = [];
     let existingLeadError: any = null;
 
-    // Primary lookup: dedicated column
+    // Primary lookup: canonical dedup key (covers all legacy Avada ID variants too)
     const { data: colLeads, error: colErr } = await supabase
       .from("leads")
       .select("id, submitted_at, status, created_at")
       .eq("org_id", orgId)
       .eq("site_id", siteId)
       .eq("form_id", formId)
-      .eq("external_entry_id", extEntryId)
+      .eq("external_entry_key", externalEntryKey)
       .order("submitted_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(25);
@@ -550,14 +563,14 @@ Deno.serve(async (req) => {
     } else if (colLeads && colLeads.length > 0) {
       existingLeadRows = colLeads;
     } else {
-      // Fallback: JSONB contains (for rows not yet backfilled)
+      // Fallback: legacy external_entry_id column (for rows pre-key backfill, defensive)
       const { data: jsonLeads, error: jsonErr } = await supabase
         .from("leads")
         .select("id, submitted_at, status, created_at")
         .eq("org_id", orgId)
         .eq("site_id", siteId)
         .eq("form_id", formId)
-        .contains("data", { external_entry_id: extEntryId })
+        .eq("external_entry_id", extEntryId)
         .order("submitted_at", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(25);
@@ -595,11 +608,11 @@ Deno.serve(async (req) => {
       );
 
       if (legacyMatch) {
-        // Upgrade the legacy lead to the canonical ID
+        // Upgrade the legacy lead to the canonical ID + key
         console.log(`Avada merge: upgrading legacy lead ${legacyMatch.id} (${legacyMatch.external_entry_id}) → ${extEntryId}`);
         await supabase
           .from("leads")
-          .update({ external_entry_id: extEntryId })
+          .update({ external_entry_id: extEntryId, external_entry_key: externalEntryKey })
           .eq("id", legacyMatch.id);
 
         existingLeadRows = [legacyMatch];
@@ -699,10 +712,27 @@ Deno.serve(async (req) => {
       visitor_id: context?.visitor_id, session_id: context?.session_id,
       data: { ...(fields ? { fields } : {}), external_entry_id: extEntryId },
       external_entry_id: extEntryId,
+      external_entry_key: externalEntryKey,
       lead_type: providerName,
     }).select("id").single();
 
     if (leadErr) {
+      // Unique violation on (form_id, external_entry_key) means a concurrent insert
+      // already created this lead. Treat as a successful dedupe.
+      if ((leadErr as any).code === "23505") {
+        const { data: raceLead } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("form_id", formId)
+          .eq("external_entry_key", externalEntryKey)
+          .maybeSingle();
+        if (raceLead?.id) {
+          observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "race_deduplicated" } });
+          return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: raceLead.id, provider: providerName }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
       console.error("Lead insert error:", leadErr);
       return new Response(JSON.stringify({ error: "Failed to store lead" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

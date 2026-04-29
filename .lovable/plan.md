@@ -1,56 +1,69 @@
-## Problem
+## Why your numbers are doubled
 
-The "Add another site" flow (`/settings?tab=add-site`) currently asks the user to:
-1. Find their old license key in a password manager
-2. Download a generic plugin ZIP
-3. Paste the key into WordPress manually
+Avada submissions get stored in our `leads` table under up to **three different `external_entry_id` formats** for the same underlying WP entry:
 
-That's the friction you remembered avoiding. The infrastructure to skip it **already exists** — it just isn't wired up on this page.
+| Format | Source path |
+|---|---|
+| `219` | WP background sync (raw DB id) |
+| `avada_db_219` | Discovery/backfill from `class-import-adapters.php` |
+| `avada_1774876628_1955499498` | Legacy realtime tracker hash |
 
-## What's already built (and why this is small)
+Because each format is a different string, our `(form_id, external_entry_id)` dedup never fires, and one real submission becomes 2–3 rows. That is exactly what produced 18 rows for "Physician Medical" when WP shows 9 entries, 94 vs 46 for "Renew You", etc. Gravity is unaffected because it only ever uses one ID format.
 
-- `serve-plugin-zip` edge function accepts an `x-actvtrkr-api-key` header and injects that key directly into the plugin ZIP's `mm_api_key` option, so the plugin activates pre-configured.
-- `downloadPlugin(apiKey)` in `src/lib/plugin-download.ts` already takes an optional `apiKey` arg and routes through that endpoint when present.
-- The org's hashed key already lives in `api_keys`. We can't recover the **raw** key (by design — it's hashed for security), so we generate a **new** key and use that for the new site's ZIP.
+## What I will do
 
-The catch: a new key, by itself, would normally require revoking the old one (one-active-key policy). But for this flow we want **multiple sites to keep working**. So we need to relax that policy slightly — or, better, rotate everyone to the new key transparently.
+### 1. Confirm the pattern across all sites
+Run a one-shot audit query that, for every Avada form across every site, groups leads by the **numeric tail** of `external_entry_id` (the part after the last `_`). Any group with >1 row is a confirmed duplicate set. Save the result to `/mnt/documents/avada_dupes_audit.csv` for your review before any deletes.
 
-## Recommended approach: one-click pre-keyed download
+### 2. Add a deterministic dedup key column
+Migration: add `external_entry_key text` to `leads`, generated from `external_entry_id` with these normalization rules:
+- `avada_db_219` → `avada:219`
+- `219` (when provider is avada) → `avada:219`
+- `avada_<ts>_<rand>` (legacy hash) → kept as-is so it can be matched against the canonical form by `(form_id, submitted_at±2min)` in step 3
+- Gravity / CF7 / WPForms → `<provider>:<external_entry_id>` (no behavior change)
 
-Replace the current 3-step "find your key + download + paste" flow with a single primary action: **"Download pre-configured plugin"**.
+### 3. Merge duplicates (keep the richest row)
+For each duplicate set:
+- Pick the **survivor** = the row with the most non-null fields in `data`, breaking ties by oldest `created_at` (so we preserve original attribution).
+- Reassign any dependent rows (`lead_events`, `lead_activity`, etc. — I'll enumerate FK refs in the migration) to the survivor.
+- Delete the losers.
+- Legacy hash rows (`avada_<ts>_<rand>`) are matched to the canonical row by `(form_id, submitted_at within 2 minutes)`; unmatched legacy rows are left alone and flagged in the audit CSV for manual review.
 
-Behind the scenes:
-1. Generate a fresh raw key, hash it, insert into `api_keys` (alongside the existing key — do **not** revoke the old one).
-2. Allow that raw key (held only in memory) to be passed to `downloadPlugin(rawKey)`.
-3. The downloaded ZIP arrives with the key already embedded — user just installs and activates. No paste, no copy, no password manager hunt.
-4. Keep the existing site-detection polling + success card.
+### 4. Prevent recurrence
+- Add `UNIQUE (form_id, external_entry_key)` partial index (where `external_entry_key IS NOT NULL`).
+- Update both ingest paths (`ingest-form` edge function + `class-import-adapters.php` in the WP plugin) to write the **canonical** `external_entry_key` so future inserts collide and upsert instead of duplicating.
+- Bump plugin to v1.21.4 via `scripts/plugin-artifacts.mjs` (per the Plugin Deploy Rule).
 
-### Why allow two active keys here
+### 5. Reconcile counters and verify
+- Recompute `form_integrations.total_entries_imported` from the deduped `leads` count.
+- Re-run the apyxmedical comparison and confirm:
+  - Physician Medical: 9 = 9
+  - Patient Medical: 6 = 6
+  - Patient General: 22 = 22
+  - Physician General: 28 = 28
+  - Book In-Office: 13 = 13
+  - Renew You, Near You: 46 = 46
+  - Find a Licensed Provider Near You: still 173/224 (separate Gravity gap — addressed below)
 
-Today `generateKey()` in `WebsiteSetup.tsx` revokes all prior keys. That's correct for first-time setup. For "add another site" we explicitly want to **add** a key, not rotate. Both keys hash-match against `api_keys` rows; `plugin-auth.ts` already accepts any non-revoked match. No backend changes required — just don't call the revoke loop on this path.
+### 6. Recover the 51 missing Gravity entries
+The "Find a Licensed Provider" import job has been failing in batches of 30/40 because some entries throw on ingest. After the dedup migration is in place (so re-imports won't duplicate), I'll re-trigger a clean WP backfill for that one form and inspect the `last_error` on whichever entries still fail.
 
-This is the minimum-risk option. Existing sites keep working on the old key; the new site uses the new key; both ingest into the same org. If the user later wants to consolidate, they can rotate from API Keys.
+## Safety
 
-### Fallback: "I already have my key"
+- All deletes are wrapped in a transaction and gated on the audit CSV showing zero unexpected categories.
+- WordPress is **not** modified — we only clean our own `leads` table (per Read-Only WP Principle).
+- I'll save a backup table `leads_predupe_backup_2026_04_29` containing every row that gets deleted, kept for 30 days, so any deletion is reversible.
 
-Keep a small secondary link — `Already have your license key? Paste it instead` — that expands the current manual-paste flow. Covers the rare power-user case and anyone who genuinely wants to reuse the existing key across sites.
+## Files I expect to touch
 
-## Files to change
+- New migration: dedup key column, backfill, unique index, FK reassignment
+- `supabase/functions/ingest-form/index.ts` — emit canonical `external_entry_key`
+- `mission-metrics-wp-plugin/includes/class-import-adapters.php` — emit canonical id
+- Plugin version bump (4 files via `scripts/plugin-artifacts.mjs`)
+- New memory: `mem://features/forms/avada-dedup-key` documenting the canonical key format
 
-- **`src/pages/AddSite.tsx`** — rewrite the 3-step flow:
-  - Step 1 (NEW): "Download pre-configured plugin" — single button that generates a key (without revoking) and immediately calls `downloadPlugin(rawKey)`.
-  - Step 2: "Install & activate in WordPress" (just install instructions, no key paste).
-  - Step 3: success card on detection (unchanged).
-  - Collapsible: "Already have your license key? Use it instead" → reveals current paste-based flow.
-- **`src/components/sites/AddSiteModal.tsx`** — update body copy: remove "you'll use your existing license key — no new key needed" (no longer accurate when using the auto-keyed ZIP). Replace with "We'll prepare a plugin file with your account already linked — just install and activate."
+## What I will not touch
 
-## Out of scope
-
-- No edge-function changes (`serve-plugin-zip` already supports this).
-- No DB schema changes.
-- No change to first-time `WebsiteSetup.tsx` — that stays as-is.
-- Billing for additional sites stays deferred (per the existing TODO).
-
-## Risk
-
-Low. The endpoint and download library already do this; we're wiring up an existing capability on a new page and adding one extra `api_keys` row per add-site action.
+- Gravity / CF7 / WPForms ingest behavior (no duplication problem there)
+- The `forms` and `form_integrations` schemas
+- Any WordPress data

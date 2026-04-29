@@ -1002,10 +1002,102 @@ export default function AdminSetup() {
       )}
 
       {activeMainTab === "metrics" && isAdminUser && (
-        <div className="mb-6">
-          <ImportHealthPanel />
-        </div>
-      )}
+        <div className="space-y-6">
+          <div className="mb-6">
+            <ImportHealthPanel />
+          </div>
+          {/* KPIs — Top-line */}
+          {(() => {
+            const arr = totalMrr * 12;
+            const paidSubs = activeSubs.filter((s: any) => Number(s.mrr || 0) > 0);
+            const clientSubs = enrichedOrgs.filter((o) => isClientTier(o.name)).length;
+            const ltv = churnedSubs.length > 0
+              ? (activeSubs.reduce((s: number, sub: any) => s + Number(sub.mrr || 0), 0) / (churnedSubs.length / Math.max(subscribers.length, 1)))
+              : totalMrr * 24; // assume 24-month LTV if no churn
+            const revenueGrowth = signupsLastMonth > 0
+              ? (((signupsThisMonth - signupsLastMonth) / signupsLastMonth) * 100).toFixed(0)
+              : signupsThisMonth > 0 ? "∞" : "0";
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                  <OwnerKpiCard icon={DollarSign} label="MRR" value={`$${totalMrr.toFixed(0)}`} />
+                  <OwnerKpiCard icon={DollarSign} label="ARR" value={`$${arr.toFixed(0)}`} />
+                  <OwnerKpiCard icon={Users} label="Paid Customers" value={String(paidSubs.length)} />
+                  <OwnerKpiCard icon={Users} label="Client Tier" value={String(clientSubs)} />
+                  <OwnerKpiCard icon={DollarSign} label="ARPU" value={`$${avgArpu.toFixed(0)}/mo`} />
+                  <OwnerKpiCard icon={TrendingUp} label="Est. LTV" value={`$${ltv.toFixed(0)}`} />
+                  <OwnerKpiCard icon={TrendingUp} label="Churn Rate" value={`${churnRateVal}%`} />
+                  <OwnerKpiCard icon={AlertTriangle} label="Past Due" value={String(pastDueSubs.length)} />
+                </div>
+
+                {/* Growth & Valuation Context */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Growth</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">New this month</span>
+                        <span className="font-medium text-foreground">{signupsThisMonth}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">New last month</span>
+                        <span className="font-medium text-foreground">{signupsLastMonth}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">MoM Growth</span>
+                        <span className="font-medium text-foreground">{revenueGrowth}%</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Total Orgs</span>
+                        <span className="font-medium text-foreground">{enrichedOrgs.length}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Valuation Multiples</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">3x ARR</span>
+                        <span className="font-medium text-foreground">${(arr * 3).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">5x ARR</span>
+                        <span className="font-medium text-foreground">${(arr * 5).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">10x ARR</span>
+                        <span className="font-medium text-foreground">${(arr * 10).toLocaleString()}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground pt-1">SaaS companies typically sell at 3–10x ARR depending on growth rate and churn.</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle className="text-base">Unit Economics</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">ARPU</span>
+                        <span className="font-medium text-foreground">${avgArpu.toFixed(2)}/mo</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Est. LTV</span>
+                        <span className="font-medium text-foreground">${ltv.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Churned</span>
+                        <span className="font-medium text-foreground">{churnedSubs.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Failed Payments</span>
+                        <span className="font-medium text-foreground">{pastDueSubs.length}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            );
+          })()}
 
 
           <Card>

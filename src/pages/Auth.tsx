@@ -352,9 +352,11 @@ const Auth = () => {
       ? "0"
       : activePanel === "otp"
       ? "calc(-100% - 1.5rem)"
-      : activePanel === "mfa"
+      : activePanel === "forgot"
       ? "calc(-200% - 3rem)"
-      : "calc(-200% - 3rem)";
+      : activePanel === "mfa"
+      ? "calc(-300% - 4.5rem)"
+      : "0";
 
   return (
     <div
@@ -437,7 +439,7 @@ const Auth = () => {
                     <div className="text-right">
                       <button
                         type="button"
-                        onClick={() => { setForgotEmail(email); goToPanel("forgot"); }}
+                        onClick={() => { clearMessages(); setForgotEmail(email); goToPanel("forgot"); }}
                         className="text-xs text-white hover:underline font-medium"
                       >
                         Lost your password?
@@ -525,6 +527,69 @@ const Auth = () => {
                     className="text-xs text-white/50 hover:underline"
                   >
                     Back
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Spacer */}
+            <div className="w-6 flex-shrink-0" />
+
+            {/* Panel 3: Forgot Password */}
+            <div className="w-full flex-shrink-0">
+              <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 shadow-2xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <KeyRound className="h-5 w-5 text-white" />
+                  <h2 className="text-lg font-semibold text-white">Reset your password</h2>
+                </div>
+                <p className="text-sm mb-5 text-white/80">
+                  Enter your email and we'll send you a link to set a new password.
+                </p>
+
+                <form onSubmit={handleForgotSubmit} className="space-y-3">
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      required
+                      className={inputClass}
+                    />
+                  </div>
+
+                  {error && activePanel === "forgot" && (
+                    <p className="text-xs text-red-300 bg-red-500/20 rounded-lg px-3 py-2">{error}</p>
+                  )}
+                  {message && activePanel === "forgot" && (
+                    <p className="text-xs text-green-300 bg-green-500/20 rounded-lg px-3 py-2">{message}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading || !forgotEmail.trim()}
+                    className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                  >
+                    {loading ? (
+                      <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    ) : (
+                      "Send reset link"
+                    )}
+                  </button>
+                </form>
+
+                <div className="flex items-center justify-end mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearMessages();
+                      goToPanel("main");
+                    }}
+                    className="text-xs text-white/70 hover:underline"
+                  >
+                    Back to sign in
                   </button>
                 </div>
               </div>

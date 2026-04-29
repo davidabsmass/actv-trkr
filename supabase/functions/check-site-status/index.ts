@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 const SIGNAL_FRESH_MINUTES = 10;
+const VERIFIER_FRESH_MINUTES = 30;
 
 async function hashKey(key: string): Promise<string> {
   const data = new TextEncoder().encode(key);
@@ -75,21 +76,25 @@ Deno.serve(async (req) => {
       ? "active"
       : (sts?.tracker_status || "active");
     const verifierStatus = sts?.verifier_last_status || null;
+    const verifierCheckedAt = sts?.verifier_last_checked_at || null;
+    const verifierIsFresh = verifierCheckedAt
+      ? new Date(verifierCheckedAt).getTime() > Date.now() - VERIFIER_FRESH_MINUTES * 60_000
+      : false;
 
     // Banner trigger logic — STALLED only (or verifier-confirmed missing)
-    const showBanner =
-      (trackerStatus === "stalled" && !signalIsFresh) ||
-      verifierStatus === "tracker_missing" ||
-      verifierStatus === "unreachable";
+    const showBanner = !signalIsFresh && (
+      trackerStatus === "stalled" ||
+      (verifierIsFresh && (verifierStatus === "tracker_missing" || verifierStatus === "unreachable"))
+    );
 
     let message = "Tracking is healthy.";
     if (signalIsFresh) {
       message = "Tracking signal is healthy.";
     } else if (trackerStatus === "stalled") {
       message = "No tracking events received from this site for over 10 minutes.";
-    } else if (verifierStatus === "tracker_missing") {
+    } else if (verifierIsFresh && verifierStatus === "tracker_missing") {
       message = "Our hourly homepage check could not find the ACTV TRKR script.";
-    } else if (verifierStatus === "unreachable") {
+    } else if (verifierIsFresh && verifierStatus === "unreachable") {
       message = sts?.verifier_last_message || "Site unreachable from our verifier.";
     }
 

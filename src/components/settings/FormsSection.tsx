@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Archive, ArchiveRestore, PowerOff, EyeOff, Eye } from "lucide-react";
+import { FileText, Archive, ArchiveRestore, PowerOff, EyeOff, Eye, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -51,6 +52,7 @@ const REASON_LABELS: Record<string, string> = {
 export default function FormsSection() {
   const { t } = useTranslation();
   const { orgId } = useOrg();
+  const navigate = useNavigate();
   const { data: forms, isLoading } = useForms(orgId);
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -215,6 +217,16 @@ export default function FormsSection() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
+                {!form.archived && (
+                  <button
+                    onClick={() => navigate(`/leads?formId=${form.id}&export=1`)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    title="Export entries from this form"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Export entries</span>
+                  </button>
+                )}
                 {form.health_check_disabled && !form.archived && (
                   <button
                     onClick={() => resumeMonitoring(form.id)}

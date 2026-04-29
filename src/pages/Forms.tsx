@@ -340,13 +340,23 @@ export default function Forms() {
     [forms]
   );
   const selectedFormId = searchParams.get("selected") || null;
+  // Deep-link from Settings → Forms "Export entries" button. Consumed once
+  // by FormEntries, then cleared so refresh/back doesn't re-open the panel.
+  const exportRequested = searchParams.get("export") === "1";
   const setSelectedFormId = (id: string | null) => {
     if (id) {
       setSearchParams({ selected: id }, { replace: true });
     } else {
       searchParams.delete("selected");
+      searchParams.delete("export");
       setSearchParams(searchParams, { replace: true });
     }
+  };
+  const consumeExportFlag = () => {
+    if (!searchParams.has("export")) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("export");
+    setSearchParams(next, { replace: true });
   };
   const [listTab, setListTab] = useState<"active" | "disabled" | "archived">("active");
   const [days, setDays] = useState<number | null>(30);
@@ -724,6 +734,8 @@ export default function Forms() {
         orgId={orgId}
         leadCount={leadCounts?.[selectedForm.id] ?? 0}
         onBack={() => setSelectedFormId(null)}
+        autoOpenExport={exportRequested}
+        onAutoOpenConsumed={consumeExportFlag}
       />
     );
   }
@@ -1010,7 +1022,7 @@ function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: stri
           </TabsTrigger>
         </TabsList>
         <TabsContent value="entries">
-          <FormEntries orgId={orgId} formId={form.id} />
+          <FormEntries orgId={orgId} formId={form.id} autoOpenExport={exportRequested} onAutoOpenConsumed={consumeExportFlag} />
         </TabsContent>
         <TabsContent value="analytics">
           <FormAnalytics orgId={orgId} formId={form.id} />
@@ -1146,7 +1158,17 @@ function FormSettings({ form }: { form: any }) {
 }
 
 /* ─── Entries Tab ─── */
-function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }) {
+function FormEntries({
+  orgId,
+  formId,
+  autoOpenExport = false,
+  onAutoOpenConsumed,
+}: {
+  orgId: string | null;
+  formId: string;
+  autoOpenExport?: boolean;
+  onAutoOpenConsumed?: () => void;
+}) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -1154,7 +1176,13 @@ function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [showExport, setShowExport] = useState(false);
+  const [showExport, setShowExport] = useState(autoOpenExport);
+
+  // Clear the URL flag after first consumption so refresh doesn't re-open.
+  useEffect(() => {
+    if (autoOpenExport) onAutoOpenConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads_by_form", orgId, formId],

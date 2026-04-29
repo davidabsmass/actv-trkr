@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { buildFieldColumns } from "@/lib/form-field-display";
 
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
 import { useForms } from "@/hooks/use-dashboard-data";
@@ -57,8 +57,26 @@ export default function Entries() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [autoOpenExport, setAutoOpenExport] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+
+  // Deep-link support: ?formId=...&export=1 selects the form and opens the
+  // export panel. Used by Settings → Forms "Export entries" button.
+  useEffect(() => {
+    const formIdParam = searchParams.get("formId");
+    const exportParam = searchParams.get("export");
+    if (formIdParam && forms?.some((f) => f.id === formIdParam)) {
+      setSelectedFormId(formIdParam);
+      if (exportParam === "1") setAutoOpenExport(true);
+      // Clear the params so navigating back to /leads doesn't re-trigger.
+      const next = new URLSearchParams(searchParams);
+      next.delete("formId");
+      next.delete("export");
+      setSearchParams(next, { replace: true });
+    }
+  }, [forms, searchParams, setSearchParams]);
 
   const selectedForm = forms?.find((f) => f.id === selectedFormId);
   const activeForms = forms?.filter((f) => !f.archived) || [];
@@ -116,7 +134,7 @@ export default function Entries() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="entries">
-            <FormEntries orgId={orgId} formId={selectedForm.id} />
+            <FormEntries orgId={orgId} formId={selectedForm.id} autoOpenExport={autoOpenExport} />
           </TabsContent>
           <TabsContent value="analytics">
             <FormAnalytics orgId={orgId} formId={selectedForm.id} />
@@ -321,15 +339,15 @@ function FormSettings({ form }: { form: any }) {
 }
 
 /* ─── Entries Tab ─── */
-function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }) {
+function FormEntries({ orgId, formId, autoOpenExport = false }: { orgId: string | null; formId: string; autoOpenExport?: boolean }) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  
+
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [showExport, setShowExport] = useState(false);
+  const [showExport, setShowExport] = useState(autoOpenExport);
 
   const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads_by_form", orgId, formId],

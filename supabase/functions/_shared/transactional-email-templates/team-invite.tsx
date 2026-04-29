@@ -23,7 +23,6 @@ interface TeamInviteEmailProps {
   orgName?: string
   role?: string
   setPasswordUrl?: string
-  resetCode?: string
 }
 
 const TeamInviteEmail = ({
@@ -32,7 +31,6 @@ const TeamInviteEmail = ({
   orgName,
   role,
   setPasswordUrl,
-  resetCode,
 }: TeamInviteEmailProps) => {
   const inviter = inviterName || inviterEmail || 'A teammate'
   const org = orgName || 'their organization'
@@ -68,9 +66,8 @@ const TeamInviteEmail = ({
             </Text>
 
             <Text style={text}>
-              To accept the invitation and access the dashboard, open the password screen and enter this reset code:
+              To accept the invitation and access the dashboard, click below to set your password:
             </Text>
-            {resetCode && <Text style={code}>{resetCode}</Text>}
 
             <Section style={buttonWrap}>
               <Button style={button} href={setPasswordUrl || 'https://actvtrkr.com/reset-password'}>
@@ -108,8 +105,7 @@ export const template = {
     inviterEmail: 'david@newuniformdesign.com',
     orgName: 'New Uniform Design',
     role: 'manager',
-    resetCode: '123456',
-    setPasswordUrl: 'https://actvtrkr.com/reset-password?email=user%40example.com',
+    setPasswordUrl: 'https://actvtrkr.com/reset-password?token=sample-reset-token',
   },
 } satisfies TemplateEntry
 
@@ -121,7 +117,6 @@ const contentSection = { padding: '32px 32px 40px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 20px', lineHeight: '1.3' }
 const text = { fontSize: '15px', color: '#4B5563', lineHeight: '1.7', margin: '0 0 16px' }
 const textMuted = { fontSize: '13px', color: '#9CA3AF', lineHeight: '1.6', margin: '24px 0 16px' }
-const code = { fontSize: '30px', letterSpacing: '6px', fontWeight: '700' as const, color: '#00264D', margin: '4px 0 24px' }
 const buttonWrap = { textAlign: 'center' as const, margin: '28px 0' }
 const button = { backgroundColor: '#6C5CE7', color: '#ffffff', fontSize: '15px', fontWeight: '600' as const, borderRadius: '12px', padding: '14px 32px', textDecoration: 'none', display: 'inline-block' }
 const signoff = { fontSize: '15px', color: '#4B5563', margin: '24px 0 0', lineHeight: '1.5' }

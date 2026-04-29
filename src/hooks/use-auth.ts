@@ -91,6 +91,7 @@ export function useAuth() {
         setSession(nextSession);
         if (event === "SIGNED_IN" && nextSession) {
           supabase.functions.invoke("log-login").catch(() => {});
+          supabase.rpc("mark_invite_accepted").catch(() => {});
         }
       } else if (event === "SIGNED_OUT") {
         setSession(null);

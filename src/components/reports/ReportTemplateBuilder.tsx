@@ -384,18 +384,49 @@ export default function ReportTemplateBuilder() {
               {t("reports.customizeDesc")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={newTemplate} className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> New
+            </Button>
             <Button variant="outline" size="sm" onClick={resetToDefaults} className="gap-1.5">
               <RotateCcw className="h-3.5 w-3.5" /> {t("reports.resetDefaults")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => saveAsNewMutation.mutate()} disabled={saveAsNewMutation.isPending} className="gap-1.5">
+              {saveAsNewMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+              Save as new
             </Button>
             <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !hasChanges} className="gap-1.5">
               {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               {t("reports.saveTemplate")}
             </Button>
+            {activeTemplateId && (templates?.length ?? 0) > 1 && (
+              <Button variant="ghost" size="sm" onClick={() => { if (confirm("Delete this template?")) deleteMutation.mutate(); }} disabled={deleteMutation.isPending} className="gap-1.5 text-destructive hover:text-destructive" aria-label="Delete template">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          {(templates?.length ?? 0) > 0 && (
+            <>
+              <label className="text-xs font-medium text-muted-foreground">Template</label>
+              <Select
+                value={activeTemplateId ?? ""}
+                onValueChange={(v) => {
+                  const tpl = (templates || []).find((tt: any) => tt.id === v);
+                  if (tpl) loadTemplate(tpl);
+                }}
+              >
+                <SelectTrigger className="h-8 text-sm w-[220px]"><SelectValue placeholder="(new, unsaved)" /></SelectTrigger>
+                <SelectContent>
+                  {(templates || []).map((tt: any) => (
+                    <SelectItem key={tt.id} value={tt.id}>{tt.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
           <label className="text-xs font-medium text-muted-foreground">{t("reports.templateName")}</label>
           <Input
             value={templateName}

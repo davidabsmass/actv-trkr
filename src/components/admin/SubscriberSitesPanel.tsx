@@ -641,7 +641,7 @@ export default function SubscriberSitesPanel() {
                     </TableRow>
                     {expanded && (
                       <TableRow key={`${r.org.id}-members`}>
-                        <TableCell colSpan={7} className="bg-muted/30 p-4">
+                        <TableCell colSpan={6} className="bg-muted/30 p-4">
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <h4 className="text-sm font-semibold text-foreground">

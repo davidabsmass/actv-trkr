@@ -1,4 +1,4 @@
-import { ArrowUpRight, ArrowDownRight, Minus, Users, Target, Eye, TrendingUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Minus, Users, Target, Eye, TrendingUp, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { Sparkline } from "./Sparkline";
@@ -127,14 +127,38 @@ interface KPIRowProps {
   totalLeads?: number;
   /** Map of YYYY-MM-DD → daily counts. Drives the per-card sparkline. */
   dailyMap?: Record<string, { sessions: number; leads: number; pageviews: number }>;
+  /** When provided, replaces the "Leads" card with a "Key Actions" card.
+   *  Key Actions = goal-tracked meaningful interactions (form fills, phone/email
+   *  clicks, CTA clicks, downloads, etc.) — what the site owner actually cares
+   *  about, not just form fills.
+   */
+  keyActions?: {
+    value: number;
+    delta: number | null;
+    /** Short description like "Form Submissions, Phone Clicks, …" */
+    subtext?: string;
+    /** Plain-text breakdown shown on hover, e.g. "Form Submissions: 3\nPhone Clicks: 8". */
+    breakdown?: string;
+  };
 }
 
-export function KPIRow({ kpis, totalSessions, totalLeads, dailyMap }: KPIRowProps) {
+export function KPIRow({ kpis, totalSessions, totalLeads, dailyMap, keyActions }: KPIRowProps) {
   const { t } = useTranslation();
-  const cvrSubtext =
-    totalSessions && totalLeads !== undefined
-      ? t("common.ofSessionsConverted", { leads: totalLeads, sessions: totalSessions })
-      : undefined;
+
+  // When Key Actions are configured, the "Action Rate" replaces the form-only
+  // CVR so the secondary metric also matches what the owner cares about.
+  const useKeyActions = !!keyActions;
+  const rateValue = useKeyActions && totalSessions
+    ? Math.min(1, keyActions!.value / totalSessions)
+    : kpis.cvr.value;
+  const rateLabel = useKeyActions ? "Action Rate" : kpis.cvr.label;
+  const rateSubtext = useKeyActions
+    ? totalSessions
+      ? `${keyActions!.value.toLocaleString()} of ${totalSessions.toLocaleString()} sessions`
+      : undefined
+    : (totalSessions && totalLeads !== undefined
+        ? t("common.ofSessionsConverted", { leads: totalLeads, sessions: totalSessions })
+        : undefined);
 
   const series = useMemo(() => {
     if (!dailyMap) return { sessions: [], leads: [], pageviews: [], cvr: [] };
@@ -157,14 +181,26 @@ export function KPIRow({ kpis, totalSessions, totalLeads, dailyMap }: KPIRowProp
         icon={<Users className="h-4 w-4" />}
         series={series.sessions}
       />
-      <KPICard
-        label={kpis.leads.label}
-        value={kpis.leads.value.toLocaleString()}
-        delta={kpis.leads.delta}
-        variant="success"
-        icon={<Target className="h-4 w-4" />}
-        series={series.leads}
-      />
+      {useKeyActions ? (
+        <KPICard
+          label="Key Actions"
+          value={keyActions!.value.toLocaleString()}
+          delta={keyActions!.delta}
+          variant="success"
+          icon={<Zap className="h-4 w-4" />}
+          subtext={keyActions!.subtext}
+          series={series.leads}
+        />
+      ) : (
+        <KPICard
+          label={kpis.leads.label}
+          value={kpis.leads.value.toLocaleString()}
+          delta={kpis.leads.delta}
+          variant="success"
+          icon={<Target className="h-4 w-4" />}
+          series={series.leads}
+        />
+      )}
       <KPICard
         label={kpis.pageviews.label}
         value={kpis.pageviews.value.toLocaleString()}
@@ -174,11 +210,13 @@ export function KPIRow({ kpis, totalSessions, totalLeads, dailyMap }: KPIRowProp
         series={series.pageviews}
       />
       <KPICard
-        label={kpis.cvr.label}
-        value={`${(kpis.cvr.value * 100).toFixed(1)}`}
-        delta={kpis.cvr.delta}
+        label={rateLabel}
+        value={`${(rateValue * 100).toFixed(1)}`}
+        delta={useKeyActions
+          ? (totalSessions && keyActions!.delta !== null ? keyActions!.delta : kpis.cvr.delta)
+          : kpis.cvr.delta}
         suffix="%"
-        subtext={cvrSubtext}
+        subtext={rateSubtext}
         variant="warning"
         icon={<TrendingUp className="h-4 w-4" />}
         series={series.cvr}

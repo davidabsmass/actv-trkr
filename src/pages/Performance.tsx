@@ -26,7 +26,7 @@ import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 import { CreateGoalDialog } from "@/components/settings/GoalsSection";
 import { useForms } from "@/hooks/use-dashboard-data";
-
+import { useKeyActions } from "@/hooks/use-key-actions";
 
 const Reports = lazy(() => import("./Reports"));
 
@@ -68,6 +68,8 @@ const Performance = () => {
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate, orgCreatedAt);
   const { data: overviewData } = useDashboardOverview(orgId, startDate, endDate, orgCreatedAt);
   const { data: prevOverviewData } = useDashboardOverview(orgId, prevStartDate, prevEndDate, orgCreatedAt);
+  const { data: keyActionsData } = useKeyActions(orgId, startDate, endDate, orgCreatedAt);
+  const { data: prevKeyActionsData } = useKeyActions(orgId, prevStartDate, prevEndDate, orgCreatedAt);
 
   const isLoading = !realtimeData;
 
@@ -201,7 +203,27 @@ const Performance = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              <KPIRow kpis={processedData.kpis} totalSessions={realtimeData?.totalSessions} totalLeads={realtimeData?.totalLeads} dailyMap={realtimeData?.dailyMap} />
+              <KPIRow
+                kpis={processedData.kpis}
+                totalSessions={realtimeData?.totalSessions}
+                totalLeads={realtimeData?.totalLeads}
+                dailyMap={realtimeData?.dailyMap}
+                keyActions={
+                  keyActionsData?.hasConfigured
+                    ? {
+                        value: keyActionsData.totalActionRate,
+                        delta: pctDelta(
+                          keyActionsData.totalActionRate,
+                          prevKeyActionsData?.totalActionRate ?? 0,
+                        ),
+                        subtext: keyActionsData.breakdown
+                          .slice(0, 3)
+                          .map((b) => `${b.label}: ${b.count.toLocaleString()}`)
+                          .join(" · "),
+                      }
+                    : undefined
+                }
+              />
               <TrendsChart data={processedData.dailyData} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <VisitorEngagement orgId={orgId} startDate={startDate} endDate={endDate} />

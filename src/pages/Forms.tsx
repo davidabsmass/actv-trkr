@@ -141,7 +141,7 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("sites")
-        .select("id, domain, plugin_version, last_heartbeat_at")
+        .select("id, domain, plugin_version, last_heartbeat_at, plugin_status")
         .eq("org_id", orgId);
       if (error) throw error;
       return data || [];
@@ -157,10 +157,11 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
 
   if (relevantSiteIds.size === 0) return null;
 
-  const ACTIVE_SIGNAL_WINDOW_MS = 1000 * 60 * 60 * 24 * 7;
+  const ACTIVE_SIGNAL_WINDOW_MS = 1000 * 60 * 30;
   const scopedSiteVersions = (siteVersions || []).filter((s) => relevantSiteIds.has(s.id));
   const outdatedSites = scopedSiteVersions.filter((s) => {
     if (!s.plugin_version || !latestVersion || !s.last_heartbeat_at) return false;
+    if (s.plugin_status && s.plugin_status !== "healthy") return false;
     const lastSignalMs = new Date(s.last_heartbeat_at).getTime();
     if (!Number.isFinite(lastSignalMs)) return false;
     const hasRecentSignal = Date.now() - lastSignalMs <= ACTIVE_SIGNAL_WINDOW_MS;

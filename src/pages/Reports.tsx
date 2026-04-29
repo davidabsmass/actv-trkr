@@ -414,9 +414,7 @@ function ActivityReportsTab() {
       if (error) throw error;
       const tplPromise = (orgId && userId && selectedTemplateId)
         ? supabase.from("report_custom_templates" as any).select("sections_config").eq("id", selectedTemplateId).maybeSingle()
-        : (orgId && userId
-            ? supabase.from("report_custom_templates" as any).select("sections_config").eq("user_id", userId).eq("org_id", orgId).order("created_at", { ascending: false }).limit(1).maybeSingle()
-            : Promise.resolve({ data: null }));
+        : Promise.resolve({ data: null });
       const [resp, wlResult, tplResult] = await Promise.all([
         fetch(data.signedUrl),
         orgId ? supabase.from("white_label_settings").select("*").eq("org_id", orgId).maybeSingle() : Promise.resolve({ data: null }),

@@ -1,6 +1,6 @@
 import { useOrg } from "@/hooks/use-org";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
@@ -15,7 +15,6 @@ import FormsSection from "@/components/settings/FormsSection";
 import GoalsSection from "@/components/settings/GoalsSection";
 import { SettingsConnectingNotice } from "@/components/settings/SettingsConnectingNotice";
 
-import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_SETTINGS } from "@/components/howto/page-content";
@@ -29,6 +28,14 @@ export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "general";
   const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  // Legacy redirect: White Label moved to Reports page
+  useEffect(() => {
+    if (searchParams.get("tab") === "white-label") {
+      navigate("/reports?reportTab=white-label", { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });
@@ -51,7 +58,6 @@ export default function SettingsPage() {
           <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.general")}</TabsTrigger>
           <TabsTrigger value="goals" className="flex-shrink-0 text-xs sm:text-sm">Goals</TabsTrigger>
           <TabsTrigger value="notifications" className="flex-shrink-0 text-xs sm:text-sm">Notifications</TabsTrigger>
-          <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.whiteLabel")}</TabsTrigger>
           <TabsTrigger value="setup" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.websiteSetup")}</TabsTrigger>
           {activeTab === "add-site" && (
             <TabsTrigger value="add-site" className="flex-shrink-0 text-xs sm:text-sm">Add Site</TabsTrigger>
@@ -78,10 +84,6 @@ export default function SettingsPage() {
 
         <TabsContent value="notifications">
           <NotificationsHub />
-        </TabsContent>
-
-        <TabsContent value="white-label">
-          <WhiteLabelSection />
         </TabsContent>
 
         <TabsContent value="setup">

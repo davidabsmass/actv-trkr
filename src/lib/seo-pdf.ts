@@ -72,13 +72,12 @@ function buildSeoHtml(data: SeoReportData, wl?: WhiteLabelConfig | null): string
   const sectionEnd = `</div>`;
 
   let html = `
-<div style="font-family:'BR Omega','Segoe UI',system-ui,sans-serif;color:#00264d;width:680px;padding:0;background:#fff">
+<div style="font-family:Helvetica,Arial,'Segoe UI',sans-serif;color:#00264d;width:680px;padding:0;background:#fff">
   <!-- Header -->
   <div data-pdf-section style="background:linear-gradient(135deg,${brandGradientStart},${brandSecondary});padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       ${wl?.logo_url ? `<img src="${wl.logo_url}" style="height:36px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);opacity:1" crossorigin="anonymous" />` : ''}
       ${brandName ? `<span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">${brandName}</span>` : ''}
-      <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
       <span style="font-size:10px;color:rgba(255,255,255,0.8)">SEO Report</span>
     </div>
     <div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:6px">SEO Insights Report</div>
@@ -170,7 +169,22 @@ export async function buildSeoPdf(data: SeoReportData, whiteLabel?: WhiteLabelCo
   container.innerHTML = buildSeoHtml(data, whiteLabel);
   document.body.appendChild(container);
 
-  await new Promise((r) => setTimeout(r, 150));
+  // Wait for any <img> tags (e.g. white-label logo) to fully load before
+  // html2canvas captures.
+  const images = Array.from(container.querySelectorAll("img"));
+  await Promise.all(
+    images.map((img) =>
+      img.complete && img.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            const done = () => resolve();
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+            setTimeout(done, 3000);
+          })
+    )
+  );
+  await new Promise((r) => setTimeout(r, 50));
 
   try {
     const pageW = 210;

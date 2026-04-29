@@ -1,83 +1,87 @@
-## Problem
+## Move White Label to Reports + fix six PDF export bugs
 
-The Form Health probe is correctly *detecting* "form markup not present on page", but two of its current hits are false positives:
+One pass: relocate White Label to the Reports page where it belongs, then fix all six PDF issues uncovered while investigating.
 
-1. **Third-party script masquerading as a form** — discovery picked up a vendor widget (e.g. an embedded chat/booking script) as a "form". It will never render via our shortcode/block detector, so it permanently shows as broken.
-2. **Form on a deleted page** — the form still exists in WP, but the page that used to host it is gone (404). The form isn't broken; the page is.
+### 1. Move White Label tab to Reports page
 
-Today the only escape valve is **Archive** in Settings → Forms, which hides the form everywhere — including from entry counts and history. That's too blunt for "this is real but not what you think it is" cases.
+- `src/pages/Reports.tsx` — add fifth top-level tab: `[ Overview ] [ Activity Reports ] [ Customize ] [ White Label ] [ Archives ]`. New `<TabsContent value="white-label">` mounts the existing `<WhiteLabelSection />` unchanged. URL syncs as `?reportTab=white-label`.
+- `src/pages/Settings.tsx` — remove the White Label tab + import. Add a small effect: if `?tab=white-label` is detected, `navigate("/reports?reportTab=white-label", { replace: true })` so old links keep working.
+- No DB / RLS / `WhiteLabelSection.tsx` changes — the component is org-scoped via `useOrg()` and works wherever it's mounted.
 
-## Goal
+### 2. Fix: client logo not appearing on PDF
 
-Give the user one-click ways to tell the system **why** a flagged form should stop nagging, without losing legitimate detection of newly-broken forms. Keep it WP-read-only — all changes happen in our DB, not in WordPress.
+**Root cause:** the `client-logos` Storage bucket is `public = false` (verified via DB). `getPublicUrl()` still returns a URL, but the PDF builder's `<img src>` request 403s, so the logo silently never paints.
 
-## What we'll build
+**Fix:** migration to make the bucket public + add a public-read RLS policy. Logos are non-sensitive brand assets; writes stay restricted to authenticated org admins via existing policies.
 
-### 1. Two new resolution states on `forms` (DB)
-
-Add nullable columns to `public.forms`:
-- `health_check_disabled boolean default false` — skip the liveness probe entirely for this form
-- `health_check_disabled_reason text` — one of: `not_a_form`, `page_removed`, `intentional`, `other`
-- `health_check_disabled_at timestamptz`
-- `health_check_disabled_by uuid` (auth.uid)
-
-No CHECK constraint on the reason — validate in app/edge layer (per project rules on validation triggers).
-
-### 2. Edge function changes
-- `ingest-form-health`: skip any form where `health_check_disabled = true` (don't upsert a check, don't fire `FORM_NOT_RENDERED` alert).
-- WP probe (`class-forms.php::get_form_page_checks`): query our `/forms-discovery-config` (or just rely on backend filter) — simplest is to filter at edge ingest, no plugin change needed in v1.
-
-### 3. UI: Form Health Panel actions
-
-In `FormHealthPanel.tsx`, when a form is in `not_rendered` state, replace the bare row with an expandable row that exposes a small **"Resolve"** menu:
-
-```
-⛔ Contact Form    Page not found (HTTP 404)              NOT FOUND
-                                                          [Resolve ▾]
-                   ├─ Page was removed → stop checking
-                   ├─ This isn't a real form → stop checking
-                   ├─ Re-check now
-                   └─ Archive form (hide everywhere)
+```sql
+update storage.buckets set public = true where id = 'client-logos';
+create policy "Public read on client-logos"
+  on storage.objects for select to anon, authenticated
+  using (bucket_id = 'client-logos');
 ```
 
-- "Page was removed" → sets `health_check_disabled = true`, reason `page_removed`. Form stays visible in Forms list with a small "Page removed — not monitored" pill.
-- "This isn't a real form" → same mechanism, reason `not_a_form`. Recommended copy: *"We'll stop tracking this. Existing entries (if any) stay in your records."*
-- "Re-check now" → calls a new `recheck-form-health` edge function that triggers a single fetch + detect for that one form (faster than waiting for the hourly cron).
-- "Archive" → existing behavior.
+Also harden `src/lib/report-pdf.ts` and `src/lib/seo-pdf.ts`: before calling `renderSectionsToPdf`, explicitly await `img.decode()` on every `<img>` inside the hidden container so html2canvas captures a fully-loaded logo (current `setTimeout(150)` is insufficient for remote images).
 
-### 4. Forms list visibility
+### 3. Fix: white dot in PDF header
 
-In `src/components/settings/FormsSection.tsx`, add a fourth tab **"Not monitored"** showing forms with `health_check_disabled = true`, with a one-click "Resume monitoring" action. This keeps the decision reversible.
+`src/lib/report-pdf.ts` line 130 and the matching span in `src/lib/seo-pdf.ts` hardcode a 4×4 white circle between brand name and "Activity Report". Remove both spans. Existing `gap:6px` on the parent flex preserves spacing.
 
-### 5. Hero / Needs Attention count
+### 4. Fix: Goal Conversions toggle ignored on re-export
 
-`SiteStatusHero` and any "X forms not rendering" counters must exclude forms where `health_check_disabled = true`. The hero should only nag about *unresolved* render failures.
+**Root cause:** Two issues stacked.
 
-### 6. Discovery hardening (small follow-up, same PR)
+(a) `Reports.tsx:381` reads `(tplResult.data as any)?.sections_config || null` — the `||` collapses any falsy value (including a fresh template that legitimately has all sections off → `[]` truthy, but `null` from no row → "all enabled" via `isSectionEnabled`'s default).
 
-To reduce future false positives from #1 (third-party scripts), tighten `get_form_page_checks` so we **only** enqueue probes for forms that came from a known provider's API (Gravity, CF7, WPForms, Fluent, Ninja, Avada/Fusion). Anything ingested via generic submission listening but never confirmed by a provider API gets `is_probeable = false` and is skipped by the probe. This is the long-term fix; #1–#5 are the user-facing escape valve.
+(b) More importantly, the template **load** in `ReportTemplateBuilder.tsx:169` does not order or limit, while the **download** path (`Reports.tsx:378`) does `.order("created_at", desc).limit(1)`. If a user has multiple template rows for the same `(user_id, org_id)` (which currently has no unique constraint), the builder edits row A and the downloader reads row B. Toggle never applies.
 
-## Out of scope
+**Fix:**
+- Align `ReportTemplateBuilder.tsx` load query to `.order("created_at", { ascending: false }).limit(1).maybeSingle()`.
+- Migration: dedupe and add unique constraint:
+```sql
+delete from report_custom_templates a using report_custom_templates b
+where a.user_id = b.user_id and a.org_id = b.org_id
+  and a.created_at < b.created_at;
+alter table report_custom_templates
+  add constraint report_custom_templates_user_org_unique unique (user_id, org_id);
+```
+- `Reports.tsx:381` — change `|| null` to `?? null` so `[]` is preserved.
 
-- No changes to entries, lead history, or attribution.
-- No edits to WordPress (read-only principle).
-- No removal of the existing Archive flow.
-- No schema changes to `form_health_checks` itself.
+### 5. Fix: wrong fonts on the last page
 
-## Files touched
+**Root cause:** every report section is rendered as an image (html2canvas captures the hidden DOM in `'BR Omega', 'Segoe UI', system-ui'`). But the **footer** on every page — and specifically the only text-rendering on the last page beyond captured sections — is drawn by `jsPDF.text()` directly (`report-pdf.ts:382-399`), which uses jsPDF's built-in Helvetica. The mismatch is most visible on the last page where the footer is the dominant element.
 
-- **Migration** (new): add 4 columns to `public.forms`.
-- `supabase/functions/ingest-form-health/index.ts` — skip disabled forms.
-- `supabase/functions/recheck-form-health/index.ts` (new) — single-form on-demand probe via WP REST or stored `page_url`.
-- `src/components/dashboard/FormHealthPanel.tsx` — Resolve menu + filter out disabled.
-- `src/components/dashboard/SiteStatusHero.tsx` — exclude disabled from `formIssueCount`.
-- `src/components/settings/FormsSection.tsx` — "Not monitored" tab + resume action.
-- `src/pages/FormsTroubleshooting.tsx` — short note explaining the two new resolutions.
+**Fix:** explicitly call `doc.setFont("helvetica", "normal")` is fine — the real fix is to make the **section HTML** use the same web-safe stack the footer falls back to, so they look consistent on every page. Change the root `font-family` in `report-pdf.ts:125` and `seo-pdf.ts` to `"Helvetica, Arial, 'Segoe UI', sans-serif"` (drop `'BR Omega'` which isn't loaded inside html2canvas's offscreen render anyway). Result: captured sections + jsPDF footer all read as the same sans-serif family.
 
-## Acceptance
+### 6. Fix: misleading "Key Win — Leads increased 100%" with insufficient history
 
-- Clicking "Page was removed" on a flagged form makes it disappear from the dashboard's Form Health panel and from the hero's "X forms not rendering" count within a single re-render.
-- The form remains visible in `/forms` with a "Not monitored" pill and can be re-enabled.
-- No `FORM_NOT_RENDERED` alerts are created for disabled forms on the next probe cycle.
-- Archived forms continue to behave exactly as before.
-- No existing entries, leads, or analytics data are altered.
+**Root cause:** `supabase/functions/process-report/index.ts:313` blindly reports `pctChange(totalLeads, prevTotalLeads)` whenever it's positive. With a fresh install, `prevTotalLeads` is often 0 or 1, so any current value produces a misleading "+100% / +∞%" headline. Per memory `[Org Age Awareness]`, WoW comparisons must be suppressed when the install lacks adequate history — same principle applies here.
+
+**Fix in `process-report/index.ts`:**
+- Compute `installAgeDays` from the org's earliest signal (or `org.created_at` as fallback).
+- Compute `previousPeriodCoverage` = how many of `actualDays` the install actually existed for (clamp to 0 when install is younger than `periodStart - actualDays`).
+- Add a guard: only emit a `%`-based Key Win if **both** of these hold:
+  - `previousPeriodCoverage >= actualDays` (i.e., the install was alive for the full prior comparison window), AND
+  - `prevTotalLeads >= 5` (avoid silly small-sample percentages like "1 → 2 = +100%").
+- When the guard fails, fall back to absolute language: `"Captured ${totalLeads} leads in your first ${actualDays} days"` or `"Stable performance maintained"` if there's nothing notable.
+- Same guard applies to `keyRisk` so we don't manufacture a fake "lead volume declined" alarm when prev period was 0 or partial.
+
+### Files touched
+
+- `src/pages/Reports.tsx` — White Label tab + `?? null` fix
+- `src/pages/Settings.tsx` — remove tab + legacy redirect
+- `src/lib/report-pdf.ts` — remove white dot, swap font stack, await image decode
+- `src/lib/seo-pdf.ts` — same font + dot + image fixes
+- `src/components/reports/ReportTemplateBuilder.tsx` — align template load query
+- `supabase/functions/process-report/index.ts` — install-age guard on Key Win/Risk
+- New migration: public `client-logos` bucket + read policy; dedupe `report_custom_templates` + unique constraint
+
+### Acceptance
+
+- Reports page shows White Label tab; Settings no longer does; old `?tab=white-label` redirects
+- After uploading a logo and exporting, the logo renders in the gradient header
+- No white dot between brand and "Activity Report"
+- Toggling Goal Conversions OFF in Customize → re-downloading existing run → PDF has no Goal Conversions section
+- Footer text font matches the body sections on every page including the last
+- A new install (no prior period data) shows Key Win as `"Captured X leads in your first N days"` not `"Leads increased 100%"`. An established org with ≥5 prior leads still gets the percentage callout
+- No regressions in Activity Reports / Customize / Archives / Overview tabs

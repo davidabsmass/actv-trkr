@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import OverviewTab from "@/components/reports/OverviewTab";
 import ArchivesContent from "@/components/archives/ArchivesContent";
 import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
+import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_REPORTS } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
@@ -378,7 +379,7 @@ function ActivityReportsTab() {
         orgId && userId ? supabase.from("report_custom_templates" as any).select("sections_config").eq("user_id", userId).eq("org_id", orgId).order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       const report = await resp.json();
-      const tplConfig = (tplResult.data as any)?.sections_config || null;
+      const tplConfig = (tplResult.data as any)?.sections_config ?? null;
       const { buildReportPdf } = await import("@/lib/report-pdf");
       const doc = await buildReportPdf(report, run, wlResult.data, tplConfig);
       const blob = doc.output("blob");
@@ -639,12 +640,14 @@ export default function Reports() {
           <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.overview")}</TabsTrigger>
           <TabsTrigger value="activity" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.activityReports")}</TabsTrigger>
           <TabsTrigger value="customize" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.customize")}</TabsTrigger>
+          <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">White Label</TabsTrigger>
           <TabsTrigger value="archives" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.archives")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="activity"><ActivityReportsTab /></TabsContent>
         <TabsContent value="customize"><ReportTemplateBuilder /></TabsContent>
+        <TabsContent value="white-label"><WhiteLabelSection /></TabsContent>
         <TabsContent value="archives"><ArchivesContent /></TabsContent>
       </Tabs>
     </div>

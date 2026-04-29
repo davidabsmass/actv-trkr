@@ -185,6 +185,7 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
     errors: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: t("dashboard.formHealthErrors") },
     no_activity: { icon: Clock, color: "text-muted-foreground", bg: "bg-muted", label: t("dashboard.formHealthNoActivity") },
     not_rendered: { icon: EyeOff, color: "text-destructive", bg: "bg-destructive/10", label: t("dashboard.formHealthNotFound") },
+    embedded: { icon: CheckCircle2, color: "text-muted-foreground", bg: "bg-muted", label: "Embedded" },
   };
 
   const hasNotRendered = healthData.some((f) => f.status === "not_rendered");

@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import OverviewTab from "@/components/reports/OverviewTab";
 import ArchivesContent from "@/components/archives/ArchivesContent";
 import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
+import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_REPORTS } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";

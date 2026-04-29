@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CreditCard, FileText, Loader2, ExternalLink, Calendar, AlertTriangle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 type Invoice = {
   id: string;
@@ -83,10 +84,17 @@ const statusBadge = (status: string) => {
 
 export default function BillingDetailsCard() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data, isLoading, error } = useQuery({
-    queryKey: ["billing_details"],
+    queryKey: ["billing_details", user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("get-billing-details");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Not authenticated");
+      const { data, error } = await supabase.functions.invoke("get-billing-details", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       if (error) throw error;
       return data as BillingData;
     },

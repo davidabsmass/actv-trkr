@@ -339,7 +339,7 @@ async function runDirectFormChecks(
 ) {
   const { data: forms, error: formsError } = await supabase
     .from("forms")
-    .select("id, name, provider, external_form_id, page_url")
+    .select("id, name, provider, external_form_id, page_url, is_active, health_check_disabled")
     .eq("org_id", orgId)
     .eq("site_id", siteId)
     .eq("archived", false);
@@ -349,7 +349,24 @@ async function runDirectFormChecks(
     return { checked: 0, updatedPageUrls: 0, alertsCreated: 0 };
   }
 
-  const { forms: hydratedForms, updatedPageUrls } = await hydrateMissingPageUrls(supabase, orgId, siteId, forms as FormRow[]);
+  // Forms disabled in WP or muted by the user shouldn't be probed and
+  // shouldn't carry stale "not rendered" health rows that drive the
+  // dashboard "Needs Attention" banner. Clean those up first.
+  const muted = (forms as Array<FormRow & { is_active?: boolean | null; health_check_disabled?: boolean | null }>)
+    .filter((f) => f.is_active === false || f.health_check_disabled === true);
+  if (muted.length > 0) {
+    await supabase
+      .from("form_health_checks")
+      .update({ is_rendered: true, last_failure_reason: null })
+      .in("form_id", muted.map((f) => f.id));
+  }
+  const probeable = (forms as Array<FormRow & { is_active?: boolean | null; health_check_disabled?: boolean | null }>)
+    .filter((f) => f.is_active !== false && f.health_check_disabled !== true);
+  if (probeable.length === 0) {
+    return { checked: 0, updatedPageUrls: 0, alertsCreated: 0 };
+  }
+
+  const { forms: hydratedForms, updatedPageUrls } = await hydrateMissingPageUrls(supabase, orgId, siteId, probeable as FormRow[]);
 
   let checked = 0;
   let alertsCreated = 0;

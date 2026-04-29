@@ -77,12 +77,29 @@ Deno.serve(async (req) => {
       });
     } catch (_) { /* ignore */ }
 
-    // Trigger the actual password-reset email through Supabase.
+    // Generate a recovery OTP without sending the scanner-sensitive magic link,
+    // then send our own code-based reset email.
     try {
-      // resetPasswordForEmail is also exposed via admin client; falling back via auth API.
-      await admin.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined);
+      const { data, error } = await admin.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: redirectTo ? { redirectTo } : undefined,
+      });
+      if (error) throw error;
+      const resetCode = data?.properties?.email_otp;
+      if (!resetCode) throw new Error("Recovery code was not generated");
+      const resetUrl = `${redirectTo || "https://actvtrkr.com/reset-password"}?email=${encodeURIComponent(email)}`;
+      const { error: emailError } = await admin.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "password-reset",
+          recipientEmail: email,
+          idempotencyKey: `password-reset-${email}-${Date.now()}`,
+          templateData: { resetCode, resetUrl },
+        },
+      });
+      if (emailError) throw emailError;
     } catch (e) {
-      console.error("resetPasswordForEmail failed", (e as Error).message);
+      console.error("password reset email failed", (e as Error).message);
     }
 
     // Look up user (if exists) so we can send the security alert email.

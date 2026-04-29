@@ -22,7 +22,7 @@ import SupportInbox from "@/components/admin/SupportInbox";
 import MarketingContactsPanel from "@/components/admin/MarketingContactsPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
-type AdminMainTab = "clients" | "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access" | "marketing-contacts";
+type AdminMainTab = "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access" | "marketing-contacts";
 
 function FeatureUsageWidget() {
   const { data } = useQuery({
@@ -340,7 +340,7 @@ export default function AdminSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "support-inbox" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access" || tab === "marketing-contacts") {
+    if (tab === "metrics" || tab === "subscriber-sites" || tab === "support-inbox" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access" || tab === "marketing-contacts") {
       setActiveMainTab(tab);
     } else if (tab === "app-bible") {
       // Legacy redirect: Launch Checklist removed, send users to Release QA
@@ -945,12 +945,6 @@ export default function AdminSetup() {
             Subscriber Sites
           </button>
           <button
-            onClick={() => switchMainTab("clients")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Clients
-          </button>
-          <button
             onClick={() => switchMainTab("support-inbox")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "support-inbox" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
           >
@@ -1007,113 +1001,11 @@ export default function AdminSetup() {
         <SubscriberSitesPanel />
       )}
 
-      {(activeMainTab === "metrics" || activeMainTab === "clients") && isAdminUser && (
-        <div className="mb-6">
-          <ImportHealthPanel />
-        </div>
-      )}
-
-      {activeMainTab === "clients" && (
-        <>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t("admin.searchOrganizations")}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-            <select
-              value={filterFocus}
-              onChange={(e) => setFilterFocus(e.target.value)}
-              className="px-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground"
-            >
-              <option value="">{t("admin.allFocusTypes")}</option>
-              <option value="lead_volume">{t("admin.leadVolume")}</option>
-              <option value="marketing_impact">{t("admin.marketingImpact")}</option>
-              <option value="conversion_performance">{t("admin.conversionPerformance")}</option>
-              <option value="paid_optimization">{t("admin.paidOptimization")}</option>
-            </select>
-            <select
-              value={filterOnboarding}
-              onChange={(e) => setFilterOnboarding(e.target.value)}
-              className="px-3 py-2 text-sm bg-white border border-border rounded-lg text-foreground"
-            >
-              <option value="">{t("admin.allOnboarding")}</option>
-              <option value="complete">{t("admin.complete")}</option>
-              <option value="incomplete">{t("admin.incomplete")}</option>
-            </select>
-          </div>
-
-          <div className="glass-card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.organization")}</th>
-                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Tier</th>
-                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden md:table-cell">{t("admin.domain")}</th>
-                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.focus")}</th>
-                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground">{t("admin.onboarded")}</th>
-                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground hidden lg:table-cell">{t("admin.lastChange")}</th>
-                   <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground"></th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {enrichedOrgs.map((org) => {
-                   const tier = isClientTier(org.name) ? "client" : "paid";
-                   const isDeleting = deletingOrgId === org.id;
-                   return (
-                   <tr key={org.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelectedOrg(org.id)}>
-                     <td className="px-4 py-3 font-medium text-foreground">{org.name}</td>
-                     <td className="px-4 py-3">
-                       <Badge variant={tier === "client" ? "secondary" : "default"} className="text-[10px]">
-                         {tier === "client" ? "Client" : "Paid"}
-                       </Badge>
-                     </td>
-                     <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{org.sites?.[0]?.domain || "—"}</td>
-                     <td className="px-4 py-3">
-                       <span className="text-xs">{focusLabels[org.settings?.primary_focus] || "—"}</span>
-                     </td>
-                     <td className="px-4 py-3 text-center">
-                       {org.settings?.onboarding_completed ? (
-                         <span className="text-xs text-success">✅</span>
-                       ) : (
-                         <span className="text-xs text-muted-foreground">⏳</span>
-                       )}
-                     </td>
-                     <td className="px-4 py-3 text-xs text-muted-foreground hidden lg:table-cell">
-                       {org.lastEvent ? format(new Date(org.lastEvent), "MMM d, HH:mm") : "—"}
-                     </td>
-                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                       <span className="text-xs text-primary mr-3">{t("admin.view")}</span>
-                       {isOwner && (
-                         <button
-                           onClick={(e) => { e.stopPropagation(); handleDeleteOrg(org.id, org.name); }}
-                           disabled={isDeleting}
-                           className="text-xs text-destructive hover:text-destructive/80 disabled:opacity-50 inline-flex items-center gap-1"
-                           title="Remove client (owner only)"
-                         >
-                           {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
-                           Remove
-                         </button>
-                       )}
-                     </td>
-                   </tr>
-                   );
-                 })}
-                 {enrichedOrgs.length === 0 && (
-                   <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">{t("admin.noOrgsFound")}</td></tr>
-                 )}
-               </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
       {activeMainTab === "metrics" && isAdminUser && (
         <div className="space-y-6">
+          <div className="mb-6">
+            <ImportHealthPanel />
+          </div>
           {/* KPIs — Top-line */}
           {(() => {
             const arr = totalMrr * 12;

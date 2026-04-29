@@ -24,9 +24,9 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const token = String(body?.token ?? "").trim();
-    const password = String(body?.password ?? "");
+    const password = typeof body?.password === "string" ? String(body.password) : "";
 
-    if (!token || password.length < 6) return json({ error: "invalid_request" }, 400);
+    if (!token) return json({ error: "invalid_request" }, 400);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -43,6 +43,9 @@ Deno.serve(async (req) => {
     if (!resetRow || resetRow.consumed_at || new Date(resetRow.expires_at).getTime() < Date.now()) {
       return json({ error: "invalid_or_expired" }, 400);
     }
+
+    if (!password) return json({ ok: true, email: resetRow.email });
+    if (password.length < 6) return json({ error: "invalid_request" }, 400);
 
     const { error: updateError } = await admin.auth.admin.updateUserById(resetRow.user_id, {
       password,

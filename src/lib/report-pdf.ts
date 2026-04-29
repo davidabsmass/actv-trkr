@@ -314,7 +314,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
       if (!gc || !gc.goals?.length) return "";
       let s = sectionStart("🎯", "Key Actions");
       s += `<div style="font-size:11px;color:#6b6f80;margin-bottom:12px">${gc.totalCompletions} total completions across ${gc.goals.length} Key Action(s)</div>`;
-      s += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+      s += `<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
         <thead><tr style="border-bottom:1px solid #e4e6ed;text-align:left">
           <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Key Action</th>
           <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Type</th>

@@ -68,6 +68,8 @@ const Performance = () => {
   const { data: realtimeData } = useRealtimeDashboard(orgId, startDate, endDate, orgCreatedAt);
   const { data: overviewData } = useDashboardOverview(orgId, startDate, endDate, orgCreatedAt);
   const { data: prevOverviewData } = useDashboardOverview(orgId, prevStartDate, prevEndDate, orgCreatedAt);
+  const { data: keyActionsData } = useKeyActions(orgId, startDate, endDate, orgCreatedAt);
+  const { data: prevKeyActionsData } = useKeyActions(orgId, prevStartDate, prevEndDate, orgCreatedAt);
 
   const isLoading = !realtimeData;
 

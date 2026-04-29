@@ -226,10 +226,10 @@ const ResetPassword = () => {
     setLoading(true);
     try {
       if (resetToken) {
-        const { error: resetErr } = await supabase.functions.invoke("complete-password-reset", {
+        const { data: resetData, error: resetErr } = await supabase.functions.invoke("complete-password-reset", {
           body: { token: resetToken, password },
         });
-        if (resetErr) throw new Error("This reset link is invalid or has expired. Please request a new one.");
+        if (resetErr || resetData?.ok === false) throw new Error("This reset link is invalid or has expired. Please request a new one.");
       } else {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;

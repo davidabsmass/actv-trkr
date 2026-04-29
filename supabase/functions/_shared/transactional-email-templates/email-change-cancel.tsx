@@ -131,7 +131,7 @@ const contentSection = { padding: '32px 32px 40px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 20px', lineHeight: '1.3' }
 const text = { fontSize: '15px', color: '#4B5563', lineHeight: '1.7', margin: '0 0 16px' }
 const smallText = { fontSize: '12px', color: '#6B7280', lineHeight: '1.6', margin: '8px 0 0', wordBreak: 'break-all' as const }
-const metaWrap = { margin: '20px 0 24px', padding: '14px 16px', backgroundColor: '#F9FAFB', borderRadius: '8px' }
+const metaWrap = { margin: '20px 0 24px', padding: '14px 16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'left' as const}
 const metaText = { fontSize: '13px', color: '#374151', margin: '3px 0', lineHeight: '1.5' }
 const ctaWrap = { textAlign: 'center' as const, margin: '24px 0 12px' }
 const ctaButton = {
@@ -142,8 +142,7 @@ const ctaButton = {
   fontSize: '15px',
   fontWeight: '600' as const,
   textDecoration: 'none',
-  display: 'inline-block',
-}
+  display: 'inline-block', textAlign: 'left' as const}
 const link = { color: '#00264D', textDecoration: 'underline' }
 const hr = { borderColor: '#E5E7EB', margin: '28px 0 18px' }
 const signoff = { fontSize: '15px', color: '#4B5563', margin: '0', lineHeight: '1.5' }

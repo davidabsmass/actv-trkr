@@ -14,7 +14,7 @@ const Email = ({ account_name, billing_update_url, support_email }: Props) => (
         <Section style={{ background: '#1e1410', borderLeft: '3px solid #ef4444', borderRadius: 8, padding: 16, margin: '16px 0' }}>
           <Text style={{ margin: 0, color: '#fca5a5' }}>If we can't recover the payment in the next few days, your account will be paused.</Text>
         </Section>
-        <Button href={billing_update_url || 'https://actvtrkr.com/account'} style={{ background: '#ef4444', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none' }}>Update payment method</Button>
+        <Button href={billing_update_url || 'https://actvtrkr.com/account'} style={{ background: '#ef4444', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', textAlign: 'left'}}>Update payment method</Button>
         <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 24 }}>Questions? Reply to this email or write to {support_email || 'david@absmass.com'}.</Text>
       </Container>
     </Body>

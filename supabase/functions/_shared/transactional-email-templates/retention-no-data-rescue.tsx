@@ -16,7 +16,7 @@ const Email = ({ account_name, setup_url, support_email }: Props) => (
           <Text style={{ margin: '6px 0 0 0' }}>2. Paste your API key in <em>Settings → ACTV TRKR</em></Text>
           <Text style={{ margin: '6px 0 0 0' }}>3. Visit any page on your site to confirm</Text>
         </Section>
-        <Button href={setup_url || 'https://actvtrkr.com/get-started'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none' }}>Open setup guide</Button>
+        <Button href={setup_url || 'https://actvtrkr.com/get-started'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', textAlign: 'left'}}>Open setup guide</Button>
         <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 24 }}>Stuck? Reply to this email or write to {support_email || 'david@absmass.com'} — we'll jump in.</Text>
       </Container>
     </Body>

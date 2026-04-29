@@ -115,15 +115,13 @@ const codeStyle = {
   backgroundColor: '#F3F4F6',
   borderRadius: '12px',
   padding: '18px 24px',
-  margin: '0',
-}
+  margin: '0', textAlign: 'left' as const}
 
 const metaWrap = {
   marginTop: '24px',
   padding: '12px 16px',
   backgroundColor: '#F9FAFB',
-  borderRadius: '8px',
-}
+  borderRadius: '8px', textAlign: 'left' as const}
 
 const metaText = {
   fontSize: '12px',

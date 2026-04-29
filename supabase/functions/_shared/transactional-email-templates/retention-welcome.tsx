@@ -15,7 +15,7 @@ const Email = ({ account_name, dashboard_url, setup_url }: Props) => (
           <Text style={{ margin: 0 }}><strong>1.</strong> Install the WordPress plugin</Text>
           <Text style={{ margin: '8px 0 0 0' }}><strong>2.</strong> Add your site &amp; activate</Text>
         </Section>
-        <Button href={setup_url || dashboard_url || 'https://actvtrkr.com/get-started'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none' }}>Open setup guide</Button>
+        <Button href={setup_url || dashboard_url || 'https://actvtrkr.com/get-started'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', textAlign: 'left'}}>Open setup guide</Button>
         <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 24 }}>Reply to this email if you need a hand — we read every message.</Text>
       </Container>
     </Body>

@@ -152,8 +152,7 @@ const button = {
   borderRadius: '12px',
   padding: '14px 32px',
   textDecoration: 'none',
-  display: 'inline-block',
-}
+  display: 'inline-block', textAlign: 'left' as const}
 
 const signoff = {
   fontSize: '15px',

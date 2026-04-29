@@ -155,12 +155,12 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
       if (me("executiveSummary", "leads")) s += kpiCard("Leads", es.leads.current, es.leads.change);
       if (me("executiveSummary", "sessions")) s += kpiCard("Sessions", fmtNum(es.sessions.current), es.sessions.change);
       if (me("executiveSummary", "pageviews")) s += kpiCard("Pageviews", fmtNum(es.pageviews.current), es.pageviews.change);
-      if (me("executiveSummary", "cvr")) s += kpiCard("CVR", `${es.cvr.current}%`, es.cvr.change);
+      if (me("executiveSummary", "cvr")) s += kpiCard("Action Rate", `${es.cvr.current}%`, es.cvr.change);
       if (me("executiveSummary", "weightedLeads") && es.weightedLeads) s += kpiCard("Weighted Leads", es.weightedLeads, null);
       s += `</div>`;
       if (me("executiveSummary", "goal") && es.goalTarget) {
         const pct = Math.round((es.leads.current / es.goalTarget) * 100);
-        s += `<div style="font-size:11px;color:#6b6f80;margin-bottom:10px">🎯 Monthly goal: ${es.goalTarget} leads · ${pct}% achieved</div>`;
+        s += `<div style="font-size:11px;color:#6b6f80;margin-bottom:10px">🎯 Monthly target: ${es.goalTarget} form submissions · ${pct}% achieved</div>`;
       }
       s += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">`;
       if (me("executiveSummary", "keyWin")) {
@@ -245,7 +245,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
             <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Category</th>
             <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Weight</th>
             <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Leads</th>
-            <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">CVR</th>
+            <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Action Rate</th>
             <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Failures</th>
             </tr></thead><tbody>`;
         ci.leadsByForm.forEach((f: any) => {
@@ -306,11 +306,11 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
     goalConversions: () => {
       const gc = report.goalConversions;
       if (!gc || !gc.goals?.length) return "";
-      let s = sectionStart("🎯", "Goal Conversions");
-      s += `<div style="font-size:11px;color:#6b6f80;margin-bottom:12px">${gc.totalCompletions} total completions across ${gc.goals.length} goal(s)</div>`;
+      let s = sectionStart("🎯", "Key Actions");
+      s += `<div style="font-size:11px;color:#6b6f80;margin-bottom:12px">${gc.totalCompletions} total completions across ${gc.goals.length} Key Action(s)</div>`;
       s += `<table style="width:100%;border-collapse:collapse;font-size:11px">
         <thead><tr style="border-bottom:1px solid #e4e6ed;text-align:left">
-          <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Goal</th>
+          <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Key Action</th>
           <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Type</th>
           <th style="padding:6px 8px;font-weight:500;color:#6b6f80;text-align:right">Completions</th>
         </tr></thead><tbody>`;

@@ -170,7 +170,7 @@ const App = () => (
               <Route path="dashboard" element={<OwnerDashboardRedirect><Dashboard /></OwnerDashboardRedirect>} />
               <Route path="performance" element={<Performance />} />
               <Route path="visitor-journeys" element={<VisitorJourneys />} />
-              <Route path="site-contacts" element={<SiteContacts />} />
+              <Route path="site-contacts" element={<OwnerOnly><SiteContacts /></OwnerOnly>} />
               <Route path="forms" element={<Forms />} />
               <Route path="forms/troubleshooting" element={<FormsTroubleshooting />} />
               <Route path="entries" element={<Navigate to="/forms" replace />} />

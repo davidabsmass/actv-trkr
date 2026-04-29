@@ -34,7 +34,7 @@ const Email = ({ name, graceEndsAt }: Props) => (
           <Text style={text}>
             Reactivate any time before then and your dashboards, reports, sites, and history will pick up exactly where you left off.
           </Text>
-          <Section style={{ textAlign: 'center', margin: '28px 0' }}>
+          <Section style={{ textAlign: 'left', margin: '28px 0' }}>
             <Button href={`${APP_URL}/account`} style={btn}>Reactivate subscription</Button>
           </Section>
           <Text style={signoff}>Thanks,</Text>

@@ -101,7 +101,7 @@ const text = {
 }
 
 const codeWrap = {
-  textAlign: 'center' as const,
+  textAlign: 'left' as const,
   margin: '28px 0',
 }
 

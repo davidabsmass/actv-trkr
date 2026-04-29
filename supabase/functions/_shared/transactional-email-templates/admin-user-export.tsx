@@ -39,7 +39,7 @@ const AdminUserExportEmail = ({
           creation date, and last login.
         </Text>
 
-        <Section style={{ textAlign: 'center', margin: '24px 0' }}>
+        <Section style={{ textAlign: 'left', margin: '24px 0' }}>
           <Button href={downloadUrl} style={button}>
             Download CSV
           </Button>

@@ -140,7 +140,7 @@ const text = {
 }
 
 const buttonWrap = {
-  textAlign: 'center' as const,
+  textAlign: 'left' as const,
   margin: '28px 0',
 }
 

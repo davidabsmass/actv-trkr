@@ -31,7 +31,7 @@ const Email = ({ name, archiveDate }: Props) => (
           <Text style={text}>
             Once archived, your dashboards become read-only. You can still reactivate after that, but it's quicker and smoother to do it now while everything is live.
           </Text>
-          <Section style={{ textAlign: 'center', margin: '28px 0' }}>
+          <Section style={{ textAlign: 'left', margin: '28px 0' }}>
             <Button href={`${APP_URL}/account`} style={btn}>Reactivate subscription</Button>
           </Section>
           <Text style={signoff}>Thanks,</Text>

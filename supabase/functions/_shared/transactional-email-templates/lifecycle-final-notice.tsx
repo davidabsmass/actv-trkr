@@ -34,7 +34,7 @@ const Email = ({ name, deletionDate }: Props) => (
           <Text style={text}>
             If you'd like to keep your data and resume tracking, reactivate now — it takes less than a minute.
           </Text>
-          <Section style={{ textAlign: 'center', margin: '28px 0' }}>
+          <Section style={{ textAlign: 'left', margin: '28px 0' }}>
             <Button href={`${APP_URL}/account`} style={btn}>Reactivate now</Button>
           </Section>
           <Text style={signoff}>Thanks,</Text>

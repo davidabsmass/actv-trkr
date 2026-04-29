@@ -399,7 +399,11 @@ export async function buildReportPdf(report: any, _run: any, whiteLabel?: WhiteL
     const fbR = parseInt(footerBrandHex.slice(1, 3), 16);
     const fbG = parseInt(footerBrandHex.slice(3, 5), 16);
     const fbB = parseInt(footerBrandHex.slice(5, 7), 16);
-    const footerBrand = (whiteLabel?.hide_actv_branding || whiteLabel?.logo_url) ? (whiteLabel?.client_name || "") : "ACTV TRKR";
+    const footerBrand = whiteLabel?.logo_url
+      ? ""
+      : whiteLabel?.hide_actv_branding
+        ? (whiteLabel?.client_name || "")
+        : "ACTV TRKR";
 
     const footerRenderer = (d: jsPDF, page: number, totalPages: number) => {
       d.setFillColor(245, 246, 250);

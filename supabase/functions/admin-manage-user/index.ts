@@ -704,7 +704,7 @@ Deno.serve(async (req) => {
       }
       const { data: members, error: mErr } = await adminClient
         .from("org_users")
-        .select("user_id, role, created_at")
+        .select("user_id, role, status, created_at, invited_at, invite_accepted_at")
         .eq("org_id", orgId);
       if (mErr) {
         return new Response(JSON.stringify({ error: mErr.message }), {
@@ -719,7 +719,10 @@ Deno.serve(async (req) => {
       const enriched = (members || []).map((m: any) => ({
         user_id: m.user_id,
         role: m.role,
+        status: m.status,
         joined_at: m.created_at,
+        invited_at: m.invited_at,
+        invite_accepted_at: m.invite_accepted_at,
         email: profileMap.get(m.user_id)?.email || null,
         full_name: profileMap.get(m.user_id)?.full_name || null,
       }));
@@ -788,17 +791,61 @@ Deno.serve(async (req) => {
           .eq("user_id", targetUserId);
       }
 
+      const sendPasswordSetupEmail = async (idempotencyPrefix: string) => {
+        const { data: linkData } = await adminClient.auth.admin.generateLink({
+          type: "recovery", email,
+          options: { redirectTo: "https://actvtrkr.com/reset-password" },
+        });
+        const setPasswordUrl = linkData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+        await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceRoleKey}`,
+            "apikey": serviceRoleKey,
+          },
+          body: JSON.stringify({
+            templateName: "team-invite",
+            recipientEmail: email,
+            idempotencyKey: `${idempotencyPrefix}-${targetUserId}-${orgId}-${Date.now()}`,
+            templateData: { name: fullName || undefined, setPasswordUrl, role: assignRole },
+          }),
+        });
+      };
+
       // Check if already a member
       const { data: existing } = await adminClient
-        .from("org_users").select("id, role").eq("org_id", orgId).eq("user_id", targetUserId).maybeSingle();
+        .from("org_users").select("id, role, status").eq("org_id", orgId).eq("user_id", targetUserId).maybeSingle();
       if (existing) {
+        if (existing.status === "invited" && sendInviteEmail && !tempPassword) {
+          await adminClient
+            .from("org_users")
+            .update({ role: assignRole, invited_at: new Date().toISOString() })
+            .eq("id", existing.id);
+          try { await sendPasswordSetupEmail("team-invite-resend"); } catch { /* non-fatal */ }
+          return new Response(JSON.stringify({
+            success: true,
+            user_id: targetUserId,
+            was_created: wasCreated,
+            already_invited: true,
+            role: assignRole,
+          }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
+        }
         return new Response(JSON.stringify({ error: "User is already a member of this organization" }), {
           status: 409, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
+      const nowIso = new Date().toISOString();
       const { error: insErr } = await adminClient.from("org_users")
-        .insert({ org_id: orgId, user_id: targetUserId, role: assignRole });
+        .insert({
+          org_id: orgId,
+          user_id: targetUserId,
+          role: assignRole,
+          invited_by: caller.id,
+          status: sendInviteEmail && !tempPassword ? "invited" : "active",
+          invited_at: sendInviteEmail && !tempPassword ? nowIso : null,
+        });
       if (insErr) {
         return new Response(JSON.stringify({ error: insErr.message }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
@@ -809,27 +856,7 @@ Deno.serve(async (req) => {
       // - If a temp password was set, DON'T email a recovery link (admin will share the temp password directly)
       // - Otherwise, send the password-setup email so they can choose their own password
       if (sendInviteEmail && !tempPassword) {
-        try {
-          const { data: linkData } = await adminClient.auth.admin.generateLink({
-            type: "recovery", email,
-            options: { redirectTo: "https://actvtrkr.com/reset-password" },
-          });
-          const setPasswordUrl = linkData?.properties?.action_link || "https://actvtrkr.com/reset-password";
-          await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${serviceRoleKey}`,
-              "apikey": serviceRoleKey,
-            },
-            body: JSON.stringify({
-              templateName: "welcome",
-              recipientEmail: email,
-              idempotencyKey: `add-org-${targetUserId}-${orgId}-${Date.now()}`,
-              templateData: { name: fullName || undefined, setPasswordUrl },
-            }),
-          });
-        } catch { /* non-fatal */ }
+        try { await sendPasswordSetupEmail("team-invite"); } catch { /* non-fatal */ }
       }
 
       return new Response(JSON.stringify({

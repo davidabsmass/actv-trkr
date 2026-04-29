@@ -188,6 +188,12 @@ const ResetPassword = () => {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
 
+      try {
+        await (supabase as any).rpc("mark_invite_accepted");
+      } catch (inviteErr) {
+        console.warn("[reset] invite acceptance marker failed", inviteErr);
+      }
+
       completedRef.current = true;
 
       // Force a clean sign-out everywhere so the recovery session cannot

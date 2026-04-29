@@ -41,6 +41,7 @@ import {
   EyeOff,
   RefreshCw,
   Copy,
+  Mail,
 } from "lucide-react";
 
 type Org = {
@@ -54,7 +55,16 @@ type Org = {
 };
 type Site = { id: string; domain: string; org_id: string; last_heartbeat_at: string | null };
 type ApiKey = { id: string; org_id: string; created_at: string; revoked_at: string | null; label: string };
-type Member = { user_id: string; role: string; joined_at: string; email: string | null; full_name: string | null };
+type Member = {
+  user_id: string;
+  role: string;
+  status?: string | null;
+  joined_at: string;
+  invited_at?: string | null;
+  invite_accepted_at?: string | null;
+  email: string | null;
+  full_name: string | null;
+};
 
 export default function SubscriberSitesPanel() {
   const queryClient = useQueryClient();
@@ -223,6 +233,23 @@ export default function SubscriberSitesPanel() {
       toast.success(`Password reset email sent to ${email}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to send reset");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleInviteAction = async (orgId: string, userId: string, action: "resend" | "cancel") => {
+    if (action === "cancel" && !confirm("Cancel this pending invitation?")) return;
+    setActionLoading(`${action}-invite-${userId}`);
+    try {
+      const { error } = await supabase.functions.invoke("manage-org-invite", {
+        body: { action, orgId, targetUserId: userId },
+      });
+      if (error) throw error;
+      toast.success(action === "resend" ? "Invitation resent" : "Invitation cancelled");
+      refreshMembers();
+    } catch (err: any) {
+      toast.error(err.message || `Failed to ${action} invite`);
     } finally {
       setActionLoading(null);
     }
@@ -681,13 +708,26 @@ export default function SubscriberSitesPanel() {
                                               </SelectContent>
                                             </Select>
                                           ) : (
-                                            <Badge variant={m.role === "admin" ? "default" : "outline"}>
-                                              {m.role}
-                                            </Badge>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <Badge variant={m.role === "admin" ? "default" : "outline"}>
+                                                {m.role}
+                                              </Badge>
+                                              {m.status === "invited" && (
+                                                <Badge variant="secondary" className="gap-1">
+                                                  <Mail className="h-3 w-3" /> Pending
+                                                </Badge>
+                                              )}
+                                            </div>
                                           )}
                                         </TableCell>
                                         <TableCell className="text-xs">
-                                          {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "—"}
+                                          {m.status === "invited"
+                                            ? m.invited_at
+                                              ? `Invited ${new Date(m.invited_at).toLocaleDateString()}`
+                                              : "Invited"
+                                            : m.joined_at
+                                              ? new Date(m.joined_at).toLocaleDateString()
+                                              : "—"}
                                         </TableCell>
                                         <TableCell>
                                           <div className="flex gap-1 flex-wrap">
@@ -716,6 +756,37 @@ export default function SubscriberSitesPanel() {
                                                 >
                                                   <X className="h-3 w-3 mr-1" />
                                                   Cancel
+                                                </Button>
+                                              </>
+                                            ) : m.status === "invited" ? (
+                                              <>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => handleInviteAction(r.org.id, m.user_id, "resend")}
+                                                  disabled={actionLoading === `resend-invite-${m.user_id}`}
+                                                >
+                                                  {actionLoading === `resend-invite-${m.user_id}` ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <RefreshCw className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Resend
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-7 text-xs text-destructive hover:text-destructive"
+                                                  onClick={() => handleInviteAction(r.org.id, m.user_id, "cancel")}
+                                                  disabled={actionLoading === `cancel-invite-${m.user_id}`}
+                                                >
+                                                  {actionLoading === `cancel-invite-${m.user_id}` ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <X className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Cancel invite
                                                 </Button>
                                               </>
                                             ) : (

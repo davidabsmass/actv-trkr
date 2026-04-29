@@ -929,7 +929,7 @@ function parseCsvText(text: string): Record<string, string>[] {
   });
 }
 
-function FormDetail({ form, orgId, leadCount, onBack }: { form: any; orgId: string | null; leadCount: number; onBack: () => void }) {
+function FormDetail({ form, orgId, leadCount, onBack, autoOpenExport = false, onAutoOpenConsumed }: { form: any; orgId: string | null; leadCount: number; onBack: () => void; autoOpenExport?: boolean; onAutoOpenConsumed?: () => void }) {
   const queryClient = useQueryClient();
   const [importing, setImporting] = useState(false);
 

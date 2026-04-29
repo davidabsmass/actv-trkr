@@ -522,9 +522,25 @@ function ActivityReportsTab() {
           ) : (
             <p className="text-xs text-muted-foreground">{format(dateFrom, "MMM d")} – {format(dateTo, "MMM d, yyyy")}</p>
           )}
-          <Button className="sm:ml-auto" onClick={() => generateReport.mutate()} disabled={generateReport.isPending}>
-            {generateReport.isPending ? t("reports.generatingReport") : t("reports.generateReport")}
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-xs font-medium text-muted-foreground">Template:</label>
+            <Select
+              value={selectedTemplateId ?? "__default__"}
+              onValueChange={(v) => onPickTemplate(v === "__default__" ? "" : v)}
+            >
+              <SelectTrigger className="h-8 w-[240px] text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">Default (all sections)</SelectItem>
+                {(templates || []).map((tt: any) => (
+                  <SelectItem key={tt.id} value={tt.id}>{tt.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">Used for PDF exports.</span>
+            <Button className="sm:ml-auto" onClick={() => generateReport.mutate()} disabled={generateReport.isPending}>
+              {generateReport.isPending ? t("reports.generatingReport") : t("reports.generateReport")}
+            </Button>
+          </div>
         </div>
       </div>
 

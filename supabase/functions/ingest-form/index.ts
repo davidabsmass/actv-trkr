@@ -546,14 +546,14 @@ Deno.serve(async (req) => {
     let existingLeadRows: any[] = [];
     let existingLeadError: any = null;
 
-    // Primary lookup: dedicated column
+    // Primary lookup: canonical dedup key (covers all legacy Avada ID variants too)
     const { data: colLeads, error: colErr } = await supabase
       .from("leads")
       .select("id, submitted_at, status, created_at")
       .eq("org_id", orgId)
       .eq("site_id", siteId)
       .eq("form_id", formId)
-      .eq("external_entry_id", extEntryId)
+      .eq("external_entry_key", externalEntryKey)
       .order("submitted_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(25);
@@ -563,14 +563,14 @@ Deno.serve(async (req) => {
     } else if (colLeads && colLeads.length > 0) {
       existingLeadRows = colLeads;
     } else {
-      // Fallback: JSONB contains (for rows not yet backfilled)
+      // Fallback: legacy external_entry_id column (for rows pre-key backfill, defensive)
       const { data: jsonLeads, error: jsonErr } = await supabase
         .from("leads")
         .select("id, submitted_at, status, created_at")
         .eq("org_id", orgId)
         .eq("site_id", siteId)
         .eq("form_id", formId)
-        .contains("data", { external_entry_id: extEntryId })
+        .eq("external_entry_id", extEntryId)
         .order("submitted_at", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(25);

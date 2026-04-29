@@ -71,7 +71,13 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
   const brandPrimary = wl?.primary_color || "#635bff";
   const brandSecondary = wl?.secondary_color || "#9449e0";
   const brandGradientStart = wl?.primary_color || "#6d5dd4";
-  const brandName = (wl?.hide_actv_branding || wl?.logo_url) ? (wl?.client_name || "") : "ACTV TRKR";
+  // If a logo is uploaded, the logo IS the brand identity — no text name.
+  // Otherwise show the client name (when branding is hidden) or ACTV TRKR.
+  const brandName = wl?.logo_url
+    ? ""
+    : wl?.hide_actv_branding
+      ? (wl?.client_name || "")
+      : "ACTV TRKR";
   const brandAccent = wl?.accent_color || brandPrimary;
   const es = report.executiveSummary;
   const ge = report.growthEngine;

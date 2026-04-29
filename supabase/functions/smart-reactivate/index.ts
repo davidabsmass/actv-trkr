@@ -30,6 +30,7 @@ serve(async (req) => {
     });
 
   try {
+    console.log("[smart-reactivate] start");
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) return json(500, { error: "STRIPE_SECRET_KEY not configured" });
 
@@ -48,6 +49,7 @@ serve(async (req) => {
       return json(401, { error: "Not authenticated" });
     }
     const user = userData.user;
+    console.log("[smart-reactivate] user", user.email);
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://actvtrkr.com";

@@ -1,77 +1,83 @@
 ## Problem
 
-On `Account → Security → Change password`, two issues:
+The Form Health probe is correctly *detecting* "form markup not present on page", but two of its current hits are false positives:
 
-1. **Fields prepopulate.** The browser/password manager autofills the saved password into "New password" and "Confirm password" because the inputs have no `autocomplete` hints and no distinguishing `name` attributes. So if anyone opens that page on a logged-in browser, the new password is already filled in — one click away from being changed.
-2. **No second factor on the change.** Today the flow is just `supabase.auth.updateUser({ password })` — anyone with an open session (stolen laptop, shared browser, session hijack) can reset the password and lock the real owner out. We only send a *notification* email after the fact.
+1. **Third-party script masquerading as a form** — discovery picked up a vendor widget (e.g. an embedded chat/booking script) as a "form". It will never render via our shortcode/block detector, so it permanently shows as broken.
+2. **Form on a deleted page** — the form still exists in WP, but the page that used to host it is gone (404). The form isn't broken; the page is.
 
-## Fix
+Today the only escape valve is **Archive** in Settings → Forms, which hides the form everywhere — including from entry counts and history. That's too blunt for "this is real but not what you think it is" cases.
 
-### Part A — Stop the autofill (UI hardening, `src/pages/Account.tsx`)
+## Goal
 
-On both password `<Input>`s on the Change Password card:
-- `autoComplete="new-password"`
-- `name="new-password"` / `name="confirm-new-password"`
-- `spellCheck={false}`, `autoCorrect="off"`, `autoCapitalize="off"`
-- Add a hidden honeypot `<input type="password" autoComplete="current-password" tabIndex={-1} className="hidden" aria-hidden />` above the real fields so password managers fill *that* one instead of the new ones (standard pattern, same trick already used on `ResetPassword.tsx`).
-- Wrap the two inputs + button in a real `<form onSubmit>` with `autoComplete="off"` so Chrome respects the hint.
-- Clear both fields in a `useEffect` on mount (defensive — if the browser ignores the hint, we wipe state right after paint).
+Give the user one-click ways to tell the system **why** a flagged form should stop nagging, without losing legitimate detection of newly-broken forms. Keep it WP-read-only — all changes happen in our DB, not in WordPress.
 
-### Part B — Require email confirmation before the password actually changes
+## What we'll build
 
-New flow when the user clicks **Update password**:
+### 1. Two new resolution states on `forms` (DB)
 
-1. Client validates length + match (as today).
-2. Client calls a new edge function `request-password-change` with `{ newPassword }` over the user's authenticated session (JWT).
-3. Edge function:
-   - Verifies JWT, loads the user.
-   - Generates a one-time `confirm_token` (32-byte random, hex) and a `cancel_token`.
-   - Hashes both (SHA-256) and stores in a new `pending_password_changes` table:
-     `id, user_id, new_password_hash (bcrypt of new pwd), confirm_token_hash, cancel_token_hash, requested_at, expires_at (now + 30 min), confirmed_at, cancelled_at, requested_ip, requested_ua`.
-   - Sends a transactional email "Confirm your password change" to the user's current email with two links:
-     - Confirm: `https://app/confirm-password-change?token=<confirm>&pid=<id>`
-     - Cancel: `https://app/cancel-password-change?token=<cancel>&pid=<id>` ("If you didn't request this, click here — your password will NOT change and we'll lock the request.")
-   - Returns `{ ok: true }` to the UI. The UI shows: *"Check your inbox — we sent a confirmation link to `you@example.com`. Your password will only change after you click that link. The link expires in 30 minutes."* The fields are cleared.
-4. New page `/confirm-password-change` calls `confirm-password-change` edge function with the token + pid. Edge function:
-   - Hashes the token, looks up the pending row, verifies it isn't expired, used, or cancelled.
-   - Calls Supabase Admin API `auth.admin.updateUserById(user_id, { password: <decrypted new pwd> })`.
-   - Marks `confirmed_at`, fires the existing `notify-account-event` `password_changed` alert (security-alert email).
-   - Forces global sign-out (`auth.admin.signOut(user_id, 'global')`) so any stolen session is killed.
-   - Page then redirects to `/auth?reason=password_updated`.
-5. New page `/cancel-password-change` calls `cancel-password-change` edge function (public — token-gated) which marks the row `cancelled_at` and fires a "password change request was cancelled" alert.
+Add nullable columns to `public.forms`:
+- `health_check_disabled boolean default false` — skip the liveness probe entirely for this form
+- `health_check_disabled_reason text` — one of: `not_a_form`, `page_removed`, `intentional`, `other`
+- `health_check_disabled_at timestamptz`
+- `health_check_disabled_by uuid` (auth.uid)
 
-### Part C — Storage of the pending new password
+No CHECK constraint on the reason — validate in app/edge layer (per project rules on validation triggers).
 
-We can't store the new plaintext password at rest. Two safe options — **proposed: option 1**.
+### 2. Edge function changes
+- `ingest-form-health`: skip any form where `health_check_disabled = true` (don't upsert a check, don't fire `FORM_NOT_RENDERED` alert).
+- WP probe (`class-forms.php::get_form_page_checks`): query our `/forms-discovery-config` (or just rely on backend filter) — simplest is to filter at edge ingest, no plugin change needed in v1.
 
-- **Option 1 (recommended): encrypt the new password with a server-side key from `pending_password_change_key` in Vault.** Decrypt only inside the confirm function. Row is hard-deleted on confirm/cancel and after expiry by a daily cron.
-- Option 2: don't store the new password at all — the confirm link takes the user to a one-time form where they re-enter the new password. Slightly safer, but worse UX (they type it twice, 30 min apart).
+### 3. UI: Form Health Panel actions
 
-If you prefer option 2, say so and I'll swap it.
+In `FormHealthPanel.tsx`, when a form is in `not_rendered` state, replace the bare row with an expandable row that exposes a small **"Resolve"** menu:
 
-## Technical details
+```
+⛔ Contact Form    Page not found (HTTP 404)              NOT FOUND
+                                                          [Resolve ▾]
+                   ├─ Page was removed → stop checking
+                   ├─ This isn't a real form → stop checking
+                   ├─ Re-check now
+                   └─ Archive form (hide everywhere)
+```
 
-**Files changed:**
-- `src/pages/Account.tsx` — autofill hardening + new "request" flow + success state.
-- `src/pages/ConfirmPasswordChange.tsx` (new) — calls confirm function on mount.
-- `src/pages/CancelPasswordChange.tsx` (new) — calls cancel function on mount.
-- `src/App.tsx` — register the two new public routes.
+- "Page was removed" → sets `health_check_disabled = true`, reason `page_removed`. Form stays visible in Forms list with a small "Page removed — not monitored" pill.
+- "This isn't a real form" → same mechanism, reason `not_a_form`. Recommended copy: *"We'll stop tracking this. Existing entries (if any) stay in your records."*
+- "Re-check now" → calls a new `recheck-form-health` edge function that triggers a single fetch + detect for that one form (faster than waiting for the hourly cron).
+- "Archive" → existing behavior.
 
-**Edge functions (new, all `verify_jwt = false` except step 1):**
-- `request-password-change` — JWT-required; creates pending row, sends email.
-- `confirm-password-change` — public, token-gated; applies the change.
-- `cancel-password-change` — public, token-gated; voids the request.
+### 4. Forms list visibility
 
-**DB migration:**
-- New table `public.pending_password_changes` with RLS denying all client access (only service role reads/writes).
-- Daily `pg_cron` job that deletes rows where `expires_at < now() - interval '7 days'` (kept short for audit, then purged).
+In `src/components/settings/FormsSection.tsx`, add a fourth tab **"Not monitored"** showing forms with `health_check_disabled = true`, with a one-click "Resume monitoring" action. This keeps the decision reversible.
 
-**Email template:**
-- New transactional template `password-change-confirm` registered in the existing transactional registry, branded to match `password_changed` security alert.
+### 5. Hero / Needs Attention count
 
-**Backward compatibility:**
-- The existing `notify-account-event { password_changed }` security-alert email keeps firing — but now from the *confirm* function, after the change actually lands.
+`SiteStatusHero` and any "X forms not rendering" counters must exclude forms where `health_check_disabled = true`. The hero should only nag about *unresolved* render failures.
 
-## Out of scope (call out for your decision)
+### 6. Discovery hardening (small follow-up, same PR)
 
-- I'm not adding TOTP/2FA *as a requirement* for password change — only email confirmation. If you want "if user has authenticator 2FA enabled, require a TOTP code instead of / in addition to the email link", tell me and I'll fold that in (it's a small addition on top of this plan).
+To reduce future false positives from #1 (third-party scripts), tighten `get_form_page_checks` so we **only** enqueue probes for forms that came from a known provider's API (Gravity, CF7, WPForms, Fluent, Ninja, Avada/Fusion). Anything ingested via generic submission listening but never confirmed by a provider API gets `is_probeable = false` and is skipped by the probe. This is the long-term fix; #1–#5 are the user-facing escape valve.
+
+## Out of scope
+
+- No changes to entries, lead history, or attribution.
+- No edits to WordPress (read-only principle).
+- No removal of the existing Archive flow.
+- No schema changes to `form_health_checks` itself.
+
+## Files touched
+
+- **Migration** (new): add 4 columns to `public.forms`.
+- `supabase/functions/ingest-form-health/index.ts` — skip disabled forms.
+- `supabase/functions/recheck-form-health/index.ts` (new) — single-form on-demand probe via WP REST or stored `page_url`.
+- `src/components/dashboard/FormHealthPanel.tsx` — Resolve menu + filter out disabled.
+- `src/components/dashboard/SiteStatusHero.tsx` — exclude disabled from `formIssueCount`.
+- `src/components/settings/FormsSection.tsx` — "Not monitored" tab + resume action.
+- `src/pages/FormsTroubleshooting.tsx` — short note explaining the two new resolutions.
+
+## Acceptance
+
+- Clicking "Page was removed" on a flagged form makes it disappear from the dashboard's Form Health panel and from the hero's "X forms not rendering" count within a single re-render.
+- The form remains visible in `/forms` with a "Not monitored" pill and can be re-enabled.
+- No `FORM_NOT_RENDERED` alerts are created for disabled forms on the next probe cycle.
+- Archived forms continue to behave exactly as before.
+- No existing entries, leads, or analytics data are altered.

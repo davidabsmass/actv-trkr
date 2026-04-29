@@ -143,13 +143,24 @@ export default function FormsTroubleshooting() {
         </p>
       </div>
 
-      <Alert className="mb-8">
+      <Alert className="mb-4">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Before you start</AlertTitle>
         <AlertDescription>
           Form data flows from your <strong>WordPress site</strong> → <strong>ACTV TRKR plugin</strong> → <strong>this dashboard</strong>.
           If any link in that chain breaks, entries won't appear here. We never modify your WordPress site —
           we only read what the plugin sends us.
+        </AlertDescription>
+      </Alert>
+
+      <Alert className="mb-8">
+        <CheckCircle2 className="h-4 w-4" />
+        <AlertTitle>Seeing a "form not rendering" alert that's wrong?</AlertTitle>
+        <AlertDescription>
+          On the dashboard's Form Health card, hit the <strong>⋯ menu</strong> next to any flagged form. You can mark it
+          as <em>"The page was removed"</em> (form still exists but its page is gone) or <em>"This isn't a real form"</em>
+          (a third-party widget got picked up by mistake). Either choice stops the alert without losing your entries.
+          You can resume monitoring later from <Link to="/settings?tab=forms" className="underline text-primary">Settings → Forms → Not monitored</Link>.
         </AlertDescription>
       </Alert>
 

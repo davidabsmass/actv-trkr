@@ -286,10 +286,19 @@ const Dashboard = () => {
       if (!orgId) return [];
       const { data } = await supabase
         .from("form_health_checks")
-        .select("form_id, is_rendered, last_checked_at, page_url, last_http_status, last_failure_reason, forms(name)")
+        .select("form_id, is_rendered, last_checked_at, page_url, last_http_status, last_failure_reason, forms(name, archived, is_active, health_check_disabled)")
         .eq("org_id", orgId)
         .eq("is_rendered", false);
-      return data || [];
+      // Exclude forms the user has explicitly told us to stop monitoring,
+      // archived forms, and forms disabled in WordPress.
+      return (data || []).filter((row: any) => {
+        const f = row.forms;
+        if (!f) return false;
+        if (f.health_check_disabled) return false;
+        if (f.archived) return false;
+        if (f.is_active === false) return false;
+        return true;
+      });
     },
     enabled: !!orgId,
   });

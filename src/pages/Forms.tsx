@@ -215,6 +215,7 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
  */
 function PluginDisconnectedBanner({ orgId, siteIds }: { orgId: string | null; siteIds: string[] }) {
   const navigate = useNavigate();
+  const [downloading, setDownloading] = useState(false);
   const relevantSiteIds = useMemo(() => new Set(siteIds), [siteIds]);
 
   const { data: disconnectedSites } = useQuery({
@@ -237,6 +238,18 @@ function PluginDisconnectedBanner({ orgId, siteIds }: { orgId: string | null; si
   const scoped = disconnectedSites.filter((s) => relevantSiteIds.size === 0 || relevantSiteIds.has(s.id));
   if (scoped.length === 0) return null;
 
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await downloadPlugin();
+      toast.success("Latest ACTV TRKR plugin downloaded. Upload it in WordPress, then counts will reconcile automatically.");
+    } catch {
+      toast.error("Plugin download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 flex items-start justify-between gap-3">
       <div className="flex items-start gap-2.5 min-w-0">
@@ -246,21 +259,33 @@ function PluginDisconnectedBanner({ orgId, siteIds }: { orgId: string | null; si
             ACTV TRKR plugin is not responding on {scoped.length === 1 ? scoped[0].domain : `${scoped.length} sites`}
           </p>
           <p className="text-xs text-muted-foreground">
-            Form entry counts may be stale until the plugin is reactivated.{" "}
+            WordPress is reachable, but the ACTV TRKR API is not active there. Install or update the plugin, then counts will re-sync automatically.{" "}
             {scoped.length > 1 && (
               <span>{scoped.map((s) => s.domain).join(", ")}.</span>
             )}
           </p>
         </div>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-1.5 flex-shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-        onClick={() => navigate("/settings?tab=plugin")}
-      >
-        Reconnect
-      </Button>
+      <div className="flex flex-shrink-0 items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={handleDownload}
+          disabled={downloading}
+        >
+          {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          {downloading ? "Downloading" : "Download plugin"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => navigate("/settings?tab=setup")}
+        >
+          Reconnect
+        </Button>
+      </div>
     </div>
   );
 }

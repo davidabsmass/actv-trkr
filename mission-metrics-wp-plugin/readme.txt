@@ -4,12 +4,15 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.21.2
+Stable tag: 1.21.3
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
+
+= 1.21.3 =
+* HARDENED: Adds fallback ACTV TRKR REST health/sync routes from the main plugin file so the dashboard can distinguish an active-but-degraded install from a truly deactivated plugin.
 
 = 1.19.0 =
 * NEW: Form discovery now reports each form's `is_active` state so the dashboard can distinguish enabled vs. disabled forms in WordPress (Gravity, WPForms, Ninja, Fluent, Avada, CF7).

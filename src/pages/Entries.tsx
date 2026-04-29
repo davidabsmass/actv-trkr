@@ -134,7 +134,7 @@ export default function Entries() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="entries">
-            <FormEntries orgId={orgId} formId={selectedForm.id} />
+            <FormEntries orgId={orgId} formId={selectedForm.id} autoOpenExport={autoOpenExport} />
           </TabsContent>
           <TabsContent value="analytics">
             <FormAnalytics orgId={orgId} formId={selectedForm.id} />
@@ -339,15 +339,15 @@ function FormSettings({ form }: { form: any }) {
 }
 
 /* ─── Entries Tab ─── */
-function FormEntries({ orgId, formId }: { orgId: string | null; formId: string }) {
+function FormEntries({ orgId, formId, autoOpenExport = false }: { orgId: string | null; formId: string; autoOpenExport?: boolean }) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  
+
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [showExport, setShowExport] = useState(false);
+  const [showExport, setShowExport] = useState(autoOpenExport);
 
   const { data: leads, isLoading: leadsLoading } = useQuery({
     queryKey: ["leads_by_form", orgId, formId],

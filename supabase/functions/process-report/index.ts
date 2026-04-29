@@ -302,7 +302,7 @@ Return a JSON array of objects with "title" (short headline) and "body" (1-2 sen
 });
 
 // ── MONTHLY PERFORMANCE (full 5-section report) ──
-function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw }: any) {
+function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw, orgCreatedAt }: any) {
   const totalLeads = currentLeads.length;
   const prevTotalLeads = previousLeads.length;
   const totalSessions = currentSessionCount;
@@ -314,23 +314,50 @@ function buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions,
 
   const weightedLeads = currentLeads.reduce((sum: number, l: any) => sum + (formMap[l.form_id]?.lead_weight || 1), 0);
 
-  let keyWin = "", keyRisk = "";
-  if (pctChange(totalLeads, prevTotalLeads) > 0) keyWin = `Leads increased ${pctChange(totalLeads, prevTotalLeads)}% vs ${compareMode === "yoy" ? "same period last year" : "previous period"}`;
-  else if (pctChange(totalPageviews, prevTotalPageviews) > 0) keyWin = `Traffic grew ${pctChange(totalPageviews, prevTotalPageviews)}%`;
-  else keyWin = "Stable performance maintained";
-
-  if (pctChange(totalLeads, prevTotalLeads) < -10) keyRisk = `Lead volume declined ${Math.abs(pctChange(totalLeads, prevTotalLeads))}%`;
-  else if (cvr < prevCvr && prevCvr > 0) keyRisk = `CVR dropped from ${prevCvr.toFixed(1)}% to ${cvr.toFixed(1)}%`;
-  else keyRisk = "No significant risks detected";
-
+  // ── Install-age guard for % comparisons ──
+  // Only emit "%-change" headlines when the install was alive for the FULL
+  // prior comparison window AND the prior period had a meaningful sample.
+  // Otherwise we get misleading "+100%" results from 0→1 or partial windows.
+  const MIN_PREV_SAMPLE = 5;
   const noComparison = compareMode === "none";
+  const prevPeriodStartMs = noComparison
+    ? null
+    : new Date(new Date(periodStart).getTime() - actualDays * 86400000).getTime();
+  const orgCreatedMs = orgCreatedAt ? new Date(orgCreatedAt).getTime() : null;
+  const installCoversPrevPeriod = !noComparison && orgCreatedMs !== null && prevPeriodStartMs !== null
+    ? orgCreatedMs <= prevPeriodStartMs
+    : false;
+  const comparisonReliable = !noComparison && installCoversPrevPeriod && prevTotalLeads >= MIN_PREV_SAMPLE;
+
+  let keyWin = "", keyRisk = "";
+  if (comparisonReliable && pctChange(totalLeads, prevTotalLeads) > 0) {
+    keyWin = `Leads increased ${pctChange(totalLeads, prevTotalLeads)}% vs ${compareMode === "yoy" ? "same period last year" : "previous period"}`;
+  } else if (comparisonReliable && pctChange(totalPageviews, prevTotalPageviews) > 0) {
+    keyWin = `Traffic grew ${pctChange(totalPageviews, prevTotalPageviews)}%`;
+  } else if (totalLeads > 0) {
+    keyWin = `Captured ${totalLeads} lead${totalLeads === 1 ? "" : "s"} over ${actualDays} day${actualDays === 1 ? "" : "s"}`;
+  } else if (totalSessions > 0) {
+    keyWin = `${totalSessions.toLocaleString()} sessions tracked — building baseline`;
+  } else {
+    keyWin = "Stable performance maintained";
+  }
+
+  if (comparisonReliable && pctChange(totalLeads, prevTotalLeads) < -10) {
+    keyRisk = `Lead volume declined ${Math.abs(pctChange(totalLeads, prevTotalLeads))}%`;
+  } else if (comparisonReliable && cvr < prevCvr && prevCvr > 0) {
+    keyRisk = `CVR dropped from ${prevCvr.toFixed(1)}% to ${cvr.toFixed(1)}%`;
+  } else if (!comparisonReliable && !noComparison) {
+    keyRisk = "Not enough history yet for trend comparison";
+  } else {
+    keyRisk = "No significant risks detected";
+  }
 
   const executiveSummary = {
-    leads: { current: totalLeads, previous: noComparison ? null : prevTotalLeads, change: noComparison ? null : pctChange(totalLeads, prevTotalLeads) },
+    leads: { current: totalLeads, previous: noComparison || !comparisonReliable ? null : prevTotalLeads, change: noComparison || !comparisonReliable ? null : pctChange(totalLeads, prevTotalLeads) },
     weightedLeads: Math.round(weightedLeads * 10) / 10,
-    sessions: { current: totalSessions, previous: noComparison ? null : prevTotalSessions, change: noComparison ? null : pctChange(totalSessions, prevTotalSessions) },
-    pageviews: { current: totalPageviews, previous: noComparison ? null : prevTotalPageviews, change: noComparison ? null : pctChange(totalPageviews, prevTotalPageviews) },
-    cvr: { current: Math.round(cvr * 100) / 100, previous: noComparison ? null : Math.round(prevCvr * 100) / 100, change: noComparison ? null : pctChange(cvr, prevCvr) },
+    sessions: { current: totalSessions, previous: noComparison || !comparisonReliable ? null : prevTotalSessions, change: noComparison || !comparisonReliable ? null : pctChange(totalSessions, prevTotalSessions) },
+    pageviews: { current: totalPageviews, previous: noComparison || !comparisonReliable ? null : prevTotalPageviews, change: noComparison || !comparisonReliable ? null : pctChange(totalPageviews, prevTotalPageviews) },
+    cvr: { current: Math.round(cvr * 100) / 100, previous: noComparison || !comparisonReliable ? null : Math.round(prevCvr * 100) / 100, change: noComparison || !comparisonReliable ? null : pctChange(cvr, prevCvr) },
     goalTarget: goals?.[0]?.target_leads || null,
     keyWin, keyRisk,
   };

@@ -62,7 +62,7 @@ export default function PluginSection() {
 
       const { data, error } = await supabase
         .from("sites")
-        .select("domain, plugin_version, last_heartbeat_at, created_at")
+        .select("domain, plugin_version, last_heartbeat_at, plugin_status, created_at")
         .eq("org_id", orgId);
 
       if (error) throw error;
@@ -103,10 +103,12 @@ export default function PluginSection() {
     return ageMs >= 30 * 60 * 1000; // 30 minutes
   })();
 
-  // Show update badge whenever the reported version is behind, regardless of signal age.
-  // A stale signal is surfaced separately so users can tell what they're looking at.
+  const pluginIsConfirmedHealthy = latestReportedSite?.plugin_status === "healthy" && !signalIsStale;
+
+  // Only show update badge from a fresh, healthy signal. Old/disconnected rows
+  // are historical and must not imply the customer's current WP install is old.
   const needsUpdate = Boolean(
-    siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
+    pluginIsConfirmedHealthy && siteVersion && latestVersion && compareVersions(siteVersion, latestVersion) < 0,
   );
 
   const handleDownload = async () => {
@@ -171,7 +173,7 @@ export default function PluginSection() {
         <div className="mb-3 rounded-md border border-border bg-background/40 px-3 py-2 text-xs">
           {signalIsStale ? (
             <span className="text-warning">
-              ⚠️ {siteDomain} hasn't sent a signal in {signalAgeLabel}. Sync may be paused — check the Sync Status panel below.
+              ⚠️ {siteDomain} hasn't sent a signal in {signalAgeLabel}. Current plugin version cannot be verified from this stale record.
             </span>
           ) : (
             <span className="text-muted-foreground">

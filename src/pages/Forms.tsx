@@ -1022,7 +1022,7 @@ function FormDetail({ form, orgId, leadCount, onBack, autoOpenExport = false, on
           </TabsTrigger>
         </TabsList>
         <TabsContent value="entries">
-          <FormEntries orgId={orgId} formId={form.id} autoOpenExport={exportRequested} onAutoOpenConsumed={consumeExportFlag} />
+          <FormEntries orgId={orgId} formId={form.id} autoOpenExport={autoOpenExport} onAutoOpenConsumed={onAutoOpenConsumed} />
         </TabsContent>
         <TabsContent value="analytics">
           <FormAnalytics orgId={orgId} formId={form.id} />

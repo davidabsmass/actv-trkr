@@ -945,11 +945,6 @@ export default function AdminSetup() {
             Subscriber Sites
           </button>
           <button
-            onClick={() => switchMainTab("clients")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            Clients
-          </button>
           <button
             onClick={() => switchMainTab("support-inbox")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "support-inbox" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}

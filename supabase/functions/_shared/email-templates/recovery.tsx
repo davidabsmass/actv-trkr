@@ -51,7 +51,7 @@ export const RecoveryEmail = ({
           <Text style={text}>
             We received a request to reset your password. Click the button below to choose a new password.
           </Text>
-          <Button style={button} href={token && siteUrl && recipient ? `${siteUrl}/reset-password?email=${encodeURIComponent(recipient)}` : confirmationUrl}>
+          <Button style={button} href={confirmationUrl}>
             Reset Password
           </Button>
           <Text style={footer}>

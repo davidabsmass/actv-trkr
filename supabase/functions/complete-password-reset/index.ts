@@ -58,13 +58,6 @@ Deno.serve(async (req) => {
       .eq("id", resetRow.id)
       .is("consumed_at", null);
 
-    try {
-      await admin.rpc("mark_invite_accepted", {}, {
-        get: false,
-        head: false,
-      } as never);
-    } catch (_) { /* mark_invite_accepted requires a user session; handled below instead */ }
-
     await admin
       .from("org_users")
       .update({ status: "active", invite_accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() })

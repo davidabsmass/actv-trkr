@@ -238,6 +238,23 @@ export default function SubscriberSitesPanel() {
     }
   };
 
+  const handleInviteAction = async (orgId: string, userId: string, action: "resend" | "cancel") => {
+    if (action === "cancel" && !confirm("Cancel this pending invitation?")) return;
+    setActionLoading(`${action}-invite-${userId}`);
+    try {
+      const { error } = await supabase.functions.invoke("manage-org-invite", {
+        body: { action, orgId, targetUserId: userId },
+      });
+      if (error) throw error;
+      toast.success(action === "resend" ? "Invitation resent" : "Invitation cancelled");
+      refreshMembers();
+    } catch (err: any) {
+      toast.error(err.message || `Failed to ${action} invite`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleSetPassword = async (orgId: string, email: string) => {
     if (!confirm(`Generate a new temporary password for ${email}? Their current password will be replaced and copied to your clipboard.`)) return;
     // Generate a 14-char password

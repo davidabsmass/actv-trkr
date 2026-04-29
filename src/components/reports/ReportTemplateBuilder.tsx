@@ -11,9 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   GripVertical, Save, RotateCcw, ChevronDown, ChevronRight,
   Sparkles, Target, Globe, BarChart3, Users, Lightbulb,
-  Activity, Shield, FormInput, Loader2, Check,
+  Activity, Shield, FormInput, Loader2, Check, Plus, Trash2, Copy,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+
+const ACTIVE_TEMPLATE_KEY = (orgId: string) => `actv:activeReportTemplateId:${orgId}`;
 
 // ── Default section definitions ──
 

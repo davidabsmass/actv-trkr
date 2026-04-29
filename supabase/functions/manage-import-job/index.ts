@@ -204,14 +204,38 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
 
     if (!integration) continue;
 
-    // Also sync is_active onto the corresponding `forms` row (matched by
-    // provider + external_form_id within this site).
+    // Also sync is_active and (when WP gave us a real, non-stub title)
+    // overwrite the forms.name on the corresponding row. This heals any
+    // form whose name was first created by the realtime ingest stub
+    // ("Form (<provider>)") before the WP plugin could supply the real
+    // title.
+    const wpTitle = typeof form.form_name === "string" ? form.form_name.trim() : "";
+    const isRealTitle =
+      source === "wp_plugin" &&
+      wpTitle.length > 0 &&
+      wpTitle !== `Form (${form.builder_type})` &&
+      !/^Form \d+$/.test(wpTitle);
+
+    const formsUpdate: Record<string, unknown> = { is_active: isActive };
+    if (isRealTitle) formsUpdate.name = wpTitle;
+
     await supabase
       .from("forms")
-      .update({ is_active: isActive })
+      .update(formsUpdate)
       .eq("site_id", siteId)
       .eq("provider", form.builder_type)
       .eq("external_form_id", String(form.external_form_id));
+
+    // Additionally, if the integration row itself still holds a stub
+    // name (because the form was first observed via realtime ingest),
+    // upgrade it now that we have the authoritative WP title.
+    if (isRealTitle) {
+      await supabase
+        .from("form_integrations")
+        .update({ form_name: wpTitle })
+        .eq("id", integration.id)
+        .or(`form_name.eq.Form (${form.builder_type}),form_name.is.null`);
+    }
 
     // Skip auto-import when:
     //  - form is inactive in WP (don't auto-import disabled forms), or

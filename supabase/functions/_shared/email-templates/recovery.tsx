@@ -49,10 +49,12 @@ export const RecoveryEmail = ({
         <Section style={bodySection}>
           <Heading style={h1}>Reset your password</Heading>
           <Text style={text}>
-            We received a request to reset your password. Click the button below, then enter this reset code:
+            {token
+              ? 'We received a request to reset your password. Click the button below, then enter this reset code:'
+              : 'We received a request to reset your password. Click the button below to choose a new password.'}
           </Text>
           {token && <Text style={code}>{token}</Text>}
-          <Button style={button} href={siteUrl && recipient ? `${siteUrl}/reset-password?email=${encodeURIComponent(recipient)}` : confirmationUrl}>
+          <Button style={button} href={token && siteUrl && recipient ? `${siteUrl}/reset-password?email=${encodeURIComponent(recipient)}` : confirmationUrl}>
             Reset Password
           </Button>
           <Text style={footer}>

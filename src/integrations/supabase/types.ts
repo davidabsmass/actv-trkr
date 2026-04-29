@@ -4505,6 +4505,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          invite_accepted_at: string | null
+          invited_at: string | null
           invited_by: string | null
           is_owner: boolean
           org_id: string
@@ -4516,6 +4518,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          invite_accepted_at?: string | null
+          invited_at?: string | null
           invited_by?: string | null
           is_owner?: boolean
           org_id: string
@@ -4527,6 +4531,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          invite_accepted_at?: string | null
+          invited_at?: string | null
           invited_by?: string | null
           is_owner?: boolean
           org_id?: string
@@ -8934,6 +8940,7 @@ export type Database = {
         }
         Returns: string
       }
+      mark_invite_accepted: { Args: never; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string

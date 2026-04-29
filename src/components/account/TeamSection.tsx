@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, Loader2, ShieldAlert, History, Crown } from "lucide-react";
+import { Users, UserPlus, Trash2, Loader2, ShieldAlert, History, Crown, Mail, RotateCw, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -51,7 +51,7 @@ export default function TeamSection() {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("org_users")
-        .select("id, user_id, role, is_owner, status, created_at, invited_by")
+        .select("id, user_id, role, is_owner, status, created_at, invited_by, invited_at, invite_accepted_at")
         .eq("org_id", orgId);
       if (error) throw error;
 
@@ -70,7 +70,9 @@ export default function TeamSection() {
     },
   });
 
-  const adminCount = members.filter((m: any) => m.role === "admin").length;
+  const pendingInvites = members.filter((m: any) => m.status === "invited");
+  const activeMembers = members.filter((m: any) => m.status !== "invited");
+  const adminCount = activeMembers.filter((m: any) => m.role === "admin").length;
 
   const { data: auditLog = [] } = useQuery({
     queryKey: ["team_audit_log", orgId],
@@ -152,6 +154,29 @@ export default function TeamSection() {
       queryClient.invalidateQueries({ queryKey: ["org_members", orgId] });
       queryClient.invalidateQueries({ queryKey: ["team_audit_log", orgId] });
       toast({ title: "Member removed" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const inviteAction = useMutation({
+    mutationFn: async ({ action, targetUserId }: { action: "resend" | "cancel"; targetUserId: string }) => {
+      const { data, error } = await supabase.functions.invoke("manage-org-invite", {
+        body: { action, orgId, targetUserId },
+      });
+      if (error) {
+        const body = error?.context?.body
+          ? await new Response(error.context.body).json().catch(() => null)
+          : null;
+        throw new Error(body?.error || error.message);
+      }
+      return data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["org_members", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["team_audit_log", orgId] });
+      toast({ title: data?.message || "Done" });
     },
     onError: (e: any) => {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -241,16 +266,102 @@ export default function TeamSection() {
           </form>
           <p className="text-[11px] text-muted-foreground">{ROLE_HELP[inviteRole]}</p>
 
+          {/* Pending invitations */}
+          {pendingInvites.length > 0 && (
+            <div className="rounded-md border border-dashed border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+              <p className="text-xs font-medium text-amber-200/90 uppercase tracking-wide flex items-center gap-1.5">
+                <Mail className="h-3 w-3" /> Pending invitations ({pendingInvites.length})
+              </p>
+              <div className="divide-y divide-border/30">
+                {pendingInvites.map((m: any) => {
+                  const invitedAt = m.invited_at ? new Date(m.invited_at) : null;
+                  const ageMs = invitedAt ? Date.now() - invitedAt.getTime() : 0;
+                  const ageLabel = !invitedAt
+                    ? "—"
+                    : ageMs < 60_000
+                    ? "just now"
+                    : ageMs < 3_600_000
+                    ? `${Math.floor(ageMs / 60_000)}m ago`
+                    : ageMs < 86_400_000
+                    ? `${Math.floor(ageMs / 3_600_000)}h ago`
+                    : `${Math.floor(ageMs / 86_400_000)}d ago`;
+                  const busy =
+                    inviteAction.isPending && inviteAction.variables?.targetUserId === m.user_id;
+                  return (
+                    <div key={m.id} className="flex items-center justify-between py-2 gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm truncate">{m.email}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Invited {ageLabel} · {ROLE_LABEL[m.role as Role] || m.role}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs"
+                          disabled={busy}
+                          onClick={() =>
+                            inviteAction.mutate({ action: "resend", targetUserId: m.user_id })
+                          }
+                        >
+                          {busy && inviteAction.variables?.action === "resend" ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RotateCw className="h-3 w-3" />
+                          )}
+                          Resend
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 gap-1 text-xs text-muted-foreground hover:text-destructive"
+                              disabled={busy}
+                            >
+                              <X className="h-3 w-3" /> Cancel
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Cancel invitation?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                The invitation for {m.email} will be revoked. Their pending sign-in
+                                link will no longer add them to this organization.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep invite</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  inviteAction.mutate({ action: "cancel", targetUserId: m.user_id })
+                                }
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Cancel invite
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Members list */}
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
               <Loader2 className="h-3 w-3 animate-spin" /> Loading…
             </div>
-          ) : members.length === 0 ? (
+          ) : activeMembers.length === 0 ? (
             <p className="text-sm text-muted-foreground">No team members yet.</p>
           ) : (
             <div className="divide-y">
-              {members.map((m: any) => {
+              {activeMembers.map((m: any) => {
                 const isSelf = m.user_id === user?.id;
                 const isOwner = !!m.is_owner;
                 const isLastAdmin = m.role === "admin" && adminCount <= 1;
@@ -370,7 +481,7 @@ export default function TeamSection() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            New users will receive an account. They should use "Forgot Password" on the login screen to set their password.
+            New invitees receive a one-time link to set their password. You can resend or cancel a pending invite at any time.
           </p>
 
           {/* Audit log */}

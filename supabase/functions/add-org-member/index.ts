@@ -112,6 +112,10 @@ Deno.serve(async (req) => {
       wasCreated = true;
     }
 
+    // Newly-created users start as 'invited'; existing platform users are added active.
+    const memberStatus = wasCreated ? "invited" : "active";
+    const nowIso = new Date().toISOString();
+
     const { error: joinErr } = await admin
       .from("org_users")
       .insert({
@@ -119,7 +123,8 @@ Deno.serve(async (req) => {
         user_id: targetUserId,
         role: assignRole,
         invited_by: user.id,
-        status: "active",
+        status: memberStatus,
+        invited_at: wasCreated ? nowIso : null,
       });
 
     if (joinErr) {

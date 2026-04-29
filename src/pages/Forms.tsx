@@ -734,6 +734,8 @@ export default function Forms() {
         orgId={orgId}
         leadCount={leadCounts?.[selectedForm.id] ?? 0}
         onBack={() => setSelectedFormId(null)}
+        autoOpenExport={exportRequested}
+        onAutoOpenConsumed={consumeExportFlag}
       />
     );
   }

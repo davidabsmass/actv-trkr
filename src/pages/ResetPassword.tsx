@@ -88,6 +88,12 @@ const ResetPassword = () => {
       }
 
       // (a) PKCE code flow
+      if (emailParam && !code && !tokenHash) {
+        if (mounted) setReady(true);
+        return;
+      }
+
+      // (a) PKCE code flow
       if (code) {
         try {
           const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);

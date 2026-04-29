@@ -503,6 +503,19 @@ Deno.serve(async (req) => {
 
     // Insert raw event
     const extEntryId = entry.entry_id?.toString() || `${providerName}_${fingerprint.slice(0, 16)}`;
+
+    // Canonical dedup key — collapses Avada's three legacy ID formats (N, avada_db_N, avada_<ts>_<rand>)
+    // into a single identifier, and namespaces other providers by name. Backed by a UNIQUE
+    // index on leads(form_id, external_entry_key).
+    const externalEntryKey = (() => {
+      if (providerName === "avada") {
+        if (/^[0-9]+$/.test(extEntryId)) return `avada:${extEntryId}`;
+        if (/^avada_db_[0-9]+$/.test(extEntryId)) return `avada:${extEntryId.replace(/^avada_db_/, "")}`;
+        if (/^avada_[0-9]+_[0-9]+$/.test(extEntryId)) return `avada_legacy:${extEntryId}`;
+      }
+      return `${providerName}:${extEntryId}`;
+    })();
+
     await supabase.from("lead_events_raw").upsert({
       org_id: orgId, site_id: siteId, form_id: formId,
       external_entry_id: extEntryId,

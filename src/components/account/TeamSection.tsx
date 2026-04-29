@@ -60,7 +60,7 @@ export default function TeamSection() {
         .from("profiles")
         .select("user_id, email, full_name")
         .in("user_id", userIds);
-      const subsRes = await supabase
+      const subsRes = await (supabase as any)
         .from("subscribers")
         .select("user_id, email")
         .in("user_id", userIds);

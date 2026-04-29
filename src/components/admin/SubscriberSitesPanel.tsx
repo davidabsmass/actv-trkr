@@ -41,6 +41,7 @@ import {
   EyeOff,
   RefreshCw,
   Copy,
+  Mail,
 } from "lucide-react";
 
 type Org = {
@@ -54,7 +55,16 @@ type Org = {
 };
 type Site = { id: string; domain: string; org_id: string; last_heartbeat_at: string | null };
 type ApiKey = { id: string; org_id: string; created_at: string; revoked_at: string | null; label: string };
-type Member = { user_id: string; role: string; joined_at: string; email: string | null; full_name: string | null };
+type Member = {
+  user_id: string;
+  role: string;
+  status?: string | null;
+  joined_at: string;
+  invited_at?: string | null;
+  invite_accepted_at?: string | null;
+  email: string | null;
+  full_name: string | null;
+};
 
 export default function SubscriberSitesPanel() {
   const queryClient = useQueryClient();

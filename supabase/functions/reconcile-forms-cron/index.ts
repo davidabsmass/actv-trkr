@@ -34,9 +34,11 @@ async function probePlugin(siteUrl: string): Promise<
   { status: "healthy" | "disconnected" | "unreachable"; detail: string }
 > {
   const normalized = siteUrl.replace(/\/$/, "");
+  // The namespace root works on every plugin version that exposes the REST
+  // namespace at all. /ping was added later and is not a reliable signal.
   const candidates = [
-    `${normalized}/wp-json/actv-trkr/v1/ping`,
-    `${normalized}/?rest_route=/actv-trkr/v1/ping`,
+    `${normalized}/wp-json/actv-trkr/v1/`,
+    `${normalized}/?rest_route=/actv-trkr/v1/`,
   ];
 
   let lastDetail = "no response";
@@ -44,9 +46,14 @@ async function probePlugin(siteUrl: string): Promise<
     try {
       const res = await fetchWithTimeout(endpoint, { method: "GET" }, PROBE_TIMEOUT_MS);
       if (res.ok) {
-        return { status: "healthy", detail: `Ping OK (${res.status})` };
+        const text = await res.clone().text().catch(() => "");
+        // Sanity check: the response must look like a WP REST namespace doc.
+        if (text.includes("actv-trkr") && text.includes("namespace")) {
+          return { status: "healthy", detail: `Namespace responding (${res.status})` };
+        }
+        lastDetail = `200 but unexpected payload (${text.slice(0, 80)})`;
+        continue;
       }
-      // 404 with rest_no_route from a working WP REST means plugin is gone
       if (res.status === 404) {
         const text = await res.clone().text().catch(() => "");
         if (text.includes("rest_no_route")) {

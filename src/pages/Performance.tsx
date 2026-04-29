@@ -26,7 +26,7 @@ import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 import { CreateGoalDialog } from "@/components/settings/GoalsSection";
 import { useForms } from "@/hooks/use-dashboard-data";
-
+import { useKeyActions } from "@/hooks/use-key-actions";
 
 const Reports = lazy(() => import("./Reports"));
 

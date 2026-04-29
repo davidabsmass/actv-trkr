@@ -56,15 +56,25 @@ export default function TeamSection() {
       if (error) throw error;
 
       const userIds = data.map((m: any) => m.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, email, full_name")
-        .in("user_id", userIds);
+      const [{ data: profiles }, { data: subs }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, email, full_name")
+          .in("user_id", userIds),
+        supabase
+          .from("subscribers")
+          .select("user_id, email")
+          .in("user_id", userIds),
+      ]);
       const profileMap = new Map(profiles?.map((p: any) => [p.user_id, p]) || []);
+      const subMap = new Map(subs?.map((s: any) => [s.user_id, s.email]) || []);
 
       return data.map((m: any) => ({
         ...m,
-        email: profileMap.get(m.user_id)?.email || "—",
+        email:
+          profileMap.get(m.user_id)?.email ||
+          subMap.get(m.user_id) ||
+          "—",
         full_name: profileMap.get(m.user_id)?.full_name || "",
       }));
     },

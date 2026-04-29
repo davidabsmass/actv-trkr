@@ -22,7 +22,7 @@ import SupportInbox from "@/components/admin/SupportInbox";
 import MarketingContactsPanel from "@/components/admin/MarketingContactsPanel";
 
 const OWNER_EMAIL = "david@newuniformdesign.com";
-type AdminMainTab = "clients" | "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access" | "marketing-contacts";
+type AdminMainTab = "metrics" | "subscriber-sites" | "support-inbox" | "release-qa" | "data-wipe" | "support-access" | "marketing-contacts";
 
 function FeatureUsageWidget() {
   const { data } = useQuery({
@@ -340,7 +340,7 @@ export default function AdminSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "clients" || tab === "metrics" || tab === "subscriber-sites" || tab === "support-inbox" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access" || tab === "marketing-contacts") {
+    if (tab === "metrics" || tab === "subscriber-sites" || tab === "support-inbox" || tab === "release-qa" || tab === "data-wipe" || tab === "support-access" || tab === "marketing-contacts") {
       setActiveMainTab(tab);
     } else if (tab === "app-bible") {
       // Legacy redirect: Launch Checklist removed, send users to Release QA

@@ -44,12 +44,14 @@ serve(async (req) => {
     const customer = customers.data[0];
     const customerId = customer.id;
 
-    // Subscriptions (any status)
+    // Subscriptions (any status). Stripe limits expand to 4 levels deep, so we
+    // can't expand `data.items.data.price.product` directly — fetch the product
+    // separately below if needed.
     const subs = await stripe.subscriptions.list({
       customer: customerId,
       status: "all",
       limit: 5,
-      expand: ["data.items.data.price.product", "data.default_payment_method"],
+      expand: ["data.items.data.price", "data.default_payment_method"],
     });
 
     // Pick the active/trialing one preferentially, else most recent

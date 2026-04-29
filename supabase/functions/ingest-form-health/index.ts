@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       // Resolve internal form_id from external_form_id + provider
       const { data: formRow } = await supabase
         .from("forms")
-        .select("id")
+        .select("id, health_check_disabled")
         .eq("org_id", orgId)
         .eq("site_id", site.id)
         .eq("external_form_id", String(form_id))
@@ -85,6 +85,11 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!formRow) continue;
+
+      // Skip forms the user has explicitly told us to stop monitoring
+      // (e.g. third-party widgets misidentified as forms, or forms whose
+      // hosting page was intentionally removed).
+      if (formRow.health_check_disabled) continue;
 
       // Update form's page_url if provided
       if (page_url) {

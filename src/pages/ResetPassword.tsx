@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, Eye, EyeOff, Mail } from "lucide-react";
+import { Lock, Eye, EyeOff, Mail, KeyRound } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
@@ -39,6 +39,8 @@ const ResetPassword = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [accountEmail, setAccountEmail] = useState<string>("");
+  const [resetEmail, setResetEmail] = useState<string>("");
+  const [resetCode, setResetCode] = useState("");
   const completedRef = useRef(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -75,10 +77,20 @@ const ResetPassword = () => {
       const code = url.searchParams.get("code");
       const tokenHash = url.searchParams.get("token_hash");
       const type = url.searchParams.get("type");
+      const emailParam = url.searchParams.get("email")?.trim().toLowerCase() || "";
       const errDesc = url.searchParams.get("error_description") || url.searchParams.get("error");
+
+      if (emailParam) setResetEmail(emailParam);
 
       if (errDesc) {
         if (mounted) setError(decodeURIComponent(errDesc));
+        return;
+      }
+
+      // Managed email-code flow: avoid consuming a one-time link before
+      // the user submits the reset code and new password.
+      if (emailParam && !code && !tokenHash) {
+        if (mounted) setReady(true);
         return;
       }
 
@@ -127,6 +139,7 @@ const ResetPassword = () => {
         const { data: { session: s2 } } = await supabase.auth.getSession();
         if (mounted) {
           if (s2) setReady(true);
+          else if (emailParam) setReady(true);
           else {
             console.warn("[reset] no session after wait", { search: url.search, hash: url.hash });
             setError("This reset link is invalid or has expired. Please request a new one.");
@@ -197,8 +210,20 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      if (!resetEmail) {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+      } else {
+        const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+          email: resetEmail,
+          token: resetCode.trim(),
+          type: "recovery",
+        });
+        if (verifyErr) throw verifyErr;
+        if (!data?.session) throw new Error("This reset code is invalid or has expired. Please request a new one.");
+        const { error: updateErr } = await supabase.auth.updateUser({ password });
+        if (updateErr) throw updateErr;
+      }
 
       try {
         await (supabase as any).rpc("mark_invite_accepted");
@@ -230,6 +255,7 @@ const ResetPassword = () => {
 
   const inputClass =
     "w-full pl-10 pr-10 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50";
+  const accountDisplayEmail = resetEmail || accountEmail;
 
   return (
     <div
@@ -267,13 +293,13 @@ const ResetPassword = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
-              {accountEmail && (
+              {accountDisplayEmail && (
                 <div>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                     <input
                       type="email"
-                      value={accountEmail}
+                      value={accountDisplayEmail}
                       readOnly
                       disabled
                       aria-label="Account email"
@@ -281,6 +307,22 @@ const ResetPassword = () => {
                     />
                   </div>
                   <p className="mt-1 text-[11px] text-white/50">Setting password for this account.</p>
+                </div>
+              )}
+              {resetEmail && (
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Reset code"
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value.replace(/\s/g, ""))}
+                    required
+                    autoComplete="one-time-code"
+                    name="reset-code"
+                    className={inputClass}
+                  />
                 </div>
               )}
               <div className="relative">

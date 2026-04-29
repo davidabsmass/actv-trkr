@@ -160,6 +160,29 @@ export default function TeamSection() {
     },
   });
 
+  const inviteAction = useMutation({
+    mutationFn: async ({ action, targetUserId }: { action: "resend" | "cancel"; targetUserId: string }) => {
+      const { data, error } = await supabase.functions.invoke("manage-org-invite", {
+        body: { action, orgId, targetUserId },
+      });
+      if (error) {
+        const body = error?.context?.body
+          ? await new Response(error.context.body).json().catch(() => null)
+          : null;
+        throw new Error(body?.error || error.message);
+      }
+      return data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["org_members", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["team_audit_log", orgId] });
+      toast({ title: data?.message || "Done" });
+    },
+    onError: (e: any) => {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
+  });
+
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;

@@ -717,6 +717,22 @@ Deno.serve(async (req) => {
     }).select("id").single();
 
     if (leadErr) {
+      // Unique violation on (form_id, external_entry_key) means a concurrent insert
+      // already created this lead. Treat as a successful dedupe.
+      if ((leadErr as any).code === "23505") {
+        const { data: raceLead } = await supabase
+          .from("leads")
+          .select("id")
+          .eq("form_id", formId)
+          .eq("external_entry_key", externalEntryKey)
+          .maybeSingle();
+        if (raceLead?.id) {
+          observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "race_deduplicated" } });
+          return new Response(JSON.stringify({ status: "deduplicated_lead", lead_id: raceLead.id, provider: providerName }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
       console.error("Lead insert error:", leadErr);
       return new Response(JSON.stringify({ error: "Failed to store lead" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

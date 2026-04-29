@@ -1,4 +1,4 @@
-import { ArrowUpRight, ArrowDownRight, Minus, Users, Target, Eye, TrendingUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Minus, Users, Target, Eye, TrendingUp, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { Sparkline } from "./Sparkline";

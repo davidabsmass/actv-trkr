@@ -139,6 +139,9 @@ Deno.serve(async (req) => {
           supabase.from("conversion_goals").select("*").eq("org_id", orgId).eq("is_active", true),
           supabase.from("goal_completions").select("goal_id,page_url,page_path,target_text,completed_at").eq("org_id", orgId).gte("completed_at", periodStart).lte("completed_at", periodEnd).order("completed_at", { ascending: false }).limit(2000),
           supabase.from("events").select("event_type,page_url,page_path,target_text,occurred_at,meta").eq("org_id", orgId).in("event_type", ["cta_click","outbound_click","tel_click","mailto_click"]).gte("occurred_at", periodStart).lte("occurred_at", periodEnd).order("occurred_at", { ascending: false }).limit(2000),
+          // Org install date — used to suppress misleading WoW % comparisons
+          // when the prior period predates the install
+          supabase.from("organizations").select("created_at").eq("id", orgId).maybeSingle(),
         );
       }
 

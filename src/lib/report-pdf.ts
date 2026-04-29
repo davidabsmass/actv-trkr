@@ -122,12 +122,11 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
 
   // Header section gets its own data-pdf-section
   let html = `
-<div style="font-family:'BR Omega','Segoe UI',system-ui,sans-serif;color:#00264d;width:680px;padding:0;background:#fff">
+<div style="font-family:Helvetica,Arial,'Segoe UI',sans-serif;color:#00264d;width:680px;padding:0;background:#fff">
   <div data-pdf-section style="background:linear-gradient(135deg,${brandGradientStart},${brandSecondary});padding:24px 28px;border-radius:8px 8px 0 0;margin-bottom:20px">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       ${wl?.logo_url ? `<img src="${wl.logo_url}" style="height:36px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);opacity:1" crossorigin="anonymous" />` : ''}
       ${brandName ? `<span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:0.02em">${brandName}</span>` : ''}
-      <span style="width:4px;height:4px;background:#fff;border-radius:50%;display:inline-block"></span>
       <span style="font-size:10px;color:rgba(255,255,255,0.8)">Activity Report</span>
     </div>
     <div style="font-size:24px;font-weight:700;color:#fff;margin-bottom:6px">Performance Report</div>

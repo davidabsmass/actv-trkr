@@ -1,6 +1,6 @@
 import { useOrg } from "@/hooks/use-org";
 import { useUserRole, useOrgRole } from "@/hooks/use-user-role";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ApiKeysSection from "@/components/settings/ApiKeysSection";
 import SitesSection from "@/components/settings/SitesSection";
@@ -15,7 +15,6 @@ import FormsSection from "@/components/settings/FormsSection";
 import GoalsSection from "@/components/settings/GoalsSection";
 import { SettingsConnectingNotice } from "@/components/settings/SettingsConnectingNotice";
 
-import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_SETTINGS } from "@/components/howto/page-content";

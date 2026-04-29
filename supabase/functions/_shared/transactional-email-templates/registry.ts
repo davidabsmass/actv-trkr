@@ -21,6 +21,7 @@ import { template as contactMessage } from './contact-message.tsx'
 import { template as login2faCode } from './login-2fa-code.tsx'
 import { template as authSecurityAlert } from './auth-security-alert.tsx'
 import { template as emailChangeCancel } from './email-change-cancel.tsx'
+import { template as passwordReset } from './password-reset.tsx'
 import { template as supportAccessSummary } from './support-access-summary.tsx'
 import { template as supportAccessStarted } from './support-access-started.tsx'
 
@@ -55,6 +56,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'login-2fa-code': login2faCode,
   'auth-security-alert': authSecurityAlert,
   'email-change-cancel': emailChangeCancel,
+  'password-reset': passwordReset,
   'support-access-summary': supportAccessSummary,
   'support-access-started': supportAccessStarted,
   // Retention

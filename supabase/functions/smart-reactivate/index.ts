@@ -13,7 +13,10 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PRICE_ID = Deno.env.get("STRIPE_PRICE_ID") || "";
+// Canonical monthly price (matches actv-checkout). Falls back to env override
+// if you ever need to switch plans without redeploying.
+const PRICE_ID =
+  Deno.env.get("STRIPE_PRICE_ID") || "price_1TMlVgQXOqBVFUKWKU31SRaN";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -79,13 +82,8 @@ serve(async (req) => {
       }
     }
 
-    // 3. Fall back to fresh checkout
-    if (!PRICE_ID) {
-      return json(500, {
-        error: "STRIPE_PRICE_ID not configured — cannot start fresh checkout",
-      });
-    }
-
+    // 3. Fall back to fresh checkout. The webhook will restore the user's
+    // existing org to "active" on subscription.created — no re-onboarding.
     const session = await stripe.checkout.sessions.create({
       customer: customer?.id,
       customer_email: customer ? undefined : user.email!,
@@ -94,6 +92,17 @@ serve(async (req) => {
       success_url: `${origin}/account?reactivated=1`,
       cancel_url: `${origin}/account`,
       allow_promotion_codes: true,
+      billing_address_collection: "required",
+      metadata: {
+        user_id: user.id,
+        flow: "reactivate",
+      },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          flow: "reactivate",
+        },
+      },
     });
     return json(200, { url: session.url!, mode: "checkout" });
   } catch (e: any) {

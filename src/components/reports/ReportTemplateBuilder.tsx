@@ -168,80 +168,161 @@ export default function ReportTemplateBuilder() {
 
   const getLabel = (key: string, fallback: string) => labelMap[key] || fallback;
 
-  const { data: saved, isLoading } = useQuery({
-    queryKey: ["report_custom_template", orgId, userId],
+  const { data: templates, isLoading } = useQuery({
+    queryKey: ["report_custom_templates_list", orgId, userId],
     queryFn: async () => {
-      if (!orgId || !userId) return null;
+      if (!orgId || !userId) return [] as any[];
       const { data } = await supabase
         .from("report_custom_templates" as any)
         .select("*")
         .eq("user_id", userId)
         .eq("org_id", orgId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data as any;
+        .order("created_at", { ascending: true });
+      return (data as any[]) || [];
     },
     enabled: !!orgId && !!userId,
   });
 
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [sections, setSections] = useState<ReportSection[]>(DEFAULT_SECTIONS);
   const [templateName, setTemplateName] = useState("My Report Template");
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Load saved template
+  // Pick which template to load when templates list changes
   useEffect(() => {
-    if (saved) {
-      const config = (saved as any).sections_config;
-      if (Array.isArray(config) && config.length > 0) {
-        // Merge saved config with defaults (in case new sections were added)
-        const merged = config.map((s: ReportSection) => {
-          const def = DEFAULT_SECTIONS.find((d) => d.key === s.key);
-          return {
-            ...s,
-            metrics: s.metrics.map((m) => ({
-              ...m,
-              label: def?.metrics.find((dm) => dm.key === m.key)?.label || m.label,
-            })),
-          };
-        });
-        // Append any new default sections not in saved
-        DEFAULT_SECTIONS.forEach((d) => {
-          if (!merged.find((m: any) => m.key === d.key)) merged.push(d);
-        });
-        setSections(merged);
-      }
-      setTemplateName((saved as any).name || "My Report Template");
+    if (!templates || !orgId) return;
+    if (templates.length === 0) {
+      setActiveTemplateId(null);
+      setSections(DEFAULT_SECTIONS);
+      setTemplateName("My Report Template");
       setHasChanges(false);
+      return;
     }
-  }, [saved]);
+    const stored = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_TEMPLATE_KEY(orgId)) : null;
+    const target = templates.find((t: any) => t.id === stored) || templates[templates.length - 1];
+    loadTemplate(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates, orgId]);
+
+  function loadTemplate(tpl: any) {
+    if (!tpl) return;
+    setActiveTemplateId(tpl.id);
+    if (orgId) localStorage.setItem(ACTIVE_TEMPLATE_KEY(orgId), tpl.id);
+    const config = tpl.sections_config;
+    if (Array.isArray(config) && config.length > 0) {
+      const merged = config.map((s: ReportSection) => {
+        const def = DEFAULT_SECTIONS.find((d) => d.key === s.key);
+        return {
+          ...s,
+          metrics: s.metrics.map((m) => ({
+            ...m,
+            label: def?.metrics.find((dm) => dm.key === m.key)?.label || m.label,
+          })),
+        };
+      });
+      DEFAULT_SECTIONS.forEach((d) => {
+        if (!merged.find((m: any) => m.key === d.key)) merged.push(d);
+      });
+      setSections(merged);
+    } else {
+      setSections(DEFAULT_SECTIONS);
+    }
+    setTemplateName(tpl.name || "My Report Template");
+    setHasChanges(false);
+  }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!orgId || !userId) throw new Error("Not authenticated");
       const cleanSections = sections.map(({ expanded, ...s }) => s);
-      if (saved) {
+      if (activeTemplateId) {
         const { error } = await supabase
           .from("report_custom_templates" as any)
           .update({ sections_config: cleanSections, name: templateName, updated_at: new Date().toISOString() } as any)
-          .eq("id", (saved as any).id);
+          .eq("id", activeTemplateId);
         if (error) throw error;
+        return activeTemplateId;
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("report_custom_templates" as any)
-          .insert({ user_id: userId, org_id: orgId, name: templateName, sections_config: cleanSections } as any);
+          .insert({ user_id: userId, org_id: orgId, name: templateName, sections_config: cleanSections } as any)
+          .select("id")
+          .single();
         if (error) throw error;
+        return (data as any).id as string;
       }
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
+      queryClient.invalidateQueries({ queryKey: ["report_custom_templates_list"] });
       queryClient.invalidateQueries({ queryKey: ["report_custom_template"] });
+      if (id && orgId) {
+        setActiveTemplateId(id);
+        localStorage.setItem(ACTIVE_TEMPLATE_KEY(orgId), id);
+      }
       toast.success(t("reports.templateSaved"));
       setHasChanges(false);
     },
     onError: (err: any) => toast.error(err.message || "Failed to save"),
   });
+
+  const saveAsNewMutation = useMutation({
+    mutationFn: async () => {
+      if (!orgId || !userId) throw new Error("Not authenticated");
+      const cleanSections = sections.map(({ expanded, ...s }) => s);
+      // Ensure unique name (user_id, org_id, name) is unique constraint
+      let candidateName = templateName?.trim() || "Untitled template";
+      const existing = new Set((templates || []).map((t: any) => t.name));
+      if (existing.has(candidateName)) {
+        let i = 2;
+        while (existing.has(`${candidateName} (${i})`)) i++;
+        candidateName = `${candidateName} (${i})`;
+      }
+      const { data, error } = await supabase
+        .from("report_custom_templates" as any)
+        .insert({ user_id: userId, org_id: orgId, name: candidateName, sections_config: cleanSections } as any)
+        .select("id, name")
+        .single();
+      if (error) throw error;
+      return data as any;
+    },
+    onSuccess: (row) => {
+      queryClient.invalidateQueries({ queryKey: ["report_custom_templates_list"] });
+      if (orgId) {
+        setActiveTemplateId(row.id);
+        setTemplateName(row.name);
+        localStorage.setItem(ACTIVE_TEMPLATE_KEY(orgId), row.id);
+      }
+      toast.success(`Saved as "${row.name}"`);
+      setHasChanges(false);
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to save copy"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeTemplateId) return;
+      const { error } = await supabase.from("report_custom_templates" as any).delete().eq("id", activeTemplateId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      if (orgId) localStorage.removeItem(ACTIVE_TEMPLATE_KEY(orgId));
+      setActiveTemplateId(null);
+      queryClient.invalidateQueries({ queryKey: ["report_custom_templates_list"] });
+      queryClient.invalidateQueries({ queryKey: ["report_custom_template"] });
+      toast.success("Template deleted");
+    },
+    onError: (err: any) => toast.error(err.message || "Failed to delete"),
+  });
+
+  const newTemplate = () => {
+    setActiveTemplateId(null);
+    setSections(DEFAULT_SECTIONS);
+    setTemplateName("New template");
+    setHasChanges(true);
+    if (orgId) localStorage.removeItem(ACTIVE_TEMPLATE_KEY(orgId));
+  };
 
   const toggleSection = (key: string) => {
     setSections((prev) => prev.map((s) => s.key === key ? { ...s, enabled: !s.enabled } : s));

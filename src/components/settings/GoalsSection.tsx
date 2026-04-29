@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
@@ -533,6 +535,22 @@ export default function GoalsSection() {
 
   const activeGoals = goals.filter((g) => g.is_active);
   const conversionGoals = goals.filter((g) => g.is_conversion && g.is_active);
+  const conversionGoalIds = conversionGoals.map((g) => g.id);
+
+  // Total conversion events across all active conversion goals
+  const { data: totalConversions = 0 } = useQuery({
+    queryKey: ["goal_completions_total", orgId, conversionGoalIds.sort().join(",")],
+    enabled: !!orgId && conversionGoalIds.length > 0,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("goal_completions")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId!)
+        .in("goal_id", conversionGoalIds);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   // Scroll the focused goal into view once goals load
   useEffect(() => {
@@ -575,7 +593,7 @@ export default function GoalsSection() {
           <p className="text-xs text-muted-foreground">{t("goals.active")}</p>
         </div>
         <div className="text-center">
-          <span className="text-lg font-bold font-mono-data text-primary">{conversionGoals.length}</span>
+          <span className="text-lg font-bold font-mono-data text-primary">{totalConversions.toLocaleString()}</span>
           <p className="text-xs text-muted-foreground">{t("goals.conversionsLabel")}</p>
         </div>
       </div>

@@ -439,7 +439,7 @@ const Auth = () => {
                     <div className="text-right">
                       <button
                         type="button"
-                        onClick={() => { setForgotEmail(email); goToPanel("forgot"); }}
+                        onClick={() => { clearMessages(); setForgotEmail(email); goToPanel("forgot"); }}
                         className="text-xs text-white hover:underline font-medium"
                       >
                         Lost your password?

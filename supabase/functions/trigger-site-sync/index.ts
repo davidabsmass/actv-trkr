@@ -75,16 +75,50 @@ function escapeRegex(value: string): string {
 // so the embed slot looks empty even though the form renders fine for
 // real visitors. Treating these embed scripts as "form present" prevents
 // noisy false-positive Form Liveness alerts.
+//
+// Returns the detected provider name, or null if none found.
+function detectThirdPartyEmbed(html: string): string | null {
+  const checks: Array<[RegExp, string]> = [
+    [/js\.hsforms\.net\/forms\/embed|hsforms\.com\/embed|hbspt\.forms\.create|hs-form-frame/i, "HubSpot"],
+    [/mc-embedded-subscribe|mc4wp-form|chimpstatic\.com|list-manage\.com\/subscribe/i, "Mailchimp"],
+    [/constantcontact\.com\/signup|ctct-form-embed|ctct_usercontent|ctctcdn\.com\/js\/signup-form-widget|signupScript/i, "Constant Contact"],
+    [/form\.jotform\.com|jotfor\.ms|jotform-form/i, "Jotform"],
+    [/embed\.typeform\.com|tf-v1-widget|data-tf-widget/i, "Typeform"],
+    [/formstack\.com\/forms|fs-frm/i, "Formstack"],
+    [/forms\.gle\/|docs\.google\.com\/forms/i, "Google Forms"],
+    [/klaviyo\.com\/onsite|klaviyo_subscribe|kl_form/i, "Klaviyo"],
+    [/convertkit\.com\/forms|formkit-form|ck-form/i, "ConvertKit"],
+    [/mailerlite\.com|ml-form-embed|ml-subscribe-form/i, "MailerLite"],
+    [/sendinblue\.com|brevo\.com|sib-form/i, "Brevo"],
+    [/aweber\.com\/form|aweber-wp-form/i, "AWeber"],
+    [/getresponse\.com|gr-form/i, "GetResponse"],
+    [/activecampaign\.com|_form_\d+/i, "ActiveCampaign"],
+    [/substack\.com\/embed/i, "Substack"],
+    [/beehiiv\.com\/embed/i, "Beehiiv"],
+    [/flodesk\.com\/universal\.js|fd-form/i, "Flodesk"],
+    [/tinyletter\.com\/embed/i, "TinyLetter"],
+    [/sendfox\.com\/embed/i, "SendFox"],
+    [/forms\.zoho\.com|zoho.*form/i, "Zoho Forms"],
+    [/wufoo\.com\/embed|wufoo\.com\/forms/i, "Wufoo"],
+    [/airtable\.com\/embed/i, "Airtable"],
+    [/cognitoforms\.com|cognito-form/i, "Cognito Forms"],
+    [/paperform\.co\/__embed/i, "Paperform"],
+    [/tally\.so\/embed/i, "Tally"],
+    [/fillout\.com\/embed/i, "Fillout"],
+  ];
+  for (const [re, name] of checks) {
+    if (re.test(html)) return name;
+  }
+  // Generic third-party form iframe (catch-all). Recognize an <iframe> that
+  // looks like it hosts a form/signup widget from an external host.
+  if (/<iframe[^>]+src=["'][^"']*(form|signup|subscribe|newsletter|embed)[^"']*["']/i.test(html)) {
+    return "Embedded form";
+  }
+  return null;
+}
+
 function hasThirdPartyFormEmbed(html: string): boolean {
-  return /js\.hsforms\.net\/forms\/embed|hsforms\.com\/embed|hbspt\.forms\.create|hs-form-frame/i.test(html) // HubSpot
-    || /mc-embedded-subscribe|mc4wp-form|chimpstatic\.com|list-manage\.com\/subscribe/i.test(html) // Mailchimp
-    || /constantcontact\.com\/signup|ctct-form-embed|ctct_usercontent/i.test(html) // Constant Contact
-    || /form\.jotform\.com|jotfor\.ms|jotform-form/i.test(html) // Jotform
-    || /embed\.typeform\.com|tf-v1-widget|data-tf-widget/i.test(html) // Typeform
-    || /formstack\.com\/forms|fs-frm/i.test(html) // Formstack
-    || /forms\.gle\/|docs\.google\.com\/forms/i.test(html) // Google Forms
-    || /klaviyo\.com\/onsite|klaviyo_subscribe|kl_form/i.test(html) // Klaviyo
-    || /convertkit\.com\/forms|formkit-form|ck-form/i.test(html); // ConvertKit / Kit
+  return detectThirdPartyEmbed(html) !== null;
 }
 
 function detectFormInHtml(html: string, provider: string, externalFormId: string): boolean {
@@ -402,11 +436,13 @@ function computeFailureReason(status: number | null, rendered: boolean, error: s
   if (rendered) return null;
   if (error) return `Could not reach page (${error})`;
   if (status === null) return "Could not reach page";
-  if (status === 404 || status === 410) return `Page not found (HTTP ${status})`;
+  if (status === 404 || status === 410) return `Page removed (HTTP ${status})`;
   if (status >= 500) return `Server error (HTTP ${status})`;
   if (status >= 400) return `Page blocked or unavailable (HTTP ${status})`;
   if (status >= 300) return `Page redirected (HTTP ${status})`;
-  return `Page returned ${status} but form markup not detected`;
+  // Page loads fine but we couldn't see the form markup — almost always an
+  // unrecognized third-party embed (iframe/JS widget). Soft message only.
+  return "Likely a third-party embed (no warning needed)";
 }
 
 async function probeFormPage(

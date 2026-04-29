@@ -290,13 +290,19 @@ const Dashboard = () => {
         .eq("org_id", orgId)
         .eq("is_rendered", false);
       // Exclude forms the user has explicitly told us to stop monitoring,
-      // archived forms, and forms disabled in WordPress.
+      // archived forms, forms disabled in WordPress, and pages that load fine
+      // (HTTP 200) but where we just couldn't see form markup — those are
+      // almost always third-party embeds (Constant Contact, HubSpot, etc.)
+      // and don't deserve a "Needs Attention" warning.
       return (data || []).filter((row: any) => {
         const f = row.forms;
         if (!f) return false;
         if (f.health_check_disabled) return false;
         if (f.archived) return false;
         if (f.is_active === false) return false;
+        // Page is up (2xx) — almost certainly a third-party embed we can't
+        // see from server-side HTML. Don't alarm the user.
+        if (row.last_http_status && row.last_http_status >= 200 && row.last_http_status < 300) return false;
         return true;
       });
     },

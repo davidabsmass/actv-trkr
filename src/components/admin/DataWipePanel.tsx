@@ -22,7 +22,7 @@ interface OrgRow {
  * Active production clients that must NEVER appear in the data-wipe list.
  * Match is case-insensitive against org name OR any member email domain.
  */
-const PROTECTED_CLIENTS = ["apyxmedical.com", "apyxmedical"];
+const PROTECTED_CLIENTS = ["apyxmedical.com", "apyxmedical", "livesinthebalance.com", "livesinthebalance"];
 
 function isProtectedOrg(org: OrgRow): boolean {
   const name = (org.name || "").toLowerCase();

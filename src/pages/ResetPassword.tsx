@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff, Mail } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
@@ -38,6 +38,7 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string>("");
   const completedRef = useRef(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -154,6 +155,20 @@ const ResetPassword = () => {
     };
   }, [queryClient]);
 
+  // Once a recovery session is established, surface the account email so
+  // the invitee can confirm they're setting a password for the right account.
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!cancelled && user?.email) setAccountEmail(user.email);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [ready]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -234,6 +249,22 @@ const ResetPassword = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
+              {accountEmail && (
+                <div>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                    <input
+                      type="email"
+                      value={accountEmail}
+                      readOnly
+                      disabled
+                      aria-label="Account email"
+                      className="w-full pl-10 pr-3 py-2.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white/80 cursor-not-allowed focus:outline-none"
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-white/50">Setting password for this account.</p>
+                </div>
+              )}
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input

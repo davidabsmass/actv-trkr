@@ -140,20 +140,32 @@ const ResetPassword = () => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      // Safety net: if the user navigated away without finishing the
-      // password reset, kill the recovery session so it cannot become
-      // a silent login in another tab.
-      if (!completedRef.current) {
-        supabase.auth.signOut({ scope: "global" }).catch(() => {});
-        try {
-          sessionStorage.removeItem(RECOVERY_FLAG);
-          localStorage.removeItem(RECOVERY_FLAG);
-          localStorage.removeItem(RECOVERY_TS_KEY);
-        } catch {}
-        queryClient.clear();
-      }
+      // NOTE: Intentionally NOT signing out on effect cleanup.
+      // React 18 StrictMode (and any parent re-render) double-invokes effects,
+      // and a cleanup-time signOut would destroy the freshly-minted recovery
+      // session before the user can submit, producing a false "link expired"
+      // error. The completion handler in handleSubmit signs out explicitly,
+      // and the recovery flag in storage prevents the session from being
+      // treated as a normal login elsewhere in the app.
     };
   }, [queryClient]);
+
+  // Safety net: if the user navigates away (closes tab, hits back) without
+  // completing, kill the recovery session so it cannot become a silent login.
+  useEffect(() => {
+    const handleUnload = () => {
+      if (completedRef.current) return;
+      try {
+        sessionStorage.removeItem(RECOVERY_FLAG);
+        localStorage.removeItem(RECOVERY_FLAG);
+        localStorage.removeItem(RECOVERY_TS_KEY);
+      } catch {}
+      // Best-effort sign-out; can't await in unload.
+      supabase.auth.signOut({ scope: "global" }).catch(() => {});
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
 
   // Once a recovery session is established, surface the account email so
   // the invitee can confirm they're setting a password for the right account.

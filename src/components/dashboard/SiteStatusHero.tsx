@@ -99,8 +99,8 @@ function buildSpec({
     Icon: Activity,
     title: "Your site is live, being monitored, and tracking visitor activity.",
     body: "ACTV TRKR is watching traffic, Key Actions, forms, uptime, SEO issues, and site health.",
-    primary: { label: "View Insights", to: "/reports" },
-    secondary: { label: "View Traffic Sources", to: "/performance" },
+    primary: { label: "AI Performance Insights", to: "#ai-insights" },
+    secondary: { label: "Performance", to: "/performance" },
   };
 }
 

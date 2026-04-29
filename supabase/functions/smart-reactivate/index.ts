@@ -60,13 +60,14 @@ serve(async (req) => {
         status: "all",
         limit: 5,
       });
+      // Only the portal can RESUME these states. Fully canceled / unpaid
+      // subscriptions cannot be revived via the portal — those need a fresh
+      // checkout (handled below).
       const recoverable = subs.data.find(
         (s: any) =>
           s.cancel_at_period_end === true ||
           s.status === "past_due" ||
-          s.status === "paused" ||
-          s.status === "canceled" ||
-          s.status === "unpaid"
+          s.status === "paused"
       );
 
       if (recoverable) {

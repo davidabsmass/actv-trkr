@@ -70,7 +70,15 @@ serve(async (req) => {
     if (sub) {
       const item = sub.items.data[0];
       const price = item?.price;
-      const product = price?.product as Stripe.Product | undefined;
+      let product: Stripe.Product | null = null;
+      const productRef = price?.product;
+      if (typeof productRef === "string") {
+        try {
+          product = await stripe.products.retrieve(productRef);
+        } catch (_) { /* ignore */ }
+      } else if (productRef && typeof productRef === "object") {
+        product = productRef as Stripe.Product;
+      }
       const periodEndUnix =
         (item as any)?.current_period_end ??
         (sub as any)?.current_period_end ??

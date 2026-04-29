@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, Eye, EyeOff, Mail } from "lucide-react";
+import { Lock, Eye, EyeOff, Mail, KeyRound } from "lucide-react";
 import actvTrkrLogo from "@/assets/actv-trkr-logo-new.png";
 import SparkleCanvas from "@/components/SparkleCanvas";
 import spaceBg from "@/assets/space-bgd-new.jpg";
@@ -39,6 +39,8 @@ const ResetPassword = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [accountEmail, setAccountEmail] = useState<string>("");
+  const [resetEmail, setResetEmail] = useState<string>("");
+  const [resetCode, setResetCode] = useState("");
   const completedRef = useRef(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -75,7 +77,10 @@ const ResetPassword = () => {
       const code = url.searchParams.get("code");
       const tokenHash = url.searchParams.get("token_hash");
       const type = url.searchParams.get("type");
+      const emailParam = url.searchParams.get("email")?.trim().toLowerCase() || "";
       const errDesc = url.searchParams.get("error_description") || url.searchParams.get("error");
+
+      if (emailParam) setResetEmail(emailParam);
 
       if (errDesc) {
         if (mounted) setError(decodeURIComponent(errDesc));
@@ -127,6 +132,7 @@ const ResetPassword = () => {
         const { data: { session: s2 } } = await supabase.auth.getSession();
         if (mounted) {
           if (s2) setReady(true);
+          else if (emailParam) setReady(true);
           else {
             console.warn("[reset] no session after wait", { search: url.search, hash: url.hash });
             setError("This reset link is invalid or has expired. Please request a new one.");

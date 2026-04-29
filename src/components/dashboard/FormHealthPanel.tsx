@@ -92,11 +92,23 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
         const probe = healthCheckMap[form.id];
 
         if (probe && !probe.is_rendered) {
+          const status = probe.last_http_status;
+          // Page loads fine (2xx) but no form markup detected — almost always
+          // a third-party embed (Constant Contact, HubSpot, Mailchimp, etc.)
+          // we can't see from server-side HTML. Surface as informational.
+          if (status && status >= 200 && status < 300) {
+            return {
+              id: form.id,
+              name: form.name,
+              status: "embedded",
+              detail: "Looks like a third-party embed (e.g. Constant Contact). No action needed.",
+            };
+          }
           const reason = probe.last_failure_reason
-            || (probe.last_http_status === 404 || probe.last_http_status === 410
-              ? `Page not found (HTTP ${probe.last_http_status})`
-              : probe.last_http_status && probe.last_http_status >= 500
-                ? `Server error (HTTP ${probe.last_http_status})`
+            || (status === 404 || status === 410
+              ? `Page removed (HTTP ${status})`
+              : status && status >= 500
+                ? `Server error (HTTP ${status})`
                 : t("formHealth.notDetected", { date: format(new Date(probe.last_checked_at), "MMM d, HH:mm") }));
           return { id: form.id, name: form.name, status: "not_rendered", detail: reason };
         }

@@ -189,7 +189,7 @@ const ResetPassword = () => {
       if (error) throw error;
 
       try {
-        await supabase.rpc("mark_invite_accepted");
+        await (supabase as any).rpc("mark_invite_accepted");
       } catch (inviteErr) {
         console.warn("[reset] invite acceptance marker failed", inviteErr);
       }

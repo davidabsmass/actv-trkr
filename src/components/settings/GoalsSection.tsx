@@ -593,7 +593,7 @@ export default function GoalsSection() {
           <p className="text-xs text-muted-foreground">{t("goals.active")}</p>
         </div>
         <div className="text-center">
-          <span className="text-lg font-bold font-mono-data text-primary">{conversionGoals.length}</span>
+          <span className="text-lg font-bold font-mono-data text-primary">{totalConversions.toLocaleString()}</span>
           <p className="text-xs text-muted-foreground">{t("goals.conversionsLabel")}</p>
         </div>
       </div>

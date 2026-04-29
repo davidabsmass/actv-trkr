@@ -130,51 +130,76 @@ export function SiteStatusHero(props: SiteStatusHeroProps) {
   const spec = buildSpec(props);
   const Icon = spec.Icon;
 
+  const handleNav = (to: string) => {
+    if (to.startsWith("#")) {
+      const el = document.getElementById(to.slice(1));
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
+    navigate(to);
+  };
+
   return (
     <div
-      className={`glass-card p-5 md:p-6 border ${TONE_BG[spec.badgeTone]} animate-slide-up`}
+      className={`glass-card px-4 py-3 md:px-5 md:py-3 border ${TONE_BG[spec.badgeTone]} animate-slide-up`}
       role="status"
       aria-live="polite"
     >
-      <div className="flex flex-col md:flex-row md:items-start gap-4 md:gap-6">
-        <div className={`hidden md:flex h-12 w-12 rounded-xl items-center justify-center bg-background/40 border border-border/50 ${TONE_ICON[spec.badgeTone]}`}>
-          <Icon className="h-6 w-6" />
+      <div className="flex items-center gap-3 md:gap-4">
+        <div className={`hidden md:flex h-9 w-9 rounded-lg items-center justify-center bg-background/40 border border-border/50 shrink-0 ${TONE_ICON[spec.badgeTone]}`}>
+          <Icon className="h-4 w-4" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold uppercase tracking-wider ${TONE_BADGE[spec.badgeTone]}`}>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${TONE_BADGE[spec.badgeTone]}`}>
               <span className={`md:hidden ${TONE_ICON[spec.badgeTone]}`}><Icon className="h-3 w-3" /></span>
               {spec.badge}
             </span>
+            <h2 className="text-sm md:text-base font-semibold text-foreground leading-tight">
+              {spec.title}
+            </h2>
           </div>
-          <h2 className="text-base md:text-lg font-semibold text-foreground leading-snug">
-            {spec.title}
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">
             {spec.body}
           </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2 mt-4">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            onClick={() => handleNav(spec.primary.to)}
+            className="gap-1.5 h-8"
+          >
+            {spec.primary.label}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+          {spec.secondary && (
             <Button
               size="sm"
-              onClick={() => navigate(spec.primary.to)}
-              className="gap-1.5"
+              variant="outline"
+              onClick={() => handleNav(spec.secondary!.to)}
+              className="h-8"
             >
-              {spec.primary.label}
-              <ArrowRight className="h-3.5 w-3.5" />
+              {spec.secondary.label}
             </Button>
-            {spec.secondary && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => navigate(spec.secondary!.to)}
-              >
-                {spec.secondary.label}
-              </Button>
-            )}
-          </div>
+          )}
         </div>
+      </div>
+
+      {/* Mobile: actions wrap below */}
+      <div className="flex sm:hidden flex-wrap items-center gap-2 mt-2">
+        <Button size="sm" onClick={() => handleNav(spec.primary.to)} className="gap-1.5 h-8">
+          {spec.primary.label}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+        {spec.secondary && (
+          <Button size="sm" variant="outline" onClick={() => handleNav(spec.secondary!.to)} className="h-8">
+            {spec.secondary.label}
+          </Button>
+        )}
       </div>
     </div>
   );

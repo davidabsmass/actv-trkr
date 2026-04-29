@@ -708,13 +708,26 @@ export default function SubscriberSitesPanel() {
                                               </SelectContent>
                                             </Select>
                                           ) : (
-                                            <Badge variant={m.role === "admin" ? "default" : "outline"}>
-                                              {m.role}
-                                            </Badge>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <Badge variant={m.role === "admin" ? "default" : "outline"}>
+                                                {m.role}
+                                              </Badge>
+                                              {m.status === "invited" && (
+                                                <Badge variant="secondary" className="gap-1">
+                                                  <Mail className="h-3 w-3" /> Pending
+                                                </Badge>
+                                              )}
+                                            </div>
                                           )}
                                         </TableCell>
                                         <TableCell className="text-xs">
-                                          {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "—"}
+                                          {m.status === "invited"
+                                            ? m.invited_at
+                                              ? `Invited ${new Date(m.invited_at).toLocaleDateString()}`
+                                              : "Invited"
+                                            : m.joined_at
+                                              ? new Date(m.joined_at).toLocaleDateString()
+                                              : "—"}
                                         </TableCell>
                                         <TableCell>
                                           <div className="flex gap-1 flex-wrap">
@@ -743,6 +756,37 @@ export default function SubscriberSitesPanel() {
                                                 >
                                                   <X className="h-3 w-3 mr-1" />
                                                   Cancel
+                                                </Button>
+                                              </>
+                                            ) : m.status === "invited" ? (
+                                              <>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="h-7 text-xs"
+                                                  onClick={() => handleInviteAction(r.org.id, m.user_id, "resend")}
+                                                  disabled={actionLoading === `resend-invite-${m.user_id}`}
+                                                >
+                                                  {actionLoading === `resend-invite-${m.user_id}` ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <RefreshCw className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Resend
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-7 text-xs text-destructive hover:text-destructive"
+                                                  onClick={() => handleInviteAction(r.org.id, m.user_id, "cancel")}
+                                                  disabled={actionLoading === `cancel-invite-${m.user_id}`}
+                                                >
+                                                  {actionLoading === `cancel-invite-${m.user_id}` ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                  ) : (
+                                                    <X className="h-3 w-3 mr-1" />
+                                                  )}
+                                                  Cancel invite
                                                 </Button>
                                               </>
                                             ) : (

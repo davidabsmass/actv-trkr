@@ -345,7 +345,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
   }
 
   // Footer watermark (also a section so it doesn't get orphaned)
-  html += `<div data-pdf-section style="text-align:center;padding:12px 0;font-size:10px;color:#6b6f80">
+  html += `<div data-pdf-section style="text-align:center;padding:12px 0;font-size:10px;color:#6b6f80;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
     ${brandName ? brandName + ' · ' : ''}Generated ${fmtDate(report.generatedAt)}
   </div>`;
 

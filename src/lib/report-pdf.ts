@@ -360,7 +360,24 @@ export async function buildReportPdf(report: any, _run: any, whiteLabel?: WhiteL
   container.innerHTML = buildReportHtml(report, whiteLabel, template);
   document.body.appendChild(container);
 
-  await new Promise((r) => setTimeout(r, 150));
+  // Wait for any <img> tags (e.g. white-label logo) to fully load before
+  // html2canvas captures, otherwise remote images render as broken/blank.
+  const images = Array.from(container.querySelectorAll("img"));
+  await Promise.all(
+    images.map((img) =>
+      img.complete && img.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            const done = () => resolve();
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+            // Safety timeout — never block the export forever
+            setTimeout(done, 3000);
+          })
+    )
+  );
+  // Tiny extra tick for layout to settle
+  await new Promise((r) => setTimeout(r, 50));
 
   try {
     const pageW = 210;

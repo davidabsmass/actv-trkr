@@ -7056,10 +7056,15 @@ export type Database = {
           heartbeat_interval_minutes: number
           id: string
           last_form_discovery_at: string | null
+          last_form_reconcile_at: string | null
+          last_form_reconcile_status: string | null
           last_heartbeat_at: string | null
           name: string | null
           org_id: string
           plan_tier: string
+          plugin_status: string | null
+          plugin_status_checked_at: string | null
+          plugin_status_detail: string | null
           plugin_version: string | null
           status: string
           type: string
@@ -7075,10 +7080,15 @@ export type Database = {
           heartbeat_interval_minutes?: number
           id?: string
           last_form_discovery_at?: string | null
+          last_form_reconcile_at?: string | null
+          last_form_reconcile_status?: string | null
           last_heartbeat_at?: string | null
           name?: string | null
           org_id: string
           plan_tier?: string
+          plugin_status?: string | null
+          plugin_status_checked_at?: string | null
+          plugin_status_detail?: string | null
           plugin_version?: string | null
           status?: string
           type?: string
@@ -7094,10 +7104,15 @@ export type Database = {
           heartbeat_interval_minutes?: number
           id?: string
           last_form_discovery_at?: string | null
+          last_form_reconcile_at?: string | null
+          last_form_reconcile_status?: string | null
           last_heartbeat_at?: string | null
           name?: string | null
           org_id?: string
           plan_tier?: string
+          plugin_status?: string | null
+          plugin_status_checked_at?: string | null
+          plugin_status_detail?: string | null
           plugin_version?: string | null
           status?: string
           type?: string

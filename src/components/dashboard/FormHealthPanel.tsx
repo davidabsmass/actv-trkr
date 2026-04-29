@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 type FormHealth = {
   id: string;
   name: string;
-  status: "healthy" | "low_activity" | "errors" | "no_activity" | "not_rendered";
+  status: "healthy" | "low_activity" | "errors" | "no_activity" | "not_rendered" | "embedded";
   detail: string;
 };
 

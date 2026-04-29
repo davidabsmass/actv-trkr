@@ -98,8 +98,8 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
     </div>`;
 
   const sectionStart = (icon: string, title: string) => `
-    <div data-pdf-section style="border:1px solid #e4e6ed;border-radius:8px;background:#fff;padding:20px;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid">
-      <div style="font-size:13px;font-weight:600;color:#00264d;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+    <div data-pdf-section style="border:1px solid #e4e6ed;border-radius:8px;background:#fff;padding:20px;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
+      <div style="font-size:13px;font-weight:600;color:#00264d;margin-bottom:14px;display:flex;align-items:center;gap:6px;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
         <span style="color:${brandPrimary}">${icon}</span> ${safe(title)}
       </div>`;
   const sectionEnd = `</div>`;

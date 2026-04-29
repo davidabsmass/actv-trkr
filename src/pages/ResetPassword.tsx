@@ -203,8 +203,20 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      if (!resetEmail) {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+      } else {
+        const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+          email: resetEmail,
+          token: resetCode.trim(),
+          type: "recovery",
+        });
+        if (verifyErr) throw verifyErr;
+        if (!data?.session) throw new Error("This reset code is invalid or has expired. Please request a new one.");
+        const { error: updateErr } = await supabase.auth.updateUser({ password });
+        if (updateErr) throw updateErr;
+      }
 
       try {
         await (supabase as any).rpc("mark_invite_accepted");
@@ -236,6 +248,7 @@ const ResetPassword = () => {
 
   const inputClass =
     "w-full pl-10 pr-10 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50";
+  const accountDisplayEmail = accountEmail || resetEmail;
 
   return (
     <div
@@ -273,13 +286,13 @@ const ResetPassword = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
-              {accountEmail && (
+              {accountDisplayEmail && (
                 <div>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                     <input
                       type="email"
-                      value={accountEmail}
+                      value={accountDisplayEmail}
                       readOnly
                       disabled
                       aria-label="Account email"
@@ -287,6 +300,22 @@ const ResetPassword = () => {
                     />
                   </div>
                   <p className="mt-1 text-[11px] text-white/50">Setting password for this account.</p>
+                </div>
+              )}
+              {resetEmail && (
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Reset code"
+                    value={resetCode}
+                    onChange={(e) => setResetCode(e.target.value.replace(/\s/g, ""))}
+                    required
+                    autoComplete="one-time-code"
+                    name="reset-code"
+                    className={inputClass}
+                  />
                 </div>
               )}
               <div className="relative">

@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
     const { data: sts } = await supabase
       .from("site_tracking_status")
-      .select("tracker_status, last_event_at, last_heartbeat_at, verifier_last_status, verifier_last_message")
+      .select("tracker_status, last_event_at, last_heartbeat_at, verifier_last_status, verifier_last_checked_at, verifier_last_message")
       .eq("site_id", site.id)
       .maybeSingle();
 

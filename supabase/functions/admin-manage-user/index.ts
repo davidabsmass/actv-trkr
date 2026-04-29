@@ -795,11 +795,7 @@ Deno.serve(async (req) => {
       }
 
       const sendPasswordSetupEmail = async (idempotencyPrefix: string) => {
-        const { data: linkData } = await adminClient.auth.admin.generateLink({
-          type: "recovery", email,
-          options: { redirectTo: "https://actvtrkr.com/reset-password" },
-        });
-        const setPasswordUrl = linkData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+        const setPasswordUrl = await createPasswordResetUrl(adminClient, email, "https://actvtrkr.com/reset-password", targetUserId) || "https://actvtrkr.com/auth";
         await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
           method: "POST",
           headers: {

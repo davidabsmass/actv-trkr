@@ -347,8 +347,12 @@ function ActivityReportsTab() {
   }, [templates, orgId]);
 
   const onPickTemplate = (id: string) => {
-    setSelectedTemplateId(id);
-    if (orgId) localStorage.setItem(ACTIVE_TPL_KEY(orgId), id);
+    const next = id || null;
+    setSelectedTemplateId(next);
+    if (orgId) {
+      if (next) localStorage.setItem(ACTIVE_TPL_KEY(orgId), next);
+      else localStorage.removeItem(ACTIVE_TPL_KEY(orgId));
+    }
   };
 
   const { data: runs, isLoading: runsLoading } = useQuery({

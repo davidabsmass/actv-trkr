@@ -13,7 +13,10 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PRICE_ID = Deno.env.get("STRIPE_PRICE_ID") || "";
+// Canonical monthly price (matches actv-checkout). Falls back to env override
+// if you ever need to switch plans without redeploying.
+const PRICE_ID =
+  Deno.env.get("STRIPE_PRICE_ID") || "price_1TMlVgQXOqBVFUKWKU31SRaN";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

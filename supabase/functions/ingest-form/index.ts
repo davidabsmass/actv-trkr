@@ -466,11 +466,36 @@ Deno.serve(async (req) => {
 
     // Upsert form
     const extFormId = entry.form_id?.toString() || `dom_form_${fingerprint.slice(0, 8)}`;
-    const formName = entry.form_title || entry.form_name || `Form (${providerName})`;
+    const rawTitle = (entry.form_title || entry.form_name || "").toString().trim();
+    const stubName = `Form (${providerName})`;
+    const formName = rawTitle || stubName;
+
+    // Check if a form already exists with a real (non-stub) name. If so,
+    // never overwrite it with the stub — only update other metadata.
+    const { data: existingForm } = await supabase
+      .from("forms")
+      .select("id, name")
+      .eq("site_id", siteId)
+      .eq("provider", providerName)
+      .eq("external_form_id", extFormId)
+      .maybeSingle();
+
+    const shouldKeepExistingName =
+      existingForm &&
+      existingForm.name &&
+      existingForm.name !== stubName &&
+      formName === stubName;
+
+    const upsertPayload: Record<string, unknown> = {
+      org_id: orgId,
+      site_id: siteId,
+      external_form_id: extFormId,
+      provider: providerName,
+    };
+    if (!shouldKeepExistingName) upsertPayload.name = formName;
+
     const { data: formRow, error: formErr } = await supabase.from("forms")
-      .upsert({ org_id: orgId, site_id: siteId, external_form_id: extFormId, name: formName, provider: providerName }, {
-        onConflict: "site_id,provider,external_form_id",
-      })
+      .upsert(upsertPayload, { onConflict: "site_id,provider,external_form_id" })
       .select("id")
       .single();
     if (formErr || !formRow) return new Response(JSON.stringify({ error: "Failed to create form" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -436,11 +436,13 @@ function computeFailureReason(status: number | null, rendered: boolean, error: s
   if (rendered) return null;
   if (error) return `Could not reach page (${error})`;
   if (status === null) return "Could not reach page";
-  if (status === 404 || status === 410) return `Page not found (HTTP ${status})`;
+  if (status === 404 || status === 410) return `Page removed (HTTP ${status})`;
   if (status >= 500) return `Server error (HTTP ${status})`;
   if (status >= 400) return `Page blocked or unavailable (HTTP ${status})`;
   if (status >= 300) return `Page redirected (HTTP ${status})`;
-  return `Page returned ${status} but form markup not detected`;
+  // Page loads fine but we couldn't see the form markup — almost always an
+  // unrecognized third-party embed (iframe/JS widget). Soft message only.
+  return "Likely a third-party embed (no warning needed)";
 }
 
 async function probeFormPage(

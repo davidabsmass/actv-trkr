@@ -249,6 +249,22 @@ const ResetPassword = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
+              {accountEmail && (
+                <div>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                    <input
+                      type="email"
+                      value={accountEmail}
+                      readOnly
+                      disabled
+                      aria-label="Account email"
+                      className="w-full pl-10 pr-3 py-2.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white/80 cursor-not-allowed focus:outline-none"
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-white/50">Setting password for this account.</p>
+                </div>
+              )}
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                 <input

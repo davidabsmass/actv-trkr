@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
@@ -299,6 +299,8 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
 }
 
 // ── Activity Reports Sub-Tab (moved from old Reports page) ──
+const ACTIVE_TPL_KEY = (orgId: string) => `actv:activeReportTemplateId:${orgId}`;
+
 function ActivityReportsTab() {
   const { t } = useTranslation();
   const { orgId, orgName } = useOrg();
@@ -310,6 +312,48 @@ function ActivityReportsTab() {
   const [dateRangeMode, setDateRangeMode] = useState<"monthly" | "custom">("monthly");
   const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date>(new Date());
+  const userId = session?.user?.id;
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() => {
+    if (typeof window === "undefined" || !orgId) return null;
+    return localStorage.getItem(ACTIVE_TPL_KEY(orgId));
+  });
+
+  const { data: templates } = useQuery({
+    queryKey: ["report_custom_templates_list", orgId, userId],
+    queryFn: async () => {
+      if (!orgId || !userId) return [] as any[];
+      const { data } = await supabase
+        .from("report_custom_templates" as any)
+        .select("id, name, sections_config, created_at")
+        .eq("user_id", userId)
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: true });
+      return (data as any[]) || [];
+    },
+    enabled: !!orgId && !!userId,
+  });
+
+  // Sync selection with available templates
+  useEffect(() => {
+    if (!templates || !orgId) return;
+    const stored = localStorage.getItem(ACTIVE_TPL_KEY(orgId));
+    if (stored && templates.some((tt: any) => tt.id === stored)) {
+      setSelectedTemplateId(stored);
+    } else if (templates.length > 0) {
+      setSelectedTemplateId(templates[templates.length - 1].id);
+    } else {
+      setSelectedTemplateId(null);
+    }
+  }, [templates, orgId]);
+
+  const onPickTemplate = (id: string) => {
+    const next = id || null;
+    setSelectedTemplateId(next);
+    if (orgId) {
+      if (next) localStorage.setItem(ACTIVE_TPL_KEY(orgId), next);
+      else localStorage.removeItem(ACTIVE_TPL_KEY(orgId));
+    }
+  };
 
   const { data: runs, isLoading: runsLoading } = useQuery({
     queryKey: ["report_runs", orgId],
@@ -372,11 +416,13 @@ function ActivityReportsTab() {
     try {
       const { data, error } = await supabase.storage.from("reports").createSignedUrl(run.file_path, 60);
       if (error) throw error;
-      const userId = session?.user?.id;
+      const tplPromise = (orgId && userId && selectedTemplateId)
+        ? supabase.from("report_custom_templates" as any).select("sections_config").eq("id", selectedTemplateId).maybeSingle()
+        : Promise.resolve({ data: null });
       const [resp, wlResult, tplResult] = await Promise.all([
         fetch(data.signedUrl),
         orgId ? supabase.from("white_label_settings").select("*").eq("org_id", orgId).maybeSingle() : Promise.resolve({ data: null }),
-        orgId && userId ? supabase.from("report_custom_templates" as any).select("sections_config").eq("user_id", userId).eq("org_id", orgId).order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+        tplPromise,
       ]);
       const report = await resp.json();
       const tplConfig = (tplResult.data as any)?.sections_config ?? null;
@@ -478,9 +524,25 @@ function ActivityReportsTab() {
           ) : (
             <p className="text-xs text-muted-foreground">{format(dateFrom, "MMM d")} – {format(dateTo, "MMM d, yyyy")}</p>
           )}
-          <Button className="sm:ml-auto" onClick={() => generateReport.mutate()} disabled={generateReport.isPending}>
-            {generateReport.isPending ? t("reports.generatingReport") : t("reports.generateReport")}
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-xs font-medium text-muted-foreground">Template:</label>
+            <Select
+              value={selectedTemplateId ?? "__default__"}
+              onValueChange={(v) => onPickTemplate(v === "__default__" ? "" : v)}
+            >
+              <SelectTrigger className="h-8 w-[240px] text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">Default (all sections)</SelectItem>
+                {(templates || []).map((tt: any) => (
+                  <SelectItem key={tt.id} value={tt.id}>{tt.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">Used for PDF exports.</span>
+            <Button className="sm:ml-auto" onClick={() => generateReport.mutate()} disabled={generateReport.isPending}>
+              {generateReport.isPending ? t("reports.generatingReport") : t("reports.generateReport")}
+            </Button>
+          </div>
         </div>
       </div>
 

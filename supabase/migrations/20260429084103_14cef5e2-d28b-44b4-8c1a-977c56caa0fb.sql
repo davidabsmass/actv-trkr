@@ -1,0 +1,1 @@
+ALTER TABLE public.report_custom_templates DROP CONSTRAINT IF EXISTS report_custom_templates_user_org_unique;

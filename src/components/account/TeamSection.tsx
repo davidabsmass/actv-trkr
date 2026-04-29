@@ -51,7 +51,7 @@ export default function TeamSection() {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from("org_users")
-        .select("id, user_id, role, is_owner, status, created_at, invited_by")
+        .select("id, user_id, role, is_owner, status, created_at, invited_by, invited_at, invite_accepted_at")
         .eq("org_id", orgId);
       if (error) throw error;
 
@@ -70,7 +70,9 @@ export default function TeamSection() {
     },
   });
 
-  const adminCount = members.filter((m: any) => m.role === "admin").length;
+  const pendingInvites = members.filter((m: any) => m.status === "invited");
+  const activeMembers = members.filter((m: any) => m.status !== "invited");
+  const adminCount = activeMembers.filter((m: any) => m.role === "admin").length;
 
   const { data: auditLog = [] } = useQuery({
     queryKey: ["team_audit_log", orgId],

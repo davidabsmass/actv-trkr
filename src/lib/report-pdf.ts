@@ -71,7 +71,13 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
   const brandPrimary = wl?.primary_color || "#635bff";
   const brandSecondary = wl?.secondary_color || "#9449e0";
   const brandGradientStart = wl?.primary_color || "#6d5dd4";
-  const brandName = (wl?.hide_actv_branding || wl?.logo_url) ? (wl?.client_name || "") : "ACTV TRKR";
+  // If a logo is uploaded, the logo IS the brand identity — no text name.
+  // Otherwise show the client name (when branding is hidden) or ACTV TRKR.
+  const brandName = wl?.logo_url
+    ? ""
+    : wl?.hide_actv_branding
+      ? (wl?.client_name || "")
+      : "ACTV TRKR";
   const brandAccent = wl?.accent_color || brandPrimary;
   const es = report.executiveSummary;
   const ge = report.growthEngine;
@@ -92,8 +98,8 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
     </div>`;
 
   const sectionStart = (icon: string, title: string) => `
-    <div data-pdf-section style="border:1px solid #e4e6ed;border-radius:8px;background:#fff;padding:20px;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid">
-      <div style="font-size:13px;font-weight:600;color:#00264d;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+    <div data-pdf-section style="border:1px solid #e4e6ed;border-radius:8px;background:#fff;padding:20px;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
+      <div style="font-size:13px;font-weight:600;color:#00264d;margin-bottom:14px;display:flex;align-items:center;gap:6px;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
         <span style="color:${brandPrimary}">${icon}</span> ${safe(title)}
       </div>`;
   const sectionEnd = `</div>`;
@@ -239,7 +245,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
       let s = sectionStart("📊", "Conversion Intelligence");
       if (me("conversionIntelligence", "leadsByForm") && ci.leadsByForm?.length > 0) {
         s += `<div style="margin-bottom:16px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:8px">Leads by Form</div>`;
-        s += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+        s += `<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
           <thead><tr style="border-bottom:1px solid #e4e6ed;text-align:left">
             <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Form</th>
             <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Category</th>
@@ -308,7 +314,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
       if (!gc || !gc.goals?.length) return "";
       let s = sectionStart("🎯", "Key Actions");
       s += `<div style="font-size:11px;color:#6b6f80;margin-bottom:12px">${gc.totalCompletions} total completions across ${gc.goals.length} Key Action(s)</div>`;
-      s += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+      s += `<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
         <thead><tr style="border-bottom:1px solid #e4e6ed;text-align:left">
           <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Key Action</th>
           <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Type</th>
@@ -339,7 +345,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
   }
 
   // Footer watermark (also a section so it doesn't get orphaned)
-  html += `<div data-pdf-section style="text-align:center;padding:12px 0;font-size:10px;color:#6b6f80">
+  html += `<div data-pdf-section style="text-align:center;padding:12px 0;font-size:10px;color:#6b6f80;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
     ${brandName ? brandName + ' · ' : ''}Generated ${fmtDate(report.generatedAt)}
   </div>`;
 
@@ -393,7 +399,11 @@ export async function buildReportPdf(report: any, _run: any, whiteLabel?: WhiteL
     const fbR = parseInt(footerBrandHex.slice(1, 3), 16);
     const fbG = parseInt(footerBrandHex.slice(3, 5), 16);
     const fbB = parseInt(footerBrandHex.slice(5, 7), 16);
-    const footerBrand = (whiteLabel?.hide_actv_branding || whiteLabel?.logo_url) ? (whiteLabel?.client_name || "") : "ACTV TRKR";
+    const footerBrand = whiteLabel?.logo_url
+      ? ""
+      : whiteLabel?.hide_actv_branding
+        ? (whiteLabel?.client_name || "")
+        : "ACTV TRKR";
 
     const footerRenderer = (d: jsPDF, page: number, totalPages: number) => {
       d.setFillColor(245, 246, 250);

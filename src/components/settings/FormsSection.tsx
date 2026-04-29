@@ -226,6 +226,17 @@ export default function FormsSection() {
                     <span>Resume</span>
                   </button>
                 )}
+                {!form.health_check_disabled && !form.archived && (
+                  <button
+                    onClick={() => stopMonitoring(form.id)}
+                    disabled={togglingId === form.id}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
+                    title="Stop checking whether this form renders"
+                  >
+                    <EyeOff className="h-3.5 w-3.5" />
+                    <span>Stop monitoring</span>
+                  </button>
+                )}
                 <button
                   onClick={() => toggleArchive(form.id, form.archived)}
                   disabled={togglingId === form.id}

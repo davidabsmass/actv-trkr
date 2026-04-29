@@ -3591,6 +3591,7 @@ export type Database = {
           data: Json | null
           engagement_score: number | null
           external_entry_id: string | null
+          external_entry_key: string | null
           form_id: string
           id: string
           lead_score: number | null
@@ -3628,6 +3629,7 @@ export type Database = {
           data?: Json | null
           engagement_score?: number | null
           external_entry_id?: string | null
+          external_entry_key?: string | null
           form_id: string
           id?: string
           lead_score?: number | null
@@ -3665,6 +3667,7 @@ export type Database = {
           data?: Json | null
           engagement_score?: number | null
           external_entry_id?: string | null
+          external_entry_key?: string | null
           form_id?: string
           id?: string
           lead_score?: number | null
@@ -3715,6 +3718,123 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      leads_predupe_backup_2026_04_29: {
+        Row: {
+          campaign: string | null
+          created_at: string | null
+          customer_marketing_consent_field_name: string | null
+          customer_marketing_consent_status: string | null
+          customer_marketing_consent_text: string | null
+          customer_marketing_consent_timestamp: string | null
+          data: Json | null
+          engagement_score: number | null
+          external_entry_id: string | null
+          external_entry_key: string | null
+          form_id: string | null
+          id: string | null
+          lead_score: number | null
+          lead_type: string | null
+          location: string | null
+          medium: string | null
+          notes: string | null
+          org_id: string | null
+          page_path: string | null
+          page_url: string | null
+          physician: string | null
+          referrer: string | null
+          referrer_domain: string | null
+          service: string | null
+          session_id: string | null
+          site_id: string | null
+          source: string | null
+          status: string | null
+          submitted_at: string | null
+          tags: string[] | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          campaign?: string | null
+          created_at?: string | null
+          customer_marketing_consent_field_name?: string | null
+          customer_marketing_consent_status?: string | null
+          customer_marketing_consent_text?: string | null
+          customer_marketing_consent_timestamp?: string | null
+          data?: Json | null
+          engagement_score?: number | null
+          external_entry_id?: string | null
+          external_entry_key?: string | null
+          form_id?: string | null
+          id?: string | null
+          lead_score?: number | null
+          lead_type?: string | null
+          location?: string | null
+          medium?: string | null
+          notes?: string | null
+          org_id?: string | null
+          page_path?: string | null
+          page_url?: string | null
+          physician?: string | null
+          referrer?: string | null
+          referrer_domain?: string | null
+          service?: string | null
+          session_id?: string | null
+          site_id?: string | null
+          source?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          tags?: string[] | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          campaign?: string | null
+          created_at?: string | null
+          customer_marketing_consent_field_name?: string | null
+          customer_marketing_consent_status?: string | null
+          customer_marketing_consent_text?: string | null
+          customer_marketing_consent_timestamp?: string | null
+          data?: Json | null
+          engagement_score?: number | null
+          external_entry_id?: string | null
+          external_entry_key?: string | null
+          form_id?: string | null
+          id?: string | null
+          lead_score?: number | null
+          lead_type?: string | null
+          location?: string | null
+          medium?: string | null
+          notes?: string | null
+          org_id?: string | null
+          page_path?: string | null
+          page_url?: string | null
+          physician?: string | null
+          referrer?: string | null
+          referrer_domain?: string | null
+          service?: string | null
+          session_id?: string | null
+          site_id?: string | null
+          source?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          tags?: string[] | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: []
       }
       login_events: {
         Row: {

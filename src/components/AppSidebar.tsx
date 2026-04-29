@@ -106,6 +106,8 @@ export function AppSidebar() {
                 .filter((item) => {
                   // Hide SEO nav item if seo is not visible for this user
                   if (item.url === "/seo" && !seoVisible) return false;
+                  // Site Contacts is owner-only
+                  if (item.url === "/site-contacts" && user?.email?.toLowerCase() !== "david@newuniformdesign.com") return false;
                   return true;
                 })
                 .map((item) => {

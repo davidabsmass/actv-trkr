@@ -109,6 +109,36 @@ export default function FormsSection() {
     }
   };
 
+  const stopMonitoring = async (formId: string) => {
+    setTogglingId(formId);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("forms")
+        .update({
+          health_check_disabled: true,
+          health_check_disabled_reason: "page_removed",
+          health_check_disabled_at: new Date().toISOString(),
+          health_check_disabled_by: user?.id ?? null,
+        })
+        .eq("id", formId);
+      if (error) throw error;
+      // Clear the existing health-check row so the dashboard banner clears immediately.
+      await supabase
+        .from("form_health_checks")
+        .update({ is_rendered: true, last_failure_reason: null })
+        .eq("form_id", formId);
+      toast({ title: "Monitoring stopped", description: "This form is hidden from health alerts. Resume from the 'Not monitored' tab anytime." });
+      queryClient.invalidateQueries({ queryKey: ["forms", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["form_health", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["unhealthy_forms", orgId] });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: t("settings.error"), description: err?.message });
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const TabButton = ({ value, label, count }: { value: Tab; label: string; count: number }) => (
     <button
       onClick={() => setTab(value)}

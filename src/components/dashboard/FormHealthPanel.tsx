@@ -1,9 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
-import { CheckCircle2, AlertTriangle, XCircle, Clock, EyeOff } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Clock, EyeOff, MoreHorizontal, RefreshCw, FileX, Trash2, Archive } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "@/hooks/use-toast";
 
 type FormHealth = {
   id: string;
@@ -12,8 +22,12 @@ type FormHealth = {
   detail: string;
 };
 
+type DisableReason = "page_removed" | "not_a_form" | "intentional";
+
 export function FormHealthPanel({ orgId }: { orgId: string | null }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const { data: healthData, isLoading } = useQuery({
     queryKey: ["form_health", orgId],
@@ -24,11 +38,14 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
       const thirtyDaysAgo = format(subDays(now, 30), "yyyy-MM-dd");
       const sevenDaysAgo = format(subDays(now, 7), "yyyy-MM-dd");
 
-      // Get active forms (not archived AND active in WordPress)
+      // Get active forms (not archived, active in WP, and not user-disabled from monitoring)
       const { data: forms } = await supabase
-        .from("forms").select("id, name")
+        .from("forms").select("id, name, health_check_disabled")
         .eq("org_id", orgId).eq("archived", false).neq("is_active", false);
       if (!forms || forms.length === 0) return [];
+
+      const monitoredForms = forms.filter((f: any) => !f.health_check_disabled);
+      if (monitoredForms.length === 0) return [];
 
       // Get form health checks (liveness probes)
       const { data: healthChecks } = await supabase
@@ -67,14 +84,13 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
       (leads7d || []).forEach(l => { leads7Map[l.form_id] = (leads7Map[l.form_id] || 0) + 1; });
       (errors || []).forEach(e => { if (e.form_id) errorMap[e.form_id] = (errorMap[e.form_id] || 0) + 1; });
 
-      return forms.map((form): FormHealth => {
+      return monitoredForms.map((form: any): FormHealth => {
         const count30 = leads30Map[form.id] || 0;
         const count7 = leads7Map[form.id] || 0;
         const errCount = errorMap[form.id] || 0;
         const baseline7 = Math.round(count30 / 4.3);
         const probe = healthCheckMap[form.id];
 
-        // Liveness probe failure takes highest priority
         if (probe && !probe.is_rendered) {
           const reason = probe.last_failure_reason
             || (probe.last_http_status === 404 || probe.last_http_status === 410
@@ -99,6 +115,56 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
     enabled: !!orgId,
   });
 
+  const refreshAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["form_health", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["unhealthy_forms", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["forms", orgId] });
+  };
+
+  const disableMonitoring = async (formId: string, reason: DisableReason, copy: string) => {
+    setPendingId(formId);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("forms")
+        .update({
+          health_check_disabled: true,
+          health_check_disabled_reason: reason,
+          health_check_disabled_at: new Date().toISOString(),
+          health_check_disabled_by: user?.id ?? null,
+        })
+        .eq("id", formId);
+      if (error) throw error;
+
+      // Also clear the existing health-check row so it stops counting elsewhere.
+      await supabase
+        .from("form_health_checks")
+        .update({ is_rendered: true, last_failure_reason: null })
+        .eq("form_id", formId);
+
+      toast({ title: copy, description: "You can re-enable monitoring from Settings → Forms." });
+      refreshAll();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Couldn't update form", description: err?.message });
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  const archiveForm = async (formId: string) => {
+    setPendingId(formId);
+    try {
+      const { error } = await supabase.from("forms").update({ archived: true }).eq("id", formId);
+      if (error) throw error;
+      toast({ title: "Form archived", description: "Hidden from all views. Restore from Settings → Forms → Archived." });
+      refreshAll();
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Couldn't archive form", description: err?.message });
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   if (isLoading || !healthData || healthData.length === 0) return null;
 
   const statusConfig = {
@@ -118,12 +184,10 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
         {healthData.map((form) => {
           const cfg = statusConfig[form.status];
           const Icon = cfg.icon;
-          return (
-            <Link
-              key={form.id}
-              to={`/forms?selected=${form.id}`}
-              className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
-            >
+          const isNotRendered = form.status === "not_rendered";
+
+          const rowInner = (
+            <div className="flex items-center justify-between gap-3 w-full">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`p-1.5 rounded-md ${cfg.bg}`}>
                   <Icon className={`h-3.5 w-3.5 ${cfg.color}`} />
@@ -133,9 +197,80 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
                   <p className="text-xs text-muted-foreground">{form.detail}</p>
                 </div>
               </div>
-              <span className={`text-xs uppercase font-semibold tracking-wider ${cfg.color}`}>
-                {cfg.label}
-              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`text-xs uppercase font-semibold tracking-wider ${cfg.color}`}>
+                  {cfg.label}
+                </span>
+                {isNotRendered && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      onClick={(e) => e.preventDefault()}
+                      disabled={pendingId === form.id}
+                      className="p-1 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Resolve options"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuLabel className="text-xs">Why isn't this rendering?</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          disableMonitoring(form.id, "page_removed", "Stopped monitoring — page removed");
+                        }}
+                      >
+                        <FileX className="h-3.5 w-3.5 mr-2" />
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium">The page was removed</span>
+                          <span className="text-[10px] text-muted-foreground">Stop checking this form</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          disableMonitoring(form.id, "not_a_form", "Stopped monitoring — not a real form");
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium">This isn't a real form</span>
+                          <span className="text-[10px] text-muted-foreground">Probably a third-party widget</span>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          refreshAll();
+                          toast({ title: "Re-checking…", description: "Status will update on the next probe cycle." });
+                        }}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                        <span className="text-xs">Re-check now</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          archiveForm(form.id);
+                        }}
+                      >
+                        <Archive className="h-3.5 w-3.5 mr-2" />
+                        <span className="text-xs">Archive form (hide everywhere)</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          );
+
+          return (
+            <Link
+              key={form.id}
+              to={`/forms?selected=${form.id}`}
+              className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors"
+            >
+              {rowInner}
             </Link>
           );
         })}
@@ -143,7 +278,7 @@ export function FormHealthPanel({ orgId }: { orgId: string | null }) {
       {hasNotRendered && (
         <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-2 text-xs">
           <span className="text-muted-foreground">
-            {t("dashboard.formNotRenderingHint", "Form not rendering? Check that the page is published and the form is embedded.")}
+            {t("dashboard.formNotRenderingHint", "Form not rendering? Use the menu on the right to mark it as removed or not a real form.")}
           </span>
           <Link to="/forms/troubleshooting" className="text-primary hover:underline whitespace-nowrap font-medium">
             {t("dashboard.howToFix", "How to fix")} →

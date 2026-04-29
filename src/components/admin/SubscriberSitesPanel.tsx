@@ -506,7 +506,6 @@ export default function SubscriberSitesPanel() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8" />
-                <TableHead>Organization</TableHead>
                 <TableHead>Domain(s)</TableHead>
                 <TableHead>API Key</TableHead>
                 <TableHead>Lifecycle</TableHead>
@@ -517,7 +516,7 @@ export default function SubscriberSitesPanel() {
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                     No subscriber sites match your filters.
                   </TableCell>
                 </TableRow>
@@ -530,7 +529,6 @@ export default function SubscriberSitesPanel() {
                       <TableCell>
                         {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </TableCell>
-                      <TableCell className="font-medium text-sm">{r.org.name}</TableCell>
                       <TableCell className="font-mono text-xs">
                         {r.sites.length === 0 ? (
                           <span className="text-muted-foreground">—</span>

@@ -157,14 +157,16 @@ Deno.serve(async (req) => {
     // Build the "set password" / accept link the invitee will click
     const APP_URL = Deno.env.get("APP_URL") || "https://actvtrkr.com";
     let setPasswordUrl = `${APP_URL}/auth`;
+    let resetCode = "";
     try {
       const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
         type: "recovery",
         email,
         options: { redirectTo: `${APP_URL}/reset-password` },
       });
-      if (!linkErr && linkData?.properties?.action_link) {
-        setPasswordUrl = linkData.properties.action_link;
+      if (!linkErr && linkData?.properties?.email_otp) {
+        resetCode = linkData.properties.email_otp;
+        setPasswordUrl = `${APP_URL}/reset-password?email=${encodeURIComponent(email)}`;
       }
     } catch (e) {
       console.warn("generateLink failed, using fallback:", (e as Error)?.message);
@@ -200,6 +202,7 @@ Deno.serve(async (req) => {
             orgName,
             role: assignRole,
             setPasswordUrl,
+            resetCode,
           },
         },
       });

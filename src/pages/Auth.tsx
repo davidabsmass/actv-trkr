@@ -239,7 +239,7 @@ const Auth = () => {
         },
       });
       if (error) throw error;
-      setMessage("Check your email for a password reset link.");
+      setMessage("Check your email for a password reset code.");
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -112,8 +112,9 @@ Deno.serve(async (req) => {
       wasCreated = true;
     }
 
-    // Newly-created users start as 'invited'; existing platform users are added active.
-    const memberStatus = wasCreated ? "invited" : "active";
+    // All newly-added members start as 'invited' so admins see the pending state
+    // (with Resend / Cancel actions). Status flips to 'active' when they accept
+    // the invite (sign in via the recovery link, handled by a DB trigger).
     const nowIso = new Date().toISOString();
 
     const { error: joinErr } = await admin
@@ -123,8 +124,8 @@ Deno.serve(async (req) => {
         user_id: targetUserId,
         role: assignRole,
         invited_by: user.id,
-        status: memberStatus,
-        invited_at: wasCreated ? nowIso : null,
+        status: "invited",
+        invited_at: nowIso,
       });
 
     if (joinErr) {

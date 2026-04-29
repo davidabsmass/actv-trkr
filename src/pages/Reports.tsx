@@ -299,6 +299,8 @@ function ReportViewer({ report, onBack }: { report: any; onBack: () => void }) {
 }
 
 // ── Activity Reports Sub-Tab (moved from old Reports page) ──
+const ACTIVE_TPL_KEY = (orgId: string) => `actv:activeReportTemplateId:${orgId}`;
+
 function ActivityReportsTab() {
   const { t } = useTranslation();
   const { orgId, orgName } = useOrg();
@@ -310,6 +312,44 @@ function ActivityReportsTab() {
   const [dateRangeMode, setDateRangeMode] = useState<"monthly" | "custom">("monthly");
   const [dateFrom, setDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date>(new Date());
+  const userId = session?.user?.id;
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() => {
+    if (typeof window === "undefined" || !orgId) return null;
+    return localStorage.getItem(ACTIVE_TPL_KEY(orgId));
+  });
+
+  const { data: templates } = useQuery({
+    queryKey: ["report_custom_templates_list", orgId, userId],
+    queryFn: async () => {
+      if (!orgId || !userId) return [] as any[];
+      const { data } = await supabase
+        .from("report_custom_templates" as any)
+        .select("id, name, sections_config, created_at")
+        .eq("user_id", userId)
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: true });
+      return (data as any[]) || [];
+    },
+    enabled: !!orgId && !!userId,
+  });
+
+  // Sync selection with available templates
+  useEffect(() => {
+    if (!templates || !orgId) return;
+    const stored = localStorage.getItem(ACTIVE_TPL_KEY(orgId));
+    if (stored && templates.some((tt: any) => tt.id === stored)) {
+      setSelectedTemplateId(stored);
+    } else if (templates.length > 0) {
+      setSelectedTemplateId(templates[templates.length - 1].id);
+    } else {
+      setSelectedTemplateId(null);
+    }
+  }, [templates, orgId]);
+
+  const onPickTemplate = (id: string) => {
+    setSelectedTemplateId(id);
+    if (orgId) localStorage.setItem(ACTIVE_TPL_KEY(orgId), id);
+  };
 
   const { data: runs, isLoading: runsLoading } = useQuery({
     queryKey: ["report_runs", orgId],

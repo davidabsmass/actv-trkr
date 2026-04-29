@@ -52,37 +52,16 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://actvtrkr.com";
 
-    // 1. Look up existing customer by email
+    // 1. Look up existing customer by email (so Checkout reuses payment methods).
+    // We deliberately do NOT route through the Stripe Customer Portal here —
+    // it requires extra Stripe configuration and has been a source of
+    // "spinner forever" failures. A fresh Checkout always works and our
+    // webhook restores the user's existing org to "active" on
+    // subscription.created — no re-onboarding needed.
     const customers = await stripe.customers.list({ email: user.email!, limit: 1 });
     const customer = customers.data[0];
 
-    // 2. If customer exists, check for recoverable subscription
-    if (customer) {
-      const subs = await stripe.subscriptions.list({
-        customer: customer.id,
-        status: "all",
-        limit: 5,
-      });
-      // Only the portal can RESUME these states. Fully canceled / unpaid
-      // subscriptions cannot be revived via the portal — those need a fresh
-      // checkout (handled below).
-      const recoverable = subs.data.find(
-        (s: any) =>
-          s.cancel_at_period_end === true ||
-          s.status === "past_due" ||
-          s.status === "paused"
-      );
-
-      if (recoverable) {
-        const portal = await stripe.billingPortal.sessions.create({
-          customer: customer.id,
-          return_url: `${origin}/account?reactivated=1`,
-        });
-        return json(200, { url: portal.url, mode: "portal" });
-      }
-    }
-
-    // 3. Fall back to fresh checkout. The webhook will restore the user's
+    // Fresh checkout for everyone. The webhook restores the user's
     // existing org to "active" on subscription.created — no re-onboarding.
     const session = await stripe.checkout.sessions.create({
       customer: customer?.id,

@@ -559,7 +559,7 @@ export default function SubscriberSitesPanel() {
                             displayStatus === "active" ? "default" : displayStatus === "grace_period" ? "secondary" : "destructive";
                           return (
                             <div className="flex flex-col gap-1">
-                              <Badge variant={variant} className="w-fit text-[10px] capitalize">
+                              <Badge variant={variant} className="w-fit text-[10px] capitalize leading-tight">
                                 {displayStatus.replace("_", " ")}{exempt ? " · exempt" : ""}
                               </Badge>
                               {wouldBe && <span className="text-[10px] text-muted-foreground">{wouldBe}</span>}

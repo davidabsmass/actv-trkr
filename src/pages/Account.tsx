@@ -197,16 +197,27 @@ export default function Account() {
             <CardDescription>{t("account.changePasswordDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Honeypot fields to absorb browser autofill before real password inputs */}
+            <input type="text" name="username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
+            <input type="password" name="password" autoComplete="current-password" className="hidden" tabIndex={-1} aria-hidden="true" />
             <div className="space-y-1.5">
               <Label htmlFor="account-new-password" className="text-xs">{t("account.newPassword")}</Label>
               <div className="relative">
                 <Input
                   id="account-new-password"
+                  name="account-new-password"
                   type={showNew ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder={t("account.minCharacters")}
                   className="pr-9"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-bwignore="true"
                 />
                 <button type="button" onClick={() => setShowNew(!showNew)} aria-label={showNew ? "Hide new password" : "Show new password"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                   {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -218,11 +229,19 @@ export default function Account() {
               <div className="relative">
                 <Input
                   id="account-confirm-password"
+                  name="account-confirm-password"
                   type={showConfirm ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   className="pr-9"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  data-bwignore="true"
                 />
                 <button type="button" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm ? "Hide password confirmation" : "Show password confirmation"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                   {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

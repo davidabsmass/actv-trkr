@@ -245,7 +245,7 @@ function buildReportHtml(report: any, wl?: WhiteLabelConfig | null, tpl?: Report
       let s = sectionStart("📊", "Conversion Intelligence");
       if (me("conversionIntelligence", "leadsByForm") && ci.leadsByForm?.length > 0) {
         s += `<div style="margin-bottom:16px"><div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b6f80;margin-bottom:8px">Leads by Form</div>`;
-        s += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+        s += `<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:Helvetica,Arial,'Segoe UI',sans-serif">
           <thead><tr style="border-bottom:1px solid #e4e6ed;text-align:left">
             <th style="padding:6px 8px 6px 0;font-weight:500;color:#6b6f80">Form</th>
             <th style="padding:6px 8px;font-weight:500;color:#6b6f80">Category</th>

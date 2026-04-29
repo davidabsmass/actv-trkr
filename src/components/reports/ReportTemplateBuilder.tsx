@@ -45,7 +45,7 @@ const DEFAULT_SECTIONS: ReportSection[] = [
       { key: "leads", label: "Leads", enabled: true },
       { key: "sessions", label: "Sessions", enabled: true },
       { key: "pageviews", label: "Pageviews", enabled: true },
-      { key: "cvr", label: "CVR", enabled: true },
+      { key: "cvr", label: "Action Rate", enabled: true },
       { key: "weightedLeads", label: "Weighted Leads", enabled: true },
       { key: "goal", label: "Goal Progress", enabled: true },
       { key: "keyWin", label: "Key Win", enabled: true },
@@ -71,9 +71,9 @@ const DEFAULT_SECTIONS: ReportSection[] = [
     ],
   },
   {
-    key: "goalConversions", label: "Goal Conversions", icon: "target", enabled: true,
+    key: "goalConversions", label: "Key Actions", icon: "target", enabled: true,
     metrics: [
-      { key: "goalsList", label: "Goals Table", enabled: true },
+      { key: "goalsList", label: "Key Actions Table", enabled: true },
     ],
   },
   {

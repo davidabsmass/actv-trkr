@@ -823,6 +823,9 @@ export default function Forms() {
         </div>
       </div>
 
+      {/* Plugin Disconnected Banner — highest-priority status */}
+      <PluginDisconnectedBanner orgId={orgId} siteIds={formSiteIds} />
+
       {/* Plugin Update Banner */}
       <PluginUpdateBanner orgId={orgId} siteIds={formSiteIds} />
 

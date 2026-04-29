@@ -2979,6 +2979,10 @@ export type Database = {
           estimated_value: number | null
           external_form_id: string
           form_category: string
+          health_check_disabled: boolean
+          health_check_disabled_at: string | null
+          health_check_disabled_by: string | null
+          health_check_disabled_reason: string | null
           id: string
           is_active: boolean
           is_primary_lead: boolean
@@ -2995,6 +2999,10 @@ export type Database = {
           estimated_value?: number | null
           external_form_id: string
           form_category?: string
+          health_check_disabled?: boolean
+          health_check_disabled_at?: string | null
+          health_check_disabled_by?: string | null
+          health_check_disabled_reason?: string | null
           id?: string
           is_active?: boolean
           is_primary_lead?: boolean
@@ -3011,6 +3019,10 @@ export type Database = {
           estimated_value?: number | null
           external_form_id?: string
           form_category?: string
+          health_check_disabled?: boolean
+          health_check_disabled_at?: string | null
+          health_check_disabled_by?: string | null
+          health_check_disabled_reason?: string | null
           id?: string
           is_active?: boolean
           is_primary_lead?: boolean

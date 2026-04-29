@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
       let conversionGoals: any[] = [];
       let goalCompletionsRaw: any[] = [];
       let clickEventsRaw: any[] = [];
+      let orgCreatedAt: string | null = null;
       if (templateSlug === "monthly_performance" && extraResults.length >= 4) {
         incidents = extraResults[0]?.data || [];
         formSubmissionLogs = extraResults[1]?.data || [];
@@ -188,6 +189,7 @@ Deno.serve(async (req) => {
         conversionGoals = extraResults[4]?.data || [];
         goalCompletionsRaw = extraResults[5]?.data || [];
         clickEventsRaw = extraResults[6]?.data || [];
+        orgCreatedAt = extraResults[7]?.data?.created_at || null;
       }
 
       const formMap: Record<string, any> = {};
@@ -202,7 +204,7 @@ Deno.serve(async (req) => {
       } else if (templateSlug === "campaign_report") {
         report = buildCampaignReport({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, formList, formMap, adSpendData, periodStart, periodEnd, actualDays, pctChange, compareMode });
       } else {
-        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw });
+        report = buildMonthlyPerformance({ currentLeads, previousLeads, currentSessions, currentSessionCount, prevSessionCount, currentPageviews, currentPageviewCount, prevPageviewCount, formList, formMap, goals, periodStart, periodEnd, actualDays, pctChange, compareMode, incidents, formSubmissionLogs, brokenLinks, sitesData, conversionGoals, goalCompletionsRaw, clickEventsRaw, orgCreatedAt });
       }
 
       report.generatedAt = now.toISOString();

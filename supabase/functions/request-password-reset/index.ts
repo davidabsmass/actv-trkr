@@ -8,6 +8,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { notifyAuthEvent } from "../_shared/notify-auth-event.ts";
+import { createPasswordResetUrl, resolveUserIdByEmail, sha256Hex } from "../_shared/password-reset-links.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,12 +18,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -77,24 +72,17 @@ Deno.serve(async (req) => {
       });
     } catch (_) { /* ignore */ }
 
-    // Generate a recovery OTP without sending the scanner-sensitive magic link,
-    // then send our own code-based reset email.
+    // Generate our own one-use reset link so email scanners cannot consume it.
     try {
-      const { data, error } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email,
-        options: redirectTo ? { redirectTo } : undefined,
-      });
-      if (error) throw error;
-      const resetCode = data?.properties?.email_otp;
-      if (!resetCode) throw new Error("Recovery code was not generated");
-      const resetUrl = `${redirectTo || "https://actvtrkr.com/reset-password"}?email=${encodeURIComponent(email)}`;
+      const userId = await resolveUserIdByEmail(admin, email);
+      const resetUrl = await createPasswordResetUrl(admin, email, redirectTo || "https://actvtrkr.com/reset-password", userId);
+      if (!resetUrl) throw new Error("No matching account for reset request");
       const { error: emailError } = await admin.functions.invoke("send-transactional-email", {
         body: {
           templateName: "password-reset",
           recipientEmail: email,
           idempotencyKey: `password-reset-${email}-${Date.now()}`,
-          templateData: { resetCode, resetUrl },
+          templateData: { resetUrl },
         },
       });
       if (emailError) throw emailError;
@@ -104,21 +92,7 @@ Deno.serve(async (req) => {
 
     // Look up user (if exists) so we can send the security alert email.
     try {
-      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
-      // listUsers doesn't filter by email; fall back to direct query on auth.users via RPC if needed.
-      // Instead, use a quick existence check using getUserByEmail if available:
-      // The supabase-js admin API exposes `getUserByEmail` only in newer versions.
-      // We try; if it throws, we silently skip the alert (rate-limit + log are still done).
-      // deno-lint-ignore no-explicit-any
-      const adminAny = admin.auth.admin as any;
-      let userId: string | null = null;
-      if (typeof adminAny.getUserByEmail === "function") {
-        const { data } = await adminAny.getUserByEmail(email);
-        if (data?.user?.id) userId = data.user.id;
-      } else if (list?.users) {
-        const match = list.users.find((u) => (u.email ?? "").toLowerCase() === email);
-        if (match) userId = match.id;
-      }
+      const userId = await resolveUserIdByEmail(admin, email);
       if (userId) {
         notifyAuthEvent({
           userId,

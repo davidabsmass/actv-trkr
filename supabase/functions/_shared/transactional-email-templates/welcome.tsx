@@ -139,14 +139,6 @@ const text = {
   margin: '0 0 16px',
 }
 
-const code = {
-  fontSize: '30px',
-  letterSpacing: '6px',
-  fontWeight: '700' as const,
-  color: '#00264D',
-  margin: '4px 0 24px',
-}
-
 const buttonWrap = {
   textAlign: 'center' as const,
   margin: '28px 0',

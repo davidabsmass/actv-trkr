@@ -155,6 +155,20 @@ const ResetPassword = () => {
     };
   }, [queryClient]);
 
+  // Once a recovery session is established, surface the account email so
+  // the invitee can confirm they're setting a password for the right account.
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!cancelled && user?.email) setAccountEmail(user.email);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [ready]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);

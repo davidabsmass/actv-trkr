@@ -1,6 +1,7 @@
 import { appCorsHeaders } from '../_shared/cors.ts'
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createPasswordResetUrl } from "../_shared/password-reset-links.ts";
 
 // CORS headers are now dynamic — computed per-request via appCorsHeaders(req);
 
@@ -124,11 +125,7 @@ Deno.serve(async (req) => {
 
       // Welcome email (fire-and-forget)
       try {
-        const { data: resetData } = await adminClient.auth.admin.generateLink({
-          type: "recovery", email: normalizedEmail,
-          options: { redirectTo: "https://actvtrkr.com/reset-password" },
-        });
-        const setPasswordUrl = resetData?.properties?.action_link || "https://actvtrkr.com/reset-password";
+        const setPasswordUrl = await createPasswordResetUrl(adminClient, normalizedEmail, "https://actvtrkr.com/reset-password", userId) || "https://actvtrkr.com/auth";
         await adminClient.functions.invoke("send-transactional-email", {
           body: {
             templateName: "welcome", recipientEmail: normalizedEmail,
@@ -153,19 +150,11 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-        type: "recovery", email: normalizedEmail,
-        options: { redirectTo: "https://actvtrkr.com/reset-password" },
-      });
-      if (linkError) {
-        return new Response(JSON.stringify({ error: linkError.message }), {
-          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
+      const setPasswordUrl = await createPasswordResetUrl(adminClient, normalizedEmail, "https://actvtrkr.com/reset-password");
 
       return new Response(JSON.stringify({
         success: true, method: "recovery_link",
-        link: linkData?.properties?.action_link || null,
+        link: setPasswordUrl,
       }), { headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
@@ -179,20 +168,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-        type: "recovery",
-        email: normalizedEmail,
-        options: { redirectTo: "https://actvtrkr.com/reset-password" },
-      });
-      if (linkError) {
-        return new Response(JSON.stringify({ error: linkError.message }), {
-          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-        });
-      }
-
-      const resetCode = linkData?.properties?.email_otp;
-      if (!resetCode) {
-        return new Response(JSON.stringify({ error: "Recovery code was not generated" }), {
+      const resetUrl = await createPasswordResetUrl(adminClient, normalizedEmail, "https://actvtrkr.com/reset-password");
+      if (!resetUrl) {
+        return new Response(JSON.stringify({ error: "No matching account found" }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }
@@ -203,8 +181,7 @@ Deno.serve(async (req) => {
           recipientEmail: normalizedEmail,
           idempotencyKey: `admin-password-reset-${normalizedEmail}-${Date.now()}`,
           templateData: {
-            resetCode,
-            resetUrl: `https://actvtrkr.com/reset-password?email=${encodeURIComponent(normalizedEmail)}`,
+            resetUrl,
           },
         },
       });

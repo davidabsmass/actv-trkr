@@ -11,7 +11,7 @@ const Email = ({ account_name, dashboard_url }: Props) => (
       <Container style={{ maxWidth: 560, margin: '0 auto', padding: 24 }}>
         <Heading style={{ color: '#fff', fontSize: 22 }}>Your weekly recap{account_name ? ` — ${account_name}` : ''}</Heading>
         <Text>Here's what happened on your site this past week. Open the dashboard for the full breakdown.</Text>
-        <Button href={dashboard_url || 'https://actvtrkr.com/dashboard'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none' }}>Open dashboard</Button>
+        <Button href={dashboard_url || 'https://actvtrkr.com/dashboard'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', textAlign: 'left'}}>Open dashboard</Button>
       </Container>
     </Body>
   </Html>

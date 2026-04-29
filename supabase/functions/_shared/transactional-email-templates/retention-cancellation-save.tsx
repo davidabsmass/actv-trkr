@@ -16,7 +16,7 @@ const Email = ({ account_name, reason, support_email, pause_url }: Props) => (
           <Text style={{ margin: '6px 0 0 0' }}>• <strong>Switch plans</strong> — lighter monitoring-only mode</Text>
           <Text style={{ margin: '6px 0 0 0' }}>• <strong>Talk to us</strong> — reply and we'll fix what's not working</Text>
         </Section>
-        <Button href={pause_url || 'https://actvtrkr.com/account'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none' }}>Explore options</Button>
+        <Button href={pause_url || 'https://actvtrkr.com/account'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', textAlign: 'left'}}>Explore options</Button>
         <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 24 }}>Or just reply to this email — {support_email || 'david@absmass.com'} reads every one.</Text>
       </Container>
     </Body>

@@ -182,8 +182,7 @@ const kpiBox = {
   padding: '10px 12px',
   margin: '0 0 8px 0',
   backgroundColor: '#f9fafb',
-  borderRadius: '6px',
-}
+  borderRadius: '6px', textAlign: 'left' as const}
 const kpiLabel = { fontSize: '11px', color: '#6b7280', margin: 0, textTransform: 'uppercase' as const }
 const kpiValue = { fontSize: '18px', color: '#000000', fontWeight: 'bold' as const, margin: '4px 0 0' }
 const kpiDelta = { fontSize: '11px', margin: '2px 0 0' }

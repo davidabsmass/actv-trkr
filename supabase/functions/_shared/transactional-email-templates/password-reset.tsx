@@ -63,5 +63,5 @@ const headerImg = { width: '100%', maxWidth: '600px', height: 'auto' as const, d
 const contentSection = { padding: '32px 32px 40px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 20px', lineHeight: '1.3' }
 const text = { fontSize: '15px', color: '#4B5563', lineHeight: '1.7', margin: '0 0 16px' }
-const buttonWrap = { textAlign: 'center' as const, margin: '28px 0' }
-const button = { backgroundColor: '#6C5CE7', color: '#ffffff', fontSize: '15px', fontWeight: '600' as const, borderRadius: '12px', padding: '14px 32px', textDecoration: 'none', display: 'inline-block' }
+const buttonWrap = { textAlign: 'left' as const, margin: '28px 0' }
+const button = { backgroundColor: '#6C5CE7', color: '#ffffff', fontSize: '15px', fontWeight: '600' as const, borderRadius: '12px', padding: '14px 32px', textDecoration: 'none', display: 'inline-block', textAlign: 'left' as const}

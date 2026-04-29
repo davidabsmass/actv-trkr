@@ -91,11 +91,10 @@ const listBox = {
   backgroundColor: '#f8f8f8',
   borderRadius: '6px',
   padding: '14px 18px',
-  margin: '8px 0 24px',
-}
+  margin: '8px 0 24px', textAlign: 'left' as const}
 const listTitle = { fontSize: '14px', color: '#000000', fontWeight: 'bold', margin: '0 0 8px' }
 const listItem = { fontSize: '14px', color: '#55575d', margin: '0 0 4px', lineHeight: '1.5' }
-const buttonWrap = { textAlign: 'center' as const, margin: '24px 0' }
+const buttonWrap = { textAlign: 'left' as const, margin: '24px 0' }
 const button = {
   backgroundColor: '#1a1a1a',
   color: '#ffffff',
@@ -104,6 +103,5 @@ const button = {
   textDecoration: 'none',
   fontSize: '14px',
   fontWeight: 'bold',
-  display: 'inline-block',
-}
+  display: 'inline-block', textAlign: 'left' as const}
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0', lineHeight: '1.5' }

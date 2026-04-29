@@ -31,7 +31,7 @@ const Email = ({ name, archiveDate }: Props) => (
           <Text style={text}>
             Once archived, your dashboards become read-only. You can still reactivate after that, but it's quicker and smoother to do it now while everything is live.
           </Text>
-          <Section style={{ textAlign: 'center', margin: '28px 0' }}>
+          <Section style={{ textAlign: 'left', margin: '28px 0' }}>
             <Button href={`${APP_URL}/account`} style={btn}>Reactivate subscription</Button>
           </Section>
           <Text style={signoff}>Thanks,</Text>
@@ -55,6 +55,6 @@ const logoSection = { padding: '32px 32px 0' }
 const contentSection = { padding: '24px 32px 40px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 20px', lineHeight: '1.3' }
 const text = { fontSize: '15px', color: '#4B5563', lineHeight: '1.7', margin: '0 0 16px' }
-const btn = { backgroundColor: '#00264D', color: '#ffffff', padding: '12px 24px', borderRadius: '6px', fontSize: '15px', textDecoration: 'none', fontWeight: 'bold' as const }
+const btn = { backgroundColor: '#00264D', color: '#ffffff', padding: '12px 24px', borderRadius: '6px', fontSize: '15px', textDecoration: 'none', fontWeight: 'bold' as const, textAlign: 'left' as const}
 const signoff = { fontSize: '15px', color: '#4B5563', margin: '24px 0 0', lineHeight: '1.5' }
 const signoffTeam = { fontSize: '15px', color: '#4B5563', margin: '0', lineHeight: '1.5' }

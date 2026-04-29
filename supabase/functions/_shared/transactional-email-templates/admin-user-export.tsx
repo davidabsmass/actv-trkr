@@ -39,7 +39,7 @@ const AdminUserExportEmail = ({
           creation date, and last login.
         </Text>
 
-        <Section style={{ textAlign: 'center', margin: '24px 0' }}>
+        <Section style={{ textAlign: 'left', margin: '24px 0' }}>
           <Button href={downloadUrl} style={button}>
             Download CSV
           </Button>
@@ -73,7 +73,7 @@ const container = { padding: '20px 25px', maxWidth: '600px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold', color: '#000000', margin: '0 0 8px' }
 const muted = { fontSize: '12px', color: '#999999', margin: '0 0 24px' }
 const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.6', margin: '0 0 16px' }
-const statBox = { backgroundColor: '#f4f6fb', borderRadius: '6px', padding: '14px 18px', margin: '12px 0 24px' }
+const statBox = { backgroundColor: '#f4f6fb', borderRadius: '6px', padding: '14px 18px', margin: '12px 0 24px', textAlign: 'left' as const}
 const statLabel = { fontSize: '12px', color: '#666666', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.5px' }
 const statValue = { fontSize: '28px', color: '#1a1a1a', margin: '4px 0 0', fontWeight: 'bold' as const }
 const button = {
@@ -83,6 +83,5 @@ const button = {
   borderRadius: '6px',
   textDecoration: 'none',
   fontWeight: 'bold' as const,
-  fontSize: '14px',
-}
+  fontSize: '14px', textAlign: 'left' as const}
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0', lineHeight: '1.5' }

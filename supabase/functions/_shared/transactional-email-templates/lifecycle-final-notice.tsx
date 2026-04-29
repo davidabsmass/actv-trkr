@@ -34,7 +34,7 @@ const Email = ({ name, deletionDate }: Props) => (
           <Text style={text}>
             If you'd like to keep your data and resume tracking, reactivate now — it takes less than a minute.
           </Text>
-          <Section style={{ textAlign: 'center', margin: '28px 0' }}>
+          <Section style={{ textAlign: 'left', margin: '28px 0' }}>
             <Button href={`${APP_URL}/account`} style={btn}>Reactivate now</Button>
           </Section>
           <Text style={signoff}>Thanks,</Text>
@@ -59,6 +59,6 @@ const contentSection = { padding: '24px 32px 40px' }
 const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#00264D', margin: '0 0 20px', lineHeight: '1.3' }
 const text = { fontSize: '15px', color: '#4B5563', lineHeight: '1.7', margin: '0 0 16px' }
 const textBold = { ...text, fontWeight: 'bold' as const, color: '#B91C1C' }
-const btn = { backgroundColor: '#B91C1C', color: '#ffffff', padding: '12px 24px', borderRadius: '6px', fontSize: '15px', textDecoration: 'none', fontWeight: 'bold' as const }
+const btn = { backgroundColor: '#B91C1C', color: '#ffffff', padding: '12px 24px', borderRadius: '6px', fontSize: '15px', textDecoration: 'none', fontWeight: 'bold' as const, textAlign: 'left' as const}
 const signoff = { fontSize: '15px', color: '#4B5563', margin: '24px 0 0', lineHeight: '1.5' }
 const signoffTeam = { fontSize: '15px', color: '#4B5563', margin: '0', lineHeight: '1.5' }

@@ -11,7 +11,7 @@ const Email = ({ account_name, dashboard_url }: Props) => (
       <Container style={{ maxWidth: 560, margin: '0 auto', padding: 24 }}>
         <Heading style={{ color: '#fff', fontSize: 22 }}>Your first insight is in{account_name ? `, ${account_name}` : ''}</Heading>
         <Text>We just generated your first AI-powered performance summary. Take a look — it spotlights what's working and what to fix next.</Text>
-        <Button href={dashboard_url || 'https://actvtrkr.com/reports'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', display: 'inline-block', marginTop: 8 }}>View insight</Button>
+        <Button href={dashboard_url || 'https://actvtrkr.com/reports'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', display: 'inline-block', marginTop: 8, textAlign: 'left'}}>View insight</Button>
       </Container>
     </Body>
   </Html>

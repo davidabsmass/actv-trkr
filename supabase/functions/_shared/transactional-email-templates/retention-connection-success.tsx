@@ -15,7 +15,7 @@ const Email = ({ account_name, dashboard_url }: Props) => (
           <Text style={{ margin: 0 }}>Start with these three views in your dashboard:</Text>
           <Text style={{ margin: '8px 0 0 0' }}>• Performance overview &nbsp; • Top sources &nbsp; • Form Health</Text>
         </Section>
-        <Button href={dashboard_url || 'https://actvtrkr.com/dashboard'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none' }}>Open dashboard</Button>
+        <Button href={dashboard_url || 'https://actvtrkr.com/dashboard'} style={{ background: '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, textDecoration: 'none', textAlign: 'left'}}>Open dashboard</Button>
       </Container>
     </Body>
   </Html>

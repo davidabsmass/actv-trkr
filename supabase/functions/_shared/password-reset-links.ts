@@ -66,6 +66,8 @@ export async function createPasswordResetUrl(
 
   const base = redirectTo || "https://actvtrkr.com/reset-password";
   const url = new URL(base);
+  url.pathname = "/reset-password";
   url.searchParams.set("token", token);
+  url.searchParams.set("email", normalizedEmail);
   return url.toString();
 }

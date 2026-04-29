@@ -70,4 +70,6 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'lifecycle-cancellation': lifecycleCancellation,
   'lifecycle-archive-warning': lifecycleArchiveWarning,
   'lifecycle-final-notice': lifecycleFinalNotice,
+  // Team
+  'team-invite': teamInvite,
 }

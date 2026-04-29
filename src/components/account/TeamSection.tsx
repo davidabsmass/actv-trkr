@@ -266,16 +266,102 @@ export default function TeamSection() {
           </form>
           <p className="text-[11px] text-muted-foreground">{ROLE_HELP[inviteRole]}</p>
 
+          {/* Pending invitations */}
+          {pendingInvites.length > 0 && (
+            <div className="rounded-md border border-dashed border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+              <p className="text-xs font-medium text-amber-200/90 uppercase tracking-wide flex items-center gap-1.5">
+                <Mail className="h-3 w-3" /> Pending invitations ({pendingInvites.length})
+              </p>
+              <div className="divide-y divide-border/30">
+                {pendingInvites.map((m: any) => {
+                  const invitedAt = m.invited_at ? new Date(m.invited_at) : null;
+                  const ageMs = invitedAt ? Date.now() - invitedAt.getTime() : 0;
+                  const ageLabel = !invitedAt
+                    ? "—"
+                    : ageMs < 60_000
+                    ? "just now"
+                    : ageMs < 3_600_000
+                    ? `${Math.floor(ageMs / 60_000)}m ago`
+                    : ageMs < 86_400_000
+                    ? `${Math.floor(ageMs / 3_600_000)}h ago`
+                    : `${Math.floor(ageMs / 86_400_000)}d ago`;
+                  const busy =
+                    inviteAction.isPending && inviteAction.variables?.targetUserId === m.user_id;
+                  return (
+                    <div key={m.id} className="flex items-center justify-between py-2 gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm truncate">{m.email}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Invited {ageLabel} · {ROLE_LABEL[m.role as Role] || m.role}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs"
+                          disabled={busy}
+                          onClick={() =>
+                            inviteAction.mutate({ action: "resend", targetUserId: m.user_id })
+                          }
+                        >
+                          {busy && inviteAction.variables?.action === "resend" ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RotateCw className="h-3 w-3" />
+                          )}
+                          Resend
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 gap-1 text-xs text-muted-foreground hover:text-destructive"
+                              disabled={busy}
+                            >
+                              <X className="h-3 w-3" /> Cancel
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Cancel invitation?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                The invitation for {m.email} will be revoked. Their pending sign-in
+                                link will no longer add them to this organization.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep invite</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  inviteAction.mutate({ action: "cancel", targetUserId: m.user_id })
+                                }
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Cancel invite
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Members list */}
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
               <Loader2 className="h-3 w-3 animate-spin" /> Loading…
             </div>
-          ) : members.length === 0 ? (
+          ) : activeMembers.length === 0 ? (
             <p className="text-sm text-muted-foreground">No team members yet.</p>
           ) : (
             <div className="divide-y">
-              {members.map((m: any) => {
+              {activeMembers.map((m: any) => {
                 const isSelf = m.user_id === user?.id;
                 const isOwner = !!m.is_owner;
                 const isLastAdmin = m.role === "admin" && adminCount <= 1;

@@ -179,11 +179,37 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { error: resetError } = await adminClient.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: "https://actvtrkr.com/reset-password",
+      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: "recovery",
+        email: normalizedEmail,
+        options: { redirectTo: "https://actvtrkr.com/reset-password" },
       });
-      if (resetError) {
-        return new Response(JSON.stringify({ error: resetError.message }), {
+      if (linkError) {
+        return new Response(JSON.stringify({ error: linkError.message }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
+      const resetCode = linkData?.properties?.email_otp;
+      if (!resetCode) {
+        return new Response(JSON.stringify({ error: "Recovery code was not generated" }), {
+          status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: emailError } = await adminClient.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "password-reset",
+          recipientEmail: normalizedEmail,
+          idempotencyKey: `admin-password-reset-${normalizedEmail}-${Date.now()}`,
+          templateData: {
+            resetCode,
+            resetUrl: `https://actvtrkr.com/reset-password?email=${encodeURIComponent(normalizedEmail)}`,
+          },
+        },
+      });
+      if (emailError) {
+        return new Response(JSON.stringify({ error: emailError.message }), {
           status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
         });
       }

@@ -248,7 +248,7 @@ const ResetPassword = () => {
 
   const inputClass =
     "w-full pl-10 pr-10 py-2.5 text-sm bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50";
-  const accountDisplayEmail = accountEmail || resetEmail;
+  const accountDisplayEmail = resetEmail || accountEmail;
 
   return (
     <div

@@ -26,7 +26,9 @@ export default function SettingsPage() {
   const { isOrgAdmin } = useOrgRole(orgId);
   const showAdminSections = isAdmin || isOrgAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "general";
+  const requestedTab = searchParams.get("tab") || "general";
+  const validTabs = new Set(["general", "goals", "notifications", "setup", "add-site"]);
+  const activeTab = validTabs.has(requestedTab) ? requestedTab : requestedTab === "plugin" ? "setup" : "general";
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -34,8 +36,13 @@ export default function SettingsPage() {
   useEffect(() => {
     if (searchParams.get("tab") === "white-label") {
       navigate("/reports?reportTab=white-label", { replace: true });
+      return;
     }
-  }, [searchParams, navigate]);
+
+    if (requestedTab !== activeTab) {
+      setSearchParams({ tab: activeTab }, { replace: true });
+    }
+  }, [activeTab, requestedTab, searchParams, setSearchParams, navigate]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });

@@ -1342,7 +1342,7 @@
     "conversionHelp": "Only goals marked as conversions are included in the main Conversion Rate metric.",
     "conversionValueLabel": "Conversion Value ($)",
     "conversionValueHelp": "Optional estimated dollar value per completion. Used in future weighted reporting.",
-    "createGoal": "Create Goal",
+    "createGoal": "Key Action",
     "created": "Goal created",
     "createError": "Failed to create goal",
     "deleted": "Goal deleted",

@@ -38,6 +38,7 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string>("");
   const completedRef = useRef(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();

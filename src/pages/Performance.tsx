@@ -176,7 +176,7 @@ const Performance = () => {
             <CreateGoalDialog
               orgId={orgId}
               forms={forms}
-              triggerLabel="Add Goal"
+              triggerLabel="Key Action"
               triggerVariant="outline"
               triggerClassName="h-8 gap-1 text-xs"
             />

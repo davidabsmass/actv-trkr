@@ -148,6 +148,59 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Build the "set password" / accept link the invitee will click
+    const APP_URL = Deno.env.get("APP_URL") || "https://actvtrkr.com";
+    let setPasswordUrl = `${APP_URL}/auth`;
+    try {
+      const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo: `${APP_URL}/reset-password` },
+      });
+      if (!linkErr && linkData?.properties?.action_link) {
+        setPasswordUrl = linkData.properties.action_link;
+      }
+    } catch (e) {
+      console.warn("generateLink failed, using fallback:", (e as Error)?.message);
+    }
+
+    // Inviter + org names for the email
+    let inviterName = "";
+    let inviterEmail = "";
+    try {
+      const { data: inviterProfile } = await admin
+        .from("profiles").select("full_name, email").eq("user_id", user.id).maybeSingle();
+      inviterName = inviterProfile?.full_name || "";
+      inviterEmail = inviterProfile?.email || user.email || "";
+    } catch (_) { /* best effort */ }
+
+    let orgName = "";
+    try {
+      const { data: orgRow } = await admin
+        .from("organizations").select("name").eq("id", orgId).maybeSingle();
+      orgName = orgRow?.name || "";
+    } catch (_) { /* best effort */ }
+
+    // Send the invite email (best effort — never block the membership add)
+    try {
+      await admin.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "team-invite",
+          recipientEmail: email,
+          idempotencyKey: `team-invite-${orgId}-${targetUserId}-${Date.now()}`,
+          templateData: {
+            inviterName,
+            inviterEmail,
+            orgName,
+            role: assignRole,
+            setPasswordUrl,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("Failed to send team-invite email:", (e as Error)?.message);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -155,8 +208,8 @@ Deno.serve(async (req) => {
         role: assignRole,
         wasCreated,
         message: wasCreated
-          ? `Account created for ${email} as ${assignRole}. They should use "Forgot Password" to set their password.`
-          : `${email} added to your organization as ${assignRole}.`,
+          ? `Invitation sent to ${email}. They'll receive an email to set their password.`
+          : `${email} added to your organization as ${assignRole}. Invitation email sent.`,
       }),
       { status: 200, headers }
     );

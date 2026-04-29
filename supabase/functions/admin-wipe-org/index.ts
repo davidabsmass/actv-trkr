@@ -26,7 +26,7 @@ const PROTECTED_EMAILS = new Set<string>([
 // Active production clients that must NEVER be wiped under any circumstance.
 // Match is case-insensitive substring against org name, any member email,
 // or any site domain belonging to the org.
-const PROTECTED_CLIENT_TOKENS = ["apyxmedical.com", "apyxmedical"];
+const PROTECTED_CLIENT_TOKENS = ["apyxmedical.com", "apyxmedical", "livesinthebalance.com", "livesinthebalance"];
 
 function isProtectedOrgRow(row: {
   name?: string | null;

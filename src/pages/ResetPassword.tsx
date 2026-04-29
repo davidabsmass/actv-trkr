@@ -225,19 +225,14 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      if (!resetEmail) {
+      if (resetToken) {
+        const { error: resetErr } = await supabase.functions.invoke("complete-password-reset", {
+          body: { token: resetToken, password },
+        });
+        if (resetErr) throw new Error("This reset link is invalid or has expired. Please request a new one.");
+      } else {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
-      } else {
-        const { data, error: verifyErr } = await supabase.auth.verifyOtp({
-          email: resetEmail,
-          token: resetCode.trim(),
-          type: "recovery",
-        });
-        if (verifyErr) throw verifyErr;
-        if (!data?.session) throw new Error("This reset code is invalid or has expired. Please request a new one.");
-        const { error: updateErr } = await supabase.auth.updateUser({ password });
-        if (updateErr) throw updateErr;
       }
 
       try {
@@ -322,22 +317,6 @@ const ResetPassword = () => {
                     />
                   </div>
                   <p className="mt-1 text-[11px] text-white/50">Setting password for this account.</p>
-                </div>
-              )}
-              {resetEmail && (
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Reset code"
-                    value={resetCode}
-                    onChange={(e) => setResetCode(e.target.value.replace(/\s/g, ""))}
-                    required
-                    autoComplete="one-time-code"
-                    name="reset-code"
-                    className={inputClass}
-                  />
                 </div>
               )}
               <div className="relative">

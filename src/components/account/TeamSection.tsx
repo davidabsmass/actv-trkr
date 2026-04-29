@@ -56,15 +56,25 @@ export default function TeamSection() {
       if (error) throw error;
 
       const userIds = data.map((m: any) => m.user_id);
-      const { data: profiles } = await supabase
+      const profilesRes = await supabase
         .from("profiles")
         .select("user_id, email, full_name")
         .in("user_id", userIds);
-      const profileMap = new Map(profiles?.map((p: any) => [p.user_id, p]) || []);
+      const subsRes = await (supabase as any)
+        .from("subscribers")
+        .select("user_id, email")
+        .in("user_id", userIds);
+      const profiles = (profilesRes.data || []) as any[];
+      const subs = (subsRes.data || []) as any[];
+      const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
+      const subMap = new Map(subs.map((s) => [s.user_id, s.email]));
 
       return data.map((m: any) => ({
         ...m,
-        email: profileMap.get(m.user_id)?.email || "—",
+        email:
+          profileMap.get(m.user_id)?.email ||
+          subMap.get(m.user_id) ||
+          "—",
         full_name: profileMap.get(m.user_id)?.full_name || "",
       }));
     },
@@ -268,8 +278,8 @@ export default function TeamSection() {
 
           {/* Pending invitations */}
           {pendingInvites.length > 0 && (
-            <div className="rounded-md border border-dashed border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
-              <p className="text-xs font-medium text-amber-200/90 uppercase tracking-wide flex items-center gap-1.5">
+            <div className="rounded-md border border-dashed border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+              <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
                 <Mail className="h-3 w-3" /> Pending invitations ({pendingInvites.length})
               </p>
               <div className="divide-y divide-border/30">
@@ -290,8 +300,8 @@ export default function TeamSection() {
                   return (
                     <div key={m.id} className="flex items-center justify-between py-2 gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm truncate">{m.email}</p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-sm font-medium text-foreground truncate">{m.email}</p>
+                        <p className="text-[11px] text-foreground/80">
                           Invited {ageLabel} · {ROLE_LABEL[m.role as Role] || m.role}
                         </p>
                       </div>

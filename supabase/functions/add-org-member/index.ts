@@ -213,9 +213,7 @@ Deno.serve(async (req) => {
         userId: targetUserId,
         role: assignRole,
         wasCreated,
-        message: wasCreated
-          ? `Invitation sent to ${email}. They'll receive an email to set their password.`
-          : `${email} added to your organization as ${assignRole}. Invitation email sent.`,
+        message: `Invitation sent to ${email}. They'll receive an email to ${wasCreated ? "set their password and" : ""} join your organization.`.replace(/\s+/g, " "),
       }),
       { status: 200, headers }
     );

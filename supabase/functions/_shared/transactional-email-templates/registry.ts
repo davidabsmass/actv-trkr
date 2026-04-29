@@ -39,6 +39,9 @@ import { template as lifecycleCancellation } from './lifecycle-cancellation.tsx'
 import { template as lifecycleArchiveWarning } from './lifecycle-archive-warning.tsx'
 import { template as lifecycleFinalNotice } from './lifecycle-final-notice.tsx'
 
+// Team management
+import { template as teamInvite } from './team-invite.tsx'
+
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome': welcomeEmail,
   'subscription-cancelled': subscriptionCancelled,
@@ -67,4 +70,6 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'lifecycle-cancellation': lifecycleCancellation,
   'lifecycle-archive-warning': lifecycleArchiveWarning,
   'lifecycle-final-notice': lifecycleFinalNotice,
+  // Team
+  'team-invite': teamInvite,
 }

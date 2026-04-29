@@ -87,7 +87,8 @@ const ResetPassword = () => {
         return;
       }
 
-      // (a) PKCE code flow
+      // Managed email-code flow: avoid consuming a one-time link before
+      // the user submits the reset code and new password.
       if (emailParam && !code && !tokenHash) {
         if (mounted) setReady(true);
         return;

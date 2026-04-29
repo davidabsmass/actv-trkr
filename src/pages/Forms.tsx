@@ -207,6 +207,64 @@ function PluginUpdateBanner({ orgId, siteIds }: { orgId: string | null; siteIds:
   );
 }
 
+/* ─── Plugin Disconnected Banner ───
+ * Shown when the server-side reconciler has detected that one or more sites
+ * have the WordPress plugin uninstalled or deactivated. While disconnected,
+ * lead/form counts cannot be guaranteed to match WordPress, so we make this
+ * unmissable rather than letting stale numbers mislead the user.
+ */
+function PluginDisconnectedBanner({ orgId, siteIds }: { orgId: string | null; siteIds: string[] }) {
+  const navigate = useNavigate();
+  const relevantSiteIds = useMemo(() => new Set(siteIds), [siteIds]);
+
+  const { data: disconnectedSites } = useQuery({
+    queryKey: ["plugin_disconnected_sites", orgId],
+    queryFn: async () => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("sites")
+        .select("id, domain, plugin_status, plugin_status_detail, plugin_status_checked_at")
+        .eq("org_id", orgId)
+        .eq("plugin_status", "disconnected");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+    refetchInterval: 60_000,
+  });
+
+  if (!disconnectedSites || disconnectedSites.length === 0) return null;
+  const scoped = disconnectedSites.filter((s) => relevantSiteIds.size === 0 || relevantSiteIds.has(s.id));
+  if (scoped.length === 0) return null;
+
+  return (
+    <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 flex items-start justify-between gap-3">
+      <div className="flex items-start gap-2.5 min-w-0">
+        <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            ACTV TRKR plugin is not responding on {scoped.length === 1 ? scoped[0].domain : `${scoped.length} sites`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Form entry counts may be stale until the plugin is reactivated.{" "}
+            {scoped.length > 1 && (
+              <span>{scoped.map((s) => s.domain).join(", ")}.</span>
+            )}
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1.5 flex-shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        onClick={() => navigate("/settings?tab=plugin")}
+      >
+        Reconnect
+      </Button>
+    </div>
+  );
+}
+
 function compareVersions(a: string, b: string): number {
   const pa = a.split(".").map(Number);
   const pb = b.split(".").map(Number);
@@ -764,6 +822,9 @@ export default function Forms() {
           <AddSiteHeaderButton />
         </div>
       </div>
+
+      {/* Plugin Disconnected Banner — highest-priority status */}
+      <PluginDisconnectedBanner orgId={orgId} siteIds={formSiteIds} />
 
       {/* Plugin Update Banner */}
       <PluginUpdateBanner orgId={orgId} siteIds={formSiteIds} />

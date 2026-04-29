@@ -58,8 +58,8 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
 
         {!isFirstSite && (
           <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-            You'll use your <span className="font-semibold text-foreground">existing license key</span> — no
-            new key needed. Just install the plugin on the new site and paste the same key you used before.
+            We'll prepare a <span className="font-semibold text-foreground">plugin file with your account already linked</span> —
+            no license key to copy or paste. Just install and activate it on the new site.
             Billing for the additional site will be set up separately — we won't charge you until
             that's confirmed.
           </div>

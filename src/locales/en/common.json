@@ -1348,7 +1348,7 @@
     "deleted": "Goal deleted",
     "totalGoals": "Total",
     "active": "Active",
-    "conversionsLabel": "Conversion",
+    "conversionsLabel": "Marked as conversion",
     "activate": "Activate",
     "deactivate": "Deactivate",
     "markConversion": "Mark as Conversion",

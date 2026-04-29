@@ -608,11 +608,11 @@ Deno.serve(async (req) => {
       );
 
       if (legacyMatch) {
-        // Upgrade the legacy lead to the canonical ID
+        // Upgrade the legacy lead to the canonical ID + key
         console.log(`Avada merge: upgrading legacy lead ${legacyMatch.id} (${legacyMatch.external_entry_id}) → ${extEntryId}`);
         await supabase
           .from("leads")
-          .update({ external_entry_id: extEntryId })
+          .update({ external_entry_id: extEntryId, external_entry_key: externalEntryKey })
           .eq("id", legacyMatch.id);
 
         existingLeadRows = [legacyMatch];
@@ -712,6 +712,7 @@ Deno.serve(async (req) => {
       visitor_id: context?.visitor_id, session_id: context?.session_id,
       data: { ...(fields ? { fields } : {}), external_entry_id: extEntryId },
       external_entry_id: extEntryId,
+      external_entry_key: externalEntryKey,
       lead_type: providerName,
     }).select("id").single();
 

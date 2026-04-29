@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
 
     // Insert raw event
     const extEntryId = entry.entry_id?.toString() || `${Date.now()}`;
+    const externalEntryKey = `gravity_forms:${extEntryId}`;
     await supabase.from("lead_events_raw").upsert({
       org_id: orgId, site_id: siteId, form_id: formId,
       external_entry_id: extEntryId, submitted_at: entry.submitted_at || new Date().toISOString(),
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     const source = utmSource || referrerDomain || "direct";
     const medium = utmMedium || (referrerDomain ? "referral" : "direct");
 
-    const { data: lead, error: leadErr } = await supabase.from("leads").insert({
+    const { data: lead, error: leadErr } = await supabase.from("leads").upsert({
       org_id: orgId, site_id: siteId, form_id: formId,
       submitted_at: entry.submitted_at || new Date().toISOString(),
       page_url: entry.source_url, page_path: pagePath,
@@ -86,7 +87,10 @@ Deno.serve(async (req) => {
       source, medium, campaign: utmCampaign,
       visitor_id: context?.visitor_id, session_id: context?.session_id,
       data: fields || {},
-    }).select("id").single();
+      external_entry_id: extEntryId,
+      external_entry_key: externalEntryKey,
+      lead_type: "gravity_forms",
+    }, { onConflict: "form_id,external_entry_key", ignoreDuplicates: false }).select("id").single();
 
     if (leadErr) { console.error("Lead insert error:", leadErr); return new Response(JSON.stringify({ error: "Failed to store lead" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 

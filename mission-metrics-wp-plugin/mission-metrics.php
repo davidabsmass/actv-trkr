@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.21.2
+ * Version:     1.21.3
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -13,9 +13,105 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.21.2' );
+define( 'MM_PLUGIN_VERSION', '1.21.3' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+/**
+ * Last-ditch REST recovery routes.
+ *
+ * These routes are registered from the main plugin file, after normal module
+ * boot has had a chance to register its richer routes. If a contained module
+ * is disabled, skipped, or fails before registering the sync route, the
+ * dashboard still receives a concrete response instead of treating the install
+ * as completely gone. This does not mask an uninstalled/deactivated plugin —
+ * WordPress will only run this file when ACTV TRKR is active.
+ */
+function mm_register_recovery_rest_routes() {
+	$routes = rest_get_server()->get_routes();
+
+	if ( ! isset( $routes['/actv-trkr/v1/ping'] ) ) {
+		register_rest_route( 'actv-trkr/v1', '/ping', array(
+			'methods'             => 'GET',
+			'callback'            => 'mm_recovery_rest_ping',
+			'permission_callback' => '__return_true',
+		) );
+	}
+
+	if ( ! isset( $routes['/actv-trkr/v1/sync'] ) ) {
+		register_rest_route( 'actv-trkr/v1', '/sync', array(
+			'methods'             => 'POST',
+			'callback'            => 'mm_recovery_rest_sync',
+			'permission_callback' => 'mm_recovery_verify_key_hash',
+		) );
+	}
+}
+add_action( 'rest_api_init', 'mm_register_recovery_rest_routes', 99 );
+
+function mm_recovery_rest_ping() {
+	return new WP_REST_Response( array(
+		'ok'             => true,
+		'plugin'         => 'actv-trkr',
+		'plugin_version' => MM_PLUGIN_VERSION,
+	), 200 );
+}
+
+function mm_recovery_load_settings_class() {
+	if ( ! class_exists( 'MM_Settings' ) && file_exists( MM_PLUGIN_DIR . 'includes/class-settings.php' ) ) {
+		require_once MM_PLUGIN_DIR . 'includes/class-settings.php';
+	}
+}
+
+function mm_recovery_verify_key_hash( $request ) {
+	if ( class_exists( 'MM_Forms' ) && method_exists( 'MM_Forms', 'verify_key_hash' ) ) {
+		return MM_Forms::verify_key_hash( $request );
+	}
+
+	mm_recovery_load_settings_class();
+	if ( ! class_exists( 'MM_Settings' ) ) {
+		return new WP_Error( 'settings_unavailable', 'Settings module unavailable', array( 'status' => 503 ) );
+	}
+
+	$opts = MM_Settings::get();
+	if ( empty( $opts['api_key'] ) ) {
+		return new WP_Error( 'not_configured', 'Plugin not configured', array( 'status' => 400 ) );
+	}
+
+	if ( class_exists( 'MM_Hmac' ) ) {
+		$signed = MM_Hmac::verify( $request );
+		if ( $signed === true || is_wp_error( $signed ) ) {
+			return $signed;
+		}
+	}
+
+	$body        = $request->get_json_params();
+	$key_hash    = is_array( $body ) && isset( $body['key_hash'] ) ? (string) $body['key_hash'] : '';
+	$stored_hash = hash( 'sha256', $opts['api_key'] );
+
+	if ( ! $key_hash || ! hash_equals( $stored_hash, $key_hash ) ) {
+		return new WP_Error( 'forbidden', 'Invalid key', array( 'status' => 403 ) );
+	}
+
+	return true;
+}
+
+function mm_recovery_rest_sync( $request ) {
+	mm_recovery_load_settings_class();
+	if ( ! class_exists( 'MM_Forms' ) && file_exists( MM_PLUGIN_DIR . 'includes/class-forms.php' ) ) {
+		require_once MM_PLUGIN_DIR . 'includes/class-forms.php';
+	}
+
+	if ( class_exists( 'MM_Forms' ) && method_exists( 'MM_Forms', 'handle_rest_sync' ) ) {
+		return MM_Forms::handle_rest_sync( $request );
+	}
+
+	return new WP_REST_Response( array(
+		'ok'             => false,
+		'error'          => 'forms_module_unavailable',
+		'message'        => 'ACTV TRKR is active, but the Forms module could not load. Reinstall or update the plugin.',
+		'plugin_version' => MM_PLUGIN_VERSION,
+	), 503 );
+}
 
 /**
  * Detect whether WordPress is currently activating this plugin.

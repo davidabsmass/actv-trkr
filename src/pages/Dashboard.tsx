@@ -820,20 +820,22 @@ const Dashboard = () => {
           />
 
           {/* AI Insights – auto-generates on load */}
-          <AiInsights
-            orgId={orgId}
-            metrics={{
-              sessionsThisWeek: periodData.sessions.current,
-              sessionsLastWeek: periodData.sessions.previous,
-              leadsThisWeek: periodData.leads.current,
-              leadsLastWeek: periodData.leads.previous,
-              cvrThisWeek: periodData.cvr.current,
-              cvrLastWeek: periodData.cvr.previous,
-              topSource: topSource?.source,
-              totalForms: formsData?.length || 0,
-              primaryFocus: settings?.primary_focus || "lead_volume",
-            }}
-          />
+          <div id="ai-insights" className="scroll-mt-24">
+            <AiInsights
+              orgId={orgId}
+              metrics={{
+                sessionsThisWeek: periodData.sessions.current,
+                sessionsLastWeek: periodData.sessions.previous,
+                leadsThisWeek: periodData.leads.current,
+                leadsLastWeek: periodData.leads.previous,
+                cvrThisWeek: periodData.cvr.current,
+                cvrLastWeek: periodData.cvr.previous,
+                topSource: topSource?.source,
+                totalForms: formsData?.length || 0,
+                primaryFocus: settings?.primary_focus || "lead_volume",
+              }}
+            />
+          </div>
 
           {/* Row 3 – Latest Summary */}
           <LatestSummary />

@@ -126,6 +126,12 @@ function ProtectedRoute({ children, requireSubscription = true }: { children: Re
   return <>{children}</>;
 }
 
+function OwnerOnly({ children }: { children: React.ReactNode }) {
+  const { session } = useAuth();
+  if (!isOwnerEmail(session?.user?.email)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const isPreview = isPreviewEnvironment();
   const { session, loading } = useAuth();

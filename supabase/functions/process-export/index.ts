@@ -69,28 +69,33 @@ Deno.serve(async (req) => {
     await supabase.from("export_jobs").update({ status: "running" }).eq("id", job.id);
 
     try {
-      // Build leads query with optional filters
-      let leadsQuery = supabase
-        .from("leads")
-        .select("id, submitted_at, status, source, utm_source, utm_medium, utm_campaign, page_url, page_path, referrer_domain, form_id, service, location, physician, lead_type, lead_score")
-        .eq("org_id", orgId)
-        .order("submitted_at", { ascending: false })
-        .limit(5000);
-
-      // Apply filters from the job record
+      // Build leads query with optional filters. Supabase caps each request at
+      // 1000 rows by default, so we paginate up to a hard ceiling of 5000.
+      const HARD_CAP = 5000;
+      const PAGE = 1000;
       const filters = job.filters_json as Record<string, any> | null;
-      if (filters?.form_id) {
-        leadsQuery = leadsQuery.eq("form_id", filters.form_id);
-      }
-      if (job.start_date) {
-        leadsQuery = leadsQuery.gte("submitted_at", `${job.start_date}T00:00:00Z`);
-      }
-      if (job.end_date) {
-        leadsQuery = leadsQuery.lte("submitted_at", `${job.end_date}T23:59:59.999Z`);
-      }
 
-      const { data: leads, error: leadsErr } = await leadsQuery;
-      if (leadsErr) throw leadsErr;
+      const buildBaseQuery = () => {
+        let q = supabase
+          .from("leads")
+          .select("id, submitted_at, status, source, utm_source, utm_medium, utm_campaign, page_url, page_path, referrer_domain, form_id, service, location, physician, lead_type, lead_score")
+          .eq("org_id", orgId)
+          .order("submitted_at", { ascending: false });
+        if (filters?.form_id) q = q.eq("form_id", filters.form_id);
+        if (job.start_date) q = q.gte("submitted_at", `${job.start_date}T00:00:00Z`);
+        if (job.end_date) q = q.lte("submitted_at", `${job.end_date}T23:59:59.999Z`);
+        return q;
+      };
+
+      const leads: any[] = [];
+      for (let offset = 0; offset < HARD_CAP; offset += PAGE) {
+        const end = Math.min(offset + PAGE, HARD_CAP) - 1;
+        const { data: page, error: pageErr } = await buildBaseQuery().range(offset, end);
+        if (pageErr) throw pageErr;
+        if (!page || page.length === 0) break;
+        leads.push(...page);
+        if (page.length < PAGE) break;
+      }
 
       if (!leads || leads.length === 0) {
         await supabase.from("export_jobs").update({
@@ -155,13 +160,15 @@ Deno.serve(async (req) => {
         csvRows.push(row.map(escCsv).join(","));
       }
 
-      const csvContent = csvRows.join("\n");
+      // Prepend UTF-8 BOM so Excel and browsers correctly render accented
+      // characters (otherwise "–" / curly quotes show up as "â€"" mojibake).
+      const csvContent = "\uFEFF" + csvRows.join("\n");
       const fileName = `${orgId}/export_${job.id}.csv`;
 
       const { error: uploadErr } = await supabase.storage
         .from("exports")
-        .upload(fileName, new Blob([csvContent], { type: "text/csv" }), {
-          contentType: "text/csv",
+        .upload(fileName, new Blob([csvContent], { type: "text/csv; charset=utf-8" }), {
+          contentType: "text/csv; charset=utf-8",
           upsert: true,
         });
       if (uploadErr) throw uploadErr;

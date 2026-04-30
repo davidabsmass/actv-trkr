@@ -311,7 +311,7 @@ async function processJob(supabase: any, job: any) {
         // etc.). Advance the cursor so the rest of the form can finish importing.
         // The reconciler picks up any genuinely-missing entries on its next pass.
         const sameCursorRetries = (job.retry_count || 0) + 1;
-        const MAX_SAME_CURSOR_RETRIES = 3;
+        const MAX_SAME_CURSOR_RETRIES = 2;
 
         if (sameCursorRetries >= MAX_SAME_CURSOR_RETRIES && processed > 0 && cursor) {
           // Take what we got, advance the cursor using the next_cursor the

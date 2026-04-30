@@ -35,8 +35,25 @@ class MM_Adapter_Gravity implements MM_Import_Adapter {
 		$result = array();
 		foreach ( $forms as $form ) {
 			$is_trash  = ! empty( $form['is_trash'] );
-			$is_active = ! empty( $form['is_active'] ) && ! $is_trash;
 			if ( $is_trash ) continue; // Trashed forms are deleted from the dashboard's POV
+
+			// Determine is_active defensively. The lightweight list payload from
+			// GFAPI::get_forms() can omit `is_active` or store it as the string
+			// '0' / '1'. Treat MISSING as TRUE (default-on, matches the
+			// dashboard's additive reconciler semantics) and only treat an
+			// EXPLICIT zero/false as inactive.
+			$has_key = is_array( $form ) && array_key_exists( 'is_active', $form );
+			if ( ! $has_key ) {
+				$is_active = true;
+			} else {
+				$raw = $form['is_active'];
+				if ( is_string( $raw ) ) {
+					$is_active = ( $raw !== '0' && $raw !== '' && strtolower( $raw ) !== 'false' );
+				} else {
+					$is_active = (bool) $raw;
+				}
+			}
+
 			$result[] = array(
 				'external_form_id' => (string) ( $form['id'] ?? '' ),
 				'form_name'        => $form['title'] ?? 'Gravity Form',

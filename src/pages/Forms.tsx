@@ -1751,9 +1751,14 @@ function FormEntries({
                 <SelectItem value="xlsx">XLSX</SelectItem>
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={() => createExport.mutate()} disabled={createExport.isPending}>
+            <Button size="sm" onClick={() => setConfirmExportOpen(true)} disabled={createExport.isPending}>
               {createExport.isPending ? "Queuing…" : `Export ${dateLabel}`}
             </Button>
+            <ExportConfirmDialog
+              open={confirmExportOpen}
+              onOpenChange={setConfirmExportOpen}
+              onConfirm={() => createExport.mutate()}
+            />
           </div>
         </div>
       )}

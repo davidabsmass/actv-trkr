@@ -476,21 +476,14 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
 function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string | null; forms: any[] | undefined; startDate: string; endDate: string }) {
   const { session } = useAuth();
   const [open, setOpen] = useState(false);
-  const [scope, setScope] = useState<"all" | "single">("all");
   const [formId, setFormId] = useState<string>("");
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [pending, setPending] = useState(false);
 
-  // Forms eligible for export selection (dropdown shows everything except archived)
+  // Forms eligible for export (everything except archived)
   const eligibleForms = useMemo(
     () => (forms || []).filter((f) => !f.archived).sort((a, b) => a.name.localeCompare(b.name)),
     [forms],
-  );
-  // For "All forms" we only export ACTIVE forms — inactive/archived forms
-  // typically have no recent leads and just generate empty downloads.
-  const exportableAllForms = useMemo(
-    () => eligibleForms.filter((f) => f.is_active !== false),
-    [eligibleForms],
   );
 
   const slugify = (s: string) =>
@@ -504,9 +497,6 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
       toast.error("Could not generate download link.");
       return;
     }
-    // Fetch as blob + use an object URL so the browser always downloads
-    // instead of rendering the CSV inline (which is what produced the
-    // "code on screen" the user reported).
     try {
       const res = await fetch(data.signedUrl);
       const blob = await res.blob();
@@ -519,13 +509,10 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch {
-      // Fall back to opening the signed URL directly
       window.open(data.signedUrl, "_blank");
     }
   };
 
-  // Create + process an export job. Returns the completed job info
-  // WITHOUT triggering a download (so callers can sequence downloads).
   const processJob = async (
     filters: Record<string, unknown>,
   ): Promise<{ ok: boolean; rows: number; empty: boolean; filePath: string | null }> => {
@@ -568,56 +555,27 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
     return { ok: true, rows: completed.row_count ?? 0, empty: false, filePath: completed.file_path };
   };
 
-  const runOneJob = async (
-    targetFormId: string | null,
-    downloadName: string,
-  ): Promise<{ ok: boolean; rows: number; empty: boolean }> => {
-    const r = await processJob(targetFormId ? { form_id: targetFormId } : {});
-    if (r.ok && r.filePath) {
-      await downloadBlob(r.filePath, downloadName);
-    }
-    return { ok: r.ok, rows: r.rows, empty: r.empty };
-  };
-
   const runExport = async () => {
     if (!orgId || !session?.user.id) {
       toast.error("Not authenticated");
       return;
     }
-    if (scope === "single" && !formId) {
+    if (!formId) {
       toast.error("Pick a form to export");
       return;
     }
     setPending(true);
     try {
-      if (scope === "single") {
-        const target = eligibleForms.find((f) => f.id === formId);
-        const name = `${slugify(target?.name || "form")}.${exportFormat}`;
-        const result = await runOneJob(formId, name);
-        if (!result.ok) toast.error("Export failed");
-        else if (result.empty) toast.info("No leads found for this form.");
-        else toast.success(`Export ready — ${result.rows} rows.`);
-        setOpen(false);
-      } else {
-        // All forms — one combined export. Multiple automatic downloads get
-        // blocked by browsers and the export function is intentionally rate
-        // limited, so a single job is the reliable path.
-        const targets = exportableAllForms;
-        if (targets.length === 0) {
-          toast.error("No active forms available to export");
-          return;
-        }
-        toast.info(`Exporting all entries from ${targets.length} active form${targets.length === 1 ? "" : "s"}…`);
-
-        const result = await processJob({ form_ids: targets.map((f) => f.id) });
-        if (!result.ok) toast.error("Export failed");
-        else if (result.empty || !result.filePath) toast.info("No leads found for the selected date range.");
-        else {
-          await downloadBlob(result.filePath, `all-forms-${startDate}-to-${endDate}.${exportFormat}`);
-          toast.success(`Export ready — ${result.rows} rows.`);
-        }
-        setOpen(false);
+      const target = eligibleForms.find((f) => f.id === formId);
+      const name = `${slugify(target?.name || "form")}-${startDate}-to-${endDate}.${exportFormat}`;
+      const result = await processJob({ form_id: formId });
+      if (!result.ok) toast.error("Export failed");
+      else if (result.empty || !result.filePath) toast.info("No entries found for this form in the selected date range.");
+      else {
+        await downloadBlob(result.filePath, name);
+        toast.success(`Export ready — ${result.rows.toLocaleString()} entries.`);
       }
+      setOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to create export");
     } finally {
@@ -642,37 +600,23 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
         <div>
           <h4 className="text-sm font-semibold text-foreground">Export entries</h4>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {scope === "all"
-              ? `Downloads one ${exportFormat.toUpperCase()} with all active forms (${exportableAllForms.length} form${exportableAllForms.length === 1 ? "" : "s"}, up to 5,000 entries).`
-              : `Downloads a single ${exportFormat.toUpperCase()} (up to 5,000 entries).`}
+            Pick one form. The export includes <span className="font-medium text-foreground">all entries</span> for that form in the selected date range.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Date range: <span className="font-medium text-foreground">{startDate}</span> → <span className="font-medium text-foreground">{endDate}</span>
           </p>
         </div>
         <div className="space-y-2">
-          <label className="text-xs font-medium text-foreground">Scope</label>
-          <Select value={scope} onValueChange={(v) => setScope(v as "all" | "single")}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All forms</SelectItem>
-              <SelectItem value="single">Pick a form</SelectItem>
+          <label className="text-xs font-medium text-foreground">Form</label>
+          <Select value={formId} onValueChange={setFormId}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Select a form…" /></SelectTrigger>
+            <SelectContent className="max-h-72">
+              {eligibleForms.map((f) => (
+                <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
-        {scope === "single" && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-foreground">Form</label>
-            <Select value={formId} onValueChange={setFormId}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Select a form…" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {eligibleForms.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
         <div className="space-y-2">
           <label className="text-xs font-medium text-foreground">Format</label>
           <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "csv" | "xlsx")}>
@@ -685,7 +629,7 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-          <Button size="sm" onClick={runExport} disabled={pending}>
+          <Button size="sm" onClick={runExport} disabled={pending || !formId}>
             {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Exporting…</> : "Export"}
           </Button>
         </div>
@@ -1027,6 +971,17 @@ export default function Forms() {
     staleTime: 30_000,
   });
 
+  // Per-form entry counts for the selected date range. Derived from `leadsData`
+  // (already loaded above) so we don't issue another network request.
+  const rangeCountsByForm = useMemo(() => {
+    const out: Record<string, number> = {};
+    (leadsData || []).forEach((l: any) => {
+      if (!l.form_id) return;
+      out[l.form_id] = (out[l.form_id] || 0) + 1;
+    });
+    return out;
+  }, [leadsData]);
+
   // Active import jobs — used to surface per-form progress and the global
   // "backfill running" banner so users know historical sync is still working
   // and didn't silently fail.
@@ -1204,6 +1159,8 @@ export default function Forms() {
             }).map((form) => {
               const job = jobProgressByFormId[form.id];
               const count = leadCounts?.[form.id];
+              const rangeCount = rangeCountsByForm[form.id] ?? 0;
+              const rangeLabel = customRange ? "selected range" : `last ${days ?? 30}d`;
               return (
               <button
                 key={form.id}
@@ -1242,15 +1199,21 @@ export default function Forms() {
                         <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                       <span>{form.provider}</span>
                       <span>·</span>
                       {leadCountsLoading && count === undefined ? (
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <Loader2 className="h-3 w-3 animate-spin" /> loading leads…
+                          <Loader2 className="h-3 w-3 animate-spin" /> loading entries…
                         </span>
                       ) : (
-                        <span>{(count ?? 0).toLocaleString()} leads</span>
+                        <>
+                          <span className="font-medium text-foreground">{(count ?? 0).toLocaleString()}</span>
+                          <span>total</span>
+                          <span className="text-muted-foreground/60">·</span>
+                          <span className="font-medium text-foreground">{rangeCount.toLocaleString()}</span>
+                          <span>in {rangeLabel}</span>
+                        </>
                       )}
                     </p>
                   </div>

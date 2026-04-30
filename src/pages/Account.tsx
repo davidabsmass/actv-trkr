@@ -263,11 +263,12 @@ export default function Account() {
           </CardContent>
         </Card>
 
-        {/* Billing Address Card */}
+        {/* Billing Address Card — admins only */}
+        {canSeeBilling && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-        {/* Billing Address Card — admins only */}
+
         {canSeeBilling && (
         <Card>
           <CardHeader>

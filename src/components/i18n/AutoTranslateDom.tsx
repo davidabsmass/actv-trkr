@@ -39,16 +39,22 @@ export default function AutoTranslateDom() {
   const applyingRef = useRef(false);
 
   const targetLanguage = useMemo(() => {
+    const SUPPORTED = new Set(["en", "es", "fr", "pt", "de", "it", "zh", "ja", "ko", "ar"]);
     const resolved = (i18n.resolvedLanguage || i18n.language || "en").split("-")[0];
 
     try {
       const stored = window.localStorage.getItem("at_language")?.split("-")[0];
-      if (stored && stored !== resolved) return stored;
+      if (stored && !SUPPORTED.has(stored)) {
+        // Purge unsupported language (e.g. "ru") so we don't auto-translate to it
+        window.localStorage.removeItem("at_language");
+      } else if (stored && stored !== resolved && SUPPORTED.has(stored)) {
+        return stored;
+      }
     } catch {
       // ignore storage access issues
     }
 
-    return resolved;
+    return SUPPORTED.has(resolved) ? resolved : "en";
   }, [i18n.language, i18n.resolvedLanguage]);
 
   useLayoutEffect(() => {

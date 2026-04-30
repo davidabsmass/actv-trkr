@@ -55,11 +55,17 @@ Deno.serve(async (req) => {
     const job = jobs[0];
     const orgId = job.org_id;
 
-    // Verify caller is a member of the job's org
+    // Verify caller is a member of the job's org. Org roles are admin/manager
+    // (see Team RBAC). Both can export.
     const { data: membership } = await supabase
       .from("org_users").select("role")
       .eq("org_id", orgId).eq("user_id", userId).maybeSingle();
-    if (!membership || !["admin", "member"].includes(membership.role)) {
+    if (!membership || !["admin", "manager", "member"].includes(membership.role)) {
+      // Mark the job failed so the client stops polling and surfaces an error.
+      await supabase.from("export_jobs").update({
+        status: "failed",
+        error: "Forbidden: caller is not a member of this organization",
+      }).eq("id", job.id);
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
       });

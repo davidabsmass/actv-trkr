@@ -552,6 +552,17 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
       await new Promise((r) => setTimeout(r, 1000));
     }
 
+    // Audit log (best-effort)
+    await logExportAudit({
+      orgId: orgId!,
+      userId: session!.user.id,
+      roleAtExport: resolveExportRole({ orgRole, isPlatformAdmin }),
+      exportType: `forms_${exportFormat}`,
+      exportScope: `${JSON.stringify(filters)}:from=${startDate}:to=${endDate}`,
+      exportJobId: inserted.id,
+      metadata: { source: "Forms.BulkExportButton" },
+    });
+
     if (!completed || completed.status === "failed") {
       return { ok: false, rows: 0, empty: false, filePath: null };
     }

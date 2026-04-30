@@ -12,7 +12,7 @@ import WebsiteSetup from "@/pages/WebsiteSetup";
 import AddSite from "@/pages/AddSite";
 import FormImportPanel from "@/components/settings/FormImportPanel";
 import FormsSection from "@/components/settings/FormsSection";
-import GoalsSection from "@/components/settings/GoalsSection";
+
 import { SettingsConnectingNotice } from "@/components/settings/SettingsConnectingNotice";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -27,7 +27,7 @@ export default function SettingsPage() {
   const showAdminSections = isAdmin || isOrgAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab") || "general";
-  const validTabs = new Set(["general", "goals", "notifications", "setup", "add-site"]);
+  const validTabs = new Set(["general", "notifications", "setup", "add-site"]);
   const activeTab = validTabs.has(requestedTab) ? requestedTab : requestedTab === "plugin" ? "setup" : "general";
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -36,6 +36,10 @@ export default function SettingsPage() {
   useEffect(() => {
     if (searchParams.get("tab") === "white-label") {
       navigate("/reports?reportTab=white-label", { replace: true });
+      return;
+    }
+    if (searchParams.get("tab") === "goals") {
+      navigate("/performance?tab=key-actions", { replace: true });
       return;
     }
 
@@ -63,7 +67,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-6">
           <TabsTrigger value="general" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.general")}</TabsTrigger>
-          <TabsTrigger value="goals" className="flex-shrink-0 text-xs sm:text-sm">Goals</TabsTrigger>
+          
           <TabsTrigger value="notifications" className="flex-shrink-0 text-xs sm:text-sm">Notifications</TabsTrigger>
           <TabsTrigger value="setup" className="flex-shrink-0 text-xs sm:text-sm">{t("settings.websiteSetup")}</TabsTrigger>
           {activeTab === "add-site" && (
@@ -80,12 +84,6 @@ export default function SettingsPage() {
             <SeoVisibilitySection />
             <FormsSection />
             {showAdminSections && <FormImportPanel />}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="goals">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <GoalsSection />
           </div>
         </TabsContent>
 

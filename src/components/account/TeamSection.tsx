@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, Loader2, ShieldAlert, History, Crown, Mail, RotateCw, X } from "lucide-react";
+import { Users, UserPlus, Trash2, Loader2, ShieldAlert, History, Crown, Mail, RotateCw, X, LifeBuoy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -22,16 +22,18 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type Role = "admin" | "manager";
+type Role = "admin" | "manager" | "actv_support";
 
 const ROLE_LABEL: Record<Role, string> = {
   admin: "Admin",
   manager: "Manager",
+  actv_support: "ACTV TRKR Support",
 };
 
 const ROLE_HELP: Record<Role, string> = {
   admin: "Full access: manage team, billing, sites, and settings.",
   manager: "Operational access. Cannot manage team, billing, or destructive settings.",
+  actv_support: "Internal ACTV TRKR support team. Can view dashboards, edit Key Actions, and run exports — never manages settings, team, or billing.",
 };
 
 export default function TeamSection() {
@@ -266,6 +268,7 @@ export default function TeamSection() {
                 <SelectContent>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="actv_support">ACTV TRKR Support</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -423,6 +426,7 @@ export default function TeamSection() {
                                 <SelectContent>
                                   <SelectItem value="manager">Manager</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="actv_support">ACTV TRKR Support</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>

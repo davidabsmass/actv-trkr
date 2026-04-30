@@ -669,10 +669,10 @@ const Index = () => {
 
 
               <Button onClick={handleDirectCheckout} className="w-full mt-3" size="lg" disabled={checkoutLoading}>
-                {checkoutLoading ? "Redirecting to payment…" : <>Get Started <ArrowRight className="h-4 w-4" /></>}
+                {checkoutLoading ? "Redirecting to payment…" : <>Start 14-day free trial <ArrowRight className="h-4 w-4" /></>}
               </Button>
               <p className="text-center text-sm text-muted-foreground mt-3" style={{ fontFamily: "'BR Omega', sans-serif" }}>
-                Cancel anytime.
+                14 days free, then {isAnnual ? '$495/year' : '$45/mo'}. Credit card required. Cancel anytime.
               </p>
             </div>
           </div>

@@ -62,30 +62,33 @@ const weightLabels: Record<string, string> = {
 };
 
 /* ─── Summary Row ─── */
-function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
+function FormsSummary({
+  orgId,
+  startDate,
+  endDate,
+  rangeLabel,
+  forms,
+  leads,
+}: {
+  orgId: string | null;
+  startDate: string;
+  endDate: string;
+  rangeLabel: string;
+  forms: any[] | undefined;
+  leads: Array<{ form_id: string }> | undefined;
+}) {
   const { t } = useTranslation();
-  const endDate = format(startOfDay(new Date()), "yyyy-MM-dd");
-  const startDate = format(subDays(startOfDay(new Date()), days), "yyyy-MM-dd");
 
-  const { data: submissionCounts } = useQuery({
-    queryKey: ["total_submissions", orgId, startDate, endDate],
+  const { data: allTimeCount } = useQuery({
+    queryKey: ["total_submissions_alltime", orgId],
     queryFn: async () => {
-      if (!orgId) return { allTime: 0, recent: 0 };
-      const [allRes, recentRes] = await Promise.all([
-        supabase
-          .from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId)
-          .neq("status", "trashed"),
-        supabase
-          .from("leads").select("*", { count: "exact", head: true })
-          .eq("org_id", orgId)
-          .neq("status", "trashed")
-          .gte("submitted_at", `${startDate}T00:00:00Z`)
-          .lte("submitted_at", `${endDate}T23:59:59.999Z`),
-      ]);
-      if (allRes.error) throw allRes.error;
-      if (recentRes.error) throw recentRes.error;
-      return { allTime: allRes.count || 0, recent: recentRes.count || 0 };
+      if (!orgId) return 0;
+      const { count, error } = await supabase
+        .from("leads").select("*", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .neq("status", "trashed");
+      if (error) throw error;
+      return count || 0;
     },
     enabled: !!orgId,
   });
@@ -105,16 +108,74 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
     enabled: !!orgId,
   });
 
+  // Entries in selected range + top form (computed from leads already loaded by parent)
+  const { rangeEntries, topForm } = useMemo(() => {
+    const rangeEntries = leads?.length ?? null;
+    if (!leads || leads.length === 0 || !forms || forms.length === 0) {
+      return { rangeEntries, topForm: null as { name: string; count: number } | null };
+    }
+    const counts: Record<string, number> = {};
+    leads.forEach((l) => {
+      if (!l.form_id) return;
+      counts[l.form_id] = (counts[l.form_id] || 0) + 1;
+    });
+    let topId: string | null = null;
+    let topCount = 0;
+    Object.entries(counts).forEach(([id, c]) => {
+      if (c > topCount) { topId = id; topCount = c; }
+    });
+    const formMatch = forms.find((f) => f.id === topId);
+    return {
+      rangeEntries,
+      topForm: formMatch ? { name: formMatch.name as string, count: topCount } : null,
+    };
+  }, [leads, forms]);
+
   return (
-    <div className="grid grid-cols-2 gap-3 mb-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
       <div className="glass-card p-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">{t("forms.totalSubmissions")}</p>
-        <p className="text-2xl font-bold font-mono-data text-foreground">{submissionCounts?.allTime ?? "—"}</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">
+          Entries ({rangeLabel})
+        </p>
+        <p className="text-2xl font-bold font-mono-data text-foreground">
+          {rangeEntries === null ? "—" : rangeEntries.toLocaleString()}
+        </p>
         <p className="text-xs text-muted-foreground">
-          {submissionCounts ? `${submissionCounts.recent.toLocaleString()} ` : "— "}
-          {t("forms.lastDays", { days })}
+          {startDate} → {endDate}
         </p>
       </div>
+
+      <div className="glass-card p-4">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">
+          Top form ({rangeLabel})
+        </p>
+        {topForm ? (
+          <>
+            <p className="text-base font-semibold text-foreground truncate" title={topForm.name}>
+              {topForm.name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {topForm.count.toLocaleString()} {topForm.count === 1 ? "entry" : "entries"}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-2xl font-bold font-mono-data text-foreground">—</p>
+            <p className="text-xs text-muted-foreground">No entries in range</p>
+          </>
+        )}
+      </div>
+
+      <div className="glass-card p-4">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">
+          {t("forms.totalSubmissions")}
+        </p>
+        <p className="text-2xl font-bold font-mono-data text-foreground">
+          {allTimeCount === undefined ? "—" : allTimeCount.toLocaleString()}
+        </p>
+        <p className="text-xs text-muted-foreground">All time</p>
+      </div>
+
       <div className="glass-card p-4">
         <div className="flex items-center gap-1.5 mb-1">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{t("forms.failures")}</p>
@@ -123,7 +184,7 @@ function FormsSummary({ orgId, days }: { orgId: string | null; days: number }) {
         <p className={`text-2xl font-bold font-mono-data ${(failureCount ?? 0) > 0 ? "text-destructive" : "text-foreground"}`}>
           {failureCount ?? "—"}
         </p>
-        <p className="text-xs text-muted-foreground">{t("forms.lastDays", { days })}</p>
+        <p className="text-xs text-muted-foreground">{rangeLabel}</p>
       </div>
     </div>
   );
@@ -1097,7 +1158,14 @@ export default function Forms() {
       )}
 
       {/* Summary Row */}
-      <FormsSummary orgId={orgId} days={days} />
+      <FormsSummary
+        orgId={orgId}
+        startDate={startDate}
+        endDate={endDate}
+        rangeLabel={customRange ? "selected range" : t("forms.lastDays", { days: days ?? 30 })}
+        forms={forms}
+        leads={leadsData}
+      />
 
       {/* Form List */}
       <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">

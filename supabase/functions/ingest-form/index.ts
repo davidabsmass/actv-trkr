@@ -19,6 +19,45 @@ async function hashFingerprint(parts: string[]): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
+/**
+ * Deduplicate field_key values within a flatRows array. Two flat rows with
+ * the same key (e.g. multiple `unknown` from unnamed Gravity rows like HTML,
+ * captcha, page-break) cause silent insert failures and produce the
+ * "stored 30/33 entries (3 errors)" loop the import queue gets stuck on.
+ *
+ * Suffix collisions with `_<index>` so every row stays insertable while
+ * preserving the original label for display.
+ */
+function dedupeFlatRowKeys<T extends { field_key: string }>(rows: T[]): T[] {
+  const seen = new Map<string, number>();
+  return rows.map((r) => {
+    const base = (r.field_key && String(r.field_key).trim()) || "unknown";
+    const n = seen.get(base) || 0;
+    seen.set(base, n + 1);
+    return n === 0 ? { ...r, field_key: base } : { ...r, field_key: `${base}_${n + 1}` };
+  });
+}
+
+/**
+ * Insert flat rows defensively. Falls back to per-row inserts on bulk
+ * failure so a single bad row never invalidates the whole batch (which is
+ * what previously surfaced as "3 errors" to the import queue).
+ * Returns the number of rows actually written.
+ */
+async function safeInsertFlatRows(supabase: any, rows: any[]): Promise<number> {
+  if (!rows || rows.length === 0) return 0;
+  const deduped = dedupeFlatRowKeys(rows);
+  const { error } = await supabase.from("lead_fields_flat").insert(deduped);
+  if (!error) return deduped.length;
+  let written = 0;
+  for (const row of deduped) {
+    const { error: rowErr } = await supabase.from("lead_fields_flat").insert(row);
+    if (!rowErr) written++;
+    else console.warn(`safeInsertFlatRows: skipping row key=${row.field_key} err=${rowErr.message}`);
+  }
+  return written;
+}
+
 function inferAvadaFieldName(type: string, value: string, position: number): string {
   const t = type.toLowerCase();
   if (t === "email") return "Email";
@@ -689,7 +728,7 @@ Deno.serve(async (req) => {
         // ── Empty-mirror enrichment (always allowed) ──
         if ((existingFieldCount || 0) === 0) {
           if (flatRows.length > 0) {
-            await supabase.from("lead_fields_flat").insert(flatRows);
+            await safeInsertFlatRows(supabase, flatRows);
             console.log(`Enriched empty lead ${canonicalLead.id} with ${flatRows.length} fields (provider=${providerName})`);
             // Refresh data.fields snapshot too
             await supabase.from("leads").update({ data: { ...(parsedFields ? { fields: parsedFields } : {}), external_entry_id: extEntryId } }).eq("id", canonicalLead.id);
@@ -720,7 +759,7 @@ Deno.serve(async (req) => {
           if (shouldHeal) {
             console.log(`Heal-in-place lead ${canonicalLead.id}: existing=${existing.length} (generic=${existingHasGeneric}) → incoming=${flatRows.length}`);
             await supabase.from("lead_fields_flat").delete().eq("lead_id", canonicalLead.id).eq("org_id", orgId);
-            await supabase.from("lead_fields_flat").insert(flatRows);
+            await safeInsertFlatRows(supabase, flatRows);
             await supabase.from("leads").update({ data: { ...(parsedFields ? { fields: parsedFields } : {}), external_entry_id: extEntryId } }).eq("id", canonicalLead.id);
             observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "healed" } });
             return new Response(JSON.stringify({ status: "healed", lead_id: canonicalLead.id, fields_replaced: flatRows.length, provider: providerName }), {
@@ -796,7 +835,7 @@ Deno.serve(async (req) => {
           field_type: f.type || "text",
           value_text: f.value?.toString() || null,
         }));
-      if (flatRows.length > 0) await supabase.from("lead_fields_flat").insert(flatRows);
+      if (flatRows.length > 0) await safeInsertFlatRows(supabase, flatRows);
     }
 
     // ── Send real-time lead notification email + in-app ──

@@ -215,6 +215,23 @@ async function processJob(supabase: any, job: any) {
 
   try {
     while (hasMore && batchesProcessed < MAX_BATCHES_PER_RUN) {
+      // ── Hard ceiling: stop if total_processed exceeds total_expected by 50%.
+      // This breaks runaway loops where dedup is silently re-counting the same
+      // WP entries. The reconciler picks up genuinely-missing entries later.
+      const expectedCeil = Number(currentJob?.total_expected || 0);
+      if (expectedCeil > 0 && totalProcessed >= Math.ceil(expectedCeil * 1.5)) {
+        const ceilNote = `Hard ceiling reached: processed ${totalProcessed} >= 1.5 × expected ${expectedCeil}. Marking completed; reconciler will backfill any genuine gaps.`;
+        console.warn(`Job ${job.id}: ${ceilNote}`);
+        await releaseLock(supabase, job.id, lockToken, "completed", ceilNote, {
+          retry_count: 0,
+          next_run_at: null,
+        });
+        await supabase.from("form_integrations")
+          .update({ status: "synced", last_error: null, total_entries_imported: totalProcessed })
+          .eq("id", job.form_integration_id);
+        return { job_id: job.id, ceiling_reached: true, batches: batchesProcessed };
+      }
+
       // Heartbeat
       await supabase.from("form_import_jobs").update({
         heartbeat_at: new Date().toISOString(),
@@ -294,7 +311,7 @@ async function processJob(supabase: any, job: any) {
         // etc.). Advance the cursor so the rest of the form can finish importing.
         // The reconciler picks up any genuinely-missing entries on its next pass.
         const sameCursorRetries = (job.retry_count || 0) + 1;
-        const MAX_SAME_CURSOR_RETRIES = 3;
+        const MAX_SAME_CURSOR_RETRIES = 2;
 
         if (sameCursorRetries >= MAX_SAME_CURSOR_RETRIES && processed > 0 && cursor) {
           // Take what we got, advance the cursor using the next_cursor the

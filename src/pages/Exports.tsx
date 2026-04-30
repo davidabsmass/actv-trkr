@@ -245,7 +245,7 @@ export default function Exports() {
               </SelectContent>
             </Select>
             <Button
-              onClick={() => createExport.mutate({ formId: selectedForm.id, from: dateFrom, to: dateTo })}
+              onClick={() => setPendingExport({ kind: "form", formId: selectedForm.id, from: dateFrom, to: dateTo })}
               disabled={createExport.isPending}
             >
               {createExport.isPending ? "Queuing…" : `Export ${dateLabel}`}
@@ -288,7 +288,7 @@ export default function Exports() {
               <SelectItem value="xlsx">XLSX</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => createExport.mutate({})} disabled={createExport.isPending}>
+          <Button onClick={() => setPendingExport({ kind: "all" })} disabled={createExport.isPending}>
             {createExport.isPending ? "Queuing…" : "Export All"}
           </Button>
         </div>

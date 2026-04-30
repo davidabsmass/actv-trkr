@@ -457,12 +457,20 @@ function ExportHistory({
   jobsLoading,
   statusIcon,
   handleDownload,
+  retryJob,
 }: {
   jobs: any[] | undefined;
   jobsLoading: boolean;
   statusIcon: (s: string) => React.ReactNode;
   handleDownload: (path: string) => void;
+  retryJob?: (jobId: string) => void | Promise<void>;
 }) {
+  const isStuck = (job: any) => {
+    if (job.status !== "queued" && job.status !== "running") return false;
+    const ageMs = Date.now() - new Date(job.created_at).getTime();
+    return ageMs > 2 * 60 * 1000; // older than 2 minutes
+  };
+
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       <div className="px-5 py-3 border-b border-border">
@@ -476,42 +484,52 @@ function ExportHistory({
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {jobs.map((job) => (
-            <div key={job.id} className="flex items-center justify-between px-5 py-3">
-              <div className="flex items-center gap-3">
-                {statusIcon(job.status)}
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {job.format.toUpperCase()} Export
-                    {job.row_count != null && <span className="text-muted-foreground font-normal"> · {job.row_count} rows</span>}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(job.created_at), "MMM d, yyyy 'at' HH:mm")}
-                  </p>
+          {jobs.map((job) => {
+            const stuck = isStuck(job);
+            return (
+              <div key={job.id} className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-3">
+                  {statusIcon(job.status)}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {job.format.toUpperCase()} Export
+                      {job.row_count != null && <span className="text-muted-foreground font-normal"> · {job.row_count} rows</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(job.created_at), "MMM d, yyyy 'at' HH:mm")}
+                      {stuck && <span className="ml-2 text-warning">· stuck — retry below</span>}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`text-xs uppercase ${
+                      job.status === "succeeded" ? "text-success border-success/20" :
+                      job.status === "failed" ? "text-destructive border-destructive/20" :
+                      stuck ? "text-warning border-warning/30" :
+                      "text-muted-foreground"
+                    }`}
+                  >
+                    {stuck ? "stuck" : job.status}
+                  </Badge>
+                  {job.status === "succeeded" && job.file_path && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download export" onClick={() => handleDownload(job.file_path!)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {(stuck || job.status === "failed") && retryJob && (
+                    <Button variant="outline" size="sm" onClick={() => retryJob(job.id)}>
+                      Retry
+                    </Button>
+                  )}
+                  {job.status === "failed" && job.error && !stuck && (
+                    <span className="text-xs text-destructive max-w-[200px] truncate" title={job.error}>{job.error}</span>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className={`text-xs uppercase ${
-                    job.status === "succeeded" ? "text-success border-success/20" :
-                    job.status === "failed" ? "text-destructive border-destructive/20" :
-                    "text-muted-foreground"
-                  }`}
-                >
-                  {job.status}
-                </Badge>
-                {job.status === "succeeded" && job.file_path && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download export" onClick={() => handleDownload(job.file_path!)}>
-                    <Download className="h-4 w-4" />
-                  </Button>
-                )}
-                {job.status === "failed" && job.error && (
-                  <span className="text-xs text-destructive max-w-[200px] truncate">{job.error}</span>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

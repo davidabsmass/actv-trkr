@@ -267,6 +267,11 @@ export default function Account() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
+        {/* Billing Address Card — admins only */}
+        {canSeeBilling && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="h-4 w-4" /> Billing Address
             </CardTitle>
             <CardDescription>Collected from your payment details</CardDescription>
@@ -290,19 +295,21 @@ export default function Account() {
             )}
           </CardContent>
         </Card>
+        )}
         {/* Email Preferences */}
         <EmailPreferencesSection />
 
         {/* Two-Factor Authentication */}
         <TwoFactorSection />
 
-        {/* Team Members */}
-        <TeamSection />
+        {/* Team Members — admins only */}
+        {canSeeBilling && <TeamSection />}
 
-        {/* Billing Details */}
-        <BillingDetailsCard />
+        {/* Billing Details — admins only */}
+        {canSeeBilling && <BillingDetailsCard />}
 
-        {/* Subscription Management */}
+        {/* Subscription Management — admins only */}
+        {canSeeBilling && (
         <Card className="lg:col-span-2">
           <Collapsible>
             <CardHeader className="pb-3">
@@ -318,6 +325,7 @@ export default function Account() {
             </CollapsibleContent>
           </Collapsible>
         </Card>
+        )}
       </div>
         </TabsContent>
       </Tabs>

@@ -412,7 +412,7 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
     </>
   );
 }
-function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[] | undefined }) {
+function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string | null; forms: any[] | undefined; startDate: string; endDate: string }) {
   const { session } = useAuth();
   const [open, setOpen] = useState(false);
   const [scope, setScope] = useState<"all" | "single">("all");

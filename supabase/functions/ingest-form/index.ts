@@ -835,7 +835,7 @@ Deno.serve(async (req) => {
           field_type: f.type || "text",
           value_text: f.value?.toString() || null,
         }));
-      if (flatRows.length > 0) await supabase.from("lead_fields_flat").insert(flatRows);
+      if (flatRows.length > 0) await safeInsertFlatRows(supabase, flatRows);
     }
 
     // ── Send real-time lead notification email + in-app ──

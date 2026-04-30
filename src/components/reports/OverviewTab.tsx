@@ -55,12 +55,13 @@ type FormPerfRow = {
 };
 
 function FormPerformanceCard({
-  forms, periodLabel, currentLeads, currentCvr, hasPreviousData,
+  forms, periodLabel, currentLeads, currentCvr, cvrLabel = "Site CVR", hasPreviousData,
 }: {
   forms: FormPerfRow[];
   periodLabel: string;
   currentLeads: number;
   currentCvr: number;
+  cvrLabel?: string;
   hasPreviousData: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);

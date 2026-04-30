@@ -971,6 +971,17 @@ export default function Forms() {
     staleTime: 30_000,
   });
 
+  // Per-form entry counts for the selected date range. Derived from `leadsData`
+  // (already loaded above) so we don't issue another network request.
+  const rangeCountsByForm = useMemo(() => {
+    const out: Record<string, number> = {};
+    (leadsData || []).forEach((l: any) => {
+      if (!l.form_id) return;
+      out[l.form_id] = (out[l.form_id] || 0) + 1;
+    });
+    return out;
+  }, [leadsData]);
+
   // Active import jobs — used to surface per-form progress and the global
   // "backfill running" banner so users know historical sync is still working
   // and didn't silently fail.

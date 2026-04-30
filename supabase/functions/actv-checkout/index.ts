@@ -71,6 +71,15 @@ serve(async (req) => {
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       metadata,
+      subscription_data: {
+        trial_period_days: 14,
+        trial_settings: {
+          end_behavior: { missing_payment_method: "cancel" },
+        },
+        metadata,
+      },
+      // Require a payment method up front so the trial converts automatically.
+      payment_method_collection: "always",
       allow_promotion_codes: true,
       billing_address_collection: "required",
       phone_number_collection: { enabled: true },

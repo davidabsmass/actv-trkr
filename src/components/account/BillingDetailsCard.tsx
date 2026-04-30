@@ -174,21 +174,42 @@ export default function BillingDetailsCard() {
                   </Badge>
                 )}
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground space-y-0.5">
                 {data.subscription.is_fully_discounted ? (
                   <>
-                    <span className="text-foreground font-medium">Free</span>
-                    {data.subscription.base_amount != null && (
-                      <span className="line-through ml-2 text-xs">
-                        {fmtMoney(data.subscription.base_amount, data.subscription.currency)}
-                        {data.subscription.interval && ` / ${data.subscription.interval}`}
+                    <div>
+                      <span className="text-foreground font-medium">
+                        {fmtMoney(0, data.subscription.currency)}
                       </span>
+                      {data.subscription.interval && (
+                        <span className="text-muted-foreground"> / {data.subscription.interval}</span>
+                      )}
+                      <span className="ml-2 text-xs text-muted-foreground">(your balance)</span>
+                    </div>
+                    {data.subscription.base_amount != null && (
+                      <div className="text-xs text-muted-foreground">
+                        Plan price:{" "}
+                        <span className="text-foreground">
+                          {fmtMoney(data.subscription.base_amount, data.subscription.currency)}
+                          {data.subscription.interval && ` / ${data.subscription.interval}`}
+                        </span>
+                      </div>
                     )}
                   </>
                 ) : (
                   <>
                     {fmtMoney(data.subscription.amount, data.subscription.currency)}
                     {data.subscription.interval && ` / ${data.subscription.interval}`}
+                    {data.subscription.base_amount != null &&
+                      data.subscription.base_amount !== data.subscription.amount && (
+                        <div className="text-xs text-muted-foreground">
+                          Plan price:{" "}
+                          <span className="text-foreground">
+                            {fmtMoney(data.subscription.base_amount, data.subscription.currency)}
+                            {data.subscription.interval && ` / ${data.subscription.interval}`}
+                          </span>
+                        </div>
+                      )}
                   </>
                 )}
               </div>

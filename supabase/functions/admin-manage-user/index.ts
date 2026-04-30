@@ -1013,15 +1013,32 @@ Deno.serve(async (req) => {
 
       // Update role on org_users
       if (role !== undefined) {
-        const { error: roleErr } = await adminClient
+        // Guard: organization owner's role is locked (enforced by DB trigger too).
+        const { data: targetRow } = await adminClient
           .from("org_users")
-          .update({ role })
+          .select("is_owner, role")
           .eq("org_id", orgId)
-          .eq("user_id", userId);
-        if (roleErr) {
-          return new Response(JSON.stringify({ error: `Failed to update role: ${roleErr.message}` }), {
-            status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
-          });
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (targetRow?.is_owner) {
+          return new Response(
+            JSON.stringify({ error: "This user is the organization owner — their role can't be changed." }),
+            { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } }
+          );
+        }
+
+        if (targetRow && targetRow.role !== role) {
+          const { error: roleErr } = await adminClient
+            .from("org_users")
+            .update({ role })
+            .eq("org_id", orgId)
+            .eq("user_id", userId);
+          if (roleErr) {
+            return new Response(JSON.stringify({ error: `Failed to update role: ${roleErr.message}` }), {
+              status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" },
+            });
+          }
         }
       }
 

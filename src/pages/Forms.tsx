@@ -425,6 +425,79 @@ function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[]
     [forms],
   );
 
+  const slugify = (s: string) =>
+    s.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase().slice(0, 60) || "export";
+
+  const downloadBlob = async (filePath: string, downloadName: string) => {
+    const { data, error: urlErr } = await supabase.storage
+      .from("exports")
+      .createSignedUrl(filePath, 120);
+    if (urlErr || !data?.signedUrl) {
+      toast.error("Could not generate download link.");
+      return;
+    }
+    // Fetch as blob + use an object URL so the browser always downloads
+    // instead of rendering the CSV inline (which is what produced the
+    // "code on screen" the user reported).
+    try {
+      const res = await fetch(data.signedUrl);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = downloadName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch {
+      // Fall back to opening the signed URL directly
+      window.open(data.signedUrl, "_blank");
+    }
+  };
+
+  const runOneJob = async (
+    targetFormId: string | null,
+    downloadName: string,
+  ): Promise<{ ok: boolean; rows: number; empty: boolean }> => {
+    const { data: inserted, error } = await supabase.from("export_jobs").insert({
+      org_id: orgId!,
+      created_by: session!.user.id,
+      format: exportFormat,
+      status: "queued",
+      filters_json: targetFormId ? { form_id: targetFormId } : {},
+    }).select("id").single();
+    if (error) throw error;
+
+    const { error: fnError } = await supabase.functions.invoke("process-export", {
+      body: { job_id: inserted.id },
+    });
+    if (fnError) throw new Error("Export processing failed");
+
+    let completed: any = null;
+    for (let i = 0; i < 30; i++) {
+      const { data: job } = await supabase
+        .from("export_jobs")
+        .select("file_path, status, row_count")
+        .eq("id", inserted.id)
+        .single();
+      if (job?.status === "succeeded" || job?.status === "failed") {
+        completed = job;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+
+    if (!completed || completed.status === "failed") {
+      return { ok: false, rows: 0, empty: false };
+    }
+    if (!completed.file_path) {
+      return { ok: true, rows: 0, empty: true };
+    }
+    await downloadBlob(completed.file_path, downloadName);
+    return { ok: true, rows: completed.row_count ?? 0, empty: false };
+  };
+
   const runExport = async () => {
     if (!orgId || !session?.user.id) {
       toast.error("Not authenticated");
@@ -436,57 +509,46 @@ function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[]
     }
     setPending(true);
     try {
-      const { data: inserted, error } = await supabase.from("export_jobs").insert({
-        org_id: orgId,
-        created_by: session.user.id,
-        format: exportFormat,
-        status: "queued",
-        filters_json: scope === "single" ? { form_id: formId } : {},
-      }).select("id").single();
-      if (error) throw error;
-
-      const { error: fnError } = await supabase.functions.invoke("process-export", {
-        body: { job_id: inserted.id },
-      });
-      if (fnError) throw new Error("Export processing failed");
-
-      let completed: any = null;
-      for (let i = 0; i < 20; i++) {
-        const { data: job } = await supabase
-          .from("export_jobs")
-          .select("file_path, status, row_count")
-          .eq("id", inserted.id)
-          .single();
-        if (job?.status === "succeeded" || job?.status === "failed") {
-          completed = job;
-          break;
-        }
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-
-      if (completed?.status === "failed") {
-        throw new Error("Export failed");
-      }
-      if (completed?.file_path) {
-        toast.success(`Export ready — ${completed.row_count ?? 0} rows. Downloading…`);
-        const { data, error: urlErr } = await supabase.storage
-          .from("exports")
-          .createSignedUrl(completed.file_path, 120);
-        if (!urlErr && data?.signedUrl) {
-          const a = document.createElement("a");
-          a.href = data.signedUrl;
-          a.download = `export.${exportFormat}`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        } else {
-          toast.error("Could not generate download link.");
-        }
+      if (scope === "single") {
+        const target = eligibleForms.find((f) => f.id === formId);
+        const name = `${slugify(target?.name || "form")}.${exportFormat}`;
+        const result = await runOneJob(formId, name);
+        if (!result.ok) toast.error("Export failed");
+        else if (result.empty) toast.info("No leads found for this form.");
+        else toast.success(`Export ready — ${result.rows} rows.`);
         setOpen(false);
-      } else if (completed?.status === "succeeded") {
-        toast.info("No leads found for the selected scope.");
       } else {
-        toast.info("Export is still processing — check Exports page shortly.");
+        // All forms — run one export job per form so each downloads as its
+        // own file (avoids merged-CSV header conflicts when forms have
+        // different field sets).
+        if (eligibleForms.length === 0) {
+          toast.error("No forms available to export");
+          return;
+        }
+        toast.info(`Exporting ${eligibleForms.length} form${eligibleForms.length === 1 ? "" : "s"}…`);
+        let okCount = 0;
+        let emptyCount = 0;
+        let failCount = 0;
+        for (const f of eligibleForms) {
+          try {
+            const name = `${slugify(f.name)}.${exportFormat}`;
+            const result = await runOneJob(f.id, name);
+            if (!result.ok) failCount++;
+            else if (result.empty) emptyCount++;
+            else okCount++;
+            // Small spacing so browsers don't suppress rapid downloads
+            await new Promise((r) => setTimeout(r, 400));
+          } catch {
+            failCount++;
+          }
+        }
+        const parts: string[] = [];
+        if (okCount) parts.push(`${okCount} downloaded`);
+        if (emptyCount) parts.push(`${emptyCount} empty`);
+        if (failCount) parts.push(`${failCount} failed`);
+        if (failCount && !okCount) toast.error(`All exports failed`);
+        else toast.success(`Done — ${parts.join(", ")}`);
+        setOpen(false);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to create export");

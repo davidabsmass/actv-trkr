@@ -775,27 +775,29 @@ class MM_Forms {
 			return $deduped;
 
 			case 'ninja_forms':
-				// Ninja Forms stores submissions in nf3_objects table (type = 'submission')
+				// Ninja Forms stores submissions in nf3_objects table (type = 'submission').
+				// v1.21.5: Scope to this specific form via parent_id to prevent cross-form counts.
 				$table = $wpdb->prefix . 'nf3_objects';
 				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
 					return null;
 				}
-				// Ninja Forms uses nf3_objects with type='submission' and parent_id=form_id
-				// But the actual data is in nf3_object_meta. Let's query the objects table.
 				$rows = $wpdb->get_results( $wpdb->prepare(
-					"SELECT id FROM {$table} WHERE type = 'submission' LIMIT 5000"
+					"SELECT id FROM {$table} WHERE type = %s AND parent_id = %d ORDER BY id DESC LIMIT 5000",
+					'submission',
+					intval( $form_id )
 				) );
 				if ( ! is_array( $rows ) || empty( $rows ) ) return array();
 				return array_map( function( $r ) { return 'ninja_db_' . $r->id; }, $rows );
 
 			case 'fluent_forms':
-				// Fluent Forms stores submissions in fluentform_submissions table
+				// Fluent Forms stores submissions in fluentform_submissions table.
+				// v1.21.5: Parenthesize the status OR so it doesn't match other forms' rows.
 				$table = $wpdb->prefix . 'fluentform_submissions';
 				if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) ) !== $table ) {
 					return null;
 				}
 				$rows = $wpdb->get_results( $wpdb->prepare(
-					"SELECT id FROM {$table} WHERE form_id = %d AND status = 'read' OR status = 'unread' ORDER BY id DESC LIMIT 5000",
+					"SELECT id FROM {$table} WHERE form_id = %d AND status IN ('read','unread') ORDER BY id DESC LIMIT 5000",
 					intval( $form_id )
 				) );
 				if ( ! is_array( $rows ) || empty( $rows ) ) return array();

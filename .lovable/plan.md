@@ -1,93 +1,189 @@
-## What's actually wrong (verified from production data)
+# Add "ACTV TRKR Support" Role + Export Audit Logging
 
-I queried both sites in Lovable Cloud. Both are on plugin v1.21.5. Three independent bugs are causing what you're seeing — none of them mean the data is unrecoverable.
+Additive enhancement. Admin and Manager behavior is preserved exactly. New role `actv_support` is a Manager-clone with hard-blocked access to Settings (Plugin/API Keys/Form Import), Team Management, and Billing. All exports get a confirmation modal and are written to a new audit log.
 
-### Bug 1 — Stuck import loop on both sites (the "1 form still syncing" banner)
+## 1. Database changes (migration)
 
-Two import jobs are pinned in a partial-failure loop:
+### 1a. New role value
+`org_users.role` is a free-form `text` column (not the `app_role` enum) with no CHECK constraint, so no enum work is needed. Allowed values become: `admin`, `manager`, `actv_support`.
 
-| Site | Form | total_processed | total_expected | retry_count | last_error |
-|---|---|---|---|---|---|
-| Lives in the Balance | GF 7 "2025 Sign up for updates" | 2147 | 1353 | 2 | Import batch only stored 30/33 entries (3 errors) |
-| Apyx | GF 1 "Apyx Contact Page" | 4410 | 4208 | 2 | Import batch only stored 30/33 entries (3 errors) |
+### 1b. New helper functions (SECURITY DEFINER, search_path=public)
+- `is_org_actv_support(_user_id uuid, _org_id uuid) returns boolean` — true when the row's role is `actv_support`.
+- `is_org_member_or_support(_org_id uuid) returns boolean` — convenience wrapper used by code paths that already call `is_org_member`. Returns true for any `org_users` row regardless of role (admin/manager/actv_support all count).
 
-Two things stand out:
-- `total_processed > total_expected`: dedup is allowing the same WP entries to be re-counted, so the cursor is effectively going backwards across passes.
-- The same exact "30/33 (3 errors)" repeats every batch on two completely different forms. That's the same 3-row payload-shape problem on both sites — almost certainly because `lead_fields_flat` rows are being built with `field_key = "unknown"` for unnamed Gravity rows (HTML, captcha, consent, page break), and the bulk insert is rejecting the chunk for non-deterministic reasons that the orchestrator counts as "errors".
+No existing RLS policies change. They already key off `is_org_member(org_id)`, which is membership-based and will naturally include `actv_support` rows. Front-end gating is what restricts what `actv_support` can *see/use*.
 
-The MAX_SAME_CURSOR_RETRIES escape hatch exists in `process-import-queue/index.ts` (line 296), but it requires `processed > 0 && cursor`, and `retry_count` is reset to 0 each time the skip branch fires — so under the current 30/33 pattern the loop keeps healing the same window forever.
+### 1c. Trigger update — `org_users_first_member_owner`
+Currently forces `role := 'admin'` when first member. Update so it only does this if the inserted role is not `actv_support` — prevents a misconfigured invite from accidentally making a support user the org owner. (Defensive; first-member is realistically always the signup owner.)
 
-### Bug 2 — Lives in the Balance forms ALL show as "Disabled (7) / Active (0)"
+### 1d. Trigger update — `org_users_protect_owner_and_last_admin`
+No change required. Owner protection and "last admin" guard already prevent demoting/removing the owner. `actv_support` invitees can be added/removed freely.
 
-Every Gravity form on Lives in the Balance has `forms.is_active = false` AND `form_integrations.is_active = false`. The dashboard correctly hides them. The cause: `reconcile-forms-cron` only flips `is_active = true` when the WP plugin's `import-discover` payload says so. The Gravity adapter does:
+### 1e. New table — `export_audit_log`
+```text
+id              uuid pk default gen_random_uuid()
+org_id          uuid not null references orgs(id) on delete cascade
+site_id         uuid null references sites(id) on delete set null
+user_id         uuid not null references auth.users(id) on delete set null
+role_at_export  text not null      -- 'admin' | 'manager' | 'actv_support' | 'platform_admin'
+export_type     text not null      -- e.g. 'leads_csv', 'forms_xlsx', 'archive_csv', 'sessions_pdf'
+export_scope    text null          -- e.g. 'all_time', '2026-01-01..2026-01-31', 'form:<id>'
+export_job_id   uuid null references export_jobs(id) on delete set null
+metadata        jsonb not null default '{}'::jsonb
+created_at      timestamptz not null default now()
+```
+Indexes: `(org_id, created_at desc)`, `(user_id, created_at desc)`.
 
-```php
-$is_active = ! empty( $form['is_active'] ) && ! $is_trash;
+RLS:
+- Enabled.
+- INSERT: any authenticated org member (`is_org_member(org_id)`) where `user_id = auth.uid()`. Edge function uses service role and bypasses RLS.
+- SELECT: org admins only — `is_org_admin(auth.uid(), org_id)` OR platform admin (`has_role(auth.uid(),'admin')`).
+- No UPDATE / DELETE policies (immutable audit trail).
+
+### 1f. Optional support-access metadata columns on `org_users`
+Add nullable, non-breaking columns (used only when role = `actv_support`):
+- `access_expires_at timestamptz null`
+- `access_granted_by uuid null references auth.users(id) on delete set null`
+- `access_granted_at timestamptz null`
+
+These are informational only this round — no trigger auto-removes the user when expired (so existing flows keep working). UI shows the expiration; a follow-up can wire enforcement.
+
+### 1g. Deprecate the old "dashboard access grant" toggle
+The current `SupportAccessCard` consent toggle creates rows in `dashboard_access_grants` but **no RLS policy actually enforces it** (verified — zero policies reference `has_active_dashboard_grant`). It's effectively a consent-log UI. Plan:
+- Keep the table + audit log for historical data — no destructive migration.
+- Replace the `SupportAccessCard` UI in `src/pages/Account.tsx` with a new "ACTV TRKR Support members" panel (see §3) that shows current `actv_support` org members (with expiration if set) and lets an admin remove them.
+- Hide the toggle. Existing active grants remain visible for 30 days as read-only history, then the card can be deleted in a later release.
+
+## 2. Front-end role model
+
+### 2a. Update `src/hooks/use-user-role.ts`
+Extend `useOrgRole(orgId)` return shape:
+```ts
+return {
+  orgRole,                              // 'admin' | 'manager' | 'actv_support' | null
+  isOrgAdmin: orgRole === 'admin',
+  isOrgManager: orgRole === 'manager',
+  isActvSupport: orgRole === 'actv_support',
+  // capability helpers (single source of truth)
+  canManageSettings: orgRole === 'admin',          // Plugin / API Keys / Form Import
+  canManageTeam:     orgRole === 'admin',
+  canManageBilling:  orgRole === 'admin',
+  canEditGoals:      orgRole === 'admin' || orgRole === 'manager' || orgRole === 'actv_support',
+  canExport:         orgRole === 'admin' || orgRole === 'manager' || orgRole === 'actv_support',
+  canViewDashboard:  !!orgRole,
+  loading,
+};
+```
+All gating across the app should switch to these capability flags. Non-admin gates that exist today already use `isOrgAdmin` for Settings/Team/Billing — they will automatically also block `actv_support` (they are non-admin). No silent permission widening.
+
+### 2b. Audit existing gates (no behavior change for admin/manager)
+Files that currently gate on `isOrgAdmin` and must stay admin-only — confirmed:
+- `src/components/account/TeamSection.tsx` (team mgmt)
+- Settings → Plugin, API Keys, Form Import panels (already admin-only via `Settings.tsx` tabs)
+- Billing pages
+
+Add a top-level guard component `<RequireOrgAdmin>` that redirects `actv_support` to `/dashboard` with a toast if they hit an admin-only route directly via URL.
+
+## 3. Team management UI (`src/components/account/TeamSection.tsx`)
+
+Additive changes only:
+- `ROLE_LABEL` map gains: `actv_support: "ACTV TRKR Support"`.
+- Both `<Select>` invite/edit dropdowns gain a third option: `"ACTV TRKR Support"`.
+- Member rows showing `actv_support` get a distinct visual: blue/indigo `Badge` with shield icon and tooltip "Internal ACTV TRKR support — read-only access to dashboards, reports, and exports. No settings, team, or billing access."
+- The `adminCount` / last-admin guard logic is unchanged (`actv_support` are never counted as admins, so they never trigger last-admin protection).
+- Invite default stays `manager`. Choosing `actv_support` shows an inline note and (if the new columns are added) a "Default expiration" select (24h / 7 days / 30 days / never). Selected value is sent in the invite payload.
+
+## 4. Invite flow
+
+`supabase/functions/invite-user/index.ts` (or whichever function handles invites — confirmed by `TeamSection`'s call signature `{ email, orgId, role }`):
+- Accept `role: 'admin' | 'manager' | 'actv_support'` and optional `access_expires_at`, write through to `org_users`.
+- Set `access_granted_by = auth.uid()` and `access_granted_at = now()` when role is `actv_support`.
+- Existing audit-log insert (`previous_role` / `new_role`) handles the rest.
+
+## 5. Export confirmation modal + audit logging
+
+### 5a. Shared confirmation component
+New `src/components/exports/ExportConfirmDialog.tsx`:
+- Props: `open`, `onCancel`, `onConfirm`, optional `description` override.
+- Title: "Export client data?"
+- Body: "This export may contain client or lead data. The action will be logged."
+- Buttons: Cancel / Continue Export.
+- Built on existing `AlertDialog` for visual consistency.
+
+### 5b. Wire into every export trigger
+Confirmed call sites (4):
+1. `src/pages/Exports.tsx` (line 97)
+2. `src/pages/Forms.tsx` (lines 530 and 1610 — single-form export dropdown)
+3. `src/pages/Entries.tsx` (line 419)
+4. `src/components/archives/ArchivesContent.tsx` (line 118)
+
+Refactor each to: open confirm dialog → on Continue, perform existing invoke. No change to the export logic itself.
+
+### 5c. Server-side audit insert
+Two equally good options. Plan goes with **client-side insert immediately after a successful `functions.invoke()`** (simpler, no edge function changes, RLS already permits it):
+
+```ts
+await supabase.from('export_audit_log').insert({
+  org_id, site_id: site_id ?? null,
+  user_id: user.id,
+  role_at_export: orgRole ?? (isAdmin ? 'platform_admin' : 'unknown'),
+  export_type, export_scope,
+  export_job_id: createdJob?.id ?? null,
+  metadata: { source: '<page>' },
+});
 ```
 
-`GFAPI::get_forms(false, false)` returns lightweight form objects where `is_active` may be missing or `'0'`. Because Lives in the Balance is showing 7 active GF forms in WP but every one is reporting `is_active=false` to us, the plugin is reading an empty/zero value for every form. That fix lives in the plugin adapter (re-load via `GFAPI::get_form($id)` to get the real `is_active`, and treat missing key as TRUE not FALSE).
+Wrapped in a small helper `logExportAudit(...)` in `src/lib/export-audit.ts` so all four call sites stay tidy. Errors are swallowed (logged to console) — never block the export.
 
-### Bug 3 — "Find a Licensed Provider Near You" sliding back to Disabled
+For completeness: also add the same insert at the end of `supabase/functions/process-export/index.ts` and `process-archive-export/index.ts` using the service role, **only if** the row hasn't already been inserted (dedupe by `export_job_id` unique partial index where `export_job_id is not null`). This guarantees logging even if the client tab closes mid-flight.
 
-Same root cause as Bug 2 on the Apyx Gravity side. Avada forms read `post_status === 'publish'`, which works. Gravity reads the broken `is_active` field. So every reconcile run silently flips this Gravity form back to `is_active=false`.
+### 5d. Audit log viewer (admin-only)
+New section in Settings → Team (or a small "Export activity" card under the existing Audit log) listing the most recent 50 entries: when, who (display name), role badge, type, scope. Read uses RLS — only org admins see anything.
 
-## The plan
+## 6. Capability matrix (final)
 
-### A. Plugin v1.21.6 — fix `is_active` reporting (Bugs 2 + 3)
+```text
+Capability                          | Admin | Manager | ACTV TRKR Support
+------------------------------------|-------|---------|-------------------
+View Dashboard / Analytics / Leads  |  yes  |   yes   |       yes
+View Forms / Sites / SEO / AI       |  yes  |   yes   |       yes
+View Reports / Monitoring           |  yes  |   yes   |       yes
+Create / edit Goals (Key Actions)   |  yes  |   yes   |       yes
+Export data + reports (w/ confirm)  |  yes  |   yes   |       yes (logged)
+Settings → Plugin / Install         |  yes  |   no    |       no
+Settings → API Keys                 |  yes  |   no    |       no
+Settings → Form Import              |  yes  |   no    |       no
+Team management                     |  yes  |   no    |       no
+Billing / subscription              |  yes  |   no    |       no
+Owner-only controls                 | owner |   no    |       no
+Delete orgs / sites / users         |  yes  |   no    |       no
+```
 
-In `mission-metrics-wp-plugin/includes/class-import-adapters.php` Gravity adapter:
-- Use `GFAPI::get_form((int) $form['id'])` (full object) instead of trusting the lightweight list payload, OR explicitly cast `is_active` from string `'1'`/`'0'`.
-- Treat MISSING `is_active` as `true` (default-on), only treat explicit `'0' / 0 / false` as inactive. This matches the dashboard reconciler's "additive" semantics.
-- Same defensive fix for any other adapter that follows the `! empty($form['is_active'])` pattern.
+## 7. Files to create / edit
 
-Bump `mission-metrics.php`, run `node scripts/plugin-artifacts.mjs`, and update the 4 paired files atomically per the Plugin Version Sync rule.
+Create:
+- `supabase/migrations/<ts>_actv_support_role.sql` (everything in §1)
+- `src/components/exports/ExportConfirmDialog.tsx`
+- `src/lib/export-audit.ts`
+- `src/components/account/ExportActivityLog.tsx` (admin-only viewer)
 
-### B. Backend — break the 30/33 retry loop (Bug 1)
+Edit:
+- `src/hooks/use-user-role.ts` — add capability helpers
+- `src/components/account/TeamSection.tsx` — new role label, dropdown option, badge styling, optional expiration field
+- `src/pages/Exports.tsx`, `src/pages/Forms.tsx`, `src/pages/Entries.tsx`, `src/components/archives/ArchivesContent.tsx` — wrap export triggers in confirm dialog + audit log call
+- `supabase/functions/invite-user/index.ts` (or equivalent) — accept `actv_support` role + expiration fields
+- `src/pages/Account.tsx` — replace deprecated `SupportAccessCard` toggle with the new ACTV TRKR Support members panel (read-only list of current support members for the org)
 
-Edit `supabase/functions/ingest-form/index.ts`:
-- When building `flatRows`, generate a unique `field_key` for unnamed/duplicate fields (`unknown_<idx>`, `unlabeled_<position>`) so the bulk insert never collides on `(lead_id, field_key)` when we add a unique index later, and so today's error pattern stops.
-- Catch per-row insert failures and log them to `system_events` with the bad payload shape, instead of bubbling a partial failure up to the plugin's batch counter.
-- Make heal-in-place idempotent: if a heal returns `status: "healed"` for an entry the plugin sees as already-processed, the plugin should still mark it `processed`, not `error`.
+Memory updates after build:
+- Update `mem://features/team-rbac` to add `actv_support` role.
+- Add `mem://features/export-audit-log` describing the new table and confirmation flow.
 
-Edit `supabase/functions/process-import-queue/index.ts`:
-- When `processed >= total_expected` AND `errorCount > 0` for 2+ batches in a row, force-advance the cursor past the trouble window and mark the job `completed`. The reconciler will pick up any genuinely-missing entries on its next 15-min pass.
-- Add a hard ceiling: if `total_processed >= total_expected * 1.5`, stop the loop and mark `completed_with_skips` so the UI banner clears.
+## 8. Verification checklist
 
-Edit the WP plugin's import endpoint to:
-- Treat ingest responses `status: "healed" | "deduplicated_lead" | "enriched"` as success, not error. This is likely where the "3 errors" count is actually coming from.
-
-### C. Heal the two stuck sites (after A+B ship)
-
-Inside Lovable Cloud only — never touches WordPress:
-
-1. Reset the two pinned jobs:
-   - Set `retry_count = 0`, `adaptive_batch_size = 50`, `last_error = null`, `next_run_at = now()` for the two job IDs.
-   - Reset `total_processed` to match the count of distinct `external_entry_key` values we actually have for that form (not the inflated counter).
-2. Force one `refreshIsActiveFlags` pass for both sites so `is_active` flips back to `true` for the 7 Lives forms and the Apyx "Find a Licensed Provider" form.
-3. Trigger one site-sync per site to confirm counts converge.
-
-### D. Verification before declaring done
-
-For each site, query and report:
-- Active forms count visible in the dashboard vs WP.
-- For each active form: distinct `external_entry_key` count vs the WP `total_expected`.
-- Zero stuck `form_import_jobs` with `status='pending'` and `retry_count > 0`.
-- Zero `lead_fields_flat` rows with `field_key='unknown'` collisions per lead.
-
-## Files I'll touch
-
-- `mission-metrics-wp-plugin/includes/class-import-adapters.php` (Gravity is_active fix)
-- `mission-metrics-wp-plugin/mission-metrics.php` (version bump → v1.21.6)
-- `mission-metrics-wp-plugin/includes/class-import-engine.php` (treat heal/dedup as success on plugin side)
-- `supabase/functions/ingest-form/index.ts` (unique field_key, idempotent heal)
-- `supabase/functions/process-import-queue/index.ts` (force-advance + hard ceiling)
-- Migration: targeted job reset + a fresh `is_active` reconcile call for the two sites
-- Plugin artifact regeneration via `scripts/plugin-artifacts.mjs` (auto-updates the other 3 paired files)
-
-## Safety
-
-Nothing in this plan writes to or deletes from any WordPress database. All "healing" happens inside Lovable Cloud's mirror copy. WordPress remains the source of truth and will be re-read read-only by the plugin.
-
-## On your underlying concern
-
-You're right to push on this — and the reason past attempts didn't stick is real and now identified: the dashboard reconciler was the one quietly flipping forms back to Disabled every cycle, and the ingest function was rejecting batches the plugin had already considered "delivered". Those are the actual root causes, not the parser. Once A+B are in, count parity for Gravity/Avada/WPForms/Ninja/Fluent/CF7 stops drifting on every sync cycle.
+- Existing admin keeps every capability (smoke test Settings → Plugin, API Keys, Form Import, Team, Billing).
+- Existing manager keeps every capability (smoke test Goals/Key Actions edit, dashboard, exports — exports now show confirm modal).
+- New `actv_support` user can: open dashboards, edit Key Actions, run an export (sees modal, audit row written).
+- New `actv_support` user **cannot**: open Plugin/API Keys/Form Import tabs, see Team management actions, see Billing. Direct URL navigation redirects with a toast.
+- Owner protection + last-admin trigger still fire (try to demote sole admin → blocked).
+- `export_audit_log` rows are insertable by the exporting user, readable only by org admins (verified via two test sessions).
+- Existing dashboard_access_grants data remains queryable; old `SupportAccessCard` toggle is hidden.

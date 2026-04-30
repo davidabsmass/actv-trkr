@@ -19,7 +19,44 @@ async function hashFingerprint(parts: string[]): Promise<string> {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
 
-function inferAvadaFieldName(type: string, value: string, position: number): string {
+/**
+ * Deduplicate field_key values within a flatRows array. Two flat rows with
+ * the same key (e.g. multiple `unknown` from unnamed Gravity rows like HTML,
+ * captcha, page-break) cause silent insert failures and produce the
+ * "stored 30/33 entries (3 errors)" loop the import queue gets stuck on.
+ *
+ * Suffix collisions with `_<index>` so every row stays insertable while
+ * preserving the original label for display.
+ */
+function dedupeFlatRowKeys<T extends { field_key: string }>(rows: T[]): T[] {
+  const seen = new Map<string, number>();
+  return rows.map((r) => {
+    const base = (r.field_key && String(r.field_key).trim()) || "unknown";
+    const n = seen.get(base) || 0;
+    seen.set(base, n + 1);
+    return n === 0 ? { ...r, field_key: base } : { ...r, field_key: `${base}_${n + 1}` };
+  });
+}
+
+/**
+ * Insert flat rows defensively. Falls back to per-row inserts on bulk
+ * failure so a single bad row never invalidates the whole batch (which is
+ * what previously surfaced as "3 errors" to the import queue).
+ * Returns the number of rows actually written.
+ */
+async function safeInsertFlatRows(supabase: any, rows: any[]): Promise<number> {
+  if (!rows || rows.length === 0) return 0;
+  const deduped = dedupeFlatRowKeys(rows);
+  const { error } = await supabase.from("lead_fields_flat").insert(deduped);
+  if (!error) return deduped.length;
+  let written = 0;
+  for (const row of deduped) {
+    const { error: rowErr } = await supabase.from("lead_fields_flat").insert(row);
+    if (!rowErr) written++;
+    else console.warn(`safeInsertFlatRows: skipping row key=${row.field_key} err=${rowErr.message}`);
+  }
+  return written;
+}
   const t = type.toLowerCase();
   if (t === "email") return "Email";
   if (t === "textarea") return "Message";

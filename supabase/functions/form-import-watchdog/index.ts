@@ -307,28 +307,10 @@ async function rediscoverSite(supabase: any, site: any): Promise<{ ok: boolean; 
         .eq("external_form_id", String(f.external_form_id));
     }
 
-    // Mark missing as inactive
-    const { data: existing } = await supabase
-      .from("forms").select("id, external_form_id, provider, is_active")
-      .eq("site_id", site.id);
-    const toDeactivate = (existing || [])
-      .filter((f: any) => !reportedKeys.has(`${f.provider}::${String(f.external_form_id)}`) && f.is_active !== false)
-      .map((f: any) => f.id);
-    if (toDeactivate.length > 0) {
-      await supabase.from("forms").update({ is_active: false }).in("id", toDeactivate);
-    }
-
-    const { data: existingIntegrations } = await supabase
-      .from("form_integrations").select("id, external_form_id, builder_type, is_active")
-      .eq("site_id", site.id);
-    const integrationsToDeactivate = (existingIntegrations || [])
-      .filter((i: any) => !reportedKeys.has(`${i.builder_type}::${String(i.external_form_id)}`) && i.is_active !== false)
-      .map((i: any) => i.id);
-    if (integrationsToDeactivate.length > 0) {
-      await supabase.from("form_integrations").update({ is_active: false }).in("id", integrationsToDeactivate);
-    }
-
-    return { ok: true, marked_inactive: Math.max(toDeactivate.length, integrationsToDeactivate.length) };
+    // Never mark missing forms inactive from watchdog discovery. A partial WP
+    // response or an older adapter can omit healthy forms; only an explicit
+    // `is_active === false` for a reported form is authoritative.
+    return { ok: true, marked_inactive: 0 };
   } catch {
     return { ok: false };
   }

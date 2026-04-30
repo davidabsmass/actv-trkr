@@ -1,69 +1,94 @@
-## Why your numbers are doubled
+## Problem
 
-Avada submissions get stored in our `leads` table under up to **three different `external_entry_id` formats** for the same underlying WP entry:
+Two parallel form tables are out of sync, causing "Find a Licensed Provider Near You" (and others) to look broken on the Forms page:
 
-| Format | Source path |
-|---|---|
-| `219` | WP background sync (raw DB id) |
-| `avada_db_219` | Discovery/backfill from `class-import-adapters.php` |
-| `avada_1774876628_1955499498` | Legacy realtime tracker hash |
+- **`forms`** — canonical table where ingested **leads** live (created by `ingest-form` / `ingest-gravity`)
+- **`form_integrations`** — the import-wizard catalog the Forms UI reads from
 
-Because each format is a different string, our `(form_id, external_entry_id)` dedup never fires, and one real submission becomes 2–3 rows. That is exactly what produced 18 rows for "Physician Medical" when WP shows 9 entries, 94 vs 46 for "Renew You", etc. Gravity is unaffected because it only ever uses one ID format.
+For Apyx, the import wizard discovered Gravity forms on **Apr 23/29**, creating new `form_integrations` rows. The matching rows in `forms` already existed from **Mar 1**. Nothing links the two, so:
 
-## What I will do
+| Form | `form_integrations` shows | Real lead count in `forms` |
+|---|---|---|
+| Find a Licensed Provider | 397 imported / status synced (counter inflated, no lead linkage) | 228 leads (under old `forms` row) |
+| Apyx Contact Page | 2,899 / "still importing" | 2,929 leads (stuck job retry_count=63) |
+| Customer Feedback (v2) | 2 / 2 (only one that lined up) | 2 |
+| Other 4 Gravity forms | 0 imported | 0 (no submissions yet — fine) |
 
-### 1. Confirm the pattern across all sites
-Run a one-shot audit query that, for every Avada form across every site, groups leads by the **numeric tail** of `external_entry_id` (the part after the last `_`). Any group with >1 row is a confirmed duplicate set. Save the result to `/mnt/documents/avada_dupes_audit.csv` for your review before any deletes.
+Why "Find a Licensed Provider" appears missing: the dashboard joins through `form_integrations` → no leads linked → widget hides it / shows empty state. The 224 leads exist but are orphaned to a stale `forms.id`.
 
-### 2. Add a deterministic dedup key column
-Migration: add `external_entry_key text` to `leads`, generated from `external_entry_id` with these normalization rules:
-- `avada_db_219` → `avada:219`
-- `219` (when provider is avada) → `avada:219`
-- `avada_<ts>_<rand>` (legacy hash) → kept as-is so it can be matched against the canonical form by `(form_id, submitted_at±2min)` in step 3
-- Gravity / CF7 / WPForms → `<provider>:<external_entry_id>` (no behavior change)
+Why "Apyx Contact Page" is stuck: WP backfill is throttling (429s in logs). Job is auto-retrying (63 retries) but `total_processed` (2,899) already exceeds true unique entries because the same cursor is being re-played after partial failures. The `total_expected=4,208` is also likely the WP raw count before our dedup.
 
-### 3. Merge duplicates (keep the richest row)
-For each duplicate set:
-- Pick the **survivor** = the row with the most non-null fields in `data`, breaking ties by oldest `created_at` (so we preserve original attribution).
-- Reassign any dependent rows (`lead_events`, `lead_activity`, etc. — I'll enumerate FK refs in the migration) to the survivor.
-- Delete the losers.
-- Legacy hash rows (`avada_<ts>_<rand>`) are matched to the canonical row by `(form_id, submitted_at within 2 minutes)`; unmatched legacy rows are left alone and flagged in the audit CSV for manual review.
+## Goal: Iron-clad Gravity Forms parity
 
-### 4. Prevent recurrence
-- Add `UNIQUE (form_id, external_entry_key)` partial index (where `external_entry_key IS NOT NULL`).
-- Update both ingest paths (`ingest-form` edge function + `class-import-adapters.php` in the WP plugin) to write the **canonical** `external_entry_key` so future inserts collide and upsert instead of duplicating.
-- Bump plugin to v1.21.4 via `scripts/plugin-artifacts.mjs` (per the Plugin Deploy Rule).
+Make `form_integrations` and `forms` a single source of truth, with self-healing reconciliation so this can never silently desync again.
 
-### 5. Reconcile counters and verify
-- Recompute `form_integrations.total_entries_imported` from the deduped `leads` count.
-- Re-run the apyxmedical comparison and confirm:
-  - Physician Medical: 9 = 9
-  - Patient Medical: 6 = 6
-  - Patient General: 22 = 22
-  - Physician General: 28 = 28
-  - Book In-Office: 13 = 13
-  - Renew You, Near You: 46 = 46
-  - Find a Licensed Provider Near You: still 173/224 (separate Gravity gap — addressed below)
+## Plan
 
-### 6. Recover the 51 missing Gravity entries
-The "Find a Licensed Provider" import job has been failing in batches of 30/40 because some entries throw on ingest. After the dedup migration is in place (so re-imports won't duplicate), I'll re-trigger a clean WP backfill for that one form and inspect the `last_error` on whichever entries still fail.
+### 1. One-time data heal for Apyx (and any other org with the same drift)
+- For every `form_integrations` row, find the matching `forms` row by `(site_id, provider, external_form_id)`.
+- Re-point all existing `leads.form_id` from the legacy `forms.id` to a single canonical `forms.id` per integration (prefer the older one to preserve history, then update `form_integrations` to reference it).
+- Recompute `form_integrations.total_entries_imported` from the actual `COUNT(leads)` after dedup — kill the inflated 397 → 224, etc.
+- Mark "Find a Licensed Provider Near You" as `status='synced'` with correct count.
 
-## Safety
+### 2. Structural link: add `form_integrations.form_id` FK
+- Add nullable `form_id uuid references forms(id)` to `form_integrations`.
+- Backfill it for every existing row.
+- Update `manage-import-job` (`discover` action) to upsert into `forms` first, then store that `forms.id` on the integration row. From now on, every integration row has a guaranteed canonical `forms.id`.
 
-- All deletes are wrapped in a transaction and gated on the audit CSV showing zero unexpected categories.
-- WordPress is **not** modified — we only clean our own `leads` table (per Read-Only WP Principle).
-- I'll save a backup table `leads_predupe_backup_2026_04_29` containing every row that gets deleted, kept for 30 days, so any deletion is reversible.
+### 3. Self-healing reconciler (already runs every 15 min)
+- Extend the existing **forms reconciler cron** to also:
+  - Recompute `total_entries_imported` from `SELECT count(*) FROM leads WHERE form_id = form_integrations.form_id` (truth = actual stored leads, not the cursor counter).
+  - Auto-resolve "stuck importing" by flipping to `synced` when `total_processed >= total_expected` OR when `retry_count > 20` AND the lead count matches WP truth within 2%.
 
-## Files I expect to touch
+### 4. Fix the stuck "Apyx Contact Page" job
+- Reset its job to `pending` with `retry_count=0`, `cursor=null`, drop `adaptive_batch_size` to 10 to dodge the WP rate limiter, and let it converge.
+- After the next clean pass, reconciler will mark it synced.
 
-- New migration: dedup key column, backfill, unique index, FK reassignment
-- `supabase/functions/ingest-form/index.ts` — emit canonical `external_entry_key`
-- `mission-metrics-wp-plugin/includes/class-import-adapters.php` — emit canonical id
-- Plugin version bump (4 files via `scripts/plugin-artifacts.mjs`)
-- New memory: `mem://features/forms/avada-dedup-key` documenting the canonical key format
+### 5. UI guarantee on the Forms page
+- Always show every Gravity form discovered on the WP site, even with 0 leads — currently it does, but verify "Find a Licensed Provider" reappears once linked.
+- Show a clear "Syncing X / Y" badge driven by reconciler-truth, not job-cursor counter.
 
-## What I will not touch
+## Technical details
 
-- Gravity / CF7 / WPForms ingest behavior (no duplication problem there)
-- The `forms` and `form_integrations` schemas
-- Any WordPress data
+**Migration**
+```sql
+ALTER TABLE form_integrations ADD COLUMN form_id uuid REFERENCES forms(id);
+CREATE INDEX ON form_integrations(form_id);
+
+-- Backfill link
+UPDATE form_integrations fi SET form_id = f.id
+FROM forms f
+WHERE f.site_id = fi.site_id
+  AND f.provider = fi.builder_type
+  AND f.external_form_id = fi.external_form_id;
+
+-- Heal counters from leads truth
+UPDATE form_integrations fi
+SET total_entries_imported = COALESCE(c.n, 0),
+    status = CASE WHEN COALESCE(c.n,0) >= COALESCE(total_entries_estimated,0)
+                  THEN 'synced' ELSE status END,
+    last_synced_at = COALESCE(last_synced_at, now())
+FROM (SELECT form_id, count(*) n FROM leads GROUP BY form_id) c
+WHERE c.form_id = fi.form_id;
+
+-- Unstick Apyx Contact Page job
+UPDATE form_import_jobs
+SET status='pending', retry_count=0, cursor=NULL, adaptive_batch_size=10,
+    next_run_at=now(), last_error=NULL
+WHERE id='252708e5-4ed5-4017-b187-d3b5e6e8f72f';
+```
+
+**Edge function changes**
+- `manage-import-job/index.ts` `discoverForms()`: after upserting `form_integrations`, also upsert into `forms` and set `form_integrations.form_id`.
+- `process-import-batch` (line 466 area): set counter from `count(leads)` not from cursor totalProcessed.
+- Reconciler cron (`forms-reconciler` or equivalent): add the count-recompute + stuck-job auto-heal.
+
+**Memory updates**
+- Update `mem://features/forms/two-table-model` to record the new FK + reconciler invariant: "`form_integrations.form_id` is the source of truth; counters are recomputed from `leads`, never trusted from cursor state."
+
+## Outcome
+
+- "Find a Licensed Provider Near You" reappears with 224 leads, status synced.
+- "Apyx Contact Page" finishes its sync and stops looking stuck.
+- Future Gravity Forms automatically link on discovery — no more orphaned legacy `forms` rows.
+- Reconciler converges any drift within 15 minutes, system-wide.

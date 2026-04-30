@@ -153,7 +153,7 @@ const Index = () => {
       >
         Skip to main content
       </a>
-      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; } .hero-space-bg { background-position: 70% top !important; } .landing-section { padding-top: 70px !important; padding-bottom: 70px !important; } } @media (min-width: 768px) and (max-width: 1023px) { .hero-astronaut-wrap { position: absolute !important; left: -402px !important; top: 0 !important; margin: 0 !important; z-index: 0 !important; } .hero-astronaut-wrap img { width: 40rem !important; max-width: none !important; } .hero-headline { font-size: 2.225rem !important; } .hero-content-row { position: relative; } .hero-copy-block { position: relative; z-index: 1; margin-left: auto !important; text-align: left !important; } .hero-copy-block .flex { justify-content: flex-start !important; } .section-copy-block { padding-left: 39px !important; } }` }} />
+      <style dangerouslySetInnerHTML={{ __html: `@media (max-width: 1023px) { .prlx { transform: none !important; will-change: auto !important; } } @media (max-width: 767px) { .hero-astronaut-wrap { margin-left: -120px; margin-top: -20px !important; } .hero-space-bg { background-position: 70% top !important; } .landing-section { padding-top: 70px !important; padding-bottom: 70px !important; } } @media (min-width: 768px) and (max-width: 1023px) { .hero-astronaut-wrap { position: absolute !important; left: -402px !important; top: 0 !important; margin: 0 !important; z-index: 0 !important; } .hero-astronaut-wrap img { width: 40rem !important; max-width: none !important; } .hero-headline { font-size: 2.225rem !important; } .hero-content-row { position: relative; } .hero-copy-block { position: relative; z-index: 1; margin-left: auto !important; text-align: left !important; } .hero-copy-block .flex { justify-content: flex-start !important; } .section-copy-block { padding-left: 39px !important; } }` }} />
       <a id="main-content" tabIndex={-1} className="sr-only" aria-hidden="true" />
       {/* Navigation — hidden until scrolled past logo, then sticky */}
       <nav className={`fixed top-0 left-0 right-0 z-50 bg-black transition-transform duration-300 ${showNav ? 'translate-y-0' : '-translate-y-full'}`}>
@@ -494,8 +494,8 @@ const Index = () => {
                 Know what needs attention before it starts costing you.
               </p>
             </div>
-            <div className="relative flex items-end justify-center lg:col-span-7 pt-12">
-              <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-[85%] h-auto relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />
+            <div className="relative flex items-end justify-center lg:col-span-7 pt-0 lg:pt-12">
+              <img src={websiteHealthGraphic} alt="Website health monitoring" className="w-full max-w-md lg:max-w-none lg:w-[85%] h-auto relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2400) * -0.02}px)`, willChange: 'transform' }} />
             </div>
           </div>
         </div>
@@ -639,7 +639,7 @@ const Index = () => {
               </p>
               
               <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>
-              <div className="grid grid-cols-3 gap-x-8 gap-y-3 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 flex-1 w-full">
                 {[
                   "1 Website",
                   "Site Health Monitoring",
@@ -660,11 +660,11 @@ const Index = () => {
                   "Top Page Insights",
                   "Shareable Snapshots",
                 ].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm h-7">
+                  <div key={i} className="flex items-center gap-3 text-sm min-h-7 text-left">
                     <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Check className="h-3 w-3 text-primary" />
                     </div>
-                    <span className="text-foreground whitespace-nowrap">{feature}</span>
+                    <span className="text-foreground">{feature}</span>
                   </div>
                 ))}
               </div>

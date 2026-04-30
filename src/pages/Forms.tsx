@@ -420,9 +420,16 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [pending, setPending] = useState(false);
 
+  // Forms eligible for export selection (dropdown shows everything except archived)
   const eligibleForms = useMemo(
     () => (forms || []).filter((f) => !f.archived).sort((a, b) => a.name.localeCompare(b.name)),
     [forms],
+  );
+  // For "All forms" we only export ACTIVE forms — inactive/archived forms
+  // typically have no recent leads and just generate empty downloads.
+  const exportableAllForms = useMemo(
+    () => eligibleForms.filter((f) => f.is_active !== false),
+    [eligibleForms],
   );
 
   const slugify = (s: string) =>

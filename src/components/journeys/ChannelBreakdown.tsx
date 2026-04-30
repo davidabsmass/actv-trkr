@@ -122,6 +122,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
         utm_campaign: string | null;
         landing_referrer_domain: string | null;
         has_lead: boolean;
+        has_conversion: boolean;
       }>;
     },
     enabled: !!orgId,
@@ -132,6 +133,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
     const map = new Map<Channel, ChannelRow>();
     for (const j of data) {
       const { channel, sourceLabel } = classifyChannel(j);
+      const converted = j.has_lead || j.has_conversion;
       let row = map.get(channel);
       if (!row) {
         row = {
@@ -142,10 +144,10 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
         map.set(channel, row);
       }
       row.sessions += 1;
-      if (j.has_lead) row.leads += 1;
+      if (converted) row.leads += 1;
       const s = row.sources.get(sourceLabel) || { sessions: 0, leads: 0 };
       s.sessions += 1;
-      if (j.has_lead) s.leads += 1;
+      if (converted) s.leads += 1;
       row.sources.set(sourceLabel, s);
     }
     const out = Array.from(map.values()).map((r) => {
@@ -176,12 +178,12 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground">Traffic by channel</h3>
-          <IconTooltip label="Sessions grouped by channel — Paid vs Organic vs Direct vs Referral. Helps you see if your FB ads, Google ads, or organic search are driving leads.">
+          <IconTooltip label="Sessions grouped by channel — Paid vs Organic vs Direct vs Referral. CVR = sessions that completed a form fill or Key Action.">
             <Info className="h-3.5 w-3.5 text-muted-foreground" />
           </IconTooltip>
         </div>
         <span className="text-xs text-muted-foreground">
-          {totalSessions.toLocaleString()} sessions · {totalLeads.toLocaleString()} leads
+          {totalSessions.toLocaleString()} sessions · {totalLeads.toLocaleString()} conversions
           {data && data.length >= 1000 && <span className="ml-1 opacity-70">(latest 1k)</span>}
         </span>
       </div>
@@ -207,7 +209,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
                     <span className="text-sm font-medium text-foreground">{row.channel}</span>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums shrink-0">
                       <span>{row.sessions.toLocaleString()} sess</span>
-                      <span className="text-foreground">{row.leads.toLocaleString()} leads</span>
+                      <span className="text-foreground">{row.leads.toLocaleString()} conv</span>
                       <span className={`font-semibold ${row.cvr >= 0.05 ? "text-success" : row.cvr >= 0.02 ? "text-foreground" : "text-muted-foreground"}`}>
                         {(row.cvr * 100).toFixed(1)}% CVR
                       </span>
@@ -240,7 +242,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
                       <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
                         <th className="text-left py-1 font-medium">Source</th>
                         <th className="text-right py-1 font-medium">Sessions</th>
-                        <th className="text-right py-1 font-medium">Leads</th>
+                        <th className="text-right py-1 font-medium">Conversions</th>
                         <th className="text-right py-1 font-medium">CVR</th>
                       </tr>
                     </thead>

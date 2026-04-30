@@ -24,7 +24,7 @@ import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
-import { useOrg } from "@/contexts/OrgContext";
+import { useOrg } from "@/hooks/use-org";
 import { useOrgRole } from "@/hooks/use-user-role";
 
 export default function Account() {

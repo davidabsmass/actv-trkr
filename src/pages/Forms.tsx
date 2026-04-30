@@ -412,7 +412,7 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
     </>
   );
 }
-function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[] | undefined }) {
+function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string | null; forms: any[] | undefined; startDate: string; endDate: string }) {
   const { session } = useAuth();
   const [open, setOpen] = useState(false);
   const [scope, setScope] = useState<"all" | "single">("all");
@@ -466,6 +466,8 @@ function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[]
       format: exportFormat,
       status: "queued",
       filters_json: targetFormId ? { form_id: targetFormId } : {},
+      start_date: startDate,
+      end_date: endDate,
     }).select("id").single();
     if (error) throw error;
 
@@ -577,6 +579,9 @@ function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[]
             {scope === "all"
               ? `Downloads one ${exportFormat.toUpperCase()} per form (up to 5,000 entries each).`
               : `Downloads a single ${exportFormat.toUpperCase()} (up to 5,000 entries).`}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Date range: <span className="font-medium text-foreground">{startDate}</span> → <span className="font-medium text-foreground">{endDate}</span>
           </p>
         </div>
         <div className="space-y-2">
@@ -1050,7 +1055,7 @@ export default function Forms() {
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? t("forms.syncingElapsed", { elapsed: syncElapsed }) : t("forms.syncEntries")}
           </Button>
-          <BulkExportButton orgId={orgId} forms={forms} />
+          <BulkExportButton orgId={orgId} forms={forms} startDate={startDate} endDate={endDate} />
           <DateRangeSelector
             selectedDays={days}
             onDaysChange={(d) => { setDays(d); setCustomRange(null); }}

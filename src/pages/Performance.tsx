@@ -181,7 +181,7 @@ const Performance = () => {
               triggerClassName="h-8 gap-1 text-xs"
             />
           )}
-          
+          <AddSiteHeaderButton />
         </div>
       </div>
 

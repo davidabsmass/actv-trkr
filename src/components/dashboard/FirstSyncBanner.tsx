@@ -41,18 +41,21 @@ export function FirstSyncBanner() {
     queryFn: async () => {
       if (!orgId) return null;
       const [siteRes, sessRes, pvRes] = await Promise.all([
+        // Anchor to the EARLIEST site connection for this org. `last_heartbeat_at`
+        // is updated every ping, so ordering by it would constantly slide the
+        // 15-minute window forward and re-show the banner forever.
         supabase
           .from("sites")
-          .select("last_heartbeat_at, created_at")
+          .select("created_at")
           .eq("org_id", orgId)
-          .order("last_heartbeat_at", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
           .limit(1)
           .maybeSingle(),
         supabase.from("sessions").select("id", { head: true, count: "exact" }).eq("org_id", orgId).limit(1),
         supabase.from("pageviews").select("id", { head: true, count: "exact" }).eq("org_id", orgId).limit(1),
       ]);
       return {
-        firstHeartbeatAt: siteRes.data?.last_heartbeat_at ?? siteRes.data?.created_at ?? null,
+        firstHeartbeatAt: siteRes.data?.created_at ?? null,
         hasData: (sessRes.count ?? 0) > 0 || (pvRes.count ?? 0) > 0,
       };
     },

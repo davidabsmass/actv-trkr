@@ -23,7 +23,7 @@ import { usePlanTier } from "@/hooks/use-plan-tier";
 import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
-
+import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
 import { CreateGoalDialog } from "@/components/settings/GoalsSection";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { useKeyActions } from "@/hooks/use-key-actions";
@@ -181,7 +181,7 @@ const Performance = () => {
               triggerClassName="h-8 gap-1 text-xs"
             />
           )}
-          
+          <AddSiteHeaderButton />
         </div>
       </div>
 
@@ -240,7 +240,7 @@ const Performance = () => {
 
         <TabsContent value="reports">
           <Suspense fallback={<div className="flex items-center justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-            <Reports />
+            <Reports embedded />
           </Suspense>
         </TabsContent>
       </Tabs>

@@ -67,7 +67,7 @@ const WelcomeEmail = ({ name, setPasswordUrl }: WelcomeEmailProps) => (
           </Text>
 
           <Text style={text}>
-            If you need help at any point, just reply to this email and we'll point you in the right direction.
+            If you need help at any point, just email <a href="mailto:support@actvtrkr.com" style={{ color: '#6C5CE7' }}>support@actvtrkr.com</a> and we'll point you in the right direction.
           </Text>
 
           <Text style={signoff}>

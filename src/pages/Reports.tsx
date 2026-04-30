@@ -393,7 +393,7 @@ function ActivityReportsTab() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["report_runs"] }); toast.success("Report generation started"); },
     onError: (err: any) => {
       if (err.message?.includes("row-level security") || err.code === "42501") {
-        toast.error("No reports available for this client");
+        toast.error("You don't have permission to generate reports for this client. Ask an admin to grant access.");
       } else {
         toast.error(err.message || "Failed");
       }

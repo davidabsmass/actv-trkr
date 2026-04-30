@@ -127,11 +127,7 @@ export default function ConnectedLoginsCard() {
                 </div>
               ))}
             </div>
-            {!hasGoogle && (
-              <Button size="sm" variant="outline" onClick={linkGoogle} disabled={busy === "link-google"}>
-                {busy === "link-google" ? "Opening…" : "Link Google account"}
-              </Button>
-            )}
+            {/* Link Google account temporarily disabled */}
             {!canUnlink && (
               <p className="text-xs text-muted-foreground">
                 You need at least one sign-in method. Link another provider before unlinking your current one.

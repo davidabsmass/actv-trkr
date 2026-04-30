@@ -41,6 +41,30 @@ Deno.serve(async (req) => {
       jobId = body.job_id || null;
     } catch { /* no body is fine */ }
 
+    // Sweep zombie jobs: anything queued/running for >5 minutes is dead.
+    // (Edge invocations time out long before that — there's no recovery path.)
+    // Scoped to the caller's orgs so we can't touch other tenants.
+    try {
+      const { data: callerOrgs } = await supabase
+        .from("org_users").select("org_id").eq("user_id", userId);
+      const orgIds = (callerOrgs || []).map((r: any) => r.org_id);
+      if (orgIds.length > 0) {
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        await supabase
+          .from("export_jobs")
+          .update({
+            status: "failed",
+            error: "Export timed out — the processor never completed. Please retry.",
+            completed_at: new Date().toISOString(),
+          })
+          .in("org_id", orgIds)
+          .in("status", ["queued", "running"])
+          .lt("created_at", fiveMinAgo);
+      }
+    } catch (sweepErr) {
+      console.warn("Stale-job sweep failed (non-fatal):", sweepErr);
+    }
+
     let query = supabase.from("export_jobs").select("*").eq("status", "queued").order("created_at").limit(1);
     if (jobId) query = supabase.from("export_jobs").select("*").eq("id", jobId).limit(1);
 

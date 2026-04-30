@@ -70,7 +70,7 @@ export default function Exports() {
     },
   });
 
-  // Count leads per form
+  // Count leads per form (matches export filter — excludes trashed)
   const { data: leadCounts } = useQuery({
     queryKey: ["lead_counts_by_form", orgId],
     queryFn: async () => {
@@ -81,12 +81,36 @@ export default function Exports() {
           .from("leads")
           .select("*", { count: "exact", head: true })
           .eq("org_id", orgId)
-          .eq("form_id", form.id);
+          .eq("form_id", form.id)
+          .neq("status", "trashed");
         if (!error) counts[form.id] = count || 0;
       }
       return counts;
     },
     enabled: !!orgId && !!forms && forms.length > 0,
+  });
+
+  // 7d / 30d counts for the currently selected form, so users see what
+  // window will actually have data before they pick a date range.
+  const { data: selectedFormCounts } = useQuery({
+    queryKey: ["selected_form_window_counts", orgId, selectedFormId],
+    queryFn: async () => {
+      if (!orgId || !selectedFormId) return null;
+      const now = new Date();
+      const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const d90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const base = () =>
+        supabase.from("leads").select("*", { count: "exact", head: true })
+          .eq("org_id", orgId).eq("form_id", selectedFormId).neq("status", "trashed");
+      const [r7, r30, r90] = await Promise.all([
+        base().gte("submitted_at", d7),
+        base().gte("submitted_at", d30),
+        base().gte("submitted_at", d90),
+      ]);
+      return { d7: r7.count || 0, d30: r30.count || 0, d90: r90.count || 0 };
+    },
+    enabled: !!orgId && !!selectedFormId,
   });
 
   const createExport = useMutation({
@@ -103,13 +127,20 @@ export default function Exports() {
       }).select("id").single();
       if (error) throw error;
 
-      // Trigger the processor and await result
+      // Trigger the processor and await result. If invocation fails, mark
+      // the job failed in the DB so it doesn't sit "queued" forever.
       const { error: fnError } = await supabase.functions.invoke("process-export", {
         body: { job_id: inserted.id },
       });
       if (fnError) {
         console.error("Export function error:", fnError);
-        throw new Error("Export processing failed");
+        await supabase.from("export_jobs").update({
+          status: "failed",
+          error: `Processor invocation failed: ${fnError.message ?? "unknown error"}`,
+          completed_at: new Date().toISOString(),
+        }).eq("id", inserted.id);
+        queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
+        throw new Error("Export processing failed — please retry.");
       }
 
       // Fetch the completed job to get file_path
@@ -133,21 +164,59 @@ export default function Exports() {
         metadata: { source: "Exports", form_id: formId ?? null },
       });
 
-      return completedJob;
+      return { job: completedJob, formId, from, to };
     },
-    onSuccess: (job) => {
+    onSuccess: ({ job, formId, from, to }) => {
       queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
       if (job?.file_path) {
         toast.success(`Export ready — ${job.row_count ?? 0} rows. Downloading now…`);
         handleDownload(job.file_path);
       } else if (job?.status === "succeeded" && !job?.file_path) {
-        toast.info("No leads found for the selected filters.");
+        // Empty result — explain *why* and what window does have data.
+        const formName = formId ? forms?.find((f) => f.id === formId)?.name : null;
+        const rangeLabel = from && to
+          ? `between ${format(from, "MMM d")} – ${format(to, "MMM d, yyyy")}`
+          : from ? `from ${format(from, "MMM d, yyyy")}`
+          : to ? `up to ${format(to, "MMM d, yyyy")}`
+          : "for the selected filters";
+        const total = formId ? leadCounts?.[formId] : null;
+        const hint = total != null && total > 0
+          ? ` This form has ${total} total entries — try widening the date range.`
+          : "";
+        toast.info(`No submissions${formName ? ` for ${formName}` : ""} ${rangeLabel}.${hint}`);
       } else {
         toast.success("Export completed");
       }
     },
     onError: (err: any) => toast.error(err.message || "Failed to create export"),
   });
+
+  // Retry a stuck/failed job by re-invoking the processor with its existing job_id.
+  const retryJob = async (jobId: string) => {
+    try {
+      // Reset to queued so the processor will pick it up.
+      await supabase.from("export_jobs").update({
+        status: "queued", error: null, completed_at: null,
+      }).eq("id", jobId);
+      queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
+      const { error: fnError } = await supabase.functions.invoke("process-export", {
+        body: { job_id: jobId },
+      });
+      if (fnError) {
+        await supabase.from("export_jobs").update({
+          status: "failed",
+          error: `Retry failed: ${fnError.message ?? "unknown error"}`,
+          completed_at: new Date().toISOString(),
+        }).eq("id", jobId);
+        toast.error("Retry failed. Please try again.");
+      } else {
+        toast.success("Retry queued.");
+      }
+      queryClient.invalidateQueries({ queryKey: ["export_jobs"] });
+    } catch (err: any) {
+      toast.error(err.message || "Retry failed");
+    }
+  };
 
   const runPendingExport = () => {
     if (!pendingExport) return;
@@ -195,6 +264,11 @@ export default function Exports() {
         <h1 className="text-2xl font-bold text-foreground mb-1">{selectedForm.name}</h1>
         <p className="text-sm text-muted-foreground mb-6">
           {selectedForm.provider} · {leadCounts?.[selectedForm.id] ?? "—"} total leads
+          {selectedFormCounts && (
+            <> · <span className="text-foreground/80">{selectedFormCounts.d7}</span> last 7d
+              · <span className="text-foreground/80">{selectedFormCounts.d30}</span> last 30d
+              · <span className="text-foreground/80">{selectedFormCounts.d90}</span> last 90d</>
+          )}
         </p>
 
         <div className="rounded-lg border border-border bg-card p-5 mb-6">
@@ -202,6 +276,37 @@ export default function Exports() {
             <FileSpreadsheet className="h-4 w-4 text-primary" />
             Export Leads
           </h3>
+
+          {/* Quick presets */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {[
+              { label: "Last 7 days", days: 7 },
+              { label: "Last 30 days", days: 30 },
+              { label: "Last 90 days", days: 90 },
+            ].map((p) => (
+              <Button
+                key={p.days}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const to = new Date();
+                  const from = new Date();
+                  from.setDate(from.getDate() - p.days);
+                  setDateFrom(from);
+                  setDateTo(to);
+                }}
+              >
+                {p.label}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}
+            >
+              All time
+            </Button>
+          </div>
 
           {/* Date range pickers */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -254,7 +359,7 @@ export default function Exports() {
         </div>
 
         {/* Export history for this form */}
-        <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+        <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} retryJob={retryJob} />
 
         <ExportConfirmDialog
           open={!!pendingExport}
@@ -336,7 +441,7 @@ export default function Exports() {
       </div>
 
       {/* Export History */}
-      <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+      <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} retryJob={retryJob} />
 
       <ExportConfirmDialog
         open={!!pendingExport}
@@ -352,12 +457,20 @@ function ExportHistory({
   jobsLoading,
   statusIcon,
   handleDownload,
+  retryJob,
 }: {
   jobs: any[] | undefined;
   jobsLoading: boolean;
   statusIcon: (s: string) => React.ReactNode;
   handleDownload: (path: string) => void;
+  retryJob?: (jobId: string) => void | Promise<void>;
 }) {
+  const isStuck = (job: any) => {
+    if (job.status !== "queued" && job.status !== "running") return false;
+    const ageMs = Date.now() - new Date(job.created_at).getTime();
+    return ageMs > 2 * 60 * 1000; // older than 2 minutes
+  };
+
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       <div className="px-5 py-3 border-b border-border">
@@ -371,42 +484,52 @@ function ExportHistory({
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {jobs.map((job) => (
-            <div key={job.id} className="flex items-center justify-between px-5 py-3">
-              <div className="flex items-center gap-3">
-                {statusIcon(job.status)}
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {job.format.toUpperCase()} Export
-                    {job.row_count != null && <span className="text-muted-foreground font-normal"> · {job.row_count} rows</span>}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(job.created_at), "MMM d, yyyy 'at' HH:mm")}
-                  </p>
+          {jobs.map((job) => {
+            const stuck = isStuck(job);
+            return (
+              <div key={job.id} className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-3">
+                  {statusIcon(job.status)}
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {job.format.toUpperCase()} Export
+                      {job.row_count != null && <span className="text-muted-foreground font-normal"> · {job.row_count} rows</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(new Date(job.created_at), "MMM d, yyyy 'at' HH:mm")}
+                      {stuck && <span className="ml-2 text-warning">· stuck — retry below</span>}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`text-xs uppercase ${
+                      job.status === "succeeded" ? "text-success border-success/20" :
+                      job.status === "failed" ? "text-destructive border-destructive/20" :
+                      stuck ? "text-warning border-warning/30" :
+                      "text-muted-foreground"
+                    }`}
+                  >
+                    {stuck ? "stuck" : job.status}
+                  </Badge>
+                  {job.status === "succeeded" && job.file_path && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download export" onClick={() => handleDownload(job.file_path!)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {(stuck || job.status === "failed") && retryJob && (
+                    <Button variant="outline" size="sm" onClick={() => retryJob(job.id)}>
+                      Retry
+                    </Button>
+                  )}
+                  {job.status === "failed" && job.error && !stuck && (
+                    <span className="text-xs text-destructive max-w-[200px] truncate" title={job.error}>{job.error}</span>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className={`text-xs uppercase ${
-                    job.status === "succeeded" ? "text-success border-success/20" :
-                    job.status === "failed" ? "text-destructive border-destructive/20" :
-                    "text-muted-foreground"
-                  }`}
-                >
-                  {job.status}
-                </Badge>
-                {job.status === "succeeded" && job.file_path && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download export" onClick={() => handleDownload(job.file_path!)}>
-                    <Download className="h-4 w-4" />
-                  </Button>
-                )}
-                {job.status === "failed" && job.error && (
-                  <span className="text-xs text-destructive max-w-[200px] truncate">{job.error}</span>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

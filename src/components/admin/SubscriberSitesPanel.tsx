@@ -713,7 +713,7 @@ export default function SubscriberSitesPanel() {
                                             <Select
                                               value={editRole}
                                               onValueChange={(v) => setEditRole(v as "manager" | "admin")}
-                                              disabled={saving}
+                                              disabled={saving || !!m.is_owner}
                                             >
                                               <SelectTrigger className="h-7 w-[100px] text-xs">
                                                 <SelectValue />
@@ -728,6 +728,9 @@ export default function SubscriberSitesPanel() {
                                               <Badge variant={m.role === "admin" ? "default" : "outline"}>
                                                 {m.role}
                                               </Badge>
+                                              {m.is_owner && (
+                                                <Badge variant="secondary">Owner</Badge>
+                                              )}
                                               {m.status === "invited" && (
                                                 <Badge variant="secondary" className="gap-1">
                                                   <Mail className="h-3 w-3" /> Pending

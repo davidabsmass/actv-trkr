@@ -478,10 +478,13 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
 }
 function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string | null; forms: any[] | undefined; startDate: string; endDate: string }) {
   const { session } = useAuth();
+  const { orgRole } = useOrgRole(orgId);
+  const { isAdmin: isPlatformAdmin } = useUserRole();
   const [open, setOpen] = useState(false);
   const [formId, setFormId] = useState<string>("");
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [pending, setPending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Forms eligible for export (everything except archived)
   const eligibleForms = useMemo(

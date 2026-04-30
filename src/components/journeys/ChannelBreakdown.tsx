@@ -133,6 +133,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
     const map = new Map<Channel, ChannelRow>();
     for (const j of data) {
       const { channel, sourceLabel } = classifyChannel(j);
+      const converted = j.has_lead || j.has_conversion;
       let row = map.get(channel);
       if (!row) {
         row = {
@@ -143,10 +144,10 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
         map.set(channel, row);
       }
       row.sessions += 1;
-      if (j.has_lead) row.leads += 1;
+      if (converted) row.leads += 1;
       const s = row.sources.get(sourceLabel) || { sessions: 0, leads: 0 };
       s.sessions += 1;
-      if (j.has_lead) s.leads += 1;
+      if (converted) s.leads += 1;
       row.sources.set(sourceLabel, s);
     }
     const out = Array.from(map.values()).map((r) => {

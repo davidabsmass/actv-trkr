@@ -40,9 +40,11 @@ Deno.serve(async (req) => {
     }
 
     // SECURITY: Default invited users to 'manager'. Only admins can be promoted later.
+    // 'actv_support' is a Manager-clone for internal ACTV TRKR support staff
+    // (no settings/team/billing access — gated in the UI).
     // Legacy 'viewer' role is mapped to 'manager' for backward compatibility.
     const normalizedRole = requestedRole === "viewer" ? "manager" : requestedRole;
-    const validRoles = ["manager", "admin"];
+    const validRoles = ["manager", "admin", "actv_support"];
     const assignRole = validRoles.includes(normalizedRole) ? normalizedRole : "manager";
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
@@ -118,6 +120,7 @@ Deno.serve(async (req) => {
     // the invite (sign in via the recovery link, handled by a DB trigger).
     const nowIso = new Date().toISOString();
 
+    const isSupport = assignRole === "actv_support";
     const { error: joinErr } = await admin
       .from("org_users")
       .insert({
@@ -127,6 +130,9 @@ Deno.serve(async (req) => {
         invited_by: user.id,
         status: "invited",
         invited_at: nowIso,
+        ...(isSupport
+          ? { access_granted_by: user.id, access_granted_at: nowIso }
+          : {}),
       });
 
     if (joinErr) {
@@ -139,7 +145,7 @@ Deno.serve(async (req) => {
       org_id: orgId,
       actor_user_id: user.id,
       target_user_id: targetUserId,
-      action: assignRole === "admin" ? "admin_added" : "user_invited",
+      action: assignRole === "admin" ? "admin_added" : (isSupport ? "support_invited" : "user_invited"),
       previous_role: null,
       new_role: assignRole,
       metadata: { email, was_created: wasCreated },

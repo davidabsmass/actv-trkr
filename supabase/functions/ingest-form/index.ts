@@ -759,7 +759,7 @@ Deno.serve(async (req) => {
           if (shouldHeal) {
             console.log(`Heal-in-place lead ${canonicalLead.id}: existing=${existing.length} (generic=${existingHasGeneric}) → incoming=${flatRows.length}`);
             await supabase.from("lead_fields_flat").delete().eq("lead_id", canonicalLead.id).eq("org_id", orgId);
-            await supabase.from("lead_fields_flat").insert(flatRows);
+            await safeInsertFlatRows(supabase, flatRows);
             await supabase.from("leads").update({ data: { ...(parsedFields ? { fields: parsedFields } : {}), external_entry_id: extEntryId } }).eq("id", canonicalLead.id);
             observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "healed" } });
             return new Response(JSON.stringify({ status: "healed", lead_id: canonicalLead.id, fields_replaced: flatRows.length, provider: providerName }), {

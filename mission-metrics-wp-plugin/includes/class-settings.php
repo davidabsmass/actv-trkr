@@ -378,7 +378,7 @@ class MM_Settings {
 				<span id="mm-test-result" class="mm-tool-result" style="margin-left:10px"></span>
 			</p>
 			<p class="mm-card-desc" style="margin-top:12px">
-				Once you see <strong>✅ Connected</strong>, head back to your <a href="https://actvtrkr.com/dashboard" target="_blank" rel="noopener noreferrer">ACTV TRKR dashboard</a> to finish setup.
+				Once you see <strong>Connected</strong>, head back to your <a href="https://actvtrkr.com/dashboard" target="_blank" rel="noopener noreferrer">ACTV TRKR dashboard</a> to finish setup.
 			</p>
 		</div>
 		<?php

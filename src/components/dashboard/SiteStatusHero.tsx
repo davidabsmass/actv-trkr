@@ -73,7 +73,7 @@ function buildSpec({
       title: `ACTV TRKR found ${formIssueCount} ${formWord} that may not be rendering correctly.`,
       body: `This could be suppressing form submissions. Your site received ${sessionsText} sessions and generated ${actionsText} Key Actions in the ${periodLabel}.`,
       primary: { label: "Review Form Issues", to: "/forms/troubleshooting" },
-      secondary: { label: "View Key Actions", to: "/settings?tab=goals" },
+      secondary: { label: "View Key Actions", to: "/performance?tab=key-actions" },
     };
   }
 
@@ -86,7 +86,7 @@ function buildSpec({
       Icon: TrendingDown,
       title: "Your site is getting traffic, but visitors are not completing many Key Actions.",
       body: `${sessionsText} sessions produced ${actionsText} Key Actions (${formatActionRate(sessions, keyActions)}) in the ${periodLabel}. Review your Key Actions to identify drop-off points.`,
-      primary: { label: "Review Key Actions", to: "/settings?tab=goals" },
+      primary: { label: "Review Key Actions", to: "/performance?tab=key-actions" },
       secondary: { label: "View Traffic Sources", to: "/performance" },
     };
   }

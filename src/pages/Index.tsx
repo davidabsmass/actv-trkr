@@ -639,7 +639,7 @@ const Index = () => {
               </p>
               
               <p className="text-xs font-semibold text-foreground mb-3">What's included:</p>
-              <div className="grid grid-cols-3 gap-x-8 gap-y-3 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 flex-1 w-full">
                 {[
                   "1 Website",
                   "Site Health Monitoring",
@@ -660,11 +660,11 @@ const Index = () => {
                   "Top Page Insights",
                   "Shareable Snapshots",
                 ].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm h-7">
+                  <div key={i} className="flex items-center gap-3 text-sm min-h-7 text-left">
                     <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Check className="h-3 w-3 text-primary" />
                     </div>
-                    <span className="text-foreground whitespace-nowrap">{feature}</span>
+                    <span className="text-foreground">{feature}</span>
                   </div>
                 ))}
               </div>

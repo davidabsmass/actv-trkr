@@ -707,7 +707,7 @@ Deno.serve(async (req) => {
       }
       const { data: members, error: mErr } = await adminClient
         .from("org_users")
-        .select("user_id, role, status, created_at, invited_at, invite_accepted_at")
+        .select("user_id, role, status, created_at, invited_at, invite_accepted_at, is_owner")
         .eq("org_id", orgId);
       if (mErr) {
         return new Response(JSON.stringify({ error: mErr.message }), {
@@ -726,6 +726,7 @@ Deno.serve(async (req) => {
         joined_at: m.created_at,
         invited_at: m.invited_at,
         invite_accepted_at: m.invite_accepted_at,
+        is_owner: !!m.is_owner,
         email: profileMap.get(m.user_id)?.email || null,
         full_name: profileMap.get(m.user_id)?.full_name || null,
       }));

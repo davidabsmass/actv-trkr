@@ -463,17 +463,17 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
     }
   };
 
-  // Create + process a single export job. Returns the completed job info
+  // Create + process an export job. Returns the completed job info
   // WITHOUT triggering a download (so callers can sequence downloads).
   const processJob = async (
-    targetFormId: string | null,
+    filters: Record<string, unknown>,
   ): Promise<{ ok: boolean; rows: number; empty: boolean; filePath: string | null }> => {
     const { data: inserted, error } = await supabase.from("export_jobs").insert({
       org_id: orgId!,
       created_by: session!.user.id,
       format: exportFormat,
       status: "queued",
-      filters_json: targetFormId ? { form_id: targetFormId } : {},
+      filters_json: filters,
       start_date: startDate,
       end_date: endDate,
     }).select("id").single();
@@ -511,7 +511,7 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
     targetFormId: string | null,
     downloadName: string,
   ): Promise<{ ok: boolean; rows: number; empty: boolean }> => {
-    const r = await processJob(targetFormId);
+    const r = await processJob(targetFormId ? { form_id: targetFormId } : {});
     if (r.ok && r.filePath) {
       await downloadBlob(r.filePath, downloadName);
     }

@@ -26,7 +26,7 @@ interface Login2faCodeProps {
 const Login2faCodeEmail = ({ code, expiresInMinutes = 10, ipHint, userAgentHint }: Login2faCodeProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>{`Your ${SITE_NAME} sign-in code: ${code ?? ''}`}</Preview>
+    <Preview>{`Finish signing in to ${SITE_NAME}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={headerSection}>
@@ -68,7 +68,7 @@ const Login2faCodeEmail = ({ code, expiresInMinutes = 10, ipHint, userAgentHint 
 
 export const template = {
   component: Login2faCodeEmail,
-  subject: (data: Record<string, any>) => `${data?.code ?? '••••••'} is your ${SITE_NAME} sign-in code`,
+  subject: () => `Your ${SITE_NAME} sign-in verification`,
   displayName: 'Login 2FA code',
   previewData: { code: '482915', expiresInMinutes: 10, ipHint: 'United States', userAgentHint: 'Chrome on macOS' },
 } satisfies TemplateEntry

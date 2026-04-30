@@ -538,8 +538,9 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
             if (!result.ok) failCount++;
             else if (result.empty) emptyCount++;
             else okCount++;
-            // Small spacing so browsers don't suppress rapid downloads
-            await new Promise((r) => setTimeout(r, 400));
+            // Browsers throttle/block rapid programmatic downloads. Wait
+            // longer between files so each blob download is honored.
+            await new Promise((r) => setTimeout(r, 1500));
           } catch {
             failCount++;
           }

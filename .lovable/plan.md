@@ -1,44 +1,68 @@
-## Problem
+## Real root cause (revised)
 
-The Gravity form **"Find a Licensed Provider Near You"** (apyxmedical.com) shows **Disabled** in the dashboard, but is **Active** in WordPress.
+I was wrong before. This is **not** a Gravity Forms label-collision issue. The scrambled entries are all **Avada** (`provider=avada`, `external_entry_id=avada_db_*`) pulled in by the WP-side backfill, and the bug is in **one function** in the plugin: `parse_avada_csv_format()` in `mission-metrics-wp-plugin/includes/class-forms.php`.
 
-Database confirms both rows are stale:
-- `forms.is_active = false`
-- `form_integrations.is_active = false`
+### The bug
 
-The WP plugin (`MM_Adapter_Gravity::discover_forms`) correctly reports `is_active`, but the dashboard's `is_active` value is only refreshed when a discovery scan runs. If a form was inactive at the time of its first/last scan and later re-activated in WP, the dashboard never flips the flag back until another full discovery is triggered. Today there's no easy way for an admin to force one for a single form, and the 15‑min reconciler cron only updates **counters**, not `is_active`.
+When Avada stores a submission, it stores three parallel CSV strings: `data`, `field_types`, `field_labels`. The parser:
 
-## Fix (3 parts)
+1. Builds `real_types` = field_types **filtered** to drop `submit/notice/html/hidden/captcha/honeypot/section/page` entries, **remembering each kept entry's original index**.
+2. Then, for each kept type at filtered index `fi`:
+   - reads `values[fi]` ← **filtered** index
+   - reads `labels[ real_types[fi].index ]` ← **original** index
 
-### 1. Immediate heal (data fix)
-One-time SQL update flipping the affected rows:
-```sql
-UPDATE forms SET is_active = true
-  WHERE id = '0ec8596f-de99-4db6-adc7-81a6fa5aef11';
-UPDATE form_integrations SET is_active = true
-  WHERE form_id = '0ec8596f-de99-4db6-adc7-81a6fa5aef11';
+Values use the filtered index; labels use the original index. As soon as a skipped slot exists in the middle of the form (e.g. a hidden consent field, an HTML divider, a captcha), every value past that point shifts one slot to the left of its label. The real Phone/Zip values then fall off the visible labels and surface as "Field 11" / "Field 12".
+
+The Apyx forms ("Physician General", "Patient General", "Renew You, Near You") had a consent checkbox / hidden field added recently — that's why **only the newest entries** are scrambled while older entries on the same form look fine. Same pattern, same root cause, every affected form.
+
+The Gravity Forms patch I proposed earlier is **not needed**. The Gravity entries we sampled all parse correctly.
+
+## Fix — single PHP function
+
+In `parse_avada_csv_format()`, when iterating `real_types`, read **both** the value and the label from the original index:
+
+```php
+for ( $fi = 0; $fi < count( $real_types ); $fi++ ) {
+    $orig_idx = $real_types[ $fi ]['index'];     // original column position
+    $type     = strtolower( $real_types[ $fi ]['type'] );
+    $val      = trim( (string) ( $values[ $orig_idx ] ?? '' ) );  // ← was $values[$fi]
+    if ( $val === '' || strtolower( $val ) === 'array' ) continue;
+
+    $raw_label = $labels[ $orig_idx ] ?? '';
+    $label     = $raw_label ?: self::infer_avada_field_name( $type, $val, $orig_idx + 1 );
+
+    $fields[] = array(
+        'id'    => $orig_idx,
+        'name'  => $label,
+        'label' => $label,
+        'type'  => $real_types[ $fi ]['type'],
+        'value' => $val,
+    );
+}
 ```
-This unblocks the user immediately for this specific form.
 
-### 2. Make the reconciler cron also refresh `is_active`
-Update `supabase/functions/reconcile-forms-cron/index.ts` so that, for every site whose plugin namespace probes OK, it calls `manage-import-job?action=discover` (it currently only triggers `/sync` for entry counts). Discovery already updates `is_active` in both `forms` and `form_integrations`. Net effect: any toggle in WP converges to the dashboard within ~15 min, automatically, with no user action.
+That's the entire functional change. Defensive guard: if `values` array is shorter than `field_types` (older entries), the `?? ''` skip keeps us safe.
 
-Cost is small — discovery is one HTTP call per site per 15 min and it's idempotent.
+## Steps
 
-### 3. Add a "Re-sync forms" button on the Forms page
-For users who don't want to wait 15 min. Surface a small action in the Forms page header (or per-form row menu) that POSTs to `manage-import-job?action=discover&site_id=…`. On success, invalidate the forms query so the table refreshes.
+1. **Plugin patch (v1.21.4)** — fix `parse_avada_csv_format()` in `class-forms.php` as above. Bump version in all 4 places per the Plugin Version Checklist memory.
+2. **Run** `node scripts/plugin-artifacts.mjs` to sync the deploy artifact (per Plugin Version Sync memory — never manually edit then deploy).
+3. **Heal historical data** — once Apyx updates to v1.21.4, re-run backfill for the 3 affected Avada forms (10098 Physician General, 10102 Patient General, 54 Renew You, Near You). The existing leads (matched by `external_entry_key`) will be **enriched/overwritten** by `ingest-form` with the corrected fields. No DB delete needed; the upsert already handles re-import.
+4. **No Lovable-side code changes.** No edge function changes. No queue changes (the queue advance-after-3-retries fix from the prior loop already handled the stuck-job symptom and stays in place).
 
-This also doubles as the "iron-clad" recovery the user has been asking for — any future drift between WP and dashboard is one click away from being healed.
+## What you'll need to do
 
-## Files touched
+- Update the plugin on apyxmedical.com to v1.21.4 (this fixes future submissions immediately).
+- After update, I'll trigger a re-backfill on the 3 Avada forms to repair the existing scrambled entries.
 
-- New SQL migration — heal the two stale rows.
-- `supabase/functions/reconcile-forms-cron/index.ts` — call `discover` per site after the namespace probe.
-- `src/pages/Forms.tsx` (or the equivalent forms list component) — add a "Re-sync forms" button wired to `manage-import-job` discover.
-- Update `mem://features/forms/reconciler-cron` to document that the cron now also refreshes `is_active`.
+## Affected scope
 
-## Notes
+| Form | Provider | Currently affected entries |
+|---|---|---|
+| Physician General (10098) | Avada | latest ~3–5 entries |
+| Patient General (10102) | Avada | latest entries with consent field |
+| Renew You, Near You (54) | Avada | any new entries with skipped slots |
+| Apyx Contact Page (Gravity) | gravity_forms | **not affected** — was a stuck-queue symptom, already fixed |
+| All other Gravity forms | gravity_forms | **not affected** |
 
-- No plugin update required. v1.21.3 already reports `is_active` correctly.
-- No schema changes.
-- No behavior change for active forms with correct flags — purely additive.
+Approve and I'll ship v1.21.4 + trigger the heal pass.

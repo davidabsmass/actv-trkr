@@ -599,6 +599,9 @@ const Index = () => {
 
           <div className="max-w-4xl mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col items-center text-center">
+              <span className="inline-block mb-4 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">
+                14-day free trial
+              </span>
               <div className="flex items-center gap-2 mb-4 bg-muted/60 rounded-full px-1 py-1">
                 <button
                   onClick={() => setIsAnnual(false)}

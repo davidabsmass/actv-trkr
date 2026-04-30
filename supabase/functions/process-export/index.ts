@@ -86,8 +86,10 @@ Deno.serve(async (req) => {
           .from("leads")
           .select("id, submitted_at, status, source, utm_source, utm_medium, utm_campaign, page_url, page_path, referrer_domain, form_id, service, location, physician, lead_type, lead_score")
           .eq("org_id", orgId)
+          .neq("status", "trashed")
           .order("submitted_at", { ascending: false });
         if (filters?.form_id) q = q.eq("form_id", filters.form_id);
+        if (Array.isArray(filters?.form_ids) && filters.form_ids.length > 0) q = q.in("form_id", filters.form_ids);
         if (job.start_date) q = q.gte("submitted_at", `${job.start_date}T00:00:00Z`);
         if (job.end_date) q = q.lte("submitted_at", `${job.end_date}T23:59:59.999Z`);
         return q;

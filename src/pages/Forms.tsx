@@ -463,20 +463,20 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
     }
   };
 
-  // Create + process a single export job. Returns the completed job info
+  // Create + process an export job. Returns the completed job info
   // WITHOUT triggering a download (so callers can sequence downloads).
   const processJob = async (
-    targetFormId: string | null,
+    filters: Record<string, unknown>,
   ): Promise<{ ok: boolean; rows: number; empty: boolean; filePath: string | null }> => {
     const { data: inserted, error } = await supabase.from("export_jobs").insert({
       org_id: orgId!,
       created_by: session!.user.id,
       format: exportFormat,
       status: "queued",
-      filters_json: targetFormId ? { form_id: targetFormId } : {},
+      filters_json: filters,
       start_date: startDate,
       end_date: endDate,
-    }).select("id").single();
+    } as any).select("id").single();
     if (error) throw error;
 
     const { error: fnError } = await supabase.functions.invoke("process-export", {
@@ -511,7 +511,7 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
     targetFormId: string | null,
     downloadName: string,
   ): Promise<{ ok: boolean; rows: number; empty: boolean }> => {
-    const r = await processJob(targetFormId);
+    const r = await processJob(targetFormId ? { form_id: targetFormId } : {});
     if (r.ok && r.filePath) {
       await downloadBlob(r.filePath, downloadName);
     }
@@ -538,58 +538,23 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
         else toast.success(`Export ready — ${result.rows} rows.`);
         setOpen(false);
       } else {
-        // All forms — only export ACTIVE forms (skipping inactive forms which
-        // typically have no recent leads). Process jobs in parallel batches of 3
-        // to keep total wait short, then trigger downloads sequentially so
-        // browsers don't suppress them.
+        // All forms — one combined export. Multiple automatic downloads get
+        // blocked by browsers and the export function is intentionally rate
+        // limited, so a single job is the reliable path.
         const targets = exportableAllForms;
         if (targets.length === 0) {
           toast.error("No active forms available to export");
           return;
         }
-        toast.info(`Exporting ${targets.length} active form${targets.length === 1 ? "" : "s"}…`);
+        toast.info(`Exporting all entries from ${targets.length} active form${targets.length === 1 ? "" : "s"}…`);
 
-        const CONCURRENCY = 3;
-        type Done = { name: string; result: Awaited<ReturnType<typeof processJob>> };
-        const completed: Done[] = [];
-        for (let i = 0; i < targets.length; i += CONCURRENCY) {
-          const slice = targets.slice(i, i + CONCURRENCY);
-          const results = await Promise.all(
-            slice.map(async (f) => {
-              try {
-                const r = await processJob(f.id);
-                return { name: `${slugify(f.name)}.${exportFormat}`, result: r };
-              } catch {
-                return {
-                  name: `${slugify(f.name)}.${exportFormat}`,
-                  result: { ok: false, rows: 0, empty: false, filePath: null },
-                };
-              }
-            }),
-          );
-          completed.push(...results);
+        const result = await processJob({ form_ids: targets.map((f) => f.id) });
+        if (!result.ok) toast.error("Export failed");
+        else if (result.empty || !result.filePath) toast.info("No leads found for the selected date range.");
+        else {
+          await downloadBlob(result.filePath, `all-forms-${startDate}-to-${endDate}.${exportFormat}`);
+          toast.success(`Export ready — ${result.rows} rows.`);
         }
-
-        // Sequentially download only the non-empty successful files.
-        let okCount = 0;
-        let emptyCount = 0;
-        let failCount = 0;
-        for (const c of completed) {
-          if (!c.result.ok) { failCount++; continue; }
-          if (c.result.empty || !c.result.filePath) { emptyCount++; continue; }
-          await downloadBlob(c.result.filePath, c.name);
-          okCount++;
-          // Browsers throttle rapid programmatic downloads — short pause keeps
-          // each blob download honored.
-          await new Promise((r) => setTimeout(r, 800));
-        }
-
-        const parts: string[] = [];
-        if (okCount) parts.push(`${okCount} downloaded`);
-        if (emptyCount) parts.push(`${emptyCount} empty`);
-        if (failCount) parts.push(`${failCount} failed`);
-        if (failCount && !okCount && !emptyCount) toast.error(`All exports failed`);
-        else toast.success(`Done — ${parts.join(", ")}`);
         setOpen(false);
       }
     } catch (err: any) {
@@ -617,7 +582,7 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
           <h4 className="text-sm font-semibold text-foreground">Export entries</h4>
           <p className="text-xs text-muted-foreground mt-0.5">
             {scope === "all"
-              ? `Downloads one ${exportFormat.toUpperCase()} per active form (${exportableAllForms.length} form${exportableAllForms.length === 1 ? "" : "s"}, up to 5,000 entries each).`
+              ? `Downloads one ${exportFormat.toUpperCase()} with all active forms (${exportableAllForms.length} form${exportableAllForms.length === 1 ? "" : "s"}, up to 5,000 entries).`
               : `Downloads a single ${exportFormat.toUpperCase()} (up to 5,000 entries).`}
           </p>
           <p className="text-xs text-muted-foreground mt-1">

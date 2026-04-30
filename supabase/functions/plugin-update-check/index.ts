@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.21.6";
-const CURRENT_PLUGIN_SHA256 = "494cda8f30745d428c8b6ec7ae9682c21e424bd51ce71b94872dd77606f4e369";
+const CURRENT_PLUGIN_VERSION = "1.21.7";
+const CURRENT_PLUGIN_SHA256 = "6e86a65a7f0023c3c4f506e3e82c82eabeed53f56cb5704959d2995b9cfc8408";
 
 const CHANGELOG = `
+## 1.21.7
+- FIX (CRITICAL — Gravity Forms): Active/disabled detection now uses Gravity Forms' active and inactive lists correctly. This prevents a site with one disabled Gravity form from reporting every Gravity form as "Disabled in WP" in the dashboard.
+
 ## 1.21.4
 - FIX (CRITICAL — Avada/Fusion forms): Field labels and values no longer drift out of alignment when a form contains skipped field types (submit, hidden, captcha, html, notice, honeypot, section, page) in the middle of the form. Previously, adding a consent checkbox or hidden field in the middle of an Avada form would scramble all subsequent entries — labels stayed put while values shifted left, and real values fell off the end as "Field 11" / "Field 12". The CSV parser now reads both the value and the label from the same original column index. Affects Avada/Fusion forms ingested via WP DB backfill.
 

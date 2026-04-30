@@ -652,7 +652,11 @@ Deno.serve(async (req) => {
     }
 
     if (canonicalLead) {
-      // If existing lead has no field data but incoming payload has fields, enrich it
+      // Trusted WP backfill payloads (context.backfill === true) may HEAL stale
+      // mirrored field rows in place. This is the only path that overwrites
+      // existing lead_fields_flat — never client-side / live submissions.
+      const isTrustedBackfill = context?.backfill === true;
+
       if (fields && Array.isArray(fields) && fields.length > 0) {
         const { count: existingFieldCount } = await supabase
           .from("lead_fields_flat")
@@ -660,38 +664,69 @@ Deno.serve(async (req) => {
           .eq("lead_id", canonicalLead.id)
           .eq("org_id", orgId);
 
+        // Get schema template for Avada data-only blobs
+        const schemaTemplate = providerName === "avada" ? await getFormFieldSchema(supabase, formId, orgId) : null;
+        const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName, schemaTemplate || undefined);
+
+        const ENRICH_SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
+        const ENRICH_SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
+        const flatRows = parsedFields
+          .filter((f: any) => {
+            if (f.value === undefined || f.value === null || f.value === "") return false;
+            const key = f.name || f.id?.toString() || f.label || "unknown";
+            if (ENRICH_SKIP_KEYS.has(key)) return false;
+            if (ENRICH_SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
+            return true;
+          })
+          .map((f: any) => ({
+            org_id: orgId, lead_id: canonicalLead.id,
+            field_key: f.name || f.id?.toString() || f.label || "unknown",
+            field_label: f.label || f.name || f.id?.toString(),
+            field_type: f.type || "text",
+            value_text: f.value?.toString() || null,
+          }));
+
+        // ── Empty-mirror enrichment (always allowed) ──
         if ((existingFieldCount || 0) === 0) {
-          console.log(`Enriching existing lead ${canonicalLead.id} with ${fields.length} fields (provider=${providerName})`);
-          
-          // Get schema template for Avada data-only blobs
-          const schemaTemplate = providerName === "avada" ? await getFormFieldSchema(supabase, formId, orgId) : null;
-          const parsedFields = parseAvadaFieldsIfNeeded(fields, providerName, schemaTemplate || undefined);
-          
-          const ENRICH_SKIP_KEYS = new Set(["data", "submission", "field_labels", "field_types", "field_keys", "hidden_field_names", "fields_holding_privacy_data"]);
-          const ENRICH_SKIP_TYPES = new Set(["submit", "notice", "html", "hidden", "captcha", "honeypot", "section", "page"]);
-          const flatRows = parsedFields
-            .filter((f: any) => {
-              if (f.value === undefined || f.value === null || f.value === "") return false;
-              const key = f.name || f.id?.toString() || f.label || "unknown";
-              if (ENRICH_SKIP_KEYS.has(key)) return false;
-              if (ENRICH_SKIP_TYPES.has((f.type || "").toLowerCase())) return false;
-              return true;
-            })
-            .map((f: any) => ({
-              org_id: orgId, lead_id: canonicalLead.id,
-              field_key: f.name || f.id?.toString() || f.label || "unknown",
-              field_label: f.label || f.name || f.id?.toString(),
-              field_type: f.type || "text",
-              value_text: f.value?.toString() || null,
-            }));
           if (flatRows.length > 0) {
             await supabase.from("lead_fields_flat").insert(flatRows);
-            console.log(`Enriched lead ${canonicalLead.id} with ${flatRows.length} fields`);
+            console.log(`Enriched empty lead ${canonicalLead.id} with ${flatRows.length} fields (provider=${providerName})`);
+            // Refresh data.fields snapshot too
+            await supabase.from("leads").update({ data: { ...(parsedFields ? { fields: parsedFields } : {}), external_entry_id: extEntryId } }).eq("id", canonicalLead.id);
           }
           observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "enriched" } });
           return new Response(JSON.stringify({ status: "enriched", lead_id: canonicalLead.id, fields_added: flatRows.length, provider: providerName, duplicates_trashed: duplicateActiveLeadIds.length }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+
+        // ── Heal-in-place for trusted WP backfills with stale labels ──
+        if (isTrustedBackfill && flatRows.length > 0) {
+          // Detect "stale" existing rows: generic "Field N" labels, OR fewer
+          // labelled fields than the new payload provides.
+          const { data: existingRows } = await supabase
+            .from("lead_fields_flat")
+            .select("id, field_label, field_key")
+            .eq("lead_id", canonicalLead.id)
+            .eq("org_id", orgId);
+
+          const existing = existingRows || [];
+          const genericLabelRe = /^Field\s+\d+$/i;
+          const existingHasGeneric = existing.some((r: any) => genericLabelRe.test(String(r.field_label || r.field_key || "")));
+          const incomingHasGeneric = flatRows.some((r: any) => genericLabelRe.test(String(r.field_label || r.field_key || "")));
+          const incomingIsRicher = flatRows.length > existing.length && !incomingHasGeneric;
+          const shouldHeal = (existingHasGeneric && !incomingHasGeneric) || incomingIsRicher;
+
+          if (shouldHeal) {
+            console.log(`Heal-in-place lead ${canonicalLead.id}: existing=${existing.length} (generic=${existingHasGeneric}) → incoming=${flatRows.length}`);
+            await supabase.from("lead_fields_flat").delete().eq("lead_id", canonicalLead.id).eq("org_id", orgId);
+            await supabase.from("lead_fields_flat").insert(flatRows);
+            await supabase.from("leads").update({ data: { ...(parsedFields ? { fields: parsedFields } : {}), external_entry_id: extEntryId } }).eq("id", canonicalLead.id);
+            observe(supabase, { orgId, siteId, endpoint: "ingest-form", status: "ok", details: { kind: "healed" } });
+            return new Response(JSON.stringify({ status: "healed", lead_id: canonicalLead.id, fields_replaced: flatRows.length, provider: providerName }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
       }
 

@@ -1108,6 +1108,14 @@ Deno.serve(async (req) => {
                   if (!bfRes.ok) {
                     const bfBody = await bfRes.text();
                     console.error(`WP entry backfill failed (${bfEndpoint}): ${bfRes.status} ${bfBody}`);
+                    // v1.21.5: 429 = WordPress rate-limited. Preserve cursor and schedule
+                    // a continuation rather than silently aborting (which used to leave
+                    // sites stuck mid-backfill).
+                    if (bfRes.status === 429) {
+                      console.warn(`${label}: WP rate-limited (429) — pausing and will resume via continuation`);
+                      // Don't mark aborted; let the needsContinuation block schedule the resume.
+                      break;
+                    }
                     aborted = true;
                     break;
                   }

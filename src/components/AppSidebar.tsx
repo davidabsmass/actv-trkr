@@ -111,8 +111,9 @@ export function AppSidebar() {
                   return true;
                 })
                 .map((item) => {
-                  // Relabel SEO for summary-only users
-                  const label = item.url === "/seo" && !seoAdvanced
+                  // SEO label: only the owner sees full "SEO"; everyone else sees "Search Visibility"
+                  const isOwner = user?.email?.toLowerCase() === "david@newuniformdesign.com";
+                  const label = item.url === "/seo" && !isOwner
                     ? "Search Visibility"
                     : t(item.titleKey);
                   return (

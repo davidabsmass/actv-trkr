@@ -646,11 +646,16 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-          <Button size="sm" onClick={runExport} disabled={pending || !formId}>
+          <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={pending || !formId}>
             {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Exporting…</> : "Export"}
           </Button>
         </div>
       </PopoverContent>
+      <ExportConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={runExport}
+      />
     </Popover>
   );
 }

@@ -24,8 +24,13 @@ import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
+import { useOrg } from "@/hooks/use-org";
+import { useOrgRole } from "@/hooks/use-user-role";
 
 export default function Account() {
+  const { orgId } = useOrg();
+  const { isOrgAdmin, loading: roleLoading } = useOrgRole(orgId);
+  const canSeeBilling = isOrgAdmin || roleLoading; // hide once role resolves to non-admin
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get("tab") || "profile";
   const setTab = (v: string) => {
@@ -258,7 +263,8 @@ export default function Account() {
           </CardContent>
         </Card>
 
-        {/* Billing Address Card */}
+        {/* Billing Address Card — admins only */}
+        {canSeeBilling && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -285,19 +291,21 @@ export default function Account() {
             )}
           </CardContent>
         </Card>
+        )}
         {/* Email Preferences */}
         <EmailPreferencesSection />
 
         {/* Two-Factor Authentication */}
         <TwoFactorSection />
 
-        {/* Team Members */}
-        <TeamSection />
+        {/* Team Members — admins only */}
+        {canSeeBilling && <TeamSection />}
 
-        {/* Billing Details */}
-        <BillingDetailsCard />
+        {/* Billing Details — admins only */}
+        {canSeeBilling && <BillingDetailsCard />}
 
-        {/* Subscription Management */}
+        {/* Subscription Management — admins only */}
+        {canSeeBilling && (
         <Card className="lg:col-span-2">
           <Collapsible>
             <CardHeader className="pb-3">
@@ -313,6 +321,7 @@ export default function Account() {
             </CollapsibleContent>
           </Collapsible>
         </Card>
+        )}
       </div>
         </TabsContent>
       </Tabs>

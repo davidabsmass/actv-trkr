@@ -1177,10 +1177,10 @@ Deno.serve(async (req) => {
               );
             }
 
-            const backfillPromise = Promise.all([
-              runBackfillWorker("primary entry backfill", initialBackfillCursor),
-              ...(priorityCursor ? [runBackfillWorker("priority entry backfill", priorityCursor)] : []),
-            ]);
+            // v1.21.5: single-worker backfill. The previous "priority" parallel worker
+            // doubled the request rate against the same WordPress host and was the
+            // primary cause of 429 rate-limit loops on large sites.
+            const backfillPromise = runBackfillWorker("primary entry backfill", initialBackfillCursor);
 
             try {
               const edgeRuntime = globalThis as typeof globalThis & {

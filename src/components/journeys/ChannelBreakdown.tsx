@@ -242,7 +242,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
                       <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
                         <th className="text-left py-1 font-medium">Source</th>
                         <th className="text-right py-1 font-medium">Sessions</th>
-                        <th className="text-right py-1 font-medium">Leads</th>
+                        <th className="text-right py-1 font-medium">Conversions</th>
                         <th className="text-right py-1 font-medium">CVR</th>
                       </tr>
                     </thead>

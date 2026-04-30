@@ -441,7 +441,7 @@ export default function Exports() {
       </div>
 
       {/* Export History */}
-      <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+      <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} retryJob={retryJob} />
 
       <ExportConfirmDialog
         open={!!pendingExport}

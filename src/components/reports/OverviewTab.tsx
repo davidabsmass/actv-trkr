@@ -4,7 +4,7 @@ import { useOrg } from "@/hooks/use-org";
 import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
 import {
   Eye, TrendingUp, TrendingDown, Minus, Users, Activity, Sparkles, RefreshCw,
-  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon,
+  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon, Target,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { SummaryCard, InsightCard } from "./InsightCard";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
+import { useKeyActions } from "@/hooks/use-key-actions";
 
 type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 
@@ -54,12 +55,13 @@ type FormPerfRow = {
 };
 
 function FormPerformanceCard({
-  forms, periodLabel, currentLeads, currentCvr, hasPreviousData,
+  forms, periodLabel, currentLeads, currentCvr, cvrLabel = "Site CVR", hasPreviousData,
 }: {
   forms: FormPerfRow[];
   periodLabel: string;
   currentLeads: number;
   currentCvr: number;
+  cvrLabel?: string;
   hasPreviousData: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -90,7 +92,7 @@ function FormPerformanceCard({
           <p className="text-sm font-semibold text-foreground truncate" title={topForm?.name || "—"}>{topForm?.name || "—"}</p>
         </div>
         <div className="p-3 rounded-md bg-muted/40">
-          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Site CVR</p>
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{cvrLabel}</p>
           <p className="text-lg font-bold text-foreground">{currentCvr}%</p>
         </div>
       </div>
@@ -344,6 +346,11 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
     }
   };
 
+  // Key Actions for the same window — used to redefine the "leads" tile as
+  // "Key Actions" and to compute Action-Rate (CVR based on configured Key Actions).
+  const { data: keyActions } = useKeyActions(orgId, startDate, endDate, null);
+  const { data: prevKeyActions } = useKeyActions(orgId, prevStartDate, prevEndDate, null);
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
@@ -357,15 +364,56 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
   }
 
   const { currentSessions, previousSessions, currentLeads, previousLeads, currentCvr, previousCvr, brokenLinks, activeIncidents, formBreakdown, findings, hasPreviousData } = liveData;
+
+  // Prefer Key Actions when the org has configured any; otherwise fall back to
+  // raw form submissions so the tile is never empty.
+  const hasKeyActions = !!keyActions?.hasConfigured && keyActions.totalActionRate > 0;
+  const actionsCount = hasKeyActions ? keyActions!.totalActionRate : currentLeads;
+  const prevActionsCount = hasKeyActions ? (prevKeyActions?.totalActionRate ?? 0) : previousLeads;
+  const actionsLabel = hasKeyActions ? "Key Actions" : t("reports.leads");
+
+  // Action Rate (CVR) — when Key Actions are configured, CVR = key actions / sessions.
+  // Otherwise fall back to the legacy leads/sessions CVR already computed.
+  const actionRate = hasKeyActions
+    ? (currentSessions > 0 ? Math.min(100, Math.round((actionsCount / currentSessions) * 10000) / 100) : 0)
+    : currentCvr;
+  const prevActionRate = hasKeyActions
+    ? (previousSessions > 0 ? Math.min(100, Math.round((prevActionsCount / previousSessions) * 10000) / 100) : 0)
+    : previousCvr;
+
   const sessionsPct = hasPreviousData ? pctChange(currentSessions, previousSessions) : null;
-  const leadsPct = hasPreviousData ? pctChange(currentLeads, previousLeads) : null;
-  const cvrPct = hasPreviousData ? pctChange(currentCvr, previousCvr) : null;
+  const actionsPct = hasPreviousData ? pctChange(actionsCount, prevActionsCount) : null;
+  const cvrPct = hasPreviousData ? pctChange(actionRate, prevActionRate) : null;
 
   const currentRange = formatRange(startDate, endDate);
   const previousRange = formatRange(prevStartDate, prevEndDate);
 
   const negativeFindings = findings.filter((f: any) => !f.positive).slice(0, 5);
   const positiveFindings = findings.filter((f: any) => f.positive).slice(0, 5);
+
+  // Build a compact breakdown footnote for the Key Actions card.
+  const breakdownFootnote = hasKeyActions && keyActions!.breakdown.length > 0 ? (
+    <span className="flex flex-wrap gap-x-2 gap-y-0.5">
+      {keyActions!.breakdown.slice(0, 4).map((b) => (
+        <span key={b.category} className="inline-flex items-center gap-1">
+          <Target className="h-2.5 w-2.5 text-primary/70" />
+          <span className="text-foreground/80 font-medium">{b.count}</span>
+          <span className="text-muted-foreground">{b.label}</span>
+        </span>
+      ))}
+      {keyActions!.breakdown.length > 4 && (
+        <span className="text-muted-foreground/70">+{keyActions!.breakdown.length - 4} more</span>
+      )}
+    </span>
+  ) : null;
+
+  const keyActionsTooltip = hasKeyActions
+    ? "Total of every Key Action you've configured (form submissions, phone clicks, button clicks, etc.) that counts toward your Action Rate."
+    : "No Key Actions configured yet — showing form submissions as a fallback. Add Key Actions in Settings → Goals to track phone clicks, button clicks, and more.";
+
+  const cvrTooltip = hasKeyActions
+    ? "Action Rate = Key Actions ÷ Sessions. Based on the Key Actions you've set as conversions in Settings → Goals."
+    : "Conversion Rate = Form Submissions ÷ Sessions. Configure Key Actions in Settings → Goals for richer conversion tracking.";
 
   return (
     <div className="space-y-6">
@@ -386,8 +434,23 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <SummaryCard label={`${t("reports.traffic")} (${periodLabel})`} value={currentSessions.toLocaleString()} change={sessionsPct} changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined} summary={aiSummaries.traffic_up || aiSummaries.traffic_down} />
-          <SummaryCard label={`${t("reports.leads")} (${periodLabel})`} value={currentLeads.toLocaleString()} change={leadsPct} changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined} summary={aiSummaries.lead_growth || aiSummaries.lead_drop} />
-          <SummaryCard label={`${t("reports.cvr")} (${periodLabel})`} value={`${currentCvr}%`} change={cvrPct} changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined} summary={aiSummaries.conversion_gain || aiSummaries.conversion_drop} />
+          <SummaryCard
+            label={`${actionsLabel} (${periodLabel})`}
+            value={actionsCount.toLocaleString()}
+            change={actionsPct}
+            changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined}
+            summary={aiSummaries.lead_growth || aiSummaries.lead_drop}
+            tooltip={keyActionsTooltip}
+            footnote={breakdownFootnote}
+          />
+          <SummaryCard
+            label={`${hasKeyActions ? "Action Rate" : t("reports.cvr")} (${periodLabel})`}
+            value={`${actionRate}%`}
+            change={cvrPct}
+            changeLabel={hasPreviousData ? `vs prior ${periodLabel}` : undefined}
+            summary={aiSummaries.conversion_gain || aiSummaries.conversion_drop}
+            tooltip={cvrTooltip}
+          />
           <SummaryCard label={t("reports.siteHealth")} value={activeIncidents > 0 ? `${activeIncidents} ${t("reports.issues")}` : t("reports.sitHealthy")} summary={brokenLinks > 5 ? t("reports.brokenLinksDetected", { count: brokenLinks }) : undefined} />
         </div>
       </div>
@@ -397,7 +460,8 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
         forms={formBreakdown}
         periodLabel={periodLabel}
         currentLeads={currentLeads}
-        currentCvr={currentCvr}
+        currentCvr={actionRate}
+        cvrLabel={hasKeyActions ? "Action Rate" : "Site CVR"}
         hasPreviousData={hasPreviousData}
       />
 

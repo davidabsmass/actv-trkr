@@ -504,10 +504,10 @@ const Index = () => {
       {/* Section 5b — Visitor Behavior (mirrors Form Monitoring layout) */}
       <section className="relative px-6 overflow-hidden visitor-behavior-section landing-section" style={{ paddingTop: '120px', paddingBottom: '85px', backgroundImage: `url(${visBehaviorBgd})`, backgroundSize: 'cover', backgroundPosition: 'right bottom' }}>
         <SparkleCanvas />
-        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .visitor-behavior-section { background-position: left top !important; } } @media (max-width: 1023px) { .visitor-behavior-section { padding-top: 150px !important; background-position: center bottom !important; } }` }} />
+        <style dangerouslySetInnerHTML={{ __html: `@media (min-width: 768px) { .visitor-behavior-section { background-position: left top !important; } } @media (max-width: 1023px) { .visitor-behavior-section { padding-top: 80px !important; background-position: center bottom !important; } .visitor-behavior-section .vb-graphics { transform: translateY(-20px); } }` }} />
         <div className="max-w-7xl mx-auto" style={{ transform: 'translateY(-20px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
+            <div className="vb-graphics relative lg:col-span-7 flex items-end justify-start min-h-0 lg:min-h-[460px]">
                <img src={visBehaviorGraphic} alt="Session timeline view" className="w-full lg:w-[90%] h-auto rounded-2xl relative z-10 prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.06 + 60}px)`, willChange: 'transform' }} />
                <img src={visBehaviorSmall} alt="Rocket launch pad" className="absolute bottom-[-105px] right-[-5px] lg:bottom-[-105px] lg:right-[calc(2%-15px)] w-[130px] lg:w-[150px] h-auto z-20 rounded-xl prlx" style={{ transform: `translateY(${(scrollY - 2600) * -0.12 + 60}px)`, willChange: 'transform' }} />
             </div>

@@ -76,8 +76,10 @@ Deno.serve(async (req) => {
 
     try {
       // Build leads query with optional filters. Supabase caps each request at
-      // 1000 rows by default, so we paginate up to a hard ceiling of 5000.
-      const HARD_CAP = 5000;
+      // 1000 rows by default, so we paginate up to a hard ceiling. The cap is
+      // sized to comfortably cover any realistic single-form, date-bounded
+      // export (typical large customers run a few thousand entries/month).
+      const HARD_CAP = 50000;
       const PAGE = 1000;
       const filters = job.filters_json as Record<string, any> | null;
 

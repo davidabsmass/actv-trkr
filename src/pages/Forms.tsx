@@ -412,6 +412,153 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
     </>
   );
 }
+function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[] | undefined }) {
+  const { session } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [scope, setScope] = useState<"all" | "single">("all");
+  const [formId, setFormId] = useState<string>("");
+  const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
+  const [pending, setPending] = useState(false);
+
+  const eligibleForms = useMemo(
+    () => (forms || []).filter((f) => !f.archived).sort((a, b) => a.name.localeCompare(b.name)),
+    [forms],
+  );
+
+  const runExport = async () => {
+    if (!orgId || !session?.user.id) {
+      toast.error("Not authenticated");
+      return;
+    }
+    if (scope === "single" && !formId) {
+      toast.error("Pick a form to export");
+      return;
+    }
+    setPending(true);
+    try {
+      const { data: inserted, error } = await supabase.from("export_jobs").insert({
+        org_id: orgId,
+        created_by: session.user.id,
+        format: exportFormat,
+        status: "queued",
+        filters_json: scope === "single" ? { form_id: formId } : {},
+      }).select("id").single();
+      if (error) throw error;
+
+      const { error: fnError } = await supabase.functions.invoke("process-export", {
+        body: { job_id: inserted.id },
+      });
+      if (fnError) throw new Error("Export processing failed");
+
+      let completed: any = null;
+      for (let i = 0; i < 20; i++) {
+        const { data: job } = await supabase
+          .from("export_jobs")
+          .select("file_path, status, row_count")
+          .eq("id", inserted.id)
+          .single();
+        if (job?.status === "succeeded" || job?.status === "failed") {
+          completed = job;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
+      if (completed?.status === "failed") {
+        throw new Error("Export failed");
+      }
+      if (completed?.file_path) {
+        toast.success(`Export ready — ${completed.row_count ?? 0} rows. Downloading…`);
+        const { data, error: urlErr } = await supabase.storage
+          .from("exports")
+          .createSignedUrl(completed.file_path, 120);
+        if (!urlErr && data?.signedUrl) {
+          const a = document.createElement("a");
+          a.href = data.signedUrl;
+          a.download = `export.${exportFormat}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } else {
+          toast.error("Could not generate download link.");
+        }
+        setOpen(false);
+      } else if (completed?.status === "succeeded") {
+        toast.info("No leads found for the selected scope.");
+      } else {
+        toast.info("Export is still processing — check Exports page shortly.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create export");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          disabled={!forms || forms.length === 0}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Export
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-4 space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">Export entries</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Download leads as a {exportFormat.toUpperCase()} file.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-foreground">Scope</label>
+          <Select value={scope} onValueChange={(v) => setScope(v as "all" | "single")}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All forms</SelectItem>
+              <SelectItem value="single">Pick a form</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {scope === "single" && (
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-foreground">Form</label>
+            <Select value={formId} onValueChange={setFormId}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Select a form…" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {eligibleForms.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-foreground">Format</label>
+          <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as "csv" | "xlsx")}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="csv">CSV</SelectItem>
+              <SelectItem value="xlsx">XLSX</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+          <Button size="sm" onClick={runExport} disabled={pending}>
+            {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Exporting…</> : "Export"}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function Forms() {
   const { orgId, orgName } = useOrg();
   const { t } = useTranslation();

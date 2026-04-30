@@ -104,6 +104,75 @@ async function triggerWordPressSync(siteUrl: string, keyHash: string): Promise<
   return { ok: false, detail: lastDetail };
 }
 
+// Refresh is_active flags for every form on a site by calling the WP plugin's
+// import-discover endpoint and writing the reported is_active back into both
+// `forms` and `form_integrations`. Purely additive — never deactivates a form
+// that the plugin doesn't explicitly report (matches manage-import-job
+// "discover" semantics: deactivation only on EXPLICIT is_active === false).
+async function refreshIsActiveFlags(
+  supabase: any,
+  siteUrl: string,
+  siteId: string,
+  keyHash: string,
+): Promise<{ ok: boolean; detail: string; updated: number }> {
+  const normalized = siteUrl.replace(/\/$/, "");
+  const endpoints = [
+    `${normalized}/wp-json/actv-trkr/v1/import-discover`,
+    `${normalized}/?rest_route=/actv-trkr/v1/import-discover`,
+  ];
+  const body = JSON.stringify({ key_hash: keyHash });
+  let lastDetail = "no response";
+  let payload: any = null;
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetchWithTimeout(
+        endpoint,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body },
+        PROBE_TIMEOUT_MS,
+      );
+      if (res.ok) {
+        payload = await res.json().catch(() => null);
+        break;
+      }
+      lastDetail = `HTTP ${res.status} on ${endpoint}`;
+    } catch (err) {
+      lastDetail = `network error on ${endpoint}: ${(err as Error).message}`;
+    }
+  }
+  if (!payload || !Array.isArray(payload.forms)) {
+    return { ok: false, detail: lastDetail, updated: 0 };
+  }
+
+  let updated = 0;
+  for (const f of payload.forms) {
+    const provider = f.builder_type;
+    const externalId = f.external_form_id != null ? String(f.external_form_id) : null;
+    if (!provider || !externalId) continue;
+    // Default to true when plugin omits the flag (older versions).
+    const isActive = f.is_active === false ? false : true;
+
+    const { data: formRow } = await supabase
+      .from("forms")
+      .select("id, is_active")
+      .eq("site_id", siteId)
+      .eq("provider", provider)
+      .eq("external_form_id", externalId)
+      .maybeSingle();
+
+    if (formRow && formRow.is_active !== isActive) {
+      await supabase.from("forms").update({ is_active: isActive }).eq("id", formRow.id);
+      await supabase
+        .from("form_integrations")
+        .update({ is_active: isActive })
+        .eq("site_id", siteId)
+        .eq("builder_type", provider)
+        .eq("external_form_id", externalId);
+      updated++;
+    }
+  }
+  return { ok: true, detail: `refreshed ${payload.forms.length} forms`, updated };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -158,6 +227,16 @@ Deno.serve(async (req) => {
         syncOutcome = sync.ok ? "ok" : `failed: ${sync.detail}`;
         updates.last_form_reconcile_at = new Date().toISOString();
         updates.last_form_reconcile_status = syncOutcome;
+
+        // Refresh is_active flags so toggles in WP converge to the dashboard
+        // within one cron cycle, without waiting for a manual re-scan.
+        const flagRefresh = await refreshIsActiveFlags(
+          supabase,
+          siteUrl,
+          site.id,
+          apiKeyRow.key_hash,
+        );
+        syncOutcome = `${syncOutcome}; is_active refresh: ${flagRefresh.ok ? `${flagRefresh.updated} changed` : `failed (${flagRefresh.detail})`}`;
       } else {
         syncOutcome = "no api key";
         updates.last_form_reconcile_status = "skipped: no api key";

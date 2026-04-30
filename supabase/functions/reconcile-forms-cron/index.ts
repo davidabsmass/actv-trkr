@@ -227,6 +227,17 @@ Deno.serve(async (req) => {
         syncOutcome = sync.ok ? "ok" : `failed: ${sync.detail}`;
         updates.last_form_reconcile_at = new Date().toISOString();
         updates.last_form_reconcile_status = syncOutcome;
+
+        // Refresh is_active flags so toggles in WP converge to the dashboard
+        // within one cron cycle, without waiting for a manual re-scan.
+        const flagRefresh = await refreshIsActiveFlags(
+          supabase,
+          siteUrl,
+          site.id,
+          apiKeyRow.key_hash,
+        );
+        (results as any).push; // no-op marker for clarity
+        syncOutcome = `${syncOutcome}; is_active refresh: ${flagRefresh.ok ? `${flagRefresh.updated} changed` : `failed (${flagRefresh.detail})`}`;
       } else {
         syncOutcome = "no api key";
         updates.last_form_reconcile_status = "skipped: no api key";

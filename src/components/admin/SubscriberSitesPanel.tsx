@@ -62,6 +62,7 @@ type Member = {
   joined_at: string;
   invited_at?: string | null;
   invite_accepted_at?: string | null;
+  is_owner?: boolean;
   email: string | null;
   full_name: string | null;
 };
@@ -317,6 +318,7 @@ export default function SubscriberSitesPanel() {
 
   const handleSaveMember = async (orgId: string, userId: string) => {
     setActionLoading(`save-${userId}`);
+    const targetMember = (members || []).find((m) => m.user_id === userId);
     try {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: {
@@ -324,7 +326,8 @@ export default function SubscriberSitesPanel() {
           org_id: orgId,
           user_id: userId,
           full_name: editName.trim(),
-          role: editRole,
+          // Owner role is locked server-side — don't even send it.
+          ...(targetMember?.is_owner ? {} : { role: editRole }),
         },
       });
 
@@ -712,7 +715,7 @@ export default function SubscriberSitesPanel() {
                                             <Select
                                               value={editRole}
                                               onValueChange={(v) => setEditRole(v as "manager" | "admin")}
-                                              disabled={saving}
+                                              disabled={saving || !!m.is_owner}
                                             >
                                               <SelectTrigger className="h-7 w-[100px] text-xs">
                                                 <SelectValue />
@@ -727,6 +730,9 @@ export default function SubscriberSitesPanel() {
                                               <Badge variant={m.role === "admin" ? "default" : "outline"}>
                                                 {m.role}
                                               </Badge>
+                                              {m.is_owner && (
+                                                <Badge variant="secondary">Owner</Badge>
+                                              )}
                                               {m.status === "invited" && (
                                                 <Badge variant="secondary" className="gap-1">
                                                   <Mail className="h-3 w-3" /> Pending

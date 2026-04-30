@@ -4,6 +4,7 @@ import { useOrg } from "@/hooks/use-org";
 import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
 import { VisitorJourneyStats } from "@/components/journeys/VisitorJourneyStats";
+import { ChannelBreakdown } from "@/components/journeys/ChannelBreakdown";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_VISITOR_JOURNEYS } from "@/components/howto/page-content";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,8 @@ export default function VisitorJourneys() {
       </div>
 
       <VisitorJourneyStats orgId={orgId} startDate={startDate} endDate={endDate} />
+
+      <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
 
       <VisitorJourneysList orgId={orgId} startDate={startDate} endDate={endDate} />
     </div>

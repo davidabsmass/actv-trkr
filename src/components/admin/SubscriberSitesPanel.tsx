@@ -318,6 +318,7 @@ export default function SubscriberSitesPanel() {
 
   const handleSaveMember = async (orgId: string, userId: string) => {
     setActionLoading(`save-${userId}`);
+    const targetMember = (members || []).find((m) => m.user_id === userId);
     try {
       const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: {
@@ -325,7 +326,8 @@ export default function SubscriberSitesPanel() {
           org_id: orgId,
           user_id: userId,
           full_name: editName.trim(),
-          role: editRole,
+          // Owner role is locked server-side — don't even send it.
+          ...(targetMember?.is_owner ? {} : { role: editRole }),
         },
       });
 

@@ -4765,6 +4765,10 @@ export type Database = {
           lifecycle_email_day25_sent_at: string | null
           lifecycle_email_day80_sent_at: string | null
           name: string
+          onboarding_day1_sent_at: string | null
+          onboarding_day12_sent_at: string | null
+          onboarding_day3_sent_at: string | null
+          onboarding_day7_sent_at: string | null
           seo_visibility_level: string
           status: Database["public"]["Enums"]["org_lifecycle_status"]
           status_change_reason: string | null
@@ -4784,6 +4788,10 @@ export type Database = {
           lifecycle_email_day25_sent_at?: string | null
           lifecycle_email_day80_sent_at?: string | null
           name: string
+          onboarding_day1_sent_at?: string | null
+          onboarding_day12_sent_at?: string | null
+          onboarding_day3_sent_at?: string | null
+          onboarding_day7_sent_at?: string | null
           seo_visibility_level?: string
           status?: Database["public"]["Enums"]["org_lifecycle_status"]
           status_change_reason?: string | null
@@ -4803,6 +4811,10 @@ export type Database = {
           lifecycle_email_day25_sent_at?: string | null
           lifecycle_email_day80_sent_at?: string | null
           name?: string
+          onboarding_day1_sent_at?: string | null
+          onboarding_day12_sent_at?: string | null
+          onboarding_day3_sent_at?: string | null
+          onboarding_day7_sent_at?: string | null
           seo_visibility_level?: string
           status?: Database["public"]["Enums"]["org_lifecycle_status"]
           status_change_reason?: string | null

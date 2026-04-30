@@ -2258,6 +2258,67 @@ export type Database = {
           },
         ]
       }
+      export_audit_log: {
+        Row: {
+          created_at: string
+          export_job_id: string | null
+          export_scope: string | null
+          export_type: string
+          id: string
+          metadata: Json
+          org_id: string
+          role_at_export: string
+          site_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          export_job_id?: string | null
+          export_scope?: string | null
+          export_type: string
+          id?: string
+          metadata?: Json
+          org_id: string
+          role_at_export: string
+          site_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          export_job_id?: string | null
+          export_scope?: string | null
+          export_type?: string
+          id?: string
+          metadata?: Json
+          org_id?: string
+          role_at_export?: string
+          site_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_audit_log_export_job_id_fkey"
+            columns: ["export_job_id"]
+            isOneToOne: false
+            referencedRelation: "export_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_audit_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_audit_log_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_jobs: {
         Row: {
           completed_at: string | null
@@ -4633,6 +4694,9 @@ export type Database = {
       }
       org_users: {
         Row: {
+          access_expires_at: string | null
+          access_granted_at: string | null
+          access_granted_by: string | null
           created_at: string
           id: string
           invite_accepted_at: string | null
@@ -4646,6 +4710,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_expires_at?: string | null
+          access_granted_at?: string | null
+          access_granted_by?: string | null
           created_at?: string
           id?: string
           invite_accepted_at?: string | null
@@ -4659,6 +4726,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_expires_at?: string | null
+          access_granted_at?: string | null
+          access_granted_by?: string | null
           created_at?: string
           id?: string
           invite_accepted_at?: string | null
@@ -9075,6 +9145,10 @@ export type Database = {
         Returns: undefined
       }
       is_last_org_admin: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_actv_support: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }

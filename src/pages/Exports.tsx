@@ -264,6 +264,11 @@ export default function Exports() {
         <h1 className="text-2xl font-bold text-foreground mb-1">{selectedForm.name}</h1>
         <p className="text-sm text-muted-foreground mb-6">
           {selectedForm.provider} · {leadCounts?.[selectedForm.id] ?? "—"} total leads
+          {selectedFormCounts && (
+            <> · <span className="text-foreground/80">{selectedFormCounts.d7}</span> last 7d
+              · <span className="text-foreground/80">{selectedFormCounts.d30}</span> last 30d
+              · <span className="text-foreground/80">{selectedFormCounts.d90}</span> last 90d</>
+          )}
         </p>
 
         <div className="rounded-lg border border-border bg-card p-5 mb-6">
@@ -271,6 +276,37 @@ export default function Exports() {
             <FileSpreadsheet className="h-4 w-4 text-primary" />
             Export Leads
           </h3>
+
+          {/* Quick presets */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {[
+              { label: "Last 7 days", days: 7 },
+              { label: "Last 30 days", days: 30 },
+              { label: "Last 90 days", days: 90 },
+            ].map((p) => (
+              <Button
+                key={p.days}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const to = new Date();
+                  const from = new Date();
+                  from.setDate(from.getDate() - p.days);
+                  setDateFrom(from);
+                  setDateTo(to);
+                }}
+              >
+                {p.label}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}
+            >
+              All time
+            </Button>
+          </div>
 
           {/* Date range pickers */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -323,7 +359,7 @@ export default function Exports() {
         </div>
 
         {/* Export history for this form */}
-        <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+        <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} retryJob={retryJob} />
 
         <ExportConfirmDialog
           open={!!pendingExport}

@@ -1199,15 +1199,21 @@ export default function Forms() {
                         <span className="text-xs text-muted-foreground font-mono-data">{form.lead_weight}×</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                       <span>{form.provider}</span>
                       <span>·</span>
                       {leadCountsLoading && count === undefined ? (
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <Loader2 className="h-3 w-3 animate-spin" /> loading leads…
+                          <Loader2 className="h-3 w-3 animate-spin" /> loading entries…
                         </span>
                       ) : (
-                        <span>{(count ?? 0).toLocaleString()} leads</span>
+                        <>
+                          <span className="font-medium text-foreground">{(count ?? 0).toLocaleString()}</span>
+                          <span>total</span>
+                          <span className="text-muted-foreground/60">·</span>
+                          <span className="font-medium text-foreground">{rangeCount.toLocaleString()}</span>
+                          <span>in {rangeLabel}</span>
+                        </>
                       )}
                     </p>
                   </div>

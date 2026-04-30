@@ -2853,6 +2853,7 @@ export type Database = {
           builder_type: string
           created_at: string
           external_form_id: string
+          form_id: string | null
           form_name: string
           id: string
           is_active: boolean
@@ -2869,6 +2870,7 @@ export type Database = {
           builder_type?: string
           created_at?: string
           external_form_id: string
+          form_id?: string | null
           form_name?: string
           id?: string
           is_active?: boolean
@@ -2885,6 +2887,7 @@ export type Database = {
           builder_type?: string
           created_at?: string
           external_form_id?: string
+          form_id?: string | null
           form_name?: string
           id?: string
           is_active?: boolean
@@ -2898,6 +2901,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "form_integrations_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "form_integrations_org_id_fkey"
             columns: ["org_id"]
@@ -9172,6 +9182,7 @@ export type Database = {
         Returns: undefined
       }
       recompute_all_account_health: { Args: never; Returns: number }
+      reconcile_form_integration_counters: { Args: never; Returns: undefined }
       record_security_release_check: {
         Args: { p_org_id: string }
         Returns: Json

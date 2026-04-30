@@ -169,8 +169,20 @@ Deno.serve(async (req) => {
     results.push({ site_id: site.id, domain: site.domain, ...probe, sync: syncOutcome });
   }
 
+  // ── IRON-CLAD COUNTER HEAL ──
+  // Recompute form_integrations.total_entries_imported from REAL leads truth and
+  // auto-mark "stuck importing" rows as synced when leads have caught up.
+  // Cursor counters drift when batches retry partial cursors; truth = COUNT(leads).
+  let counterHealResult: any = null;
+  try {
+    const { error: healErr } = await supabase.rpc("reconcile_form_integration_counters");
+    counterHealResult = healErr ? { error: healErr.message } : { ok: true };
+  } catch (err) {
+    counterHealResult = { error: (err as Error).message };
+  }
+
   return new Response(
-    JSON.stringify({ checked: results.length, results }, null, 2),
+    JSON.stringify({ checked: results.length, results, counter_heal: counterHealResult }, null, 2),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });

@@ -183,9 +183,25 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
     reportedKeys.add(`${form.builder_type}::${String(form.external_form_id)}`);
     reportedExternalIds.add(String(form.external_form_id));
 
+    // CRITICAL: upsert canonical forms row FIRST so we can link integration → forms.id.
+    // This guarantees future leads ingested via realtime/ingest-form share the same form_id
+    // the dashboard reads through form_integrations. Prevents the "discovered form
+    // shows 0 leads while leads exist under a stale forms row" bug.
+    const { data: canonicalForm } = await supabase
+      .from("forms")
+      .upsert({
+        org_id: site.org_id,
+        site_id: siteId,
+        provider: form.builder_type,
+        external_form_id: String(form.external_form_id),
+        name: form.form_name || "Untitled Form",
+      }, { onConflict: "site_id,provider,external_form_id" })
+      .select("id")
+      .single();
+
     // Upsert integration. CRITICAL: also overwrite org_id on conflict so a
     // site that was re-assigned to a new org gets its form_integrations
-    // re-linked to the current owner.
+    // re-linked to the current owner. Always carry form_id to keep linkage iron-clad.
     const { data: integration } = await supabase
       .from("form_integrations")
       .upsert({
@@ -198,11 +214,27 @@ async function handleDiscover(supabase: any, user: any, req: Request) {
         total_entries_estimated: isJunk ? form.entry_count : estimated,
         status: isJunk ? "needs_review" : "detected",
         last_error: isJunk ? `Reported ${form.entry_count} entries — exceeds safety threshold of ${JUNK_THRESHOLD}; manual import required` : null,
+        form_id: canonicalForm?.id ?? null,
       }, { onConflict: "site_id,builder_type,external_form_id" })
-      .select("id, total_entries_imported, status")
+      .select("id, total_entries_imported, status, form_id")
       .single();
 
     if (!integration) continue;
+
+    // Heal counter from real leads truth (cheap COUNT scoped to one form)
+    if (canonicalForm?.id) {
+      const { count: realLeadCount } = await supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("form_id", canonicalForm.id);
+      if (typeof realLeadCount === "number") {
+        await supabase
+          .from("form_integrations")
+          .update({ total_entries_imported: realLeadCount })
+          .eq("id", integration.id);
+        integration.total_entries_imported = realLeadCount;
+      }
+    }
 
     // Also sync is_active and (when WP gave us a real, non-stub title)
     // overwrite the forms.name on the corresponding row. This heals any
@@ -463,7 +495,17 @@ async function handleProcess(supabase: any, user: any, req: Request) {
     locked_at: null,
   }).eq("id", jobId);
 
-  const integrationUpdate: any = { total_entries_imported: totalProcessed };
+  // Recompute imported count from REAL leads (truth), not the cursor counter.
+  // Cursor can over- or under-count when partial batches replay the same cursor.
+  let realImported = totalProcessed;
+  if (integration.form_id) {
+    const { count } = await supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", integration.form_id);
+    if (typeof count === "number") realImported = count;
+  }
+  const integrationUpdate: any = { total_entries_imported: realImported };
   if (!hasMore) {
     integrationUpdate.status = "synced";
     integrationUpdate.last_synced_at = new Date().toISOString();

@@ -407,6 +407,21 @@ export default function TeamSection() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                      {m.role === "actv_support" && !isOwner && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] gap-1 bg-indigo-500/15 text-indigo-300 border border-indigo-400/30"
+                            >
+                              <LifeBuoy className="h-3 w-3" /> Support
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[260px]">
+                            Internal ACTV TRKR support — read-only access to dashboards, reports, and exports. No settings, team, or billing access.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       {isOwner ? (
                         <Badge variant="default" className="text-[10px]">Owner</Badge>
                       ) : (

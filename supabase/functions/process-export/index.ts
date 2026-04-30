@@ -160,13 +160,15 @@ Deno.serve(async (req) => {
         csvRows.push(row.map(escCsv).join(","));
       }
 
-      const csvContent = csvRows.join("\n");
+      // Prepend UTF-8 BOM so Excel and browsers correctly render accented
+      // characters (otherwise "–" / curly quotes show up as "â€"" mojibake).
+      const csvContent = "\uFEFF" + csvRows.join("\n");
       const fileName = `${orgId}/export_${job.id}.csv`;
 
       const { error: uploadErr } = await supabase.storage
         .from("exports")
-        .upload(fileName, new Blob([csvContent], { type: "text/csv" }), {
-          contentType: "text/csv",
+        .upload(fileName, new Blob([csvContent], { type: "text/csv; charset=utf-8" }), {
+          contentType: "text/csv; charset=utf-8",
           upsert: true,
         });
       if (uploadErr) throw uploadErr;

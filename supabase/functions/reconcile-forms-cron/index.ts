@@ -236,7 +236,6 @@ Deno.serve(async (req) => {
           site.id,
           apiKeyRow.key_hash,
         );
-        (results as any).push; // no-op marker for clarity
         syncOutcome = `${syncOutcome}; is_active refresh: ${flagRefresh.ok ? `${flagRefresh.updated} changed` : `failed (${flagRefresh.detail})`}`;
       } else {
         syncOutcome = "no api key";

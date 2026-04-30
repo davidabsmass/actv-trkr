@@ -10,6 +10,8 @@ type ActivePanel = "main" | "otp" | "forgot" | "mfa";
 
 const PENDING_OTP_KEY = "actvtrkr_pending_otp";
 const TRUSTED_DEVICE_KEY = "actvtrkr_trusted_device"; // map<emailLower, deviceTokenHex>
+const RECOVERY_FLAG = "pw_recovery_in_progress";
+const RECOVERY_TS_KEY = "pw_recovery_started_at";
 
 type TrustedDeviceMap = Record<string, string>;
 
@@ -28,6 +30,14 @@ const writeTrustedDevice = (email: string, token: string) => {
     const map: TrustedDeviceMap = raw ? JSON.parse(raw) : {};
     map[email.trim().toLowerCase()] = token;
     localStorage.setItem(TRUSTED_DEVICE_KEY, JSON.stringify(map));
+  } catch { /* ignore */ }
+};
+
+const clearRecoverySessionGuard = () => {
+  try {
+    sessionStorage.removeItem(RECOVERY_FLAG);
+    localStorage.removeItem(RECOVERY_FLAG);
+    localStorage.removeItem(RECOVERY_TS_KEY);
   } catch { /* ignore */ }
 };
 
@@ -176,6 +186,7 @@ const Auth = () => {
         throw new Error(msg);
       }
       if (!data?.access_token || !data?.refresh_token) throw new Error("Could not complete sign-in.");
+      clearRecoverySessionGuard();
       const { error: setErr } = await supabase.auth.setSession({
         access_token: data.access_token,
         refresh_token: data.refresh_token,
@@ -197,7 +208,7 @@ const Auth = () => {
       setMfaCode("");
       setPendingPassword("");
       setTrustDevice(false);
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -256,6 +267,7 @@ const Auth = () => {
       const normalizedEmail = email.trim().toLowerCase();
 
       if (isLogin) {
+        clearRecoverySessionGuard();
         // Step 1: verify password + issue email 2FA code (server-side).
         // Pass any saved trusted-device token; the server may bypass MFA if it matches.
         const savedDeviceToken = readTrustedDevice(normalizedEmail);
@@ -274,12 +286,13 @@ const Auth = () => {
         }
         // Trusted-device bypass OR user has email 2FA disabled: server returned a session directly.
         if ((issued?.trusted || issued?.skipped) && issued?.access_token && issued?.refresh_token) {
+          clearRecoverySessionGuard();
           const { error: setErr } = await supabase.auth.setSession({
             access_token: issued.access_token,
             refresh_token: issued.refresh_token,
           });
           if (setErr) throw setErr;
-          navigate("/dashboard");
+          navigate("/dashboard", { replace: true });
           return;
         }
         if (!issued?.challengeToken) throw new Error("Could not start verification.");

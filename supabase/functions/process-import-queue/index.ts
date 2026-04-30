@@ -128,10 +128,12 @@ async function pickEligibleJobs(supabase: any): Promise<any[]> {
   // to scheduled order.
   const { data: jobs } = await supabase
     .from("form_import_jobs")
-    .select("id, status, lock_token, locked_at, next_run_at, adaptive_batch_size, retry_count, cursor, form_integration_id, site_id, org_id, total_expected")
+    .select("id, status, lock_token, locked_at, next_run_at, adaptive_batch_size, retry_count, cursor, form_integration_id, site_id, org_id, total_expected, form_integrations!inner(form_id, forms!inner(is_active, archived))")
     .in("status", ["pending", "stalled"])
     .lte("next_run_at", now)
     .is("lock_token", null)
+    .eq("form_integrations.forms.is_active", true)
+    .eq("form_integrations.forms.archived", false)
     .order("total_expected", { ascending: true, nullsFirst: true })
     .order("next_run_at", { ascending: true })
     .limit(MAX_JOBS_PER_RUN);

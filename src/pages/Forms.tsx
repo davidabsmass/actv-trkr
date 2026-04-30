@@ -1159,6 +1159,8 @@ export default function Forms() {
             }).map((form) => {
               const job = jobProgressByFormId[form.id];
               const count = leadCounts?.[form.id];
+              const rangeCount = rangeCountsByForm[form.id] ?? 0;
+              const rangeLabel = customRange ? "selected range" : `last ${days ?? 30}d`;
               return (
               <button
                 key={form.id}

@@ -255,6 +255,12 @@ export default function Exports() {
 
         {/* Export history for this form */}
         <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+
+        <ExportConfirmDialog
+          open={!!pendingExport}
+          onOpenChange={(open) => { if (!open) setPendingExport(null); }}
+          onConfirm={runPendingExport}
+        />
       </div>
     );
   }
@@ -331,6 +337,12 @@ export default function Exports() {
 
       {/* Export History */}
       <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+
+      <ExportConfirmDialog
+        open={!!pendingExport}
+        onOpenChange={(open) => { if (!open) setPendingExport(null); }}
+        onConfirm={runPendingExport}
+      />
     </div>
   );
 }

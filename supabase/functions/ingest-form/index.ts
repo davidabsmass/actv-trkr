@@ -57,6 +57,8 @@ async function safeInsertFlatRows(supabase: any, rows: any[]): Promise<number> {
   }
   return written;
 }
+
+function inferAvadaFieldName(type: string, value: string, position: number): string {
   const t = type.toLowerCase();
   if (t === "email") return "Email";
   if (t === "textarea") return "Message";

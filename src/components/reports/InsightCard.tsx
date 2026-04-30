@@ -47,7 +47,8 @@ export function SummaryCard({
       {changeLabel && change !== null && change !== undefined && (
         <p className="text-xs text-muted-foreground/60 mb-1">{changeLabel}</p>
       )}
-      {summary && <p className="text-xs text-muted-foreground leading-relaxed">{summary}</p>}
+      {footnote && <div className="text-xs text-muted-foreground leading-relaxed mt-0.5">{footnote}</div>}
+      {summary && <p className="text-xs text-muted-foreground leading-relaxed mt-1">{summary}</p>}
     </div>
   );
 }

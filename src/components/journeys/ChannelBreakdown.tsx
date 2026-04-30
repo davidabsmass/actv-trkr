@@ -122,6 +122,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
         utm_campaign: string | null;
         landing_referrer_domain: string | null;
         has_lead: boolean;
+        has_conversion: boolean;
       }>;
     },
     enabled: !!orgId,

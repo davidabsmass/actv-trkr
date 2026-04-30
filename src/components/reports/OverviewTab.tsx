@@ -4,7 +4,7 @@ import { useOrg } from "@/hooks/use-org";
 import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
 import {
   Eye, TrendingUp, TrendingDown, Minus, Users, Activity, Sparkles, RefreshCw,
-  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon,
+  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon, Target,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { SummaryCard, InsightCard } from "./InsightCard";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
+import { useKeyActions } from "@/hooks/use-key-actions";
 
 type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 

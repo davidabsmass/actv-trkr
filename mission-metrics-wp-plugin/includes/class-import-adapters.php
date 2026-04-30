@@ -25,40 +25,39 @@ class MM_Adapter_Gravity implements MM_Import_Adapter {
 	public function get_builder_type(): string { return 'gravity_forms'; }
 
 	public function discover_forms(): array {
-		// NOTE: Pass `false, false` to GFAPI to include INACTIVE and TRASHED forms.
-		// We need the full set so we can report each form's is_active state to
-		// the dashboard (otherwise toggled-off forms would silently disappear
-		// instead of being marked inactive).
 		if ( ! class_exists( 'GFAPI' ) ) return array();
-		$forms = \GFAPI::get_forms( false, false );
-		if ( ! is_array( $forms ) ) return array();
+
+		// GFAPI::get_forms( false, false ) means "inactive forms only" — it does
+		// NOT mean "all forms". Discover active and inactive lists separately so
+		// one disabled form does not cause every Gravity form to be reported as
+		// disabled in the dashboard.
+		$active_forms   = \GFAPI::get_forms( true, false );
+		$inactive_forms = \GFAPI::get_forms( false, false );
+		if ( ! is_array( $active_forms ) ) $active_forms = array();
+		if ( ! is_array( $inactive_forms ) ) $inactive_forms = array();
+
 		$result = array();
-		foreach ( $forms as $form ) {
+		$seen   = array();
+		$groups = array(
+			array( 'forms' => $active_forms, 'is_active' => true ),
+			array( 'forms' => $inactive_forms, 'is_active' => false ),
+		);
+
+		foreach ( $groups as $group ) {
+		foreach ( $group['forms'] as $form ) {
+			$form_id = (string) ( $form['id'] ?? '' );
+			if ( $form_id === '' || isset( $seen[ $form_id ] ) ) continue;
+			$seen[ $form_id ] = true;
+
 			$is_trash  = ! empty( $form['is_trash'] );
 			if ( $is_trash ) continue; // Trashed forms are deleted from the dashboard's POV
 
-			// Determine is_active defensively. The lightweight list payload from
-			// GFAPI::get_forms() can omit `is_active` or store it as the string
-			// '0' / '1'. Treat MISSING as TRUE (default-on, matches the
-			// dashboard's additive reconciler semantics) and only treat an
-			// EXPLICIT zero/false as inactive.
-			$has_key = is_array( $form ) && array_key_exists( 'is_active', $form );
-			if ( ! $has_key ) {
-				$is_active = true;
-			} else {
-				$raw = $form['is_active'];
-				if ( is_string( $raw ) ) {
-					$is_active = ( $raw !== '0' && $raw !== '' && strtolower( $raw ) !== 'false' );
-				} else {
-					$is_active = (bool) $raw;
-				}
-			}
-
 			$result[] = array(
-				'external_form_id' => (string) ( $form['id'] ?? '' ),
+				'external_form_id' => $form_id,
 				'form_name'        => $form['title'] ?? 'Gravity Form',
-				'is_active'        => $is_active,
+				'is_active'        => (bool) $group['is_active'],
 			);
+		}
 		}
 		return $result;
 	}

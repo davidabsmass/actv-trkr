@@ -2353,17 +2353,23 @@ class MM_Forms {
 			return $fields;
 		}
 
+		// v1.21.4 FIX: Read both value AND label from the ORIGINAL column index.
+		// Previously $values used the filtered index $fi while labels used the original
+		// index, causing label/value drift whenever a skipped field type (submit/hidden/
+		// html/captcha/notice/honeypot/section/page) sat in the middle of the form.
+		// That drift produced scrambled "Field 11" / "Field 12" entries on Avada forms
+		// that had a consent checkbox or hidden field added mid-form.
 		for ( $fi = 0; $fi < count( $real_types ); $fi++ ) {
-			$type = strtolower( $real_types[ $fi ]['type'] );
-			$val  = $values[ $fi ] ?? '';
-			$val  = trim( (string) $val );
+			$orig_idx = (int) $real_types[ $fi ]['index'];
+			$type     = strtolower( $real_types[ $fi ]['type'] );
+			$val      = trim( (string) ( $values[ $orig_idx ] ?? '' ) );
 			if ( $val === '' || strtolower( $val ) === 'array' ) continue;
 
-			$raw_label = $labels[ $real_types[ $fi ]['index'] ] ?? '';
-			$label = $raw_label ?: self::infer_avada_field_name( $type, $val, $fi + 1 );
+			$raw_label = $labels[ $orig_idx ] ?? '';
+			$label = $raw_label ?: self::infer_avada_field_name( $type, $val, $orig_idx + 1 );
 
 			$fields[] = array(
-				'id'    => $fi,
+				'id'    => $orig_idx,
 				'name'  => $label,
 				'label' => $label,
 				'type'  => $real_types[ $fi ]['type'],

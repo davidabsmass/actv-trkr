@@ -268,11 +268,6 @@ export default function Account() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-
-        {canSeeBilling && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
               <MapPin className="h-4 w-4" /> Billing Address
             </CardTitle>
             <CardDescription>Collected from your payment details</CardDescription>

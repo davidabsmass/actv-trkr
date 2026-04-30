@@ -495,7 +495,17 @@ async function handleProcess(supabase: any, user: any, req: Request) {
     locked_at: null,
   }).eq("id", jobId);
 
-  const integrationUpdate: any = { total_entries_imported: totalProcessed };
+  // Recompute imported count from REAL leads (truth), not the cursor counter.
+  // Cursor can over- or under-count when partial batches replay the same cursor.
+  let realImported = totalProcessed;
+  if (integration.form_id) {
+    const { count } = await supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", integration.form_id);
+    if (typeof count === "number") realImported = count;
+  }
+  const integrationUpdate: any = { total_entries_imported: realImported };
   if (!hasMore) {
     integrationUpdate.status = "synced";
     integrationUpdate.last_synced_at = new Date().toISOString();

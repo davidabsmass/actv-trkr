@@ -1052,7 +1052,7 @@ export default function Forms() {
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? t("forms.syncingElapsed", { elapsed: syncElapsed }) : t("forms.syncEntries")}
           </Button>
-          <BulkExportButton orgId={orgId} forms={forms} />
+          <BulkExportButton orgId={orgId} forms={forms} startDate={startDate} endDate={endDate} />
           <DateRangeSelector
             selectedDays={days}
             onDaysChange={(d) => { setDays(d); setCustomRange(null); }}

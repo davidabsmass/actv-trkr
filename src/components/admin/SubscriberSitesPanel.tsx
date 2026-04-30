@@ -62,6 +62,7 @@ type Member = {
   joined_at: string;
   invited_at?: string | null;
   invite_accepted_at?: string | null;
+  is_owner?: boolean;
   email: string | null;
   full_name: string | null;
 };

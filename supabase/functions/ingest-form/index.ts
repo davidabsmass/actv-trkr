@@ -728,7 +728,7 @@ Deno.serve(async (req) => {
         // ── Empty-mirror enrichment (always allowed) ──
         if ((existingFieldCount || 0) === 0) {
           if (flatRows.length > 0) {
-            await supabase.from("lead_fields_flat").insert(flatRows);
+            await safeInsertFlatRows(supabase, flatRows);
             console.log(`Enriched empty lead ${canonicalLead.id} with ${flatRows.length} fields (provider=${providerName})`);
             // Refresh data.fields snapshot too
             await supabase.from("leads").update({ data: { ...(parsedFields ? { fields: parsedFields } : {}), external_entry_id: extEntryId } }).eq("id", canonicalLead.id);

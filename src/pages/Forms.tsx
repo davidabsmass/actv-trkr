@@ -580,6 +580,9 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
               ? `Downloads one ${exportFormat.toUpperCase()} per form (up to 5,000 entries each).`
               : `Downloads a single ${exportFormat.toUpperCase()} (up to 5,000 entries).`}
           </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Date range: <span className="font-medium text-foreground">{startDate}</span> → <span className="font-medium text-foreground">{endDate}</span>
+          </p>
         </div>
         <div className="space-y-2">
           <label className="text-xs font-medium text-foreground">Scope</label>

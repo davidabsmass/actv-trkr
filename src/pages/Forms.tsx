@@ -574,7 +574,9 @@ function BulkExportButton({ orgId, forms }: { orgId: string | null; forms: any[]
         <div>
           <h4 className="text-sm font-semibold text-foreground">Export entries</h4>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Download leads as a {exportFormat.toUpperCase()} file.
+            {scope === "all"
+              ? `Downloads one ${exportFormat.toUpperCase()} per form (up to 5,000 entries each).`
+              : `Downloads a single ${exportFormat.toUpperCase()} (up to 5,000 entries).`}
           </p>
         </div>
         <div className="space-y-2">

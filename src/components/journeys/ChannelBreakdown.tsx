@@ -209,7 +209,7 @@ export function ChannelBreakdown({ orgId, startDate, endDate }: Props) {
                     <span className="text-sm font-medium text-foreground">{row.channel}</span>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums shrink-0">
                       <span>{row.sessions.toLocaleString()} sess</span>
-                      <span className="text-foreground">{row.leads.toLocaleString()} leads</span>
+                      <span className="text-foreground">{row.leads.toLocaleString()} conv</span>
                       <span className={`font-semibold ${row.cvr >= 0.05 ? "text-success" : row.cvr >= 0.02 ? "text-foreground" : "text-muted-foreground"}`}>
                         {(row.cvr * 100).toFixed(1)}% CVR
                       </span>

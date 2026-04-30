@@ -24,8 +24,13 @@ import { useTranslation } from "react-i18next";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
+import { useOrg } from "@/contexts/OrgContext";
+import { useOrgRole } from "@/hooks/use-user-role";
 
 export default function Account() {
+  const { orgId } = useOrg();
+  const { isOrgAdmin, loading: roleLoading } = useOrgRole(orgId);
+  const canSeeBilling = isOrgAdmin || roleLoading; // hide once role resolves to non-admin
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get("tab") || "profile";
   const setTab = (v: string) => {

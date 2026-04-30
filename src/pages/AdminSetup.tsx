@@ -931,7 +931,7 @@ export default function AdminSetup() {
 
       {/* Owner-only tab switcher */}
       {isAdminUser && (
-        <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
+        <div className="flex flex-wrap gap-1 mb-6 border-b border-border sm:flex-nowrap sm:overflow-x-auto">
           <button
             onClick={() => switchMainTab("metrics")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeMainTab === "metrics" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}

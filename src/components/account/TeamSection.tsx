@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, Trash2, Loader2, ShieldAlert, History, Crown, Mail, RotateCw, X } from "lucide-react";
+import { Users, UserPlus, Trash2, Loader2, ShieldAlert, History, Crown, Mail, RotateCw, X, LifeBuoy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -22,16 +22,18 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type Role = "admin" | "manager";
+type Role = "admin" | "manager" | "actv_support";
 
 const ROLE_LABEL: Record<Role, string> = {
   admin: "Admin",
   manager: "Manager",
+  actv_support: "ACTV TRKR Support",
 };
 
 const ROLE_HELP: Record<Role, string> = {
   admin: "Full access: manage team, billing, sites, and settings.",
   manager: "Operational access. Cannot manage team, billing, or destructive settings.",
+  actv_support: "Internal ACTV TRKR support team. Can view dashboards, edit Key Actions, and run exports — never manages settings, team, or billing.",
 };
 
 export default function TeamSection() {
@@ -266,6 +268,7 @@ export default function TeamSection() {
                 <SelectContent>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="actv_support">ACTV TRKR Support</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -404,6 +407,21 @@ export default function TeamSection() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                      {m.role === "actv_support" && !isOwner && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] gap-1 bg-indigo-500/15 text-indigo-300 border border-indigo-400/30"
+                            >
+                              <LifeBuoy className="h-3 w-3" /> Support
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[260px]">
+                            Internal ACTV TRKR support — read-only access to dashboards, reports, and exports. No settings, team, or billing access.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       {isOwner ? (
                         <Badge variant="default" className="text-[10px]">Owner</Badge>
                       ) : (
@@ -423,6 +441,7 @@ export default function TeamSection() {
                                 <SelectContent>
                                   <SelectItem value="manager">Manager</SelectItem>
                                   <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="actv_support">ACTV TRKR Support</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>

@@ -52,9 +52,23 @@ export function useOrgRole(orgId: string | null) {
     enabled: !!orgId && !!user?.id,
   });
 
+  const role = orgRole ?? null;
+  const isOrgAdmin = role === "admin";
+  const isOrgManager = role === "manager";
+  const isActvSupport = role === "actv_support";
+
   return {
-    orgRole: orgRole ?? null,
-    isOrgAdmin: orgRole === "admin",
+    orgRole: role,
+    isOrgAdmin,
+    isOrgManager,
+    isActvSupport,
+    // Capability helpers — single source of truth for gating UI.
+    canManageSettings: isOrgAdmin,
+    canManageTeam: isOrgAdmin,
+    canManageBilling: isOrgAdmin,
+    canEditGoals: isOrgAdmin || isOrgManager || isActvSupport,
+    canExport: isOrgAdmin || isOrgManager || isActvSupport,
+    canViewDashboard: !!role,
     loading: isLoading,
   };
 }

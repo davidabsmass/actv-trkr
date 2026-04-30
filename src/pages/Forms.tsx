@@ -5,7 +5,10 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
+import { useOrgRole, useUserRole } from "@/hooks/use-user-role";
 import { useForms } from "@/hooks/use-dashboard-data";
+import { ExportConfirmDialog } from "@/components/exports/ExportConfirmDialog";
+import { logExportAudit, resolveExportRole } from "@/lib/export-audit";
 import { format, subDays, startOfDay } from "date-fns";
 import { Search, ChevronRight, ArrowLeft, FileText, BarChart3, Settings2, Download, CalendarIcon, Archive, ArchiveRestore, AlertCircle, RefreshCw, Upload, ArrowUpCircle, Trash2, PowerOff, Loader2, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -475,10 +478,13 @@ function AvadaResetBanner({ orgId, forms, queryClient, syncBlocked }: { orgId: s
 }
 function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string | null; forms: any[] | undefined; startDate: string; endDate: string }) {
   const { session } = useAuth();
+  const { orgRole } = useOrgRole(orgId);
+  const { isAdmin: isPlatformAdmin } = useUserRole();
   const [open, setOpen] = useState(false);
   const [formId, setFormId] = useState<string>("");
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [pending, setPending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Forms eligible for export (everything except archived)
   const eligibleForms = useMemo(
@@ -545,6 +551,17 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
+
+    // Audit log (best-effort)
+    await logExportAudit({
+      orgId: orgId!,
+      userId: session!.user.id,
+      roleAtExport: resolveExportRole({ orgRole, isPlatformAdmin }),
+      exportType: `forms_${exportFormat}`,
+      exportScope: `${JSON.stringify(filters)}:from=${startDate}:to=${endDate}`,
+      exportJobId: inserted.id,
+      metadata: { source: "Forms.BulkExportButton" },
+    });
 
     if (!completed || completed.status === "failed") {
       return { ok: false, rows: 0, empty: false, filePath: null };
@@ -629,11 +646,16 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-          <Button size="sm" onClick={runExport} disabled={pending || !formId}>
+          <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={pending || !formId}>
             {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Exporting…</> : "Export"}
           </Button>
         </div>
       </PopoverContent>
+      <ExportConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={runExport}
+      />
     </Popover>
   );
 }
@@ -1510,6 +1532,8 @@ function FormEntries({
   onAutoOpenConsumed?: () => void;
 }) {
   const { session } = useAuth();
+  const { orgRole } = useOrgRole(orgId);
+  const { isAdmin: isPlatformAdmin } = useUserRole();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1517,6 +1541,7 @@ function FormEntries({
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [showExport, setShowExport] = useState(autoOpenExport);
+  const [confirmExportOpen, setConfirmExportOpen] = useState(false);
 
   // Clear the URL flag after first consumption so refresh doesn't re-open.
   useEffect(() => {
@@ -1627,6 +1652,17 @@ function FormEntries({
         await new Promise((r) => setTimeout(r, 1000));
       }
 
+      // Audit log (best-effort)
+      await logExportAudit({
+        orgId,
+        userId: session.user.id,
+        roleAtExport: resolveExportRole({ orgRole, isPlatformAdmin }),
+        exportType: `form_entries_${exportFormat}`,
+        exportScope: `form:${formId}${dateFrom ? `:from=${format(dateFrom, "yyyy-MM-dd")}` : ""}${dateTo ? `:to=${format(dateTo, "yyyy-MM-dd")}` : ""}`,
+        exportJobId: inserted.id,
+        metadata: { source: "Forms.FormEntries" },
+      });
+
       return completedJob;
     },
     onSuccess: async (job) => {
@@ -1715,9 +1751,14 @@ function FormEntries({
                 <SelectItem value="xlsx">XLSX</SelectItem>
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={() => createExport.mutate()} disabled={createExport.isPending}>
+            <Button size="sm" onClick={() => setConfirmExportOpen(true)} disabled={createExport.isPending}>
               {createExport.isPending ? "Queuing…" : `Export ${dateLabel}`}
             </Button>
+            <ExportConfirmDialog
+              open={confirmExportOpen}
+              onOpenChange={setConfirmExportOpen}
+              onConfirm={() => createExport.mutate()}
+            />
           </div>
         </div>
       )}

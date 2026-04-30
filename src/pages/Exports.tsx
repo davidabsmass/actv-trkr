@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useOrg } from "@/hooks/use-org";
 import { useAuth } from "@/hooks/use-auth";
+import { useOrgRole, useUserRole } from "@/hooks/use-user-role";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ExportConfirmDialog } from "@/components/exports/ExportConfirmDialog";
+import { logExportAudit, resolveExportRole } from "@/lib/export-audit";
 
 type ExportFormat = "csv" | "xlsx";
 
@@ -32,11 +35,18 @@ export default function Exports() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const { data: forms, isLoading: formsLoading } = useForms(orgId);
+  const { orgRole } = useOrgRole(orgId);
+  const { isAdmin: isPlatformAdmin } = useUserRole();
 
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [pendingExport, setPendingExport] = useState<
+    | { kind: "all" }
+    | { kind: "form"; formId: string; from?: Date; to?: Date }
+    | null
+  >(null);
 
   const selectedForm = forms?.find((f) => f.id === selectedFormId);
 
@@ -109,6 +119,20 @@ export default function Exports() {
         .eq("id", inserted.id)
         .single();
 
+      // Audit log (best-effort, never blocks)
+      const scope = formId
+        ? `form:${formId}${from ? `:from=${format(from, "yyyy-MM-dd")}` : ""}${to ? `:to=${format(to, "yyyy-MM-dd")}` : ""}`
+        : `all_forms${from ? `:from=${format(from, "yyyy-MM-dd")}` : ""}${to ? `:to=${format(to, "yyyy-MM-dd")}` : ""}`;
+      await logExportAudit({
+        orgId,
+        userId: session.user.id,
+        roleAtExport: resolveExportRole({ orgRole, isPlatformAdmin }),
+        exportType: `leads_${exportFormat}`,
+        exportScope: scope,
+        exportJobId: inserted.id,
+        metadata: { source: "Exports", form_id: formId ?? null },
+      });
+
       return completedJob;
     },
     onSuccess: (job) => {
@@ -124,6 +148,15 @@ export default function Exports() {
     },
     onError: (err: any) => toast.error(err.message || "Failed to create export"),
   });
+
+  const runPendingExport = () => {
+    if (!pendingExport) return;
+    if (pendingExport.kind === "all") {
+      createExport.mutate({});
+    } else {
+      createExport.mutate({ formId: pendingExport.formId, from: pendingExport.from, to: pendingExport.to });
+    }
+  };
 
   const handleDownload = async (filePath: string) => {
     const { data, error } = await supabase.storage.from("exports").createSignedUrl(filePath, 60);
@@ -212,7 +245,7 @@ export default function Exports() {
               </SelectContent>
             </Select>
             <Button
-              onClick={() => createExport.mutate({ formId: selectedForm.id, from: dateFrom, to: dateTo })}
+              onClick={() => setPendingExport({ kind: "form", formId: selectedForm.id, from: dateFrom, to: dateTo })}
               disabled={createExport.isPending}
             >
               {createExport.isPending ? "Queuing…" : `Export ${dateLabel}`}
@@ -222,6 +255,12 @@ export default function Exports() {
 
         {/* Export history for this form */}
         <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+
+        <ExportConfirmDialog
+          open={!!pendingExport}
+          onOpenChange={(open) => { if (!open) setPendingExport(null); }}
+          onConfirm={runPendingExport}
+        />
       </div>
     );
   }
@@ -255,7 +294,7 @@ export default function Exports() {
               <SelectItem value="xlsx">XLSX</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => createExport.mutate({})} disabled={createExport.isPending}>
+          <Button onClick={() => setPendingExport({ kind: "all" })} disabled={createExport.isPending}>
             {createExport.isPending ? "Queuing…" : "Export All"}
           </Button>
         </div>
@@ -298,6 +337,12 @@ export default function Exports() {
 
       {/* Export History */}
       <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} />
+
+      <ExportConfirmDialog
+        open={!!pendingExport}
+        onOpenChange={(open) => { if (!open) setPendingExport(null); }}
+        onConfirm={runPendingExport}
+      />
     </div>
   );
 }

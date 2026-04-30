@@ -1,77 +1,50 @@
-import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Mail } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 
+/**
+ * Email changes are intentionally disabled. We tie subscription history,
+ * trial eligibility, and Stripe customer records to the signup email, so
+ * changing it would let a user reset their 14-day trial repeatedly.
+ *
+ * If a customer has a legitimate need to change their email (e.g. a real
+ * domain change), they can contact support and we'll handle it manually
+ * after verifying identity.
+ */
 export default function ChangeEmailCard() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [newEmail, setNewEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const submit = async () => {
-    const trimmed = newEmail.trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
-      toast({ title: "Enter a valid email address", variant: "destructive" });
-      return;
-    }
-    if (trimmed === user?.email?.toLowerCase()) {
-      toast({ title: "That's already your current email", variant: "destructive" });
-      return;
-    }
-    setBusy(true);
-    try {
-      const { error } = await supabase.auth.updateUser(
-        { email: trimmed },
-        { emailRedirectTo: `${window.location.origin}/account` },
-      );
-      if (error) throw error;
-      toast({
-        title: "Verification email sent",
-        description: `Check ${trimmed} for a confirmation link. Your email won't change until you confirm.`,
-      });
-      setNewEmail("");
-    } catch (e: any) {
-      toast({ title: "Couldn't update email", description: e.message, variant: "destructive" });
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Mail className="h-4 w-4" /> Change email
+          <Mail className="h-4 w-4" /> Email address
         </CardTitle>
         <CardDescription>
-          We'll send a confirmation link to your new address. Your email only changes once you click it.
+          For account security and billing integrity, your email can't be changed from here.
+          Contact support if you need to update it.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Current email</Label>
-          <Input value={user?.email || ""} disabled className="bg-muted" />
+          <div className="relative">
+            <Input value={user?.email || ""} disabled className="bg-muted pr-9" />
+            <Lock className="h-3.5 w-3.5 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="new-email" className="text-xs">New email</Label>
-          <Input
-            id="new-email"
-            type="email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            placeholder="you@example.com"
-            autoComplete="email"
-          />
-        </div>
-        <Button size="sm" onClick={submit} disabled={busy || !newEmail}>
-          {busy ? "Sending…" : "Send confirmation"}
-        </Button>
+        <p className="text-xs text-muted-foreground">
+          Need to change this? Email{" "}
+          <a
+            href="mailto:support@actvtrkr.com"
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            support@actvtrkr.com
+          </a>{" "}
+          and we'll help.
+        </p>
       </CardContent>
     </Card>
   );

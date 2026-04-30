@@ -1532,6 +1532,8 @@ function FormEntries({
   onAutoOpenConsumed?: () => void;
 }) {
   const { session } = useAuth();
+  const { orgRole } = useOrgRole(orgId);
+  const { isAdmin: isPlatformAdmin } = useUserRole();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1539,6 +1541,7 @@ function FormEntries({
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [showExport, setShowExport] = useState(autoOpenExport);
+  const [confirmExportOpen, setConfirmExportOpen] = useState(false);
 
   // Clear the URL flag after first consumption so refresh doesn't re-open.
   useEffect(() => {
@@ -1648,6 +1651,17 @@ function FormEntries({
         }
         await new Promise((r) => setTimeout(r, 1000));
       }
+
+      // Audit log (best-effort)
+      await logExportAudit({
+        orgId,
+        userId: session.user.id,
+        roleAtExport: resolveExportRole({ orgRole, isPlatformAdmin }),
+        exportType: `form_entries_${exportFormat}`,
+        exportScope: `form:${formId}${dateFrom ? `:from=${format(dateFrom, "yyyy-MM-dd")}` : ""}${dateTo ? `:to=${format(dateTo, "yyyy-MM-dd")}` : ""}`,
+        exportJobId: inserted.id,
+        metadata: { source: "Forms.FormEntries" },
+      });
 
       return completedJob;
     },

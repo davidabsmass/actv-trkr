@@ -92,7 +92,7 @@ function FormPerformanceCard({
           <p className="text-sm font-semibold text-foreground truncate" title={topForm?.name || "—"}>{topForm?.name || "—"}</p>
         </div>
         <div className="p-3 rounded-md bg-muted/40">
-          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Site CVR</p>
+          <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{cvrLabel}</p>
           <p className="text-lg font-bold text-foreground">{currentCvr}%</p>
         </div>
       </div>

@@ -318,7 +318,7 @@ export default function SubscriberSitesPanel() {
   const handleSaveMember = async (orgId: string, userId: string) => {
     setActionLoading(`save-${userId}`);
     try {
-      const { error } = await supabase.functions.invoke("admin-manage-user", {
+      const { data, error } = await supabase.functions.invoke("admin-manage-user", {
         body: {
           action: "update_org_member",
           org_id: orgId,
@@ -327,12 +327,29 @@ export default function SubscriberSitesPanel() {
           role: editRole,
         },
       });
-      if (error) throw error;
+
+      // Edge function returned a non-2xx — try to read the JSON error body.
+      if (error) {
+        let serverMsg = "";
+        try {
+          const ctx = (error as any).context;
+          if (ctx?.json) serverMsg = (await ctx.json())?.error || "";
+          else if (ctx?.text) serverMsg = await ctx.text();
+        } catch (_) { /* ignore */ }
+        toast.error(serverMsg || error.message || "Failed to update member");
+        return;
+      }
+
+      if (data && (data as any).error) {
+        toast.error((data as any).error);
+        return;
+      }
+
       toast.success("Member updated");
       cancelEditMember();
       refreshMembers();
     } catch (err: any) {
-      toast.error(err.message || "Failed to update member");
+      toast.error(err?.message || "Failed to update member");
     } finally {
       setActionLoading(null);
     }

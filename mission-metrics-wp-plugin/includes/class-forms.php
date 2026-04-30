@@ -2042,29 +2042,33 @@ class MM_Forms {
 					$submitted_at = $row->$ts_col;
 				}
 
-				$fields = $best_candidate['fields'] ?? array();
+				$fields = array();
 
-				// ALWAYS query Avada secondary tables to fill in any fields missing from primary extraction.
-				// Some fields (e.g. Phone) are stored only in secondary tables like wp_fusion_form_submission_data.
+				// v1.21.5: Prefer secondary submission-data table FIRST. It stores one row per
+				// field with explicit label/type/value, eliminating the comma-split drift that
+				// produced "Field 11"/"Field 12" scrambling on Avada forms with consent boxes.
 				if ( $rid > 0 ) {
-					$secondary_fields = self::extract_avada_secondary_fields( $rid );
-					if ( ! empty( $secondary_fields ) ) {
-						if ( empty( $fields ) ) {
-							$fields = $secondary_fields;
-						} else {
-							// Merge: add any secondary fields whose labels aren't already present
-							$existing_labels = array();
-							foreach ( $fields as $f ) {
-								$existing_labels[] = strtolower( trim( $f['label'] ?? $f['name'] ?? '' ) );
-							}
-							$next_id = count( $fields );
-							foreach ( $secondary_fields as $sf ) {
-								$sf_label = strtolower( trim( $sf['label'] ?? $sf['name'] ?? '' ) );
-								if ( $sf_label !== '' && ! in_array( $sf_label, $existing_labels, true ) ) {
-									$sf['id'] = $next_id++;
-									$fields[] = $sf;
-									$existing_labels[] = $sf_label;
-								}
+					$fields = self::extract_avada_secondary_fields( $rid );
+				}
+
+				// Fallback to primary CSV/blob extraction only if secondary returned nothing.
+				if ( empty( $fields ) ) {
+					$fields = $best_candidate['fields'] ?? array();
+				} else {
+					// Merge any extra primary fields whose labels are missing from secondary.
+					$primary_fields = $best_candidate['fields'] ?? array();
+					if ( ! empty( $primary_fields ) ) {
+						$existing_labels = array();
+						foreach ( $fields as $f ) {
+							$existing_labels[] = strtolower( trim( $f['label'] ?? $f['name'] ?? '' ) );
+						}
+						$next_id = count( $fields );
+						foreach ( $primary_fields as $pf ) {
+							$pf_label = strtolower( trim( $pf['label'] ?? $pf['name'] ?? '' ) );
+							if ( $pf_label !== '' && ! in_array( $pf_label, $existing_labels, true ) && ! preg_match( '/^field\s+\d+$/i', $pf_label ) ) {
+								$pf['id'] = $next_id++;
+								$fields[] = $pf;
+								$existing_labels[] = $pf_label;
 							}
 						}
 					}

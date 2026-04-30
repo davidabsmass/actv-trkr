@@ -1,68 +1,125 @@
-## Real root cause (revised)
+Yes — I can fix this, and I agree it has to be treated as a launch blocker, not a “patch and hope” issue.
 
-I was wrong before. This is **not** a Gravity Forms label-collision issue. The scrambled entries are all **Avada** (`provider=avada`, `external_entry_id=avada_db_*`) pulled in by the WP-side backfill, and the bug is in **one function** in the plugin: `parse_avada_csv_format()` in `mission-metrics-wp-plugin/includes/class-forms.php`.
+The important finding from inspection is this: the latest parser fix can correctly parse newly re-sent Avada entries, but the backend currently deduplicates existing entries and then refuses to overwrite their already-stored field rows. That means the bad Apyx rows can stay scrambled even after the plugin is fixed and even after WordPress re-sends them. That is why this has felt like it is not getting clean.
 
-### The bug
+Also: the live logs show `livesinthebalance.org` still has a count mismatch on Gravity Form 7: WordPress reports 1353 active entries while the app has 1352. Apyx still has 9 Avada leads with `Field 11` / similar labels in the app copy.
 
-When Avada stores a submission, it stores three parallel CSV strings: `data`, `field_types`, `field_labels`. The parser:
+Nothing in this plan writes to or deletes from WordPress. WordPress remains read-only and is the source of truth.
 
-1. Builds `real_types` = field_types **filtered** to drop `submit/notice/html/hidden/captcha/honeypot/section/page` entries, **remembering each kept entry's original index**.
-2. Then, for each kept type at filtered index `fi`:
-   - reads `values[fi]` ← **filtered** index
-   - reads `labels[ real_types[fi].index ]` ← **original** index
+## Plan
 
-Values use the filtered index; labels use the original index. As soon as a skipped slot exists in the middle of the form (e.g. a hidden consent field, an HTML divider, a captcha), every value past that point shifts one slot to the left of its label. The real Phone/Zip values then fall off the visible labels and surface as "Field 11" / "Field 12".
+### 1. Stop relying on dashboard-row deletion for healing
+I will change the backend ingestion path so a trusted WordPress backfill can refresh an existing mirrored lead instead of being blocked by deduplication.
 
-The Apyx forms ("Physician General", "Patient General", "Renew You, Near You") had a consent checkbox / hidden field added recently — that's why **only the newest entries** are scrambled while older entries on the same form look fine. Same pattern, same root cause, every affected form.
+Specifically, when an incoming backfill payload matches an existing lead by canonical WordPress entry ID:
 
-The Gravity Forms patch I proposed earlier is **not needed**. The Gravity entries we sampled all parse correctly.
+- Update the dashboard lead’s mirrored `data.fields` from the fresh WordPress payload.
+- Replace that lead’s `lead_fields_flat` rows in Lovable Cloud only.
+- Keep the same lead record and same count.
+- Only do this for WordPress-origin backfill payloads, not random client-side submissions.
+- Prefer the richer/correct payload when the existing stored fields contain generic `Field 11`, `Field 12`, etc., or when the incoming field set is more complete.
 
-## Fix — single PHP function
+This gives us a safe “heal in place” mechanism. It does not delete WordPress entries, and it avoids deleting dashboard lead rows unless absolutely necessary.
 
-In `parse_avada_csv_format()`, when iterating `real_types`, read **both** the value and the label from the original index:
+### 2. Harden Avada/Fusion field extraction
+I will bump the plugin to a new version and make Avada backfill use the most authoritative field source available.
 
-```php
-for ( $fi = 0; $fi < count( $real_types ); $fi++ ) {
-    $orig_idx = $real_types[ $fi ]['index'];     // original column position
-    $type     = strtolower( $real_types[ $fi ]['type'] );
-    $val      = trim( (string) ( $values[ $orig_idx ] ?? '' ) );  // ← was $values[$fi]
-    if ( $val === '' || strtolower( $val ) === 'array' ) continue;
+Changes:
 
-    $raw_label = $labels[ $orig_idx ] ?? '';
-    $label     = $raw_label ?: self::infer_avada_field_name( $type, $val, $orig_idx + 1 );
+- Prefer Avada’s secondary submission-field table when present, because it stores field rows separately and avoids comma-splitting problems.
+- Use primary CSV/blob parsing only as fallback.
+- Preserve real field order.
+- Avoid label/value drift when hidden, checkbox, consent, captcha, submit, or HTML fields appear mid-form.
+- Keep consent-type fields from shifting the rest of the entry.
+- Ensure old mirrored rows can be refreshed through the backend fix above.
 
-    $fields[] = array(
-        'id'    => $orig_idx,
-        'name'  => $label,
-        'label' => $label,
-        'type'  => $real_types[ $fi ]['type'],
-        'value' => $val,
-    );
-}
-```
+### 3. Expand historical backfill for the major plugins
+The plugin currently discovers more providers than it fully backfills. I will close that gap.
 
-That's the entire functional change. Defensive guard: if `values` array is shorter than `field_types` (older entries), the `?? ''` skip keeps us safe.
+Target providers for count + entry parity:
 
-## Steps
+- Gravity Forms
+- Avada / Fusion Forms
+- WPForms
+- Contact Form 7, when Flamingo stores entries
+- Ninja Forms
+- Fluent Forms
 
-1. **Plugin patch (v1.21.4)** — fix `parse_avada_csv_format()` in `class-forms.php` as above. Bump version in all 4 places per the Plugin Version Checklist memory.
-2. **Run** `node scripts/plugin-artifacts.mjs` to sync the deploy artifact (per Plugin Version Sync memory — never manually edit then deploy).
-3. **Heal historical data** — once Apyx updates to v1.21.4, re-run backfill for the 3 affected Avada forms (10098 Physician General, 10102 Patient General, 54 Renew You, Near You). The existing leads (matched by `external_entry_key`) will be **enriched/overwritten** by `ingest-form` with the corrected fields. No DB delete needed; the upsert already handles re-import.
-4. **No Lovable-side code changes.** No edge function changes. No queue changes (the queue advance-after-3-retries fix from the prior loop already handled the stuck-job symptom and stays in place).
+Provider-specific fixes:
 
-## What you'll need to do
+- Ninja Forms: scope stored submissions to the specific form instead of risking cross-form counts.
+- Fluent Forms: fix the status query so unread submissions from other forms cannot be counted for the wrong form.
+- CF7: backfill from Flamingo where available; clearly treat CF7 without Flamingo as “no stored historical entries available in WordPress”.
+- WPForms and Gravity Forms: keep cursor-based paginated backfill so large sites do not time out.
 
-- Update the plugin on apyxmedical.com to v1.21.4 (this fixes future submissions immediately).
-- After update, I'll trigger a re-backfill on the 3 Avada forms to repair the existing scrambled entries.
+### 4. Make count parity deterministic and safer under load
+I will adjust the backfill orchestration so the app does not hammer WordPress during large imports.
 
-## Affected scope
+Current logs show `livesinthebalance.org` hit WordPress `429 Too Many Requests` during continuation backfills. I will:
 
-| Form | Provider | Currently affected entries |
-|---|---|---|
-| Physician General (10098) | Avada | latest ~3–5 entries |
-| Patient General (10102) | Avada | latest entries with consent field |
-| Renew You, Near You (54) | Avada | any new entries with skipped slots |
-| Apyx Contact Page (Gravity) | gravity_forms | **not affected** — was a stuck-queue symptom, already fixed |
-| All other Gravity forms | gravity_forms | **not affected** |
+- Remove/reduce competing parallel backfill workers that can trigger rate limits.
+- Make continuation more conservative.
+- Treat WordPress rate limiting as “pause and continue later”, not as a silent partial success.
+- Keep WordPress entry IDs as the authority for app counts.
+- After each sync, compare:
+  - WordPress active entry count
+  - App active mirrored lead count
+  - Missing canonical entry IDs
+  - Duplicate canonical entry IDs
 
-Approve and I'll ship v1.21.4 + trigger the heal pass.
+### 5. Heal the two affected live sites after the code is fixed
+After the ingestion/backfill changes are in place, I will run a forced WordPress-origin re-sync/backfill for:
+
+- `apyxmedical.com`
+- `livesinthebalance.org`
+
+Expected results:
+
+- Apyx: the 9 scrambled Avada mirrored entries are refreshed in place from WordPress using the fixed parser.
+- Lives in the Balance: Gravity Form 7 is backfilled until app count matches the 1353 active entries WordPress reports.
+- No WordPress entries are deleted or edited.
+- Any replacement of field rows happens only inside the dashboard mirror.
+
+### 6. Verification before calling it done
+I will verify with database reads and logs:
+
+- Apyx Avada forms have zero active app entries containing `Field 1N` generic scrambled labels.
+- Apyx Avada active counts match WordPress-reported entry IDs.
+- Lives in the Balance Gravity Form 7 app count matches the WordPress count.
+- No duplicate active app leads exist for the same canonical WordPress entry ID.
+- Backfill logs show successful batches with no persistent 429/timeout loop.
+
+### 7. Release packaging
+Because this touches the WordPress plugin, I will follow the plugin version rules:
+
+- Bump the plugin version.
+- Regenerate plugin artifacts with `scripts/plugin-artifacts.mjs`.
+- Update the latest zip, plugin manifest, update-check function, and serve-zip function together.
+
+## Technical details
+
+The key code areas I will change are:
+
+- `supabase/functions/ingest-form/index.ts`
+  - Add safe existing-lead refresh for trusted backfills.
+  - Replace stale mirrored field rows when the incoming WordPress payload is authoritative.
+
+- `mission-metrics-wp-plugin/includes/class-forms.php`
+  - Harden Avada extraction.
+  - Add missing backfill adapters for CF7/Flamingo, Ninja Forms, and Fluent Forms.
+  - Fix provider-specific count scoping.
+
+- `supabase/functions/trigger-site-sync/index.ts`
+  - Make continuation/backfill less aggressive and more rate-limit aware.
+  - Improve parity reporting after sync.
+
+- Plugin artifact outputs
+  - Regenerated automatically after the version bump.
+
+## Safety commitment
+
+I will not perform any write/delete operation against the connected WordPress sites. The only changes are:
+
+- Code changes to the ACTV TRKR plugin and backend functions.
+- Dashboard mirror repairs inside Lovable Cloud.
+- Read-only pulls from WordPress to rebuild the dashboard mirror from the client’s true WordPress entries.

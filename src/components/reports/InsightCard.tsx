@@ -1,19 +1,40 @@
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Finding } from "@/lib/insight-engine";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function SummaryCard({
-  label, value, change, changeLabel, summary,
+  label, value, change, changeLabel, summary, tooltip, footnote,
 }: {
   label: string;
   value: string | number;
   change?: number | null;
   changeLabel?: string;
   summary?: string;
+  /** Optional explanation rendered behind an info icon next to the label. */
+  tooltip?: React.ReactNode;
+  /** Small line shown beneath the value (e.g. category breakdown). */
+  footnote?: React.ReactNode;
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-1">{label}</p>
+      <div className="flex items-center gap-1.5 mb-1">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
+        {tooltip && (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="text-muted-foreground/60 hover:text-foreground transition-colors">
+                  <Info className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[260px] text-xs leading-relaxed">
+                {tooltip}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
       <div className="flex items-end gap-2 mb-1.5">
         <span className="text-2xl font-bold text-foreground">{value}</span>
         {change !== null && change !== undefined && (

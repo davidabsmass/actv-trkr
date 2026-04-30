@@ -477,7 +477,7 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
     if (fnError) throw new Error("Export processing failed");
 
     let completed: any = null;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 90; i++) {
       const { data: job } = await supabase
         .from("export_jobs")
         .select("file_path, status, row_count")

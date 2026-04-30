@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.21.3";
+const CURRENT_PLUGIN_VERSION = "1.21.4";
 const CURRENT_PLUGIN_SHA256 = "f13c30cfa34fee7663b54376549d4c3372bce60bb17c03767b54cc335ef65a29";
 
 const CHANGELOG = `
+## 1.21.4
+- FIX (CRITICAL — Avada/Fusion forms): Field labels and values no longer drift out of alignment when a form contains skipped field types (submit, hidden, captcha, html, notice, honeypot, section, page) in the middle of the form. Previously, adding a consent checkbox or hidden field in the middle of an Avada form would scramble all subsequent entries — labels stayed put while values shifted left, and real values fell off the end as "Field 11" / "Field 12". The CSV parser now reads both the value and the label from the same original column index. Affects Avada/Fusion forms ingested via WP DB backfill.
+
 ## 1.21.1
 - COSMETIC: "Test Connection" button on Settings → General is now labelled "Confirm Connection". After a successful connection check the page now points users back to their ACTV TRKR dashboard to finish setup.
 

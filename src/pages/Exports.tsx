@@ -70,7 +70,7 @@ export default function Exports() {
     },
   });
 
-  // Count leads per form
+  // Count leads per form (matches export filter — excludes trashed)
   const { data: leadCounts } = useQuery({
     queryKey: ["lead_counts_by_form", orgId],
     queryFn: async () => {
@@ -81,12 +81,36 @@ export default function Exports() {
           .from("leads")
           .select("*", { count: "exact", head: true })
           .eq("org_id", orgId)
-          .eq("form_id", form.id);
+          .eq("form_id", form.id)
+          .neq("status", "trashed");
         if (!error) counts[form.id] = count || 0;
       }
       return counts;
     },
     enabled: !!orgId && !!forms && forms.length > 0,
+  });
+
+  // 7d / 30d counts for the currently selected form, so users see what
+  // window will actually have data before they pick a date range.
+  const { data: selectedFormCounts } = useQuery({
+    queryKey: ["selected_form_window_counts", orgId, selectedFormId],
+    queryFn: async () => {
+      if (!orgId || !selectedFormId) return null;
+      const now = new Date();
+      const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const d90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const base = () =>
+        supabase.from("leads").select("*", { count: "exact", head: true })
+          .eq("org_id", orgId).eq("form_id", selectedFormId).neq("status", "trashed");
+      const [r7, r30, r90] = await Promise.all([
+        base().gte("submitted_at", d7),
+        base().gte("submitted_at", d30),
+        base().gte("submitted_at", d90),
+      ]);
+      return { d7: r7.count || 0, d30: r30.count || 0, d90: r90.count || 0 };
+    },
+    enabled: !!orgId && !!selectedFormId,
   });
 
   const createExport = useMutation({

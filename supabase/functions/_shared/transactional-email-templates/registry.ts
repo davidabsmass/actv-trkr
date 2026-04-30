@@ -43,6 +43,12 @@ import { template as lifecycleFinalNotice } from './lifecycle-final-notice.tsx'
 // Team management
 import { template as teamInvite } from './team-invite.tsx'
 
+// Onboarding sequence
+import { template as onboardingDay1 } from './onboarding-day1-key-action.tsx'
+import { template as onboardingDay3 } from './onboarding-day3-ai-leads.tsx'
+import { template as onboardingDay7 } from './onboarding-day7-visitor-journeys.tsx'
+import { template as onboardingDay12 } from './onboarding-day12-trial-ending.tsx'
+
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome': welcomeEmail,
   'subscription-cancelled': subscriptionCancelled,
@@ -74,4 +80,9 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'lifecycle-final-notice': lifecycleFinalNotice,
   // Team
   'team-invite': teamInvite,
+  // Onboarding sequence
+  'onboarding-day1-key-action': onboardingDay1,
+  'onboarding-day3-ai-leads': onboardingDay3,
+  'onboarding-day7-visitor-journeys': onboardingDay7,
+  'onboarding-day12-trial-ending': onboardingDay12,
 }

@@ -1158,7 +1158,14 @@ export default function Forms() {
       )}
 
       {/* Summary Row */}
-      <FormsSummary orgId={orgId} days={days} />
+      <FormsSummary
+        orgId={orgId}
+        startDate={startDate}
+        endDate={endDate}
+        rangeLabel={customRange ? "selected range" : t("forms.lastDays", { days: days ?? 30 })}
+        forms={forms}
+        leads={leadsData}
+      />
 
       {/* Form List */}
       <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">

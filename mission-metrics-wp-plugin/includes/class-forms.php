@@ -2766,26 +2766,29 @@ class MM_Forms {
 						$submitted_at = $row->$ts_col;
 					}
 
-					$fields = $best_candidate['fields'] ?? array();
+					$fields = array();
 
+					// v1.21.5: Prefer secondary submission-data table FIRST (per-row label/value),
+					// fall back to primary CSV/blob extraction only when secondary is empty.
 					if ( $rid > 0 ) {
-						$secondary_fields = self::extract_avada_secondary_fields( $rid );
-						if ( ! empty( $secondary_fields ) ) {
-							if ( empty( $fields ) ) {
-								$fields = $secondary_fields;
-							} else {
-								$existing_labels = array();
-								foreach ( $fields as $field ) {
-									$existing_labels[] = strtolower( trim( $field['label'] ?? $field['name'] ?? '' ) );
-								}
-								$next_id = count( $fields );
-								foreach ( $secondary_fields as $secondary_field ) {
-									$secondary_label = strtolower( trim( $secondary_field['label'] ?? $secondary_field['name'] ?? '' ) );
-									if ( $secondary_label !== '' && ! in_array( $secondary_label, $existing_labels, true ) ) {
-										$secondary_field['id'] = $next_id++;
-										$fields[] = $secondary_field;
-										$existing_labels[] = $secondary_label;
-									}
+						$fields = self::extract_avada_secondary_fields( $rid );
+					}
+					if ( empty( $fields ) ) {
+						$fields = $best_candidate['fields'] ?? array();
+					} else {
+						$primary_fields = $best_candidate['fields'] ?? array();
+						if ( ! empty( $primary_fields ) ) {
+							$existing_labels = array();
+							foreach ( $fields as $field ) {
+								$existing_labels[] = strtolower( trim( $field['label'] ?? $field['name'] ?? '' ) );
+							}
+							$next_id = count( $fields );
+							foreach ( $primary_fields as $primary_field ) {
+								$primary_label = strtolower( trim( $primary_field['label'] ?? $primary_field['name'] ?? '' ) );
+								if ( $primary_label !== '' && ! in_array( $primary_label, $existing_labels, true ) && ! preg_match( '/^field\s+\d+$/i', $primary_label ) ) {
+									$primary_field['id'] = $next_id++;
+									$fields[] = $primary_field;
+									$existing_labels[] = $primary_label;
 								}
 							}
 						}

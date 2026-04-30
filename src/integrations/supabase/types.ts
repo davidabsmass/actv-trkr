@@ -9182,6 +9182,7 @@ export type Database = {
         Returns: undefined
       }
       recompute_all_account_health: { Args: never; Returns: number }
+      reconcile_form_integration_counters: { Args: never; Returns: undefined }
       record_security_release_check: {
         Args: { p_org_id: string }
         Returns: Json

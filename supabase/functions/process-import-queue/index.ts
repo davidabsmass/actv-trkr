@@ -288,14 +288,50 @@ async function processJob(supabase: any, job: any) {
       const errorCount = Number(wpResult.errors || 0);
 
       if (errorCount > 0 || (batchCount > 0 && processed < batchCount)) {
+        // Same-cursor retry guard: if we've already retried this cursor 3+ times
+        // with shrinking batches and STILL get partial failures, the bad entries
+        // are deterministically un-ingestable (malformed payload, missing domain,
+        // etc.). Advance the cursor so the rest of the form can finish importing.
+        // The reconciler picks up any genuinely-missing entries on its next pass.
+        const sameCursorRetries = (job.retry_count || 0) + 1;
+        const MAX_SAME_CURSOR_RETRIES = 3;
+
+        if (sameCursorRetries >= MAX_SAME_CURSOR_RETRIES && processed > 0 && cursor) {
+          // Take what we got, advance the cursor using the next_cursor the
+          // plugin returned, and reset the retry counter for the new window.
+          totalProcessed += processed;
+          hasMore = wpResult.has_more === true;
+          cursor = wpResult.next_cursor || null;
+          batchesProcessed++;
+          totalNewProcessed += processed;
+          const skipNote = `Skipped ${batchCount - processed} un-ingestable entries at cursor (after ${sameCursorRetries} retries); reconciler will retry on next pass`;
+          console.log(`Job ${job.id}: ${skipNote}`);
+          await supabase.from("form_import_jobs").update({
+            cursor,
+            total_processed: totalProcessed,
+            last_batch_at: new Date().toISOString(),
+            heartbeat_at: new Date().toISOString(),
+            retry_count: 0,
+            last_error: skipNote,
+            adaptive_batch_size: Math.min(MAX_BATCH_SIZE, currentBatchSize + 10),
+          }).eq("id", job.id).eq("lock_token", lockToken);
+          await supabase.from("form_integrations").update({
+            total_entries_imported: totalProcessed,
+            status: "importing",
+            last_error: null,
+          }).eq("id", job.form_integration_id);
+          // Continue the loop with the advanced cursor.
+          currentBatchSize = Math.min(MAX_BATCH_SIZE, currentBatchSize + 10);
+          continue;
+        }
+
         lastError = `Import batch only stored ${processed}/${batchCount || requestBatchSize} entries${errorCount ? ` (${errorCount} errors)` : ""}; retrying same cursor with smaller batches`;
         const newBatchSize = Math.max(MIN_BATCH_SIZE, Math.min(MAX_BATCH_SIZE, Math.floor(currentBatchSize * 0.5)));
-        const newRetry = (job.retry_count || 0) + 1;
-        const backoffMs = Math.min(MAX_BACKOFF_MS, 2000 * Math.pow(2, Math.min(newRetry, 10)));
+        const backoffMs = Math.min(MAX_BACKOFF_MS, 2000 * Math.pow(2, Math.min(sameCursorRetries, 10)));
 
         await releaseLock(supabase, job.id, lockToken, "pending", lastError, {
           adaptive_batch_size: newBatchSize,
-          retry_count: newRetry,
+          retry_count: sameCursorRetries,
           next_run_at: new Date(Date.now() + backoffMs).toISOString(),
         });
 

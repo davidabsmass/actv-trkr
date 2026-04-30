@@ -466,6 +466,8 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
       format: exportFormat,
       status: "queued",
       filters_json: targetFormId ? { form_id: targetFormId } : {},
+      start_date: startDate,
+      end_date: endDate,
     }).select("id").single();
     if (error) throw error;
 

@@ -582,7 +582,7 @@ function BulkExportButton({ orgId, forms, startDate, endDate }: { orgId: string 
           <h4 className="text-sm font-semibold text-foreground">Export entries</h4>
           <p className="text-xs text-muted-foreground mt-0.5">
             {scope === "all"
-              ? `Downloads one ${exportFormat.toUpperCase()} per active form (${exportableAllForms.length} form${exportableAllForms.length === 1 ? "" : "s"}, up to 5,000 entries each).`
+              ? `Downloads one ${exportFormat.toUpperCase()} with all active forms (${exportableAllForms.length} form${exportableAllForms.length === 1 ? "" : "s"}, up to 5,000 entries).`
               : `Downloads a single ${exportFormat.toUpperCase()} (up to 5,000 entries).`}
           </p>
           <p className="text-xs text-muted-foreground mt-1">

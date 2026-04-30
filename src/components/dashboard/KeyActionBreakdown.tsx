@@ -38,7 +38,7 @@ export function KeyActionBreakdown({
               phone clicks, email clicks, downloads, donation clicks, or booking clicks.
             </p>
           </div>
-          <Button size="sm" onClick={() => navigate("/settings?tab=goals")} className="gap-1.5">
+          <Button size="sm" onClick={() => navigate("/performance?tab=key-actions")} className="gap-1.5">
             Set Up Key Actions
             <ArrowRight className="h-3.5 w-3.5" />
           </Button>

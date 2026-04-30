@@ -24,7 +24,7 @@ import { useSiteSettings, PrimaryFocus } from "@/hooks/use-site-settings";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_PERFORMANCE } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
-import { CreateGoalDialog } from "@/components/settings/GoalsSection";
+import GoalsSection, { CreateGoalDialog } from "@/components/settings/GoalsSection";
 import { useForms } from "@/hooks/use-dashboard-data";
 import { useKeyActions } from "@/hooks/use-key-actions";
 
@@ -188,6 +188,7 @@ const Performance = () => {
       <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })} className="space-y-4">
         <TabsList className="mb-4">
           <TabsTrigger value="analytics" className="flex-shrink-0 text-xs sm:text-sm">{t("performance.analytics")}</TabsTrigger>
+          <TabsTrigger value="key-actions" className="flex-shrink-0 text-xs sm:text-sm">Key Actions</TabsTrigger>
           <TabsTrigger value="reports" className="flex-shrink-0 text-xs sm:text-sm">{t("performance.reports")}</TabsTrigger>
         </TabsList>
 
@@ -236,6 +237,12 @@ const Performance = () => {
               {renderSections()}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="key-actions">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <GoalsSection />
+          </div>
         </TabsContent>
 
         <TabsContent value="reports">

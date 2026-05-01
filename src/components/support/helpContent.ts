@@ -74,6 +74,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tags: ["question", "tracking"],
   },
   {
+    id: "ga-vs-actvtrkr-clicks",
+    question: "Why don't my ACTV TRKR clicks match Google Analytics?",
+    answer:
+      "It's expected — the two tools measure different things. Quick cheat sheet: (1) Scope — GA4 auto-collects every click; we only track intent clicks (CTAs, downloads, outbound, tel:, mailto:). (2) Bots & spam — different filter lists, so totals differ. (3) Consent — we're fail-closed in the EU/UK (no consent = zero clicks); GA4's Consent Mode v2 still sends modeled hits. (4) Identity — GA stitches devices via Google Signals; we use a per-session hashed fingerprint, so one human on phone + laptop counts as 2 visitors here. (5) Attribution — GA uses 90-day last-non-direct; we use session-level last-touch only. (6) Load timing — our tracker is deferred + footer-loaded for safety, so sub-1s bounces may be missed. (7) Page contexts — we skip admin, login, AJAX, REST, feeds, customizer; GA fires there. (8) Widget cap — the Click Activity widget samples up to 1,000 events per range (full data is in Exports). Rule of thumb: expect ACTV TRKR clicks to land 20–40% below GA4 on a typical site. Wider gap → check consent mode, plugin version, and which elements are tagged as intent.",
+    tags: ["question", "tracking"],
+  },
+  {
     id: "feature-request",
     question: "Where do feature requests go?",
     answer:

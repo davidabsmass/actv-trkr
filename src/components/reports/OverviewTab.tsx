@@ -1,12 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
-import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
+import { subDays, subMonths, startOfMonth, endOfMonth, format, differenceInDays } from "date-fns";
 import {
   Eye, TrendingUp, TrendingDown, Minus, Users, Activity, Sparkles, RefreshCw,
-  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon, Target,
+  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon, Target, FileText,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
@@ -15,6 +17,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
 import { useKeyActions } from "@/hooks/use-key-actions";
+import { Button } from "@/components/ui/button";
+import { PerformanceReportView } from "./PerformanceReportView";
 
 type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 
@@ -487,6 +491,133 @@ function DataView({ startDate, endDate, prevStartDate, prevEndDate, periodLabel 
 }
 
 // ────────────────────────────────────────
+// ────────────────────────────────────────
+// Performance Report Preview — same content as the exported PDF, rendered
+// inline so the Overview "pulls in essentially what is in the report export".
+// ────────────────────────────────────────
+function PerformanceReportPreview({
+  startDate, endDate, periodLabel,
+}: { startDate: string; endDate: string; periodLabel: string }) {
+  const { orgId } = useOrg();
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState(true);
+  const [loadedReport, setLoadedReport] = useState<any | null>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+
+  // Look for the most recent succeeded report whose params match this period.
+  const { data: matchingRun } = useQuery({
+    queryKey: ["overview_report_match", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const { data } = await supabase
+        .from("report_runs")
+        .select("id, file_path, params, created_at, status")
+        .eq("org_id", orgId)
+        .in("status", ["succeeded", "completed"])
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const match = (data || []).find((r: any) => {
+        const p = r.params as any;
+        return p?.start_date === startDate && p?.end_date === endDate && r.file_path;
+      });
+      return match || null;
+    },
+    enabled: !!orgId,
+    staleTime: 30_000,
+  });
+
+  // Auto-load the matching report when found.
+  useEffect(() => {
+    if (!matchingRun?.file_path) { setLoadedReport(null); return; }
+    let cancelled = false;
+    (async () => {
+      setLoadingReport(true);
+      try {
+        const { data, error } = await supabase.storage.from("reports").createSignedUrl(matchingRun.file_path!, 60);
+        if (error) throw error;
+        const resp = await fetch(data.signedUrl);
+        const json = await resp.json();
+        if (!cancelled) setLoadedReport(json);
+      } catch {
+        if (!cancelled) setLoadedReport(null);
+      } finally {
+        if (!cancelled) setLoadingReport(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [matchingRun?.id, matchingRun?.file_path]);
+
+  const generate = useMutation({
+    mutationFn: async () => {
+      if (!orgId || !session?.user.id) throw new Error("Not authenticated");
+      const periodDays = differenceInDays(new Date(endDate), new Date(startDate)) || 30;
+      const params = { period_days: periodDays, start_date: startDate, end_date: endDate, compare_mode: "none" };
+      const { data: inserted, error } = await supabase.from("report_runs").insert({
+        org_id: orgId, template_slug: "monthly_performance", created_by: session.user.id, params, status: "queued",
+      }).select("id").single();
+      if (error) throw error;
+      await supabase.functions.invoke("process-report", { body: { run_id: inserted.id } });
+    },
+    onSuccess: () => {
+      toast.success("Report generated — loading preview…");
+      queryClient.invalidateQueries({ queryKey: ["overview_report_match"] });
+      queryClient.invalidateQueries({ queryKey: ["report_runs"] });
+    },
+    onError: (err: any) => {
+      if (err.message?.includes("row-level security") || err.code === "42501") {
+        toast.error("You don't have permission to generate reports for this client.");
+      } else {
+        toast.error(err.message || "Failed to generate report");
+      }
+    },
+  });
+
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Full Performance Report — {periodLabel}</h3>
+          {loadedReport && (
+            <span className="text-xs text-muted-foreground">
+              · generated {format(new Date(matchingRun!.created_at), "MMM d, HH:mm")}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => generate.mutate()}
+            disabled={generate.isPending}
+          >
+            {generate.isPending ? "Generating…" : loadedReport ? "Regenerate" : "Generate report"}
+          </Button>
+          {loadedReport && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? "Collapse" : "Expand"}>
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          )}
+        </div>
+      </div>
+      {loadingReport ? (
+        <div className="p-12 text-center text-sm text-muted-foreground">Loading report…</div>
+      ) : !loadedReport ? (
+        <div className="p-8 text-center">
+          <p className="text-sm text-muted-foreground mb-2">No report yet for this period.</p>
+          <p className="text-xs text-muted-foreground">Click <span className="font-medium text-foreground">Generate report</span> to build a full performance report (Executive Summary, Site & Form Health, Growth, Conversion, UX, Action Plan) — same content as the PDF export.</p>
+        </div>
+      ) : expanded ? (
+        <div className="p-5">
+          <PerformanceReportView report={loadedReport} hideHeader />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────
 // Main export — unified with period toggle + custom range
 // ────────────────────────────────────────
 export default function OverviewTab() {
@@ -637,6 +768,12 @@ export default function OverviewTab() {
         endDate={endDate}
         prevStartDate={prevStartDate}
         prevEndDate={prevEndDate}
+        periodLabel={periodLabel}
+      />
+
+      <PerformanceReportPreview
+        startDate={startDate}
+        endDate={endDate}
         periodLabel={periodLabel}
       />
     </div>

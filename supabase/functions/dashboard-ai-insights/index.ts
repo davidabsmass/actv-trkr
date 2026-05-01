@@ -192,18 +192,29 @@ Rules:
 - CRITICAL — NO FABRICATION: Only reference facts that appear in the data above. Do NOT invent page elements, popups, modals, banners, layouts, or UI behavior that aren't in the data. If you reference a CTA label from "EXISTING CTAs CLICKED", treat it as a labeled click event only — you do NOT know whether it is a button, link, popup, close icon, or where it sits on the page. Never speculate about why a click happened (e.g. "popups appearing too early", "obstructing other links") unless that cause is explicitly in the data.
 - If a CTA label looks generic (e.g. "Close", "X", "Submit", "Click here", "Read more"), do NOT build a recommendation around it — these are ambiguous and we cannot infer intent from the label alone.`;
 
+    const keyActionsThis = Number(metrics.keyActionsThisWeek ?? 0);
+    const keyActionsLast = Number(metrics.keyActionsLastWeek ?? 0);
+    const leadsThis = Number(metrics.leadsThisWeek ?? 0);
+    const leadsLast = Number(metrics.leadsLastWeek ?? 0);
+    // Conversions = the union signal already used to compute CVR on the dashboard
+    // (Key Actions when configured, otherwise form leads). Never just "leads".
+    const conversionsThis = Math.max(keyActionsThis, leadsThis);
+    const conversionsLast = Math.max(keyActionsLast, leadsLast);
+
     const userPrompt = `Here are the current dashboard metrics for ${orgName}:
 
 Sessions (this period): ${metrics.sessionsThisWeek}
 Sessions (previous period): ${metrics.sessionsLastWeek}
-Leads (this period): ${metrics.leadsThisWeek}
-Leads (previous period): ${metrics.leadsLastWeek}
-Conversion Rate (this period): ${(metrics.cvrThisWeek * 100).toFixed(2)}%
+Conversions this period — Key Actions: ${keyActionsThis} | Form leads: ${leadsThis} | Combined: ${conversionsThis}
+Conversions previous period — Key Actions: ${keyActionsLast} | Form leads: ${leadsLast} | Combined: ${conversionsLast}
+Conversion Rate (this period): ${(metrics.cvrThisWeek * 100).toFixed(2)}%  — calculated as Combined Conversions ÷ Sessions (Key Actions + form leads, NOT form leads alone)
 Conversion Rate (previous period): ${(metrics.cvrLastWeek * 100).toFixed(2)}%
 Top Page: ${metrics.topPage || "N/A"}
 Top Source: ${metrics.topSource || "N/A"}
 Total Forms: ${metrics.totalForms || 0}
-Primary Focus: ${metrics.primaryFocus || "lead_volume"}`;
+Primary Focus: ${metrics.primaryFocus || "lead_volume"}
+
+CRITICAL: Never claim "0% conversion rate" or a "conversion gap" purely because form leads = 0. Conversion rate above already counts Key Actions (CTA clicks, calls, email clicks, etc.). If Combined Conversions > 0, the site IS converting — frame insights around that signal, not form fills alone.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",

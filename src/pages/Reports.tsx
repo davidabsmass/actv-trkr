@@ -35,6 +35,7 @@ import OverviewTab from "@/components/reports/OverviewTab";
 import ArchivesContent from "@/components/archives/ArchivesContent";
 import WhiteLabelSection from "@/components/settings/WhiteLabelSection";
 import { PerformanceReportView } from "@/components/reports/PerformanceReportView";
+import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_REPORTS } from "@/components/howto/page-content";
 import { AddSiteHeaderButton } from "@/components/sites/AddSiteHeaderButton";
@@ -336,6 +337,8 @@ function ActivityReportsTab() {
           </div>
         </div>
       </div>
+
+      <ReportTemplateBuilder />
 
       {/* Schedules */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">

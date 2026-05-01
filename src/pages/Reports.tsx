@@ -448,9 +448,18 @@ export default function Reports({ embedded = false }: { embedded?: boolean } = {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("reportTab") || "overview";
+  const navigate = useNavigate();
+  const requestedTab = searchParams.get("reportTab") || "overview";
+  const activeTab = requestedTab === "customize" ? "overview" : requestedTab;
   const [exportDateFrom] = useState<Date>(subDays(new Date(), 30));
   const [exportDateTo] = useState<Date>(new Date());
+
+  // Customize moved to Exports — redirect any legacy links.
+  useEffect(() => {
+    if (requestedTab === "customize") {
+      navigate("/exports?tab=customize", { replace: true });
+    }
+  }, [requestedTab, navigate]);
 
   const handleTabChange = (value: string) => {
     const newParams = new URLSearchParams(searchParams);

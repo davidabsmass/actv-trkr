@@ -770,6 +770,12 @@ export default function OverviewTab() {
         prevEndDate={prevEndDate}
         periodLabel={periodLabel}
       />
+
+      <PerformanceReportPreview
+        startDate={startDate}
+        endDate={endDate}
+        periodLabel={periodLabel}
+      />
     </div>
   );
 }

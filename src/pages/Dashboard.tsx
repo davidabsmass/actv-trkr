@@ -830,6 +830,8 @@ const Dashboard = () => {
                 leadsLastWeek: periodData.leads.previous,
                 cvrThisWeek: periodData.cvr.current,
                 cvrLastWeek: periodData.cvr.previous,
+                keyActionsThisWeek: periodData.keyActions.current,
+                keyActionsLastWeek: periodData.keyActions.previous,
                 topSource: topSource?.source,
                 totalForms: formsData?.length || 0,
                 primaryFocus: settings?.primary_focus || "lead_volume",

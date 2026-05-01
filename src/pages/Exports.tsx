@@ -506,6 +506,9 @@ function ExportsTabs({
           <ReportTemplateBuilder />
         </TabsContent>
       </Tabs>
+    </>
+  );
+}
 
 function ExportHistory({
   jobs,

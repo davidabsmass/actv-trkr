@@ -382,69 +382,23 @@ export default function Exports() {
       >
         <ArrowLeft className="h-4 w-4" /> Back to Dashboard
       </button>
-      <h1 className="text-2xl font-bold text-foreground mb-1">Exports</h1>
-      <p className="text-sm text-muted-foreground mb-6">Export data for {orgName}</p>
-
-      {/* Export All */}
-      <div className="rounded-lg border border-border bg-card p-5 mb-6">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-primary" />
-          Quick Export — All Forms
-        </h3>
-        <p className="text-xs text-muted-foreground mb-3">
-          Export all leads across every form as a single file.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as ExportFormat)}>
-            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="csv">CSV</SelectItem>
-              <SelectItem value="xlsx">XLSX</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={() => setPendingExport({ kind: "all" })} disabled={createExport.isPending}>
-            {createExport.isPending ? "Queuing…" : "Export All"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Forms List */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden mb-6">
-        <div className="px-5 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">Export by Form</h3>
-        </div>
-        {formsLoading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
-        ) : !forms || forms.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">
-            {`${t("forms.noFormsYet")} ${t("forms.noFormsSyncedDesc")}`}
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {forms.filter((f) => !f.archived).map((form) => (
-              <button
-                key={form.id}
-                onClick={() => setSelectedFormId(form.id)}
-                className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-primary flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{form.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {form.provider} · {leadCounts?.[form.id] ?? "—"} leads
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Export History */}
-      <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} retryJob={retryJob} />
+      <ExportsTabs
+        orgName={orgName}
+        exportFormat={exportFormat}
+        setExportFormat={setExportFormat}
+        setPendingExport={setPendingExport}
+        createPending={createExport.isPending}
+        forms={forms}
+        formsLoading={formsLoading}
+        leadCounts={leadCounts}
+        setSelectedFormId={setSelectedFormId}
+        jobs={jobs}
+        jobsLoading={jobsLoading}
+        statusIcon={statusIcon}
+        handleDownload={handleDownload}
+        retryJob={retryJob}
+        t={t}
+      />
 
       <ExportConfirmDialog
         open={!!pendingExport}
@@ -454,6 +408,104 @@ export default function Exports() {
     </div>
   );
 }
+
+function ExportsTabs({
+  orgName, exportFormat, setExportFormat, setPendingExport, createPending,
+  forms, formsLoading, leadCounts, setSelectedFormId, jobs, jobsLoading,
+  statusIcon, handleDownload, retryJob, t,
+}: any) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "customize" ? "customize" : "data";
+  const handleTabChange = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === "data") next.delete("tab"); else next.set("tab", value);
+    setSearchParams(next, { replace: true });
+  };
+
+  return (
+    <>
+      <h1 className="text-2xl font-bold text-foreground mb-1">Exports</h1>
+      <p className="text-sm text-muted-foreground mb-4">Export data and customize report templates for {orgName}</p>
+
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="data" className="flex-shrink-0 text-xs sm:text-sm">Export Data</TabsTrigger>
+          <TabsTrigger value="customize" className="flex-shrink-0 text-xs sm:text-sm">Customize Report</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="data">
+          {/* Export All */}
+          <div className="rounded-lg border border-border bg-card p-5 mb-6">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4 text-primary" />
+              Quick Export — All Forms
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Export all leads across every form as a single file.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Select value={exportFormat} onValueChange={(v: any) => setExportFormat(v as ExportFormat)}>
+                <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="csv">CSV</SelectItem>
+                  <SelectItem value="xlsx">XLSX</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={() => setPendingExport({ kind: "all" })} disabled={createPending}>
+                {createPending ? "Queuing…" : "Export All"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Forms List */}
+          <div className="rounded-lg border border-border bg-card overflow-hidden mb-6">
+            <div className="px-5 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Export by Form</h3>
+            </div>
+            {formsLoading ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">Loading forms…</div>
+            ) : !forms || forms.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                {`${t("forms.noFormsYet")} ${t("forms.noFormsSyncedDesc")}`}
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {forms.filter((f: any) => !f.archived).map((form: any) => (
+                  <button
+                    key={form.id}
+                    onClick={() => setSelectedFormId(form.id)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{form.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {form.provider} · {leadCounts?.[form.id] ?? "—"} leads
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Export History */}
+          <ExportHistory jobs={jobs} jobsLoading={jobsLoading} statusIcon={statusIcon} handleDownload={handleDownload} retryJob={retryJob} />
+        </TabsContent>
+
+        <TabsContent value="customize">
+          <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+            <p className="text-sm text-foreground font-medium mb-1">Customize the Performance Report</p>
+            <p className="text-xs text-muted-foreground">
+              Choose which sections and metrics appear in your generated report PDFs. The active template is used by all exports and scheduled reports.
+            </p>
+          </div>
+          <ReportTemplateBuilder />
+        </TabsContent>
+      </Tabs>
 
 function ExportHistory({
   jobs,

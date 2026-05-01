@@ -1,12 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrg } from "@/hooks/use-org";
-import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
+import { subDays, subMonths, startOfMonth, endOfMonth, format, differenceInDays } from "date-fns";
 import {
   Eye, TrendingUp, TrendingDown, Minus, Users, Activity, Sparkles, RefreshCw,
-  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon, Target,
+  Lightbulb, Clock, Search, Wifi, Calendar as CalendarIcon, Target, FileText,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { generateFindings, type InsightInputs } from "@/lib/insight-engine";
@@ -15,6 +17,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
 import { useKeyActions } from "@/hooks/use-key-actions";
+import { Button } from "@/components/ui/button";
+import { PerformanceReportView } from "./PerformanceReportView";
 
 type Period = "7d" | "14d" | "30d" | "monthly" | "custom";
 

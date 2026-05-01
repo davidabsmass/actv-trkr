@@ -496,7 +496,7 @@ export default function Reports({ embedded = false }: { embedded?: boolean } = {
         <TabsList className="mb-6">
           <TabsTrigger value="overview" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.overview")}</TabsTrigger>
           <TabsTrigger value="activity" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.activityReports")}</TabsTrigger>
-          <TabsTrigger value="customize" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.customize")}</TabsTrigger>
+          <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">White Label</TabsTrigger>
           <TabsTrigger value="white-label" className="flex-shrink-0 text-xs sm:text-sm">White Label</TabsTrigger>
           <TabsTrigger value="archives" className="flex-shrink-0 text-xs sm:text-sm">{t("reports.archives")}</TabsTrigger>
         </TabsList>

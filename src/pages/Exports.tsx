@@ -25,6 +25,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ExportConfirmDialog } from "@/components/exports/ExportConfirmDialog";
 import { logExportAudit, resolveExportRole } from "@/lib/export-audit";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ReportTemplateBuilder from "@/components/reports/ReportTemplateBuilder";
+import { useSearchParams } from "react-router-dom";
 
 type ExportFormat = "csv" | "xlsx";
 

@@ -13,6 +13,8 @@ interface AiInsightsProps {
     leadsLastWeek: number;
     cvrThisWeek: number;
     cvrLastWeek: number;
+    keyActionsThisWeek?: number;
+    keyActionsLastWeek?: number;
     topPage?: string;
     topSource?: string;
     totalForms: number;

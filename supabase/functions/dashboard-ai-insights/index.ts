@@ -55,7 +55,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "No organization found" }), { status: 400, headers: { ...appCorsHeaders(req), "Content-Type": "application/json" } });
     }
 
-    const metricsHash = `${metrics.sessionsThisWeek}-${metrics.leadsThisWeek}-${(metrics.cvrThisWeek ?? 0).toFixed(4)}`;
+    const metricsHash = `v2-${metrics.sessionsThisWeek}-${metrics.leadsThisWeek}-${metrics.keyActionsThisWeek ?? 0}-${(metrics.cvrThisWeek ?? 0).toFixed(4)}`;
 
     // Check cache
     const cacheThreshold = new Date(Date.now() - CACHE_HOURS * 60 * 60 * 1000).toISOString();

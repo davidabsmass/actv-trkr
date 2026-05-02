@@ -698,6 +698,7 @@ const Index = () => {
           <FaqSection variant="landing" />
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="bg-surface border-t border-border">
@@ -734,7 +735,6 @@ const Index = () => {
       </footer>
 
       <ContactDialog open={contactOpen} onOpenChange={setContactOpen} />
-      </main>
     </div>
   );
 };

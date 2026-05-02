@@ -52,6 +52,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const orgId: string | undefined = body.org_id;
     const label: string = String(body.label ?? "").trim().slice(0, 100);
+    const revokeExisting = body.revoke_existing === true;
     if (!orgId || !label) {
       return new Response(JSON.stringify({ error: "org_id and label required" }), {
         status: 400,
@@ -97,6 +98,14 @@ Deno.serve(async (req: Request) => {
     const fullKey = `${prefix}_${secret}`;
     const hashed = await sha256Hex(fullKey);
 
+    if (revokeExisting) {
+      await admin
+        .from("api_keys")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("org_id", orgId)
+        .is("revoked_at", null);
+    }
+
     const { data: inserted, error: insertErr } = await admin
       .from("api_keys")
       .insert({ org_id: orgId, label, key_hash: hashed })
@@ -111,7 +120,7 @@ Deno.serve(async (req: Request) => {
       actor_type: "admin",
       event_type: "api_key_created",
       severity: "info",
-      metadata: { api_key_id: inserted.id, label, prefix },
+      metadata: { api_key_id: inserted.id, label, prefix, revoke_existing: revokeExisting },
     });
 
     return new Response(JSON.stringify({ key: fullKey, prefix, id: inserted.id }), {

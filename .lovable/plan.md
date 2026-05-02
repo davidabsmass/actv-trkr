@@ -1,53 +1,48 @@
-## Why the tab says "No converting sources yet"
+## The bug
 
-The component currently calls `get_session_journeys`, which returns the **most recent 1,000 sessions** ordered by `started_at DESC`.
+The user is correct: the "Direct: 5 sessions / 5 conversions / 100% CVR" is impossible.
 
-For your org we have:
-- 7,057 sessions in the last 30 days
-- 71 sessions tied to a Key Action (goal completion)
-- All 71 have UTM or referrer attribution
+`get_top_converting_sources` only returns sessions that already converted (it inner-joins on `converting_session_ids`). The frontend then counts those rows as "sessions" — so every row is by definition a conversion. CVR is always ~100%, and "sessions" is actually "converting sessions".
 
-Because converting sessions are spread across the full 30-day window, almost none of them fall inside the latest 1,000 — so the component sees zero conversions and renders the empty state. (Separately, 308 of 310 form-fill leads are missing `session_id` from ingestion, so leads contribute almost nothing to this view today — that's a different fix and not in scope here.)
+For Direct traffic, only 5 of (likely hundreds) of direct sessions converted, so the table reports 5 sessions / 5 conversions. The same flaw is silently affecting `ChannelBreakdown` since it consumes the same RPC.
 
-## The fix
+Database confirms: ~5,016 sessions in the last 30d for the active org, but the RPC returns only the small converting subset.
 
-Stop sampling sessions. Query the converting sessions **directly** by joining `goal_completions` and `leads` to `sessions`, then aggregate by source/campaign client-side.
+## Fix
 
-### 1. New database function: `get_top_converting_sources`
+### 1. `get_top_converting_sources` RPC — return all sessions in range
 
-Server-side aggregator that returns one row per converting session with its attribution:
+Change the query so it returns every session in `[p_start, p_end]` for the org, with `has_lead` / `has_conversion` flags. Drop the inner join on `converting_session_ids`. Keep the same return shape so no frontend types change.
 
-```text
-input:  org_id, start, end, optional site_id
-output: session_id, utm_source, utm_medium, utm_campaign,
-        landing_referrer_domain, has_lead, has_conversion
+Key change (pseudo):
+```sql
+SELECT s.session_id, s.utm_source, s.utm_medium, s.utm_campaign,
+       s.landing_referrer_domain,
+       (ls.sid IS NOT NULL) AS has_lead,
+       (gs.sid IS NOT NULL) AS has_conversion
+FROM public.sessions s
+LEFT JOIN lead_sessions ls ON ls.sid = s.session_id
+LEFT JOIN goal_sessions gs ON gs.sid = s.session_id
+WHERE s.org_id = p_org_id
+  AND s.started_at >= p_start
+  AND s.started_at <= p_end
+  AND (p_site_id IS NULL OR s.site_id = p_site_id);
 ```
 
-Logic:
-- Build set of `session_id`s from `goal_completions` (Key Actions) in range.
-- Union with `session_id`s from `leads` in range.
-- Join back to `sessions` to fetch attribution columns.
-- Authorization: `is_org_member(org_id) OR admin role` — same gate as `get_session_journeys`.
-- `SECURITY DEFINER`, `STABLE`, `search_path = public`, granted to `authenticated`.
+Bound by `sessions.started_at` (indexed) so this stays fast on large orgs. Lead/goal CTEs unchanged.
 
-This returns only the sessions that actually converted — typically dozens to a few thousand rows even for high-traffic orgs — so the 1k client cap stops being a problem.
+### 2. Frontend — no logic change needed, but tighten filter
 
-### 2. Update `TopConvertingSources.tsx`
+`TopConvertingSources.tsx` currently filters `r.conversions > 0` after aggregating, which is exactly what we want once the RPC returns all sessions. CVR will then be `conversions / sessions` correctly. No code change required, but I'll verify the empty-state copy still reads well.
 
-- Replace the `get_session_journeys` RPC call with `get_top_converting_sources`.
-- Keep the existing client-side `classify()` logic (Paid Social / Search / Email / Organic / Referral / Direct) and the table UI — they're already correct.
-- Drop the "(latest 1k)" caveat; it no longer applies.
-- Keep the empty-state copy but re-word it to be accurate: "No tracked sessions have completed a form fill or Key Action in this date range yet."
+`ChannelBreakdown.tsx` will automatically start showing real CVR (e.g. "Direct 213 sess · 5 conv · 2.3% CVR") instead of zeros.
 
-### 3. No other callers affected
+### 3. Dashboard "Top Converting Source" KPI
 
-`get_session_journeys` stays as-is — it's still used by the Channels tab and the journey list, where the 1k cap is acceptable because those views show sampled traffic, not totals.
+Already picks the source with most conversions; unaffected by sessions-count fix, will continue to work.
 
-## Files
+## Outcome
 
-- `supabase/migrations/<timestamp>_get_top_converting_sources.sql` (new) — function + grant
-- `src/components/journeys/TopConvertingSources.tsx` — switch RPC, refresh empty-state copy
-
-## Verification
-
-After deploy, the Top Converting Sources tab on Visitor Journeys (30d range) should list sources for the 71 converting sessions we found in the database, ranked by conversions with CVR alongside.
+- "Top converting sources" table shows true Sessions, Conversions, and CVR per source/campaign
+- "Traffic by channel" shows correct conversions and CVR per channel
+- Numbers will reconcile with the rest of the dashboard

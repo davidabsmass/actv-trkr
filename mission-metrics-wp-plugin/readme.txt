@@ -4,14 +4,14 @@ Tags: analytics, tracking, gravity forms, leads, pageviews
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.21.11
+Stable tag: 1.21.12
 License: GPL-2.0-or-later
 
 First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 ...
 == Changelog ==
 
-= 1.21.11 =
+= 1.21.12 =
 * FIX: Re-installing the plugin on a site that previously had it activated now seeds the bundled API key into the correct saved settings option so the connection self-test succeeds without manual paste. Resolves "Paste your API key to connect" appearing on second-site installs.
 
 = 1.21.10 =

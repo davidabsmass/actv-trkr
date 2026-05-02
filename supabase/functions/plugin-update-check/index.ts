@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.21.8";
-const CURRENT_PLUGIN_SHA256 = "02858314b3926ce70a65af3732ab118e042bcbfc7c893eaab091a62c254eb24c";
+const CURRENT_PLUGIN_VERSION = "1.21.9";
+const CURRENT_PLUGIN_SHA256 = "3b1234eda334eb55ca94158c7f1ca5e8e12cb9dfb3b1b76d132468e0f66de9d7";
 
 const CHANGELOG = `
+## 1.21.9
+- FIX (CRITICAL — new site setup): Pre-configured dashboard downloads now embed the new site's license key into the active plugin settings field, so brand-new installs start reporting immediately after activation.
+
 ## 1.21.7
 - FIX (CRITICAL — Gravity Forms): Active/disabled detection now uses Gravity Forms' active and inactive lists correctly. This prevents a site with one disabled Gravity form from reporting every Gravity form as "Disabled in WP" in the dashboard.
 

@@ -790,15 +790,25 @@ const Dashboard = () => {
                  (legacy CVR) and disagrees with the Action Rate headline.
                  Restore once a daily Action Rate series is available. */
             />
-            <KPICard
-              variant="info"
-              label={t("dashboard.topSource")}
-              value={topSource?.source || "No source data yet"}
-              valueClassName="text-xs font-medium truncate"
-              valueTitle={topSource?.source || undefined}
-              sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : "Traffic attribution will appear once available"}
-              icon={<Megaphone className="h-4 w-4" />}
-            />
+            <Link
+              to="/visitor-journeys?tab=top-converting"
+              className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+              title="View all top converting sources"
+            >
+              <KPICard
+                variant="info"
+                label="Top Converting Source"
+                value={topConvertingSource?.label || "No conversions yet"}
+                valueClassName="text-xs font-medium truncate"
+                valueTitle={topConvertingSource?.label || undefined}
+                sub={
+                  topConvertingSource
+                    ? `${topConvertingSource.conversions} ${topConvertingSource.conversions === 1 ? "conversion" : "conversions"} · ${topConvertingSource.sessions} ${t("common.sessions")}`
+                    : "Sources that drove a lead or Key Action will appear here"
+                }
+                icon={<Megaphone className="h-4 w-4" />}
+              />
+            </Link>
 
             <div
               className="kpi-card p-4 animate-slide-up min-h-[132px] flex flex-col"

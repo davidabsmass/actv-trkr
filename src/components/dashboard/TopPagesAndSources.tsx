@@ -5,6 +5,7 @@ import { useOrg } from "@/hooks/use-org";
 import { BarChart3 } from "lucide-react";
 import { subDays, format } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { expandSiteDomains, isSelfReferral, canonicalSource } from "@/lib/source-normalize";
 
 interface PageRow { path: string; views: number }
 interface SourceRow { source: string; sessions: number }
@@ -57,11 +58,16 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
             .eq("org_id", orgId),
         ]);
 
-        const ownDomains = new Set(
-          (sitesRes.data || []).map((s: any) =>
-            (s.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase()
-          )
+        const ownedRoots = expandSiteDomains(
+          (sitesRes.data || []).map((s: any) => s.domain)
         );
+
+        const collapseSource = (raw: string) =>
+          !raw || raw === directLabel
+            ? directLabel
+            : isSelfReferral(raw, ownedRoots)
+              ? directLabel
+              : canonicalSource(raw);
 
         // Aggregate kpi_daily page dimensions
         let pages: PageRow[] = [];

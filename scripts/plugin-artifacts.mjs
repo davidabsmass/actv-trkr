@@ -139,8 +139,8 @@ Deno.serve(async (req) => {
       let fileContent = content;
 
       // Inject API key into the settings class. The plugin stores the license
-      // under `api_key` inside `MM_Settings::defaults()`; older package logic
-      // looked for a legacy `mm_api_key` string and silently produced an
+      // under api_key inside MM_Settings::defaults(); older package logic
+      // looked for a legacy mm_api_key string and silently produced an
       // unconfigured ZIP for brand-new sites.
       if (relativePath === "includes/class-settings.php" && apiKey) {
         fileContent = fileContent.replace(

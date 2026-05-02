@@ -6632,6 +6632,7 @@ export type Database = {
       sessions: {
         Row: {
           ended_at: string
+          engagement_score: number | null
           id: string
           landing_page_path: string | null
           landing_referrer_domain: string | null
@@ -6646,6 +6647,7 @@ export type Database = {
         }
         Insert: {
           ended_at: string
+          engagement_score?: number | null
           id?: string
           landing_page_path?: string | null
           landing_referrer_domain?: string | null
@@ -6660,6 +6662,7 @@ export type Database = {
         }
         Update: {
           ended_at?: string
+          engagement_score?: number | null
           id?: string
           landing_page_path?: string | null
           landing_referrer_domain?: string | null
@@ -8945,10 +8948,12 @@ export type Database = {
           p_org_id: string
           p_outcome?: string
           p_site_id?: string
+          p_sort?: string
           p_start: string
         }
         Returns: {
           active_seconds: number
+          cap_hit: boolean
           country_code: string
           device: string
           duration_seconds: number
@@ -9192,6 +9197,10 @@ export type Database = {
       record_security_release_check: {
         Args: { p_org_id: string }
         Returns: Json
+      }
+      refresh_session_engagement_score: {
+        Args: { p_org_id: string; p_session_id: string }
+        Returns: undefined
       }
       replace_org_api_key: {
         Args: { _label?: string; _new_key_hash: string; _org_id: string }

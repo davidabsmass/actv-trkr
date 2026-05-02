@@ -173,3 +173,93 @@
 
 /* ── Conditional sections ────────────────────────────────── */
 .mm-conditional[hidden] { display: none !important; }
+
+/* ── Connection hero card ────────────────────────────────── */
+.mm-hero {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  margin: 14px 0 14px;
+  padding: 18px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #6C5CE7;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.mm-hero[data-status="success"]      { border-left-color: #047857; background: #f0fdf4; }
+.mm-hero[data-status="failure"]      { border-left-color: #b91c1c; background: #fef2f2; }
+.mm-hero[data-status="awaiting_key"] { border-left-color: #b45309; background: #fffbeb; }
+.mm-hero[data-status="pending"]      { border-left-color: #6C5CE7; background: #f5f3ff; }
+
+.mm-hero-icon {
+  width: 56px; height: 56px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: #ede9fe;
+  color: #6C5CE7;
+  font-size: 24px;
+}
+.mm-hero[data-status="success"] .mm-hero-icon { background: #dcfce7; color: #047857; }
+.mm-hero[data-status="failure"] .mm-hero-icon { background: #fee2e2; color: #b91c1c; }
+.mm-hero[data-status="awaiting_key"] .mm-hero-icon { background: #fef3c7; color: #b45309; }
+
+.mm-hero-spinner {
+  width: 24px; height: 24px;
+  border: 3px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: mm-spin 0.9s linear infinite;
+  opacity: 0.85;
+}
+.mm-hero[data-status="success"] .mm-hero-spinner,
+.mm-hero[data-status="failure"] .mm-hero-spinner,
+.mm-hero[data-status="awaiting_key"] .mm-hero-spinner {
+  animation: none;
+  border: none;
+  width: 24px; height: 24px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 22px 22px;
+}
+.mm-hero[data-status="success"] .mm-hero-spinner::before { content: "✓"; font-size: 26px; line-height: 1; font-weight: 700; }
+.mm-hero[data-status="failure"] .mm-hero-spinner::before { content: "!"; font-size: 26px; line-height: 1; font-weight: 700; }
+.mm-hero[data-status="awaiting_key"] .mm-hero-spinner::before { content: "🔑"; font-size: 22px; line-height: 1; }
+
+@keyframes mm-spin { to { transform: rotate(360deg); } }
+
+.mm-hero-body { min-width: 0; }
+.mm-hero-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+.mm-hero-msg {
+  margin: 0 0 4px;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.mm-hero-meta {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+.mm-hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+.mm-hero-actions .button { white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .mm-hero {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+  .mm-hero-actions { flex-direction: row; flex-wrap: wrap; }
+}
+

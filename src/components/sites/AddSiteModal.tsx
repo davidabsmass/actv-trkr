@@ -283,8 +283,10 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
                 <DialogTitle>Add another site</DialogTitle>
               </div>
               <DialogDescription className="pt-2">
-                We'll add a new <span className="font-semibold text-foreground">$30/month</span> line
-                item to your subscription, then prepare a plugin file already linked to your account.
+                We checked your subscription — you don't have an unused slot yet,
+                so this will add a new{" "}
+                <span className="font-semibold text-foreground">$30/month</span>{" "}
+                line item, then prepare a plugin file already linked to your account.
               </DialogDescription>
             </DialogHeader>
 

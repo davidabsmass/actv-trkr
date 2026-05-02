@@ -232,6 +232,7 @@ const Performance = () => {
                     : undefined
                 }
               />
+              <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
               <TrendsChart data={processedData.dailyData} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <VisitorEngagement orgId={orgId} startDate={startDate} endDate={endDate} />

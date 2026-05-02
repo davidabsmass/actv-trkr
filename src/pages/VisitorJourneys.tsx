@@ -49,7 +49,9 @@ export default function VisitorJourneys() {
       <VisitorJourneyStats orgId={orgId} startDate={startDate} endDate={endDate} />
 
       {/* Top converting sources — main section, near the top */}
-      <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
+      <div id="top-converting-sources" className="scroll-mt-24">
+        <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
+      </div>
 
       <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
 

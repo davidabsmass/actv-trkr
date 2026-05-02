@@ -89,8 +89,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
           const srcMap: Record<string, number> = {};
           for (const r of kpiSourcesRes.data) {
             if (!r.dimension) continue;
-            let src = r.dimension;
-            if (ownDomains.has(src.toLowerCase())) src = directLabel;
+            const src = collapseSource(r.dimension);
             srcMap[src] = (srcMap[src] || 0) + Number(r.value);
           }
           sources = Object.entries(srcMap)
@@ -133,8 +132,8 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
 
           const srcMap: Record<string, number> = {};
           for (const r of sessRows || []) {
-            let src = r.utm_source || r.landing_referrer_domain || directLabel;
-            if (ownDomains.has(src.toLowerCase())) src = directLabel;
+            const raw = r.utm_source || r.landing_referrer_domain || "";
+            const src = collapseSource(raw);
             srcMap[src] = (srcMap[src] || 0) + 1;
           }
           sources = Object.entries(srcMap)

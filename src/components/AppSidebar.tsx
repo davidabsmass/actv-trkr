@@ -65,7 +65,7 @@ export function AppSidebar() {
         </div>
         <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-widest text-white/80 border border-white/30 bg-white/10 rounded-full w-fit mb-1 md:mb-4">{t("sidebar.beta")}</span>
 
-        {orgs.length > 1 ? (
+        {orgs.length > 1 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium bg-white/15 rounded-md text-white hover:bg-white/25 transition-colors">
@@ -85,10 +85,6 @@ export function AppSidebar() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : (
-          <div className="px-3 py-2 text-xs font-medium bg-white/15 rounded-md text-white truncate">
-            {orgName ?? "—"}
-          </div>
         )}
 
         {/* Site switcher: lists connected sites and offers "Add another site". */}

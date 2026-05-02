@@ -1,19 +1,15 @@
-// Adds (or increments) an "Additional Client Site" line item on the user's
-// active ACTV TRKR subscription. During the 14-day trial, Stripe does not
-// charge for added items — the trial covers all items and the customer is
-// billed (base plan + add-ons) only when the trial ends.
+// Releases ONE unused "Additional Client Site" slot from the user's
+// subscription — companion to add-additional-site.
 //
-// GUARDRAIL (added May 2026):
-// Before incrementing Stripe, we count how many sites the org has actually
-// connected vs how many they've already paid to add. If they have a paid
-// slot still waiting to be filled, we BLOCK the increment with an actionable
-// error. This stops accidental double/triple charges from impatient clicking.
-//
-// Math:
-//   purchased_slots  = (current additional-site quantity in Stripe)
-//   used_slots       = max(0, connected_sites_count - 1)   // base plan covers 1
-//   available_slots  = purchased_slots - used_slots
-//   if available_slots > 0  → block (already have an unconnected slot)
+// Rules:
+//   - Only allows release when there's actually an unused slot
+//     (purchased > used). Prevents accidentally cancelling sites that
+//     are actively reporting.
+//   - Uses `proration_behavior: 'create_prorations'` so the customer
+//     gets credit on their next invoice for the unused portion.
+//   - Also revokes the most recently created, unused (no site_id),
+//     non-revoked "Additional site key" row for this org so we don't
+//     leave dangling keys behind.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
@@ -25,11 +21,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const ADDITIONAL_SITE_PRICE_ID = "price_1TRrlOQXOqBVFUKWCbKtMtIC"; // $30/mo
+const ADDITIONAL_SITE_PRICE_ID = "price_1TRrlOQXOqBVFUKWCbKtMtIC";
 
 const log = (step: string, details?: unknown) => {
   console.log(
-    `[ADD-ADDITIONAL-SITE] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`,
+    `[RELEASE-SLOT] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`,
   );
 };
 
@@ -42,7 +38,6 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    // We need service role to count sites across the org regardless of RLS.
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -56,10 +51,7 @@ serve(async (req) => {
     if (userErr) throw new Error(`Auth error: ${userErr.message}`);
     const user = userRes.user;
     if (!user?.email) throw new Error("User not authenticated");
-    log("Authed", { userId: user.id, email: user.email });
 
-    // Determine the org this user is acting on. We pick the first org they
-    // belong to as admin (the same org the dashboard is scoped to).
     const { data: orgRows, error: orgErr } = await supabase
       .from("org_users")
       .select("org_id, role")
@@ -68,30 +60,22 @@ serve(async (req) => {
     const org = orgRows?.find((r) => r.role === "admin") ?? orgRows?.[0];
     if (!org) throw new Error("No organization found for this user");
     const orgId = org.org_id as string;
-    log("Org resolved", { orgId });
 
-    // Count how many distinct sites have actually reported in for this org.
-    const { count: connectedSites, error: sitesErr } = await supabase
+    const { count: connectedSites } = await supabase
       .from("sites")
       .select("id", { count: "exact", head: true })
       .eq("org_id", orgId)
       .not("last_heartbeat_at", "is", null);
-    if (sitesErr) throw new Error(`sites count failed: ${sitesErr.message}`);
     const connectedCount = connectedSites ?? 0;
-    log("Connected sites", { connectedCount });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
     const customers = await stripe.customers.list({
       email: user.email,
       limit: 1,
     });
     if (customers.data.length === 0) {
       return new Response(
-        JSON.stringify({
-          error:
-            "No Stripe customer found. Start your subscription before adding additional client sites.",
-        }),
+        JSON.stringify({ error: "No Stripe customer found." }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
@@ -110,9 +94,22 @@ serve(async (req) => {
     );
     if (!sub) {
       return new Response(
+        JSON.stringify({ error: "No active subscription found." }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        },
+      );
+    }
+
+    const existing = sub.items.data.find(
+      (item) => item.price.id === ADDITIONAL_SITE_PRICE_ID,
+    );
+    if (!existing || (existing.quantity ?? 0) === 0) {
+      return new Response(
         JSON.stringify({
-          error:
-            "No active subscription found. Start (or reactivate) your plan before adding additional client sites.",
+          error: "no_slots",
+          message: "No additional site slots to release.",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -120,75 +117,66 @@ serve(async (req) => {
         },
       );
     }
-    log("Subscription found", { id: sub.id, status: sub.status });
 
-    const existing = sub.items.data.find(
-      (item) => item.price.id === ADDITIONAL_SITE_PRICE_ID,
-    );
-    const purchasedSlots = existing?.quantity ?? 0;
-    // Base plan covers the first site; everything beyond that consumes a slot.
+    const purchasedSlots = existing.quantity ?? 0;
     const usedSlots = Math.max(0, connectedCount - 1);
     const availableSlots = purchasedSlots - usedSlots;
 
-    log("Slot accounting", {
-      purchasedSlots,
-      connectedCount,
-      usedSlots,
-      availableSlots,
-    });
-
-    // GUARDRAIL: if there's already an unused slot, refuse to add another.
-    if (availableSlots > 0) {
+    if (availableSlots <= 0) {
       return new Response(
         JSON.stringify({
-          error: "slot_already_available",
+          error: "no_unused_slots",
           message:
-            availableSlots === 1
-              ? "You already have 1 additional site slot waiting to be connected. Finish setting up that site first, or release the unused slot."
-              : `You already have ${availableSlots} additional site slots waiting to be connected. Finish setting them up, or release the unused ones.`,
-          available_slots: availableSlots,
-          purchased_slots: purchasedSlots,
-          connected_sites: connectedCount,
+            "All your purchased slots are in use by connected sites. Disconnect a site in WordPress before releasing the slot.",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 409, // Conflict
+          status: 409,
         },
       );
     }
 
+    const newQty = purchasedSlots - 1;
+    log("Releasing slot", { purchasedSlots, newQty });
+
     let updated;
-    if (existing) {
-      const newQty = (existing.quantity ?? 1) + 1;
+    if (newQty <= 0) {
+      // Remove the line item entirely.
       updated = await stripe.subscriptions.update(sub.id, {
-        items: [{ id: existing.id, quantity: newQty }],
-        proration_behavior: "none",
-      });
-      log("Incremented existing add-on", {
-        itemId: existing.id,
-        newQty,
+        items: [{ id: existing.id, deleted: true }],
+        proration_behavior: "create_prorations",
       });
     } else {
       updated = await stripe.subscriptions.update(sub.id, {
-        items: [{ price: ADDITIONAL_SITE_PRICE_ID, quantity: 1 }],
-        proration_behavior: "none",
+        items: [{ id: existing.id, quantity: newQty }],
+        proration_behavior: "create_prorations",
       });
-      log("Added new additional-site item");
     }
 
-    const additionalItem = updated.items.data.find(
-      (item) => item.price.id === ADDITIONAL_SITE_PRICE_ID,
-    );
-    const additionalQty = additionalItem?.quantity ?? 0;
+    // Best-effort: revoke the most recent unused "Additional site key" row.
+    const { data: orphanKeys } = await supabase
+      .from("api_keys")
+      .select("id, created_at")
+      .eq("org_id", orgId)
+      .is("revoked_at", null)
+      .is("site_id", null)
+      .ilike("label", "%additional%")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (orphanKeys && orphanKeys.length > 0) {
+      await supabase
+        .from("api_keys")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", orphanKeys[0].id);
+      log("Revoked orphan key", { keyId: orphanKeys[0].id });
+    }
 
     return new Response(
       JSON.stringify({
         ok: true,
-        subscription_id: updated.id,
-        status: updated.status,
-        is_trialing: updated.status === "trialing",
-        additional_sites: additionalQty,
-        trial_end: updated.trial_end,
+        new_quantity: newQty,
+        subscription_status: updated.status,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

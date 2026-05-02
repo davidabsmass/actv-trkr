@@ -138,11 +138,14 @@ Deno.serve(async (req) => {
     for (const [relativePath, content] of Object.entries(PLUGIN_FILES)) {
       let fileContent = content;
 
-      // Inject API key into the settings class
+      // Inject API key into the settings class. The plugin stores the license
+      // under `api_key` inside `MM_Settings::defaults()`; older package logic
+      // looked for a legacy `mm_api_key` string and silently produced an
+      // unconfigured ZIP for brand-new sites.
       if (relativePath === "includes/class-settings.php" && apiKey) {
         fileContent = fileContent.replace(
-          "'mm_api_key',\\n\\t\\t\\t\\t''",
-          \`'mm_api_key',\\n\\t\\t\\t\\t'\${apiKey}'\`
+          "'api_key'          => '',",
+          \`'api_key'          => '\${apiKey}',\`
         );
       }
 

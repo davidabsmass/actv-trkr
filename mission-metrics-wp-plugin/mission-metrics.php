@@ -233,8 +233,69 @@ function mm_activate() {
 
 	// Defer migrations + retry-queue table + cron scheduling to first admin request.
 	update_option( 'actv_trkr_pending_setup', '1', false );
+
+	// Schedule a one-shot connection self-test ~5s after activation. The
+	// settings hero card polls the resulting `mm_connection_state` option
+	// so the user immediately sees Connecting → Connected/Failed in
+	// WP-admin without needing to flip back to the dashboard.
+	if ( ! wp_next_scheduled( 'mm_connection_self_test' ) ) {
+		wp_schedule_single_event( time() + 5, 'mm_connection_self_test' );
+	}
+
+	// One-shot redirect to the settings page so the next admin pageload
+	// lands on the connection hero card. Skipped on multisite bulk activate.
+	if ( ! is_network_admin() && ! ( isset( $_REQUEST['action'] ) && $_REQUEST['action'] === 'activate-selected' ) ) {
+		set_transient( 'mm_just_activated', '1', 60 );
+	}
+
+	// Initial pending state so the hero card has something to render
+	// before the cron tick runs.
+	update_option( 'mm_connection_state', array(
+		'status'           => 'pending',
+		'last_attempt_at'  => 0,
+		'http_code'        => 0,
+		'error'            => '',
+		'domain'           => '',
+		'site_id'          => '',
+		'message'          => 'Scheduled connection test.',
+	), false );
 }
 register_activation_hook( __FILE__, 'mm_activate' );
+
+/**
+ * Run the deferred connection self-test scheduled by activation.
+ * Delegates to MM_Settings::run_connection_self_test() which is the
+ * shared implementation used by the AJAX "Re-test" button too.
+ */
+function mm_run_connection_self_test_cron() {
+	if ( ! class_exists( 'MM_Settings' ) && file_exists( MM_PLUGIN_DIR . 'includes/class-settings.php' ) ) {
+		require_once MM_PLUGIN_DIR . 'includes/class-settings.php';
+	}
+	if ( class_exists( 'MM_Settings' ) && method_exists( 'MM_Settings', 'run_connection_self_test' ) ) {
+		MM_Settings::run_connection_self_test( 'activation' );
+	}
+}
+add_action( 'mm_connection_self_test', 'mm_run_connection_self_test_cron' );
+
+/**
+ * One-shot redirect to the settings page after activation, so the
+ * connection hero card is the first thing the admin sees.
+ */
+function mm_post_activation_redirect() {
+	if ( ! get_transient( 'mm_just_activated' ) ) {
+		return;
+	}
+	if ( wp_doing_ajax() || wp_doing_cron() || is_network_admin() ) {
+		return;
+	}
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	delete_transient( 'mm_just_activated' );
+	wp_safe_redirect( admin_url( 'options-general.php?page=actv-trkr&actv_trkr_welcome=1' ) );
+	exit;
+}
+add_action( 'admin_init', 'mm_post_activation_redirect', 5 );
 
 /**
  * Deferred setup: runs once on the first admin_init after activation.

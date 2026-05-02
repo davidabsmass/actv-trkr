@@ -65,12 +65,37 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
     navigate("/settings?tab=setup");
   };
 
-  const startAdditionalSite = () => {
+  const startAdditionalSite = async () => {
     if (isFirstSite) {
       // Edge case: user has no sites yet but explicitly chose "additional".
       // Route them to first-install instead of charging them.
       goToFirstInstall();
       return;
+    }
+
+    // Precheck: if the user already paid for a slot (e.g. via direct Stripe
+    // quantity bump or a previous trip through this flow) skip the confirm
+    // screen and route straight to the download page. Soft-fails to confirm.
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "check-additional-site-slot",
+      );
+      if (!error && data && Number(data.available_slots) > 0) {
+        toast({
+          title: "You already have a paid slot ready",
+          description:
+            "Skipping checkout — opening your pre-keyed plugin download.",
+        });
+        onOpenChange(false);
+        reset();
+        navigate("/settings?tab=add-site");
+        return;
+      }
+    } catch {
+      // ignore — fall through to confirm screen
+    } finally {
+      setBusy(false);
     }
     setStep("confirm-additional");
   };

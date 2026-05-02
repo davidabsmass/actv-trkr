@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.21.10
+ * Version:     1.21.11
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.21.10' );
+define( 'MM_PLUGIN_VERSION', '1.21.11' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -233,6 +233,40 @@ function mm_activate() {
 
 	// Defer migrations + retry-queue table + cron scheduling to first admin request.
 	update_option( 'actv_trkr_pending_setup', '1', false );
+
+	// Seed the bundled API key into saved options on (re-)activation.
+	// The dashboard's Add-Site flow bakes a freshly-minted key into
+	// MM_Settings::defaults() so a brand-new install can connect with
+	// zero clicks. But on a SECOND activation (e.g. customer adds a new
+	// site to an org that already had the plugin once), an empty
+	// `api_key` row is already saved in `mm_settings` from the prior
+	// install — and `wp_parse_args(stored, defaults)` lets the empty
+	// stored value override the embedded default, leaving the API Key
+	// field blank in WP-admin. Detect that case and copy the bundled
+	// key forward so the user gets the same one-click experience.
+	if ( class_exists( 'MM_Settings' ) ) {
+		try {
+			$bundled_defaults = MM_Settings::defaults();
+			$bundled_key      = isset( $bundled_defaults['api_key'] ) ? trim( (string) $bundled_defaults['api_key'] ) : '';
+			if ( $bundled_key !== '' ) {
+				$saved_opts = get_option( 'mm_settings', array() );
+				if ( ! is_array( $saved_opts ) ) {
+					$saved_opts = array();
+				}
+				$current_key = isset( $saved_opts['api_key'] ) ? trim( (string) $saved_opts['api_key'] ) : '';
+				if ( $current_key === '' ) {
+					$saved_opts['api_key'] = $bundled_key;
+					// Also seed endpoint_url if missing so the self-test below has everything it needs.
+					if ( empty( $saved_opts['endpoint_url'] ) && ! empty( $bundled_defaults['endpoint_url'] ) ) {
+						$saved_opts['endpoint_url'] = $bundled_defaults['endpoint_url'];
+					}
+					update_option( 'mm_settings', $saved_opts, false );
+				}
+			}
+		} catch ( \Throwable $e ) {
+			// Non-fatal: user can paste the key manually if seeding fails.
+		}
+	}
 
 	// Schedule a one-shot connection self-test ~5s after activation. The
 	// settings hero card polls the resulting `mm_connection_state` option

@@ -156,10 +156,35 @@ export default function AddSite() {
   };
 
   const handleManualDownload = async () => {
+    if (!orgId) {
+      toast.error("No organization selected");
+      return;
+    }
     setManualDownloading(true);
     try {
-      await downloadPlugin();
-      toast.success("Plugin download started");
+      // Even on the "manual" fallback path, mint a fresh key and bake it into
+      // the ZIP. Pasting an old key by hand is the #1 cause of "not connected"
+      // support tickets — make the happy path foolproof regardless of which
+      // button the user clicks.
+      const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      const hashBuffer = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(rawKey),
+      );
+      const keyHash = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      const { error: insertErr } = await supabase.from("api_keys").insert({
+        org_id: orgId,
+        key_hash: keyHash,
+        label: "Additional site key (manual flow)",
+      });
+      if (insertErr) throw insertErr;
+
+      await downloadPlugin(rawKey);
+      toast.success("Plugin downloaded — install & activate, no key to paste");
     } catch (err: any) {
       toast.error("Download failed", { description: err?.message });
     } finally {

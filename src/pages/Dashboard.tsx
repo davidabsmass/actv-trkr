@@ -802,7 +802,7 @@ const Dashboard = () => {
                     ? "May be impacted by form rendering issues"
                     : "Key Actions divided by sessions"
               }
-              trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
+              trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChangeRate(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
               /* Sparkline intentionally omitted: kpiSeries.cvr is leads/sessions
                  (legacy CVR) and disagrees with the Action Rate headline.

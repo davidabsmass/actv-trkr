@@ -1,88 +1,53 @@
-## Why your site shows up as its own top referrer
+## Why the tab says "No converting sources yet"
 
-Real data (last 14 days) confirms the leak on every site:
+The component currently calls `get_session_journeys`, which returns the **most recent 1,000 sessions** ordered by `started_at DESC`.
 
-| Site | Self-referrer leaking through |
-|---|---|
-| livesinthebalance.org | `livesinthebalance.org` — 920 sessions |
-| georgiaboneandjoint.org | `www.georgiaboneandjoint.org` — 52 sessions |
-| apyxmedical.com | `apyxmedical.com` (60) + `www.apyxmedical.com` (2) |
+For your org we have:
+- 7,057 sessions in the last 30 days
+- 71 sessions tied to a Key Action (goal completion)
+- All 71 have UTM or referrer attribution
 
-Two root causes:
+Because converting sessions are spread across the full 30-day window, almost none of them fall inside the latest 1,000 — so the component sees zero conversions and renders the empty state. (Separately, 308 of 310 form-fill leads are missing `session_id` from ingestion, so leads contribute almost nothing to this view today — that's a different fix and not in scope here.)
 
-1. **`www.` vs apex mismatch.** The dashboard's self-referral filter compares the referrer to the exact domain saved on the site record. If the site is stored as `georgiaboneandjoint.org` but visitors hop from `www.georgiaboneandjoint.org` (or vice-versa), the filter misses it. Per the **Domain Normalization** memory, we already strip `www.` everywhere else — referrer normalization wasn't applied to the comparison set.
-2. **Cross-subdomain hops aren't recognised as same-site.** Internal navigations between, e.g., `blog.example.com` → `example.com` get logged as referrals.
+## The fix
 
-There's also some noise from legit external traffic that *looks* like self-referral (e.g. `renuvion.org` for apyxmedical.com — a sister brand), which is real but worth flagging separately.
+Stop sampling sessions. Query the converting sessions **directly** by joining `goal_completions` and `leads` to `sessions`, then aggregate by source/campaign client-side.
 
-## Plan
+### 1. New database function: `get_top_converting_sources`
 
-### Part 1 — Stop the self-referral leak (the actual bug)
+Server-side aggregator that returns one row per converting session with its attribution:
 
-**Normalize on both sides of the comparison** in every place that builds the "own domains" set:
+```text
+input:  org_id, start, end, optional site_id
+output: session_id, utm_source, utm_medium, utm_campaign,
+        landing_referrer_domain, has_lead, has_conversion
+```
 
-- `src/hooks/use-realtime-dashboard.ts` (line ~253)
-- `src/components/dashboard/TopPagesAndSources.tsx` (line ~58)
-- `src/hooks/use-dashboard-overview.ts` (line ~119)
-- `supabase/functions/dashboard-ai-insights/index.ts` (line ~119)
-- `supabase/functions/archive-nightly/index.ts` (line ~163)
+Logic:
+- Build set of `session_id`s from `goal_completions` (Key Actions) in range.
+- Union with `session_id`s from `leads` in range.
+- Join back to `sessions` to fetch attribution columns.
+- Authorization: `is_org_member(org_id) OR admin role` — same gate as `get_session_journeys`.
+- `SECURITY DEFINER`, `STABLE`, `search_path = public`, granted to `authenticated`.
 
-For each site domain, add **all variants** to the "own" set:
-- `apex` (e.g. `example.com`)
-- `www.apex`
-- the registrable root (so `blog.example.com` → matches `example.com`)
+This returns only the sessions that actually converted — typically dozens to a few thousand rows even for high-traffic orgs — so the 1k client cap stops being a problem.
 
-And normalize the incoming referrer the same way before checking membership. Anything matching becomes `Direct`.
+### 2. Update `TopConvertingSources.tsx`
 
-**Also fix at ingest time** in `supabase/functions/track-pageview/index.ts`: when `referrer_domain` matches the site's own root domain (after stripping `www.` and any subdomain), store it as `null` so future analytics, archives, and AI insights all stay clean. This stops new data from re-introducing the bug.
+- Replace the `get_session_journeys` RPC call with `get_top_converting_sources`.
+- Keep the existing client-side `classify()` logic (Paid Social / Search / Email / Organic / Referral / Direct) and the table UI — they're already correct.
+- Drop the "(latest 1k)" caveat; it no longer applies.
+- Keep the empty-state copy but re-word it to be accurate: "No tracked sessions have completed a form fill or Key Action in this date range yet."
 
-**Backfill**: a one-shot SQL migration to clear `landing_referrer_domain` and `referrer_domain` on existing rows where they match the owning site's normalized root. Scoped per-org, idempotent.
+### 3. No other callers affected
 
-### Part 2 — Better "where is traffic actually coming from?"
+`get_session_journeys` stays as-is — it's still used by the Channels tab and the journey list, where the 1k cap is acceptable because those views show sampled traffic, not totals.
 
-The data you have is rich (UTM source/medium/campaign + referrer domain), but the dashboard surfaces it as a flat list of hostnames, which is why `google.com`, `www.google.com`, `bing.com`, `fb`, `facebook.com`, `m.facebook.com` all appear as separate rows.
+## Files
 
-Add a **Channel + Source view** to the Performance / dashboard area, reusing the classifier that already exists in `ChannelBreakdown.tsx` (Visitor Journeys page). It groups raw sources into:
-
-- **Paid Search** (Google/Bing ads — utm_medium=cpc/ppc)
-- **Paid Social** (Meta/TikTok/LinkedIn ads)
-- **Organic Search** (Google/Bing/DuckDuckGo organic)
-- **Organic Social** (Facebook/Instagram/LinkedIn/Reddit/etc. unpaid)
-- **Email** (utm_medium=email or hs_email, mailchimp, etc.)
-- **Referral** (other websites — the actual third-party referrals)
-- **Direct** (no referrer / typed URL / self-referral after normalization)
-
-For each channel, show: sessions, leads, CVR, and the **top 3 raw sources** that rolled up into it. Plus normalize variants:
-- collapse `google.com` + `www.google.com` + `cn.bing.com` to canonical engine names
-- collapse `facebook.com` + `m.facebook.com` + `l.facebook.com` + `fb` to "Facebook"
-- collapse `instagram.com` + `l.instagram.com` + `ig` to "Instagram"
-
-This goes into the existing **Attribution** card on the Performance page (replacing the current flat Sources/Campaigns table) and the **Top Sources** widget on the dashboard.
-
-### Part 3 — Sanity surface
-
-On the Attribution panel, add a small "Excluded as self-referral" footnote showing the count we filtered out (so it's transparent, not invisible). E.g. *"Excluded 920 self-referral sessions from livesinthebalance.org."*
-
-## Files touched
-
-**Dashboard (frontend):**
-- `src/lib/source-normalize.ts` *(new)* — shared `normalizeDomain`, `expandSiteDomains`, `isSelfReferral`, `canonicalSource` helpers
-- `src/hooks/use-realtime-dashboard.ts` — use shared helpers
-- `src/hooks/use-dashboard-overview.ts` — use shared helpers
-- `src/components/dashboard/TopPagesAndSources.tsx` — use shared helpers + canonical source collapsing
-- `src/components/dashboard/AttributionSection.tsx` — switch from flat list to channel-grouped view with expandable sources
-- `src/pages/Performance.tsx` — pass site domains down to AttributionSection so it can self-classify
-
-**Edge functions:**
-- `supabase/functions/track-pageview/index.ts` — null out self-referrer at write time
-- `supabase/functions/dashboard-ai-insights/index.ts` — apply normalization
-- `supabase/functions/archive-nightly/index.ts` — apply normalization
-
-**Database:**
-- One migration: backfill existing `sessions.landing_referrer_domain` and `pageviews.referrer_domain` rows that match owning site (normalized).
+- `supabase/migrations/<timestamp>_get_top_converting_sources.sql` (new) — function + grant
+- `src/components/journeys/TopConvertingSources.tsx` — switch RPC, refresh empty-state copy
 
 ## Verification
 
-After deploy, re-check the same query — every site's self-domain row should drop to zero, and the Attribution card should show a clean Channel breakdown with `Direct` absorbing the previously-leaking rows.
-
-No plugin changes needed. No impact on the WP plugin onboarding work from earlier turns.
+After deploy, the Top Converting Sources tab on Visitor Journeys (30d range) should list sources for the 71 converting sessions we found in the database, ranked by conversions with CVR alongside.

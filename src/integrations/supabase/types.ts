@@ -9004,6 +9004,23 @@ export type Database = {
           resource_type: string
         }[]
       }
+      get_top_converting_sources: {
+        Args: {
+          p_end: string
+          p_org_id: string
+          p_site_id?: string
+          p_start: string
+        }
+        Returns: {
+          has_conversion: boolean
+          has_lead: boolean
+          landing_referrer_domain: string
+          session_id: string
+          utm_campaign: string
+          utm_medium: string
+          utm_source: string
+        }[]
+      }
       get_top_exit_pages: {
         Args: {
           p_end_date: string

@@ -45,7 +45,29 @@ class MM_Settings {
 	}
 
 	public static function get( $key = null ) {
-		$opts = wp_parse_args( get_option( self::OPTION_NAME, array() ), self::defaults() );
+		$defaults = self::defaults();
+		$stored   = get_option( self::OPTION_NAME, array() );
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+
+		// Self-heal stamped dashboard downloads: if this package contains a
+		// bundled API key but the saved settings row is missing/blank, copy the
+		// bundled key into the real option immediately. This covers both fresh
+		// activations and WP's "replace current with uploaded" update path where
+		// activation hooks may not run.
+		if ( ! empty( $defaults['api_key'] ) ) {
+			$current_key = isset( $stored['api_key'] ) ? trim( (string) $stored['api_key'] ) : '';
+			if ( $current_key === '' ) {
+				$stored['api_key'] = $defaults['api_key'];
+				if ( empty( $stored['endpoint_url'] ) && ! empty( $defaults['endpoint_url'] ) ) {
+					$stored['endpoint_url'] = $defaults['endpoint_url'];
+				}
+				update_option( self::OPTION_NAME, $stored, false );
+			}
+		}
+
+		$opts = wp_parse_args( $stored, $defaults );
 		// Self-heal: if a previous save blanked the endpoint, restore the default.
 		if ( empty( $opts['endpoint_url'] ) ) {
 			$opts['endpoint_url'] = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';

@@ -157,12 +157,21 @@ Deno.serve(async (req) => {
 
         // Best-effort audit log (don't fail the export if logging fails)
         try {
-          await supabase.from("export_audit").insert({
+          await supabase.from("export_audit_log").insert({
             user_id: userData.user.id,
             org_id,
+            site_id: site_id ?? null,
+            role_at_export: "member",
             export_type: "visitor_journeys_csv",
-            row_count: rowsExported,
-            metadata: { start, end, site_id: site_id ?? null, outcome, sort },
+            export_scope: outcome,
+            metadata: {
+              start,
+              end,
+              site_id: site_id ?? null,
+              outcome,
+              sort,
+              row_count: rowsExported,
+            },
           });
         } catch (_logErr) {
           // ignore

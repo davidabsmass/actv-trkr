@@ -1,0 +1,53 @@
+# ACTV TRKR
+
+> ACTV TRKR is a WordPress analytics and lead-tracking platform that combines traffic attribution, form capture, visitor behavior, and site health monitoring in one dashboard. Built for business owners, marketers, and agencies who want to understand exactly what drives leads on their WordPress sites.
+
+ACTV TRKR installs as a lightweight WordPress plugin and connects every form submission back to its traffic source, campaign, and visitor session. It works with Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable Forms, and Avada/Fusion Forms out of the box. An AI agent answers plain-English questions about site performance.
+
+## Key features
+
+- **Lead Attribution** — every form submission is tied back to traffic source, campaign, landing page, and visitor session timeline
+- **Form Capture & Monitoring** — universal capture across major WordPress form plugins, with broken-form alerts
+- **Visitor Behavior** — session timelines showing pages visited, clicks, and conversion paths
+- **AI Agent (Nova)** — ask questions like "Where are my leads coming from?" or "What changed this week?"
+- **Site Health Monitoring** — broken links, SSL expiry, domain expiry, and uptime monitoring with alerts
+- **Reports** — weekly and monthly summaries, custom date ranges, PDF exports, and shareable snapshots
+- **WooCommerce Tracking** — order attribution and revenue tracking
+- **SEO Signals** — search visibility scanning and AI-powered remediation suggestions
+
+## Pricing
+
+- **Monthly:** $45/mo
+- **Yearly:** $495/year (save $45)
+- **Free trial:** 14 days, credit card required, cancel anytime
+- All features included in a single plan; pricing is per website
+
+## How it differs from Google Analytics
+
+Google Analytics shows traffic. ACTV TRKR shows what drives leads — connecting traffic source → visitor behavior → form submission into one timeline.
+
+## Setup
+
+1. Install the ACTV TRKR WordPress plugin
+2. Connect the site to the dashboard (one-click)
+3. Tracking begins automatically — no manual configuration
+
+## Important resources
+
+- Homepage: https://actvtrkr.com/
+- Sign up / free trial: https://actvtrkr.com/signup
+- Sign in: https://actvtrkr.com/auth
+- Privacy policy: https://actvtrkr.com/privacy
+- Terms of service: https://actvtrkr.com/terms
+- Data Processing Agreement (GDPR): https://actvtrkr.com/dpa
+- Cookie policy: https://actvtrkr.com/cookie-policy
+- Accessibility: https://actvtrkr.com/accessibility
+- Detailed product reference: https://actvtrkr.com/llms-full.txt
+
+## Privacy & compliance
+
+ACTV TRKR is GDPR-compliant and acts as a Data Processor for customer data. It includes a built-in consent banner, region-aware privacy defaults (EU/UK strict, US opt-out), and integrates with major external Consent Management Platforms (CMPs).
+
+## Maker
+
+Built by New Uniform Design — https://newuniformdesign.com

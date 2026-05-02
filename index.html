@@ -3,32 +3,182 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <!-- Security headers via meta tags -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://qnnxlvoybbmmqoxuqyvf.supabase.co https://*.supabase.co wss://*.supabase.co https://api.lovable.dev; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
-    <title>ACTV TRKR</title>
-    <meta name="description" content="ACTV TRKR Dashboard">
+
+    <!-- Primary SEO -->
+    <title>ACTV TRKR — WordPress Lead Tracking, Form Capture & Site Health</title>
+    <meta name="description" content="ACTV TRKR brings WordPress traffic, forms, lead attribution, visitor activity, and site health into one dashboard. See what's working, catch what's not, fix it fast." />
+    <meta name="keywords" content="WordPress analytics, lead attribution, form tracking, Gravity Forms tracking, WPForms analytics, Contact Form 7 tracking, website lead tracking, WordPress site health, uptime monitoring, AI website assistant, conversion tracking, marketing attribution" />
     <meta name="author" content="ACTV TRKR" />
-    <!-- Canonical: ensures search engines treat actvtrkr.com as the primary URL,
-         not the auto-generated mshnctrl.lovable.app one. -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+    <!-- Canonical -->
     <link rel="canonical" href="https://actvtrkr.com/" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7dbd38b9-dadf-4497-8843-2990c52dd86d/id-preview-bf53126c--0015e01c-8e1e-425b-884e-18051bf17654.lovable.app-1772382908320.png">
+    <meta property="og:site_name" content="ACTV TRKR" />
+    <meta property="og:url" content="https://actvtrkr.com/" />
+    <meta property="og:title" content="ACTV TRKR — WordPress Lead Tracking, Form Capture & Site Health" />
+    <meta property="og:description" content="One dashboard for WordPress traffic, forms, lead attribution, visitor behavior, and site health. Stop guessing what's driving leads." />
+    <meta property="og:image" content="https://actvtrkr.com/actv-trkr-og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@absolutelymassive" />
-    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7dbd38b9-dadf-4497-8843-2990c52dd86d/id-preview-bf53126c--0015e01c-8e1e-425b-884e-18051bf17654.lovable.app-1772382908320.png">
-    <meta property="og:title" content="ACTV TRKR">
-  <meta name="twitter:title" content="ACTV TRKR">
-  <meta property="og:description" content="ACTV TRKR Dashboard">
-  <meta name="twitter:description" content="ACTV TRKR Dashboard">
-</head>
+    <meta name="twitter:title" content="ACTV TRKR — WordPress Lead Tracking & Site Health" />
+    <meta name="twitter:description" content="One dashboard for WordPress traffic, forms, lead attribution, visitor behavior, and site health." />
+    <meta name="twitter:image" content="https://actvtrkr.com/actv-trkr-og.jpg" />
+
+    <!-- Structured data: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "ACTV TRKR",
+      "url": "https://actvtrkr.com",
+      "logo": "https://actvtrkr.com/actv-trkr-og.jpg",
+      "description": "WordPress lead tracking, form capture, and site health monitoring in one dashboard.",
+      "sameAs": [
+        "https://newuniformdesign.com"
+      ]
+    }
+    </script>
+
+    <!-- Structured data: SoftwareApplication / Product -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "ACTV TRKR",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Web Analytics",
+      "operatingSystem": "WordPress",
+      "url": "https://actvtrkr.com",
+      "description": "ACTV TRKR is a WordPress analytics and lead-tracking platform. It connects every form submission back to traffic source, campaign, and visitor session — and monitors form health, uptime, SSL, and broken links.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "price": "45",
+          "priceCurrency": "USD",
+          "url": "https://actvtrkr.com/signup",
+          "availability": "https://schema.org/InStock",
+          "name": "Monthly subscription"
+        },
+        {
+          "@type": "Offer",
+          "price": "495",
+          "priceCurrency": "USD",
+          "url": "https://actvtrkr.com/signup",
+          "availability": "https://schema.org/InStock",
+          "name": "Annual subscription"
+        }
+      ],
+      "featureList": [
+        "Lead attribution to traffic source and campaign",
+        "Form capture across Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable, Avada",
+        "Visitor session timelines",
+        "AI agent for natural-language site analytics",
+        "Site health monitoring (broken forms, broken links, SSL, domain, uptime)",
+        "Weekly and monthly PDF reports",
+        "Shareable snapshot links",
+        "WooCommerce order attribution",
+        "SEO scanning and AI remediation"
+      ]
+    }
+    </script>
+
+    <!-- Structured data: WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "ACTV TRKR",
+      "url": "https://actvtrkr.com"
+    }
+    </script>
+
+    <!-- Structured data: FAQ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does ACTV TRKR actually replace?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ACTV TRKR replaces the need to piece together multiple tools just to understand your website. Instead of switching between Google Analytics, form plugins, uptime monitors, and reports, ACTV TRKR brings everything into one clear dashboard — so you can see traffic, leads, behavior, and site health in one place."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is ACTV TRKR different from Google Analytics?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Google Analytics shows you traffic. ACTV TRKR shows you what's actually driving leads. ACTV TRKR connects traffic sources, visitor behavior, and form submissions into a single timeline — so you can see how a visit turns into a lead, not just how many visitors you had."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need to install a WordPress plugin?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. ACTV TRKR installs as a lightweight WordPress plugin. Once installed, it automatically begins tracking traffic, form activity, and visitor behavior, and connects your site to your dashboard — no complex setup required."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What form plugins are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ACTV TRKR works with the most common WordPress form builders, including Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable Forms, and Avada/Fusion Forms. It captures submissions and activity automatically across these tools."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What kind of alerts will I receive?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ACTV TRKR alerts you when something needs attention — before it impacts your leads. This includes broken forms, broken links, uptime issues, and SSL or domain problems."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does the AI agent work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ACTV TRKR includes an AI agent that analyzes your website data and lets you ask questions about it. You can ask things like 'Where are my leads coming from?', 'What changed this week?', or 'What should I fix?' — and get clear, actionable answers based on your actual data."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How long does setup take?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Most sites are up and running in minutes. Install the plugin, connect your site, and ACTV TRKR will begin tracking automatically."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does ACTV TRKR cost?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ACTV TRKR is $45/month or $495/year per website. There is a 14-day free trial, credit card required, and you can cancel anytime."
+          }
+        }
+      ]
+    }
+    </script>
+  </head>
 
   <body>
     <script>
@@ -43,7 +193,35 @@
         } catch(e){}
       })();
     </script>
+
     <div id="root"></div>
+
+    <!-- Static fallback for crawlers and AI agents that don't execute JavaScript.
+         This content is replaced once React mounts, but ensures GPTBot, ClaudeBot,
+         link-preview bots, and older crawlers always see the value proposition. -->
+    <noscript>
+      <main>
+        <h1>ACTV TRKR — WordPress Lead Tracking, Form Capture &amp; Site Health</h1>
+        <p>
+          ACTV TRKR brings together traffic, forms, lead attribution, visitor activity,
+          and site health across your WordPress site — so you can see what's working,
+          what's not, and what to do next.
+        </p>
+        <h2>Key features</h2>
+        <ul>
+          <li>Lead attribution — every form submission tied to traffic source and session</li>
+          <li>Form capture across Gravity Forms, WPForms, Contact Form 7, Ninja Forms, Formidable, Avada</li>
+          <li>Visitor behavior and session timelines</li>
+          <li>AI agent for natural-language site analytics</li>
+          <li>Site health: broken forms, broken links, SSL, domain, and uptime monitoring</li>
+          <li>Weekly and monthly PDF reports plus shareable snapshots</li>
+        </ul>
+        <h2>Pricing</h2>
+        <p>$45/month or $495/year per website. 14-day free trial. Cancel anytime.</p>
+        <p><a href="/signup">Start your free trial</a> · <a href="/auth">Sign in</a></p>
+      </main>
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

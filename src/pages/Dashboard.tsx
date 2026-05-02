@@ -97,10 +97,24 @@ function KPICard({ label, value, sub, trend, icon, accent, valueClassName, value
   );
 }
 
-function pctChange(curr: number, prev: number): number | null {
+// Minimum prior-period volume required to show a "% vs last period"
+// trend. Below this we suppress the comparison because a tiny baseline
+// (e.g. 4 sessions when the site was first installed mid-window) makes
+// the percentage swing meaningless or actively misleading.
+const MIN_BASELINE_FOR_TREND = 50;
+
+function pctChange(curr: number, prev: number, minBaseline = MIN_BASELINE_FOR_TREND): number | null {
   if (prev === 0 && curr === 0) return 0; // no change
   if (prev === 0) return null; // no baseline — don't show misleading spike
+  if (prev < minBaseline) return null; // baseline too small to be meaningful
   return ((curr - prev) / prev) * 100;
+}
+
+// Rates (e.g. CVR as a percentage) need a much smaller floor — we just
+// need *some* prior signal, but we still skip when the baseline is
+// effectively zero.
+function pctChangeRate(curr: number, prev: number): number | null {
+  return pctChange(curr, prev, 0.0001);
 }
 
 /* ─── Attention Required Panel ─── */
@@ -464,16 +478,20 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
-  // Calculate org age to suppress misleading comparisons for new orgs
+  // Calculate org age to suppress misleading comparisons for new orgs.
+  // While `orgCreatedAt` is loading we treat the org as "too new" rather
+  // than "infinitely old" — otherwise the dashboard can briefly render
+  // a bogus trend (e.g. "-71.3%") on first paint before the prior-period
+  // count finishes hydrating.
   const orgAgeDays = useMemo(() => {
-    if (!orgCreatedAt) return Infinity;
+    if (!orgCreatedAt) return 0;
     return Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24));
   }, [orgCreatedAt]);
   // Suppress period-over-period comparisons unless we have at least a full prior
   // period of tracking history. Showing "+1350% vs last period" when the prior
   // window only had 1 session is misleading — wait until the org has been
   // tracking for at least 2× the selected range so the comparison is meaningful.
-  const orgTooNewForComparison = orgAgeDays < days * 2;
+  const orgTooNewForComparison = !orgCreatedAt || orgAgeDays < days * 2;
 
   const isLoading = !realtimeData;
 
@@ -784,7 +802,7 @@ const Dashboard = () => {
                     ? "May be impacted by form rendering issues"
                     : "Key Actions divided by sessions"
               }
-              trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChange(periodData.cvr.current, periodData.cvr.previous)}
+              trend={orgTooNewForComparison || periodData.sessions.current === 0 ? null : pctChangeRate(periodData.cvr.current, periodData.cvr.previous)}
               icon={<BarChart3 className="h-4 w-4" />}
               /* Sparkline intentionally omitted: kpiSeries.cvr is leads/sessions
                  (legacy CVR) and disagrees with the Action Rate headline.

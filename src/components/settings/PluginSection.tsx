@@ -9,6 +9,21 @@ import { useTranslation } from "react-i18next";
 import { downloadPlugin, getLatestPluginVersion, PluginDownloadError } from "@/lib/plugin-download";
 import { reportDownloadFailure } from "@/lib/report-download-failure";
 
+type SitePluginStatus = {
+  id: string;
+  domain: string | null;
+  plugin_version: string | null;
+  last_heartbeat_at: string | null;
+  plugin_status: string | null;
+  created_at: string;
+  tracker_status?: string | null;
+  last_event_at?: string | null;
+  last_page_view_at?: string | null;
+  status_last_heartbeat_at?: string | null;
+  verifier_last_status?: string | null;
+  verifier_last_checked_at?: string | null;
+};
+
 function compareVersions(a: string, b: string) {
   const aParts = a.split(".").map((part) => Number(part) || 0);
   const bParts = b.split(".").map((part) => Number(part) || 0);
@@ -60,18 +75,42 @@ export default function PluginSection() {
     queryFn: async () => {
       if (!orgId) return null;
 
-      const { data, error } = await supabase
+      const { data: sites, error } = await supabase
         .from("sites")
-        .select("domain, plugin_version, last_heartbeat_at, plugin_status, created_at")
+        .select("id, domain, plugin_version, last_heartbeat_at, plugin_status, created_at")
         .eq("org_id", orgId);
 
       if (error) throw error;
 
-      return (data ?? [])
+      const siteIds = (sites ?? []).map((site) => site.id);
+      const { data: statuses, error: statusError } = siteIds.length
+        ? await supabase
+            .from("site_tracking_status")
+            .select("site_id, tracker_status, last_event_at, last_page_view_at, last_heartbeat_at, verifier_last_status, verifier_last_checked_at")
+            .in("site_id", siteIds)
+        : { data: [], error: null };
+
+      if (statusError) throw statusError;
+
+      const statusBySiteId = new Map((statuses ?? []).map((status) => [status.site_id, status]));
+      const hydratedSites: SitePluginStatus[] = (sites ?? []).map((site) => {
+        const status = statusBySiteId.get(site.id);
+        return {
+          ...site,
+          tracker_status: status?.tracker_status ?? null,
+          last_event_at: status?.last_event_at ?? null,
+          last_page_view_at: status?.last_page_view_at ?? null,
+          status_last_heartbeat_at: status?.last_heartbeat_at ?? null,
+          verifier_last_status: status?.verifier_last_status ?? null,
+          verifier_last_checked_at: status?.verifier_last_checked_at ?? null,
+        };
+      });
+
+      return hydratedSites
         .filter((site) => Boolean(site.plugin_version))
         .sort((a, b) => {
-          const aSignal = a.last_heartbeat_at ? new Date(a.last_heartbeat_at).getTime() : 0;
-          const bSignal = b.last_heartbeat_at ? new Date(b.last_heartbeat_at).getTime() : 0;
+          const aSignal = getMostRecentActivityAt(a) ? new Date(getMostRecentActivityAt(a)!).getTime() : 0;
+          const bSignal = getMostRecentActivityAt(b) ? new Date(getMostRecentActivityAt(b)!).getTime() : 0;
 
           if (bSignal !== aSignal) return bSignal - aSignal;
 

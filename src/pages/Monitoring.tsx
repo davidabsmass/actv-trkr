@@ -33,6 +33,7 @@ export default function MonitoringPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
+  const siteParam = searchParams.get("site");
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [autoSelected, setAutoSelected] = useState(false);
 
@@ -103,13 +104,21 @@ export default function MonitoringPage() {
 
   const selectedSite = sites?.find(s => s.id === selectedSiteId) || null;
 
-  // Auto-select first site when tab param is present
+  // Select a requested site from the sidebar switcher, or auto-select first site when tab param is present.
   useEffect(() => {
-    if (tabParam && !autoSelected && sites && sites.length > 0 && !selectedSiteId) {
+    if (!sites || sites.length === 0) return;
+
+    if (siteParam && sites.some((site) => site.id === siteParam)) {
+      setSelectedSiteId(siteParam);
+      setAutoSelected(true);
+      return;
+    }
+
+    if (tabParam && !autoSelected && !selectedSiteId) {
       setSelectedSiteId(sites[0].id);
       setAutoSelected(true);
     }
-  }, [tabParam, sites, autoSelected, selectedSiteId]);
+  }, [tabParam, siteParam, sites, autoSelected, selectedSiteId]);
 
   if (isLoading) {
     return (

@@ -12,7 +12,7 @@ First-party pageview tracking and Gravity Forms lead ingestion for ACTV TRKR.
 == Changelog ==
 
 = 1.21.11 =
-* FIX: Re-installing the plugin on a site that previously had it activated now seeds the bundled API key into saved settings so the connection self-test succeeds without manual paste. Resolves "Paste your API key to connect" appearing on second-site installs.
+* FIX: Re-installing the plugin on a site that previously had it activated now seeds the bundled API key into the correct saved settings option so the connection self-test succeeds without manual paste. Resolves "Paste your API key to connect" appearing on second-site installs.
 
 = 1.21.10 =
 * NEW: Activation self-test + Connection hero card with live polling so admins see Connecting → Connected/Failed without leaving WP-admin.

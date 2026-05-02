@@ -49,7 +49,18 @@ export default function VisitorJourneys() {
 
       <VisitorJourneyStats orgId={orgId} startDate={startDate} endDate={endDate} />
 
-      <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
+      <Tabs defaultValue="channels" className="mb-4">
+        <TabsList>
+          <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="top-converting">Top Converting Sources</TabsTrigger>
+        </TabsList>
+        <TabsContent value="channels" className="mt-3">
+          <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
+        </TabsContent>
+        <TabsContent value="top-converting" className="mt-3">
+          <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
+        </TabsContent>
+      </Tabs>
 
       <VisitorJourneysList orgId={orgId} startDate={startDate} endDate={endDate} />
     </div>

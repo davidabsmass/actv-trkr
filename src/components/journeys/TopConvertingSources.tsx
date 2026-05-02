@@ -65,13 +65,10 @@ export function TopConvertingSources({ orgId, startDate, endDate }: Props) {
     queryKey: ["top_converting_sources", orgId, startDate, endDate],
     queryFn: async () => {
       if (!orgId) return null;
-      const { data, error } = await supabase.rpc("get_session_journeys", {
+      const { data, error } = await supabase.rpc("get_top_converting_sources", {
         p_org_id: orgId,
         p_start: startTs,
         p_end: endTs,
-        p_outcome: "all",
-        p_limit: 1000,
-        p_offset: 0,
       });
       if (error) throw error;
       return (data || []) as Array<{

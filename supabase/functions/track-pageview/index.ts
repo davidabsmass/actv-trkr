@@ -268,6 +268,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ status: "ok", filtered: "spam_referrer" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ── Self-referral suppression ──────────────────────────────────────
+    // If the referrer host is the same as the site's own domain (apex,
+    // www-prefixed, or any subdomain), drop it. This prevents internal
+    // navigations on multi-host setups (e.g. blog.example.com → example.com)
+    // from polluting analytics with the org's own domain as a "top source".
+    if (referrerDomain && domain) {
+      const refNorm = referrerDomain.toLowerCase().replace(/^www\./, "");
+      const siteNorm = domain.toLowerCase().replace(/^www\./, "");
+      const siteRoot = siteNorm.split(".").slice(-2).join(".");
+      if (refNorm === siteNorm || refNorm.endsWith("." + siteNorm) || refNorm === siteRoot || refNorm.endsWith("." + siteRoot)) {
+        referrerDomain = null;
+      }
+    }
+
     let pagePath = sanitizeStr(event?.page_path, 2048) || "";
     try { pagePath = new URL(pageUrl).pathname; } catch {}
 

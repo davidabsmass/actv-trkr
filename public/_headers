@@ -1,2 +1,24 @@
 /*
   Content-Security-Policy: default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'self'
+
+# Marketing landing page — let crawlers (Facebook, LinkedIn, Slack, etc.)
+# cache the HTML for 5 minutes so a single successful fetch suffices for
+# subsequent link-preview requests. Application routes (/dashboard, /account,
+# /settings, /admin-setup, /onboarding, /reset-password, /checkout-success)
+# are NOT cached — they require auth.
+/
+  Cache-Control: public, max-age=300, must-revalidate
+  X-Robots-Tag: all
+
+/index.html
+  Cache-Control: public, max-age=300, must-revalidate
+  X-Robots-Tag: all
+
+/actv-trkr-og.jpg
+  Cache-Control: public, max-age=86400, immutable
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+
+/robots.txt
+  Cache-Control: public, max-age=3600

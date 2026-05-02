@@ -9097,6 +9097,14 @@ export type Database = {
         }
         Returns: number
       }
+      org_active_api_key_status: {
+        Args: { _org_id: string }
+        Returns: {
+          created_at: string
+          has_active_key: boolean
+          label: string
+        }[]
+      }
       purge_auth_hardening_stale: { Args: never; Returns: undefined }
       purge_expired_mfa_codes: { Args: never; Returns: undefined }
       qa_check_has_role_definer: {

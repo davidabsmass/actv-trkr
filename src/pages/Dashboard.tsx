@@ -514,12 +514,49 @@ const Dashboard = () => {
     };
   }, [realtimeData]);
 
-  const topSource = useMemo(() => {
-    const sources = realtimeData?.sources || [];
-    if (sources.length === 0) return null;
-    const sorted = [...sources].sort((a: any, b: any) => (b.sessions || b.count || 0) - (a.sessions || a.count || 0));
-    return sorted[0];
-  }, [realtimeData]);
+  // Top *converting* source — sessions that produced a lead or Key Action
+  const { data: topConvertingData } = useQuery({
+    queryKey: ["dashboard_top_converting_source", orgId, startDate, endDate],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const { data, error } = await supabase.rpc("get_top_converting_sources", {
+        p_org_id: orgId,
+        p_start: `${startDate}T00:00:00Z`,
+        p_end: `${endDate}T23:59:59Z`,
+      });
+      if (error) throw error;
+      return (data || []) as Array<{
+        utm_source: string | null;
+        utm_campaign: string | null;
+        landing_referrer_domain: string | null;
+        has_lead: boolean;
+        has_conversion: boolean;
+      }>;
+    },
+    enabled: !!orgId,
+    staleTime: 120_000,
+  });
+
+  const topConvertingSource = useMemo(() => {
+    const rows = topConvertingData || [];
+    if (rows.length === 0) return null;
+    const map = new Map<string, { label: string; conversions: number; sessions: number }>();
+    for (const r of rows) {
+      const label =
+        (r.utm_source && r.utm_source.trim()) ||
+        (r.landing_referrer_domain && r.landing_referrer_domain.trim()) ||
+        "Direct";
+      const converted = r.has_lead || r.has_conversion;
+      const cur = map.get(label) || { label, conversions: 0, sessions: 0 };
+      cur.sessions += 1;
+      if (converted) cur.conversions += 1;
+      map.set(label, cur);
+    }
+    const ranked = Array.from(map.values())
+      .filter((r) => r.conversions > 0)
+      .sort((a, b) => b.conversions - a.conversions);
+    return ranked[0] || null;
+  }, [topConvertingData]);
 
   const attentionItems = useMemo<AttentionItem[]>(() => {
     const items: AttentionItem[] = [];
@@ -753,15 +790,25 @@ const Dashboard = () => {
                  (legacy CVR) and disagrees with the Action Rate headline.
                  Restore once a daily Action Rate series is available. */
             />
-            <KPICard
-              variant="info"
-              label={t("dashboard.topSource")}
-              value={topSource?.source || "No source data yet"}
-              valueClassName="text-xs font-medium truncate"
-              valueTitle={topSource?.source || undefined}
-              sub={topSource ? `${topSource.sessions} ${t("common.sessions")}` : "Traffic attribution will appear once available"}
-              icon={<Megaphone className="h-4 w-4" />}
-            />
+            <Link
+              to="/visitor-journeys#top-converting-sources"
+              className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
+              title="View all top converting sources"
+            >
+              <KPICard
+                variant="info"
+                label="Top Converting Source"
+                value={topConvertingSource?.label || "No conversions yet"}
+                valueClassName="text-xs font-medium truncate"
+                valueTitle={topConvertingSource?.label || undefined}
+                sub={
+                  topConvertingSource
+                    ? `${topConvertingSource.conversions} ${topConvertingSource.conversions === 1 ? "conversion" : "conversions"} · ${topConvertingSource.sessions} ${t("common.sessions")}`
+                    : "Sources that drove a lead or Key Action will appear here"
+                }
+                icon={<Megaphone className="h-4 w-4" />}
+              />
+            </Link>
 
             <div
               className="kpi-card p-4 animate-slide-up min-h-[132px] flex flex-col"
@@ -832,7 +879,7 @@ const Dashboard = () => {
                 cvrLastWeek: periodData.cvr.previous,
                 keyActionsThisWeek: periodData.keyActions.current,
                 keyActionsLastWeek: periodData.keyActions.previous,
-                topSource: topSource?.source,
+                topSource: topConvertingSource?.label,
                 totalForms: formsData?.length || 0,
                 primaryFocus: settings?.primary_focus || "lead_volume",
               }}

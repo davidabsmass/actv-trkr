@@ -9,7 +9,6 @@ import { TopConvertingSources } from "@/components/journeys/TopConvertingSources
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_VISITOR_JOURNEYS } from "@/components/howto/page-content";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function VisitorJourneys() {
   const { orgId, orgName } = useOrg();
@@ -49,18 +48,12 @@ export default function VisitorJourneys() {
 
       <VisitorJourneyStats orgId={orgId} startDate={startDate} endDate={endDate} />
 
-      <Tabs defaultValue="channels" className="mb-4">
-        <TabsList>
-          <TabsTrigger value="channels">Channels</TabsTrigger>
-          <TabsTrigger value="top-converting">Top Converting Sources</TabsTrigger>
-        </TabsList>
-        <TabsContent value="channels" className="mt-3">
-          <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
-        </TabsContent>
-        <TabsContent value="top-converting" className="mt-3">
-          <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
-        </TabsContent>
-      </Tabs>
+      {/* Top converting sources — main section, near the top */}
+      <div id="top-converting-sources" className="scroll-mt-24">
+        <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
+      </div>
+
+      <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
 
       <VisitorJourneysList orgId={orgId} startDate={startDate} endDate={endDate} />
     </div>

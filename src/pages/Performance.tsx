@@ -14,6 +14,7 @@ import { ClickActivity } from "@/components/dashboard/ClickActivity";
 import { GoalConversions } from "@/components/dashboard/GoalConversions";
 import { TopExitPages } from "@/components/dashboard/TopExitPages";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
+import { TopConvertingSources } from "@/components/journeys/TopConvertingSources";
 import { ConversionBreakdown } from "@/components/dashboard/ConversionBreakdown";
 import { KPIRow } from "@/components/dashboard/KPIRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -231,6 +232,7 @@ const Performance = () => {
                     : undefined
                 }
               />
+              <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
               <TrendsChart data={processedData.dailyData} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <VisitorEngagement orgId={orgId} startDate={startDate} endDate={endDate} />

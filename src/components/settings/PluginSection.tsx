@@ -72,19 +72,23 @@ export default function PluginSection() {
   const { t } = useTranslation();
   const { orgId } = useOrg();
   const [downloading, setDownloading] = useState(false);
+  // Use a security-definer RPC so non-admin members (e.g. managers) can
+  // see whether their org has a working API key, without granting them
+  // RLS access to the api_keys.key_hash column. RLS-restricted direct
+  // SELECT on api_keys would otherwise return null for managers and
+  // make the panel falsely report "No active key".
   const { data: activeKey } = useQuery({
-    queryKey: ["active_api_key", orgId],
+    queryKey: ["active_api_key_status", orgId],
     queryFn: async () => {
       if (!orgId) return null;
-      const { data, error } = await supabase
-        .from("api_keys")
-        .select("id, label, created_at, key_hash")
-        .eq("org_id", orgId)
-        .is("revoked_at", null)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.rpc("org_active_api_key_status", { _org_id: orgId });
       if (error) throw error;
-      if (!data?.length) return null;
-      return data[0];
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row || !row.has_active_key) return null;
+      return {
+        label: row.label as string | null,
+        created_at: row.created_at as string,
+      };
     },
     enabled: !!orgId,
     refetchInterval: 30 * 1000,

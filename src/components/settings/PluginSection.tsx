@@ -176,7 +176,26 @@ export default function PluginSection() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      await downloadPlugin();
+      if (!orgId) {
+        await downloadPlugin();
+      } else {
+        const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+        const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
+        const keyHash = Array.from(new Uint8Array(hashBuffer))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+
+        const { error } = await supabase.from("api_keys").insert({
+          org_id: orgId,
+          key_hash: keyHash,
+          label: "Plugin download key",
+        });
+        if (error) throw error;
+
+        await downloadPlugin(rawKey);
+      }
       await refetchLatestVersion();
       toast.success(`Plugin v${latestVersion || "latest"} download started.`);
     } catch (e: any) {

@@ -879,7 +879,7 @@ const Dashboard = () => {
                 cvrLastWeek: periodData.cvr.previous,
                 keyActionsThisWeek: periodData.keyActions.current,
                 keyActionsLastWeek: periodData.keyActions.previous,
-                topSource: topSource?.source,
+                topSource: topConvertingSource?.label,
                 totalForms: formsData?.length || 0,
                 primaryFocus: settings?.primary_focus || "lead_volume",
               }}

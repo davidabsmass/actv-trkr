@@ -8894,6 +8894,18 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      event_matches_conversion_goal: {
+        Args: {
+          p_event_type: string
+          p_goal_type: string
+          p_meta: Json
+          p_page_path: string
+          p_page_url: string
+          p_rules: Json
+          p_target_text: string
+        }
+        Returns: boolean
+      }
       expire_old_support_grants: { Args: never; Returns: number }
       feature_enabled: {
         Args: { p_flag_key: string; p_org_id?: string; p_site_id?: string }

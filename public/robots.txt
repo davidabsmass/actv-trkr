@@ -16,6 +16,18 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: facebookexternalhit/1.1
+Allow: /
+
+User-agent: Facebot
+Allow: /
+
+User-agent: Facebot/1.0
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
 User-agent: LinkedInBot
 Allow: /
 

@@ -208,6 +208,7 @@ const Index = () => {
         <HomepageLanguageSwitcher />
       </div>
 
+      <main id="main-content">
       {/* Hero + space background */}
       <div className="relative overflow-hidden bg-black">
         <div

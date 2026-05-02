@@ -21,6 +21,8 @@ class MM_Settings {
 		add_action( 'admin_enqueue_scripts',               array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_mm_test_connection',          array( __CLASS__, 'ajax_test_connection' ) );
 		add_action( 'wp_ajax_mm_sync_forms',               array( __CLASS__, 'ajax_sync_forms' ) );
+		add_action( 'wp_ajax_mm_connection_state',         array( __CLASS__, 'ajax_connection_state' ) );
+		add_action( 'admin_notices',                       array( __CLASS__, 'render_global_connection_notice' ) );
 	}
 
 	public static function defaults() {
@@ -205,8 +207,12 @@ class MM_Settings {
 		<?php
 	}
 
-	/* ── Status bar ───────────────────────────────────────── */
+	/* ── Connection hero card + status pills ──────────────── */
 	private static function render_status_bar() {
+		// New hero card sits above the existing pill row so admins
+		// immediately see the live connection state after activation.
+		self::render_connection_hero();
+
 		$opts      = self::get();
 		$connected = ! empty( $opts['api_key'] ) && ! empty( $opts['endpoint_url'] );
 		$tracking  = $opts['enable_tracking'] === '1';
@@ -239,6 +245,318 @@ class MM_Settings {
 			?>
 		</div>
 		<?php
+	}
+
+	/* ── Connection hero card ─────────────────────────────── */
+	private static function render_connection_hero() {
+		$state  = self::get_connection_state();
+		$status = $state['status'];
+		$domain = ! empty( $state['domain'] ) ? $state['domain'] : preg_replace( '/^www\./i', '', (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+		$opts   = self::get();
+		$has_key = ! empty( $opts['api_key'] );
+
+		// If the user hasn't pasted a key yet, show a setup-style hero.
+		if ( ! $has_key && $status !== 'success' ) {
+			$status = 'awaiting_key';
+		}
+
+		$dashboard_url = 'https://actvtrkr.com/dashboard';
+		$retest_nonce  = wp_create_nonce( 'mm_test' );
+		$state_nonce   = wp_create_nonce( 'mm_connection_state' );
+		?>
+		<div class="mm-hero" data-mm-hero data-status="<?php echo esc_attr( $status ); ?>"
+			data-state-nonce="<?php echo esc_attr( $state_nonce ); ?>"
+			data-test-nonce="<?php echo esc_attr( $retest_nonce ); ?>">
+			<div class="mm-hero-icon" aria-hidden="true">
+				<span class="mm-hero-spinner"></span>
+			</div>
+			<div class="mm-hero-body">
+				<h2 class="mm-hero-title"></h2>
+				<p class="mm-hero-msg"></p>
+				<p class="mm-hero-meta"></p>
+			</div>
+			<div class="mm-hero-actions">
+				<a href="<?php echo esc_url( $dashboard_url ); ?>" target="_blank" rel="noopener"
+					class="button button-primary mm-hero-dashboard" style="display:none">Open dashboard ↗</a>
+				<button type="button" class="button mm-hero-retest">Re-test connection</button>
+			</div>
+			<noscript>
+				<p>JavaScript is required to see live connection status. Use the Tools tab to test manually.</p>
+			</noscript>
+			<script type="application/json" class="mm-hero-initial"><?php
+				echo wp_json_encode( array(
+					'status'  => $status,
+					'domain'  => $domain,
+					'site_id' => $state['site_id'] ?? '',
+					'http'    => (int) ( $state['http_code'] ?? 0 ),
+					'error'   => $state['error'] ?? '',
+					'message' => $state['message'] ?? '',
+					'last'    => (int) ( $state['last_attempt_at'] ?? 0 ),
+				) );
+			?></script>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Read the connection state option with defaults.
+	 */
+	public static function get_connection_state() {
+		$state = get_option( 'mm_connection_state', array() );
+		return wp_parse_args( is_array( $state ) ? $state : array(), array(
+			'status'           => 'unknown',
+			'last_attempt_at'  => 0,
+			'http_code'        => 0,
+			'error'            => '',
+			'domain'           => '',
+			'site_id'          => '',
+			'message'          => '',
+		) );
+	}
+
+	/**
+	 * Persist the connection state.
+	 */
+	private static function set_connection_state( array $state ) {
+		$state = wp_parse_args( $state, array(
+			'status'           => 'unknown',
+			'last_attempt_at'  => time(),
+			'http_code'        => 0,
+			'error'            => '',
+			'domain'           => '',
+			'site_id'          => '',
+			'message'          => '',
+		) );
+		update_option( 'mm_connection_state', $state, false );
+		return $state;
+	}
+
+	/**
+	 * Top-of-admin notice that mirrors the hero state. Shown on the
+	 * Plugins screen and the Dashboard until the site connects or the
+	 * admin dismisses it.
+	 */
+	public static function render_global_connection_notice() {
+		if ( ! current_user_can( 'manage_options' ) ) return;
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen ) return;
+		// Don't double-render on our own settings page (the hero is right there).
+		if ( $screen->id === 'settings_page_actv-trkr' ) return;
+		// Only show on Plugins + Dashboard.
+		if ( ! in_array( $screen->id, array( 'plugins', 'dashboard' ), true ) ) return;
+		// Allow user to dismiss.
+		$dismissed = (int) get_user_meta( get_current_user_id(), 'mm_conn_notice_dismissed_at', true );
+		if ( $dismissed && ( time() - $dismissed ) < ( 7 * DAY_IN_SECONDS ) ) return;
+
+		$state  = self::get_connection_state();
+		$status = $state['status'];
+		$opts   = self::get();
+		if ( empty( $opts['api_key'] ) ) {
+			$status = 'awaiting_key';
+		}
+		// Hide the notice once we're successfully connected — no nagging.
+		if ( $status === 'success' ) return;
+
+		$settings_url = admin_url( 'options-general.php?page=actv-trkr' );
+		$class = $status === 'failure' ? 'notice-error' : 'notice-warning';
+		$title = 'ACTV TRKR — finishing setup';
+		$msg   = 'We\'re testing the connection between this site and your dashboard.';
+		if ( $status === 'failure' ) {
+			$title = 'ACTV TRKR couldn\'t reach your dashboard';
+			$msg   = $state['error'] ? esc_html( $state['error'] ) : 'Connection test failed.';
+			if ( ! empty( $state['http_code'] ) ) {
+				$msg = 'HTTP ' . (int) $state['http_code'] . ' — ' . $msg;
+			}
+		} elseif ( $status === 'awaiting_key' ) {
+			$title = 'ACTV TRKR needs your API key';
+			$msg   = 'Paste the key from your dashboard to start tracking.';
+		}
+		?>
+		<div class="notice <?php echo esc_attr( $class ); ?> is-dismissible mm-global-notice">
+			<p>
+				<strong><?php echo esc_html( $title ); ?></strong> — <?php echo wp_kses_post( $msg ); ?>
+				<a href="<?php echo esc_url( $settings_url ); ?>" class="button button-small" style="margin-left:6px">Open settings</a>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Shared connection self-test. Used by:
+	 *  - The activation cron tick (mm_connection_self_test)
+	 *  - The Re-test button in the hero card (ajax_test_connection)
+	 *
+	 * Writes the result to mm_connection_state and returns the state array.
+	 *
+	 * @param string $source 'activation' | 'manual' | 'cron'
+	 */
+	public static function run_connection_self_test( $source = 'manual' ) {
+		$opts      = self::get();
+		$api_key   = trim( $opts['api_key'] ?? '' );
+		$base_url  = rtrim( $opts['endpoint_url'] ?? '', '/' );
+		if ( empty( $base_url ) ) {
+			$base_url = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+		}
+		$domain    = preg_replace( '/^www\./i', '', (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+		$now       = time();
+
+		if ( empty( $api_key ) ) {
+			return self::set_connection_state( array(
+				'status'           => 'awaiting_key',
+				'last_attempt_at'  => $now,
+				'http_code'        => 0,
+				'error'            => '',
+				'domain'           => $domain,
+				'site_id'          => '',
+				'message'          => 'No API key saved yet.',
+			) );
+		}
+		if ( empty( $domain ) ) {
+			return self::set_connection_state( array(
+				'status'           => 'failure',
+				'last_attempt_at'  => $now,
+				'http_code'        => 0,
+				'error'            => 'Could not detect this site\'s domain from WordPress settings.',
+				'domain'           => '',
+				'site_id'          => '',
+				'message'          => '',
+			) );
+		}
+
+		// Mark as in-progress so the UI can spin while the HTTP calls run.
+		self::set_connection_state( array(
+			'status'           => 'pending',
+			'last_attempt_at'  => $now,
+			'http_code'        => 0,
+			'error'            => '',
+			'domain'           => $domain,
+			'site_id'          => '',
+			'message'          => 'Sending test signal…',
+		) );
+
+		// 1. Heartbeat
+		$heartbeat_response = wp_remote_post( $base_url . '/ingest-heartbeat', array(
+			'timeout' => 10,
+			'headers' => array(
+				'Content-Type'   => 'application/json',
+				'x-actvtrkr-key' => $api_key,
+			),
+			'body' => wp_json_encode( array(
+				'domain'         => $domain,
+				'source'         => 'wp_connection_test_' . $source,
+				'plugin_version' => MM_PLUGIN_VERSION,
+				'meta'           => array( 'connection_test' => true, 'source' => $source ),
+			) ),
+		) );
+		if ( is_wp_error( $heartbeat_response ) ) {
+			return self::set_connection_state( array(
+				'status' => 'failure', 'last_attempt_at' => time(), 'http_code' => 0,
+				'error'  => 'Signal check failed: ' . $heartbeat_response->get_error_message(),
+				'domain' => $domain, 'site_id' => '', 'message' => '',
+			) );
+		}
+		$heartbeat_code = wp_remote_retrieve_response_code( $heartbeat_response );
+		if ( $heartbeat_code < 200 || $heartbeat_code >= 300 ) {
+			return self::set_connection_state( array(
+				'status' => 'failure', 'last_attempt_at' => time(), 'http_code' => (int) $heartbeat_code,
+				'error'  => self::truncate_body( wp_remote_retrieve_body( $heartbeat_response ) ),
+				'domain' => $domain, 'site_id' => '', 'message' => '',
+			) );
+		}
+
+		// 2. Issue ingest token
+		$token_response = wp_remote_post( $base_url . '/issue-site-ingest-token', array(
+			'timeout' => 10,
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'X-Api-Key'    => $api_key,
+			),
+			'body' => wp_json_encode( array( 'domain' => $domain ) ),
+		) );
+		if ( is_wp_error( $token_response ) ) {
+			return self::set_connection_state( array(
+				'status' => 'failure', 'last_attempt_at' => time(), 'http_code' => 0,
+				'error'  => 'Token mint failed: ' . $token_response->get_error_message(),
+				'domain' => $domain, 'site_id' => '', 'message' => '',
+			) );
+		}
+		$token_code = wp_remote_retrieve_response_code( $token_response );
+		if ( $token_code < 200 || $token_code >= 300 ) {
+			return self::set_connection_state( array(
+				'status' => 'failure', 'last_attempt_at' => time(), 'http_code' => (int) $token_code,
+				'error'  => 'Token mint failed: ' . self::truncate_body( wp_remote_retrieve_body( $token_response ) ),
+				'domain' => $domain, 'site_id' => '', 'message' => '',
+			) );
+		}
+		$token_body   = json_decode( wp_remote_retrieve_body( $token_response ), true );
+		$ingest_token = is_array( $token_body ) ? preg_replace( '/[^a-f0-9]/i', '', (string) ( $token_body['ingest_token'] ?? '' ) ) : '';
+		$site_id      = is_array( $token_body ) && isset( $token_body['site_id'] ) ? (string) $token_body['site_id'] : '';
+
+		if ( empty( $ingest_token ) || strlen( $ingest_token ) < 32 ) {
+			return self::set_connection_state( array(
+				'status' => 'failure', 'last_attempt_at' => time(), 'http_code' => (int) $token_code,
+				'error'  => 'Token mint succeeded but returned an invalid ingest token.',
+				'domain' => $domain, 'site_id' => $site_id, 'message' => '',
+			) );
+		}
+
+		update_option( 'mm_ingest_token', array(
+			'token'     => $ingest_token,
+			'domain'    => $domain,
+			'site_id'   => $site_id,
+			'minted_at' => time(),
+		), false );
+
+		// 3. Warm-up pageview
+		$response = wp_remote_post( $base_url . '/track-pageview', array(
+			'timeout' => 10,
+			'headers' => array(
+				'Content-Type'   => 'application/json',
+				'X-Ingest-Token' => $ingest_token,
+			),
+			'body' => wp_json_encode( array(
+				'source' => array( 'domain' => $domain, 'type' => 'wordpress', 'plugin_version' => MM_PLUGIN_VERSION ),
+				'event'  => array(
+					'page_url'   => home_url(),
+					'page_path'  => '/',
+					'event_id'   => 'test_' . wp_generate_uuid4(),
+					'session_id' => 'test_' . wp_generate_uuid4(),
+					'title'      => 'Connection Test (' . $source . ')',
+				),
+				'attribution' => new stdClass(),
+				'visitor'     => array( 'visitor_id' => 'test_' . wp_generate_uuid4() ),
+			) ),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return self::set_connection_state( array(
+				'status' => 'failure', 'last_attempt_at' => time(), 'http_code' => 0,
+				'error'  => $response->get_error_message(),
+				'domain' => $domain, 'site_id' => $site_id, 'message' => '',
+			) );
+		}
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code >= 200 && $code < 300 ) {
+			delete_transient( 'mm_recovery_status' );
+			return self::set_connection_state( array(
+				'status' => 'success', 'last_attempt_at' => time(), 'http_code' => (int) $code,
+				'error'  => '', 'domain' => $domain, 'site_id' => $site_id,
+				'message' => 'Connected and tracker token refreshed.',
+			) );
+		}
+		return self::set_connection_state( array(
+			'status' => 'failure', 'last_attempt_at' => time(), 'http_code' => (int) $code,
+			'error'  => self::truncate_body( wp_remote_retrieve_body( $response ) ),
+			'domain' => $domain, 'site_id' => $site_id, 'message' => '',
+		) );
+	}
+
+	private static function truncate_body( $body ) {
+		$body = (string) $body;
+		if ( strlen( $body ) > 240 ) {
+			$body = substr( $body, 0, 240 ) . '…';
+		}
+		return $body;
 	}
 
 	/* ── TAB 1: GENERAL ───────────────────────────────────── */
@@ -835,109 +1153,30 @@ class MM_Settings {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Unauthorized' );
 		}
-
-		$opts      = self::get();
-		$api_key   = trim( $opts['api_key'] ?? '' );
-		$base_url  = rtrim( $opts['endpoint_url'] ?? '', '/' );
-		if ( empty( $base_url ) ) {
-			// Fallback to hardcoded default if option somehow missing.
-			$base_url = 'https://qnnxlvoybbmmqoxuqyvf.supabase.co/functions/v1';
+		$state = self::run_connection_self_test( 'manual' );
+		if ( $state['status'] === 'success' ) {
+			wp_send_json_success( array(
+				'message' => $state['message'] ?: 'Connected.',
+				'state'   => $state,
+			) );
 		}
-		$domain    = preg_replace( '/^www\./i', '', (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
-
-		if ( empty( $api_key ) ) {
-			wp_send_json_error( 'Please paste your API key above and click "Save Changes" before testing.' );
+		$err = $state['error'] ?: ( $state['message'] ?: 'Connection test failed.' );
+		if ( ! empty( $state['http_code'] ) ) {
+			$err = 'HTTP ' . (int) $state['http_code'] . ' — ' . $err;
 		}
-		if ( empty( $domain ) ) {
-			wp_send_json_error( 'Could not detect this site\'s domain from WordPress settings.' );
+		wp_send_json_error( array( 'message' => $err, 'state' => $state ) );
+	}
+
+	/**
+	 * Lightweight polling endpoint used by the hero card to read the
+	 * current connection state without re-running HTTP probes.
+	 */
+	public static function ajax_connection_state() {
+		check_ajax_referer( 'mm_connection_state', '_wpnonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
 		}
-
-		$heartbeat_response = wp_remote_post( $base_url . '/ingest-heartbeat', array(
-			'timeout' => 10,
-			'headers' => array(
-				'Content-Type'   => 'application/json',
-				'x-actvtrkr-key' => $api_key,
-			),
-			'body' => wp_json_encode( array(
-				'domain'         => $domain,
-				'source'         => 'wp_connection_test',
-				'plugin_version' => MM_PLUGIN_VERSION,
-				'meta'           => array( 'connection_test' => true ),
-			) ),
-		) );
-
-		if ( is_wp_error( $heartbeat_response ) ) {
-			wp_send_json_error( 'Signal check failed: ' . $heartbeat_response->get_error_message() );
-		}
-
-		$heartbeat_code = wp_remote_retrieve_response_code( $heartbeat_response );
-		if ( $heartbeat_code < 200 || $heartbeat_code >= 300 ) {
-			wp_send_json_error( 'Signal check failed (HTTP ' . $heartbeat_code . '): ' . wp_remote_retrieve_body( $heartbeat_response ) );
-		}
-
-		$token_response = wp_remote_post( $base_url . '/issue-site-ingest-token', array(
-			'timeout' => 10,
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'X-Api-Key'    => $api_key,
-			),
-			'body' => wp_json_encode( array( 'domain' => $domain ) ),
-		) );
-
-		if ( is_wp_error( $token_response ) ) {
-			wp_send_json_error( 'Token mint failed: ' . $token_response->get_error_message() );
-		}
-
-		$token_code = wp_remote_retrieve_response_code( $token_response );
-		if ( $token_code < 200 || $token_code >= 300 ) {
-			wp_send_json_error( 'Token mint failed (HTTP ' . $token_code . '): ' . wp_remote_retrieve_body( $token_response ) );
-		}
-
-		$token_body   = json_decode( wp_remote_retrieve_body( $token_response ), true );
-		$ingest_token = is_array( $token_body ) ? preg_replace( '/[^a-f0-9]/i', '', (string) ( $token_body['ingest_token'] ?? '' ) ) : '';
-
-		if ( empty( $ingest_token ) || strlen( $ingest_token ) < 32 ) {
-			wp_send_json_error( 'Token mint succeeded but returned an invalid ingest token.' );
-		}
-
-		update_option( 'mm_ingest_token', array(
-			'token'     => $ingest_token,
-			'domain'    => $domain,
-			'site_id'   => isset( $token_body['site_id'] ) ? (string) $token_body['site_id'] : '',
-			'minted_at' => time(),
-		), false );
-
-		$response = wp_remote_post( $base_url . '/track-pageview', array(
-			'timeout' => 10,
-			'headers' => array(
-				'Content-Type'   => 'application/json',
-				'X-Ingest-Token' => $ingest_token,
-			),
-			'body' => wp_json_encode( array(
-				'source' => array( 'domain' => $domain, 'type' => 'wordpress', 'plugin_version' => MM_PLUGIN_VERSION ),
-				'event'  => array(
-					'page_url'   => home_url(),
-					'page_path'  => '/',
-					'event_id'   => 'test_' . wp_generate_uuid4(),
-					'session_id' => 'test_' . wp_generate_uuid4(),
-					'title'      => 'Connection Test',
-				),
-				'attribution' => new stdClass(),
-				'visitor'     => array( 'visitor_id' => 'test_' . wp_generate_uuid4() ),
-			) ),
-		) );
-
-		if ( is_wp_error( $response ) ) {
-			wp_send_json_error( $response->get_error_message() );
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		if ( $code >= 200 && $code < 300 ) {
-			delete_transient( 'mm_recovery_status' );
-			wp_send_json_success( array( 'message' => 'Connected and tracker token refreshed.' ) );
-		} else {
-			wp_send_json_error( 'HTTP ' . $code . ': ' . wp_remote_retrieve_body( $response ) );
-		}
+		wp_send_json_success( self::get_connection_state() );
 	}
 
 	public static function ajax_sync_forms() {

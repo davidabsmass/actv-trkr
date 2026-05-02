@@ -21,6 +21,8 @@ class MM_Settings {
 		add_action( 'admin_enqueue_scripts',               array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_mm_test_connection',          array( __CLASS__, 'ajax_test_connection' ) );
 		add_action( 'wp_ajax_mm_sync_forms',               array( __CLASS__, 'ajax_sync_forms' ) );
+		add_action( 'wp_ajax_mm_connection_state',         array( __CLASS__, 'ajax_connection_state' ) );
+		add_action( 'admin_notices',                       array( __CLASS__, 'render_global_connection_notice' ) );
 	}
 
 	public static function defaults() {

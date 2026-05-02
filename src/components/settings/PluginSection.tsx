@@ -87,6 +87,7 @@ export default function PluginSection() {
       return data[0];
     },
     enabled: !!orgId,
+    refetchInterval: 30 * 1000,
   });
 
   const { data: latestVersion, refetch: refetchLatestVersion } = useQuery({
@@ -155,7 +156,8 @@ export default function PluginSection() {
   const lastActivityAt = latestReportedSite ? getMostRecentActivityAt(latestReportedSite) : null;
   const verifierConfirmsInstalled = latestReportedSite?.verifier_last_status === "ok" && isFresh(latestReportedSite.verifier_last_checked_at ?? null, 120);
 
-  const activityAgeLabel = formatAge(lastActivityAt);
+  const activityAgeLabel = formatAge(lastActivityAt) ?? "recently";
+  const pluginSignalAgeLabel = formatAge(lastSignalAt);
   const heartbeatIsFresh = isFresh(lastSignalAt);
   const connectionLooksHealthy = isFresh(lastActivityAt) || verifierConfirmsInstalled || latestReportedSite?.tracker_status === "active";
 
@@ -233,7 +235,7 @@ export default function PluginSection() {
             </span>
           ) : (
             <span className="text-muted-foreground">
-              ✓ {siteDomain} is connected. Last activity {activityAgeLabel}. Initial sync can take up to 10 minutes after install.
+              ✓ {siteDomain} is connected. Last activity {activityAgeLabel}.{!heartbeatIsFresh && pluginSignalAgeLabel ? ` Plugin version signal last checked in ${pluginSignalAgeLabel}.` : ""}
             </span>
           )}
         </div>

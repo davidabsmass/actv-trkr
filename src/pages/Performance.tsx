@@ -131,7 +131,13 @@ const Performance = () => {
   const renderSections = () => {
     const sections = {
       attributionDetail: (
-        <div id="section-attribution" key="attr"><AttributionSection sources={processedData.sources} campaigns={processedData.campaigns} /></div>
+        <div id="section-attribution" key="attr">
+          <AttributionSection
+            sources={processedData.sources}
+            campaigns={processedData.campaigns}
+            selfReferralSessions={realtimeData?.selfReferralSessions || 0}
+          />
+        </div>
       ),
       funnel: hasFeature("funnel_view") && (
         <div id="section-funnel" key="funnel"><FunnelView totalPageviews={realtimeData?.totalPageviews || 0} formPageViews={0} totalLeads={realtimeData?.totalLeads || 0} /></div>

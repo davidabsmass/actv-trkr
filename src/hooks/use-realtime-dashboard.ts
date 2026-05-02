@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { addDays, format as fnsFormat, parseISO } from "date-fns";
+import { expandSiteDomains, isSelfReferral, canonicalSource } from "@/lib/source-normalize";
 
 /**
  * Real-time dashboard data — optimised for speed.
@@ -250,26 +251,39 @@ export function useRealtimeDashboard(
       }
 
       // ── 3. Self-referral filtering ───────────────────────────────────
-      const ownDomains = new Set(
-        (sitesRes.data || []).map((s: any) =>
-          (s.domain || "")
-            .replace(/^https?:\/\//, "")
-            .replace(/\/.*$/, "")
-            .toLowerCase()
-        )
-      );
-      const resolveSource = (raw: string) =>
-        ownDomains.has(raw.toLowerCase()) ? "direct" : raw;
+      // Build the full set of host variants we should treat as "this site"
+      // (apex, www., subdomains, registrable root) so referrers like
+      // `www.example.com` or `blog.example.com` don't show up as a top
+      // traffic source for `example.com`.
+      const ownedRoots = expandSiteDomains((sitesRes.data || []).map((s: any) => s.domain));
+      let selfReferralSessions = 0;
+      let selfReferralLeads = 0;
+
+      // Resolve a raw source/referrer into its canonical display label.
+      // Self-referrals collapse into "Direct"; everything else is normalized
+      // (e.g. www.google.com + cn.bing.com → Google + Bing).
+      const resolveSource = (raw: string, kind: "session" | "lead" = "session") => {
+        if (!raw) return "Direct";
+        if (isSelfReferral(raw, ownedRoots)) {
+          if (kind === "session") selfReferralSessions++;
+          else selfReferralLeads++;
+          return "Direct";
+        }
+        return canonicalSource(raw);
+      };
 
       const sessions = sessionsBreakdown.data || [];
       const leads = leadsBreakdown.data || [];
 
       // ── 4. Source / campaign / page breakdowns ───────────────────────
+      // Cache resolved source per session so leads attributed via session_id
+      // get the same label (and don't double-count toward self-referral).
       const sessionSourceLookup: Record<string, string> = {};
       sessions.forEach((s: any) => {
         if (s.session_id) {
           sessionSourceLookup[s.session_id] = resolveSource(
-            s.utm_source || s.landing_referrer_domain || "direct"
+            s.utm_source || s.landing_referrer_domain || "direct",
+            "session"
           );
         }
       });
@@ -277,9 +291,9 @@ export function useRealtimeDashboard(
       // Source breakdown
       const sourceMap: Record<string, { sessions: number; leads: number }> = {};
       sessions.forEach((s: any) => {
-        const src = resolveSource(
-          s.utm_source || s.landing_referrer_domain || "direct"
-        );
+        const src = s.session_id && sessionSourceLookup[s.session_id]
+          ? sessionSourceLookup[s.session_id]
+          : resolveSource(s.utm_source || s.landing_referrer_domain || "direct", "session");
         if (!sourceMap[src]) sourceMap[src] = { sessions: 0, leads: 0 };
         sourceMap[src].sessions++;
       });
@@ -288,7 +302,8 @@ export function useRealtimeDashboard(
           l.session_id && sessionSourceLookup[l.session_id]
             ? sessionSourceLookup[l.session_id]
             : resolveSource(
-                l.source || l.utm_source || l.referrer_domain || "direct"
+                l.source || l.utm_source || l.referrer_domain || "direct",
+                "lead"
               );
         if (!sourceMap[raw]) sourceMap[raw] = { sessions: 0, leads: 0 };
         sourceMap[raw].leads++;
@@ -383,6 +398,8 @@ export function useRealtimeDashboard(
         countries: Object.entries(countryTotals)
           .map(([countryCode, sessions]) => ({ countryCode, sessions }))
           .sort((a, b) => b.sessions - a.sessions),
+        selfReferralSessions,
+        selfReferralLeads,
       };
     },
     enabled: !!orgId,

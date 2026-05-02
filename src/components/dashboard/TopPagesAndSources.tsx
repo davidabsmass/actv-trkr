@@ -5,6 +5,7 @@ import { useOrg } from "@/hooks/use-org";
 import { BarChart3 } from "lucide-react";
 import { subDays, format } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { expandSiteDomains, isSelfReferral, canonicalSource } from "@/lib/source-normalize";
 
 interface PageRow { path: string; views: number }
 interface SourceRow { source: string; sessions: number }
@@ -57,11 +58,16 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
             .eq("org_id", orgId),
         ]);
 
-        const ownDomains = new Set(
-          (sitesRes.data || []).map((s: any) =>
-            (s.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase()
-          )
+        const ownedRoots = expandSiteDomains(
+          (sitesRes.data || []).map((s: any) => s.domain)
         );
+
+        const collapseSource = (raw: string) =>
+          !raw || raw === directLabel
+            ? directLabel
+            : isSelfReferral(raw, ownedRoots)
+              ? directLabel
+              : canonicalSource(raw);
 
         // Aggregate kpi_daily page dimensions
         let pages: PageRow[] = [];
@@ -83,8 +89,7 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
           const srcMap: Record<string, number> = {};
           for (const r of kpiSourcesRes.data) {
             if (!r.dimension) continue;
-            let src = r.dimension;
-            if (ownDomains.has(src.toLowerCase())) src = directLabel;
+            const src = collapseSource(r.dimension);
             srcMap[src] = (srcMap[src] || 0) + Number(r.value);
           }
           sources = Object.entries(srcMap)
@@ -127,8 +132,8 @@ export const TopPagesAndSources = React.forwardRef<HTMLDivElement, TopPagesAndSo
 
           const srcMap: Record<string, number> = {};
           for (const r of sessRows || []) {
-            let src = r.utm_source || r.landing_referrer_domain || directLabel;
-            if (ownDomains.has(src.toLowerCase())) src = directLabel;
+            const raw = r.utm_source || r.landing_referrer_domain || "";
+            const src = collapseSource(raw);
             srcMap[src] = (srcMap[src] || 0) + 1;
           }
           sources = Object.entries(srcMap)

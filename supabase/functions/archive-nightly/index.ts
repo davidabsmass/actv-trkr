@@ -158,12 +158,39 @@ async function aggregateDay(supabase: any, orgId: string, dateStr: string) {
     .eq("org_id", orgId).gte("submitted_at", dayStart).lte("submitted_at", dayEnd);
   await upsertDaily(supabase, "kpi_daily", orgId, dateStr, "leads_total", null, leadsCount || 0);
 
-  // Sessions by source (top 50)
+  // Sessions by source (top 50) — collapse self-referrals to "direct" so
+  // the dashboard's kpi_daily-backed Top Sources widget never shows the
+  // org's own domain (apex / www. / subdomain) as a referrer.
+  const { data: orgSites } = await supabase.from("sites").select("domain").eq("org_id", orgId);
+  const ownedRoots = new Set<string>();
+  for (const s of orgSites || []) {
+    const host = String((s as any).domain || "")
+      .toLowerCase().trim()
+      .replace(/^https?:\/\//, "").replace(/^www\./, "")
+      .replace(/[/?#].*$/, "").replace(/:\d+$/, "");
+    if (!host) continue;
+    ownedRoots.add(host);
+    const parts = host.split(".");
+    if (parts.length > 2) ownedRoots.add(parts.slice(-2).join("."));
+  }
+  const isSelfRef = (raw: string): boolean => {
+    const h = raw.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "")
+      .replace(/[/?#].*$/, "").replace(/:\d+$/, "");
+    if (!h) return false;
+    if (ownedRoots.has(h)) return true;
+    for (const o of ownedRoots) if (h === o || h.endsWith("." + o)) return true;
+    return false;
+  };
+
   const { data: sbs } = await supabase.from("sessions")
     .select("utm_source, landing_referrer_domain")
     .eq("org_id", orgId).gte("started_at", dayStart).lte("started_at", dayEnd);
   if (sbs) {
-    const m = countBy(sbs, (s: any) => s.utm_source || s.landing_referrer_domain || "direct");
+    const m = countBy(sbs, (s: any) => {
+      const raw = s.utm_source || s.landing_referrer_domain || "";
+      if (!raw) return "direct";
+      return isSelfRef(raw) ? "direct" : raw;
+    });
     const top = topN(m, 50);
     for (const [d, v] of top) await upsertDaily(supabase, "traffic_daily", orgId, dateStr, "sessions_by_source", d, v);
   }

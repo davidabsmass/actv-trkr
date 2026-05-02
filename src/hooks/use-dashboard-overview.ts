@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { expandSiteDomains, isSelfReferral, canonicalSource } from "@/lib/source-normalize";
 
 /**
  * Lightweight dashboard overview hook.
@@ -110,20 +111,31 @@ export function useDashboardOverview(
       const funnelSessions = funnelSessRes.count || 0;
       const funnelLeads = funnelLeadRes.count || 0;
 
-      // Fetch only the top 10 sources (lightweight — max 10 rows)
-      const { data: topSessions } = await supabase
-        .from("sessions")
-        .select("utm_source, landing_referrer_domain")
-        .eq("org_id", orgId)
-        .gte("started_at", dayStart)
-        .lte("started_at", dayEnd)
-        .limit(1000);
+      // Fetch top sources sample + site domains in parallel for self-referral filtering
+      const [{ data: topSessions }, { data: sitesData }] = await Promise.all([
+        supabase
+          .from("sessions")
+          .select("utm_source, landing_referrer_domain")
+          .eq("org_id", orgId)
+          .gte("started_at", dayStart)
+          .lte("started_at", dayEnd)
+          .limit(1000),
+        supabase.from("sites").select("domain").eq("org_id", orgId),
+      ]);
 
-      // Build source breakdown from sample
+      const ownedRoots = expandSiteDomains((sitesData || []).map((s: any) => s.domain));
+
+      // Build source breakdown: collapse self-referrals to "Direct" and
+      // canonicalize host variants (google.com / www.google.com → Google).
       const sourceMap: Record<string, number> = {};
       (topSessions || []).forEach((s: any) => {
-        const src = s.utm_source || s.landing_referrer_domain || "direct";
-        sourceMap[src] = (sourceMap[src] || 0) + 1;
+        const raw = s.utm_source || s.landing_referrer_domain || "";
+        const label = !raw
+          ? "Direct"
+          : isSelfReferral(raw, ownedRoots)
+            ? "Direct"
+            : canonicalSource(raw);
+        sourceMap[label] = (sourceMap[label] || 0) + 1;
       });
 
       const sources = Object.entries(sourceMap)

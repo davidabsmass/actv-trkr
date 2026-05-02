@@ -123,7 +123,7 @@ export default function WpEnvironmentTab({ siteId, orgId }: { siteId: string | n
               <p className="text-xs text-muted-foreground">No plugin data received yet.</p>
             </div>
           ) : (
-            <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-1 max-h-[32rem] overflow-y-auto pr-1">
               {plugins.map((p, i) => (
                 <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                   <span className="text-xs text-foreground truncate mr-2">{p.name}</span>

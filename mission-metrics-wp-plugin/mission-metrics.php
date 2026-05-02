@@ -3,7 +3,7 @@
  * Plugin Name: ACTV TRKR
  * Plugin URI:  https://actvtrkr.com
  * Description: First-party pageview tracking and universal form capture for ACTV TRKR.
- * Version:     1.21.11
+ * Version:     1.21.12
  * Author:      Absolutely Massive
  * License:     GPL-2.0-or-later
  * Text Domain: actv-trkr
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MM_PLUGIN_VERSION', '1.21.11' );
+define( 'MM_PLUGIN_VERSION', '1.21.12' );
 define( 'MM_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MM_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -239,7 +239,7 @@ function mm_activate() {
 	// MM_Settings::defaults() so a brand-new install can connect with
 	// zero clicks. But on a SECOND activation (e.g. customer adds a new
 	// site to an org that already had the plugin once), an empty
-	// `api_key` row is already saved in `mm_settings` from the prior
+	// `api_key` row is already saved in `mm_options` from the prior
 	// install — and `wp_parse_args(stored, defaults)` lets the empty
 	// stored value override the embedded default, leaving the API Key
 	// field blank in WP-admin. Detect that case and copy the bundled
@@ -249,7 +249,7 @@ function mm_activate() {
 			$bundled_defaults = MM_Settings::defaults();
 			$bundled_key      = isset( $bundled_defaults['api_key'] ) ? trim( (string) $bundled_defaults['api_key'] ) : '';
 			if ( $bundled_key !== '' ) {
-				$saved_opts = get_option( 'mm_settings', array() );
+				$saved_opts = get_option( MM_Settings::OPTION_NAME, array() );
 				if ( ! is_array( $saved_opts ) ) {
 					$saved_opts = array();
 				}
@@ -260,7 +260,7 @@ function mm_activate() {
 					if ( empty( $saved_opts['endpoint_url'] ) && ! empty( $bundled_defaults['endpoint_url'] ) ) {
 						$saved_opts['endpoint_url'] = $bundled_defaults['endpoint_url'];
 					}
-					update_option( 'mm_settings', $saved_opts, false );
+					update_option( MM_Settings::OPTION_NAME, $saved_opts, false );
 				}
 			}
 		} catch ( \Throwable $e ) {

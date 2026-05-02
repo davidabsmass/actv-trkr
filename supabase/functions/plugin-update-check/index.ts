@@ -11,10 +11,13 @@ function getZipUrl(req: Request): string {
   return `${supabaseUrl}/functions/v1/serve-plugin-zip`;
 }
 
-const CURRENT_PLUGIN_VERSION = "1.21.11";
-const CURRENT_PLUGIN_SHA256 = "4d61f7ff3baab7de739fa024d4be90404a7e2ad9141ea4b2043ea3c52f0264f6";
+const CURRENT_PLUGIN_VERSION = "1.21.12";
+const CURRENT_PLUGIN_SHA256 = "6418c25ff0afc2fee51670eed50d293b3b1032815deac5622840f44123726202";
 
 const CHANGELOG = `
+## 1.21.12
+- FIX (CRITICAL — second-site setup): Stamped plugin downloads now seed the bundled API key into the correct WordPress settings option and self-heal blank saved settings on load. This resolves the "Paste your API key to connect" state after installing a pre-configured ZIP.
+
 ## 1.21.9
 - FIX (CRITICAL — new site setup): Pre-configured dashboard downloads now embed the new site's license key into the active plugin settings field, so brand-new installs start reporting immediately after activation.
 

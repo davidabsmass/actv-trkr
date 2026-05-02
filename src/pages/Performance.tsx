@@ -14,6 +14,7 @@ import { ClickActivity } from "@/components/dashboard/ClickActivity";
 import { GoalConversions } from "@/components/dashboard/GoalConversions";
 import { TopExitPages } from "@/components/dashboard/TopExitPages";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
+import { TopConvertingSources } from "@/components/journeys/TopConvertingSources";
 import { ConversionBreakdown } from "@/components/dashboard/ConversionBreakdown";
 import { KPIRow } from "@/components/dashboard/KPIRow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

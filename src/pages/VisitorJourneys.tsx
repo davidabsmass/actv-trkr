@@ -5,9 +5,11 @@ import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
 import { VisitorJourneyStats } from "@/components/journeys/VisitorJourneyStats";
 import { ChannelBreakdown } from "@/components/journeys/ChannelBreakdown";
+import { TopConvertingSources } from "@/components/journeys/TopConvertingSources";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_VISITOR_JOURNEYS } from "@/components/howto/page-content";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function VisitorJourneys() {
   const { orgId, orgName } = useOrg();

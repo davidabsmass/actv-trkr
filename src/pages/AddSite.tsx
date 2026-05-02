@@ -123,27 +123,15 @@ export default function AddSite() {
     }
     setPreparing(true);
     try {
-      const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      const hashBuffer = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(rawKey),
-      );
-      const keyHash = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-
       // IMPORTANT: do NOT revoke existing active keys. We want all previously
       // connected sites to keep working.
-      const { error: insertErr } = await supabase.from("api_keys").insert({
-        org_id: orgId,
-        key_hash: keyHash,
-        label: "Additional site key",
+      const { data, error } = await supabase.functions.invoke("create-api-key", {
+        body: { org_id: orgId, label: "Additional site key" },
       });
-      if (insertErr) throw insertErr;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      await downloadPlugin(rawKey);
+      await downloadPlugin(data.key);
       setDownloadedFor(true);
       toast.success("Plugin downloaded — install & activate in WordPress");
     } catch (err: any) {
@@ -166,24 +154,13 @@ export default function AddSite() {
       // the ZIP. Pasting an old key by hand is the #1 cause of "not connected"
       // support tickets — make the happy path foolproof regardless of which
       // button the user clicks.
-      const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      const hashBuffer = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(rawKey),
-      );
-      const keyHash = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      const { error: insertErr } = await supabase.from("api_keys").insert({
-        org_id: orgId,
-        key_hash: keyHash,
-        label: "Additional site key (manual flow)",
+      const { data, error } = await supabase.functions.invoke("create-api-key", {
+        body: { org_id: orgId, label: "Additional site key (manual flow)" },
       });
-      if (insertErr) throw insertErr;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      await downloadPlugin(rawKey);
+      await downloadPlugin(data.key);
       toast.success("Plugin downloaded — install & activate, no key to paste");
     } catch (err: any) {
       toast.error("Download failed", { description: err?.message });

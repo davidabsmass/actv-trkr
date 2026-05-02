@@ -179,22 +179,13 @@ export default function PluginSection() {
       if (!orgId) {
         await downloadPlugin();
       } else {
-        const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-        const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
-        const keyHash = Array.from(new Uint8Array(hashBuffer))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-
-        const { error } = await supabase.from("api_keys").insert({
-          org_id: orgId,
-          key_hash: keyHash,
-          label: "Plugin download key",
+        const { data, error } = await supabase.functions.invoke("create-api-key", {
+          body: { org_id: orgId, label: "Plugin download key" },
         });
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
 
-        await downloadPlugin(rawKey);
+        await downloadPlugin(data.key);
       }
       await refetchLatestVersion();
       toast.success(`Plugin v${latestVersion || "latest"} download started.`);

@@ -114,10 +114,52 @@ serve(async (req) => {
     const topPagesStr = Object.entries(pageCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
       .map(([path, cnt]) => `${path} (${cnt} views)`).join(", ");
 
+    // Self-referral filter + canonical source collapsing.
+    // Without this the AI sees `www.example.com` listed as a top traffic
+    // source for `example.com`, which produces nonsense recommendations.
+    const ownedRoots = new Set<string>();
+    for (const s of sitesData.data || []) {
+      const host = String((s as any).domain || "")
+        .toLowerCase().trim()
+        .replace(/^https?:\/\//, "").replace(/^www\./, "")
+        .replace(/[/?#].*$/, "").replace(/:\d+$/, "");
+      if (!host) continue;
+      ownedRoots.add(host);
+      const parts = host.split(".");
+      if (parts.length > 2) ownedRoots.add(parts.slice(-2).join("."));
+    }
+    const isSelfRef = (raw: string): boolean => {
+      const h = raw.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "")
+        .replace(/[/?#].*$/, "").replace(/:\d+$/, "");
+      if (!h) return false;
+      if (ownedRoots.has(h)) return true;
+      for (const o of ownedRoots) if (h === o || h.endsWith("." + o)) return true;
+      return false;
+    };
+    const canonical = (raw: string): string => {
+      const l = raw.toLowerCase();
+      if (/google\./.test(l) || l === "google") return "Google";
+      if (/bing\./.test(l) || l === "bing") return "Bing";
+      if (/duckduckgo\./.test(l)) return "DuckDuckGo";
+      if (/yahoo\./.test(l) || l === "yahoo") return "Yahoo";
+      if (/facebook\.com|^fb$|m\.facebook|l\.facebook/.test(l)) return "Facebook";
+      if (/instagram\.com|^ig$|l\.instagram/.test(l)) return "Instagram";
+      if (/linkedin\.com/.test(l)) return "LinkedIn";
+      if (/(^|\.)twitter\.com|^t\.co$|(^|\.)x\.com$/.test(l)) return "X (Twitter)";
+      if (/tiktok\./.test(l)) return "TikTok";
+      if (/reddit\.com|com\.reddit/.test(l)) return "Reddit";
+      if (/youtube\.com|^youtu\.be$/.test(l)) return "YouTube";
+      if (/chatgpt\.com|^chatgpt$/.test(l)) return "ChatGPT";
+      if (/perplexity/.test(l)) return "Perplexity";
+      if (/^hs_email$|hubspot/.test(l)) return "HubSpot Email";
+      return raw;
+    };
+
     const sourceCounts: Record<string, number> = {};
     (topSourcesData.data || []).forEach((s: any) => {
-      const src = s.utm_source || s.landing_referrer_domain || "direct";
-      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+      const raw = s.utm_source || s.landing_referrer_domain || "";
+      const label = !raw ? "Direct" : isSelfRef(raw) ? "Direct" : canonical(raw);
+      sourceCounts[label] = (sourceCounts[label] || 0) + 1;
     });
     const topSourcesStr = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
       .map(([src, cnt]) => `${src} (${cnt} sessions)`).join(", ");

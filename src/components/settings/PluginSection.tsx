@@ -9,6 +9,21 @@ import { useTranslation } from "react-i18next";
 import { downloadPlugin, getLatestPluginVersion, PluginDownloadError } from "@/lib/plugin-download";
 import { reportDownloadFailure } from "@/lib/report-download-failure";
 
+type SitePluginStatus = {
+  id: string;
+  domain: string | null;
+  plugin_version: string | null;
+  last_heartbeat_at: string | null;
+  plugin_status: string | null;
+  created_at: string;
+  tracker_status?: string | null;
+  last_event_at?: string | null;
+  last_page_view_at?: string | null;
+  status_last_heartbeat_at?: string | null;
+  verifier_last_status?: string | null;
+  verifier_last_checked_at?: string | null;
+};
+
 function compareVersions(a: string, b: string) {
   const aParts = a.split(".").map((part) => Number(part) || 0);
   const bParts = b.split(".").map((part) => Number(part) || 0);
@@ -22,6 +37,35 @@ function compareVersions(a: string, b: string) {
   }
 
   return 0;
+}
+
+function getMostRecentActivityAt(site: SitePluginStatus) {
+  const timestamps = [
+    site.last_heartbeat_at,
+    site.status_last_heartbeat_at,
+    site.last_event_at,
+    site.last_page_view_at,
+  ].filter(Boolean) as string[];
+
+  if (!timestamps.length) return null;
+  return timestamps.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+}
+
+function formatAge(timestamp: string | null) {
+  if (!timestamp) return null;
+  const ageMs = Date.now() - new Date(timestamp).getTime();
+  const mins = Math.floor(ageMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function isFresh(timestamp: string | null, minutes = 30) {
+  if (!timestamp) return false;
+  return Date.now() - new Date(timestamp).getTime() < minutes * 60 * 1000;
 }
 
 export default function PluginSection() {
@@ -43,6 +87,7 @@ export default function PluginSection() {
       return data[0];
     },
     enabled: !!orgId,
+    refetchInterval: 30 * 1000,
   });
 
   const { data: latestVersion, refetch: refetchLatestVersion } = useQuery({
@@ -60,18 +105,42 @@ export default function PluginSection() {
     queryFn: async () => {
       if (!orgId) return null;
 
-      const { data, error } = await supabase
+      const { data: sites, error } = await supabase
         .from("sites")
-        .select("domain, plugin_version, last_heartbeat_at, plugin_status, created_at")
+        .select("id, domain, plugin_version, last_heartbeat_at, plugin_status, created_at")
         .eq("org_id", orgId);
 
       if (error) throw error;
 
-      return (data ?? [])
+      const siteIds = (sites ?? []).map((site) => site.id);
+      const { data: statuses, error: statusError } = siteIds.length
+        ? await supabase
+            .from("site_tracking_status")
+            .select("site_id, tracker_status, last_event_at, last_page_view_at, last_heartbeat_at, verifier_last_status, verifier_last_checked_at")
+            .in("site_id", siteIds)
+        : { data: [], error: null };
+
+      if (statusError) throw statusError;
+
+      const statusBySiteId = new Map((statuses ?? []).map((status) => [status.site_id, status]));
+      const hydratedSites: SitePluginStatus[] = (sites ?? []).map((site) => {
+        const status = statusBySiteId.get(site.id);
+        return {
+          ...site,
+          tracker_status: status?.tracker_status ?? null,
+          last_event_at: status?.last_event_at ?? null,
+          last_page_view_at: status?.last_page_view_at ?? null,
+          status_last_heartbeat_at: status?.last_heartbeat_at ?? null,
+          verifier_last_status: status?.verifier_last_status ?? null,
+          verifier_last_checked_at: status?.verifier_last_checked_at ?? null,
+        };
+      });
+
+      return hydratedSites
         .filter((site) => Boolean(site.plugin_version))
         .sort((a, b) => {
-          const aSignal = a.last_heartbeat_at ? new Date(a.last_heartbeat_at).getTime() : 0;
-          const bSignal = b.last_heartbeat_at ? new Date(b.last_heartbeat_at).getTime() : 0;
+          const aSignal = getMostRecentActivityAt(a) ? new Date(getMostRecentActivityAt(a)!).getTime() : 0;
+          const bSignal = getMostRecentActivityAt(b) ? new Date(getMostRecentActivityAt(b)!).getTime() : 0;
 
           if (bSignal !== aSignal) return bSignal - aSignal;
 
@@ -84,26 +153,15 @@ export default function PluginSection() {
   const siteVersion = latestReportedSite?.plugin_version ?? null;
   const siteDomain = latestReportedSite?.domain ?? null;
   const lastSignalAt = latestReportedSite?.last_heartbeat_at ?? null;
+  const lastActivityAt = latestReportedSite ? getMostRecentActivityAt(latestReportedSite) : null;
+  const verifierConfirmsInstalled = latestReportedSite?.verifier_last_status === "ok" && isFresh(latestReportedSite.verifier_last_checked_at ?? null, 120);
 
-  const signalAgeLabel = (() => {
-    if (!lastSignalAt) return null;
-    const ageMs = Date.now() - new Date(lastSignalAt).getTime();
-    const mins = Math.floor(ageMs / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  })();
+  const activityAgeLabel = formatAge(lastActivityAt) ?? "recently";
+  const pluginSignalAgeLabel = formatAge(lastSignalAt);
+  const heartbeatIsFresh = isFresh(lastSignalAt);
+  const connectionLooksHealthy = isFresh(lastActivityAt) || verifierConfirmsInstalled || latestReportedSite?.tracker_status === "active";
 
-  const signalIsStale = (() => {
-    if (!lastSignalAt) return true;
-    const ageMs = Date.now() - new Date(lastSignalAt).getTime();
-    return ageMs >= 30 * 60 * 1000; // 30 minutes
-  })();
-
-  const pluginIsConfirmedHealthy = latestReportedSite?.plugin_status === "healthy" && !signalIsStale;
+  const pluginIsConfirmedHealthy = latestReportedSite?.plugin_status === "healthy" && heartbeatIsFresh;
 
   // Only show update badge from a fresh, healthy signal. Old/disconnected rows
   // are historical and must not imply the customer's current WP install is old.
@@ -171,13 +229,13 @@ export default function PluginSection() {
 
       {siteDomain && (
         <div className="mb-3 rounded-md border border-border bg-background/40 px-3 py-2 text-xs">
-          {signalIsStale ? (
+          {!connectionLooksHealthy ? (
             <span className="text-warning">
-              ⚠️ {siteDomain} hasn't sent a signal in {signalAgeLabel}. Current plugin version cannot be verified from this stale record.
+              ⚠️ {siteDomain} hasn't sent a signal in {activityAgeLabel}. Current plugin version cannot be verified from this stale record.
             </span>
           ) : (
             <span className="text-muted-foreground">
-              ✓ {siteDomain} is connected. Last signal {signalAgeLabel}. Initial sync can take up to 10 minutes after install.
+              ✓ {siteDomain} is connected. Last activity {activityAgeLabel}.{!heartbeatIsFresh && pluginSignalAgeLabel ? ` Plugin version signal last checked in ${pluginSignalAgeLabel}.` : ""}
             </span>
           )}
         </div>

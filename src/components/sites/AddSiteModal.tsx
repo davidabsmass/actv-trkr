@@ -65,12 +65,37 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
     navigate("/settings?tab=setup");
   };
 
-  const startAdditionalSite = () => {
+  const startAdditionalSite = async () => {
     if (isFirstSite) {
       // Edge case: user has no sites yet but explicitly chose "additional".
       // Route them to first-install instead of charging them.
       goToFirstInstall();
       return;
+    }
+
+    // Precheck: if the user already paid for a slot (e.g. via direct Stripe
+    // quantity bump or a previous trip through this flow) skip the confirm
+    // screen and route straight to the download page. Soft-fails to confirm.
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "check-additional-site-slot",
+      );
+      if (!error && data && Number(data.available_slots) > 0) {
+        toast({
+          title: "You already have a paid slot ready",
+          description:
+            "Skipping checkout — opening your pre-keyed plugin download.",
+        });
+        onOpenChange(false);
+        reset();
+        navigate("/settings?tab=add-site");
+        return;
+      }
+    } catch {
+      // ignore — fall through to confirm screen
+    } finally {
+      setBusy(false);
     }
     setStep("confirm-additional");
   };
@@ -214,15 +239,22 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
               <button
                 type="button"
                 onClick={startAdditionalSite}
-                className="w-full text-left rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-colors p-4"
+                disabled={busy}
+                className="w-full text-left rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-colors p-4 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-md bg-primary/10 flex-shrink-0">
-                    <Plus className="h-4 w-4 text-primary" />
+                    {busy ? (
+                      <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 text-primary" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground mb-1">
-                      I'm adding an additional site to my plan
+                      {busy
+                        ? "Checking your subscription…"
+                        : "I'm adding an additional site to my plan"}
                     </p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Connect another WordPress site.{" "}
@@ -251,8 +283,10 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
                 <DialogTitle>Add another site</DialogTitle>
               </div>
               <DialogDescription className="pt-2">
-                We'll add a new <span className="font-semibold text-foreground">$30/month</span> line
-                item to your subscription, then prepare a plugin file already linked to your account.
+                We checked your subscription — you don't have an unused slot yet,
+                so this will add a new{" "}
+                <span className="font-semibold text-foreground">$30/month</span>{" "}
+                line item, then prepare a plugin file already linked to your account.
               </DialogDescription>
             </DialogHeader>
 

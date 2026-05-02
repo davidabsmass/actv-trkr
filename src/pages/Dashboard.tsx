@@ -791,7 +791,7 @@ const Dashboard = () => {
                  Restore once a daily Action Rate series is available. */
             />
             <Link
-              to="/visitor-journeys?tab=top-converting"
+              to="/visitor-journeys#top-converting-sources"
               className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
               title="View all top converting sources"
             >

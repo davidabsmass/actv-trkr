@@ -5,9 +5,11 @@ import { DateRangeSelector } from "@/components/dashboard/DateRangeSelector";
 import { VisitorJourneysList } from "@/components/journeys/VisitorJourneysList";
 import { VisitorJourneyStats } from "@/components/journeys/VisitorJourneyStats";
 import { ChannelBreakdown } from "@/components/journeys/ChannelBreakdown";
+import { TopConvertingSources } from "@/components/journeys/TopConvertingSources";
 import { HowToButton } from "@/components/HowToButton";
 import { HOWTO_VISITOR_JOURNEYS } from "@/components/howto/page-content";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function VisitorJourneys() {
   const { orgId, orgName } = useOrg();
@@ -47,7 +49,18 @@ export default function VisitorJourneys() {
 
       <VisitorJourneyStats orgId={orgId} startDate={startDate} endDate={endDate} />
 
-      <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
+      <Tabs defaultValue="channels" className="mb-4">
+        <TabsList>
+          <TabsTrigger value="channels">Channels</TabsTrigger>
+          <TabsTrigger value="top-converting">Top Converting Sources</TabsTrigger>
+        </TabsList>
+        <TabsContent value="channels" className="mt-3">
+          <ChannelBreakdown orgId={orgId} startDate={startDate} endDate={endDate} />
+        </TabsContent>
+        <TabsContent value="top-converting" className="mt-3">
+          <TopConvertingSources orgId={orgId} startDate={startDate} endDate={endDate} />
+        </TabsContent>
+      </Tabs>
 
       <VisitorJourneysList orgId={orgId} startDate={startDate} endDate={endDate} />
     </div>

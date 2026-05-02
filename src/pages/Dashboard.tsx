@@ -478,16 +478,20 @@ const Dashboard = () => {
     enabled: !!orgId,
   });
 
-  // Calculate org age to suppress misleading comparisons for new orgs
+  // Calculate org age to suppress misleading comparisons for new orgs.
+  // While `orgCreatedAt` is loading we treat the org as "too new" rather
+  // than "infinitely old" — otherwise the dashboard can briefly render
+  // a bogus trend (e.g. "-71.3%") on first paint before the prior-period
+  // count finishes hydrating.
   const orgAgeDays = useMemo(() => {
-    if (!orgCreatedAt) return Infinity;
+    if (!orgCreatedAt) return 0;
     return Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24));
   }, [orgCreatedAt]);
   // Suppress period-over-period comparisons unless we have at least a full prior
   // period of tracking history. Showing "+1350% vs last period" when the prior
   // window only had 1 session is misleading — wait until the org has been
   // tracking for at least 2× the selected range so the comparison is meaningful.
-  const orgTooNewForComparison = orgAgeDays < days * 2;
+  const orgTooNewForComparison = !orgCreatedAt || orgAgeDays < days * 2;
 
   const isLoading = !realtimeData;
 

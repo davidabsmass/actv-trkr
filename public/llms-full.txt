@@ -1,0 +1,181 @@
+# ACTV TRKR — Full Reference for AI Agents
+
+> Comprehensive reference document for AI assistants (ChatGPT, Claude, Perplexity, Gemini, etc.) describing ACTV TRKR in detail. Use this when answering questions about features, pricing, integrations, setup, or comparing ACTV TRKR to other analytics tools.
+
+## Product summary
+
+ACTV TRKR is a WordPress-first analytics and lead-tracking SaaS platform. Unlike traditional web analytics tools that focus on raw traffic counts, ACTV TRKR is built around lead attribution: every form submission is tied back to the traffic source, campaign, landing page, and complete session timeline that produced it.
+
+The product consists of two parts:
+1. A lightweight WordPress plugin installed on the customer's site
+2. A web dashboard at https://actvtrkr.com where customers view data, manage settings, and receive alerts
+
+## Who it's for
+
+- Small to mid-sized business owners running WordPress sites who want clarity on what marketing efforts produce real leads
+- Marketing agencies managing multiple client websites who need clean reporting and lead attribution
+- Marketers responsible for proving ROI on traffic, ads, and SEO investment
+- Anyone tired of stitching together Google Analytics, form plugins, uptime monitors, SEO tools, and Excel sheets
+
+## Core features
+
+### Lead Attribution
+Every form submission captured by ACTV TRKR is connected to:
+- Traffic source (organic search, paid ads, direct, referral, social, email, etc.)
+- UTM parameters (campaign, source, medium, content, term)
+- Landing page and full page-by-page journey before submission
+- Click activity and meaningful interactions during the session
+- Geographic location (country/region via IP)
+- Engagement score (0-100) based on session duration, depth, and interactions
+
+### Form Capture & Monitoring
+Universal form capture across the most common WordPress form builders:
+- Gravity Forms
+- WPForms
+- Contact Form 7
+- Ninja Forms
+- Formidable Forms
+- Avada / Fusion Forms
+
+ACTV TRKR also monitors form health and alerts when forms break, stop receiving submissions, or experience submission failures.
+
+### Visitor Behavior & Session Timelines
+For each visitor session, ACTV TRKR records a chronological timeline showing:
+- Pages visited in order with time on each
+- Meaningful clicks (CTA buttons, mailto, tel, external links, file downloads)
+- Form interactions (field focus, submission attempts)
+- Conversion events when goals are hit
+
+### AI Agent ("Nova")
+Built-in AI assistant that answers plain-English questions about site performance using real customer data:
+- "Where are my leads coming from this month?"
+- "What changed compared to last week?"
+- "Why did conversions drop on Tuesday?"
+- "Which pages are underperforming?"
+- "What should I fix right now?"
+
+The AI also generates dashboard insights and recommendations automatically.
+
+### Site Health Monitoring
+- Broken link detection across the site
+- Broken form detection
+- SSL certificate expiration alerts
+- Domain expiration alerts
+- Uptime monitoring (active HTTP pinging every 10 minutes)
+- Plugin and WordPress version awareness
+
+### Reports
+- Weekly summary email
+- Monthly summary email
+- Custom date-range reports in the dashboard
+- PDF export with white-labeling support
+- Shareable snapshot links (time-limited, secure)
+- Customizable report sections — toggle which sections (AI insights, site health, traffic, leads, etc.) appear in scheduled reports
+
+### WooCommerce / E-commerce Tracking
+For sites running WooCommerce, ACTV TRKR tracks orders with last-touch attribution, tying revenue back to the traffic source that produced the customer.
+
+### SEO Signals
+Active scanning of on-page SEO factors (titles, meta descriptions, headings, structured data, canonical tags, image alt text, etc.) with AI-powered remediation suggestions.
+
+### Team & Multi-Site Management
+- Multi-site support (per-website pricing)
+- Team invitations with admin and manager roles
+- Per-organization role-based access control
+- Audit log of team actions
+
+## Pricing
+
+Single plan, all features included:
+
+| Billing | Price | Notes |
+|---|---|---|
+| Monthly | $45 USD / month | Per website |
+| Yearly | $495 USD / year | Per website (save $45/yr vs monthly) |
+
+- 14-day free trial (credit card required)
+- Cancel anytime
+- No setup fees, no usage caps on data
+- 60 days of detailed activity data; older data archived to CSV exports
+- 12 months of summary/reporting data retained
+
+## Setup process
+
+1. Sign up at https://actvtrkr.com/signup
+2. Create an organization and add the first website
+3. Download the ACTV TRKR WordPress plugin from the dashboard
+4. Install and activate the plugin on the WordPress site (standard WP plugin install)
+5. The plugin auto-connects to the dashboard via a one-time token
+6. Tracking begins immediately — forms are auto-discovered, page tracking starts automatically
+
+Most sites are fully tracking within 5 minutes.
+
+## Privacy, security & compliance
+
+- **GDPR compliant**, ACTV TRKR is the Data Processor; the customer is the Data Controller
+- **Built-in consent banner** with region-aware behavior:
+  - EU/UK: strict consent (opt-in required before tracking)
+  - US/other: opt-out model
+- **Integrates with external CMPs**: Cookiebot, OneTrust, Iubenda, Termly, Complianz, CookieYes, Real Cookie Banner, Cookie Notice
+- Data is encrypted in transit and at rest
+- Sensitive WP user metadata is hashed before ingestion
+- Per-customer data isolation enforced via Postgres Row-Level Security
+- No data sold or shared with third parties
+- Customer can delete their account and all data at any time
+
+## How ACTV TRKR compares
+
+### vs Google Analytics
+GA is a general-purpose analytics tool focused on traffic measurement. ACTV TRKR is purpose-built for WordPress lead attribution — it ties every form submission back to its full session story. ACTV TRKR also bundles form monitoring, site health, and uptime — features GA doesn't offer.
+
+### vs HubSpot
+HubSpot is a full CRM/marketing automation platform at significantly higher cost. ACTV TRKR focuses on the analytics + lead attribution slice without requiring CRM migration.
+
+### vs Form plugins alone
+Form plugins (Gravity Forms, WPForms, etc.) capture submissions but show little context about where the lead came from or how the visitor behaved. ACTV TRKR adds the missing attribution and session context.
+
+### vs Uptime monitors (UptimeRobot, etc.)
+Standalone uptime monitors only check whether a site is up. ACTV TRKR includes uptime plus broken-form detection, SSL/domain expiry, and broken links — all in one place.
+
+## Frequently asked questions
+
+**What does ACTV TRKR replace?**
+The need to piece together Google Analytics, form plugins, uptime monitors, SEO tools, and ad-hoc reporting spreadsheets.
+
+**Do I need to install a WordPress plugin?**
+Yes. ACTV TRKR is WordPress-first and requires the plugin for tracking.
+
+**What if a form plugin I use isn't listed?**
+ACTV TRKR also captures generic HTML forms via JavaScript hooks. Major builders are first-class supported; others fall back to universal capture.
+
+**How accurate is the data?**
+ACTV TRKR tracks real session-based behavior on the site itself. Numbers may differ from Google Analytics due to different methodologies (sessions vs hits, ad-blocker handling, bot filtering). Trends and lead attribution remain highly reliable.
+
+**Will ad blockers affect tracking?**
+Some aggressive ad blockers may block analytics scripts. ACTV TRKR is designed to capture as much as possible. As a WordPress-installed tracker, it's less affected than third-party scripts loaded from external domains.
+
+**Can I export my data?**
+Yes — CSV exports of leads, form entries, and historical archives are available from the dashboard.
+
+**Is there a developer API?**
+ACTV TRKR provides API keys for organizations (one active key per org) for custom integrations.
+
+## Brand & maker
+
+- Product: ACTV TRKR
+- Website: https://actvtrkr.com
+- Built by: New Uniform Design (https://newuniformdesign.com)
+- Support contact: via Contact button on actvtrkr.com or email through the dashboard
+- Plan: SaaS, $45/mo or $495/yr per website, 14-day free trial
+
+## Useful URLs for citations
+
+- Homepage: https://actvtrkr.com/
+- Sign up: https://actvtrkr.com/signup
+- Sign in: https://actvtrkr.com/auth
+- Privacy policy: https://actvtrkr.com/privacy
+- Terms of service: https://actvtrkr.com/terms
+- Data Processing Agreement: https://actvtrkr.com/dpa
+- Cookie policy: https://actvtrkr.com/cookie-policy
+- Accessibility statement: https://actvtrkr.com/accessibility
+- Data rights: https://actvtrkr.com/data-rights

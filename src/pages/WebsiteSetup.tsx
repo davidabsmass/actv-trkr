@@ -155,8 +155,15 @@ export default function WebsiteSetup() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      await downloadPlugin();
-      toast.success("Plugin downloaded");
+      // If we just minted a key in this session, bake it into the ZIP so the
+      // user gets a pre-configured plugin (no copy/paste required). Falls back
+      // to the plain ZIP if the key isn't available (e.g. user dismissed it).
+      await downloadPlugin(revealedKey || undefined);
+      toast.success(
+        revealedKey
+          ? "Pre-configured plugin downloaded — install & activate, no key to paste"
+          : "Plugin downloaded",
+      );
     } catch (e: any) {
       toast.error(e.message || "Download failed");
     } finally {

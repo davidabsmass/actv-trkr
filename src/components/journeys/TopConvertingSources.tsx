@@ -111,9 +111,9 @@ export function TopConvertingSources({ orgId, startDate, endDate }: Props) {
     return (
       <div className="glass-card p-6 mb-4 text-center">
         <Trophy className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-        <div className="text-sm text-foreground font-medium">No converting sources yet</div>
+        <div className="text-sm text-foreground font-medium">No converting sources in this date range</div>
         <p className="text-xs text-muted-foreground mt-1">
-          Once visitors arrive from a referrer or ad and complete a form fill or Key Action, they'll appear here.
+          No tracked sessions completed a form fill or Key Action in this window. Try widening the date range.
         </p>
       </div>
     );

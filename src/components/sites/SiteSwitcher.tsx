@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, Globe, Plus, Circle } from "lucide-react";
 import { useOrg } from "@/hooks/use-org";
 import { useSites } from "@/hooks/use-dashboard-data";
@@ -47,6 +48,7 @@ export function SiteSwitcher() {
   const { orgId } = useOrg();
   const { data: sites } = useSites(orgId);
   const [addOpen, setAddOpen] = useState(false);
+  const navigate = useNavigate();
 
   const list = sites ?? [];
   const isFirstSite = list.length === 0;
@@ -86,6 +88,7 @@ export function SiteSwitcher() {
               return (
                 <DropdownMenuItem
                   key={site.id}
+                  onSelect={() => navigate(`/monitoring?site=${site.id}`)}
                   className="flex items-start gap-2 py-2 focus:text-accent-foreground [&:focus_*]:!text-accent-foreground data-[highlighted]:text-accent-foreground [&[data-highlighted]_*]:!text-accent-foreground"
                 >
                   <StatusDot kind={status.kind} />

@@ -239,15 +239,22 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
               <button
                 type="button"
                 onClick={startAdditionalSite}
-                className="w-full text-left rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-colors p-4"
+                disabled={busy}
+                className="w-full text-left rounded-lg border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-colors p-4 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-md bg-primary/10 flex-shrink-0">
-                    <Plus className="h-4 w-4 text-primary" />
+                    {busy ? (
+                      <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 text-primary" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground mb-1">
-                      I'm adding an additional site to my plan
+                      {busy
+                        ? "Checking your subscription…"
+                        : "I'm adding an additional site to my plan"}
                     </p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Connect another WordPress site.{" "}

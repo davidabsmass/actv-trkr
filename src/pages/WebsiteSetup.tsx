@@ -107,39 +107,13 @@ export default function WebsiteSetup() {
     if (!orgId) return;
     setGenerating(true);
     try {
-      // Revoke existing active keys first (one-active-key policy)
-      const { data: existing } = await supabase
-        .from("api_keys")
-        .select("id")
-        .eq("org_id", orgId)
-        .is("revoked_at", null);
-      for (const k of existing ?? []) {
-        await supabase
-          .from("api_keys")
-          .update({ revoked_at: new Date().toISOString() })
-          .eq("id", k.id);
-      }
-
-      // Raw key — this is the secret. It's shown to the user ONCE and never persisted in plain text.
-      const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      const hashBuffer = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(rawKey)
-      );
-      const keyHash = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-
-      const { error } = await supabase.from("api_keys").insert({
-        org_id: orgId,
-        key_hash: keyHash,
-        label: "Website License Key",
+      const { data, error } = await supabase.functions.invoke("create-api-key", {
+        body: { org_id: orgId, label: "Website License Key", revoke_existing: true },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      setRevealedKey(rawKey);
+      setRevealedKey(data.key);
       setAcknowledged(false);
       setKeyVisible(true);
       setConfirmRegenerate(false);

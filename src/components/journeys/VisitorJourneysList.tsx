@@ -48,7 +48,7 @@ export function VisitorJourneysList({
         p_limit: pageSize,
         p_offset: page * pageSize,
         p_sort: sort,
-      } as any);
+      } as any); // p_sort recently added; cast avoids stale type lookups in some envs
       if (error) throw error;
       const rows = (data || []) as Array<JourneyRow & { total_count: number | null; cap_hit?: boolean }>;
       const rawTotal = rows[0]?.total_count;

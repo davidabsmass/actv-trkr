@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, Globe, Plus, Circle } from "lucide-react";
 import { useOrg } from "@/hooks/use-org";
 import { useSites } from "@/hooks/use-dashboard-data";
@@ -49,11 +49,20 @@ export function SiteSwitcher() {
   const { data: sites } = useSites(orgId);
   const [addOpen, setAddOpen] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const list = sites ?? [];
   const isFirstSite = list.length === 0;
 
-  // Show summary label: first site name or count
+  // Determine the "current" site: URL ?site= param if present, else first site
+  const siteParam = searchParams.get("site");
+  const currentSite =
+    list.find((s) => s.id === siteParam) ?? list[0] ?? null;
+  const currentLabel = currentSite
+    ? currentSite.display_name || currentSite.name || currentSite.domain
+    : null;
+
+  // Dropdown trigger label: count when multiple, single name otherwise
   const summary =
     list.length === 0
       ? "No sites yet"
@@ -63,6 +72,14 @@ export function SiteSwitcher() {
 
   return (
     <>
+      {currentLabel && (
+        <div className="px-1 mt-2 mb-0.5">
+          <p className="text-[10px] uppercase tracking-wider text-white/40">Current site</p>
+          <p className="text-xs font-semibold text-white truncate" title={currentLabel}>
+            {currentLabel}
+          </p>
+        </div>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="w-full flex items-center justify-between px-3 py-2 mt-1 text-xs font-medium bg-white/10 rounded-md text-white/90 hover:bg-white/20 transition-colors">

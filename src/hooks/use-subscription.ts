@@ -75,7 +75,7 @@ export function useSubscription(userId?: string | null): SubscriptionState {
     // Never force-logout an invited team member just because their personal
     // email has no Stripe sub — the org owner pays. Only honour the flag if
     // they don't ride on an active org.
-    shouldForceLogout: data?.should_force_logout === true && !hasActiveOrg && !billingExempt,
+    shouldForceLogout: data?.should_force_logout === true && !hasActiveOrg && !hasPendingConnectionOrg && !billingExempt,
     productId: data?.product_id ?? null,
     subscriptionEnd: data?.subscription_end ?? null,
     isLoading: isAuthenticated && (subscriptionLoading || exemptLoading),

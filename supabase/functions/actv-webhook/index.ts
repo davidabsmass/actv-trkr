@@ -275,9 +275,24 @@ serve(async (req) => {
               } catch { /* keep fallback */ }
             }
 
+            const orgInsert: Record<string, any> = {
+              name: orgName,
+              seo_visibility_level: "summary",
+            };
+            // For setup-mode (trial-on-connect) flow, park the org in
+            // pending_connection until the first signal arrives. Stripe
+            // customer + chosen plan are stashed so start-trial-on-connect
+            // can create the real subscription later.
+            if (isSetupMode) {
+              orgInsert.status = "pending_connection";
+              orgInsert.status_change_reason = "checkout_setup_complete";
+              orgInsert.stripe_customer_id = customerId || null;
+              orgInsert.pending_plan = plan;
+            }
+
             const { data: org, error: orgErr } = await supabase
               .from("orgs")
-              .insert({ name: orgName, seo_visibility_level: "summary" })
+              .insert(orgInsert)
               .select("id")
               .single();
 
@@ -301,7 +316,7 @@ serve(async (req) => {
                 });
               }
 
-              logStep("Org + membership created", { orgId: org.id });
+              logStep("Org + membership created", { orgId: org.id, isSetupMode });
             }
           } else {
             logStep("User already has org, skipping", { orgId: existingOrg.org_id });

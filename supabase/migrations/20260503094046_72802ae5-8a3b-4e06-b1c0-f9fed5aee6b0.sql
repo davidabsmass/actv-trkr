@@ -1,0 +1,1 @@
+ALTER TYPE public.org_lifecycle_status ADD VALUE IF NOT EXISTS 'pending_connection';

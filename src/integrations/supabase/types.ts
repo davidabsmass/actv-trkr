@@ -9283,7 +9283,11 @@ export type Database = {
         | "team_invite"
         | "report_subscribe_link"
         | "other"
-      org_lifecycle_status: "active" | "grace_period" | "archived"
+      org_lifecycle_status:
+        | "active"
+        | "grace_period"
+        | "archived"
+        | "pending_connection"
       release_qa_check_status:
         | "pass"
         | "fail"
@@ -9471,7 +9475,12 @@ export const Constants = {
         "report_subscribe_link",
         "other",
       ],
-      org_lifecycle_status: ["active", "grace_period", "archived"],
+      org_lifecycle_status: [
+        "active",
+        "grace_period",
+        "archived",
+        "pending_connection",
+      ],
       release_qa_check_status: [
         "pass",
         "fail",

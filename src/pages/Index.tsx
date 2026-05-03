@@ -602,7 +602,7 @@ const Index = () => {
           <div className="max-w-4xl mx-auto" style={{ paddingTop: '20px', paddingBottom: '40px' }}>
             <div className="p-8 rounded-2xl bg-white border border-border/20 shadow-lg flex flex-col items-center text-center">
               <span className="inline-block mb-4 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">
-                14-day free trial
+                7-day free trial
               </span>
               <div className="flex items-center gap-2 mb-4 bg-muted/60 rounded-full px-1 py-1">
                 <button
@@ -674,10 +674,10 @@ const Index = () => {
 
 
               <Button onClick={handleDirectCheckout} className="w-full mt-3" size="lg" disabled={checkoutLoading}>
-                {checkoutLoading ? "Redirecting to payment…" : <>Start 14-day free trial <ArrowRight className="h-4 w-4" /></>}
+                {checkoutLoading ? "Redirecting to payment…" : <>Start 7-day free trial <ArrowRight className="h-4 w-4" /></>}
               </Button>
               <p className="text-center text-sm text-muted-foreground mt-3" style={{ fontFamily: "'BR Omega', sans-serif" }}>
-                14 days free, then {isAnnual ? '$495/year' : '$45/mo'}. Credit card required. Cancel anytime.
+                Trial starts when your site connects, then {isAnnual ? '$495/year' : '$45/mo'}. Credit card required. Cancel anytime.
               </p>
             </div>
           </div>

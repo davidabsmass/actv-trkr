@@ -144,7 +144,7 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
       toast({
         title: trialing ? "Added — no charge during trial" : "Additional site added",
         description: trialing
-          ? "You'll only be billed for this site when your 14-day trial ends."
+          ? "You'll only be billed for this site when your 7-day trial ends."
           : "Your subscription was updated. The new site is now $30/mo.",
       });
 
@@ -258,7 +258,7 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
                     </p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Connect another WordPress site.{" "}
-                      <span className="text-foreground font-medium">$30/month</span> — free during your 14-day trial.
+                      <span className="text-foreground font-medium">$30/month</span> — free during your 7-day trial.
                     </p>
                   </div>
                 </div>
@@ -292,7 +292,7 @@ export function AddSiteModal({ open, onOpenChange, isFirstSite = false }: AddSit
 
             <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground space-y-2">
               <p>
-                <span className="font-semibold text-foreground">During your 14-day free trial</span>,
+                <span className="font-semibold text-foreground">During your 7-day free trial</span>,
                 you can add as many client sites as you want — we won't charge you for any of them
                 until the trial ends.
               </p>

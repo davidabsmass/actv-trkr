@@ -154,49 +154,53 @@ serve(async (req) => {
         const customerId = typeof session.customer === "string" ? session.customer : "";
         const subscriptionId = typeof session.subscription === "string" ? session.subscription : "";
         const metadata = session.metadata || {};
-        const plan = metadata.plan || "monthly";
+        const plan = metadata.plan || metadata.pending_plan || "monthly";
         const siteUrl = metadata.site_url || null;
 
-        // Derive effective MRR from the Stripe subscription, applying any active discount
+        // ── Setup-mode checkout (7-day "trial-on-connect" flow) ──────────────
+        // No subscription exists yet — we only collected a payment method.
+        // The org is provisioned in `pending_connection` state and the real
+        // Stripe subscription (with a 7-day trial) is created later when the
+        // WordPress plugin sends its first signal.
+        const isSetupMode = session.mode === "setup" || (!subscriptionId && session.mode !== "subscription");
+
+        // MRR is 0 until the trial actually starts (which happens on first signal).
         let mrr = 0;
-        if (subscriptionId) {
+        if (!isSetupMode && subscriptionId) {
           try {
             const sub = await stripe.subscriptions.retrieve(subscriptionId, {
               expand: ["discounts.coupon", "discount.coupon"],
             });
             mrr = computeMrrFromSubscription(sub);
             logStep("MRR derived from subscription", {
-              subscriptionId,
-              mrr,
-              hasDiscount: !!sub.discount,
-              couponId: sub.discount?.coupon?.id,
+              subscriptionId, mrr, hasDiscount: !!sub.discount, couponId: sub.discount?.coupon?.id,
             });
           } catch (priceErr) {
             logStep("Failed to derive MRR from subscription", { error: String(priceErr) });
           }
         }
 
-        // Extract billing details from checkout session
         const customerDetails = session.customer_details;
         const billingName = customerDetails?.name || "";
         const billingPhone = customerDetails?.phone || "";
         const billingAddress = (customerDetails as any)?.address;
 
-        // 1. Upsert subscriber record
+        // 1. Upsert subscriber. In setup mode, status='pending' until the
+        //    trial starts on first signal.
         const { error } = await supabase.from("subscribers").upsert({
           email,
           stripe_customer_id: customerId,
-          stripe_subscription_id: subscriptionId,
+          stripe_subscription_id: subscriptionId || null,
           plan,
-          status: "active",
+          status: isSetupMode ? "pending" : "active",
           site_url: siteUrl,
           referral_source: metadata.referral_source || null,
           mrr,
           last_active_date: new Date().toISOString(),
         }, { onConflict: "stripe_customer_id" });
 
-        if (error) logStep("DB insert error", { error });
-        else logStep("Subscriber created", { email, plan });
+        if (error) logStep("Subscriber upsert error", { error });
+        else logStep("Subscriber upserted", { email, plan, isSetupMode });
 
         // 2. Create auth user (skip if already exists)
         const tempPassword = crypto.randomUUID();
@@ -271,9 +275,24 @@ serve(async (req) => {
               } catch { /* keep fallback */ }
             }
 
+            const orgInsert: Record<string, any> = {
+              name: orgName,
+              seo_visibility_level: "summary",
+            };
+            // For setup-mode (trial-on-connect) flow, park the org in
+            // pending_connection until the first signal arrives. Stripe
+            // customer + chosen plan are stashed so start-trial-on-connect
+            // can create the real subscription later.
+            if (isSetupMode) {
+              orgInsert.status = "pending_connection";
+              orgInsert.status_change_reason = "checkout_setup_complete";
+              orgInsert.stripe_customer_id = customerId || null;
+              orgInsert.pending_plan = plan;
+            }
+
             const { data: org, error: orgErr } = await supabase
               .from("orgs")
-              .insert({ name: orgName, seo_visibility_level: "summary" })
+              .insert(orgInsert)
               .select("id")
               .single();
 
@@ -297,7 +316,7 @@ serve(async (req) => {
                 });
               }
 
-              logStep("Org + membership created", { orgId: org.id });
+              logStep("Org + membership created", { orgId: org.id, isSetupMode });
             }
           } else {
             logStep("User already has org, skipping", { orgId: existingOrg.org_id });

@@ -4642,6 +4642,7 @@ export type Database = {
           created_at: string
           day25_email_sent_at: string | null
           day80_email_sent_at: string | null
+          first_connected_at: string | null
           grace_period_ends_at: string | null
           id: string
           lifecycle_email_cancelled_sent_at: string | null
@@ -4652,10 +4653,12 @@ export type Database = {
           onboarding_day12_sent_at: string | null
           onboarding_day3_sent_at: string | null
           onboarding_day7_sent_at: string | null
+          pending_plan: string | null
           seo_visibility_level: string
           status: Database["public"]["Enums"]["org_lifecycle_status"]
           status_change_reason: string | null
           status_changed_at: string
+          stripe_customer_id: string | null
           timezone: string
         }
         Insert: {
@@ -4665,6 +4668,7 @@ export type Database = {
           created_at?: string
           day25_email_sent_at?: string | null
           day80_email_sent_at?: string | null
+          first_connected_at?: string | null
           grace_period_ends_at?: string | null
           id?: string
           lifecycle_email_cancelled_sent_at?: string | null
@@ -4675,10 +4679,12 @@ export type Database = {
           onboarding_day12_sent_at?: string | null
           onboarding_day3_sent_at?: string | null
           onboarding_day7_sent_at?: string | null
+          pending_plan?: string | null
           seo_visibility_level?: string
           status?: Database["public"]["Enums"]["org_lifecycle_status"]
           status_change_reason?: string | null
           status_changed_at?: string
+          stripe_customer_id?: string | null
           timezone?: string
         }
         Update: {
@@ -4688,6 +4694,7 @@ export type Database = {
           created_at?: string
           day25_email_sent_at?: string | null
           day80_email_sent_at?: string | null
+          first_connected_at?: string | null
           grace_period_ends_at?: string | null
           id?: string
           lifecycle_email_cancelled_sent_at?: string | null
@@ -4698,10 +4705,12 @@ export type Database = {
           onboarding_day12_sent_at?: string | null
           onboarding_day3_sent_at?: string | null
           onboarding_day7_sent_at?: string | null
+          pending_plan?: string | null
           seo_visibility_level?: string
           status?: Database["public"]["Enums"]["org_lifecycle_status"]
           status_change_reason?: string | null
           status_changed_at?: string
+          stripe_customer_id?: string | null
           timezone?: string
         }
         Relationships: []
@@ -9283,7 +9292,11 @@ export type Database = {
         | "team_invite"
         | "report_subscribe_link"
         | "other"
-      org_lifecycle_status: "active" | "grace_period" | "archived"
+      org_lifecycle_status:
+        | "active"
+        | "grace_period"
+        | "archived"
+        | "pending_connection"
       release_qa_check_status:
         | "pass"
         | "fail"
@@ -9471,7 +9484,12 @@ export const Constants = {
         "report_subscribe_link",
         "other",
       ],
-      org_lifecycle_status: ["active", "grace_period", "archived"],
+      org_lifecycle_status: [
+        "active",
+        "grace_period",
+        "archived",
+        "pending_connection",
+      ],
       release_qa_check_status: [
         "pass",
         "fail",

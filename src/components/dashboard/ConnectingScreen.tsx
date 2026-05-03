@@ -46,7 +46,8 @@ export function ConnectingScreen({ orgId }: ConnectingScreenProps) {
           <p className="text-sm text-muted-foreground leading-relaxed">
             We're waiting for the first signal from your WordPress plugin.
             This usually takes <strong className="text-foreground">1–3 minutes</strong> after
-            you save your license key. Your dashboard will open automatically as soon as we hear from your site.
+            you save your license key. Your <strong className="text-foreground">7-day free trial starts the moment your site connects</strong>,
+            and your dashboard will open automatically.
           </p>
         </div>
 

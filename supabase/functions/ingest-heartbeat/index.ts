@@ -283,6 +283,20 @@ Deno.serve(async (req) => {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+        // Trial-on-connect: if this org is in pending_connection state,
+        // create the 7-day Stripe trial subscription right now. The endpoint
+        // is idempotent and no-ops for orgs that aren't pending.
+        fetch(`${supabaseUrl}/functions/v1/start-trial-on-connect`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({ org_id: orgId }),
+        }).then(r => console.log(`Trial-on-connect triggered for org ${orgId}: ${r.status}`))
+          .catch(e => console.error("Trial-on-connect fire-and-forget failed:", e));
+
         fetch(`${supabaseUrl}/functions/v1/trigger-site-sync`, {
           method: "POST",
           headers: {

@@ -1,10 +1,11 @@
 /**
  * Org lifecycle gate for ingest endpoints.
  *
- * Returns null if the org is allowed to ingest (active or billing_exempt),
- * or a structured rejection object with HTTP 402 + a payload the WordPress
- * plugin uses to render its "Tracking paused. Reactivate your subscription."
- * notice.
+ * Returns null if the org is allowed to ingest (active, billing_exempt,
+ * or pending_connection — the very first signal needs to land so the trial
+ * can start), or a structured rejection object with HTTP 402 + a payload
+ * the WordPress plugin uses to render its "Tracking paused. Reactivate
+ * your subscription." notice.
  *
  * Use this in ANY ingest endpoint after resolving an org_id from credentials.
  */
@@ -32,6 +33,9 @@ export async function gateOrgLifecycle(
   if (!org) return null; // unknown org — let caller's existing checks handle
   if (org.billing_exempt === true) return null;
   if (org.status === "active") return null;
+  // pending_connection orgs MUST be allowed through — the first signal is
+  // exactly what flips them to active and starts the 7-day trial.
+  if (org.status === "pending_connection") return null;
 
   const message =
     org.status === "grace_period"

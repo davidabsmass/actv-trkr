@@ -54,12 +54,19 @@ export function useSubscription(userId?: string | null): SubscriptionState {
 
   const billingExempt = memberOrgs?.some((ou: any) => ou.orgs?.billing_exempt === true) ?? false;
   const hasActiveOrg = memberOrgs?.some((ou: any) => ou.orgs?.status === "active") ?? false;
+  // pending_connection orgs are paid-up (payment method on file) but
+  // haven't sent their first signal yet. They MUST be allowed into the
+  // app so they can complete the WordPress setup checklist — that's
+  // literally what triggers the trial.
+  const hasPendingConnectionOrg = memberOrgs?.some((ou: any) => ou.orgs?.status === "pending_connection") ?? false;
 
   // The user is "subscribed" if either:
   //  (a) their own email has an active Stripe sub (org owner / single-user case), OR
   //  (b) they're a member of an org whose lifecycle status is `active`
-  //      (the owner is paying — invited team members ride along).
-  const subscribed = (data?.subscribed ?? false) || hasActiveOrg;
+  //      (the owner is paying — invited team members ride along), OR
+  //  (c) they're a member of an org in `pending_connection` (paid setup
+  //      complete, awaiting first signal to start the 7-day trial).
+  const subscribed = (data?.subscribed ?? false) || hasActiveOrg || hasPendingConnectionOrg;
 
   return {
     subscribed,
